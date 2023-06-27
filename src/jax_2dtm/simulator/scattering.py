@@ -7,7 +7,6 @@ import numpy as np
 import jax.numpy as jnp
 from functools import partial
 from jax import jit
-from interpolation import interpolate
 
 
 @partial(jit, static_argnames=['shape'])
@@ -57,29 +56,15 @@ def normalize(image):
     pass
 
 
-def noise(image):
-    """
-    Add Gaussian white noise to image.
-
-    Parameters
-    ----------
-
-    Return
-    ------
-
-    """
-    pass
-
-
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
     from jax import jit
-    from rotations import rotate_rpy
-    from interpolation import interpolate
-    from template import read_mrc
-    from coordinates import coordinatize
+    from jax_2dtm.io import load_volume
+    from .rotations import rotate_rpy
+    from .interpolation import interpolate
+    from .coordinates import coordinatize
 
-    template = read_mrc("./example/6dpu_14pf_bfm1_ps1_1.mrc")
+    template = load_volume("./example/6dpu_14pf_bfm1_ps1_1.mrc")
     shape = template.shape[1:]
 
     # Read coordinates

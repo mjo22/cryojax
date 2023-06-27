@@ -3,6 +3,8 @@
 Routines that compute rotations and translataions of microtubule protofilaments.
 """
 
+__all__ = ["rotate_wxyz", "rotate_rpy", "rotate_and_translate"]
+
 import jax.numpy as jnp
 from jax import vmap, jit
 from jaxlie import SE3, SO3
@@ -79,9 +81,9 @@ def rotate_and_translate(coords, wxyz_xyz):
     return transformed
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from jax import jit
-    from template import read_mrc
+    from jax_2dtm.io import load_mrc
     from coordinates import coordinatize
 
     template = read_mrc("./example/6dpu_14pf_bfm1_ps1_1.mrc")
@@ -89,7 +91,7 @@ if __name__ == '__main__':
 
     model, coords = coordinatize(template)
 
-    rpy = jnp.array([1., 0., 0.])
+    rpy = jnp.array([1.0, 0.0, 0.0])
     rotate_jit = jit(rotate_rpy)
     rotated_coords = rotate_jit(coords, rpy)
 
