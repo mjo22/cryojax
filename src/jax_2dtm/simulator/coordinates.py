@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Routines defining coordinate system for 3D templates or images.
 """
@@ -7,11 +6,13 @@ __all__ = ["coordinatize", "radial_grid"]
 
 import jax.numpy as jnp
 import numpy as np
-from typing import Optional, Sequence
-from jax_2dtm.types import Array, ArrayLike
+from typing import Optional, Sequence, Tuple
+from jax_2dtm.types import Array
 
 
-def coordinatize(volume: ArrayLike, pixel_size: Optional[float] = 1.0) -> Array:
+def coordinatize(
+    volume: Array, pixel_size: Optional[float] = 1.0
+) -> Tuple[Array, Array]:
     """
     Returns flattened coordinate system and 3D volume or 2D image
     of shape ``(N, ndim)``, where ``ndim = volume.ndim`` and
@@ -34,7 +35,7 @@ def coordinatize(volume: ArrayLike, pixel_size: Optional[float] = 1.0) -> Array:
     """
     ndim, shape = volume.ndim, volume.shape
     N = np.prod(shape)
-    coords = jnp.zeros((N, ndim), dtype=int)
+    coords = jnp.zeros((N, ndim))
 
     # Generate cubic grid and fill coordinate array
     R = radial_grid(shape)
@@ -47,7 +48,7 @@ def coordinatize(volume: ArrayLike, pixel_size: Optional[float] = 1.0) -> Array:
     return flat, coords
 
 
-def radial_grid(shape: Sequence[int]) -> Array:
+def radial_grid(shape: Sequence[int]) -> Sequence[Array]:
     """
     Create a radial coordinate system on a grid.
     This can be used for real and fourier space
@@ -65,18 +66,9 @@ def radial_grid(shape: Sequence[int]) -> Array:
     rcoords1D = []
     for i in range(ndim):
         ni = shape[i]
-        ri = jnp.fft.fftshift(jnp.fft.fftfreq(ni))*ni
+        ri = jnp.fft.fftshift(jnp.fft.fftfreq(ni)) * ni
         rcoords1D.append(ri)
 
-    rcoords = jnp.meshgrid(*rcoords1D, indexing='ij')
+    rcoords = jnp.meshgrid(*rcoords1D, indexing="ij")
 
     return rcoords
-
-
-if __name__ == '__main__':
-    from jax_2dtm.io import load_mrc
-
-    template = load_mrc("./example/6dpu_14pf_bfm1_ps1_1.mrc")
-    shape = template.shape
-
-    flat, coords = coordinatize(template)

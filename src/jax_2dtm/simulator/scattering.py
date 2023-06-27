@@ -3,33 +3,35 @@
 Routines to model image formation
 """
 
-import numpy as np
 import jax.numpy as jnp
 from functools import partial
+from typing import Tuple
 from jax import jit
+from jax_2dtm.types import Array
 
 
 @partial(jit, static_argnames=['shape'])
-def project(volume, coords, shape):
+def project(volume: Array, coords: Array, shape: Tuple[int]) -> Array:
     """
-    Project 3D volume onto imaging plane.
+    Project 3D volume onto imaging plane
+    by computing a histogram.
 
     Parameters
     ----------
-    volume : `jnp.ndarray`, shape `(N, 3)`
+    volume : shape `(N, 3)`
         3D volume.
-    coords : `jnp.ndarray`, shape `(N, 3)`
+    coords : shape `(N, 3)`
         Coordinate system.
-    shape : `tuple`
+    shape :
         A tuple denoting the shape of the output image, given
         by ``(N2, N3)``
     Returns
     -------
-    projection : `jnp.ndarray`, shape `(N2, N3)`
+    projection : shape `(N2, N3)`
         Projection of volume onto imaging plane,
         which is taken to be axis 0.
     """
-    N2, N3 = shape
+    N2, N3 = shape[0], shape[1]
     # Round coordinates for binning
     rounded_coords = jnp.rint(coords).astype(int)
     # Shift coordinates back to zero in the corner, rather than center
