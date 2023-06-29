@@ -12,11 +12,12 @@ from typing import Tuple
 from jax_2dtm.types import Array
 
 
-@partial(jit, static_argnames=["shape"])
-def nufft(density: Array, coords: Array, box: Array, shape: Tuple[int, int, int]) -> Array:
+def nufft(
+    density: Array, coords: Array, box: Array, shape: Tuple[int, int, int]
+, **kwargs) -> Array:
     """
     Helper routine to compute a non-uniform FFT for a 3D
-    point cloud.
+    point cloud. Mask out points that lie out of bounds.
 
     Arguments
     ---------
@@ -26,8 +27,11 @@ def nufft(density: Array, coords: Array, box: Array, shape: Tuple[int, int, int]
 
     """
     complex_density = density.astype(complex)
-    x, y, z = (2*jnp.pi * coords / box - jnp.pi).T
-    ft = nufft1(shape, complex_density, x, y, z)
+    x, y, z = (2 * jnp.pi * coords / box + jnp.pi).T
+    x_mask = jnp.logical_or(x < 0, x >= 2*jnp.pi)
+    y_mask = jnp.logical_or(y < 0, y >= 2*jnp.pi)
+    mask = jnp.logical_not(jnp.logical_or(x_mask, y_mask))
+    ft = nufft1(shape, complex_density[mask], x[mask], y[mask], z[mask], **kwargs)
 
     return ft
 

@@ -12,10 +12,10 @@ from jax_2dtm.types import Array
 from jax_2dtm.utils import nufft
 
 
-@partial(jit, static_argnames="shape")
+#@partial(jit, static_argnames="shape")
 def project(
     density: Array, coords: Array, shape: tuple[int, int, int], pixel_size: float
-) -> Array:
+, **kwargs) -> Array:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using a non-uniform FFT.
@@ -40,7 +40,7 @@ def project(
     """
     box = jnp.array(shape, dtype=float) * pixel_size
     image_shape = (shape[0], shape[1], int(1))
-    image = nufft(density, coords, box, image_shape)[:, :, 0]
+    image = nufft(density, coords, box, image_shape, **kwargs)[:, :, 0]
 
     return image
 
