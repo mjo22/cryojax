@@ -11,41 +11,52 @@ from jax_2dtm.types import Array
 
 
 def coordinatize(
-    volume: Array, pixel_size: Optional[float] = 1.0
+    volume: Array, pixel_size: float, eps: Optional[float] = None
 ) -> Tuple[Array, Array]:
     """
     Returns flattened coordinate system and 3D volume or 2D image
     of shape ``(N, ndim)``, where ``ndim = volume.ndim`` and
-    ``N = N1*N2*N3`` or ``N = N2*N3``. The coordinate system is in
-    pixel coordinates with zero in the center.
+    ``N = N1*N2*N3 - M`` or ``N = N2*N3 - M``, where ``M`` is a
+    number of points close to zero that are masked out.
+    The coordinate system is in pixel coordinates with zero
+    in the center.
 
     Parameters
     ----------
-    volume : `jnp.ndarray`, shape `(N1, N2, N3)` or `(N2, N3)`
+    volume : shape `(N1, N2, N3)` or `(N2, N3)`
         3D volume or 2D image.
-    pixel_size : `float`, optional
+    pixel_size : optional
         Camera pixel size.
+    eps : optional
+        Remove points from the volume where the
+        density is below this threshold.
 
     Returns
     -------
-    flat : `jnp.ndarray`, shape `(N, ndim)`
+    cloud : shape `(N, ndim)`
         Flattened volume or image.
-    coords : `jnp.ndarray`, shape `(N, ndim)`
+    coords : shape `(N, ndim)`
         Flattened cartesian coordinate system.
     """
     ndim, shape = volume.ndim, volume.shape
-    N = np.prod(shape)
-    coords = jnp.zeros((N, ndim))
+    if eps is None:
+        eps = float(np.finfo(volume.dtype).eps)
+
+    # Mask out points where the electron density below threshold
+    flat = volume.ravel()
+    mask = np.where(flat > eps)
+    cloud = flat[mask]
+
+    # Create coordinate buffer
+    N = cloud.size
+    coords = np.zeros((N, ndim))
 
     # Generate cubic grid and fill coordinate array
     R = radial_grid(shape)
     for i in range(ndim):
-        coords = coords.at[:, i].set(pixel_size * R[i].ravel())
+        coords[:, i] = pixel_size * R[i].ravel()[mask]
 
-    # Flattened template
-    flat = volume.ravel()
-
-    return flat, coords
+    return jnp.asarray(cloud), jnp.asarray(coords)
 
 
 def radial_grid(shape: Sequence[int]) -> Sequence[Array]:
@@ -57,18 +68,22 @@ def radial_grid(shape: Sequence[int]) -> Sequence[Array]:
 
     Arguments
     ---------
+    shape :
+        Shape of the voxel grid. Can be 2D or 3D.
 
     Returns
     -------
-
+    rcoords :
+        2D or 3D cartesian coordinate system with
+        zero in the center.
     """
     ndim = len(shape)
     rcoords1D = []
     for i in range(ndim):
         ni = shape[i]
-        ri = jnp.fft.fftshift(jnp.fft.fftfreq(ni)) * ni
+        ri = np.fft.fftshift(jnp.fft.fftfreq(ni)) * ni
         rcoords1D.append(ri)
 
-    rcoords = jnp.meshgrid(*rcoords1D, indexing="ij")
+    rcoords = np.meshgrid(*rcoords1D, indexing="ij")
 
     return rcoords

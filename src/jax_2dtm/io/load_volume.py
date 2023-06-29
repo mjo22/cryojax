@@ -7,7 +7,7 @@ __all__ = ["load_mrc", "load_ccp4"]
 
 import mrcfile
 import gemmi
-import jax.numpy as jnp
+import numpy as np
 from jax_2dtm.types import Array
 
 
@@ -26,7 +26,7 @@ def load_mrc(filename: str) -> Array:
         3D model in cartesian coordinates.
     """
     with mrcfile.open(filename) as mrc:
-        template = jnp.array(mrc.data)
+        template = np.array(mrc.data)
 
     return template
 
@@ -46,6 +46,6 @@ def load_ccp4(filename : str) -> Array:
         3D model in cartesian coordinates
     """
     ccp4_map = gemmi.read_ccp4_map(filename)
-    volume = jnp.array(ccp4_map.grid, copy=False)
+    volume = np.array(ccp4_map.grid, copy=False)
 
     return volume
