@@ -7,11 +7,11 @@ __all__ = ["coordinatize", "radial_grid"]
 import jax.numpy as jnp
 import numpy as np
 from typing import Optional, Sequence, Tuple
-from jax_2dtm.types import Array
+from jax_2dtm.types import Array, ArrayLike
 
 
 def coordinatize(
-    volume: Array, pixel_size: float, eps: Optional[float] = None
+    volume: ArrayLike, pixel_size: float, eps: Optional[float] = None
 ) -> Tuple[Array, Array]:
     """
     Returns flattened coordinate system and 3D volume or 2D image
@@ -59,7 +59,7 @@ def coordinatize(
     return jnp.asarray(cloud), jnp.asarray(coords)
 
 
-def radial_grid(shape: Sequence[int]) -> Sequence[Array]:
+def radial_grid(shape: tuple[int, ...]) -> tuple[ArrayLike, ...]:
     """
     Create a radial coordinate system on a grid.
     This can be used for real and fourier space

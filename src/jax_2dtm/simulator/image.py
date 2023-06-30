@@ -12,7 +12,7 @@ from jax_2dtm.types import Array
 from jax_2dtm.utils import nufft
 
 
-#@partial(jit, static_argnames="shape")
+# @partial(jit, static_argnames="shape")
 def project(
     density: Array, coords: Array, shape: tuple[int, int, int], pixel_size: float
 , **kwargs) -> Array:
