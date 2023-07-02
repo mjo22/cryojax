@@ -45,8 +45,8 @@ def project(
         The output image in the fourier domain.
     """
     box_size = jnp.array(box_shape, dtype=float) * pixel_size
-    image_shape = (shape[0], shape[1], int(1))
-    image = nufft(density, coords, box, image_shape, eps=eps)[:, :, 0]
+    image_shape = (box_shape[0], box_shape[1], int(1))
+    image = nufft(density, coords, box_size, image_shape, eps=eps)[:, :, 0]
 
     return image
 
