@@ -3,7 +3,7 @@ requires = ["setuptools>=40.6.0,<60.9.0", "wheel", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-write_to = "src/tinygp/tinygp_version.py"
+write_to = "src/jax_2dtm/jax_2dtm_version.py"
 
 [tool.black]
 line-length = 79
