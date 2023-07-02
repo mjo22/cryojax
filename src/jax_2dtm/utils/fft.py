@@ -5,10 +5,12 @@ Routines to compute FFTs.
 __all__ = ["nufft", "ifft"]
 
 import jax
-import tensorflow as tf
+
+# import tensorflow as tf
 import jax.numpy as jnp
-import tensorflow_nufft as tfft
-from jax.experimental import jax2tf
+
+# import tensorflow_nufft as tfft
+# from jax.experimental import jax2tf
 from jax_finufft import nufft1
 from functools import partial
 from typing import Tuple
@@ -76,18 +78,18 @@ def _nufft1(shape, density, x, y, z, eps=1e-6):
     return nufft1(shape, density, x, y, z, eps=eps)
 
 
-def _tf_nufft1(source, points, shape, tol):
-    """
-    Wrapper for type-1 non-uniform FFT
-    from tensorflow-nufft.
-    """
-    return tfft.nufft(
-        source,
-        points,
-        grid_shape=shape,
-        transform_type="type_1",
-        tol=tol.numpy(),
-    )
+# def _tf_nufft1(source, points, shape, tol):
+#    """
+#    Wrapper for type-1 non-uniform FFT
+#    from tensorflow-nufft.
+#    """
+#    return tfft.nufft(
+#        source,
+#        points,
+#        grid_shape=shape,
+#        transform_type="type_1",
+#        tol=tol.numpy(),
+#    )
 
 
 def _mask_density(x: Array, y: Array, density: Array) -> Array:
