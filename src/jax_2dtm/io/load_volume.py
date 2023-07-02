@@ -1,17 +1,15 @@
-# -*- coding: utf-8 -*-
 """
 Routines for reading 3D models to numpy arrays
 """
 
-__all__ = ["load_mrc", "load_ccp4"]
+__all__ = ["load_mrc"]
 
 import mrcfile
-import gemmi
 import numpy as np
-from jax_2dtm.types import Array
+from jax_2dtm.types import ArrayLike
 
 
-def load_mrc(filename: str) -> Array:
+def load_mrc(filename: str) -> ArrayLike:
     """
     Read 3D template to jax array.
 
@@ -29,23 +27,3 @@ def load_mrc(filename: str) -> Array:
         template = np.array(mrc.data)
 
     return template
-
-
-def load_ccp4(filename : str) -> Array:
-    """
-    Read 3D EMDB model into numpy array
-
-    Parameters
-    ----------
-    filename :
-        Path to EMDB .map file
-
-    Returns
-    -------
-    volume : shape `(N1, N2, N3)`
-        3D model in cartesian coordinates
-    """
-    ccp4_map = gemmi.read_ccp4_map(filename)
-    volume = np.array(ccp4_map.grid, copy=False)
-
-    return volume
