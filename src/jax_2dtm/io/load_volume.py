@@ -7,13 +7,15 @@ __all__ = ["load_mrc", "load_grid_as_cloud", "coordinatize"]
 import mrcfile
 import numpy as np
 import jax.numpy as jnp
-from typing import Optional
+from typing import Optional, Any
 from ..simulator import Cloud, ImageConfig
 from ..utils import fftfreqs
 from ..types import Array, ArrayLike
 
 
-def load_grid_as_cloud(filename: str, config: ImageConfig, **kwargs) -> Cloud:
+def load_grid_as_cloud(
+    filename: str, config: ImageConfig, **kwargs: Any
+) -> Cloud:
     """
     Read a 3D template on a cartesian grid
     to a ``Cloud``.
