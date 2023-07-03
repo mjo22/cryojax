@@ -1,19 +1,28 @@
 """
-Cryo-EM image rendering pipeline
+Routines to return a cryo-EM image rendering pipeline
 """
 
-__all__ = ["rendering_pipeline", "log_likelihood"]
+__all__ = ["get_rendering_pipeline", "get_log_likelihood"]
 
 
-def rendering_pipeline():
+from .coordinates import Cloud
+from .transform import rotate_and_translate, Pose
+from .image import project, ImageConfig
+
+
+def get_rendering_pipeline(config: ImageConfig, cloud: Cloud):
     """
-    Return function handle for the imaging pipeline
+    Return function handle for the imaging pipeline.
     """
-    pass
+
+    def pipeline():
+        pass
+
+    return pipeline
 
 
-def log_likelihood():
+def get_log_likelihood():
     """
-    Log likelihood.
+    Return function handle for the log likelihood.
     """
     pass

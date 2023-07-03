@@ -3,18 +3,19 @@
 Gaussian noise models
 """
 
-__all__ = ["white_noise", "white_covariance", "lorenzian_noise", "lorenzian_covariance"]
+__all__ = [
+    "white_noise",
+    "white_covariance",
+    "lorenzian_noise",
+    "lorenzian_covariance",
+]
 
 
-import os
 import numpy as np
 from .fft import k_grid
 
 
-def white_noise(
-        shape: tuple,
-        generator,
-        sigma: float = 1.0) -> np.ndarray:
+def white_noise(shape: tuple, generator, sigma: float = 1.0) -> np.ndarray:
     """
     Generate gaussian random field from white noise.
     """
@@ -25,21 +26,21 @@ def white_noise(
 
 
 def white_covariance(
-        x: np.ndarray,
-        y: np.ndarray,
-        sigma: float = 1.0) -> float:
+    x: np.ndarray, y: np.ndarray, sigma: float = 1.0
+) -> float:
     """
     Covariance function for white noise.
     """
-    return 1 / sigma**2 if np.array_equal(x, y) else 0.
+    return 1 / sigma**2 if np.array_equal(x, y) else 0.0
 
 
 def lorenzian_noise(
-        shape: tuple,
-        pixel_size: float,
-        generator,
-        sigma: float = 1.0,
-        xi: float = None) -> np.ndarray:
+    shape: tuple,
+    pixel_size: float,
+    generator,
+    sigma: float = 1.0,
+    xi: float = None,
+) -> np.ndarray:
     """
     Generate a gaussian random field with a given lorenzian,
     parameterized by a "temperature" and a correlation length.
@@ -53,22 +54,23 @@ def lorenzian_noise(
     kr = np.sqrt(kx**2 + ky**2)
     # Generate power spectrum
     spectrum = _lorenzian(kr, sigma, xi)
-    spectrum[Nx//2, Ny//2] = 0
+    spectrum[Nx // 2, Ny // 2] = 0
     # Generate noise in fourier space
-    fourier_noise = generator.standard_normal(size=Nx*Ny).reshape(Nx, Ny) + \
-        1.j * generator.standard_normal(size=Nx*Ny).reshape(Nx, Ny)
+    fourier_noise = generator.standard_normal(size=Nx * Ny).reshape(
+        Nx, Ny
+    ) + 1.0j * generator.standard_normal(size=Nx * Ny).reshape(Nx, Ny)
     fourier_noise *= spectrum
     # Go to real space, making sure we enforce f(k) = f(-k)
-    noise = np.fft.irfft2(np.fft.fftshift(fourier_noise)[:, :Ny//2+Ny%2], s=shape).real
+    noise = np.fft.irfft2(
+        np.fft.fftshift(fourier_noise)[:, : Ny // 2 + Ny % 2], s=shape
+    ).real
 
     return noise
 
 
 def lorenzian_covariance(
-        x: np.ndarray,
-        y: np.ndarray,
-        sigma: float = 1.0,
-        xi: float = 1.0) -> float:
+    x: np.ndarray, y: np.ndarray, sigma: float = 1.0, xi: float = 1.0
+) -> float:
     """
     Covariance function for a gaussian random field with
     a lorenzian power spectrum.
@@ -92,10 +94,10 @@ def k_grid(shape, pixel_size):
     kcoords1D = []
     for i in range(ndim):
         ni = shape[i]
-        ki = np.fft.fftshift(np.fft.fftfreq(ni))*ni/pixel_size
+        ki = np.fft.fftshift(np.fft.fftfreq(ni)) * ni / pixel_size
         kcoords1D.append(ki)
 
-    kcoords = np.meshgrid(*kcoords1D, indexing='ij')
+    kcoords = np.meshgrid(*kcoords1D, indexing="ij")
 
     return kcoords
 

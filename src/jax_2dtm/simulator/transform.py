@@ -2,49 +2,62 @@
 Routines that compute coordinate rotations and translations.
 """
 
-__all__ = ["rotate", "rotate_and_translate"]
+__all__ = ["rotate_and_translate", "Pose"]
 
 import jax.numpy as jnp
 from jax import vmap, jit
 from jaxlie import SE3, SO3
-from jax_2dtm.types import Array, Scalar
+from jax_2dtm.types import Array, ArrayLike, Scalar
+from jax_2dtm.simulator import Cloud
+from typing import NamedTuple
+
+
+class Pose(NamedTuple):
+    """
+    Attributes
+    ----------
+    view_phi : Scalar, `float` or shape `(M,)`
+        Roll angles, ranging :math:`(-\pi, \pi]`.
+    view_theta : Scalar, `float` or shape `(M,)`
+        Pitch angles, ranging :math:`(0, \pi]`.
+    view_psi : Scalar, `float` or shape `(M,)`
+        Yaw angles, ranging :math:`(-\pi, \pi]`.
+    offset_x : Scalar, `float` or shape `(M,)`
+        In-plane translations in x direction.
+    offset_y : Scalar, `float` or shape `(M,)`
+        In-plane translations in y direction.
+    """
+
+    view_phi: Scalar
+    view_theta: Scalar
+    view_psi: Scalar
+    offset_x: Scalar
+    offset_y: Scalar
 
 
 @jit
-def rotate(
-    coords: Array,
-    phi: Scalar,
-    theta: Scalar,
-    psi: Scalar,
-) -> Array:
-    r"""
-    Compute a coordinate rotation and translation from
-    a wxyz quaternion and xyz translation vector.
+def rotate_and_translate(cloud: Cloud, pose: Pose) -> Cloud:
+    """
+    Compute an SE3 transformation of a point cloud,
+    given an imaging pose (only in-plane translations).
 
     Arguments
     ---------
-    coords : shape `(N, 3)`
-        Coordinate system.
-    phi :
-        Roll angle, ranging :math:`(-\pi, \pi]`.
-    theta :
-        Pitch angle, ranging :math:`(0, \pi]`.
-    psi :
-        Yaw angle, ranging :math:`(-\pi, \pi]`.
-
-    Returns
-    -------
-    transformed : shape `(N, 3)`
-        Rotated and translated coordinate system.
+    cloud :
+        3D electron density point cloud.
+    pose :
+        Imaging pose.
     """
-    rotation = SO3.from_rpy_radians(phi, theta, psi)
-    transformed = vmap(rotation.apply)(coords)
+    transformed_coords = _rotate_and_translate(cloud.coordinates, *pose)
+    transformed_cloud = Cloud(
+        cloud.density, transformed_coords, cloud.box_size
+    )
 
-    return transformed
+    return transformed_cloud
 
 
 @jit
-def rotate_and_translate(
+def _rotate_and_translate(
     coords: Array,
     phi: Scalar,
     theta: Scalar,
@@ -54,7 +67,7 @@ def rotate_and_translate(
 ) -> Array:
     r"""
     Compute a coordinate rotation and translation from
-    a wxyz quaternion and xyz translation vector.
+    a set of euler angles and an in-plane translation vector.
 
     Arguments
     ---------
@@ -80,5 +93,38 @@ def rotate_and_translate(
     translation = jnp.array([t_x, t_y, 0.0])
     transformation = SE3.from_rotation_and_translation(rotation, translation)
     transformed = vmap(transformation.apply)(coords)
+
+    return transformed
+
+
+@jit
+def _rotate(
+    coords: Array,
+    phi: Scalar,
+    theta: Scalar,
+    psi: Scalar,
+) -> Array:
+    r"""
+    Compute a coordinate rotation from
+    a set of euler angles.
+
+    Arguments
+    ---------
+    coords : shape `(N, 3)`
+        Coordinate system.
+    phi :
+        Roll angle, ranging :math:`(-\pi, \pi]`.
+    theta :
+        Pitch angle, ranging :math:`(0, \pi]`.
+    psi :
+        Yaw angle, ranging :math:`(-\pi, \pi]`.
+
+    Returns
+    -------
+    transformed : shape `(N, 3)`
+        Rotated and translated coordinate system.
+    """
+    rotation = SO3.from_rpy_radians(phi, theta, psi)
+    transformed = vmap(rotation.apply)(coords)
 
     return transformed

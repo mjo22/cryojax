@@ -17,11 +17,11 @@ from typing import Tuple
 from jax_2dtm.types import Array
 
 
-# @partial(jax.jit, static_argnums=(3, 4))
+@partial(jax.jit, static_argnums=(3, 4))
 def nufft(
     density: Array,
     coords: Array,
-    box: Array,
+    box_size: Array,
     shape: Tuple[int, int, int],
     eps: float = 1e-6,
 ) -> Array:
@@ -31,13 +31,26 @@ def nufft(
 
     Arguments
     ---------
-
+    density : shape `(N,)`
+        Density point cloud over which to compute
+        the fourier transform.
+    coords : shape `(N, 3)`
+        Coordinate system for density cloud.
+    box_size : shape `(3,)`
+        3D cartesian box that ``coords`` lies in.
+    shape :
+        Desired output shape of the transform.
+    eps :
+        Precision of the non-uniform FFT. See
+        `finufft <https://finufft.readthedocs.io/en/latest/>`_
+        for more detail.
     Return
     ------
-
+    ft : Array, shape ``shape``
+        Fourier transform.
     """
     complex_density = density.astype(complex)
-    periodic_coords = 2 * jnp.pi * coords / box + jnp.pi  # .T
+    periodic_coords = 2 * jnp.pi * coords / box_size + jnp.pi  # .T
     x, y = periodic_coords[:, 0], periodic_coords[:, 1]
     masked_density = jax.vmap(_mask_density)(x, y, complex_density)
     # _nufft1 = jax2tf.call_tf(_tf_nufft1, output_shape_dtype=jax.ShapeDtypeStruct(shape, masked_density.dtype))
@@ -69,7 +82,7 @@ def ifft(ft: Array, **kwargs) -> Array:
     return ift.real
 
 
-# @partial(jax.jit, static_argnums=(0, 5))
+@partial(jax.jit, static_argnums=(0, 5))
 def _nufft1(shape, density, x, y, z, eps=1e-6):
     """
     Jitted type-1 non-uniform FFT from jax_finufft. This
@@ -92,6 +105,7 @@ def _nufft1(shape, density, x, y, z, eps=1e-6):
 #    )
 
 
+@jax.jit
 def _mask_density(x: Array, y: Array, density: Array) -> Array:
     """
     Use a boolean mask to set density values out of

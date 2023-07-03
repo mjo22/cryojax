@@ -2,16 +2,35 @@
 Routines defining coordinate system for 3D templates or images.
 """
 
-__all__ = ["coordinatize", "radial_grid"]
+__all__ = ["radial_grid", "coordinatize", "Cloud"]
 
 import jax.numpy as jnp
 import numpy as np
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Tuple
 from jax_2dtm.types import Array, ArrayLike
+from typing import NamedTuple
+
+
+class Cloud(NamedTuple):
+    """
+    Attributes
+    ----------
+    density : ArrayLike, shape `(N,)`
+        3D electron density cloud.
+    coordinates : ArrayLike, shape `(N, 3)`
+        Cartesian coordinate system for density cloud.
+    box_size : shape `(3,)`
+        3D cartesian box that ``coords`` lies in. This
+        should have dimensions of length.
+    """
+
+    density: Array
+    coordinates: Array
+    box_size: Array
 
 
 def coordinatize(
-    volume: ArrayLike, pixel_size: float, eps: Optional[float] = None
+    template: ArrayLike, pixel_size: float, threshold: Optional[float] = None
 ) -> Tuple[Array, Array]:
     """
     Returns flattened coordinate system and 3D volume or 2D image
@@ -23,32 +42,32 @@ def coordinatize(
 
     Parameters
     ----------
-    volume : shape `(N1, N2, N3)` or `(N2, N3)`
-        3D volume or 2D image.
-    pixel_size : optional
+    density : shape `(N1, N2, N3)` or `(N1, N2)`
+        3D volume or 2D image on a cartesian grid.
+    pixel_size : float
         Camera pixel size.
-    eps : optional
+    threshold : float, optional
         Remove points from the volume where the
         density is below this threshold.
 
     Returns
     -------
-    cloud : shape `(N, ndim)`
-        Flattened volume or image.
+    density : shape `(N, ndim)`
+        Point cloud volume or image.
     coords : shape `(N, ndim)`
-        Flattened cartesian coordinate system.
+        Point cloud cartesian coordinate system.
     """
-    ndim, shape = volume.ndim, volume.shape
-    if eps is None:
-        eps = float(np.finfo(volume.dtype).eps)
+    ndim, shape = template.ndim, template.shape
+    if threshold is None:
+        threshold = float(np.finfo(template.dtype).eps)
 
     # Mask out points where the electron density below threshold
-    flat = volume.ravel()
-    mask = np.where(flat > eps)
-    cloud = flat[mask]
+    flat = template.ravel()
+    mask = np.where(flat > threshold)
+    density = flat[mask]
 
     # Create coordinate buffer
-    N = cloud.size
+    N = density.size
     coords = np.zeros((N, ndim))
 
     # Generate cubic grid and fill coordinate array
@@ -56,7 +75,7 @@ def coordinatize(
     for i in range(ndim):
         coords[:, i] = pixel_size * R[i].ravel()[mask]
 
-    return jnp.asarray(cloud), jnp.asarray(coords)
+    return jnp.array(density), jnp.array(coords)
 
 
 def radial_grid(shape: tuple[int, ...]) -> tuple[ArrayLike, ...]:
