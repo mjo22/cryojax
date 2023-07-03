@@ -2,19 +2,20 @@
 Routines to compute FFTs.
 """
 
-__all__ = ["nufft", "ifft"]
+__all__ = ["nufft", "ifft", "fftfreqs"]
 
 import jax
 
 # import tensorflow as tf
 import jax.numpy as jnp
+import numpy as np
 
 # import tensorflow_nufft as tfft
 # from jax.experimental import jax2tf
 from jax_finufft import nufft1
 from functools import partial
 from typing import Tuple
-from ..types import Array
+from ..types import Array, ArrayLike
 
 
 @partial(jax.jit, static_argnums=(0, 4))
@@ -80,6 +81,36 @@ def ifft(ft: Array, **kwargs) -> Array:
     ift = jnp.fft.ifftn(jnp.fft.ifftshift(ft), **kwargs)
 
     return ift.real
+
+
+def fftfreqs(shape: tuple[int, ...]) -> tuple[ArrayLike, ...]:
+    """
+    Create a radial coordinate system on a grid.
+    This can be used for real and fourier space
+    calculations. If used for fourier space, the
+    zero-frequency component is in the center.
+
+    Arguments
+    ---------
+    shape :
+        Shape of the voxel grid. Can be 2D or 3D.
+
+    Returns
+    -------
+    rcoords :
+        2D or 3D cartesian coordinate system with
+        zero in the center.
+    """
+    ndim = len(shape)
+    rcoords1D = []
+    for i in range(ndim):
+        ni = shape[i]
+        ri = np.fft.fftshift(np.fft.fftfreq(ni)) * ni
+        rcoords1D.append(ri)
+
+    rcoords = np.meshgrid(*rcoords1D, indexing="ij")
+
+    return rcoords
 
 
 # def _tf_nufft1(source, points, shape, tol):

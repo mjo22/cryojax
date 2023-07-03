@@ -1,4 +1,4 @@
-__all__ = ["nufft", "ifft"]
+__all__ = ["nufft", "ifft", "fftfreqs"]
 
 
-from .fft import nufft, ifft
+from .fft import nufft, ifft, fftfreqs

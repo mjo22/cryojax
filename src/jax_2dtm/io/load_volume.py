@@ -2,13 +2,15 @@
 Routines for reading 3D models into arrays.
 """
 
-__all__ = ["load_mrc", "load_grid_as_cloud"]
+__all__ = ["load_mrc", "load_grid_as_cloud", "coordinatize"]
 
 import mrcfile
 import numpy as np
 import jax.numpy as jnp
-from ..simulator import coordinatize, Cloud, ImageConfig
-from ..types import ArrayLike
+from typing import Optional
+from ..simulator import Cloud, ImageConfig
+from ..utils import fftfreqs
+from ..types import Array, ArrayLike
 
 
 def load_grid_as_cloud(filename: str, config: ImageConfig, **kwargs) -> Cloud:
@@ -62,3 +64,52 @@ def load_mrc(filename: str) -> ArrayLike:
         template = np.array(mrc.data)
 
     return template
+
+
+def coordinatize(
+    template: ArrayLike, pixel_size: float, threshold: Optional[float] = None
+) -> tuple[Array, ...]:
+    """
+    Returns flattened coordinate system and 3D volume or 2D image
+    of shape ``(N, ndim)``, where ``ndim = volume.ndim`` and
+    ``N = N1*N2*N3 - M`` or ``N = N2*N3 - M``, where ``M`` is a
+    number of points close to zero that are masked out.
+    The coordinate system is in pixel coordinates with zero
+    in the center.
+
+    Parameters
+    ----------
+    density : shape `(N1, N2, N3)` or `(N1, N2)`
+        3D volume or 2D image on a cartesian grid.
+    pixel_size : float
+        Camera pixel size.
+    threshold : float, optional
+        Remove points from the volume where the
+        density is below this threshold.
+
+    Returns
+    -------
+    density : shape `(N, ndim)`
+        Point cloud volume or image.
+    coords : shape `(N, ndim)`
+        Point cloud cartesian coordinate system.
+    """
+    ndim, shape = template.ndim, template.shape
+    if threshold is None:
+        threshold = float(np.finfo(template.dtype).eps)
+
+    # Mask out points where the electron density below threshold
+    flat = template.ravel()
+    mask = np.where(flat > threshold)
+    density = flat[mask]
+
+    # Create coordinate buffer
+    N = density.size
+    coords = np.zeros((N, ndim))
+
+    # Generate cubic grid and fill coordinate array
+    R = fftfreqs(shape)
+    for i in range(ndim):
+        coords[:, i] = pixel_size * R[i].ravel()[mask]
+
+    return jnp.array(density), jnp.array(coords)
