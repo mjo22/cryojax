@@ -17,12 +17,12 @@ from typing import Tuple
 from ..types import Array
 
 
-@partial(jax.jit, static_argnums=(3, 4))
+@partial(jax.jit, static_argnums=(0, 4))
 def nufft(
+    shape: Tuple[int, int, int],
     density: Array,
     coords: Array,
     box_size: Array,
-    shape: Tuple[int, int, int],
     eps: float = 1e-6,
 ) -> Array:
     """
@@ -56,7 +56,7 @@ def nufft(
     # _nufft1 = jax2tf.call_tf(_tf_nufft1, output_shape_dtype=jax.ShapeDtypeStruct(shape, masked_density.dtype))
     # ft = _nufft1(masked_density, periodic_coords, shape, eps)
     x, y, z = periodic_coords.T
-    ft = _nufft1(shape, masked_density, x, y, z, eps=eps)
+    ft = nufft1(shape, masked_density, x, y, z, eps=eps)
 
     return ft
 
@@ -80,15 +80,6 @@ def ifft(ft: Array, **kwargs) -> Array:
     ift = jnp.fft.ifftn(jnp.fft.ifftshift(ft), **kwargs)
 
     return ift.real
-
-
-@partial(jax.jit, static_argnums=(0, 5))
-def _nufft1(shape, density, x, y, z, eps=1e-6):
-    """
-    Jitted type-1 non-uniform FFT from jax_finufft. This
-    does not currently support GPU usage.
-    """
-    return nufft1(shape, density, x, y, z, eps=eps)
 
 
 # def _tf_nufft1(source, points, shape, tol):

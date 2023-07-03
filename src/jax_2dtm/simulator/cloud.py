@@ -7,11 +7,11 @@ __all__ = ["rotate_and_translate", "Pose", "Cloud"]
 import jax.numpy as jnp
 from jax import vmap, jit
 from jaxlie import SE3, SO3
-from ..types import Array, Scalar
-from typing import NamedTuple
+from ..types import Array, Scalar, dataclass, field
 
 
-class Pose(NamedTuple):
+@dataclass
+class Pose:
     """
     Attributes
     ----------
@@ -34,7 +34,8 @@ class Pose(NamedTuple):
     offset_y: Scalar
 
 
-class Cloud(NamedTuple):
+@dataclass
+class Cloud:
     """
     Attributes
     ----------
@@ -47,17 +48,15 @@ class Cloud(NamedTuple):
         should have dimensions of length.
     """
 
-    density: Array
-    coordinates: Array
-    box_size: Array
-    pose: Pose = Pose(0.0, 0.0, 0.0, 0.0, 0.0)
+    density: Array = field(pytree_node=False)
+    coordinates: Array = field(pytree_node=False)
+    box_size: Array = field(pytree_node=False)
 
 
-@jit
 def rotate_and_translate(cloud: Cloud, pose: Pose) -> Cloud:
     """
     Compute an SE3 transformation of a point cloud,
-    given an imaging pose (only in-plane translations).
+    by an imaging pose, considering only in-plane translations.
 
     Arguments
     ---------
@@ -66,9 +65,11 @@ def rotate_and_translate(cloud: Cloud, pose: Pose) -> Cloud:
     pose :
         Imaging pose.
     """
-    transformed_coords = _rotate_and_translate(cloud.coordinates, *pose)
+    transformed_coords = _rotate_and_translate(
+        cloud.coordinates, *pose.iter_data()
+    )
     transformed_cloud = Cloud(
-        cloud.density, transformed_coords, cloud.box_size, pose
+        cloud.density, transformed_coords, cloud.box_size
     )
 
     return transformed_cloud

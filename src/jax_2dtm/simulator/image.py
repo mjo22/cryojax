@@ -5,14 +5,13 @@ Routines to model image formation.
 __all__ = ["project", "ImageConfig"]
 
 import jax.numpy as jnp
-import dataclasses as data
-from typing import NamedTuple
 from .cloud import Cloud
-from ..types import Array
+from ..types import Array, dataclass, field
 from ..utils import nufft
 
 
-class ImageConfig(NamedTuple):
+@dataclass
+class ImageConfig:
     """
     Attributes
     ----------
@@ -28,9 +27,9 @@ class ImageConfig(NamedTuple):
         for more detail.
     """
 
-    shape: tuple[int, int]
-    pixel_size: float
-    eps: float = 1e-6
+    shape: tuple[int, int] = field(pytree_node=False)
+    pixel_size: float = field(pytree_node=False)
+    eps: float = field(pytree_node=False, default=1e-6)
 
 
 def project(
@@ -52,17 +51,15 @@ def project(
 
     Returns
     -------
-    image :
+    projection :
         The output image in the fourier domain.
     """
-    height, width = config.shape
-    eps = config.eps
-    density, coords, box_size = cloud[0:3]
-    image = nufft(density, coords, box_size, (height, width, int(1)), eps=eps)[
-        :, :, 0
-    ]
 
-    return image
+    projection = nufft(
+        (*config.shape, int(1)), *cloud.iter_meta(), eps=config.eps
+    )[:, :, 0]
+
+    return projection
 
 
 def project_as_histogram(
