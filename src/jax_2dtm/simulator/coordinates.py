@@ -7,7 +7,7 @@ __all__ = ["radial_grid", "coordinatize"]
 import jax.numpy as jnp
 import numpy as np
 from typing import Optional
-from jax_2dtm.types import Array, ArrayLike
+from ..types import Array, ArrayLike
 
 
 def coordinatize(

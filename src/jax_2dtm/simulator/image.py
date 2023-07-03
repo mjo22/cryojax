@@ -5,10 +5,11 @@ Routines to model image formation.
 __all__ = ["project", "ImageConfig"]
 
 import jax.numpy as jnp
+import dataclasses as data
 from typing import NamedTuple
 from .cloud import Cloud
-from jax_2dtm.types import Array
-from jax_2dtm.utils import nufft
+from ..types import Array
+from ..utils import nufft
 
 
 class ImageConfig(NamedTuple):

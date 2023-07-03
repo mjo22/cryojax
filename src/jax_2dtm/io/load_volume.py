@@ -7,8 +7,8 @@ __all__ = ["load_mrc", "load_grid_as_cloud"]
 import mrcfile
 import numpy as np
 import jax.numpy as jnp
-from jax_2dtm.simulator import coordinatize, Cloud, ImageConfig
-from jax_2dtm.types import ArrayLike
+from ..simulator import coordinatize, Cloud, ImageConfig
+from ..types import ArrayLike
 
 
 def load_grid_as_cloud(filename: str, config: ImageConfig, **kwargs) -> Cloud:

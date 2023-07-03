@@ -7,7 +7,7 @@ __all__ = ["rotate_and_translate", "Pose", "Cloud"]
 import jax.numpy as jnp
 from jax import vmap, jit
 from jaxlie import SE3, SO3
-from jax_2dtm.types import Array, Scalar
+from ..types import Array, Scalar
 from typing import NamedTuple
 
 

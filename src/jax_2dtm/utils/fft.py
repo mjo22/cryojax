@@ -14,7 +14,7 @@ import jax.numpy as jnp
 from jax_finufft import nufft1
 from functools import partial
 from typing import Tuple
-from jax_2dtm.types import Array
+from ..types import Array
 
 
 @partial(jax.jit, static_argnums=(3, 4))
