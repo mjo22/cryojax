@@ -2,13 +2,12 @@
 Routines that compute coordinate rotations and translations.
 """
 
-__all__ = ["rotate_and_translate", "Pose"]
+__all__ = ["rotate_and_translate", "Pose", "Cloud"]
 
 import jax.numpy as jnp
 from jax import vmap, jit
 from jaxlie import SE3, SO3
-from jax_2dtm.types import Array, ArrayLike, Scalar
-from jax_2dtm.simulator import Cloud
+from jax_2dtm.types import Array, Scalar
 from typing import NamedTuple
 
 
@@ -35,6 +34,25 @@ class Pose(NamedTuple):
     offset_y: Scalar
 
 
+class Cloud(NamedTuple):
+    """
+    Attributes
+    ----------
+    density : ArrayLike, shape `(N,)`
+        3D electron density cloud.
+    coordinates : ArrayLike, shape `(N, 3)`
+        Cartesian coordinate system for density cloud.
+    box_size : shape `(3,)`
+        3D cartesian box that ``coords`` lies in. This
+        should have dimensions of length.
+    """
+
+    density: Array
+    coordinates: Array
+    box_size: Array
+    pose: Pose = Pose(0.0, 0.0, 0.0, 0.0, 0.0)
+
+
 @jit
 def rotate_and_translate(cloud: Cloud, pose: Pose) -> Cloud:
     """
@@ -50,7 +68,7 @@ def rotate_and_translate(cloud: Cloud, pose: Pose) -> Cloud:
     """
     transformed_coords = _rotate_and_translate(cloud.coordinates, *pose)
     transformed_cloud = Cloud(
-        cloud.density, transformed_coords, cloud.box_size
+        cloud.density, transformed_coords, cloud.box_size, pose
     )
 
     return transformed_cloud

@@ -1,13 +1,13 @@
 __all__ = [
     "coordinatize",
-    "Cloud",
     "rotate_and_translate",
-    "Pose",
     "project",
     "ImageConfig",
+    "Pose",
+    "Cloud",
 ]
 
 
-from .coordinates import coordinatize, Cloud
-from .transform import rotate_and_translate, Pose
+from .coordinates import coordinatize
+from .cloud import rotate_and_translate, Pose, Cloud
 from .image import project, ImageConfig

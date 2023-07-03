@@ -5,12 +5,12 @@ Routines to return a cryo-EM image rendering pipeline
 __all__ = ["get_rendering_pipeline", "get_log_likelihood"]
 
 
-from .coordinates import Cloud
-from .transform import rotate_and_translate, Pose
+from typing import Callable
+from .cloud import rotate_and_translate, Pose, Cloud
 from .image import project, ImageConfig
 
 
-def get_rendering_pipeline(config: ImageConfig, cloud: Cloud):
+def get_rendering_pipeline(config: ImageConfig, cloud: Cloud) -> Callable:
     """
     Return function handle for the imaging pipeline.
     """
@@ -21,7 +21,7 @@ def get_rendering_pipeline(config: ImageConfig, cloud: Cloud):
     return pipeline
 
 
-def get_log_likelihood():
+def get_log_likelihood() -> Callable:
     """
     Return function handle for the log likelihood.
     """

@@ -2,36 +2,17 @@
 Routines defining coordinate system for 3D templates or images.
 """
 
-__all__ = ["radial_grid", "coordinatize", "Cloud"]
+__all__ = ["radial_grid", "coordinatize"]
 
 import jax.numpy as jnp
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional
 from jax_2dtm.types import Array, ArrayLike
-from typing import NamedTuple
-
-
-class Cloud(NamedTuple):
-    """
-    Attributes
-    ----------
-    density : ArrayLike, shape `(N,)`
-        3D electron density cloud.
-    coordinates : ArrayLike, shape `(N, 3)`
-        Cartesian coordinate system for density cloud.
-    box_size : shape `(3,)`
-        3D cartesian box that ``coords`` lies in. This
-        should have dimensions of length.
-    """
-
-    density: Array
-    coordinates: Array
-    box_size: Array
 
 
 def coordinatize(
     template: ArrayLike, pixel_size: float, threshold: Optional[float] = None
-) -> Tuple[Array, Array]:
+) -> tuple[Array, ...]:
     """
     Returns flattened coordinate system and 3D volume or 2D image
     of shape ``(N, ndim)``, where ``ndim = volume.ndim`` and

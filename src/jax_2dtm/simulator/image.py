@@ -6,7 +6,7 @@ __all__ = ["project", "ImageConfig"]
 
 import jax.numpy as jnp
 from typing import NamedTuple
-from .coordinates import Cloud
+from .cloud import Cloud
 from jax_2dtm.types import Array
 from jax_2dtm.utils import nufft
 
@@ -55,7 +55,11 @@ def project(
         The output image in the fourier domain.
     """
     height, width = config.shape
-    image = nufft(*cloud, (height, width, int(1)), eps=config.eps)[:, :, 0]
+    eps = config.eps
+    density, coords, box_size = cloud[0:3]
+    image = nufft(density, coords, box_size, (height, width, int(1)), eps=eps)[
+        :, :, 0
+    ]
 
     return image
 
