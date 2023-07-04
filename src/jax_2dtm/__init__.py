@@ -1,7 +1,7 @@
 __all__ = ["types", "io", "simulator", "utils"]
 
 
-from jax_2dtm import types, io, utils, simulator
+from jax_2dtm import types, simulator, io, utils
 
 __author__ = "Michael O'Brien"
 __email__ = "michaelobrien@g.harvard.edu"

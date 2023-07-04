@@ -1,11 +1,16 @@
 __all__ = [
     "rotate_and_translate",
     "project",
+    "ImageModel",
+    "ScatteringImage",
     "ImageConfig",
-    "Pose",
     "Cloud",
+    "ParameterState",
+    "Pose",
 ]
 
 
 from .cloud import rotate_and_translate, Pose, Cloud
-from .image import project, ImageConfig
+from .state import ParameterState
+from .image import ImageConfig, ImageModel
+from .scattering import project, ScatteringImage

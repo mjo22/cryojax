@@ -2,27 +2,27 @@
 Routines to return a cryo-EM image rendering pipeline
 """
 
-__all__ = ["get_rendering_pipeline", "get_log_likelihood"]
+__all__ = ["RenderingPipeline"]
 
 
-from typing import Callable
-from .cloud import rotate_and_translate, Pose, Cloud
-from .image import project, ImageConfig
+import dataclasses
+from typing import Optional
+from .cloud import Cloud
+from .image import ImageConfig, ImageModel
+from .state import ParameterState
+from ..types import Array
 
 
-def get_rendering_pipeline(config: ImageConfig, cloud: Cloud) -> Callable:
-    """
-    Return function handle for the imaging pipeline.
-    """
+@dataclasses.dataclass
+class RenderingPipeline:
+    """ """
 
-    def pipeline():
-        pass
+    model: ImageModel
+    config: ImageConfig
+    cloud: Cloud
+    observed: Optional[Array] = None
 
-    return pipeline
-
-
-def get_log_likelihood() -> Callable:
-    """
-    Return function handle for the log likelihood.
-    """
-    pass
+    def __call__(self, params: ParameterState):
+        return self.model(
+            params, self.config, self.cloud, observed=self.observed
+        )
