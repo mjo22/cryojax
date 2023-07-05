@@ -18,7 +18,7 @@ class ScatteringImage(ImageModel):
     """"""
 
     def render(self, params: ParameterState) -> Array:
-        pose = params[0]
+        pose = params.pose
         transformed_cloud = rotate_and_translate(self.cloud, pose)
         scattering_image = project(transformed_cloud, self.config)
 
@@ -55,7 +55,6 @@ def project(
     projection :
         The output image in the fourier domain.
     """
-
     projection = nufft(
         (*config.shape, int(1)), *cloud.iter_meta(), eps=config.eps
     )[:, :, 0]

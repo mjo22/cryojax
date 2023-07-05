@@ -18,7 +18,7 @@ from typing import Tuple
 from ..types import Array, ArrayLike
 
 
-@partial(jax.jit, static_argnums=(0, 4))
+# @partial(jax.jit, static_argnums=(0, 4))
 def nufft(
     shape: Tuple[int, int, int],
     density: Array,
@@ -26,9 +26,16 @@ def nufft(
     box_size: Array,
     eps: float = 1e-6,
 ) -> Array:
-    """
+    r"""
     Helper routine to compute a non-uniform FFT for a 3D
     point cloud. Mask out points that lie out of bounds.
+
+    .. warning::
+        If any values in ``coords`` lies out of bounds of
+        :math:`$(-3\pi, 3\pi]$`, this method will crash.
+        This means that ``density`` cannot be
+        arbitrarily cropped and translated out of frame,
+        rather only to a certain extent.
 
     Arguments
     ---------
@@ -51,7 +58,7 @@ def nufft(
         Fourier transform.
     """
     complex_density = density.astype(complex)
-    periodic_coords = 2 * jnp.pi * coords / box_size + jnp.pi  # .T
+    periodic_coords = 2 * jnp.pi * coords / box_size
     x, y = periodic_coords[:, 0], periodic_coords[:, 1]
     masked_density = jax.vmap(_mask_density)(x, y, complex_density)
     # _nufft1 = jax2tf.call_tf(_tf_nufft1, output_shape_dtype=jax.ShapeDtypeStruct(shape, masked_density.dtype))
@@ -78,7 +85,7 @@ def ifft(ft: Array, **kwargs) -> Array:
     ift :
         Inverse fourier transform.
     """
-    ift = jnp.fft.ifftn(jnp.fft.ifftshift(ft), **kwargs)
+    ift = jnp.fft.fftshift(jnp.fft.ifftn(jnp.fft.ifftshift(ft)), **kwargs)
 
     return ift.real
 
@@ -127,7 +134,6 @@ def fftfreqs(shape: tuple[int, ...]) -> tuple[ArrayLike, ...]:
 #    )
 
 
-@jax.jit
 def _mask_density(x: Array, y: Array, density: Array) -> Array:
     """
     Use a boolean mask to set density values out of
@@ -135,8 +141,8 @@ def _mask_density(x: Array, y: Array, density: Array) -> Array:
     all points outside the :math:`[0, 2\pi)` periodic
     domain, and False otherwise.
     """
-    x_mask = jnp.logical_or(x < 0, x >= 2 * jnp.pi)
-    y_mask = jnp.logical_or(y < 0, y >= 2 * jnp.pi)
+    x_mask = jnp.logical_or(x < -jnp.pi, x >= jnp.pi)
+    y_mask = jnp.logical_or(y < -jnp.pi, y >= jnp.pi)
     mask = jnp.logical_or(x_mask, y_mask)
     masked_density = jnp.where(mask, complex(0.0), density)
 

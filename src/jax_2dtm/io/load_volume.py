@@ -36,8 +36,7 @@ def load_grid_as_cloud(
         Point cloud generated from the 3D template.
     """
     template = load_mrc(filename)
-    depth = template.shape[2]
-    assert all(Ni == depth for Ni in template.shape)
+    depth = max(template.shape)
     box_size = (
         jnp.array((*config.shape, depth), dtype=float) * config.pixel_size
     )
