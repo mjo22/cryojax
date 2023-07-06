@@ -14,7 +14,7 @@ from .image import ImageConfig
 def anti_aliasing_filter(
     config: ImageConfig,
     freqs: Array,
-    cutoff: float = 0.667,
+    cutoff: float = 0.8,
     rolloff: float = 0.05,
 ) -> Array:
     """
@@ -25,11 +25,13 @@ def anti_aliasing_filter(
     image : ImageConfig
         The configuration of the image to create the filter for.
     freqs : jax.Array
+        The fourier wavevectors in the imaging plane.
     cutoff : float, optional
         The cutoff frequency as a fraction of the Nyquist frequency,
         by default 0.667.
     rolloff : float, optional
-        The rolloff width as a fraction of the Nyquist frequency, by default 0.05
+        The rolloff width as a fraction of the Nyquist frequency,
+        by default 0.05.
 
     Returns
     -------
@@ -40,7 +42,7 @@ def anti_aliasing_filter(
     k_max = 1 / (2 * config.pixel_size)
     k_cut = cutoff * k_max
 
-    freqs_norm = freqs.norm(dim=-1)
+    freqs_norm = jnp.linalg.norm(freqs, axis=-1)
 
     frequencies_cut = freqs_norm > k_cut
 
@@ -51,7 +53,8 @@ def anti_aliasing_filter(
             (freqs_norm - k_cut - rolloff_width) / rolloff_width * jnp.pi
         )
     )
-    mask[frequencies_cut] = 0
-    mask[freqs_norm <= k_cut - rolloff_width] = 1
+
+    mask = jnp.where(frequencies_cut, 0.0, mask)
+    mask = jnp.where(freqs_norm <= k_cut - rolloff_width, 1.0, mask)
 
     return mask

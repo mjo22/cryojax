@@ -9,7 +9,7 @@ import dataclasses
 from abc import ABCMeta, abstractmethod
 from typing import Union, Optional
 from ..types import dataclass, field, Array, Scalar
-from .state import ParameterState
+from .state import ParameterState, ParameterDict
 from .cloud import Cloud
 
 
@@ -18,8 +18,8 @@ class ImageConfig:
     """
     Attributes
     ----------
-    shape : tuple[int, int, int]
-        Shape of the imaging volume in pixels.
+    shape : tuple[int, int]
+        Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
     pixel_size : float
@@ -41,6 +41,7 @@ class ImageModel(metaclass=ABCMeta):
 
     config: ImageConfig
     cloud: Cloud
+    state: Optional[ParameterState] = None
     observed: Optional[Array] = None
 
     @abstractmethod
@@ -59,9 +60,14 @@ class ImageModel(metaclass=ABCMeta):
 
     def __call__(
         self,
-        params: ParameterState,
+        params: Union[ParameterState, ParameterDict],
     ) -> Union[Array, Scalar]:
+        self.state = (
+            params
+            if type(params) is ParameterState
+            else self.state.update(params)
+        )
         if self.observed is None:
-            return self.render(params)
+            return self.render(self.state)
         else:
-            return self.log_likelihood(self.observed, params)
+            return self.log_likelihood(self.observed, self.state)

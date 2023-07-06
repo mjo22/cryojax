@@ -110,7 +110,7 @@ def fft(ift: Array, **kwargs) -> Array:
     return ft
 
 
-def fftfreqs(shape: tuple[int, ...]) -> tuple[ArrayLike, ...]:
+def fftfreqs(shape: tuple[int, ...], *args) -> ArrayLike:
     """
     Create a radial coordinate system on a grid.
     This can be used for real and fourier space
@@ -120,22 +120,27 @@ def fftfreqs(shape: tuple[int, ...]) -> tuple[ArrayLike, ...]:
     Arguments
     ---------
     shape :
-        Shape of the voxel grid. Can be 2D or 3D.
+        Shape of the voxel grid, with
+        ``ndim = len(shape)``.
+    args :
+        Passed to ``np.fft.fftfreq``
+
 
     Returns
     -------
-    rcoords :
+    rcoords : shape `(*shape, ndim)`
         2D or 3D cartesian coordinate system with
         zero in the center.
     """
-    ndim = len(shape)
-    rcoords1D = []
-    for i in range(ndim):
-        ni = shape[i]
-        ri = np.fft.fftshift(np.fft.fftfreq(ni)) * ni
-        rcoords1D.append(ri)
+    # ndim = len(shape)
+    # rcoords1D = []
+    # for i in range(ndim):
+    #    ni = shape[i]
+    #    ri = np.fft.fftshift(np.fft.fftfreq(ni)) * ni
+    #    rcoords1D.append(ri)
+    rcoords1D = [np.fft.fftshift(np.fft.fftfreq(s, *args)) for s in shape]
 
-    rcoords = np.meshgrid(*rcoords1D, indexing="ij")
+    rcoords = np.stack(np.meshgrid(*rcoords1D, indexing="ij"), axis=-1)
 
     return rcoords
 

@@ -108,9 +108,9 @@ def coordinatize(
     N = density.size
     coords = np.zeros((N, ndim))
 
-    # Generate cubic grid and fill coordinate array
+    # Generate rectangular grid and fill coordinate array
     R = fftfreqs(shape)
     for i in range(ndim):
-        coords[:, i] = pixel_size * R[i].ravel()[mask]
+        coords[:, i] = pixel_size * shape[i] * R[..., i].ravel()[mask]
 
     return jnp.array(density), jnp.array(coords)
