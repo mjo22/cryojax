@@ -124,8 +124,11 @@ def fftfreqs(
     shape :
         Shape of the voxel grid, with
         ``ndim = len(shape)``.
-    args :
-        Passed to ``np.fft.fftfreq``
+    pixel_size :
+        Image pixel size.
+    real :
+        Choose whether to create coordinate system
+        in real or fourier space.
 
 
     Returns
@@ -134,12 +137,6 @@ def fftfreqs(
         2D or 3D cartesian coordinate system with
         zero in the center.
     """
-    # ndim = len(shape)
-    # rcoords1D = []
-    # for i in range(ndim):
-    #    ni = shape[i]
-    #    ri = np.fft.fftshift(np.fft.fftfreq(ni)) * ni
-    #    rcoords1D.append(ri)
     fftfreq = (
         lambda s: np.fft.fftfreq(s, 1 / pixel_size) * s
         if real
