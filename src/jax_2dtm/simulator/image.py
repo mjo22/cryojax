@@ -2,8 +2,9 @@
 Routines to model image formation.
 """
 
-__all__ = ["ImageConfig", "ImageModel"]
+from __future__ import annotations
 
+__all__ = ["ImageConfig", "ImageModel"]
 
 import dataclasses
 from abc import ABCMeta, abstractmethod
@@ -11,6 +12,7 @@ from typing import Union, Optional
 from ..types import dataclass, field, Array, Scalar
 from .state import ParameterState, ParameterDict
 from .cloud import Cloud
+from ..utils import fftfreqs
 
 
 @dataclass
@@ -28,6 +30,7 @@ class ImageConfig:
         Desired precision in computing the volume
         projection. See `finufft <https://finufft.readthedocs.io/en/latest/>`_
         for more detail.
+    freqs :
     """
 
     shape: tuple[int, int] = field(pytree_node=False)
@@ -43,6 +46,9 @@ class ImageModel(metaclass=ABCMeta):
     cloud: Cloud
     state: Optional[ParameterState] = None
     observed: Optional[Array] = None
+
+    def __post_init__(self):
+        self.freqs: Array = fftfreqs(self.config.shape, self.config.pixel_size)
 
     @abstractmethod
     def render(self, params: ParameterState) -> Array:

@@ -2,6 +2,8 @@
 Routines that compute coordinate rotations and translations.
 """
 
+from __future__ import annotations
+
 __all__ = ["rotate_and_translate", "Pose", "Cloud"]
 
 import jax.numpy as jnp

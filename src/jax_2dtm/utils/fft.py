@@ -110,7 +110,9 @@ def fft(ift: Array, **kwargs) -> Array:
     return ft
 
 
-def fftfreqs(shape: tuple[int, ...], *args) -> ArrayLike:
+def fftfreqs(
+    shape: tuple[int, ...], pixel_size: float, real: bool = False
+) -> ArrayLike:
     """
     Create a radial coordinate system on a grid.
     This can be used for real and fourier space
@@ -138,7 +140,12 @@ def fftfreqs(shape: tuple[int, ...], *args) -> ArrayLike:
     #    ni = shape[i]
     #    ri = np.fft.fftshift(np.fft.fftfreq(ni)) * ni
     #    rcoords1D.append(ri)
-    rcoords1D = [np.fft.fftshift(np.fft.fftfreq(s, *args)) for s in shape]
+    fftfreq = (
+        lambda s: np.fft.fftfreq(s, 1 / pixel_size) * s
+        if real
+        else np.fft.fftfreq(s, pixel_size)
+    )
+    rcoords1D = [np.fft.fftshift(fftfreq(s)) for s in shape]
 
     rcoords = np.stack(np.meshgrid(*rcoords1D, indexing="ij"), axis=-1)
 

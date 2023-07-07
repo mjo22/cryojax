@@ -3,9 +3,10 @@ __all__ = [
     "project",
     "anti_aliasing_filter",
     "ImageModel",
-    "ScatteringImage",
+    "ScatteringModel",
     "ImageConfig",
     "Cloud",
+    "AntiAliasingFilter",
     "ParameterState",
     "Pose",
 ]
@@ -14,5 +15,5 @@ __all__ = [
 from .cloud import rotate_and_translate, Pose, Cloud
 from .state import ParameterState
 from .image import ImageConfig, ImageModel
-from .scattering import project, ScatteringImage
-from .filters import anti_aliasing_filter
+from .scattering import project, ScatteringModel
+from .filters import anti_aliasing_filter, AntiAliasingFilter

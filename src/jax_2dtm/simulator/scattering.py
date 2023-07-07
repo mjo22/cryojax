@@ -2,25 +2,38 @@
 Routines to model image formation.
 """
 
-__all__ = ["project", "ScatteringImage"]
+from __future__ import annotations
+
+__all__ = ["project", "ScatteringModel"]
 
 import dataclasses
 import jax.numpy as jnp
 from .cloud import Cloud, rotate_and_translate
 from .image import ImageConfig, ImageModel
+from .filters import Filter, AntiAliasingFilter
 from .state import ParameterState
 from ..types import Array, Scalar
 from ..utils import nufft
 
 
 @dataclasses.dataclass
-class ScatteringImage(ImageModel):
-    """"""
+class ScatteringModel(ImageModel):
+    """
+    Compute the scattering pattern on the imaging plane.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.filters: list[Filter] = [
+            AntiAliasingFilter(self.config, self.freqs)
+        ]
 
     def render(self, params: ParameterState) -> Array:
         pose = params.pose
         transformed_cloud = rotate_and_translate(self.cloud, pose)
         scattering_image = project(transformed_cloud, self.config)
+        for filter in self.filters:
+            scattering_image = filter(scattering_image)
 
         return scattering_image
 

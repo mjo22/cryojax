@@ -2,19 +2,73 @@
 Filters to apply to images in Fourier space
 """
 
-__all__ = ["anti_aliasing_filter"]
+from __future__ import annotations
 
+__all__ = ["anti_aliasing_filter", "Filter", "AntiAliasingFilter"]
 
 import jax.numpy as jnp
-from typing import Optional
-from ..types import Array
+import dataclasses
+from abc import ABCMeta, abstractmethod
+from ..types import dataclass, field, Array
 from .image import ImageConfig
 
 
+@dataclasses.dataclass
+class Filter(metaclass=ABCMeta):
+    """
+    Base class for computing and applying an image filter.
+
+    Attributes
+    ----------
+    config : ImageConfig
+        The image configuration.
+    freqs : jax.Array
+        The fourier wavevectors in the imaging plane.
+    """
+
+    config: ImageConfig
+    freqs: Array
+
+    def __post_init__(self):
+        self.filter = self.compute_filter()
+
+    @abstractmethod
+    def compute_filter(self) -> Array:
+        return NotImplementedError
+
+    def __call__(self, scattering_image: Array) -> Array:
+        return self.filter * scattering_image
+
+
+@dataclasses.dataclass
+class AntiAliasingFilter(Filter):
+    """
+    Apply an anti-aliasing filter to an image.
+
+    Attributes
+    ----------
+    cutoff : float
+        See documentation for ``jax_2dtm.simulator.anti_aliasing_filter``.
+    rolloff : float
+        See documentation for ``jax_2dtm.simulator.anti_aliasing_filter``.
+    """
+
+    cutoff: float = 1.00
+    rolloff: float = 0.05
+
+    def compute_filter(self) -> Array:
+        return anti_aliasing_filter(
+            self.freqs,
+            self.config.pixel_size,
+            self.cutoff,
+            self.rolloff,
+        )
+
+
 def anti_aliasing_filter(
-    config: ImageConfig,
     freqs: Array,
-    cutoff: float = 0.8,
+    pixel_size: float,
+    cutoff: float = 0.667,
     rolloff: float = 0.05,
 ) -> Array:
     """
@@ -22,10 +76,10 @@ def anti_aliasing_filter(
 
     Parameters
     ----------
-    image : ImageConfig
-        The configuration of the image to create the filter for.
     freqs : jax.Array
         The fourier wavevectors in the imaging plane.
+    pixel_size : float
+        The pixel size of the image.
     cutoff : float, optional
         The cutoff frequency as a fraction of the Nyquist frequency,
         by default 0.667.
@@ -39,7 +93,7 @@ def anti_aliasing_filter(
         An array representing the anti-aliasing filter.
     """
 
-    k_max = 1 / (2 * config.pixel_size)
+    k_max = 1 / (2 * pixel_size)
     k_cut = cutoff * k_max
 
     freqs_norm = jnp.linalg.norm(freqs, axis=-1)
