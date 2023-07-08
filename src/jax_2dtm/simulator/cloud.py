@@ -6,15 +6,24 @@ from __future__ import annotations
 
 __all__ = ["rotate_and_translate", "Pose", "Cloud"]
 
+from typing import TYPE_CHECKING
+
 import jax.numpy as jnp
 from jax import vmap, jit
 from jaxlie import SE3, SO3
+
+from .scattering import project_with_nufft
 from ..types import Array, Scalar, dataclass, field
+
+if TYPE_CHECKING:
+    from .image import ImageConfig
 
 
 @dataclass
 class Pose:
     """
+    PyTree container for the image pose.
+
     Attributes
     ----------
     view_phi : Scalar, `float` or shape `(M,)`
@@ -29,24 +38,26 @@ class Pose:
         In-plane translations in y direction.
     """
 
-    view_phi: Scalar
-    view_theta: Scalar
-    view_psi: Scalar
-    offset_x: Scalar
-    offset_y: Scalar
+    view_phi: Scalar = 0.0
+    view_theta: Scalar = 0.0
+    view_psi: Scalar = 0.0
+    offset_x: Scalar = 0.0
+    offset_y: Scalar = 0.0
 
 
 @dataclass
 class Cloud:
     """
+    Abstraction of a 3D electron density point cloud.
+
     Attributes
     ----------
-    density : ArrayLike, shape `(N,)`
+    density : Array, shape `(N,)`
         3D electron density cloud.
-    coordinates : ArrayLike, shape `(N, 3)`
+    coordinates : Array, shape `(N, 3)`
         Cartesian coordinate system for density cloud.
-    box_size : shape `(3,)`
-        3D cartesian box that ``coords`` lies in. This
+    box_size : Array, shape `(3,)`
+        3D cartesian box that ``coordinates`` lie in. This
         should have dimensions of length.
     """
 
@@ -54,31 +65,36 @@ class Cloud:
     coordinates: Array = field(pytree_node=False)
     box_size: Array = field(pytree_node=False)
 
+    def view(self, pose: Pose) -> Cloud:
+        """
+        Compute an SE3 transformation of a point cloud,
+        by an imaging pose, considering only in-plane translations.
 
-def rotate_and_translate(cloud: Cloud, pose: Pose) -> Cloud:
-    """
-    Compute an SE3 transformation of a point cloud,
-    by an imaging pose, considering only in-plane translations.
+        Arguments
+        ---------
+        pose :
+            Imaging pose.
+        """
+        coordinates = rotate_and_translate(self.coordinates, *pose.iter_data())
 
-    Arguments
-    ---------
-    cloud :
-        3D electron density point cloud.
-    pose :
-        Imaging pose.
-    """
-    transformed_coords = _rotate_and_translate(
-        cloud.coordinates, *pose.iter_data()
-    )
-    transformed_cloud = Cloud(
-        cloud.density, transformed_coords, cloud.box_size
-    )
+        return self.replace(coordinates=coordinates)
 
-    return transformed_cloud
+    def project(self, config: ImageConfig) -> Array:
+        """
+        Compute projection of the point cloud onto
+        an imaging plane.
+
+        Arguments
+        ---------
+        config :
+            The image configuration.
+        """
+
+        return project_with_nufft(config, *self.iter_meta())
 
 
 @jit
-def _rotate_and_translate(
+def rotate_and_translate(
     coords: Array,
     phi: Scalar,
     theta: Scalar,
@@ -119,7 +135,7 @@ def _rotate_and_translate(
 
 
 @jit
-def _rotate(
+def rotate(
     coords: Array,
     phi: Scalar,
     theta: Scalar,

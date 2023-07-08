@@ -4,20 +4,24 @@ Routines to model image formation.
 
 from __future__ import annotations
 
-__all__ = ["project", "ScatteringModel"]
+__all__ = ["project_with_nufft", "ScatteringImage"]
 
 import dataclasses
+
 import jax.numpy as jnp
-from .cloud import Cloud, rotate_and_translate
+from typing import TYPE_CHECKING
+
 from .image import ImageConfig, ImageModel
 from .filters import Filter, AntiAliasingFilter
-from .state import ParameterState
 from ..types import Array, Scalar
 from ..utils import nufft
 
+if TYPE_CHECKING:
+    from .state import ParameterState
+
 
 @dataclasses.dataclass
-class ScatteringModel(ImageModel):
+class ScatteringImage(ImageModel):
     """
     Compute the scattering pattern on the imaging plane.
     """
@@ -28,38 +32,45 @@ class ScatteringModel(ImageModel):
             AntiAliasingFilter(self.config, self.freqs)
         ]
 
-    def render(self, params: ParameterState) -> Array:
-        pose = params.pose
-        transformed_cloud = rotate_and_translate(self.cloud, pose)
-        scattering_image = project(transformed_cloud, self.config)
+    def render(self, state: "ParameterState") -> Array:
+        # Compute scattering at image plane
+        cloud = self.cloud.view(state.pose)
+        scattering_image = cloud.project(self.config)
+        # Apply filters
         for filter in self.filters:
             scattering_image = filter(scattering_image)
 
         return scattering_image
 
-    def sample(self, params: ParameterState) -> Array:
+    def sample(self, state: "ParameterState") -> Array:
         raise NotImplementedError
 
     def log_likelihood(
-        self, observed: Array, params: ParameterState
+        self, observed: Array, state: "ParameterState"
     ) -> Scalar:
         raise NotImplementedError
 
 
-def project(
-    cloud: Cloud,
+def project_with_nufft(
     config: ImageConfig,
+    density: Array,
+    coordinates: Array,
+    box_size: Array,
 ) -> Array:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using a non-uniform FFT.
 
+    See ``jax_2dtm.utils.fft.nufft`` for more detail.
+
     Arguments
     ---------
-    cloud :
-        Representation of volume point cloud.
-        See ``jax_2dtm.coordinates.Cloud`` for
-        more detail.
+    density :
+        Density point cloud.
+    coordinates :
+        Coordinate system of point cloud.
+    boxsize :
+        Box size of point.
     config :
         Image configuation.
 
@@ -69,13 +80,13 @@ def project(
         The output image in the fourier domain.
     """
     projection = nufft(
-        (*config.shape, int(1)), *cloud.iter_meta(), eps=config.eps
+        (*config.shape, int(1)), density, coordinates, box_size, eps=config.eps
     )[:, :, 0]
 
     return projection
 
 
-def project_as_histogram(
+def project_with_binning(
     density: Array, coords: Array, shape: tuple[int, int, int]
 ) -> Array:
     """

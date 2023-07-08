@@ -2,6 +2,8 @@
 Routines for reading 3D models into arrays.
 """
 
+from __future__ import annotations
+
 __all__ = ["load_mrc", "load_grid_as_cloud", "coordinatize"]
 
 import mrcfile

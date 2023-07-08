@@ -4,12 +4,14 @@ Filters to apply to images in Fourier space
 
 from __future__ import annotations
 
-__all__ = ["anti_aliasing_filter", "Filter", "AntiAliasingFilter"]
+__all__ = ["compute_anti_aliasing_filter", "Filter", "AntiAliasingFilter"]
 
-import jax.numpy as jnp
 import dataclasses
 from abc import ABCMeta, abstractmethod
-from ..types import dataclass, field, Array
+
+import jax.numpy as jnp
+
+from ..types import Array
 from .image import ImageConfig
 
 
@@ -30,11 +32,11 @@ class Filter(metaclass=ABCMeta):
     freqs: Array
 
     def __post_init__(self):
-        self.filter = self.compute_filter()
+        self.filter = self.compute()
 
     @abstractmethod
-    def compute_filter(self) -> Array:
-        return NotImplementedError
+    def compute(self) -> Array:
+        raise NotImplementedError
 
     def __call__(self, scattering_image: Array) -> Array:
         return self.filter * scattering_image
@@ -56,8 +58,8 @@ class AntiAliasingFilter(Filter):
     cutoff: float = 1.00
     rolloff: float = 0.05
 
-    def compute_filter(self) -> Array:
-        return anti_aliasing_filter(
+    def compute(self) -> Array:
+        return compute_anti_aliasing_filter(
             self.freqs,
             self.config.pixel_size,
             self.cutoff,
@@ -65,7 +67,7 @@ class AntiAliasingFilter(Filter):
         )
 
 
-def anti_aliasing_filter(
+def compute_anti_aliasing_filter(
     freqs: Array,
     pixel_size: float,
     cutoff: float = 0.667,
