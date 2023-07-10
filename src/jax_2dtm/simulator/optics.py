@@ -20,7 +20,7 @@ from ..types import dataclass, Array, Scalar
 
 class OpticsModel(metaclass=ABCMeta):
     """
-    Base class for an optics model. This
+    Base PyTree container for an optics model. This
     is designed to compute an optics model in Fourier
     Space given some frequencies and parameters, and
     also store model parameters as a PyTree node.
@@ -50,8 +50,7 @@ class OpticsModel(metaclass=ABCMeta):
 @dataclass
 class NullOptics(OpticsModel):
     """
-    Base PyTree container for an optics model. This class can be
-    used as a null model.
+    This class can be used as a null optics model.
     """
 
     def compute(self, freqs: Array) -> Array:

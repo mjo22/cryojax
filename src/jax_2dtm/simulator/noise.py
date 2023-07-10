@@ -1,8 +1,105 @@
-#!/usr/bin/env python
 """
-Gaussian noise models
+Noise models for cryo-EM images.
 """
 
+__all__ = [
+    "Noise",
+    "NullNoise",
+    "GaussianNoise",
+    "WhiteNoise",
+    "EmpiricalNoise",
+    "LorenzianNoise",
+]
+
+from abc import ABCMeta, abstractmethod
+
+from .scattering import ImageConfig
+from ..types import field, dataclass, Array
+
+
+class Noise(metaclass=ABCMeta):
+    """
+    Base PyTree container for a noise model.
+
+    When writing subclasses,
+
+        1) Overwrite ``OpticsModel.sample``.
+        2) Use the ``jax_2dtm.types.dataclass`` decorator.
+    """
+
+    # generator: = field(pytree_noise=False)
+
+    @abstractmethod
+    def sample(config: ImageConfig, freqs: Array) -> Array:
+        """
+        Sample a realization of the noise.
+        """
+        raise NotImplementedError
+
+
+class GaussianNoise(Noise, metaclass=ABCMeta):
+    """
+    Base PyTree container for a gaussian noise model.
+
+    When writing subclasses,
+
+        1) Overwrite ``OpticsModel.variance``.
+        2) Use the ``jax_2dtm.types.dataclass`` decorator.
+    """
+
+    def sample(config: ImageConfig, freqs: Array) -> Array:
+        return 0.0
+
+    @abstractmethod
+    def variance(freqs: Array) -> Array:
+        """
+        The variance tensor of the gaussian. Only diagonal
+        variances are supported.
+        """
+        raise NotImplementedError
+
+
+@dataclass
+class NullNoise(Noise):
+    """
+    This class can be used as a null noise model.
+    """
+
+    def sample(config: ImageConfig, freqs: Array) -> Array:
+        return 0.0
+
+
+@dataclass
+class WhiteNoise(GaussianNoise):
+    """
+    Gaussian white noise (flat power spectrum).
+    """
+
+    def variance(freqs: Array) -> Array:
+        raise NotImplementedError
+
+
+@dataclass
+class EmpiricalNoise(GaussianNoise):
+    """
+    Gaussian noise with an empirical power spectrum.
+    """
+
+    def variance(freqs: Array) -> Array:
+        raise NotImplementedError
+
+
+@dataclass
+class LorenzianNoise(GaussianNoise):
+    """
+    Gaussian noise with a lorenzian power spectrum.
+    """
+
+    def variance(freqs: Array) -> Array:
+        raise NotImplementedError
+
+
+"""
 __all__ = [
     "white_noise",
     "white_covariance",
@@ -11,14 +108,7 @@ __all__ = [
 ]
 
 
-import numpy as np
-from .fft import k_grid
-
-
 def white_noise(shape: tuple, generator, sigma: float = 1.0) -> np.ndarray:
-    """
-    Generate gaussian random field from white noise.
-    """
     size = np.prod(shape)
     noise = generator.normal(sigma=sigma, size=size).reshape(shape)
 
@@ -28,9 +118,6 @@ def white_noise(shape: tuple, generator, sigma: float = 1.0) -> np.ndarray:
 def white_covariance(
     x: np.ndarray, y: np.ndarray, sigma: float = 1.0
 ) -> float:
-    """
-    Covariance function for white noise.
-    """
     return 1 / sigma**2 if np.array_equal(x, y) else 0.0
 
 
@@ -41,10 +128,6 @@ def lorenzian_noise(
     sigma: float = 1.0,
     xi: float = None,
 ) -> np.ndarray:
-    """
-    Generate a gaussian random field with a given lorenzian,
-    parameterized by a "temperature" and a correlation length.
-    """
     # Check arguments
     assert len(shape) == 2
     Nx, Ny = shape
@@ -71,25 +154,14 @@ def lorenzian_noise(
 def lorenzian_covariance(
     x: np.ndarray, y: np.ndarray, sigma: float = 1.0, xi: float = 1.0
 ) -> float:
-    """
-    Covariance function for a gaussian random field with
-    a lorenzian power spectrum.
-    """
     pass
 
 
 def _lorenzian(k, sigma, xi):
-    """
-    Lorenzian function for a given wavenumber k.
-    """
     return sigma**2 / (k**2 + np.divide(1, xi**2))
 
 
 def k_grid(shape, pixel_size):
-    """
-    Create a k coordinate system with zero frequency
-    component in the beginning.
-    """
     ndim = len(shape)
     kcoords1D = []
     for i in range(ndim):
@@ -100,16 +172,4 @@ def k_grid(shape, pixel_size):
     kcoords = np.meshgrid(*kcoords1D, indexing="ij")
 
     return kcoords
-
-
-if __name__ == "__main__":
-    from matplotlib import pyplot as plt
-
-    shape = (300, 300)
-    pixel_size = 1.0
-    generator = np.random.default_rng()
-    noise = lorenzian_noise(shape, pixel_size, generator, sigma=1.0, xi=0.1)
-
-    fig, ax = plt.subplots()
-    ax.imshow(noise)
-    fig.savefig("noise.png")
+"""

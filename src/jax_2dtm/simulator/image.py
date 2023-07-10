@@ -8,14 +8,17 @@ __all__ = ["ImageConfig", "ImageModel", "ScatteringImage", "OpticsImage"]
 
 import dataclasses
 from abc import ABCMeta, abstractmethod
-from typing import Union, Optional
+from typing import Union, Optional, Any
+
+import jax.numpy as jnp
 
 from .scattering import ScatteringConfig
 from .cloud import Cloud
-from .state import ParameterState, ParameterDict
 from .filters import Filter, AntiAliasingFilter
+from .noise import GaussianNoise
+from .state import ParameterState, ParameterDict
 from ..types import Array, Scalar
-from ..utils import fftfreqs
+from ..utils import fftfreqs, fft
 
 
 @dataclasses.dataclass
@@ -23,72 +26,109 @@ class ImageModel(metaclass=ABCMeta):
     """
     Base class for an imaging model.
 
+    Note that only the ``ImageModel.state`` field
+    is mutable.
+
     Attributes
     ----------
     config : `jax_2dtm.simulator.ScatteringConfig`
+        The image and scattering model configuration.
     cloud : `jax_2dtm.simulator.Cloud`
-    state : `jax_2dtm.simulator.State`
+        The point cloud used to render images.
+    state : `jax_2dtm.simulator.ParameterState`, optional
+        The parameter state of the model.
+    freqs : `jax.Array`
+        The fourier wave vectors in the imaging plane.
+    observed : `jax.Array`, optional
+        The observed data in real space. This must be the same
+        shape as ``config.shape``. To ensure there
+        are no mistakes in Fourier convention, ``ImageModel.observed``
+        returns the observed data in Fourier space.
     """
 
     config: ScatteringConfig
     cloud: Cloud
-    state: Optional["ParameterState"] = None
-    observed: Optional[Array] = None
+    state: Optional[ParameterState] = None
 
-    def __post_init__(self):
+    def __post_init__(self, observed: Optional[Array] = None):
+        # Set additional fields and check arguments.
         self.freqs: Array = fftfreqs(self.config.shape, self.config.pixel_size)
+        if observed is not None:
+            assert self.config.shape == observed.shape
+            self.observed = fft(observed)
+        else:
+            self.observed = None
 
     @abstractmethod
-    def render(self, state: "ParameterState") -> Array:
+    def render(self, state: ParameterState) -> Array:
         """Render an image given a parameter set."""
         raise NotImplementedError
 
     @abstractmethod
-    def sample(self, state: "ParameterState") -> Array:
+    def sample(self, state: ParameterState) -> Array:
         """Sample the an image from a realization of the noise"""
         raise NotImplementedError
 
     @abstractmethod
-    def log_likelihood(
-        self, observed: Array, state: "ParameterState"
-    ) -> Scalar:
+    def log_likelihood(self, observed: Array, state: ParameterState) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""
         raise NotImplementedError
 
     def __call__(
         self,
-        params: Union["ParameterState", "ParameterDict"],
+        params: Union[ParameterState, ParameterDict],
     ) -> Union[Array, Scalar]:
         """
         Evaluate the model at a parameter set.
 
         If ``ImageModel.observed = None``, sample an image from
         a noise model. Otherwise, compute the log likelihood.
-        If there is no noise model, render an image.
         """
         self.state = (
             self.state.update(params) if type(params) is dict else params
         )
         if self.observed is None:
-            return self.render(self.state)
+            return self.sample(self.state)
         else:
             return self.log_likelihood(self.observed, self.state)
+
+    @property
+    def _mutable(self):
+        """Define which fields are mutable."""
+        return ["state"]
+
+    def __setattr__(self, __name: str, __value: Any) -> None:
+        if __name in self._mutable or not hasattr(self, __name):
+            super().__setattr__(__name, __value)
+        else:
+            raise TypeError(f"Attribute '{__name}' is immutable!")
 
 
 @dataclasses.dataclass
 class ScatteringImage(ImageModel):
     """
     Compute the scattering pattern on the imaging plane.
+
+    Attributes
+    ----------
+    filters : list[Filter]
+        A list of filters to apply to the image. This
+        field is mutable (see ScatteringImage.filters)
+        for details. By default, this is an
+        AntiAliasingFilter with its default configuration.
     """
 
-    def __post_init__(self):
+    def __post_init__(self, filters: Optional[list[Filter]] = None):
         super().__post_init__()
-        self.filters: list[Filter] = [
-            AntiAliasingFilter(self.config, self.freqs)
-        ]
+        self.filters: list[Filter] = (
+            [AntiAliasingFilter(self.config, self.freqs)]
+            if filters is None
+            else filters
+        )
 
-    def render(self, state: "ParameterState") -> Array:
-        # Compute scattering at image plane
+    def render(self, state: ParameterState) -> Array:
+        """Render the scattering pattern"""
+        # Compute scattering at image plane.
         cloud = self.cloud.view(state.pose)
         scattering_image = cloud.project(self.config)
         # Apply filters
@@ -97,13 +137,16 @@ class ScatteringImage(ImageModel):
 
         return scattering_image
 
-    def sample(self, state: "ParameterState") -> Array:
+    def sample(self, state: ParameterState) -> Array:
+        return self.render(state)
+
+    def log_likelihood(self, observed: Array, state: ParameterState) -> Scalar:
         raise NotImplementedError
 
-    def log_likelihood(
-        self, observed: Array, state: "ParameterState"
-    ) -> Scalar:
-        raise NotImplementedError
+    @property
+    def _mutable(self):
+        """Define which fields are mutable."""
+        return ["state", "filters"]
 
 
 @dataclasses.dataclass
@@ -113,18 +156,39 @@ class OpticsImage(ScatteringImage):
     moduated by a CTF.
     """
 
-    def render(self, state: "ParameterState") -> Array:
-        """
-        Render an image from a model of the CTF.
-        """
+    def render(self, state: ParameterState) -> Array:
+        """Render an image from a model of the CTF."""
         # Compute scattering at image plane.
-        cloud = self.cloud.view(state.pose)
-        scattering_image = cloud.project(self.config)
+        scattering_image = super().render(state)
         # Compute and apply CTF
         ctf = state.optics(self.freqs)
         optics_image = ctf * scattering_image
-        # Apply filters
-        for filter in self.filters:
-            optics_image = filter(optics_image)
 
         return optics_image
+
+
+@dataclasses.dataclass
+class GaussianImage(OpticsImage):
+    """
+    Sample an image from a gaussian noise model, or compute
+    the log-likelihood.
+
+    Note that this computes the likelihood in Fourier space,
+    which allows for modeling of an arbitrary noise power spectrum.
+    """
+
+    def sample(self, state: ParameterState) -> Array:
+        """Sample an image from a realization of the noise"""
+        assert isinstance(state.noise, GaussianNoise)
+        return self.render(state) + state.noise.sample(self.config, self.freqs)
+
+    def log_likelihood(self, observed: Array, state: ParameterState) -> Scalar:
+        """Evaluate the log-likelihood of the data given a parameter set."""
+        assert isinstance(state.noise, GaussianNoise)
+        simulated = self.render(state)
+        residual = observed - simulated
+        variance = state.noise.variance(self.freqs)
+        loss = jnp.sum(
+            (residual * jnp.conjugate(residual)).real / (2 * variance)
+        )
+        return loss

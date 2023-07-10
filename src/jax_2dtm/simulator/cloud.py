@@ -1,6 +1,5 @@
 """
-Routines for representing and operating on 3D
-point clouds.
+Routines for representing and operating on 3D point clouds.
 """
 
 from __future__ import annotations
@@ -56,7 +55,7 @@ class Cloud:
         scattering : `jax_2dtm.simulator.ScatteringConfig`
             The scattering configuration. This is an
             ``ImageConfig``, subclassed to include a scattering
-            method.
+            routine.
         """
 
         return scattering.project(*self.iter_meta())
