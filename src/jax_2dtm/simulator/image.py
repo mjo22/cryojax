@@ -4,40 +4,18 @@ Routines to model image formation.
 
 from __future__ import annotations
 
-__all__ = ["ImageConfig", "ImageModel"]
+__all__ = ["ImageConfig", "ImageModel", "ScatteringImage", "OpticsImage"]
 
 import dataclasses
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Union, Optional
+from typing import Union, Optional
 
-from ..types import dataclass, field, Array, Scalar
+from .scattering import ScatteringConfig
+from .cloud import Cloud
+from .state import ParameterState, ParameterDict
+from .filters import Filter, AntiAliasingFilter
+from ..types import Array, Scalar
 from ..utils import fftfreqs
-
-if TYPE_CHECKING:
-    from .state import ParameterState, ParameterDict
-
-
-@dataclass
-class ImageConfig:
-    """
-    Attributes
-    ----------
-    shape : tuple[int, int]
-        Shape of the imaging plane in pixels.
-        ``width, height = shape[0], shape[1]``
-        is the size of the desired imaging plane.
-    pixel_size : float
-        Size of camera pixels, in dimensions of length.
-    eps : float
-        Desired precision in computing the volume
-        projection. See `finufft <https://finufft.readthedocs.io/en/latest/>`_
-        for more detail.
-    freqs :
-    """
-
-    shape: tuple[int, int] = field(pytree_node=False)
-    pixel_size: float = field(pytree_node=False)
-    eps: float = field(pytree_node=False, default=1e-6)
 
 
 @dataclasses.dataclass
@@ -50,7 +28,7 @@ class ImageModel(metaclass=ABCMeta):
 
     """
 
-    config: ImageConfig
+    config: ScatteringConfig
     cloud: Cloud
     state: Optional["ParameterState"] = None
     observed: Optional[Array] = None
@@ -93,3 +71,58 @@ class ImageModel(metaclass=ABCMeta):
             return self.render(self.state)
         else:
             return self.log_likelihood(self.observed, self.state)
+
+
+@dataclasses.dataclass
+class ScatteringImage(ImageModel):
+    """
+    Compute the scattering pattern on the imaging plane.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.filters: list[Filter] = [
+            AntiAliasingFilter(self.config, self.freqs)
+        ]
+
+    def render(self, state: "ParameterState") -> Array:
+        # Compute scattering at image plane
+        cloud = self.cloud.view(state.pose)
+        scattering_image = cloud.project(self.config)
+        # Apply filters
+        for filter in self.filters:
+            scattering_image = filter(scattering_image)
+
+        return scattering_image
+
+    def sample(self, state: "ParameterState") -> Array:
+        raise NotImplementedError
+
+    def log_likelihood(
+        self, observed: Array, state: "ParameterState"
+    ) -> Scalar:
+        raise NotImplementedError
+
+
+@dataclasses.dataclass
+class OpticsImage(ScatteringImage):
+    """
+    Compute the scattering pattern on the imaging plane,
+    moduated by a CTF.
+    """
+
+    def render(self, state: "ParameterState") -> Array:
+        """
+        Render an image from a model of the CTF.
+        """
+        # Compute scattering at image plane.
+        cloud = self.cloud.view(state.pose)
+        scattering_image = cloud.project(self.config)
+        # Compute and apply CTF
+        ctf = state.optics(self.freqs)
+        optics_image = ctf * scattering_image
+        # Apply filters
+        for filter in self.filters:
+            optics_image = filter(optics_image)
+
+        return optics_image

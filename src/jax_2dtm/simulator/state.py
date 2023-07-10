@@ -10,7 +10,7 @@ from typing import TypedDict, Optional
 
 from ..types import dataclass, Scalar
 from .optics import OpticsModel, NullOptics
-from .cloud import Pose
+from .transform import Pose, EulerPose
 
 
 class ParameterDict(TypedDict):
@@ -20,11 +20,17 @@ class ParameterDict(TypedDict):
     """
 
     # Pose parameters
+    offset_x: Optional[Scalar]
+    offset_y: Optional[Scalar]
+
     view_phi: Optional[Scalar]
     view_theta: Optional[Scalar]
     view_psi: Optional[Scalar]
-    offset_x: Optional[Scalar]
-    offset_y: Optional[Scalar]
+
+    view_qw: Optional[Scalar]
+    view_qx: Optional[Scalar]
+    view_qy: Optional[Scalar]
+    view_qz: Optional[Scalar]
 
     # CTF parameters
     defocus_u: Optional[Scalar]
@@ -44,13 +50,13 @@ class ParameterState:
 
     Attributes
     ----------
-    pose : Pose
+    pose : `jax_2dtm.simulator.Pose`
         The image pose.
-    optics : OpticsModel
-        The CTF model parameters.
+    optics : `jax_2dtm.simulator.OpticsModel`
+        The CTF model.
     """
 
-    pose: Pose = Pose()
+    pose: Pose = EulerPose()
     optics: OpticsModel = NullOptics()
 
     def update(self, params: ParameterDict) -> ParameterState:

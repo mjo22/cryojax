@@ -1,24 +1,31 @@
 __all__ = [
-    "rotate_and_translate",
+    "rotate_and_translate_rpy",
+    "rotate_and_translate_wxyz",
     "project_with_nufft",
     "compute_anti_aliasing_filter",
     "compute_ctf_power",
-    "ImageModel",
+    "ImageConfig",
+    "ScatteringConfig",
+    "Cloud",
     "ScatteringImage",
     "OpticsImage",
-    "ImageConfig",
-    "Cloud",
     "AntiAliasingFilter",
     "ParameterState",
-    "Pose",
-    "OpticsModel",
+    "EulerPose",
+    "QuaternionPose",
     "CTFOptics",
 ]
 
 
-from .cloud import rotate_and_translate, Pose, Cloud
-from .image import ImageConfig, ImageModel
-from .scattering import project_with_nufft, ScatteringImage
+from .transform import (
+    rotate_and_translate_rpy,
+    rotate_and_translate_wxyz,
+    EulerPose,
+    QuaternionPose,
+)
+from .scattering import project_with_nufft, ImageConfig, ScatteringConfig
+from .cloud import Cloud
 from .filters import compute_anti_aliasing_filter, AntiAliasingFilter
-from .optics import compute_ctf_power, OpticsModel, CTFOptics, OpticsImage
+from .optics import compute_ctf_power, CTFOptics
 from .state import ParameterState
+from .image import ScatteringImage, OpticsImage

@@ -1,5 +1,5 @@
 """
-Routines for and definitions of models for instrument optics.
+Models of instrument optics.
 """
 
 from __future__ import annotations
@@ -8,21 +8,14 @@ __all__ = [
     "OpticsModel",
     "NullOptics",
     "CTFOptics",
-    "OpticsImage",
     "compute_ctf_power",
 ]
 
-import dataclasses
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
 
-from .scattering import ScatteringImage
 from ..types import dataclass, Array, Scalar
-
-if TYPE_CHECKING:
-    from .state import ParameterState
 
 
 class OpticsModel(metaclass=ABCMeta):
@@ -34,7 +27,7 @@ class OpticsModel(metaclass=ABCMeta):
 
     When writing subclasses,
 
-        1) Overwrite the ``OpticsModel.compute`` method
+        1) Overwrite the ``OpticsModel.compute`` method.
         2) Use the ``jax_2dtm.types.dataclass`` decorator.
     """
 
@@ -71,25 +64,19 @@ class CTFOptics(OpticsModel):
     Compute a Contrast Transfer Function (CTF).
 
     Also acts as a PyTree container for the CTF parameters.
+    See ``jax_2dtm.simulator.compute_ctf_power`` for more
+    information.
 
     Attributes
     ----------
-    defocus_u : Scalar, `float` or shape `(M,)`
-        The defocus in the major axis in Angstroms.
-    defocus_v : Scalar, `float` or shape `(M,)`
-        The defocus in the minor axis in Angstroms.
-    defocus_angle : Scalar, `float` or shape `(M,)`
-        The defocus angle in degree.
-    voltage : Scalar, `float` or shape `(M,)`
-        The spherical aberration in mm.
-    spherical_aberration : Scalar, `float` or shape `(M,)`
-        The accelerating voltage in kV.
-    amplitude_contrast_ratio : Scalar, `float` or shape `(M,)`
-        The amplitude contrast ratio.
-    phase_shift : Scalar, `float` or shape `(M,)`
-        The phase shift in degrees.
-    b_factor : Scalar, `float` or shape `(M,)`
-        The B factor in A^2. If not provided, the B factor is assumed to be 0.
+    defocus_u : `jax_2dtm.types.Scalar`
+    defocus_v : `jax_2dtm.types.Scalar`
+    defocus_angle : `jax_2dtm.types.Scalar`
+    voltage : `jax_2dtm.types.Scalar`
+    spherical_aberration : `jax_2dtm.types.Scalar`
+    amplitude_contrast_ratio : `jax_2dtm.types.Scalar`
+    phase_shift : `jax_2dtm.types.Scalar`
+    b_factor : `jax_2dtm.types.Scalar`
     """
 
     defocus_u: Scalar = 10000.0
@@ -103,30 +90,6 @@ class CTFOptics(OpticsModel):
 
     def compute(self, freqs: Array) -> Array:
         return compute_ctf_power(freqs, *self.iter_data())
-
-
-@dataclasses.dataclass
-class OpticsImage(ScatteringImage):
-    """
-    Compute the scattering pattern on the imaging plane,
-    moduated by a CTF.
-    """
-
-    def render(self, state: "ParameterState") -> Array:
-        """
-        Render an image from a model of the CTF.
-        """
-        # Compute scattering at image plane.
-        cloud = self.cloud.view(state.pose)
-        scattering_image = cloud.project(self.config)
-        # Compute and apply CTF
-        ctf = state.optics(self.freqs)
-        optics_image = ctf * scattering_image
-        # Apply filters
-        for filter in self.filters:
-            optics_image = filter(optics_image)
-
-        return optics_image
 
 
 def compute_ctf_power(
@@ -146,30 +109,30 @@ def compute_ctf_power(
 
     Parameters
     ----------
-    freqs : Array, shape `(N1, N2, 2)`
+    freqs : `jax.Array`, shape `(N1, N2, 2)`
         The wave vectors in the imaging plane.
-    defocus_u : Scalar
+    defocus_u : float
         The defocus in the major axis in Angstroms.
-    defocus_v : Scalar
+    defocus_v : float
         The defocus in the minor axis in Angstroms.
-    defocus_angle : Scalar
+    defocus_angle : float
         The defocus angle in degree.
-    voltage : Scalar
+    voltage : float
         The accelerating voltage in kV.
-    spherical_aberration : Scalar
+    spherical_aberration : float
         The spherical aberration in mm.
-    amplitude_contrast_ratio : Scalar
+    amplitude_contrast_ratio : float
         The amplitude contrast ratio.
-    phase_shift : Scalar
+    phase_shift : float
         The phase shift in degrees.
-    b_factor : Scalar, optional
+    b_factor : float, optional
         The B factor in A^2. If not provided, the B factor is assumed to be 0.
     normalize : bool, optional
         Whether to normalize the CTF so that it has norm 1 in real space. Default is True.
 
     Returns
     -------
-    ctf : Array, shape `(N1, N2)`
+    ctf : `jax.Array`, shape `(N1, N2)`
         The contrast transfer function.
     """
 

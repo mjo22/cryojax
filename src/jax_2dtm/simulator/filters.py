@@ -12,7 +12,7 @@ from abc import ABCMeta, abstractmethod
 import jax.numpy as jnp
 
 from ..types import Array
-from .image import ImageConfig
+from .scattering import ImageConfig
 
 
 @dataclasses.dataclass
@@ -22,9 +22,9 @@ class Filter(metaclass=ABCMeta):
 
     Attributes
     ----------
-    config : ImageConfig
+    config : `jax_2dtm.simulator.ImageConfig`
         The image configuration.
-    freqs : jax.Array
+    freqs : `jax.Array`
         The fourier wavevectors in the imaging plane.
     """
 
@@ -36,10 +36,12 @@ class Filter(metaclass=ABCMeta):
 
     @abstractmethod
     def compute(self) -> Array:
+        """Compute the filter."""
         raise NotImplementedError
 
-    def __call__(self, scattering_image: Array) -> Array:
-        return self.filter * scattering_image
+    def __call__(self, image: Array) -> Array:
+        """Apply the filter to an image."""
+        return self.filter * image
 
 
 @dataclasses.dataclass
@@ -47,12 +49,14 @@ class AntiAliasingFilter(Filter):
     """
     Apply an anti-aliasing filter to an image.
 
+    See documentation for
+    ``jax_2dtm.simulator.compute_anti_aliasing_filter``
+    for more information.
+
     Attributes
     ----------
-    cutoff : float
-        See documentation for ``jax_2dtm.simulator.anti_aliasing_filter``.
-    rolloff : float
-        See documentation for ``jax_2dtm.simulator.anti_aliasing_filter``.
+    cutoff : `float`
+    rolloff : `float`
     """
 
     cutoff: float = 1.00
@@ -78,20 +82,20 @@ def compute_anti_aliasing_filter(
 
     Parameters
     ----------
-    freqs : jax.Array
+    freqs : `jax.Array`
         The fourier wavevectors in the imaging plane.
-    pixel_size : float
+    pixel_size : `float`
         The pixel size of the image.
-    cutoff : float, optional
+    cutoff : `float`, optional
         The cutoff frequency as a fraction of the Nyquist frequency,
         by default 0.667.
-    rolloff : float, optional
+    rolloff : `float`, optional
         The rolloff width as a fraction of the Nyquist frequency,
         by default 0.05.
 
     Returns
     -------
-    mask : jax.Array
+    mask : `jax.Array`
         An array representing the anti-aliasing filter.
     """
 

@@ -1,67 +1,69 @@
 """
-Routines to model image formation.
+Routines to model image formation from 3D electron density
+fields.
 """
 
 from __future__ import annotations
 
-__all__ = ["project_with_nufft", "ScatteringImage"]
-
-import dataclasses
+__all__ = ["project_with_nufft", "ImageConfig", "ScatteringConfig"]
 
 import jax.numpy as jnp
-from typing import TYPE_CHECKING
 
-from .image import ImageConfig, ImageModel
-from .filters import Filter, AntiAliasingFilter
-from ..types import Array, Scalar
+from ..types import dataclass, field, Array
 from ..utils import nufft
 
-if TYPE_CHECKING:
-    from .state import ParameterState
 
-
-@dataclasses.dataclass
-class ScatteringImage(ImageModel):
+@dataclass
+class ImageConfig:
     """
-    Compute the scattering pattern on the imaging plane.
+    Configuration for an electron microscopy image.
+
+    Attributes
+    ----------
+    shape : `tuple[int, int]`
+        Shape of the imaging plane in pixels.
+        ``width, height = shape[0], shape[1]``
+        is the size of the desired imaging plane.
+    pixel_size : `float`
+        Size of camera pixels, in dimensions of length.
     """
 
-    def __post_init__(self):
-        super().__post_init__()
-        self.filters: list[Filter] = [
-            AntiAliasingFilter(self.config, self.freqs)
-        ]
+    shape: tuple[int, int] = field(pytree_node=False)
+    pixel_size: float = field(pytree_node=False)
 
-    def render(self, state: "ParameterState") -> Array:
-        # Compute scattering at image plane
-        cloud = self.cloud.view(state.pose)
-        scattering_image = cloud.project(self.config)
-        # Apply filters
-        for filter in self.filters:
-            scattering_image = filter(scattering_image)
 
-        return scattering_image
+@dataclass
+class ScatteringConfig(ImageConfig):
+    """
+    Configuration for an image with a given
+    scattering method.
 
-    def sample(self, state: "ParameterState") -> Array:
-        raise NotImplementedError
+    Attributes
+    ----------
+    eps : `float`
+        See ``jax_2dtm.simulator.project_with_nufft``
+        for documentation.
+    """
 
-    def log_likelihood(
-        self, observed: Array, state: "ParameterState"
-    ) -> Scalar:
-        raise NotImplementedError
+    eps: float = field(pytree_node=False, default=1e-6)
+
+    def project(self, *args):
+        """Projection method for image rendering."""
+        return project_with_nufft(*args, self.shape, eps=self.eps)
 
 
 def project_with_nufft(
-    config: ImageConfig,
     density: Array,
     coordinates: Array,
     box_size: Array,
+    shape: tuple[int, int],
+    eps: float = 1e-6,
 ) -> Array:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using a non-uniform FFT.
 
-    See ``jax_2dtm.utils.fft.nufft`` for more detail.
+    See ``jax_2dtm.utils.nufft`` for more detail.
 
     Arguments
     ---------
@@ -69,10 +71,16 @@ def project_with_nufft(
         Density point cloud.
     coordinates :
         Coordinate system of point cloud.
-    boxsize :
+    box_size :
         Box size of point.
-    config :
-        Image configuation.
+    shape : `tuple[int, int]`
+        Shape of the imaging plane in pixels.
+        ``width, height = shape[0], shape[1]``
+        is the size of the desired imaging plane.
+    eps : `float`
+        Desired precision in computing the volume
+        projection. See `finufft <https://finufft.readthedocs.io/en/latest/>`_
+        for more detail.
 
     Returns
     -------
@@ -80,7 +88,7 @@ def project_with_nufft(
         The output image in the fourier domain.
     """
     projection = nufft(
-        (*config.shape, int(1)), density, coordinates, box_size, eps=config.eps
+        (*shape, int(1)), density, coordinates, box_size, eps=eps
     )[:, :, 0]
 
     return projection
