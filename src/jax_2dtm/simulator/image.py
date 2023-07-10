@@ -25,7 +25,9 @@ class ImageModel(metaclass=ABCMeta):
 
     Attributes
     ----------
-
+    config : `jax_2dtm.simulator.ScatteringConfig`
+    cloud : `jax_2dtm.simulator.Cloud`
+    state : `jax_2dtm.simulator.State`
     """
 
     config: ScatteringConfig
