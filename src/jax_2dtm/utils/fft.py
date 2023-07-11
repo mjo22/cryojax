@@ -106,7 +106,7 @@ def fft(ift: Array, **kwargs) -> Array:
     ft :
         Fourier transform of array.
     """
-    ft = jnp.fft.fftshift(jnp.fft.fftn(np.fft.ifftshift(ift), **kwargs))
+    ft = jnp.fft.ifftshift(jnp.fft.fftn(np.fft.fftshift(ift), **kwargs))
 
     return ft
 

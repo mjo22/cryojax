@@ -14,6 +14,7 @@ __all__ = [
 
 from abc import ABCMeta, abstractmethod
 from typing import Union, Optional
+from dataclasses import InitVar
 
 import jax.numpy as jnp
 
@@ -59,10 +60,12 @@ class ImageModel(metaclass=ABCMeta):
     freqs: Array = field(pytree_node=False, init=False)
     observed: Optional[Array] = field(pytree_node=False, init=False)
 
-    def __post_init__(self, observed: Optional[Array] = None):
-        # Set additional fields and check arguments.
-        freqs = fftfreqs(self.config.shape, self.config.pixel_size)
-        object.__setattr__(self, "freqs", freqs)
+    observed: InitVar[Array | None] = None
+
+    def __post_init__(self, observed):
+        object.__setattr__(
+            self, "freqs", fftfreqs(self.config.shape, self.config.pixel_size)
+        )
         if observed is not None:
             assert all(self.config.shape == observed.shape)
             object.__setattr__(self, "observed", fft(observed))
@@ -124,8 +127,10 @@ class ScatteringImage(ImageModel):
 
     filters: list[Filter] = field(pytree_node=False, init=False)
 
-    def __post_init__(self, filters: Optional[list[Filter]] = None):
-        super().__post_init__()
+    filters: InitVar[list[Filter] | None] = None
+
+    def __post_init__(self, observed, filters):
+        super().__post_init__(observed)
         object.__setattr__(
             self,
             "filters",
