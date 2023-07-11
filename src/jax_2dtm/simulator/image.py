@@ -12,30 +12,29 @@ __all__ = [
     "GaussianImage",
 ]
 
-import dataclasses
 from abc import ABCMeta, abstractmethod
-from typing import Union, Optional, Any
+from typing import Union, Optional
 
-import jax
 import jax.numpy as jnp
-from functools import partial
 
 from .scattering import ScatteringConfig
 from .cloud import Cloud
 from .filters import Filter, AntiAliasingFilter
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
-from ..types import Array, Scalar
+from ..types import dataclass, field, Array, Scalar
 from ..utils import fftfreqs, fft
 
 
-@dataclasses.dataclass
+@dataclass
 class ImageModel(metaclass=ABCMeta):
     """
-    Base class for an imaging model.
+    Base class for an imaging model. Note that the
+    model is a PyTree and is therefore immmutable.
 
-    Note that only the ``ImageModel.state`` field
-    is mutable.
+    Use ``ImageModel.update`` to return a new model
+    with modified parameters, and call ``ImageModel``
+    to evaluate the model.
 
     Attributes
     ----------
@@ -54,20 +53,21 @@ class ImageModel(metaclass=ABCMeta):
         returns the observed data in Fourier space.
     """
 
-    config: ScatteringConfig
-    cloud: Cloud
     state: ParameterState
-    freqs: Array = dataclasses.field(init=False)
-    observed: Optional[Array] = dataclasses.field(init=False)
+    config: ScatteringConfig = field(pytree_node=False)
+    cloud: Cloud = field(pytree_node=False)
+    freqs: Array = field(pytree_node=False, init=False)
+    observed: Optional[Array] = field(pytree_node=False, init=False)
 
     def __post_init__(self, observed: Optional[Array] = None):
         # Set additional fields and check arguments.
-        self.freqs = fftfreqs(self.config.shape, self.config.pixel_size)
+        freqs = fftfreqs(self.config.shape, self.config.pixel_size)
+        object.__setattr__(self, "freqs", freqs)
         if observed is not None:
             assert all(self.config.shape == observed.shape)
-            self.observed = fft(observed)
+            object.__setattr__(self, "observed", fft(observed))
         else:
-            self.observed = None
+            object.__setattr__(self, "observed", None)
 
     @abstractmethod
     def render(self, state: ParameterState) -> Array:
@@ -94,25 +94,21 @@ class ImageModel(metaclass=ABCMeta):
         If ``ImageModel.observed = None``, sample an image from
         a noise model. Otherwise, compute the log likelihood.
         """
-        self.state = self.state.update(params)
+        state = self.state.update(params)
         if self.observed is None:
-            return self.sample(self.state)
+            return self.sample(state)
         else:
-            return self.log_likelihood(self.observed, self.state)
+            return self.log_likelihood(self.observed, state)
 
-    @property
-    def _mutable(self):
-        """Define which fields are mutable."""
-        return ["state"]
-
-    def __setattr__(self, __name: str, __value: Any) -> None:
-        if __name in self._mutable or not hasattr(self, __name):
-            super().__setattr__(__name, __value)
-        else:
-            raise TypeError(f"Attribute '{__name}' is immutable!")
+    def update(
+        self, params: Union[ParameterDict, ParameterState]
+    ) -> ImageModel:
+        """Return a new ImageModel based on a new ParameterState."""
+        state = self.state.update(params) if type(params) is dict else params
+        return self.replace(state=state)
 
 
-@dataclasses.dataclass
+@dataclass
 class ScatteringImage(ImageModel):
     """
     Compute the scattering pattern on the imaging plane.
@@ -126,11 +122,15 @@ class ScatteringImage(ImageModel):
         ``AntiAliasingFilter`` with its default configuration.
     """
 
-    filters: list[Filter] = dataclasses.field(init=False)
+    filters: list[Filter] = field(pytree_node=False, init=False)
 
     def __post_init__(self, filters: Optional[list[Filter]] = None):
         super().__post_init__()
-        self.filters = filters or [AntiAliasingFilter(self.config, self.freqs)]
+        object.__setattr__(
+            self,
+            "filters",
+            filters or [AntiAliasingFilter(self.config, self.freqs)],
+        )
         assert all([filter.config is self.config for filter in self.filters])
         assert all([filter.freqs is self.freqs for filter in self.filters])
 
@@ -152,7 +152,7 @@ class ScatteringImage(ImageModel):
         raise NotImplementedError
 
 
-@dataclasses.dataclass
+@dataclass
 class OpticsImage(ScatteringImage):
     """
     Compute the scattering pattern on the imaging plane,
@@ -170,7 +170,7 @@ class OpticsImage(ScatteringImage):
         return optics_image
 
 
-@dataclasses.dataclass
+@dataclass
 class GaussianImage(OpticsImage):
     """
     Sample an image from a gaussian noise model, or compute
