@@ -8,6 +8,7 @@ __all__ = [
     "ScatteringConfig",
     "Cloud",
     "AntiAliasingFilter",
+    "WhiteningFilter",
     "ParameterState",
     "EulerPose",
     "QuaternionPose",
@@ -29,7 +30,11 @@ from .transform import (
 )
 from .scattering import project_with_nufft, ImageConfig, ScatteringConfig
 from .cloud import Cloud
-from .filters import compute_anti_aliasing_filter, AntiAliasingFilter
+from .filters import (
+    compute_anti_aliasing_filter,
+    AntiAliasingFilter,
+    WhiteningFilter,
+)
 from .optics import compute_ctf_power, CTFOptics
 from .noise import WhiteNoise, EmpiricalNoise, LorenzianNoise
 from .state import ParameterState

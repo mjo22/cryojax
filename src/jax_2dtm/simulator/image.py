@@ -103,6 +103,13 @@ class ImageModel(metaclass=ABCMeta):
         else:
             return self.log_likelihood(self.observed, state)
 
+    def normalize(self, image: Array) -> Array:
+        """Return the normalized image"""
+        N1, N2 = self.config.shape
+        image = image.at[N1 // 2, N2 // 2].set(0.0)
+        std = jnp.sqrt(jnp.sum((image * jnp.conjugate(image)))) / (N1 * N2)
+        return image / std
+
     def update(
         self, params: Union[ParameterDict, ParameterState]
     ) -> ImageModel:
@@ -172,7 +179,7 @@ class OpticsImage(ScatteringImage):
         ctf = state.optics(self.freqs)
         optics_image = ctf * scattering_image
 
-        return optics_image
+        return self.normalize(optics_image)
 
 
 @dataclass
@@ -185,19 +192,19 @@ class GaussianImage(OpticsImage):
     which allows for modeling of an arbitrary noise power spectrum.
     """
 
-    def __post_init__(self):
-        super().__post_init__()
+    def __post_init__(self, observed, filters):
+        super().__post_init__(observed, filters)
         assert isinstance(self.state.noise, GaussianNoise)
 
     def sample(self, state: ParameterState) -> Array:
         """Sample an image from a realization of the noise"""
-        return self.render(state) + state.noise.sample(self.config, self.freqs)
+        return self.render(state) + state.noise.sample(self.freqs, self.config)
 
     def log_likelihood(self, observed: Array, state: ParameterState) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""
         simulated = self.render(state)
         residual = observed - simulated
-        variance = state.noise.variance(self.freqs)
+        variance = state.noise.variance(self.freqs, self.config)
         loss = jnp.sum(
             (residual * jnp.conjugate(residual)).real / (2 * variance)
         )
