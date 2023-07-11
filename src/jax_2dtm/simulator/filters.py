@@ -4,18 +4,22 @@ Filters to apply to images in Fourier space
 
 from __future__ import annotations
 
-__all__ = ["compute_anti_aliasing_filter", "Filter", "AntiAliasingFilter"]
+__all__ = [
+    "compute_anti_aliasing_filter",
+    "Filter",
+    "AntiAliasingFilter",
+    "WhiteningFilter",
+]
 
-import dataclasses
 from abc import ABCMeta, abstractmethod
 
 import jax.numpy as jnp
 
-from ..types import Array
+from ..types import dataclass, field, Array
 from .scattering import ImageConfig
 
 
-@dataclasses.dataclass
+@dataclass
 class Filter(metaclass=ABCMeta):
     """
     Base class for computing and applying an image filter.
@@ -28,11 +32,12 @@ class Filter(metaclass=ABCMeta):
         The fourier wavevectors in the imaging plane.
     """
 
-    config: ImageConfig
-    freqs: Array
+    config: ImageConfig = field(pytree_node=False)
+    freqs: Array = field(pytree_node=False)
+    filter: Array = field(pytree_node=False, init=False)
 
     def __post_init__(self):
-        self.filter = self.compute()
+        object.__setattr__(self, "filter", self.compute())
 
     @abstractmethod
     def compute(self) -> Array:
@@ -44,7 +49,7 @@ class Filter(metaclass=ABCMeta):
         return self.filter * image
 
 
-@dataclasses.dataclass
+@dataclass
 class AntiAliasingFilter(Filter):
     """
     Apply an anti-aliasing filter to an image.
@@ -59,8 +64,8 @@ class AntiAliasingFilter(Filter):
     rolloff : `float`
     """
 
-    cutoff: float = 1.00
-    rolloff: float = 0.05
+    cutoff: float = field(pytree_node=False, default=1.00)
+    rolloff: float = field(pytree_node=False, default=0.05)
 
     def compute(self) -> Array:
         return compute_anti_aliasing_filter(
@@ -69,6 +74,24 @@ class AntiAliasingFilter(Filter):
             self.cutoff,
             self.rolloff,
         )
+
+
+@dataclass
+class WhiteningFilter(Filter):
+    """
+    Apply an whitening filter to an image.
+
+    See documentation for
+    ``jax_2dtm.simulator.compute_anti_aliasing_filter``
+    for more information.
+
+    Attributes
+    ----------
+
+    """
+
+    def compute(self) -> Array:
+        raise NotImplementedError
 
 
 def compute_anti_aliasing_filter(

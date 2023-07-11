@@ -7,8 +7,6 @@ __all__ = [
     "ImageConfig",
     "ScatteringConfig",
     "Cloud",
-    "ScatteringImage",
-    "OpticsImage",
     "AntiAliasingFilter",
     "ParameterState",
     "EulerPose",
@@ -17,6 +15,9 @@ __all__ = [
     "WhiteNoise",
     "EmpiricalNoise",
     "LorenzianNoise",
+    "ScatteringImage",
+    "OpticsImage",
+    "GaussianImage",
 ]
 
 
@@ -32,4 +33,4 @@ from .filters import compute_anti_aliasing_filter, AntiAliasingFilter
 from .optics import compute_ctf_power, CTFOptics
 from .noise import WhiteNoise, EmpiricalNoise, LorenzianNoise
 from .state import ParameterState
-from .image import ScatteringImage, OpticsImage
+from .image import ScatteringImage, OpticsImage, GaussianImage
