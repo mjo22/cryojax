@@ -22,6 +22,7 @@ EXTRA_REQUIRE = {
     "test": ["pytest>=3.6"],
     "docs": [],
 }
+EXTRA_REQUIRE["coverage"] = EXTRA_REQUIRE["test"] + ["pytest-cov"]
 
 # END PROJECT SPECIFIC
 

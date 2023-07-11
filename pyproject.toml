@@ -16,5 +16,17 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 
+[tool.coverage.run]
+parallel = true
+branch = true
+source = ["jax_2dtm"]
+omit = ["docs/*", "tests/*", "*/jax_2dtm/jax_2dtm_version.py"]
+
+[tool.coverage.paths]
+source = ["src", "*/site-packages"]
+
+[tool.coverage.report]
+show_missing = true
+
 [tool.pycln]
 all = true

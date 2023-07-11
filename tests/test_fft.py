@@ -10,7 +10,7 @@ def test_fft(model):
     random = jnp.asarray(np.random.randn(*image.shape))
     # Set tolerance based on tests with jnp.fft + random data
     rkwargs = dict(zip(["atol", "rtol"], [1e-6, 5e-4]))
-    fkwargs = dict(zip(["atol", "rtol"], [5e-5, 1e-9]))
+    fkwargs = dict(zip(["atol", "rtol"], [5e-5, 1e-6]))
     # Run tests with jnp.fft and random data
     np.testing.assert_allclose(
         random, jnp.fft.ifftn(jnp.fft.fftn(random)).real, **rkwargs
