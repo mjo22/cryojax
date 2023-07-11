@@ -9,8 +9,9 @@ __all__ = ["ParameterDict", "ParameterState"]
 from typing import TypedDict, Optional
 
 from ..types import dataclass, Scalar
-from .optics import OpticsModel, NullOptics
 from .transform import Pose, EulerPose
+from .optics import OpticsModel, NullOptics
+from .noise import Noise, NullNoise
 
 
 class ParameterDict(TypedDict):
@@ -58,6 +59,7 @@ class ParameterState:
 
     pose: Pose = EulerPose()
     optics: OpticsModel = NullOptics()
+    noise: Noise = NullNoise()
 
     def update(self, params: ParameterDict) -> ParameterState:
         """Return a new ParameterState based on a ParameterDict."""

@@ -4,13 +4,21 @@ Routines to model image formation.
 
 from __future__ import annotations
 
-__all__ = ["ImageConfig", "ImageModel", "ScatteringImage", "OpticsImage"]
+__all__ = [
+    "ImageConfig",
+    "ImageModel",
+    "ScatteringImage",
+    "OpticsImage",
+    "GaussianImage",
+]
 
 import dataclasses
 from abc import ABCMeta, abstractmethod
 from typing import Union, Optional, Any
 
+import jax
 import jax.numpy as jnp
+from functools import partial
 
 from .scattering import ScatteringConfig
 from .cloud import Cloud
@@ -35,7 +43,7 @@ class ImageModel(metaclass=ABCMeta):
         The image and scattering model configuration.
     cloud : `jax_2dtm.simulator.Cloud`
         The point cloud used to render images.
-    state : `jax_2dtm.simulator.ParameterState`, optional
+    state : `jax_2dtm.simulator.ParameterState`
         The parameter state of the model.
     freqs : `jax.Array`
         The fourier wave vectors in the imaging plane.
@@ -48,13 +56,15 @@ class ImageModel(metaclass=ABCMeta):
 
     config: ScatteringConfig
     cloud: Cloud
-    state: Optional[ParameterState] = None
+    state: ParameterState
+    freqs: Array = dataclasses.field(init=False)
+    observed: Optional[Array] = dataclasses.field(init=False)
 
     def __post_init__(self, observed: Optional[Array] = None):
         # Set additional fields and check arguments.
-        self.freqs: Array = fftfreqs(self.config.shape, self.config.pixel_size)
+        self.freqs = fftfreqs(self.config.shape, self.config.pixel_size)
         if observed is not None:
-            assert self.config.shape == observed.shape
+            assert all(self.config.shape == observed.shape)
             self.observed = fft(observed)
         else:
             self.observed = None
@@ -76,7 +86,7 @@ class ImageModel(metaclass=ABCMeta):
 
     def __call__(
         self,
-        params: Union[ParameterState, ParameterDict],
+        params: ParameterDict = {},
     ) -> Union[Array, Scalar]:
         """
         Evaluate the model at a parameter set.
@@ -84,9 +94,7 @@ class ImageModel(metaclass=ABCMeta):
         If ``ImageModel.observed = None``, sample an image from
         a noise model. Otherwise, compute the log likelihood.
         """
-        self.state = (
-            self.state.update(params) if type(params) is dict else params
-        )
+        self.state = self.state.update(params)
         if self.observed is None:
             return self.sample(self.state)
         else:
@@ -111,20 +119,20 @@ class ScatteringImage(ImageModel):
 
     Attributes
     ----------
-    filters : list[Filter]
+    filters : `list[Filter]`
         A list of filters to apply to the image. This
-        field is mutable (see ScatteringImage.filters)
+        field is mutable (see ``ScatteringImage.filters``)
         for details. By default, this is an
-        AntiAliasingFilter with its default configuration.
+        ``AntiAliasingFilter`` with its default configuration.
     """
+
+    filters: list[Filter] = dataclasses.field(init=False)
 
     def __post_init__(self, filters: Optional[list[Filter]] = None):
         super().__post_init__()
-        self.filters: list[Filter] = (
-            [AntiAliasingFilter(self.config, self.freqs)]
-            if filters is None
-            else filters
-        )
+        self.filters = filters or [AntiAliasingFilter(self.config, self.freqs)]
+        assert all([filter.config is self.config for filter in self.filters])
+        assert all([filter.freqs is self.freqs for filter in self.filters])
 
     def render(self, state: ParameterState) -> Array:
         """Render the scattering pattern"""
@@ -142,11 +150,6 @@ class ScatteringImage(ImageModel):
 
     def log_likelihood(self, observed: Array, state: ParameterState) -> Scalar:
         raise NotImplementedError
-
-    @property
-    def _mutable(self):
-        """Define which fields are mutable."""
-        return ["state", "filters"]
 
 
 @dataclasses.dataclass
@@ -177,14 +180,16 @@ class GaussianImage(OpticsImage):
     which allows for modeling of an arbitrary noise power spectrum.
     """
 
+    def __post_init__(self):
+        super().__post_init__()
+        assert isinstance(self.state.noise, GaussianNoise)
+
     def sample(self, state: ParameterState) -> Array:
         """Sample an image from a realization of the noise"""
-        assert isinstance(state.noise, GaussianNoise)
         return self.render(state) + state.noise.sample(self.config, self.freqs)
 
     def log_likelihood(self, observed: Array, state: ParameterState) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""
-        assert isinstance(state.noise, GaussianNoise)
         simulated = self.render(state)
         residual = observed - simulated
         variance = state.noise.variance(self.freqs)

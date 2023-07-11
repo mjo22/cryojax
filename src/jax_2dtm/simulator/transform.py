@@ -18,7 +18,7 @@ import jax.numpy as jnp
 from jax import vmap, jit
 from jaxlie import SE3, SO3
 
-from ..types import Array, Scalar, dataclass
+from ..types import Array, Scalar, field, dataclass
 
 
 @dataclass
@@ -77,12 +77,10 @@ class EulerPose(Pose):
 @dataclass
 class QuaternionPose(Pose):
     """
-    An image pose using Quaternions.
+    An image pose using unit Quaternions.
 
     Attributes
     ----------
-    view_qw : `jax_2dtm.types.Scalar`
-
     view_qx : `jax_2dtm.types.Scalar`
 
     view_qy : `jax_2dtm.types.Scalar`
@@ -97,15 +95,15 @@ class QuaternionPose(Pose):
     view_qz: Scalar = 0.0
 
     def transform(self, coordinates: Array) -> Array:
-        """Transform coordinates from a quaternion."""
+        """Transform coordinates from an offset and unit quaternion."""
         return rotate_and_translate_wxyz(coordinates, *self.iter_data())
 
 
 @jit
 def rotate_and_translate_rpy(
     coords: Array,
-    t_x: float,
-    t_y: float,
+    tx: float,
+    ty: float,
     phi: float,
     theta: float,
     psi: float,
@@ -118,9 +116,9 @@ def rotate_and_translate_rpy(
     ---------
     coords : `jax.Array`, shape `(N, 3)`
         Coordinate system.
-    t_x : `float`
+    tx : `float`
         In-plane translation in x direction.
-    t_y : `float`
+    ty : `float`
         In-plane translation in y direction.
     phi : `float`
         Roll angle, ranging :math:`(-\pi, \pi]`.
@@ -135,7 +133,7 @@ def rotate_and_translate_rpy(
         Rotated and translated coordinate system.
     """
     rotation = SO3.from_rpy_radians(phi, theta, psi)
-    translation = jnp.array([t_x, t_y, 0.0])
+    translation = jnp.array([tx, ty, 0.0])
     transformation = SE3.from_rotation_and_translation(rotation, translation)
     transformed = vmap(transformation.apply)(coords)
 
@@ -145,8 +143,8 @@ def rotate_and_translate_rpy(
 @jit
 def rotate_and_translate_wxyz(
     coords: Array,
-    t_x: float,
-    t_y: float,
+    tx: float,
+    ty: float,
     qw: float,
     qx: float,
     qy: float,
@@ -160,9 +158,9 @@ def rotate_and_translate_wxyz(
     ---------
     coords : `jax.Array` shape `(N, 3)`
         Coordinate system.
-    t_x : `float`
+    tx : `float`
         In-plane translation in x direction.
-    t_y : `float`
+    ty : `float`
         In-plane translation in y direction.
     qw : `float`
     qx : `float`
@@ -174,7 +172,7 @@ def rotate_and_translate_wxyz(
     transformed : `jax.Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
     """
-    wxyz_xyz = jnp.array([qw, qx, qy, qz, t_x, t_y, 0.0])
+    wxyz_xyz = jnp.array([qw, qx, qy, qz, tx, ty, 0.0])
     transformation = SE3(wxyz_xyz=wxyz_xyz)
     transformed = vmap(transformation.apply)(coords)
 
