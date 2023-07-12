@@ -6,7 +6,7 @@ from __future__ import annotations
 
 __all__ = ["Cloud"]
 
-from .transform import Pose
+from .pose import Pose
 from .scattering import ScatteringConfig
 from ..types import Array, dataclass, field
 

@@ -89,11 +89,11 @@ class WhiteNoise(GaussianNoise):
     alpha : `jax_2dtm.types.Scalar`
     """
 
-    alpha: Scalar = 1.0
+    sigma: Scalar = 1.0
 
     def variance(self, freqs: Array, config: ImageConfig) -> Array:
         """Flat power spectrum."""
-        return self.alpha
+        return self.sigma**2
 
 
 @dataclass
@@ -102,7 +102,7 @@ class EmpiricalNoise(GaussianNoise):
     Gaussian noise with an empirical power spectrum.
     """
 
-    alpha: Scalar = 1.0
+    sigma: Scalar = 1.0
 
     def variance(self, freqs: Array, config: ImageConfig) -> Array:
         """Power spectrum measured from a micrograph."""
@@ -115,14 +115,14 @@ class LorenzianNoise(GaussianNoise):
     Gaussian noise with a lorenzian power spectrum.
     """
 
-    alpha: Scalar = 1.0
+    sigma: Scalar = 1.0
     kappa: Scalar = 1.0
     xi: Scalar = 1.0
 
     def variance(self, freqs: Array, config: ImageConfig) -> Array:
         """Power spectrum modeled by a lorenzian, plus a flat contribution."""
         k_norm = jnp.linalg.norm(freqs, axis=-1)
-        lorenzian = (self.kappa / config.pixel_size**2) / (
+        lorenzian = (self.kappa**2 / config.pixel_size**2) / (
             k_norm**2 + jnp.divide(1, (self.xi * config.pixel_size) ** 2)
         )
-        return lorenzian + self.alpha
+        return lorenzian + self.sigma**2

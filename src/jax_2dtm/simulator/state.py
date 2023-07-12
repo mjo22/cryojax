@@ -9,8 +9,9 @@ __all__ = ["ParameterDict", "ParameterState"]
 from typing import TypedDict, Optional
 
 from ..types import dataclass, Scalar
-from .transform import Pose, EulerPose
+from .pose import Pose, EulerPose
 from .optics import OpticsModel, NullOptics
+from .intensity import Intensity
 from .noise import Noise, NullNoise
 
 
@@ -48,6 +49,10 @@ class ParameterDict(TypedDict):
     kappa: Optional[Scalar]
     xi: Optional[Scalar]
 
+    # Image intensity
+    N: Optional[Scalar]
+    mu: Optional[Scalar]
+
 
 @dataclass
 class ParameterState:
@@ -60,10 +65,15 @@ class ParameterState:
         The image pose.
     optics : `jax_2dtm.simulator.OpticsModel`
         The CTF model.
+    intensity : `jax_2dtm.simulator.Intensity`
+        The intensity scaling.
+    noise : ``jax_2dtm.simulator.Noise``
+
     """
 
     pose: Pose = EulerPose()
     optics: OpticsModel = NullOptics()
+    intensity: Intensity = Intensity()
     noise: Noise = NullNoise()
 
     def update(self, params: ParameterDict) -> ParameterState:
@@ -77,8 +87,12 @@ class ParameterState:
         noise_update = {
             k: v for k, v in params.items() if hasattr(self.noise, k)
         }
+        intensity_update = {
+            k: v for k, v in params.items() if hasattr(self.intensity, k)
+        }
         return self.replace(
             pose=self.pose.replace(**pose_update),
             optics=self.optics.replace(**optics_update),
             noise=self.noise.replace(**noise_update),
+            intensity=self.intensity.replace(**intensity_update),
         )

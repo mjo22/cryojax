@@ -13,6 +13,7 @@ __all__ = [
     "EulerPose",
     "QuaternionPose",
     "CTFOptics",
+    "Intensity",
     "WhiteNoise",
     "EmpiricalNoise",
     "LorenzianNoise",
@@ -22,7 +23,7 @@ __all__ = [
 ]
 
 
-from .transform import (
+from .pose import (
     rotate_and_translate_rpy,
     rotate_and_translate_wxyz,
     EulerPose,
@@ -36,6 +37,7 @@ from .filters import (
     WhiteningFilter,
 )
 from .optics import compute_ctf_power, CTFOptics
+from .intensity import rescale_image, Intensity
 from .noise import WhiteNoise, EmpiricalNoise, LorenzianNoise
 from .state import ParameterState
 from .image import ScatteringImage, OpticsImage, GaussianImage
