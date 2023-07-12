@@ -1,12 +1,12 @@
-from .test_pipeline import model
+from .test_pipeline import setup, scattering_model
 
 import jax.numpy as jnp
 import numpy as np
 from jax_2dtm.utils import fft, ifft
 
 
-def test_fft(model):
-    image = model()
+def test_fft(scattering_model):
+    image = scattering_model()
     random = jnp.asarray(np.random.randn(*image.shape))
     # Set tolerance based on tests with jnp.fft + random data
     rkwargs = dict(zip(["atol", "rtol"], [1e-6, 5e-4]))

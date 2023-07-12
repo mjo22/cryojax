@@ -86,7 +86,7 @@ def ifft(ft: Array, **kwargs) -> Array:
     ift :
         Inverse fourier transform.
     """
-    ift = jnp.fft.ifftshift(jnp.fft.ifftn(np.fft.fftshift(ft), **kwargs))
+    ift = jnp.fft.fftshift(jnp.fft.ifftn(np.fft.ifftshift(ft), **kwargs))
 
     return ift.real
 
@@ -106,7 +106,7 @@ def fft(ift: Array, **kwargs) -> Array:
     ft :
         Fourier transform of array.
     """
-    ft = jnp.fft.ifftshift(jnp.fft.fftn(np.fft.fftshift(ift), **kwargs))
+    ft = jnp.fft.fftshift(jnp.fft.fftn(np.fft.ifftshift(ift), **kwargs))
 
     return ft
 
