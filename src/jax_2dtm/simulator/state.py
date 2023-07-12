@@ -43,6 +43,11 @@ class ParameterDict(TypedDict):
     phase_shift: Optional[Scalar]
     b_factor: Optional[Scalar]
 
+    # Noise parameters
+    alpha: Optional[Scalar]
+    kappa: Optional[Scalar]
+    xi: Optional[Scalar]
+
 
 @dataclass
 class ParameterState:
@@ -69,7 +74,11 @@ class ParameterState:
         optics_update = {
             k: v for k, v in params.items() if hasattr(self.optics, k)
         }
+        noise_update = {
+            k: v for k, v in params.items() if hasattr(self.noise, k)
+        }
         return self.replace(
             pose=self.pose.replace(**pose_update),
             optics=self.optics.replace(**optics_update),
+            noise=self.noise.replace(**noise_update),
         )

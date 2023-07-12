@@ -70,7 +70,7 @@ def nufft(
     return ft
 
 
-def ifft(ft: Array, **kwargs) -> Array:
+def ifft(ft: Array) -> Array:
     """
     Helper routine to compute the inverse fourier transform
     from the output of a type 1 non-uniform FFT. Assume that
@@ -86,12 +86,12 @@ def ifft(ft: Array, **kwargs) -> Array:
     ift :
         Inverse fourier transform.
     """
-    ift = jnp.fft.fftshift(jnp.fft.ifftn(np.fft.ifftshift(ft), **kwargs))
+    ift = jnp.fft.fftshift(jnp.fft.ifftn(jnp.fft.ifftshift(ft)))
 
     return ift.real
 
 
-def fft(ift: Array, **kwargs) -> Array:
+def fft(ift: Array) -> Array:
     """
     Helper routine to compute the fourier transform of an array
     to match the output of a type 1 non-uniform FFT.
@@ -106,7 +106,7 @@ def fft(ift: Array, **kwargs) -> Array:
     ft :
         Fourier transform of array.
     """
-    ft = jnp.fft.fftshift(jnp.fft.fftn(np.fft.ifftshift(ift), **kwargs))
+    ft = jnp.fft.fftshift(jnp.fft.fftn(jnp.fft.ifftshift(ift)))
 
     return ft
 

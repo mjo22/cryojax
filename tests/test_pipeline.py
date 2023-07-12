@@ -1,8 +1,6 @@
 import os
 import pytest
 
-import numpy as np
-
 from jax_2dtm.io import load_grid_as_cloud
 from jax_2dtm.utils import ifft
 

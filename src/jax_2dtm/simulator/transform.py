@@ -14,11 +14,12 @@ __all__ = [
 
 from abc import ABCMeta, abstractmethod
 
+import jax
+import numpy as np
 import jax.numpy as jnp
-from jax import vmap, jit
 from jaxlie import SE3, SO3
 
-from ..types import Array, Scalar, field, dataclass
+from ..types import Array, Scalar, dataclass
 
 
 @dataclass
@@ -99,7 +100,7 @@ class QuaternionPose(Pose):
         return rotate_and_translate_wxyz(coordinates, *self.iter_data())
 
 
-@jit
+@jax.jit
 def rotate_and_translate_rpy(
     coords: Array,
     tx: float,
@@ -135,12 +136,12 @@ def rotate_and_translate_rpy(
     rotation = SO3.from_rpy_radians(phi, theta, psi)
     translation = jnp.array([tx, ty, 0.0])
     transformation = SE3.from_rotation_and_translation(rotation, translation)
-    transformed = vmap(transformation.apply)(coords)
+    transformed = jax.vmap(transformation.apply)(coords)
 
     return transformed
 
 
-@jit
+@jax.jit
 def rotate_and_translate_wxyz(
     coords: Array,
     tx: float,
@@ -174,12 +175,12 @@ def rotate_and_translate_wxyz(
     """
     wxyz_xyz = jnp.array([qw, qx, qy, qz, tx, ty, 0.0])
     transformation = SE3(wxyz_xyz=wxyz_xyz)
-    transformed = vmap(transformation.apply)(coords)
+    transformed = jax.vmap(transformation.apply)(coords)
 
     return transformed
 
 
-@jit
+@jax.jit
 def rotate(
     coords: Array,
     phi: float,
@@ -207,6 +208,6 @@ def rotate(
         Rotated and translated coordinate system.
     """
     rotation = SO3.from_rpy_radians(phi, theta, psi)
-    transformed = vmap(rotation.apply)(coords)
+    transformed = jax.vmap(rotation.apply)(coords)
 
     return transformed
