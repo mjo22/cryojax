@@ -12,12 +12,11 @@ __all__ = [
 ]
 
 from abc import ABCMeta, abstractmethod
-from typing import Union
+from typing import Union, Optional
 
 import jax.numpy as jnp
 from jax import random
 
-from .scattering import ImageConfig
 from ..utils import fft
 from ..types import field, dataclass, Array, Scalar
 
@@ -33,14 +32,18 @@ class Noise(metaclass=ABCMeta):
         2) Use the ``jax_2dtm.types.dataclass`` decorator.
     """
 
-    key: Union[Array, random.PRNGKeyArray] = field(
-        pytree_node=False, default=random.PRNGKey(0)
-    )
+    key: Union[Array, random.PRNGKeyArray] = field(pytree_node=False)
 
     @abstractmethod
-    def sample(self, freqs: Array, config: ImageConfig) -> Array:
+    def sample(self, freqs: Array) -> Array:
         """
         Sample a realization of the noise.
+
+        Parameters
+        ----------
+        freqs : `jax.Array`, shape `(N1, N2, 2)`
+            The wave vectors in the imaging plane,
+            in pixel units.
         """
         raise NotImplementedError
 
@@ -55,13 +58,13 @@ class GaussianNoise(Noise):
         2) Use the ``jax_2dtm.types.dataclass`` decorator.
     """
 
-    def sample(self, freqs: Array, config: ImageConfig) -> Array:
-        spectrum = self.variance(freqs, config)
-        white_noise = fft(random.normal(self.key, shape=config.shape))
+    def sample(self, freqs: Array) -> Array:
+        spectrum = self.variance(freqs)
+        white_noise = fft(random.normal(self.key, shape=freqs.shape[0:-1]))
         return spectrum * white_noise
 
     @abstractmethod
-    def variance(self, freqs: Array, config: ImageConfig) -> Array:
+    def variance(self, freqs: Optional[Array] = None) -> Array:
         """
         The variance tensor of the gaussian. Only diagonal
         variances are supported.
@@ -75,7 +78,7 @@ class NullNoise(Noise):
     This class can be used as a null noise model.
     """
 
-    def sample(self, freqs: Array, config: ImageConfig) -> Array:
+    def sample(self, freqs: Array) -> Array:
         return 0.0
 
 
@@ -91,7 +94,7 @@ class WhiteNoise(GaussianNoise):
 
     sigma: Scalar = 1.0
 
-    def variance(self, freqs: Array, config: ImageConfig) -> Array:
+    def variance(self, freqs: Optional[Array] = None) -> Array:
         """Flat power spectrum."""
         return self.sigma**2
 
@@ -111,11 +114,11 @@ class EmpiricalNoise(GaussianNoise):
         This must match the image shape!
     """
 
-    sigma: Scalar = 1.0
-
     spectrum: Array = field(pytree_node=False)
 
-    def variance(self, freqs: Array, config: ImageConfig) -> Array:
+    sigma: Scalar = 1.0
+
+    def variance(self, freqs: Optional[Array] = None) -> Array:
         """Power spectrum measured from a micrograph."""
         return self.sigma * self.spectrum
 
@@ -140,10 +143,8 @@ class LorenzianNoise(GaussianNoise):
     kappa: Scalar = 1.0
     xi: Scalar = 1.0
 
-    def variance(self, freqs: Array, config: ImageConfig) -> Array:
+    def variance(self, freqs: Array) -> Array:
         """Power spectrum modeled by a lorenzian, plus a flat contribution."""
         k_norm = jnp.linalg.norm(freqs, axis=-1)
-        lorenzian = 1.0 / (
-            (k_norm * config.pixel_size) ** 2 + jnp.divide(1, (self.xi) ** 2)
-        )
+        lorenzian = 1.0 / (k_norm**2 + jnp.divide(1, (self.xi) ** 2))
         return self.kappa**2 * lorenzian + self.sigma**2

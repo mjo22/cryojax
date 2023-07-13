@@ -69,18 +69,20 @@ class ImageModel(metaclass=ABCMeta):
 
     def __post_init__(self, filters, observed):
         # Set image coordinates
-        object.__setattr__(
-            self, "freqs", fftfreqs(self.config.shape, self.config.pixel_size)
-        )
+        shape, pixel_size = self.config.shape, self.config.pixel_size
+        freqs = fftfreqs(shape, pixel_size)
+        object.__setattr__(self, "freqs", freqs)
         # Set filters
         object.__setattr__(
             self,
             "filters",
-            filters or [AntiAliasingFilter(self.config, self.freqs)],
+            filters or [AntiAliasingFilter(pixel_size * freqs)],
         )
-        assert all([filter.config is self.config for filter in self.filters])
         assert all(
-            [jnp.allclose(filter.freqs, self.freqs) for filter in self.filters]
+            [
+                jnp.allclose(filter.freqs, pixel_size * freqs)
+                for filter in self.filters
+            ]
         )
         # Set observed data
         if observed is not None:
@@ -199,12 +201,14 @@ class GaussianImage(OpticsImage):
     def sample(self, state: Optional[ParameterState] = None) -> Array:
         """Sample an image from a realization of the noise"""
         state = state or self.state
-        return self.render(state) + state.noise.sample(self.freqs, self.config)
+        simulated = self.render(state)
+        noise = state.noise.sample(self.freqs * self.config.pixel_size)
+        return simulated + noise
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""
         state = state or self.state
         residuals = self.residuals(state)
-        variance = state.noise.variance(self.freqs, self.config)
+        variance = state.noise.variance(self.freqs * self.config.pixel_size)
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         return loss.real / residuals.size

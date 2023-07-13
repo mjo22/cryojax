@@ -8,6 +8,8 @@ __all__ = ["ParameterDict", "ParameterState"]
 
 from typing import TypedDict, Optional
 
+from jax import random
+
 from ..types import dataclass, Scalar
 from .pose import Pose, EulerPose
 from .optics import OpticsModel, NullOptics
@@ -74,7 +76,7 @@ class ParameterState:
     pose: Pose = EulerPose()
     optics: OpticsModel = NullOptics()
     intensity: Intensity = Intensity()
-    noise: Noise = NullNoise()
+    noise: Noise = NullNoise(key=random.PRNGKey(seed=0))
 
     def update(self, params: ParameterDict) -> ParameterState:
         """Return a new ParameterState based on a ParameterDict."""

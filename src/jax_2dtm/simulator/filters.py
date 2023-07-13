@@ -18,7 +18,6 @@ import jax.numpy as jnp
 
 from ..types import dataclass, field, Array
 from ..utils import powerspectrum
-from .scattering import ImageConfig
 
 
 @dataclass
@@ -28,13 +27,10 @@ class Filter(metaclass=ABCMeta):
 
     Attributes
     ----------
-    config : `jax_2dtm.simulator.ImageConfig`
-        The image configuration.
     freqs : `jax.Array`
         The fourier wavevectors in the imaging plane.
     """
 
-    config: ImageConfig = field(pytree_node=False)
     freqs: Array = field(pytree_node=False)
     filter: Array = field(pytree_node=False, init=False)
 
@@ -72,7 +68,6 @@ class AntiAliasingFilter(Filter):
     def compute(self) -> Array:
         return compute_anti_aliasing_filter(
             self.freqs,
-            self.config.pixel_size,
             self.cutoff,
             self.rolloff,
         )
@@ -97,15 +92,12 @@ class WhiteningFilter(Filter):
 
     def compute(self) -> Array:
         return 1 / jnp.sqrt(
-            compute_whitening_filter(
-                self.micrograph, self.freqs, self.config.pixel_size
-            )
+            compute_whitening_filter(self.micrograph, self.freqs)
         )
 
 
 def compute_anti_aliasing_filter(
     freqs: Array,
-    pixel_size: float,
     cutoff: float = 0.667,
     rolloff: float = 0.05,
 ) -> Array:
@@ -116,8 +108,6 @@ def compute_anti_aliasing_filter(
     ----------
     freqs : `jax.Array`
         The fourier wavevectors in the imaging plane.
-    pixel_size : `float`
-        The pixel size of the image.
     cutoff : `float`, optional
         The cutoff frequency as a fraction of the Nyquist frequency,
         by default 0.667.
@@ -131,7 +121,7 @@ def compute_anti_aliasing_filter(
         An array representing the anti-aliasing filter.
     """
 
-    k_max = 1 / (2 * pixel_size)
+    k_max = 1.0 / 2.0
     k_cut = cutoff * k_max
 
     freqs_norm = jnp.linalg.norm(freqs, axis=-1)
@@ -152,9 +142,7 @@ def compute_anti_aliasing_filter(
     return mask
 
 
-def compute_whitening_filter(
-    micrograph: Array, freqs: Array, pixel_size: float
-) -> Array:
+def compute_whitening_filter(micrograph: Array, freqs: Array) -> Array:
     """
     Compute the 2D radially averaged power spectrum of
     a micrograph.
@@ -165,8 +153,7 @@ def compute_whitening_filter(
         The micrograph in fourier space.
     freqs : `jax.Array`, shape `(N1, N2, 2)`
         The frequency range of the desired wavevectors.
-    pixel_size : `float`
-        The camera pixel size.
+        These should be in pixel units, not physical length.
 
     Returns
     -------
@@ -174,7 +161,7 @@ def compute_whitening_filter(
         The power spectrum isotropically averaged onto ``freqs``.
     """
     k_norm = jnp.linalg.norm(freqs, axis=-1)
-    k_min, k_max = (1 / pixel_size) / max(*k_norm.shape), 1 / (2 * pixel_size)
+    k_min, k_max = 1.0 / max(*k_norm.shape), 1.0 / 2.0
     k_bins = jnp.arange(k_min, k_max, k_min)  # Left edges of bins
     spectrum = powerspectrum(micrograph, k_norm, k_bins, grid=True)
 

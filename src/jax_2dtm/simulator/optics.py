@@ -109,7 +109,8 @@ def compute_ctf_power(
     Parameters
     ----------
     freqs : `jax.Array`, shape `(N1, N2, 2)`
-        The wave vectors in the imaging plane.
+        The wave vectors in the imaging plane, in units
+        of A.
     defocus_u : float
         The defocus in the major axis in Angstroms.
     defocus_v : float
@@ -137,7 +138,7 @@ def compute_ctf_power(
 
     N1, N2 = freqs.shape[0:-1]
     theta = jnp.arctan2(freqs[..., 1], freqs[..., 0])
-    kr_sqr = jnp.sum(jnp.square(freqs), axis=-1)
+    k_sqr = jnp.sum(jnp.square(freqs), axis=-1)
 
     defocus = 0.5 * (
         defocus_u
@@ -146,8 +147,8 @@ def compute_ctf_power(
     )
 
     lam = (12.2643 / (voltage + 0.97845e-6 * voltage * voltage)) ** 0.5
-    gamma_defocus = -0.5 * defocus * lam * kr_sqr
-    gamma_sph = 0.25 * spherical_aberration * (lam**3) * (kr_sqr**2)
+    gamma_defocus = -0.5 * defocus * lam * k_sqr
+    gamma_sph = 0.25 * spherical_aberration * (lam**3) * (k_sqr**2)
 
     gamma = (2 * jnp.pi) * (gamma_defocus + gamma_sph) - phase_shift
     ctf = (1 - amplitude_contrast_ratio**2) ** 0.5 * jnp.sin(
@@ -158,6 +159,6 @@ def compute_ctf_power(
     if normalize:
         ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
 
-    ctf = ctf * jnp.exp(-0.25 * b_factor * kr_sqr)
+    ctf = ctf * jnp.exp(-0.25 * b_factor * k_sqr)
 
     return ctf
