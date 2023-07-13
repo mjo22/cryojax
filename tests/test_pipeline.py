@@ -3,6 +3,7 @@ import pytest
 
 import numpy as np
 import jax.numpy as jnp
+from jax import random
 
 from jax_2dtm.io import load_grid_as_cloud
 from jax_2dtm.utils import ifft
@@ -45,8 +46,9 @@ def optics_model(setup):
 @pytest.fixture
 def noisy_model(setup):
     config, cloud = setup
+    key = random.PRNGKey(seed=0)
     state = ParameterState(
-        pose=EulerPose(), optics=CTFOptics(), noise=WhiteNoise()
+        pose=EulerPose(), optics=CTFOptics(), noise=WhiteNoise(key=key)
     )
     return GaussianImage(config=config, cloud=cloud, state=state)
 
