@@ -51,10 +51,9 @@ class ImageModel(metaclass=ABCMeta):
         A list of filters to apply to the image. By default, this is an
         ``AntiAliasingFilter`` with its default configuration.
     observed : `jax.Array`, optional
-        The observed data in real space. This must be the same
-        shape as ``config.shape``. To ensure there
-        are no mistakes in Fourier convention, ``ImageModel.observed``
-        returns the observed data in Fourier space.
+        The observed data in Fourier space. This must be the same
+        shape as ``config.shape``. ``ImageModel.observed`` will return
+        the data with the filters applied.
     """
 
     state: ParameterState
@@ -86,7 +85,6 @@ class ImageModel(metaclass=ABCMeta):
         # Set observed data
         if observed is not None:
             assert self.config.shape == observed.shape
-            observed = fft(observed)
             for filter in self.filters:
                 observed = filter(observed)
         object.__setattr__(self, "observed", observed)

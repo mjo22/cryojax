@@ -6,6 +6,7 @@ from __future__ import annotations
 
 __all__ = [
     "compute_anti_aliasing_filter",
+    "compute_whitening_filter",
     "Filter",
     "AntiAliasingFilter",
     "WhiteningFilter",
@@ -16,6 +17,7 @@ from abc import ABCMeta, abstractmethod
 import jax.numpy as jnp
 
 from ..types import dataclass, field, Array
+from ..utils import powerspectrum
 from .scattering import ImageConfig
 
 
@@ -87,11 +89,16 @@ class WhiteningFilter(Filter):
 
     Attributes
     ----------
-
+    micrograph : `jax.Array`
+        The micrograph to use to compute the filter.
     """
 
+    micrograph: Array = field(pytree_node=False)
+
     def compute(self) -> Array:
-        raise NotImplementedError
+        return compute_whitening_filter(
+            self.micrograph, self.freqs, self.config.pixel_size
+        )
 
 
 def compute_anti_aliasing_filter(
@@ -141,3 +148,31 @@ def compute_anti_aliasing_filter(
     mask = jnp.where(freqs_norm <= k_cut - rolloff_width, 1.0, mask)
 
     return mask
+
+
+def compute_whitening_filter(
+    micrograph: Array, freqs: Array, pixel_size: float
+) -> Array:
+    """
+    Compute a whitening filter for an image based on
+    a micrograph.
+
+    Parameters
+    micrograph : `jax.Array`, shape `(M1, M2)`
+        The micrograph in fourier space.
+    freqs : `jax.Array`, shape `(N1, N2, 2)`
+        The frequency range of the desired wavevectors.
+    pixel_size : `float`
+        The camera pixel size.
+
+    Returns
+    -------
+    spectrum : `jax.Array`, shape `(N1, N2)`
+        The power spectrum isotropically averaged onto ``freqs``.
+    """
+    k_norm = jnp.linalg.norm(freqs, axis=-1)
+    k_min, k_max = (1 / pixel_size) / max(*k_norm.shape), 1 / (2 * pixel_size)
+    k_bins = jnp.arange(k_min, k_max, k_min)  # Left edges of bins
+    spectrum = powerspectrum(micrograph, k_norm, k_bins, grid=True)
+
+    return 1 / jnp.sqrt(spectrum)

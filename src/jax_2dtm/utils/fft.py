@@ -2,7 +2,7 @@
 Routines to compute FFTs.
 """
 
-__all__ = ["nufft", "ifft", "fftfreqs"]
+__all__ = ["nufft", "ifft", "fft", "fftfreqs"]
 
 import jax
 
@@ -14,7 +14,7 @@ import numpy as np
 # from jax.experimental import jax2tf
 from jax_finufft import nufft1
 from functools import partial
-from typing import Tuple
+from typing import Tuple, Any
 
 from ..types import Array, ArrayLike
 
@@ -122,19 +122,19 @@ def fftfreqs(
 
     Arguments
     ---------
-    shape :
+    shape : `tuple[int, ...]`
         Shape of the voxel grid, with
         ``ndim = len(shape)``.
-    pixel_size :
+    pixel_size : `float`
         Image pixel size.
-    real :
+    real : `bool`
         Choose whether to create coordinate system
         in real or fourier space.
 
 
     Returns
     -------
-    rcoords : shape `(*shape, ndim)`
+    k_coords : shape `(*shape, ndim)`
         2D or 3D cartesian coordinate system with
         zero in the center.
     """
@@ -143,11 +143,11 @@ def fftfreqs(
         if real
         else np.fft.fftfreq(s, pixel_size)
     )
-    rcoords1D = [np.fft.fftshift(fftfreq(s)) for s in shape]
+    k_coords1D = [np.fft.fftshift(fftfreq(s)) for s in shape]
 
-    rcoords = np.stack(np.meshgrid(*rcoords1D, indexing="ij"), axis=-1)
+    k_coords = np.stack(np.meshgrid(*k_coords1D, indexing="ij"), axis=-1)
 
-    return rcoords
+    return k_coords
 
 
 # def _tf_nufft1(source, points, shape, tol):
@@ -168,7 +168,7 @@ def _mask_density(x: Array, y: Array, density: Array) -> Array:
     """
     Use a boolean mask to set density values out of
     bounds to zero. The mask is ``True`` for
-    all points outside the :math:`[0, 2\pi)` periodic
+    all points outside the :math:`[-\pi, \pi)` periodic
     domain, and False otherwise.
     """
     x_mask = jnp.logical_or(x < -jnp.pi, x >= jnp.pi)
