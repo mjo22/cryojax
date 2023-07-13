@@ -86,7 +86,7 @@ class WhiteNoise(GaussianNoise):
 
     Attributes
     ----------
-    alpha : `jax_2dtm.types.Scalar`
+    sigma : `jax_2dtm.types.Scalar`
     """
 
     sigma: Scalar = 1.0
@@ -99,20 +99,41 @@ class WhiteNoise(GaussianNoise):
 @dataclass
 class EmpiricalNoise(GaussianNoise):
     """
-    Gaussian noise with an empirical power spectrum.
+    Gaussian noise with a measured power spectrum.
+
+    Attributes
+    ----------
+    sigma : `jax_2dtm.types.Scalar`
+        A scale factor for the variance.
+    spectrum : `jax.Array`, shape `(N1, N2)`
+        The measured power spectrum. Compute this
+        with ``jax_2dtm.simulator.compute_whitening_filter``.
+        This must match the image shape!
     """
 
     sigma: Scalar = 1.0
 
+    spectrum: Array = field(pytree_node=False)
+
     def variance(self, freqs: Array, config: ImageConfig) -> Array:
         """Power spectrum measured from a micrograph."""
-        raise NotImplementedError
+        return self.sigma * self.spectrum
 
 
 @dataclass
 class LorenzianNoise(GaussianNoise):
     """
     Gaussian noise with a lorenzian power spectrum.
+
+    Attributes
+    ----------
+    sigma : `jax_2dtm.types.Scalar`
+        An uncorrelated part of the spectrum.
+    kappa : `jax_2dtm.types.Scalar`
+        The "coupling strength".
+    xi : `jax_2dtm.types.Scalar`
+        The correlation length. This is measured
+        in pixel units, not in physical length.
     """
 
     sigma: Scalar = 1.0
@@ -122,7 +143,7 @@ class LorenzianNoise(GaussianNoise):
     def variance(self, freqs: Array, config: ImageConfig) -> Array:
         """Power spectrum modeled by a lorenzian, plus a flat contribution."""
         k_norm = jnp.linalg.norm(freqs, axis=-1)
-        lorenzian = (self.kappa**2 / config.pixel_size**2) / (
-            k_norm**2 + jnp.divide(1, (self.xi * config.pixel_size) ** 2)
+        lorenzian = 1.0 / (
+            (k_norm * config.pixel_size) ** 2 + jnp.divide(1, (self.xi) ** 2)
         )
-        return lorenzian + self.sigma**2
+        return self.kappa**2 * lorenzian + self.sigma**2

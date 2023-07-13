@@ -96,8 +96,10 @@ class WhiteningFilter(Filter):
     micrograph: Array = field(pytree_node=False)
 
     def compute(self) -> Array:
-        return compute_whitening_filter(
-            self.micrograph, self.freqs, self.config.pixel_size
+        return 1 / jnp.sqrt(
+            compute_whitening_filter(
+                self.micrograph, self.freqs, self.config.pixel_size
+            )
         )
 
 
@@ -154,10 +156,11 @@ def compute_whitening_filter(
     micrograph: Array, freqs: Array, pixel_size: float
 ) -> Array:
     """
-    Compute a whitening filter for an image based on
+    Compute the 2D radially averaged power spectrum of
     a micrograph.
 
     Parameters
+    ----------
     micrograph : `jax.Array`, shape `(M1, M2)`
         The micrograph in fourier space.
     freqs : `jax.Array`, shape `(N1, N2, 2)`
@@ -175,4 +178,4 @@ def compute_whitening_filter(
     k_bins = jnp.arange(k_min, k_max, k_min)  # Left edges of bins
     spectrum = powerspectrum(micrograph, k_norm, k_bins, grid=True)
 
-    return 1 / jnp.sqrt(spectrum)
+    return spectrum
