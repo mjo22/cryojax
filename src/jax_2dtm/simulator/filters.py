@@ -16,8 +16,8 @@ from abc import ABCMeta, abstractmethod
 
 import jax.numpy as jnp
 
-from ..types import dataclass, field, Array
 from ..utils import powerspectrum
+from ..types import dataclass, field, Array
 
 
 @dataclass
@@ -91,9 +91,7 @@ class WhiteningFilter(Filter):
     micrograph: Array = field(pytree_node=False)
 
     def compute(self) -> Array:
-        return 1 / jnp.sqrt(
-            compute_whitening_filter(self.micrograph, self.freqs)
-        )
+        return compute_whitening_filter(self.micrograph, self.freqs)
 
 
 def compute_anti_aliasing_filter(
@@ -144,8 +142,9 @@ def compute_anti_aliasing_filter(
 
 def compute_whitening_filter(micrograph: Array, freqs: Array) -> Array:
     """
-    Compute the 2D radially averaged power spectrum of
-    a micrograph.
+    Compute a whitening filter from a micrograph. This is taken
+    to be the inverse square root of the 2D radially averaged
+    power spectrum.
 
     Parameters
     ----------
@@ -160,9 +159,6 @@ def compute_whitening_filter(micrograph: Array, freqs: Array) -> Array:
     spectrum : `jax.Array`, shape `(N1, N2)`
         The power spectrum isotropically averaged onto ``freqs``.
     """
-    k_norm = jnp.linalg.norm(freqs, axis=-1)
-    k_min, k_max = 1.0 / max(*k_norm.shape), 1.0 / 2.0
-    k_bins = jnp.arange(k_min, k_max, k_min)  # Left edges of bins
-    spectrum = powerspectrum(micrograph, k_norm, k_bins, grid=True)
+    spectrum, _ = powerspectrum(micrograph, freqs, grid=True)
 
-    return spectrum
+    return 1 / jnp.sqrt(spectrum)

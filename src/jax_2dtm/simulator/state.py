@@ -10,11 +10,13 @@ from typing import TypedDict, Optional
 
 from jax import random
 
+from ..core import Serializable
 from ..types import dataclass, Scalar
-from .pose import Pose, EulerPose
-from .optics import OpticsModel, NullOptics
+from .pose import EulerPose
+from .optics import NullOptics
 from .intensity import Intensity
-from .noise import Noise, NullNoise
+from .noise import NullNoise
+from . import Pose, Optics, Noise
 
 
 class ParameterDict(TypedDict):
@@ -57,7 +59,7 @@ class ParameterDict(TypedDict):
 
 
 @dataclass
-class ParameterState:
+class ParameterState(Serializable):
     """
     PyTree container for the state of an ``ImageModel``.
 
@@ -74,7 +76,7 @@ class ParameterState:
     """
 
     pose: Pose = EulerPose()
-    optics: OpticsModel = NullOptics()
+    optics: Optics = NullOptics()
     intensity: Intensity = Intensity()
     noise: Noise = NullNoise(key=random.PRNGKey(seed=0))
 

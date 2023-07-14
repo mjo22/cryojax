@@ -11,10 +11,11 @@ import jax.numpy as jnp
 
 from ..types import dataclass, field, Array
 from ..utils import nufft
+from ..core import Serializable
 
 
 @dataclass
-class ImageConfig:
+class ImageConfig(Serializable):
     """
     Configuration for an electron microscopy image.
 

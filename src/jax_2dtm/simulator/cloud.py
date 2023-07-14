@@ -9,10 +9,11 @@ __all__ = ["Cloud"]
 from .pose import Pose
 from .scattering import ScatteringConfig
 from ..types import Array, dataclass, field
+from ..core import Serializable
 
 
 @dataclass
-class Cloud:
+class Cloud(Serializable):
     """
     Abstraction of a 3D electron density point cloud.
 

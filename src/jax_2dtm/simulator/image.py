@@ -5,8 +5,7 @@ Routines to model image formation.
 from __future__ import annotations
 
 __all__ = [
-    "ImageConfig",
-    "ImageModel",
+    "Image",
     "ScatteringImage",
     "OpticsImage",
     "GaussianImage",
@@ -20,15 +19,17 @@ import jax.numpy as jnp
 
 from .scattering import ScatteringConfig
 from .cloud import Cloud
-from .filters import Filter, AntiAliasingFilter
+from .filters import AntiAliasingFilter
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
+from ..utils import fftfreqs
 from ..types import dataclass, field, Array, Scalar
-from ..utils import fftfreqs, fft
+from ..core import Serializable
+from . import Filter
 
 
 @dataclass
-class ImageModel(metaclass=ABCMeta):
+class Image(metaclass=ABCMeta):
     """
     Base class for an imaging model. Note that the
     model is a PyTree and is therefore immmutable.
@@ -70,7 +71,7 @@ class ImageModel(metaclass=ABCMeta):
     def __post_init__(self, filters, observed):
         # Set image coordinates
         shape, pixel_size = self.config.shape, self.config.pixel_size
-        freqs = fftfreqs(shape, pixel_size)
+        freqs = jnp.asarray(fftfreqs(shape, pixel_size))
         object.__setattr__(self, "freqs", freqs)
         # Set filters
         object.__setattr__(
@@ -129,16 +130,14 @@ class ImageModel(metaclass=ABCMeta):
         residuals = self.observed - simulated
         return residuals
 
-    def update(
-        self, params: Union[ParameterDict, ParameterState]
-    ) -> ImageModel:
+    def update(self, params: Union[ParameterDict, ParameterState]) -> Image:
         """Return a new ImageModel based on a new ParameterState."""
         state = self.state.update(params) if type(params) is dict else params
         return self.replace(state=state)
 
 
 @dataclass
-class ScatteringImage(ImageModel):
+class ScatteringImage(Image):
     """
     Compute the scattering pattern on the imaging plane.
     """

@@ -5,7 +5,7 @@ Models of instrument optics.
 from __future__ import annotations
 
 __all__ = [
-    "OpticsModel",
+    "Optics",
     "NullOptics",
     "CTFOptics",
     "compute_ctf_power",
@@ -16,9 +16,10 @@ from abc import ABCMeta, abstractmethod
 import jax.numpy as jnp
 
 from ..types import dataclass, Array, Scalar
+from ..core import Serializable
 
 
-class OpticsModel(metaclass=ABCMeta):
+class Optics(Serializable, metaclass=ABCMeta):
     """
     Base PyTree container for an optics model. This
     is designed to compute an optics model in Fourier
@@ -48,7 +49,7 @@ class OpticsModel(metaclass=ABCMeta):
 
 
 @dataclass
-class NullOptics(OpticsModel):
+class NullOptics(Optics):
     """
     This class can be used as a null optics model.
     """
@@ -58,7 +59,7 @@ class NullOptics(OpticsModel):
 
 
 @dataclass
-class CTFOptics(OpticsModel):
+class CTFOptics(Optics):
     """
     Compute a Contrast Transfer Function (CTF).
 
@@ -101,6 +102,7 @@ def compute_ctf_power(
     amplitude_contrast_ratio: Scalar,
     phase_shift: Scalar,
     b_factor: Scalar,
+    *,
     normalize: bool = True,
 ) -> Array:
     """

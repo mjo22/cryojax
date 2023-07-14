@@ -15,15 +15,15 @@ __all__ = [
 from abc import ABCMeta, abstractmethod
 
 import jax
-import numpy as np
 import jax.numpy as jnp
 from jaxlie import SE3, SO3
 
+from ..core import Serializable
 from ..types import Array, Scalar, dataclass
 
 
 @dataclass
-class Pose(metaclass=ABCMeta):
+class Pose(Serializable, metaclass=ABCMeta):
     """
     Base class PyTree container for the image pose.
 

@@ -9,10 +9,11 @@ __all__ = ["Intensity", "rescale_image"]
 import jax.numpy as jnp
 
 from ..types import dataclass, Array, Scalar
+from ..core import Serializable
 
 
 @dataclass
-class Intensity:
+class Intensity(Serializable):
     """
     An PyTree that controls image intensity rescaling.
 

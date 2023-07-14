@@ -19,10 +19,11 @@ from jax import random
 
 from ..utils import fft
 from ..types import field, dataclass, Array, Scalar
+from ..core import Serializable
 
 
 @dataclass
-class Noise(metaclass=ABCMeta):
+class Noise(Serializable, metaclass=ABCMeta):
     """
     Base PyTree container for a noise model.
 
@@ -33,6 +34,9 @@ class Noise(metaclass=ABCMeta):
     """
 
     key: Union[Array, random.PRNGKeyArray] = field(pytree_node=False)
+
+    def __post_init__(self):
+        object.__setattr__(self, "key", self.key.astype(jnp.uint32))
 
     @abstractmethod
     def sample(self, freqs: Array) -> Array:
