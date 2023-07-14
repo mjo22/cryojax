@@ -17,7 +17,7 @@ CLASSIFIERS = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
-INSTALL_REQUIRES = ["jax", "jaxlib", "jaxlie", "mrcfile"]
+INSTALL_REQUIRES = ["jax", "jaxlib", "jaxlie", "mrcfile", "dataclasses-json"]
 EXTRA_REQUIRE = {
     "test": ["pytest>=3.6"],
     "docs": [],

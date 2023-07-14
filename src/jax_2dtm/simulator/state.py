@@ -71,7 +71,7 @@ class ParameterState:
     intensity : `jax_2dtm.simulator.Intensity`
         The intensity scaling.
     noise : ``jax_2dtm.simulator.Noise``
-
+        The noise model.
     """
 
     pose: Pose = EulerPose()
