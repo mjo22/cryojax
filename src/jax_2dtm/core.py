@@ -98,8 +98,21 @@ def dataclass(clz: Type[Any]) -> Type[Any]:
     )
 
     # Hack to make this class act as a tuple when unpacked
-    data_clz.iter_data = lambda self: iterate_clz(self)[0].__iter__()
-    data_clz.iter_meta = lambda self: iterate_clz(self)[1].__iter__()
+    data_clz.iter_data = lambda self: iterate_clz(self)[0]
+    data_clz.iter_meta = lambda self: iterate_clz(self)[1]
+
+    @property
+    def data(self) -> dict[str, Any]:
+        """Return data of the model."""
+        return dict(zip(data_fields, iterate_clz(self)[0]))
+
+    @property
+    def metadata(self) -> dict[str, Any]:
+        """Return metadata of the model."""
+        return dict(zip(meta_fields, iterate_clz(self)[1]))
+
+    data_clz.data = data
+    data_clz.metadata = metadata
 
     return data_clz
 
