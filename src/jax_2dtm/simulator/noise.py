@@ -35,6 +35,7 @@ class Noise(Serializable, metaclass=ABCMeta):
     key: Union[Array, random.PRNGKeyArray] = field(pytree_node=False)
 
     def __post_init__(self):
+        # The below is a nasty hack, required for deserialization
         object.__setattr__(self, "key", self.key.astype(jnp.uint32))
 
     @abstractmethod

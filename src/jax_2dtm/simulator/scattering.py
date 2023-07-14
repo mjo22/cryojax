@@ -28,7 +28,7 @@ class ImageConfig(Serializable):
         Size of camera pixels, in dimensions of length.
     """
 
-    shape: tuple[int, int] = field(pytree_node=False, array=False)
+    shape: tuple[int, int] = field(pytree_node=False, encode=tuple)
     pixel_size: float = field(pytree_node=False)
 
 

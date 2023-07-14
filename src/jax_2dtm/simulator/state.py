@@ -10,7 +10,7 @@ from typing import TypedDict, Optional
 
 from jax import random
 
-from ..core import dataclass, Scalar
+from ..core import dataclass, field, Scalar, Serializable
 from .pose import EulerPose
 from .optics import NullOptics
 from .intensity import Intensity
@@ -48,7 +48,7 @@ class ParameterDict(TypedDict):
     b_factor: Optional[Scalar]
 
     # Noise parameters
-    alpha: Optional[Scalar]
+    sigma: Optional[Scalar]
     kappa: Optional[Scalar]
     xi: Optional[Scalar]
 
@@ -58,7 +58,7 @@ class ParameterDict(TypedDict):
 
 
 @dataclass
-class ParameterState:
+class ParameterState(Serializable):
     """
     PyTree container for the state of an ``ImageModel``.
 
@@ -74,10 +74,12 @@ class ParameterState:
         The noise model.
     """
 
-    pose: Pose = EulerPose()
-    optics: Optics = NullOptics()
+    pose: Pose = field(default=EulerPose(), encode=Pose)
+    optics: Optics = field(default=NullOptics(), encode=Optics)
     intensity: Intensity = Intensity()
-    noise: Noise = NullNoise(key=random.PRNGKey(seed=0))
+    noise: Noise = field(
+        default=NullNoise(key=random.PRNGKey(seed=0)), encode=Noise
+    )
 
     def update(self, params: ParameterDict) -> ParameterState:
         """Return a new ParameterState based on a ParameterDict."""

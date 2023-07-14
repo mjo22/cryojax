@@ -7,13 +7,23 @@ __all__ = ["Array", "ArrayLike", "Scalar", "dataclass", "Serializable"]
 
 import dataclasses
 import jax
-from typing import Any, Callable, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Tuple,
+    Type,
+    TypeVar,
+    Optional,
+    Union,
+    _UnionGenericAlias,
+    get_args,
+    get_origin,
+)
 from jax import Array
 from jax.typing import ArrayLike
 
 import jax.numpy as jnp
 import numpy as np
-from jaxlib.xla_extension import ArrayImpl
 from dataclasses_json import DataClassJsonMixin, config
 
 
@@ -92,20 +102,68 @@ class Serializable(DataClassJsonMixin):
     """
 
 
-def ndarray_encoder(x: Any) -> Any:
-    """Encode jax array as list"""
-    return np.array(x).tolist() if type(x) is ArrayImpl else x
+def np_encoder(x: Any) -> Any:
+    """Encoder for jax arrays and datatypes."""
+    if isinstance(x, Array):
+        return np.array(x).tolist()
+    elif isinstance(x, np.generic):
+        return x.item()
+    else:
+        return x
 
 
-def ndarray_decoder(x: Any) -> Any:
-    """Decode list to jax array"""
-    return jnp.asarray(x) if type(x) is list else x
+def np_decoder(x: Any) -> Any:
+    """Decode list to jax array."""
+    return np.asarray(x) if isinstance(x, list) else x
 
 
-def field(pytree_node: bool = True, array: bool = True, **kwargs: Any) -> Any:
+def jax_decoder(x: Any) -> Any:
+    """Decode list to jax array."""
+    return jnp.asarray(x) if isinstance(x, list) else x
+
+
+def union_decoder(x: Any, union: _UnionGenericAlias) -> Any:
+    """Decode a union type hint."""
+    instance = None
+    for cls in get_args(union):
+        try:
+            temp = cls.from_dict(x)
+            assert set(x.keys()) == set(temp.to_dict().keys())
+            instance = temp
+        except (KeyError, TypeError, AssertionError):
+            pass
+    if instance is None:
+        raise TypeError(f"Could not decode from {union}")
+    return instance
+
+
+def field(
+    pytree_node: bool = True,
+    encode: Any = Array,
+    **kwargs: Any,
+) -> Any:
+    """
+    Add metadata to usual dataclass fields.
+
+    Parameters
+    ----------
+    pytree_node : `bool`
+        Determine if field is to be part of the
+        pytree.
+    encode : `Any`
+        Type hint for the field's json encoding.
+        If this is a ``Union`` of ``jax_2dtm``
+        objects, the decoder will try to find
+        the correct one to instantiate.
+    """
     metadata = dict(pytree_node=pytree_node)
-    if array:
-        metadata.update(
-            config(encoder=ndarray_encoder, decoder=ndarray_decoder)
-        )
+    if get_origin(encode) is Union:
+        serializer = config(decoder=lambda x: union_decoder(x, encode))
+    elif encode == Array:
+        serializer = config(encoder=np_encoder, decoder=jax_decoder)
+    elif encode == np.ndarray:
+        serializer = config(encoder=np_encoder, decoder=np_decoder)
+    else:
+        serializer = {}
+    metadata.update(serializer)
     return dataclasses.field(metadata=metadata, **kwargs)
