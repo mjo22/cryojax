@@ -128,6 +128,15 @@ class Serializable(DataClassJsonMixin):
     """
 
 
+def dummy_encoder(x: Any) -> str:
+    pass
+
+
+def dummy_decoder(x: Any) -> Any:
+    """Return dummy"""
+    pass
+
+
 def np_encoder(x: Any) -> Any:
     """Encoder for jax arrays and datatypes."""
     if isinstance(x, Array):
@@ -183,7 +192,9 @@ def field(
         the correct one to instantiate.
     """
     metadata = dict(pytree_node=pytree_node)
-    if get_origin(encode) is Union:
+    if encode is False:
+        serializer = config(decoder=dummy_decoder, encoder=dummy_encoder)
+    elif get_origin(encode) is Union:
         serializer = config(decoder=lambda x: union_decoder(x, encode))
     elif encode == Array:
         serializer = config(encoder=np_encoder, decoder=jax_decoder)

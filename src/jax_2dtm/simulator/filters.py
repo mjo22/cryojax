@@ -13,11 +13,13 @@ __all__ = [
 ]
 
 from abc import ABCMeta, abstractmethod
+from dataclasses import InitVar
+from typing import Any
 
 import jax.numpy as jnp
 
 from ..utils import powerspectrum
-from ..core import dataclass, field, Array
+from ..core import dataclass, field, Array, ArrayLike, Serializable
 
 
 @dataclass
@@ -31,14 +33,15 @@ class Filter(metaclass=ABCMeta):
         The fourier wavevectors in the imaging plane.
     """
 
-    freqs: Array = field(pytree_node=False)
     filter: Array = field(pytree_node=False, init=False)
 
-    def __post_init__(self):
-        object.__setattr__(self, "filter", self.compute())
+    freqs: InitVar[ArrayLike]
+
+    def __post_init__(self, *args):
+        object.__setattr__(self, "filter", self.compute(*args))
 
     @abstractmethod
-    def compute(self) -> Array:
+    def compute(self, *args: tuple[Any, ...]) -> Array:
         """Compute the filter."""
         raise NotImplementedError
 
@@ -65,9 +68,9 @@ class AntiAliasingFilter(Filter):
     cutoff: float = field(pytree_node=False, default=1.00)
     rolloff: float = field(pytree_node=False, default=0.05)
 
-    def compute(self) -> Array:
+    def compute(self, freqs) -> Array:
         return compute_anti_aliasing_filter(
-            self.freqs,
+            freqs,
             self.cutoff,
             self.rolloff,
         )
@@ -88,10 +91,10 @@ class WhiteningFilter(Filter):
         The micrograph to use to compute the filter.
     """
 
-    micrograph: Array = field(pytree_node=False)
+    micrograph: InitVar[Array]
 
-    def compute(self) -> Array:
-        return compute_whitening_filter(self.micrograph, self.freqs)
+    def compute(self, freqs, micrograph) -> Array:
+        return compute_whitening_filter(freqs, micrograph)
 
 
 def compute_anti_aliasing_filter(
@@ -140,7 +143,7 @@ def compute_anti_aliasing_filter(
     return mask
 
 
-def compute_whitening_filter(micrograph: Array, freqs: Array) -> Array:
+def compute_whitening_filter(freqs: Array, micrograph: Array) -> Array:
     """
     Compute a whitening filter from a micrograph. This is taken
     to be the inverse square root of the 2D radially averaged

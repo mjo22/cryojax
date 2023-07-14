@@ -22,7 +22,6 @@ from .cloud import Cloud
 from .filters import AntiAliasingFilter
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
-from ..utils import fftfreqs
 from ..core import dataclass, field, Array, Scalar
 from . import Filter
 
@@ -45,8 +44,6 @@ class Image(metaclass=ABCMeta):
         The point cloud used to render images.
     state : `jax_2dtm.simulator.ParameterState`
         The parameter state of the model.
-    freqs : `jax.Array`
-        The fourier wave vectors in the imaging plane.
     filters : `list[Filter]`
         A list of filters to apply to the image. By default, this is an
         ``AntiAliasingFilter`` with its default configuration.
@@ -60,7 +57,6 @@ class Image(metaclass=ABCMeta):
     config: ScatteringConfig = field(pytree_node=False)
     cloud: Cloud = field(pytree_node=False)
 
-    freqs: Array = field(pytree_node=False, init=False)
     filters: list[Filter] = field(pytree_node=False, init=False)
     observed: Optional[Array] = field(pytree_node=False, init=False)
 
@@ -68,21 +64,14 @@ class Image(metaclass=ABCMeta):
     observed: InitVar[Array | None] = None
 
     def __post_init__(self, filters, observed):
-        # Set image coordinates
-        shape, pixel_size = self.config.shape, self.config.pixel_size
-        freqs = jnp.asarray(fftfreqs(shape, pixel_size))
-        object.__setattr__(self, "freqs", freqs)
         # Set filters
         object.__setattr__(
             self,
             "filters",
-            filters or [AntiAliasingFilter(pixel_size * freqs)],
-        )
-        assert all(
-            [
-                jnp.allclose(filter.freqs, pixel_size * freqs)
-                for filter in self.filters
-            ]
+            filters
+            or [
+                AntiAliasingFilter(self.config.pixel_size * self.config.freqs)
+            ],
         )
         # Set observed data
         if observed is not None:
@@ -174,7 +163,7 @@ class OpticsImage(ScatteringImage):
         # Compute scattering at image plane.
         scattering_image = super().render(state)
         # Compute and apply CTF
-        ctf = state.optics(self.freqs)
+        ctf = state.optics(self.config.freqs)
         optics_image = ctf * scattering_image
         # Rescale the image to desired scaling and offset
         rescaled_image = state.intensity.rescale(optics_image)
@@ -200,13 +189,15 @@ class GaussianImage(OpticsImage):
         """Sample an image from a realization of the noise"""
         state = state or self.state
         simulated = self.render(state)
-        noise = state.noise.sample(self.freqs * self.config.pixel_size)
+        noise = state.noise.sample(self.config.freqs * self.config.pixel_size)
         return simulated + noise
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""
         state = state or self.state
         residuals = self.residuals(state)
-        variance = state.noise.variance(self.freqs * self.config.pixel_size)
+        variance = state.noise.variance(
+            self.config.freqs * self.config.pixel_size
+        )
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         return loss.real / residuals.size

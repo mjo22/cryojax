@@ -9,8 +9,8 @@ __all__ = ["project_with_nufft", "ImageConfig", "ScatteringConfig"]
 
 import jax.numpy as jnp
 
-from ..core import dataclass, field, Array, Serializable
-from ..utils import nufft
+from ..core import dataclass, field, Array, ArrayLike, Serializable
+from ..utils import nufft, fftfreqs
 
 
 @dataclass
@@ -26,10 +26,18 @@ class ImageConfig(Serializable):
         is the size of the desired imaging plane.
     pixel_size : `float`
         Size of camera pixels, in dimensions of length.
+    freqs : Array, shape `(N1, N2, 2)`
+        The fourier wavevectors in the imaging plane.
     """
 
     shape: tuple[int, int] = field(pytree_node=False, encode=tuple)
     pixel_size: float = field(pytree_node=False)
+
+    freqs: ArrayLike = field(pytree_node=False, init=False, encode=False)
+
+    def __post_init__(self):
+        freqs = jnp.asarray(fftfreqs(self.shape, self.pixel_size))
+        object.__setattr__(self, "freqs", freqs)
 
 
 @dataclass
