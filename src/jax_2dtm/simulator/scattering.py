@@ -9,9 +9,8 @@ __all__ = ["project_with_nufft", "ImageConfig", "ScatteringConfig"]
 
 import jax.numpy as jnp
 
-from ..types import dataclass, field, Array
+from ..core import dataclass, field, Array, Serializable
 from ..utils import nufft
-from ..core import Serializable
 
 
 @dataclass
@@ -29,7 +28,7 @@ class ImageConfig(Serializable):
         Size of camera pixels, in dimensions of length.
     """
 
-    shape: tuple[int, int] = field(pytree_node=False)
+    shape: tuple[int, int] = field(pytree_node=False, array=False)
     pixel_size: float = field(pytree_node=False)
 
 

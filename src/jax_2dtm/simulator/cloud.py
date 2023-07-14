@@ -8,8 +8,7 @@ __all__ = ["Cloud"]
 
 from .pose import Pose
 from .scattering import ScatteringConfig
-from ..types import Array, dataclass, field
-from ..core import Serializable
+from ..core import Array, dataclass, field, Serializable
 
 
 @dataclass

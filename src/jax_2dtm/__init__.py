@@ -1,7 +1,7 @@
-__all__ = ["types", "core", "io", "simulator", "utils"]
+__all__ = ["core", "io", "simulator", "utils"]
 
 
-from jax_2dtm import types, core, simulator, io, utils
+from jax_2dtm import core, simulator, io, utils
 from jax_2dtm.jax_2dtm_version import __version__
 
 __author__ = "Michael O'Brien"

@@ -7,7 +7,7 @@ __all__ = ["radial_average"]
 import jax
 import jax.numpy as jnp
 
-from ..types import Array
+from ..core import Array
 
 
 def radial_average(

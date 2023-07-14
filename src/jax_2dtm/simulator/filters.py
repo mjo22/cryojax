@@ -17,7 +17,7 @@ from abc import ABCMeta, abstractmethod
 import jax.numpy as jnp
 
 from ..utils import powerspectrum
-from ..types import dataclass, field, Array
+from ..core import dataclass, field, Array
 
 
 @dataclass

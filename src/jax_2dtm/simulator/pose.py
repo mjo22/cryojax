@@ -18,8 +18,7 @@ import jax
 import jax.numpy as jnp
 from jaxlie import SE3, SO3
 
-from ..core import Serializable
-from ..types import Array, Scalar, dataclass
+from ..core import Array, Scalar, dataclass, Serializable
 
 
 @dataclass

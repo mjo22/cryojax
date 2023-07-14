@@ -15,8 +15,7 @@ from abc import ABCMeta, abstractmethod
 
 import jax.numpy as jnp
 
-from ..types import dataclass, Array, Scalar
-from ..core import Serializable
+from ..core import dataclass, Array, Scalar, Serializable
 
 
 class Optics(Serializable, metaclass=ABCMeta):

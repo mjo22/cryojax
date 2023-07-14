@@ -18,8 +18,7 @@ import jax.numpy as jnp
 from jax import random
 
 from ..utils import fft
-from ..types import field, dataclass, Array, Scalar
-from ..core import Serializable
+from ..core import field, dataclass, Array, Scalar, Serializable
 
 
 @dataclass

@@ -12,7 +12,7 @@ import jax.numpy as jnp
 from typing import Optional, Any
 from ..simulator import Cloud, ImageConfig
 from ..utils import fftfreqs
-from ..types import Array, ArrayLike
+from ..core import Array, ArrayLike
 
 
 def load_grid_as_cloud(

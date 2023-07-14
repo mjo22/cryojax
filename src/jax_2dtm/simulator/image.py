@@ -23,8 +23,7 @@ from .filters import AntiAliasingFilter
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
 from ..utils import fftfreqs
-from ..types import dataclass, field, Array, Scalar
-from ..core import Serializable
+from ..core import dataclass, field, Array, Scalar
 from . import Filter
 
 

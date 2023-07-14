@@ -10,8 +10,7 @@ from typing import TypedDict, Optional
 
 from jax import random
 
-from ..core import Serializable
-from ..types import dataclass, Scalar
+from ..core import dataclass, Scalar
 from .pose import EulerPose
 from .optics import NullOptics
 from .intensity import Intensity
@@ -59,7 +58,7 @@ class ParameterDict(TypedDict):
 
 
 @dataclass
-class ParameterState(Serializable):
+class ParameterState:
     """
     PyTree container for the state of an ``ImageModel``.
 

@@ -16,7 +16,7 @@ from jax_finufft import nufft1
 from functools import partial
 from typing import Tuple, Any
 
-from ..types import Array, ArrayLike
+from ..core import Array, ArrayLike
 
 
 # @partial(jax.jit, static_argnums=(0, 4))

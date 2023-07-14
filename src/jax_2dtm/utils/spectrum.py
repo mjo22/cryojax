@@ -7,7 +7,7 @@ __all__ = ["powerspectrum"]
 import jax.numpy as jnp
 
 from .averaging import radial_average
-from ..types import Array
+from ..core import Array
 
 
 def powerspectrum(
