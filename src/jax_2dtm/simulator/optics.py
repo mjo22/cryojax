@@ -129,7 +129,8 @@ def compute_ctf_power(
     b_factor : float, optional
         The B factor in A^2. If not provided, the B factor is assumed to be 0.
     normalize : bool, optional
-        Whether to normalize the CTF so that it has norm 1 in real space. Default is True.
+        Whether to normalize the CTF so that it has norm 1 in real space.
+        Default is True.
 
     Returns
     -------

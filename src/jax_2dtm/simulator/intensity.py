@@ -57,10 +57,9 @@ def rescale_image(image: Array, N: float, mu: float) -> Array:
     """
     N1, N2 = image.shape
     # First normalize image to zero mean and unit standard deviation
-    normalized_image = image.at[N1 // 2, N2 // 2].set(0.0) / (
-        jnp.sqrt(jnp.sum((image * jnp.conjugate(image)))) / (N1 * N2)
-    )
+    normalized_image = image.at[N1 // 2, N2 // 2].set(0.0)
+    normalized_image /= jnp.linalg.norm(normalized_image) / (N1 * N2)
     rescaled_image = (
-        (N * normalized_image).at[N1 // 2, N2 // 2].set(mu * N1 * N2)
+        (normalized_image * N).at[N1 // 2, N2 // 2].set(mu * N1 * N2)
     )
     return rescaled_image

@@ -3,6 +3,7 @@ __all__ = [
     "rotate_and_translate_wxyz",
     "project_with_nufft",
     "compute_anti_aliasing_filter",
+    "compute_whitening_filter",
     "compute_ctf_power",
     "rescale_image",
     "ImageConfig",
@@ -46,6 +47,7 @@ Config = Union[ImageConfig, ScatteringConfig]
 from .cloud import Cloud
 from .filters import (
     compute_anti_aliasing_filter,
+    compute_whitening_filter,
     AntiAliasingFilter,
     WhiteningFilter,
 )

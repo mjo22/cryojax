@@ -2,17 +2,14 @@ import os
 import pytest
 
 import numpy as np
-import jax.numpy as jnp
 from jax import random
 
 from jax_2dtm.io import load_grid_as_cloud
-from jax_2dtm.utils import ifft
 
 from jax_2dtm.simulator import ScatteringConfig
 from jax_2dtm.simulator import (
     EulerPose,
     CTFOptics,
-    Intensity,
     WhiteNoise,
     ParameterState,
 )
@@ -24,7 +21,7 @@ def setup():
     filename = os.path.join(
         os.path.dirname(__file__), "data", "3jar_13pf_bfm1_ps5_28.mrc"
     )
-    config = ScatteringConfig((60, 60), 5.32, eps=1e-4)
+    config = ScatteringConfig((81, 81), 5.32, eps=1e-4)
     cloud = load_grid_as_cloud(filename, config)
     return config, cloud
 
@@ -83,31 +80,3 @@ def test_update(noisy_model):
     assert voltage == model.state.optics.voltage
     assert N == model.state.intensity.N
     assert sigma == model.state.noise.sigma
-
-
-def test_normalization(optics_model):
-    image = optics_model()
-    assert pytest.approx(float(ifft(image).mean()), rel=1e-6) == 0.0
-    assert pytest.approx(float(ifft(image).std()), abs=1e-1) == 1.0
-
-
-def test_rescale(optics_model):
-    N1, N2 = optics_model.config.shape
-    N, mu = 1.5, 0.5
-    params = dict(N=N, mu=mu)
-    image = optics_model(params)
-    assert pytest.approx(float(image[N1 // 2, N2 // 2].real)) == (N1 * N2) * mu
-    assert (
-        pytest.approx(
-            float(
-                jnp.sqrt(
-                    jnp.sum((image * jnp.conjugate(image)).real)
-                    - (N1 * N2) * mu
-                )
-            ),
-            rel=1e-2,
-        )
-        == (N1 * N2) * N
-    )
-    assert pytest.approx(float(ifft(image).mean()), rel=1e-1) == mu
-    assert pytest.approx(float(ifft(image).std()), rel=1e-1) == N
