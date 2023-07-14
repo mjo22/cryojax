@@ -50,7 +50,7 @@ from .filters import (
     WhiteningFilter,
 )
 
-Filter = AntiAliasingFilter | WhiteningFilter
+Filter = Union[AntiAliasingFilter, WhiteningFilter]
 from .optics import compute_ctf_power, NullOptics, CTFOptics
 
 Optics = Union[NullOptics, CTFOptics]
