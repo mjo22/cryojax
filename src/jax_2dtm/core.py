@@ -92,17 +92,17 @@ class Serializable(DataClassJsonMixin):
     """
 
 
-def ndarray_encoder(x):
+def ndarray_encoder(x: Any) -> Any:
     """Encode jax array as list"""
     return np.array(x).tolist() if type(x) is ArrayImpl else x
 
 
-def ndarray_decoder(x):
+def ndarray_decoder(x: Any) -> Any:
     """Decode list to jax array"""
     return jnp.asarray(x) if type(x) is list else x
 
 
-def field(pytree_node: bool = True, array=True, **kwargs: Any) -> Any:
+def field(pytree_node: bool = True, array: bool = True, **kwargs: Any) -> Any:
     metadata = dict(pytree_node=pytree_node)
     if array:
         metadata.update(
