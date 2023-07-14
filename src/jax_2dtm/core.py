@@ -1,8 +1,18 @@
 """
-See https://jax.readthedocs.io/en/latest/jax.typing.html
+Core functionality such as type hinting, dataclasses, and serialization.
+
+See https://jax.readthedocs.io/en/latest/jax.typing.html for jax
+type hint conventions.
 """
 
-__all__ = ["Array", "ArrayLike", "Scalar", "dataclass", "Serializable"]
+__all__ = [
+    "Array",
+    "ArrayLike",
+    "Scalar",
+    "dataclass",
+    "field",
+    "Serializable",
+]
 
 
 import dataclasses
@@ -13,7 +23,6 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
-    Optional,
     Union,
     _UnionGenericAlias,
     get_args,
@@ -95,6 +104,10 @@ def dataclass(clz: Type[Any]) -> Type[Any]:
     return data_clz
 
 
+# This section implements serialization functionality for jax-2dtm
+# objects. This subclasses DataClassJsonMixin from dataclasses-json
+# and provides custom encoding/decoding for Arrays and jax-2dtm
+# objects.
 @dataclass
 class Serializable(DataClassJsonMixin):
     """
