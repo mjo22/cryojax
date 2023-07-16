@@ -21,7 +21,7 @@ I recommend using `python=3.10` because of recent features and changing best pra
 
 Then, modifiy the [tensorflow installation](https://www.tensorflow.org/install/pip) instructions to install version 2.11.x. Be careful to not install the latest version! As I'm writing this, `tensorflow-nufft` supports up to version 2.11.x, which supports `python` versions between 3.7 and 3.10. Make sure you're not using `python>=3.11`!
 
-Finally, [install tensorflow-nufft](https://mrphys.github.io/tensorflow-nufft/guide/start/) with
+Now [install tensorflow-nufft](https://mrphys.github.io/tensorflow-nufft/guide/start/) with
 
 ```bash
 pip install tensorflow-nufft==0.12.0
@@ -43,7 +43,7 @@ This will install the remaining dependencies, such as [jaxlie](https://github.co
 
 Please note that this library is currently experimental and the API is subject to change!
 
-The following is a basis workflow to generate an image with a gaussian white noise model:
+The following is a basic workflow to generate an image with a gaussian white noise model:
 
 ```python
 import jax.numpy as jnp
@@ -63,7 +63,7 @@ params = dict(view_phi=np.pi, defocus_u=8000., sigma=1.4)
 image = ifft(model(params))  # The image is returned in Fourier space.
 ```
 
-Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program.
+Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a rasterzied grid is converted to a density point cloud and read into a `Cloud`. Alternatively, a user could initialize their own `Cloud`.
 
 This workflow configures an initial model state at the library's default parameters, then evaulates it at a state with updated `view_phi`, `defocus_angle`, and `sigma` (the white noise variance). To see a more advanced example, see the tutorials section of the repository (stay tuned!).
 
