@@ -1,5 +1,11 @@
 # 2D Template Matching of Cryo-EM images powered by JAX.
-This library is an implementation of 2D template matching (2DTM) in cryo electron microscopy micrographs built on [JAX](https://github.com/google/jax). Starting with a 3D electron density map, one can simulate images with models of the scattering onto the imaging plane and the modulation by the instrument optics. Then, one can generate images sampled from models of the noise or compute a corresponding log-likelihood.
+This library is an implementation of 2D template matching (2DTM) in cryo electron microscopy micrographs built on [JAX](https://github.com/google/jax).
+
+## Summary
+
+The core of this package is its ability to simulate cryo-EM images. Starting with a 3D electron density map, one can simulate images with models of the scattering onto the imaging plane and the modulation by the instrument optics. Then, one can generate images sampled from models of the noise or compute a corresponding log-likelihood.
+
+These imaging models can then, for example, be fed into standard statistical inference or optimization libraries in `jax`, such as [numpyro](https://github.com/pyro-ppl/numpyro) or [jaxopt](https://github.com/google/jaxopt).
 
 ## Installation
 
@@ -79,7 +85,7 @@ model = GaussianImage(config=config, cloud=cloud, state=state, observed=observed
 image = ifft(model(params))
 ```
 
-Alternative noise models are supported. For example, `EmpiricalNoise` stores an empirical covariance matrix. `LorenzianNoise` is a toy model for generating correlated noise. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses the scattering and optics model.
+Alternative noise models are supported. For example, `EmpiricalNoise` stores an empirical covariance matrix. `LorenzianNoise` is a toy model for generating correlated noise. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses the scattering and optics model. In general, `jax-2dtm` is designed to be very extensible and new scattering, optics, and noise model can easily be implemented.
 
 ## Features
 
