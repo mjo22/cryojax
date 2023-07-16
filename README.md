@@ -96,3 +96,7 @@ Imaging models in `jax-2dtm` support `jax` functional transformations, such as a
 - [cisTEM](https://github.com/timothygrant80/cisTEM): A software to process cryo-EM images of macromolecular complexes and obtain high-resolution 3D reconstructions from them. The recent experimental release of `cisTEM` has implemented a highly successful 2DTM program.
 
 - [BioEM](https://github.com/bio-phys/BioEM): Bayesian inference of Electron Microscopy. This codebase calculates the posterior probability of a structural model given multiple experimental EM images.
+
+## Acknowledgments
+
+The tooling, packaging structure, and API in `jax-2dtm` are influenced by the library [tinygp](https://github.com/dfm/tinygp), which is also written in `jax` and makes use of custom, jax-friendly python `dataclasses`. Thank you for the developers for providing an excellent model for this package!
