@@ -70,7 +70,9 @@ This workflow configures an initial model state at the library's default paramet
 If a `GaussianImage` is initialized with the field `observed`, the model will instead compute a Gaussian log-likelihood in Fourier space with a diagonal covariance tensor (or power spectrum).
 
 ```python
-model = GaussianImage(config=config, cloud=cloud, state=state, observed=observed)
+from jax_2dtm.utils import fft
+
+model = GaussianImage(config=config, cloud=cloud, state=state, observed=fft(observed))
 log_likelihood = model(params)
 ```
 
