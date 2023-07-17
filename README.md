@@ -83,7 +83,7 @@ from jax_2dtm.simulator import AntiAliasingFilter, WhiteningFilter
 
 filters = [AntiAliasingFilter(config.pixel_size * config.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
            WhiteningFilter(config.pixel_size * config.freqs, micrograph)]
-model = GaussianImage(config=config, cloud=cloud, state=state, observed=observed, filters=filters)
+model = GaussianImage(config=config, cloud=cloud, state=state, filters=filters)
 image = ifft(model(params))
 ```
 
