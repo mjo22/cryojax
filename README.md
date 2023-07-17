@@ -11,7 +11,7 @@ These models can be fed into standard statistical inference or optimization libr
 
 Installing `jax-2dtm` is currently a bit more complicated than it should be because it relies on the library [tensorflow-nufft](https://github.com/mrphys/tensorflow-nufft) through the `jax` experimental feature [jax2tf](https://github.com/google/jax/blob/main/jax/experimental/jax2tf/README.md). Getting [tensorflow](https://github.com/tensorflow/tensorflow) to install besides `jax` is a bit of a pain. Once [jax-finufft](https://github.com/dfm/jax-finufft) adds GPU support, the `tensorflow` dependency will be replaced. In the following instructions, please install `tensorflow` and `jax` with either GPU or CPU support.
 
-To start, I recommend creating a new virtual environment. For example, you could do this with `conda`:
+To start, I recommend creating a new virtual environment. For example, you could do this with `conda`.
 
 ```bash
 conda create -n jax-2dtm -c conda-forge python=3.10
@@ -19,7 +19,7 @@ conda create -n jax-2dtm -c conda-forge python=3.10
 
 I recommend using `python=3.10` because of recent features and best practices in type checking, but all that is necessary is `python>=3.7` for [dataclasses](https://docs.python.org/3/library/dataclasses.html) support. Custom dataclasses that are safe to pass to `jax` are heavily used in this library!
 
-Then, modifiy the [tensorflow installation](https://www.tensorflow.org/install/pip) instructions to install version 2.11.x. Be careful to not install the latest version! As I'm writing this, `tensorflow-nufft` supports up to version 2.11.x, which supports between `python` 3.7 and 3.10. Make sure you're not using `python>=3.11`!
+Then, modify the [tensorflow installation](https://www.tensorflow.org/install/pip) instructions to install version 2.11.x. As I'm writing this, `tensorflow-nufft` supports up to version 2.11.x, which is tested on `3.7<=python<=3.10`. `tensorflow>=2.12.x` and `python>=3.11` may not be supported.
 
 Now [install tensorflow-nufft](https://mrphys.github.io/tensorflow-nufft/guide/start/) with
 
@@ -63,7 +63,7 @@ params = dict(view_phi=np.pi, defocus_u=8000., sigma=1.4)
 image = ifft(model(params))  # The image is returned in Fourier space.
 ```
 
-Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a rasterzied grid is converted to a density point cloud and read into a `Cloud`. Alternatively, a user could initialize their own `Cloud`.
+Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a rasterzied grid is converted to a density point cloud and read into a `Cloud`. Alternatively, a user could instantiate a custom `Cloud`.
 
 This workflow configures an initial model state at the library's default parameters, then evaulates it at a state with an updated viewing angle `view_phi`, major axis defocus `defocus_u`, and noise variance `sigma`. For a more advanced example, see the tutorials section of the repository (stay tuned!).
 
@@ -85,7 +85,7 @@ model = GaussianImage(config=config, cloud=cloud, state=state, observed=observed
 image = ifft(model(params))
 ```
 
-Alternative noise models are supported. For example, `EmpiricalNoise` stores an empirical covariance matrix. `LorenzianNoise` is a toy model for generating correlated noise. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. In general, `jax-2dtm` is designed to be very extensible and new scattering, optics, and noise model can easily be implemented.
+Alternative noise models are supported. For example, `EmpiricalNoise` stores an empirical covariance matrix. `LorenzianNoise` is a toy model for generating correlated noise. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. In general, `jax-2dtm` is designed to be very extensible and new scattering, optics, and noise models can easily be implemented.
 
 ## Features
 
