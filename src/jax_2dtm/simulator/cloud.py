@@ -23,7 +23,7 @@ class Cloud(Serializable):
     coordinates : Array, shape `(N, 3)`
         Cartesian coordinate system for density cloud.
     box_size : Array, shape `(3,)`
-        3D cartesian box that ``coordinates`` lie in. This
+        3D cartesian  that ``coordinates`` lie in. This
         should have dimensions of length.
     """
 

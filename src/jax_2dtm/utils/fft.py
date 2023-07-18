@@ -2,26 +2,27 @@
 Routines to compute FFTs.
 """
 
-__all__ = ["nufft", "ifft", "fft", "fftfreqs"]
+__all__ = ["nufft", "ifft", "fft", "fftfreqs", "convolve"]
 
 import jax
 
 # import tensorflow as tf
 import jax.numpy as jnp
 import numpy as np
+from jax.scipy.signal import fftconvolve
 
 # import tensorflow_nufft as tfft
 # from jax.experimental import jax2tf
 from jax_finufft import nufft1
 from functools import partial
-from typing import Tuple, Any
+from typing import Union
 
 from ..core import Array, ArrayLike
 
 
 # @partial(jax.jit, static_argnums=(0, 4))
 def nufft(
-    shape: Tuple[int, int, int],
+    shape: Union[tuple[int, int], tuple[int, int, int]],
     density: Array,
     coords: Array,
     box_size: Array,
@@ -58,14 +59,14 @@ def nufft(
     ft : Array, shape ``shape``
         Fourier transform.
     """
+    ndim = len(shape)
     complex_density = density.astype(complex)
-    periodic_coords = 2 * jnp.pi * coords / box_size
+    periodic_coords = 2 * jnp.pi * coords[:, :ndim] / box_size[:ndim]
     x, y = periodic_coords[:, 0], periodic_coords[:, 1]
     masked_density = jax.vmap(_mask_density)(x, y, complex_density)
     # _nufft1 = jax2tf.call_tf(_tf_nufft1, output_shape_dtype=jax.ShapeDtypeStruct(shape, masked_density.dtype))
     # ft = _nufft1(masked_density, periodic_coords, shape, eps)
-    x, y, z = periodic_coords.T
-    ft = nufft1(shape, masked_density, x, y, z, eps=eps)
+    ft = nufft1(shape, masked_density, *periodic_coords.T, eps=eps)
 
     return ft
 
@@ -148,6 +149,25 @@ def fftfreqs(
     k_coords = np.stack(np.meshgrid(*k_coords1D, indexing="ij"), axis=-1)
 
     return k_coords
+
+
+def convolve(image: Array, filter: Array) -> Array:
+    """
+    Convolve an image with a filter.
+
+    Arguments
+    ---------
+    image : `Array`, shape `(N1, N2)`
+        The image to be filtered, in real space.
+    filter : `Array`, shape `(N1, N2)`
+        The filter, in real space.
+
+    Returns
+    -------
+    filtered : `Array`, shape `(N1, N2)`
+        The filtered image.
+    """
+    return fftconvolve(image, filter, mode="same")
 
 
 # def _tf_nufft1(source, points, shape, tol):

@@ -80,7 +80,7 @@ def project_with_nufft(
     coordinates :
         Coordinate system of point cloud.
     box_size :
-        Box size of point.
+        Box size of points.
     shape : `tuple[int, int]`
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
@@ -93,11 +93,9 @@ def project_with_nufft(
     Returns
     -------
     projection :
-        The output image in the fourier domain.
+        The output image in real space.
     """
-    projection = nufft(
-        (*shape, int(1)), density, coordinates, box_size, eps=eps
-    )[:, :, 0]
+    projection = nufft(shape, density, coordinates, box_size, eps=eps)
 
     return projection
 

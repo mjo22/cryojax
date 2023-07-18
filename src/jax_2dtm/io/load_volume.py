@@ -70,7 +70,7 @@ def load_mrc(filename: str) -> ArrayLike:
 
 
 def coordinatize(
-    template: ArrayLike, pixel_size: float, threshold: Optional[float] = None
+    template: ArrayLike, pixel_size: float, **kwargs: Any
 ) -> tuple[Array, ...]:
     """
     Returns flattened coordinate system and 3D volume or 2D image
@@ -86,9 +86,8 @@ def coordinatize(
         3D volume or 2D image on a cartesian grid.
     pixel_size : float
         Camera pixel size.
-    threshold : float, optional
-        Remove points from the volume where the
-        density is below this threshold.
+    kwargs
+        Keyword arguments passed to ``np.isclose``.
 
     Returns
     -------
@@ -98,12 +97,11 @@ def coordinatize(
         Point cloud cartesian coordinate system.
     """
     ndim, shape = template.ndim, template.shape
-    if threshold is None:
-        threshold = float(np.finfo(template.dtype).eps)
 
-    # Mask out points where the electron density below threshold
+    # Mask out points where the electron density is close
+    # to zero.
     flat = template.ravel()
-    mask = np.where(flat > threshold)
+    mask = np.where(~np.isclose(flat, 0.0, **kwargs))
     density = flat[mask]
 
     # Create coordinate buffer
