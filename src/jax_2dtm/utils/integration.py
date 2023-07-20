@@ -40,9 +40,9 @@ def nufft(
     density : shape `(N,)`
         Density point cloud over which to compute
         the fourier transform.
-    coords : shape `(N, 2)` or `(N, 3)`
+    coords : shape `(N, 2)`
         Coordinate system for density cloud.
-    box_size : shape `(2,)` or `(3)`
+    box_size : shape `(2,)`
         2D imaging plane that ``coords`` lies in.
     shape :
         Desired output shape of the transform.
@@ -59,9 +59,8 @@ def nufft(
     periodic_coords = 2 * jnp.pi * coords / box_size
     # _nufft1 = jax2tf.call_tf(_tf_nufft1, output_shape_dtype=jax.ShapeDtypeStruct(shape, masked_density.dtype))
     # ft = _nufft1(masked_density, periodic_coords, shape, eps)
-    ft = nufft1(shape, complex_density, *periodic_coords.T, eps=eps)[
-        ::-1, ::-1
-    ]
+    x, y = periodic_coords.T
+    ft = nufft1(shape, complex_density, y, x, eps=eps)[::-1, ::-1]
 
     return ft
 
