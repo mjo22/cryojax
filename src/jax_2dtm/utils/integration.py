@@ -60,7 +60,8 @@ def nufft(
     # _nufft1 = jax2tf.call_tf(_tf_nufft1, output_shape_dtype=jax.ShapeDtypeStruct(shape, masked_density.dtype))
     # ft = _nufft1(masked_density, periodic_coords, shape, eps)
     x, y = periodic_coords.T
-    ft = nufft1(shape, complex_density, y, x, eps=eps)[::-1, ::-1]
+    #ft = nufft1(shape, complex_density, y, x, eps=eps)[::-1, ::-1]
+    ft = nufft1(shape, complex_density, y, x, eps=eps)
 
     return ft
 

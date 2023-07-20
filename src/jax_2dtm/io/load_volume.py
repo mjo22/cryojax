@@ -40,7 +40,7 @@ def load_grid_as_cloud(
     template = load_mrc(filename)
     depth = max(template.shape)
     box_size = (
-        jnp.array((*config.shape, depth), dtype=float) * config.pixel_size
+        jnp.array((*config.padded_shape, depth), dtype=float) * config.pixel_size
     )
     cloud = Cloud(
         *coordinatize(template, config.pixel_size, **kwargs), box_size

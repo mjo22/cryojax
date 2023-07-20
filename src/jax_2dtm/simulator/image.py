@@ -69,18 +69,22 @@ class Image(metaclass=ABCMeta):
             "filters",
             filters
             or [
-                AntiAliasingFilter(self.config.pixel_size * self.config.freqs)
+                AntiAliasingFilter(self.config.pixel_size * self.config.padded_freqs)
             ],
         )
         # Set observed data
         if observed is not None:
             assert self.config.shape == observed.shape
+            observed = self.config.pad(observed, mode="edge")
+            assert self.config.padded_shape == observed.shape
             for filter in self.filters:
                 observed = filter(observed)
+            observed = self.config.crop(observed)
+            assert self.config.shape == observed.shape
         object.__setattr__(self, "observed", observed)
 
     @abstractmethod
-    def render(self, state: Optional[ParameterState] = None) -> Array:
+    def render(self, state: Optional[ParameterState] = None, crop: bool = True) -> Array:
         """Render an image given a parameter set."""
         raise NotImplementedError
 
@@ -129,7 +133,7 @@ class ScatteringImage(Image):
     Compute the scattering pattern on the imaging plane.
     """
 
-    def render(self, state: Optional[ParameterState] = None) -> Array:
+    def render(self, state: Optional[ParameterState] = None, crop: bool = True) -> Array:
         """Render the scattering pattern"""
         state = state or self.state
         # Compute scattering at image plane.
@@ -138,12 +142,16 @@ class ScatteringImage(Image):
         # Apply filters
         for filter in self.filters:
             scattering_image = filter(scattering_image)
+        if crop and self.config.pad_scale != 1:
+            scattering_image = self.config.crop(scattering_image)
 
         return scattering_image
 
     def sample(self, state: Optional[ParameterState] = None) -> Array:
         state = state or self.state
-        return self.render(state)
+        simulated = self.render(state)
+
+        return self.config.crop(simulated)
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
         raise NotImplementedError
@@ -160,14 +168,16 @@ class OpticsImage(ScatteringImage):
         """Render an image from a model of the CTF."""
         state = state or self.state
         # Compute scattering at image plane.
-        scattering_image = super().render(state)
+        scattering_image = super().render(state, crop=False)
         # Compute and apply CTF
-        ctf = state.optics(self.config.freqs)
+        ctf = state.optics(self.config.padded_freqs)
         optics_image = ctf * scattering_image
         # Rescale the image to desired scaling and offset
         rescaled_image = state.intensity.rescale(optics_image)
+        if self.config.pad_scale != 1:
+            cropped_image = self.config.crop(rescaled_image)
 
-        return rescaled_image
+        return cropped_image
 
 
 @dataclass
@@ -188,15 +198,17 @@ class GaussianImage(OpticsImage):
         """Sample an image from a realization of the noise"""
         state = state or self.state
         simulated = self.render(state)
-        noise = state.noise.sample(self.config.freqs * self.config.pixel_size)
+        freqs = self.config.freqs
+        noise = state.noise.sample(freqs * self.config.pixel_size)
         return simulated + noise
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""
         state = state or self.state
         residuals = self.residuals(state)
+        freqs = self.config.freqs
         variance = state.noise.variance(
-            self.config.freqs * self.config.pixel_size
+            freqs * self.config.pixel_size
         )
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         return loss.real / residuals.size
