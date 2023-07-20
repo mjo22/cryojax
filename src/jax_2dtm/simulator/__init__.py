@@ -1,28 +1,41 @@
 __all__ = [
+    # Functional API
     "rotate_and_translate_rpy",
     "rotate_and_translate_wxyz",
     "project_with_nufft",
+    "project_with_gaussians",
     "compute_anti_aliasing_filter",
     "compute_whitening_filter",
     "compute_ctf_power",
     "rescale_image",
+    # Image configuration
     "ImageConfig",
-    "ScatteringConfig",
+    "NufftScattering",
+    "GaussianScattering",
+    # Point clouds
     "Cloud",
+    # Filters
     "AntiAliasingFilter",
     "WhiteningFilter",
+    # Model parameter configuration
     "ParameterState",
+    ## Pose
     "EulerPose",
     "QuaternionPose",
+    ## Optics
     "CTFOptics",
+    ## Imaging conditions
     "Intensity",
+    ## Noise models
     "WhiteNoise",
     "EmpiricalNoise",
     "LorenzianNoise",
+    # Image models
     "ScatteringImage",
     "OpticsImage",
     "GaussianImage",
-    "Config",
+    # Type hints
+    "ScatteringConfig",
     "Pose",
     "Filter",
     "Optics",
@@ -41,9 +54,15 @@ from .pose import (
 )
 
 Pose = Union[EulerPose, QuaternionPose]
-from .scattering import project_with_nufft, ImageConfig, ScatteringConfig
+from .scattering import (
+    project_with_nufft,
+    project_with_gaussians,
+    ImageConfig,
+    NufftScattering,
+    GaussianScattering,
+)
 
-Config = Union[ImageConfig, ScatteringConfig]
+ScatteringConfig = Union[NufftScattering, GaussianScattering]
 from .cloud import Cloud
 from .filters import (
     compute_anti_aliasing_filter,

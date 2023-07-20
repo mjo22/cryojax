@@ -6,7 +6,7 @@ from jax import random
 
 from jax_2dtm.io import load_grid_as_cloud
 
-from jax_2dtm.simulator import ScatteringConfig
+from jax_2dtm.simulator import NufftScattering
 from jax_2dtm.simulator import (
     EulerPose,
     CTFOptics,
@@ -21,7 +21,7 @@ def setup():
     filename = os.path.join(
         os.path.dirname(__file__), "data", "3jar_13pf_bfm1_ps5_28.mrc"
     )
-    config = ScatteringConfig((81, 81), 5.32, eps=1e-4)
+    config = NufftScattering((81, 81), 5.32, eps=1e-4)
     cloud = load_grid_as_cloud(filename, config)
     return config, cloud
 

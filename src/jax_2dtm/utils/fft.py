@@ -2,73 +2,13 @@
 Routines to compute FFTs.
 """
 
-__all__ = ["nufft", "ifft", "fft", "fftfreqs", "convolve"]
+__all__ = ["ifft", "fft", "fftfreqs", "fftfreqs1d", "convolve"]
 
-import jax
-
-# import tensorflow as tf
 import jax.numpy as jnp
 import numpy as np
 from jax.scipy.signal import fftconvolve
 
-# import tensorflow_nufft as tfft
-# from jax.experimental import jax2tf
-from jax_finufft import nufft1
-from functools import partial
-from typing import Union
-
 from ..core import Array, ArrayLike
-
-
-# @partial(jax.jit, static_argnums=(0, 4))
-def nufft(
-    shape: Union[tuple[int, int], tuple[int, int, int]],
-    density: Array,
-    coords: Array,
-    box_size: Array,
-    eps: float = 1e-6,
-) -> Array:
-    r"""
-    Helper routine to compute a non-uniform FFT for a 3D
-    point cloud. Mask out points that lie out of bounds.
-
-    .. warning::
-        If any values in ``coords`` lies out of bounds of
-        :math:`$(-3\pi, 3\pi]$`, this method will crash.
-        This means that ``density`` cannot be
-        arbitrarily cropped and translated out of frame,
-        rather only to a certain extent.
-
-    Arguments
-    ---------
-    density : shape `(N,)`
-        Density point cloud over which to compute
-        the fourier transform.
-    coords : shape `(N, 3)`
-        Coordinate system for density cloud.
-    box_size : shape `(3,)`
-        3D cartesian box that ``coords`` lies in.
-    shape :
-        Desired output shape of the transform.
-    eps :
-        Precision of the non-uniform FFT. See
-        `finufft <https://finufft.readthedocs.io/en/latest/>`_
-        for more detail.
-    Return
-    ------
-    ft : Array, shape ``shape``
-        Fourier transform.
-    """
-    ndim = len(shape)
-    complex_density = density.astype(complex)
-    periodic_coords = 2 * jnp.pi * coords[:, :ndim] / box_size[:ndim]
-    x, y = periodic_coords[:, 0], periodic_coords[:, 1]
-    masked_density = jax.vmap(_mask_density)(x, y, complex_density)
-    # _nufft1 = jax2tf.call_tf(_tf_nufft1, output_shape_dtype=jax.ShapeDtypeStruct(shape, masked_density.dtype))
-    # ft = _nufft1(masked_density, periodic_coords, shape, eps)
-    ft = nufft1(shape, masked_density, *periodic_coords.T, eps=eps)
-
-    return ft
 
 
 def ifft(ft: Array) -> Array:
@@ -139,16 +79,24 @@ def fftfreqs(
         2D or 3D cartesian coordinate system with
         zero in the center.
     """
+
+    k_coords1D = [fftfreqs1d(s, pixel_size, real) for s in shape]
+
+    k_coords = np.stack(np.meshgrid(*k_coords1D, indexing="ij"), axis=-1)
+
+    return k_coords
+
+
+def fftfreqs1d(s: int, pixel_size: float, real: bool = False):
+    """
+    One-dimensional coordinates in real or fourier space
+    """
     fftfreq = (
         lambda s: np.fft.fftfreq(s, 1 / pixel_size) * s
         if real
         else np.fft.fftfreq(s, pixel_size)
     )
-    k_coords1D = [np.fft.fftshift(fftfreq(s)) for s in shape]
-
-    k_coords = np.stack(np.meshgrid(*k_coords1D, indexing="ij"), axis=-1)
-
-    return k_coords
+    return np.fft.fftshift(fftfreq(s))
 
 
 def convolve(image: Array, filter: Array) -> Array:
@@ -168,32 +116,3 @@ def convolve(image: Array, filter: Array) -> Array:
         The filtered image.
     """
     return fftconvolve(image, filter, mode="same")
-
-
-# def _tf_nufft1(source, points, shape, tol):
-#    """
-#    Wrapper for type-1 non-uniform FFT
-#    from tensorflow-nufft.
-#    """
-#    return tfft.nufft(
-#        source,
-#        points,
-#        grid_shape=shape,
-#        transform_type="type_1",
-#        tol=tol.numpy(),
-#    )
-
-
-def _mask_density(x: Array, y: Array, density: Array) -> Array:
-    """
-    Use a boolean mask to set density values out of
-    bounds to zero. The mask is ``True`` for
-    all points outside the :math:`[-\pi, \pi)` periodic
-    domain, and False otherwise.
-    """
-    x_mask = jnp.logical_or(x < -jnp.pi, x >= jnp.pi)
-    y_mask = jnp.logical_or(y < -jnp.pi, y >= jnp.pi)
-    mask = jnp.logical_or(x_mask, y_mask)
-    masked_density = jnp.where(mask, complex(0.0), density)
-
-    return masked_density

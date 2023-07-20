@@ -5,12 +5,21 @@ fields.
 
 from __future__ import annotations
 
-__all__ = ["project_with_nufft", "ImageConfig", "ScatteringConfig"]
+__all__ = [
+    "project_with_nufft",
+    "project_with_gaussians",
+    "ImageConfig",
+    "ScatteringConfig",
+    "NufftScattering",
+    "GaussianScattering",
+]
+
+from abc import ABCMeta, abstractmethod
 
 import jax.numpy as jnp
 
 from ..core import dataclass, field, Array, ArrayLike, Serializable
-from ..utils import nufft, fftfreqs
+from ..utils import fft, fftfreqs, enforce_bounds, nufft, integrate_gaussians
 
 
 @dataclass
@@ -41,23 +50,60 @@ class ImageConfig(Serializable):
 
 
 @dataclass
-class ScatteringConfig(ImageConfig):
+class ScatteringConfig(ImageConfig, metaclass=ABCMeta):
     """
     Configuration for an image with a given
     scattering method.
+    """
+
+    @abstractmethod
+    def project(self, *args):
+        """Projection method for image rendering."""
+        raise NotImplementedError
+
+
+@dataclass
+class NufftScattering(ScatteringConfig):
+    """
+    Scatter points to image plane using a
+    non-uniform FFT.
 
     Attributes
     ----------
     eps : `float`
-        See ``jax_2dtm.simulator.project_with_nufft``
+        See ``jax_2dtm.utils.integration.nufft``
         for documentation.
     """
 
     eps: float = field(pytree_node=False, default=1e-6)
 
     def project(self, *args):
-        """Projection method for image rendering."""
+        """Render image with non-uniform FFTs."""
         return project_with_nufft(*args, self.shape, eps=self.eps)
+
+
+@dataclass
+class GaussianScattering(ScatteringConfig):
+    """
+    Scatter points to image by computing
+    gaussian integrals.
+
+    Attributes
+    ----------
+    scale : `float`
+        Variance of a single gaussian density
+        along each direction.
+        See ``jax_2dtm.utils.integration.integrate_gaussians``
+        for more documentation.
+    """
+
+    scale: float = field(pytree_node=False)
+
+    def project(self, *args):
+        """Render image by integrating over Gaussians."""
+        return project_with_gaussians(
+            *args, self.shape, self.pixel_size, self.scale
+        )
 
 
 def project_with_nufft(
@@ -95,9 +141,60 @@ def project_with_nufft(
     projection :
         The output image in real space.
     """
-    projection = nufft(shape, density, coordinates, box_size, eps=eps)
+    masked = enforce_bounds(density, coordinates[:, :2], box_size[:2])
+    projection = nufft(
+        masked, coordinates[:, :2], box_size[:2], shape, eps=eps
+    )
 
     return projection
+
+
+def project_with_gaussians(
+    density: Array,
+    coordinates: Array,
+    box_size: Array,
+    shape: tuple[int, int],
+    pixel_size: float,
+    scale: float,
+) -> Array:
+    """
+    Project and interpolate 3D volume point cloud
+    onto imaging plane using a non-uniform FFT.
+
+    See ``jax_2dtm.utils.nufft`` for more detail.
+
+    Arguments
+    ---------
+    density :
+        Density point cloud.
+    coordinates :
+        Coordinate system of point cloud.
+    box_size :
+        Box size of points.
+    shape : `tuple[int, int]`
+        Shape of the imaging plane in pixels.
+        ``width, height = shape[0], shape[1]``
+        is the size of the desired imaging plane.
+    pixel_size : `float`
+        Pixel size
+    scale : `float`
+        Scale of gaussians in density point cloud.
+
+    Returns
+    -------
+    projection :
+        The output image in real space.
+    """
+    masked = enforce_bounds(density, coordinates[:, :2], box_size[:2])
+    projection = integrate_gaussians(
+        masked,
+        coordinates[:, :2],
+        scale,
+        shape,
+        pixel_size,
+    )
+
+    return fft(projection)
 
 
 def project_with_binning(

@@ -7,8 +7,8 @@ from __future__ import annotations
 __all__ = ["Cloud"]
 
 from .pose import Pose
-from .scattering import ScatteringConfig
 from ..core import Array, dataclass, field, Serializable
+from . import ScatteringConfig
 
 
 @dataclass

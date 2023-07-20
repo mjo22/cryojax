@@ -49,12 +49,12 @@ The following is a basic workflow to generate an image with a gaussian white noi
 import jax.numpy as jnp
 from jax_2dtm.utils import ifft
 from jax_2dtm.io import load_grid_as_cloud
-from jax_2dtm.simulator import ScatteringConfig
+from jax_2dtm.simulator import NufftScattering
 from jax_2dtm.simulator import EulerPose, CTFOptics, WhiteNoise, Intensity, ParameterState
 from jax_2dtm.simulator import GaussianImage
 
 template = "example.mrc"
-config = ScatteringConfig(shape=(320, 320), pixel_size=1.32)
+config = NufftScattering(shape=(320, 320), pixel_size=1.32)
 cloud = load_grid_as_cloud(template, config)
 pose, optics, intensity, noise = EulerPose(), CTFOptics(), Intensity(), WhiteNoise()
 state = ParameterState(pose=pose, optics=optics, intensity=intensity, noise=noise)

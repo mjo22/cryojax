@@ -17,13 +17,12 @@ from dataclasses import InitVar
 
 import jax.numpy as jnp
 
-from .scattering import ScatteringConfig
 from .cloud import Cloud
 from .filters import AntiAliasingFilter
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
 from ..core import dataclass, field, Array, Scalar
-from . import Filter
+from . import Filter, ScatteringConfig
 
 
 @dataclass
