@@ -65,10 +65,10 @@ class AntiAliasingFilter(Filter):
     rolloff : `float`
     """
 
-    cutoff: float = field(pytree_node=False, default=1.00)
+    cutoff: float = field(pytree_node=False, default=0.667)
     rolloff: float = field(pytree_node=False, default=0.05)
 
-    def compute(self, freqs) -> Array:
+    def compute(self, freqs: Array) -> Array:
         return compute_anti_aliasing_filter(
             freqs,
             self.cutoff,
@@ -82,19 +82,17 @@ class WhiteningFilter(Filter):
     Apply an whitening filter to an image.
 
     See documentation for
-    ``jax_2dtm.simulator.compute_anti_aliasing_filter``
+    ``jax_2dtm.simulator.compute_whitening_filter``
     for more information.
-
-    Attributes
-    ----------
-    micrograph : `jax.Array`
-        The micrograph to use to compute the filter.
     """
 
+    micrograph_freqs: InitVar[Array]
     micrograph: InitVar[Array]
 
-    def compute(self, freqs, micrograph) -> Array:
-        return compute_whitening_filter(freqs, micrograph)
+    def compute(
+        self, freqs: Array, micrograph_freqs: Array, micrograph: Array
+    ) -> Array:
+        return compute_whitening_filter(freqs, micrograph_freqs, micrograph)
 
 
 def compute_anti_aliasing_filter(
@@ -143,7 +141,9 @@ def compute_anti_aliasing_filter(
     return mask
 
 
-def compute_whitening_filter(freqs: Array, micrograph: Array) -> Array:
+def compute_whitening_filter(
+    freqs: Array, micrograph_freqs: Array, micrograph: Array
+) -> Array:
     """
     Compute a whitening filter from a micrograph. This is taken
     to be the inverse square root of the 2D radially averaged
@@ -153,6 +153,9 @@ def compute_whitening_filter(freqs: Array, micrograph: Array) -> Array:
     ----------
     micrograph : `jax.Array`, shape `(M1, M2)`
         The micrograph in fourier space.
+    micrograph_freqs : `jax.Array`, shape `(M1, M2, 2)`
+        The frequency range of the desired wavevectors.
+        These should be in pixel units, not physical length.
     freqs : `jax.Array`, shape `(N1, N2, 2)`
         The frequency range of the desired wavevectors.
         These should be in pixel units, not physical length.
@@ -162,6 +165,6 @@ def compute_whitening_filter(freqs: Array, micrograph: Array) -> Array:
     spectrum : `jax.Array`, shape `(N1, N2)`
         The power spectrum isotropically averaged onto ``freqs``.
     """
-    spectrum, _ = powerspectrum(micrograph, freqs, grid=True)
+    spectrum, _ = powerspectrum(micrograph, micrograph_freqs, grid=freqs)
 
     return 1 / jnp.sqrt(spectrum)
