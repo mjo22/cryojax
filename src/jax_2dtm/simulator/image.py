@@ -69,7 +69,9 @@ class Image(metaclass=ABCMeta):
             "filters",
             filters
             or [
-                AntiAliasingFilter(self.config.pixel_size * self.config.padded_freqs)
+                AntiAliasingFilter(
+                    self.config.pixel_size * self.config.padded_freqs
+                )
             ],
         )
         # Set observed data
@@ -84,7 +86,9 @@ class Image(metaclass=ABCMeta):
         object.__setattr__(self, "observed", observed)
 
     @abstractmethod
-    def render(self, state: Optional[ParameterState] = None, crop: bool = True) -> Array:
+    def render(
+        self, state: Optional[ParameterState] = None, crop: bool = True
+    ) -> Array:
         """Render an image given a parameter set."""
         raise NotImplementedError
 
@@ -133,7 +137,9 @@ class ScatteringImage(Image):
     Compute the scattering pattern on the imaging plane.
     """
 
-    def render(self, state: Optional[ParameterState] = None, crop: bool = True) -> Array:
+    def render(
+        self, state: Optional[ParameterState] = None, crop: bool = True
+    ) -> Array:
         """Render the scattering pattern"""
         state = state or self.state
         # Compute scattering at image plane.
@@ -175,9 +181,9 @@ class OpticsImage(ScatteringImage):
         # Rescale the image to desired scaling and offset
         rescaled_image = state.intensity.rescale(optics_image)
         if self.config.pad_scale != 1:
-            cropped_image = self.config.crop(rescaled_image)
+            rescaled_image = self.config.crop(rescaled_image)
 
-        return cropped_image
+        return rescaled_image
 
 
 @dataclass
@@ -198,17 +204,15 @@ class GaussianImage(OpticsImage):
         """Sample an image from a realization of the noise"""
         state = state or self.state
         simulated = self.render(state)
-        freqs = self.config.freqs
-        noise = state.noise.sample(freqs * self.config.pixel_size)
+        noise = state.noise.sample(self.config.freqs * self.config.pixel_size)
         return simulated + noise
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""
         state = state or self.state
         residuals = self.residuals(state)
-        freqs = self.config.freqs
         variance = state.noise.variance(
-            freqs * self.config.pixel_size
+            self.config.freqs * self.config.pixel_size
         )
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         return loss.real / residuals.size

@@ -1,5 +1,5 @@
 """
-Routines for data cropping.
+Routines for dealing with image boundaries.
 """
 
 __all__ = ["bound", "crop", "pad"]
@@ -30,18 +30,22 @@ def crop(image: Array, shape: tuple[int, int]) -> Array:
     Crop an image to a new shape.
     """
     M1, M2 = image.shape
-    xc, yc = M1//2, M2//2
+    xc, yc = M1 // 2, M2 // 2
     w, h = shape
-    cropped = image[xc-w//2:xc+w//2+w%2, yc-h//2:yc+h//2+h%2]
+    cropped = image[
+        xc - w // 2 : xc + w // 2 + w % 2, yc - h // 2 : yc + h // 2 + h % 2
+    ]
     return cropped
 
 
-def pad(image: Array, new_shape: tuple[int, int], **kwargs) -> Array:
+def pad(image: Array, shape: tuple[int, int], **kwargs) -> Array:
     """
     Pad an image to a new shape.
     """
-    shape = image.shape
-    x_pad = new_shape[0] - shape[0]
-    y_pad = new_shape[1] - shape[1]
-    padding = ((x_pad//2, x_pad//2 + x_pad%2), (y_pad//2, y_pad//2 + y_pad%2))
+    x_pad = shape[0] - image.shape[0]
+    y_pad = shape[1] - image.shape[1]
+    padding = (
+        (x_pad // 2, x_pad // 2 + x_pad % 2),
+        (y_pad // 2, y_pad // 2 + y_pad % 2),
+    )
     return jnp.pad(image, padding, **kwargs)

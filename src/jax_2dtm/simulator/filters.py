@@ -19,7 +19,7 @@ from typing import Any
 import jax.numpy as jnp
 
 from ..utils import powerspectrum
-from ..core import dataclass, field, Array, ArrayLike, Serializable
+from ..core import dataclass, field, Array, ArrayLike
 
 
 @dataclass
