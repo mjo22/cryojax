@@ -8,7 +8,7 @@ __all__ = [
     "GaussianNoise",
     "WhiteNoise",
     "EmpiricalNoise",
-    "LorenzianNoise",
+    "ExponentialNoise",
 ]
 
 from abc import ABCMeta, abstractmethod
