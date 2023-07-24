@@ -53,7 +53,7 @@ def fft(ift: Array) -> Array:
 
 
 def fftfreqs(
-    shape: tuple[int, ...], pixel_size: float, real: bool = False
+    shape: tuple[int, ...], pixel_size: float = 1.0, real: bool = False
 ) -> ArrayLike:
     """
     Create a radial coordinate system on a grid.
