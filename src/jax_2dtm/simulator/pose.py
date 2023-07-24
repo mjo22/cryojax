@@ -72,10 +72,7 @@ class EulerPose(Pose):
 
     def transform(self, coordinates: Array) -> Array:
         """Transform coordinates from a set of Euler angles."""
-        N = np.prod(coordinates.shape[:-1])
-        return rotate_and_translate_rpy(
-            coordinates.reshape((N, 3)), *self.iter_data()
-        ).reshape(coordinates.shape)
+        return rotate_and_translate_rpy(coordinates, *self.iter_data())
 
 
 @dataclass
@@ -100,10 +97,7 @@ class QuaternionPose(Pose):
 
     def transform(self, coordinates: Array) -> Array:
         """Transform coordinates from an offset and unit quaternion."""
-        N = np.prod(coordinates.shape[:-1])
-        return rotate_and_translate_wxyz(
-            coordinates.reshape((N, 3)), *self.iter_data()
-        ).reshape(coordinates.shape)
+        return rotate_and_translate_wxyz(coordinates, *self.iter_data())
 
 
 @jax.jit
