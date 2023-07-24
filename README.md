@@ -76,18 +76,20 @@ model = GaussianImage(config=config, cloud=cloud, state=state, observed=fft(obse
 log_likelihood = model(params)
 ```
 
-Imaging models also accept a series of `Filter`s. By default, this is an `AntiAliasingFilter` that cuts off modes above the Nyquist freqeuency. Alternatively, this could be a different `AntiAliasingFilter` and a `WhiteningFilter`.
+Imaging models also accept a series of `Filter`s and `Mask`s. By default, this is an `AntiAliasingFilter` that cuts off modes above the Nyquist freqeuency, and a `CircularMask` that only simulates pixels within a central circle. Alternatively, one could add a `WhiteningFilter`.
 
 ```python
-from jax_2dtm.simulator import AntiAliasingFilter, WhiteningFilter
+from jax_2dtm.simulator import AntiAliasingFilter, WhiteningFilter, CircularMask
+from jax_2dtm.utils import fftfreqs
 
 filters = [AntiAliasingFilter(config.pixel_size * config.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
-           WhiteningFilter(config.pixel_size * config.freqs, micrograph)]
-model = GaussianImage(config=config, cloud=cloud, state=state, filters=filters)
+           WhiteningFilter(config.pixel_size * config.freqs, fftfreqs(micrograph.shape), micrograph)]
+masks = [CircularMask(config.coords / config.pixel_size, cutoff=0.75)]          # Cutoff pixels above radius of 3/4 image size
+model = GaussianImage(config=config, cloud=cloud, state=state, filters=filters, masks=masks)
 image = ifft(model(params))
 ```
 
-Alternative noise models are supported. For example, `EmpiricalNoise` stores an empirical covariance matrix. `LorenzianNoise` is a toy model for generating correlated noise. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. In general, `jax-2dtm` is designed to be very extensible and new scattering, optics, and noise models can easily be implemented.
+Alternative noise models are supported. For example, `EmpiricalNoise` stores an empirical covariance matrix. `ExponentialNoise` generates noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. In general, `jax-2dtm` is designed to be very extensible and new scattering, optics, and noise models can easily be implemented.
 
 ## Features
 
