@@ -86,7 +86,13 @@ class Image(metaclass=ABCMeta):
         # Set observed data
         if observed is not None:
             assert self.config.shape == observed.shape
-            observed = self.config.pad(observed, mode="edge")
+            observed = self.config.pad(
+                observed,
+                mode="constant",
+                constant_values=observed[
+                    observed.shape[0] // 2, observed.shape[1] // 2
+                ],
+            )
             assert self.config.padded_shape == observed.shape
             observed = self.mask(self.crop(self.filter(observed)))
             assert self.config.shape == observed.shape
