@@ -29,7 +29,7 @@ __all__ = [
     ## Noise models
     "WhiteNoise",
     "EmpiricalNoise",
-    "LorenzianNoise",
+    "ExponentialNoise",
     # Image models
     "ScatteringImage",
     "OpticsImage",
@@ -76,9 +76,9 @@ from .optics import compute_ctf_power, NullOptics, CTFOptics
 
 Optics = Union[NullOptics, CTFOptics]
 from .intensity import rescale_image, Intensity
-from .noise import NullNoise, WhiteNoise, EmpiricalNoise, LorenzianNoise
+from .noise import NullNoise, WhiteNoise, EmpiricalNoise, ExponentialNoise
 
-Noise = Union[NullNoise, WhiteNoise, EmpiricalNoise, LorenzianNoise]
+Noise = Union[NullNoise, WhiteNoise, EmpiricalNoise, ExponentialNoise]
 from .state import ParameterState
 from .image import ScatteringImage, OpticsImage, GaussianImage
 

@@ -156,7 +156,6 @@ class ScatteringImage(Image):
     def sample(self, state: Optional[ParameterState] = None) -> Array:
         state = state or self.state
         simulated = self.render(state)
-
         return self.config.crop(simulated)
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
@@ -215,4 +214,4 @@ class GaussianImage(OpticsImage):
             self.config.freqs * self.config.pixel_size
         )
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
-        return loss.real / residuals.size
+        return loss.real / residuals.size**2

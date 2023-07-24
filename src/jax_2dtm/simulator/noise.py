@@ -93,14 +93,15 @@ class WhiteNoise(GaussianNoise):
 
     Attributes
     ----------
-    sigma : `jax_2dtm.types.Scalar`
+    alpha : `jax_2dtm.types.Scalar`
+        Variance of the white noise.
     """
 
-    sigma: Scalar = 1.0
+    alpha: Scalar = 1.0
 
     def variance(self, freqs: Optional[Array] = None) -> Array:
         """Flat power spectrum."""
-        return self.sigma**2
+        return self.alpha
 
 
 @dataclass
@@ -110,8 +111,10 @@ class EmpiricalNoise(GaussianNoise):
 
     Attributes
     ----------
-    sigma : `jax_2dtm.types.Scalar`
+    kappa : `jax_2dtm.types.Scalar`
         A scale factor for the variance.
+    sigma : `jax_2dtm.types.Scalar`
+        An uncorrelated part of the variance.
     spectrum : `jax.Array`, shape `(N1, N2)`
         The measured power spectrum. Compute this
         with ``jax_2dtm.simulator.compute_whitening_filter``.
@@ -120,35 +123,50 @@ class EmpiricalNoise(GaussianNoise):
 
     spectrum: Array = field(pytree_node=False)
 
-    sigma: Scalar = 1.0
+    kappa: Scalar = 1.0
+    alpha: Scalar = 0.0
 
     def variance(self, freqs: Optional[Array] = None) -> Array:
         """Power spectrum measured from a micrograph."""
-        return self.sigma * self.spectrum
+        return self.kappa * self.spectrum + self.alpha
 
 
 @dataclass
-class LorenzianNoise(GaussianNoise):
-    """
-    Gaussian noise with a lorenzian power spectrum.
+class ExponentialNoise(GaussianNoise):
+    r"""
+    Gaussian noise with a covariance matrix equal to an exponential
+    decay, given by
+
+    .. math::
+        g(r) = \kappa \exp(- r / \xi),
+
+    where :math:`r` is a radial coordinate. The power spectrum
+    from such a correlation function (in two-dimensions) is given
+    by its Hankel transform pair
+
+    .. math::
+        P(k) = \frac{\kappa}{\xi} \frac{1}{(\xi^{-2} + k^2)^{3/2}} + \sigma,
+
+    where :math:`\sigma` is an uncorrelated contribution,
+    typically described as shot noise.
 
     Attributes
     ----------
-    sigma : `jax_2dtm.types.Scalar`
-        An uncorrelated part of the spectrum.
     kappa : `jax_2dtm.types.Scalar`
         The "coupling strength".
     xi : `jax_2dtm.types.Scalar`
         The correlation length. This is measured
         in pixel units, not in physical length.
+    alpha : `jax_2dtm.types.Scalar`
+        The uncorrelated part of the spectrum.
     """
 
-    sigma: Scalar = 1.0
     kappa: Scalar = 1.0
     xi: Scalar = 1.0
+    alpha: Scalar = 1.0
 
     def variance(self, freqs: Array) -> Array:
-        """Power spectrum modeled by a lorenzian, plus a flat contribution."""
+        """Power spectrum modeled by a pure exponential, plus a flat contribution."""
         k_norm = jnp.linalg.norm(freqs, axis=-1)
-        lorenzian = 1.0 / (k_norm**2 + jnp.divide(1, (self.xi) ** 2))
-        return self.kappa**2 * lorenzian + self.sigma**2
+        scaling = 1.0 / (k_norm**2 + jnp.divide(1, (self.xi) ** 2)) ** 1.5
+        return (self.kappa / self.xi) * scaling + self.alpha
