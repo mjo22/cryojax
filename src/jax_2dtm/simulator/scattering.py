@@ -157,7 +157,7 @@ def project_with_nufft(
     Project and interpolate 3D volume point cloud
     onto imaging plane using a non-uniform FFT.
 
-    See ``jax_2dtm.utils.nufft`` for more detail.
+    See ``jax_2dtm.utils.integration.nufft`` for more detail.
 
     Arguments
     ---------
@@ -201,7 +201,7 @@ def project_with_gaussians(
     Project and interpolate 3D volume point cloud
     onto imaging plane using a non-uniform FFT.
 
-    See ``jax_2dtm.utils.nufft`` for more detail.
+    See ``jax_2dtm.utils.integration.integrate_gaussians`` for more detail.
 
     Arguments
     ---------

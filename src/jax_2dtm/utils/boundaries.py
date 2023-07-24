@@ -4,11 +4,13 @@ Routines for dealing with image boundaries.
 
 __all__ = ["bound", "crop", "pad"]
 
+import jax
 import jax.numpy as jnp
 
 from ..core import Array
 
 
+@jax.jit
 def bound(density: Array, coords: Array, box_size: Array) -> Array:
     """
     Use a boolean mask to set density values out of

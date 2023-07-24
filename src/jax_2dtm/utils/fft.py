@@ -2,7 +2,7 @@
 Routines to compute FFTs.
 """
 
-__all__ = ["ifft", "fft", "fftfreqs", "fftfreqs1d", "convolve"]
+__all__ = ["ifft", "fft", "fftfreqs", "fftfreqs1d"]
 
 import jax.numpy as jnp
 import numpy as np
@@ -97,22 +97,3 @@ def fftfreqs1d(s: int, pixel_size: float, real: bool = False):
         else np.fft.fftfreq(s, pixel_size)
     )
     return np.fft.fftshift(fftfreq(s))
-
-
-def convolve(image: Array, filter: Array) -> Array:
-    """
-    Convolve an image with a filter.
-
-    Arguments
-    ---------
-    image : `Array`, shape `(N1, N2)`
-        The image to be filtered, in real space.
-    filter : `Array`, shape `(N1, N2)`
-        The filter, in real space.
-
-    Returns
-    -------
-    filtered : `Array`, shape `(N1, N2)`
-        The filtered image.
-    """
-    return fftconvolve(image, filter, mode="same")

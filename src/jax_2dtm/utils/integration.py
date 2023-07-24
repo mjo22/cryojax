@@ -4,6 +4,7 @@ Integration routines.
 
 __all__ = ["nufft", "integrate_gaussians"]
 
+import jax
 import jax.numpy as jnp
 
 # import tensorflow as tf
@@ -98,22 +99,8 @@ def integrate_gaussians(
     image : `Array`, shape `shape`
         Integrals of Gaussian densities over grid.
     """
-
-    # Compute marginals in x and y
-    marginals = [
-        _integrate_gaussian_1d(
-            fftfreqs1d(s + 1, pixel_size, real=True),
-            centers[:, i],
-            scales,
-        )
-        for i, s in enumerate(shape)
-    ]
-
-    # Contract by summing over batch dimension and outer product over spatial dimensions
-    # In summation notation, this would correspond to the einsum
-    # jnp.einsum('mi,mj,m->ij', *marginals, weights)
-    my, mx = marginals
-    image = jnp.matmul((mx * jnp.expand_dims(weights, axis=-1)).T, my)
+    x, y = [fftfreqs1d(s + 1, pixel_size, real=True) for s in shape]
+    image = _integrate_gaussians(x, y, weights, centers, scales)
 
     return image
 
@@ -132,28 +119,44 @@ def integrate_gaussians(
 #    )
 
 
-def _integrate_gaussian_1d(boundaries: Array, centers: Array, scales: Array):
+@jax.jit
+def _integrate_gaussians(
+    x: Array, y: Array, weights: Array, centers: Array, scales: Array
+):
     """
     Integrate a Gaussian density over a set of intervals given by boundaries.
 
     Parameters
     ----------
-    boundaries : `Array`, shape `(M + 1,)`
-        Boundaries of intervals to integrate over.
-    centers : `Array`, shape `(N,)`
+    x : `Array`, shape `(M1 + 1,)`
+        x boundary of intervals to integrate over.
+    y : `Array`, shape `(M2 + 1,)`
+        y boundary of intervals to integrate over.
+    weights : `Array`, shape `(N,)`
+        Gaussian weights
+    centers : `Array`, shape `(N, 2)`
         Centers of Gaussian densities.
     scales : `Array`, shape `(N,)`
         Scales of Gaussian densities.
 
     Returns
     -------
-    I : `Array`, shape `(N, M)`
+    I : `Array`, shape `(M1, M2)`
         Integrals of Gaussian densities over intervals.
     """
     centers = jnp.expand_dims(centers, axis=-1)
     scales = jnp.expand_dims(scales, axis=-1)
 
-    z = (boundaries - centers) / (scales * jnp.sqrt(2.0))
-    I = 0.5 * jnp.diff(special.erf(z), axis=-1)
+    # Marginals
+    I_x = 0.5 * jnp.diff(
+        special.erf((x - centers[:, 0]) / (scales * jnp.sqrt(2.0))), axis=-1
+    )
+    I_y = 0.5 * jnp.diff(
+        special.erf((y - centers[:, 1]) / (scales * jnp.sqrt(2.0))), axis=-1
+    )
+    # Contract by summing over batch dimension and outer product over spatial dimensions
+    # In summation notation, this would correspond to the einsum
+    # jnp.einsum('mi,mj,m->ij', *marginals, weights)
+    I = jnp.matmul((I_x * jnp.expand_dims(weights, axis=-1)).T, I_y)
 
     return I
