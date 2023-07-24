@@ -20,7 +20,16 @@ from typing import Any
 import jax.numpy as jnp
 
 from ..core import dataclass, field, Array, ArrayLike, Serializable
-from ..utils import fft, ifft, fftfreqs, bound, crop, pad, nufft, integrate_gaussians
+from ..utils import (
+    fft,
+    ifft,
+    fftfreqs,
+    bound,
+    crop,
+    pad,
+    nufft,
+    integrate_gaussians,
+)
 
 
 @dataclass
@@ -43,21 +52,35 @@ class ImageConfig(Serializable):
     shape: tuple[int, int] = field(pytree_node=False, encode=tuple)
     pixel_size: float = field(pytree_node=False)
 
-    padded_shape: tuple[int, int] = field(pytree_node=False, init=False, encode=False)
+    padded_shape: tuple[int, int] = field(
+        pytree_node=False, init=False, encode=False
+    )
+
     freqs: ArrayLike = field(pytree_node=False, init=False, encode=False)
-    padded_freqs: ArrayLike = field(pytree_node=False, init=False, encode=False)
+    padded_freqs: ArrayLike = field(
+        pytree_node=False, init=False, encode=False
+    )
+
+    coords: ArrayLike = field(pytree_node=False, init=False, encode=False)
 
     pad_scale: float = field(pytree_node=False, default=1)
 
     def __post_init__(self):
-        object.__setattr__(self, "padded_shape", tuple([int(s*self.pad_scale) for s in self.shape]))
-        object.__setattr__(self, "freqs", jnp.asarray(fftfreqs(self.shape, self.pixel_size)))
-        object.__setattr__(self, "padded_freqs", jnp.asarray(fftfreqs(self.padded_shape, self.pixel_size)))
+        padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
+        object.__setattr__(self, "padded_shape", padded_shape)
+        freqs = jnp.asarray(fftfreqs(self.shape, self.pixel_size))
+        padded_freqs = jnp.asarray(
+            fftfreqs(self.padded_shape, self.pixel_size)
+        )
+        coords = jnp.asarray(fftfreqs(self.shape, self.pixel_size, real=True))
+        object.__setattr__(self, "freqs", freqs)
+        object.__setattr__(self, "padded_freqs", padded_freqs)
+        object.__setattr__(self, "coords", coords)
 
     def crop(self, image: Array) -> Array:
         """Crop an image in Fourier space."""
         return fft(crop(ifft(image), self.shape))
-    
+
     def pad(self, image: Array, **kwargs: Any) -> Array:
         """Crop an image in Fourier space."""
         return fft(pad(ifft(image), self.padded_shape, **kwargs))
@@ -92,7 +115,7 @@ class NufftScattering(ScatteringConfig):
     eps: float = field(pytree_node=False, default=1e-6)
 
     def project(self, *args):
-        """Render image with non-uniform FFTs."""
+        """Rasterize image with non-uniform FFTs."""
         return project_with_nufft(*args, self.padded_shape, eps=self.eps)
 
 
@@ -111,12 +134,15 @@ class GaussianScattering(ScatteringConfig):
         for more documentation.
     """
 
-    scale: float = field(pytree_node=False, default=1/3)
+    scale: float = field(pytree_node=False, default=1 / 3)
 
     def project(self, *args):
-        """Render image by integrating over Gaussians."""
+        """Rasterize image by integrating over Gaussians."""
         return project_with_gaussians(
-            *args, self.padded_shape, self.pixel_size, self.pixel_size*self.scale
+            *args,
+            self.padded_shape,
+            self.pixel_size,
+            self.pixel_size * self.scale,
         )
 
 

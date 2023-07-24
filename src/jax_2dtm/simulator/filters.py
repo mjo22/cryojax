@@ -105,7 +105,7 @@ def compute_anti_aliasing_filter(
 
     Parameters
     ----------
-    freqs : `jax.Array`
+    freqs : `jax.Array`, shape `(N1, N2, 2)`
         The fourier wavevectors in the imaging plane.
     cutoff : `float`, optional
         The cutoff frequency as a fraction of the Nyquist frequency,
@@ -116,7 +116,7 @@ def compute_anti_aliasing_filter(
 
     Returns
     -------
-    mask : `jax.Array`
+    mask : `jax.Array`, shape `(N1, N2)`
         An array representing the anti-aliasing filter.
     """
 

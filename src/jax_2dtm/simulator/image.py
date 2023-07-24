@@ -19,10 +19,12 @@ import jax.numpy as jnp
 
 from .cloud import Cloud
 from .filters import AntiAliasingFilter
+from .mask import CircularMask
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
+from ..utils import fft, ifft
 from ..core import dataclass, field, Array, Scalar
-from . import Filter, ScatteringConfig
+from . import Filter, Mask, ScatteringConfig
 
 
 @dataclass
@@ -57,31 +59,38 @@ class Image(metaclass=ABCMeta):
     cloud: Cloud = field(pytree_node=False)
 
     filters: list[Filter] = field(pytree_node=False, init=False)
+    masks: list[Mask] = field(pytree_node=False, init=False)
     observed: Optional[Array] = field(pytree_node=False, init=False)
 
     filters: InitVar[list[Filter] | None] = None
+    masks: InitVar[list[Filter] | None] = None
     observed: InitVar[Array | None] = None
 
-    def __post_init__(self, filters, observed):
+    def __post_init__(self, filters, masks, observed):
         # Set filters
-        object.__setattr__(
-            self,
-            "filters",
-            filters
-            or [
+        filters = (
+            [
                 AntiAliasingFilter(
                     self.config.pixel_size * self.config.padded_freqs
                 )
-            ],
+            ]
+            if filters is None
+            else filters
         )
+        object.__setattr__(self, "filters", filters)
+        # Set masks
+        masks = (
+            [CircularMask(self.config.coords / self.config.pixel_size)]
+            if masks is None
+            else masks
+        )
+        object.__setattr__(self, "masks", masks)
         # Set observed data
         if observed is not None:
             assert self.config.shape == observed.shape
-            observed = self.config.pad(observed, mode="edge")
+            observed = self.config.pad(observed, mode="constant")
             assert self.config.padded_shape == observed.shape
-            for filter in self.filters:
-                observed = filter(observed)
-            observed = self.config.crop(observed)
+            observed = self.mask(self.crop(self.filter(observed)))
             assert self.config.shape == observed.shape
         object.__setattr__(self, "observed", observed)
 
@@ -118,6 +127,27 @@ class Image(metaclass=ABCMeta):
         else:
             return self.log_likelihood(state)
 
+    def filter(self, image: Array) -> Array:
+        """Apply filters to image."""
+        for filter in self.filters:
+            image = filter(image)
+        return image
+
+    def mask(self, image: Array) -> Array:
+        """Apply masks to image."""
+        if len(self.masks) > 0:
+            image = ifft(image)
+            for mask in self.masks:
+                image = mask(image)
+            image = fft(image)
+        return image
+
+    def crop(self, image: Array) -> Array:
+        """Crop image from the padded to desired shape."""
+        if self.config.pad_scale != 1:
+            image = self.config.crop(image)
+        return image
+
     def residuals(self, state: Optional[ParameterState] = None):
         """Return the residuals between the model and observed data."""
         state = state or self.state
@@ -146,10 +176,10 @@ class ScatteringImage(Image):
         cloud = self.cloud.view(state.pose)
         scattering_image = cloud.project(self.config)
         # Apply filters
-        for filter in self.filters:
-            scattering_image = filter(scattering_image)
-        if crop and self.config.pad_scale != 1:
-            scattering_image = self.config.crop(scattering_image)
+        scattering_image = self.filter(scattering_image)
+        # Crop
+        if crop:
+            scattering_image = self.crop(scattering_image)
 
         return scattering_image
 
@@ -177,10 +207,13 @@ class OpticsImage(ScatteringImage):
         # Compute and apply CTF
         ctf = state.optics(self.config.padded_freqs)
         optics_image = ctf * scattering_image
-        # Rescale the image to desired scaling and offset
-        rescaled_image = state.intensity.rescale(optics_image)
+        # Crop
         if self.config.pad_scale != 1:
-            rescaled_image = self.config.crop(rescaled_image)
+            optics_image = self.config.crop(optics_image)
+        # Apply masks to image
+        masked_image = self.mask(optics_image)
+        # Rescale the image to desired mean and standard deviation
+        rescaled_image = state.intensity.rescale(masked_image)
 
         return rescaled_image
 
@@ -195,8 +228,8 @@ class GaussianImage(OpticsImage):
     which allows one to model an arbitrary noise power spectrum.
     """
 
-    def __post_init__(self, filters, observed):
-        super().__post_init__(filters, observed)
+    def __post_init__(self, *args):
+        super().__post_init__(*args)
         assert isinstance(self.state.noise, GaussianNoise)
 
     def sample(self, state: Optional[ParameterState] = None) -> Array:
@@ -204,7 +237,7 @@ class GaussianImage(OpticsImage):
         state = state or self.state
         simulated = self.render(state)
         noise = state.noise.sample(self.config.freqs * self.config.pixel_size)
-        return simulated + noise
+        return simulated + self.mask(noise)
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""

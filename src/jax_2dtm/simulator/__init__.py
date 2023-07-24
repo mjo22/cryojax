@@ -6,6 +6,7 @@ __all__ = [
     "project_with_gaussians",
     "compute_anti_aliasing_filter",
     "compute_whitening_filter",
+    "compute_circular_mask",
     "compute_ctf_power",
     "rescale_image",
     # Image configuration
@@ -17,6 +18,8 @@ __all__ = [
     # Filters
     "AntiAliasingFilter",
     "WhiteningFilter",
+    # Masks
+    "CircularMask",
     # Model parameter configuration
     "ParameterState",
     ## Pose
@@ -72,6 +75,9 @@ from .filters import (
 )
 
 Filter = Union[AntiAliasingFilter, WhiteningFilter]
+from .mask import CircularMask, compute_circular_mask
+
+Mask = CircularMask
 from .optics import compute_ctf_power, NullOptics, CTFOptics
 
 Optics = Union[NullOptics, CTFOptics]
