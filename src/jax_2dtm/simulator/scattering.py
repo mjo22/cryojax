@@ -8,16 +8,19 @@ from __future__ import annotations
 __all__ = [
     "project_with_nufft",
     "project_with_gaussians",
+    "project_with_slice",
     "ImageConfig",
     "ScatteringConfig",
     "NufftScattering",
     "GaussianScattering",
+    "FourierSliceScattering",
 ]
 
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
 import jax.numpy as jnp
+from jax.scipy.ndimage import map_coordinates
 
 from ..core import dataclass, field, Array, ArrayLike, Serializable
 from ..utils import (
@@ -100,6 +103,22 @@ class ScatteringConfig(ImageConfig, metaclass=ABCMeta):
 
 
 @dataclass
+class FourierSliceScattering(ScatteringConfig):
+    """
+    Scatter points to image plane using the
+    Fourier-projection slice theorem.
+
+    Attributes
+    ----------
+
+    """
+
+    def project(self, *args):
+        """Rasterize image with non-uniform FFTs."""
+        return project_with_slice(*args, self.padded_shape)
+
+
+@dataclass
 class NufftScattering(ScatteringConfig):
     """
     Scatter points to image plane using a
@@ -146,6 +165,52 @@ class GaussianScattering(ScatteringConfig):
         )
 
 
+def project_with_slice(
+    density: Array,
+    coordinates: Array,
+    box_size: Array,
+    shape: tuple[int, int],
+    order: int = 1,
+) -> Array:
+    """
+    Project and interpolate 3D volume point cloud
+    onto imaging plane using the fourier slice theorem.
+
+    Arguments
+    ---------
+    density :
+        Density point cloud in fourier space.
+    coordinates :
+        Coordinate system of point cloud.
+    box_size :
+        Box size of points.
+    shape : `tuple[int, int]`
+        Shape of the imaging plane in pixels.
+        ``width, height = shape[0], shape[1]``
+        is the size of the desired imaging plane.
+    order : `int`
+        The order of the spline interpolation.
+
+    Returns
+    -------
+    projection :
+        The output image in fourier space.
+    """
+    pixel_size = box_size[0] / shape[0]
+    mask = jnp.logical_or(
+        coordinates[..., -1] <= 1 / pixel_size,
+        coordinates[..., -1] >= -1 / pixel_size,
+    )
+    slice = jnp.where(mask, density, 0.0 + 0.0j)
+    image_coords = jnp.transpose(
+        jnp.array(fftfreqs((*shape, 1), real=True)), axes=(3, 0, 1, 2)
+    )
+
+    projection = map_coordinates(slice, image_coords, order=order)[..., 0]
+
+    return projection
+
+
 def project_with_nufft(
     density: Array,
     coordinates: Array,
@@ -179,7 +244,7 @@ def project_with_nufft(
     Returns
     -------
     projection :
-        The output image in real space.
+        The output image in fourier space.
     """
     masked = bound(density, coordinates[:, :2], box_size[:2])
     projection = nufft(
@@ -223,7 +288,7 @@ def project_with_gaussians(
     Returns
     -------
     projection :
-        The output image in real space.
+        The output image in fourier space.
     """
     masked = bound(density, coordinates[:, :2], box_size[:2])
     projection = integrate_gaussians(

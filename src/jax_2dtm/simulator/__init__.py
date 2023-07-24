@@ -4,6 +4,7 @@ __all__ = [
     "rotate_and_translate_wxyz",
     "project_with_nufft",
     "project_with_gaussians",
+    "project_with_slice",
     "compute_anti_aliasing_filter",
     "compute_whitening_filter",
     "compute_circular_mask",
@@ -13,6 +14,7 @@ __all__ = [
     "ImageConfig",
     "NufftScattering",
     "GaussianScattering",
+    "FourierSliceScattering",
     # Point clouds
     "Cloud",
     # Filters
@@ -60,9 +62,11 @@ Pose = Union[EulerPose, QuaternionPose]
 from .scattering import (
     project_with_nufft,
     project_with_gaussians,
+    project_with_slice,
     ImageConfig,
     NufftScattering,
     GaussianScattering,
+    FourierSliceScattering,
 )
 
 ScatteringConfig = Union[NufftScattering, GaussianScattering]

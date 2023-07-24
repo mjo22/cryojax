@@ -76,7 +76,7 @@ model = GaussianImage(config=config, cloud=cloud, state=state, observed=fft(obse
 log_likelihood = model(params)
 ```
 
-Imaging models also accept a series of `Filter`s and `Mask`s. By default, this is an `AntiAliasingFilter` that cuts off modes above the Nyquist freqeuency, and a `CircularMask` that only simulates pixels within a central circle. Alternatively, one could add a `WhiteningFilter`.
+Imaging models also accept a series of `Filter`s and `Mask`s. By default, this is an `AntiAliasingFilter` that cuts off modes above the Nyquist freqeuency. Alternatively, one could add a `WhiteningFilter` and a `CircularMask`.
 
 ```python
 from jax_2dtm.simulator import AntiAliasingFilter, WhiteningFilter, CircularMask

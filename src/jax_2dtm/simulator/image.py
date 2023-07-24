@@ -14,7 +14,9 @@ __all__ = [
 from abc import ABCMeta, abstractmethod
 from typing import Union, Optional
 from dataclasses import InitVar
+from functools import partial
 
+import jax
 import jax.numpy as jnp
 
 from .cloud import Cloud
@@ -79,16 +81,12 @@ class Image(metaclass=ABCMeta):
         )
         object.__setattr__(self, "filters", filters)
         # Set masks
-        masks = (
-            [CircularMask(self.config.coords / self.config.pixel_size)]
-            if masks is None
-            else masks
-        )
+        masks = [] if masks is None else masks
         object.__setattr__(self, "masks", masks)
         # Set observed data
         if observed is not None:
             assert self.config.shape == observed.shape
-            observed = self.config.pad(observed, mode="constant")
+            observed = self.config.pad(observed, mode="edge")
             assert self.config.padded_shape == observed.shape
             observed = self.mask(self.crop(self.filter(observed)))
             assert self.config.shape == observed.shape
@@ -247,4 +245,4 @@ class GaussianImage(OpticsImage):
             self.config.freqs * self.config.pixel_size
         )
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
-        return loss.real / residuals.size**2
+        return loss.real / residuals.size

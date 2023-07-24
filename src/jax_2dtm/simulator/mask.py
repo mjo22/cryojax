@@ -63,7 +63,7 @@ class CircularMask(Mask):
     """
 
     radius: float = field(pytree_node=False, default=1.0)
-    rolloff: float = field(pytree_node=False, default=0.05)
+    rolloff: float = field(pytree_node=False, default=0.1)
 
     def compute(self, coords: Array) -> Array:
         return compute_circular_mask(

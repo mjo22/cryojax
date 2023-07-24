@@ -16,6 +16,7 @@ from abc import ABCMeta, abstractmethod
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 from jaxlie import SE3, SO3
 
 from ..core import Array, Scalar, dataclass, Serializable
@@ -71,7 +72,10 @@ class EulerPose(Pose):
 
     def transform(self, coordinates: Array) -> Array:
         """Transform coordinates from a set of Euler angles."""
-        return rotate_and_translate_rpy(coordinates, *self.iter_data())
+        N = np.prod(coordinates.shape[:-1])
+        return rotate_and_translate_rpy(
+            coordinates.reshape((N, 3)), *self.iter_data()
+        ).reshape(coordinates.shape)
 
 
 @dataclass
@@ -96,7 +100,10 @@ class QuaternionPose(Pose):
 
     def transform(self, coordinates: Array) -> Array:
         """Transform coordinates from an offset and unit quaternion."""
-        return rotate_and_translate_wxyz(coordinates, *self.iter_data())
+        N = np.prod(coordinates.shape[:-1])
+        return rotate_and_translate_wxyz(
+            coordinates.reshape((N, 3)), *self.iter_data()
+        ).reshape(coordinates.shape)
 
 
 @jax.jit

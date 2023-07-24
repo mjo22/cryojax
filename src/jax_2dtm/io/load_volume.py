@@ -71,7 +71,11 @@ def load_mrc(filename: str) -> ArrayLike:
 
 
 def coordinatize(
-    template: ArrayLike, pixel_size: float, real: bool = True, **kwargs: Any
+    template: ArrayLike,
+    pixel_size: float,
+    real: bool = True,
+    flatten: bool = True,
+    **kwargs: Any,
 ) -> tuple[Array, ...]:
     """
     Returns flattened coordinate system and 3D volume or 2D image
@@ -105,18 +109,22 @@ def coordinatize(
     if real:
         flat = template.ravel()
         mask = np.where(~np.isclose(flat, 0.0, **kwargs))
+        density = flat[mask]
     else:
-        flat = fft(template).ravel()
-        mask = np.where(np.abs(flat) < np.inf)
-    density = flat[mask]
+        flat = fft(template).ravel() if flatten else fft(template)
+        mask = True
+        density = flat
 
     # Create coordinate buffer
     N = density.size
-    coords = np.zeros((N, ndim))
+    coords = np.zeros((N, ndim)) if flatten else np.zeros((*shape, ndim))
 
     # Generate rectangular grid and fill coordinate array
     R = fftfreqs(shape, pixel_size, real=real)
     for i in range(ndim):
-        coords[:, i] = R[..., i].ravel()[mask]
+        if flatten:
+            coords[..., i] = R[..., i].ravel()[mask]
+        else:
+            coords[..., i] = R[..., i]
 
     return jnp.array(density), jnp.array(coords)

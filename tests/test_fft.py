@@ -3,9 +3,6 @@ from .test_pipeline import setup, scattering_model
 import jax.numpy as jnp
 import numpy as np
 from jax_2dtm.utils import fft, ifft
-from jax import config
-
-config.update("jax_enable_x64", True)
 
 
 def test_fft(scattering_model):
