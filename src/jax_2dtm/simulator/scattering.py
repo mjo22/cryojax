@@ -20,7 +20,6 @@ from abc import ABCMeta, abstractmethod
 from typing import Any
 
 import jax.numpy as jnp
-from jax.scipy.ndimage import map_coordinates
 
 from ..core import dataclass, field, Array, ArrayLike, Serializable
 from ..utils import (
@@ -196,19 +195,7 @@ def project_with_slice(
     projection :
         The output image in fourier space.
     """
-    pixel_size = box_size[0] / shape[0]
-    mask = jnp.logical_or(
-        coordinates[..., -1] <= 1 / pixel_size,
-        coordinates[..., -1] >= -1 / pixel_size,
-    )
-    slice = jnp.where(mask, density, 0.0 + 0.0j)
-    image_coords = jnp.transpose(
-        jnp.array(fftfreqs((*shape, 1), real=True)), axes=(3, 0, 1, 2)
-    )
-
-    projection = map_coordinates(slice, image_coords, order=order)[..., 0]
-
-    return projection
+    raise NotImplementedError
 
 
 def project_with_nufft(
