@@ -54,9 +54,10 @@ from jax_2dtm.simulator import EulerPose, CTFOptics, WhiteNoise, Intensity, Para
 from jax_2dtm.simulator import GaussianImage
 
 template = "example.mrc"
+key = jax.random.PRNGKey(seed=0)
 config = NufftScattering(shape=(320, 320), pixel_size=1.32)
 cloud = load_grid_as_cloud(template, config)
-pose, optics, intensity, noise = EulerPose(), CTFOptics(), Intensity(), WhiteNoise()
+pose, optics, intensity, noise = EulerPose(), CTFOptics(), Intensity(), WhiteNoise(key=key)
 state = ParameterState(pose=pose, optics=optics, intensity=intensity, noise=noise)
 model = GaussianImage(config=config, cloud=cloud, state=state)
 params = dict(view_phi=np.pi, defocus_u=8000., sigma=1.4)
@@ -84,7 +85,7 @@ from jax_2dtm.utils import fftfreqs
 
 filters = [AntiAliasingFilter(config.pixel_size * config.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
            WhiteningFilter(config.pixel_size * config.freqs, fftfreqs(micrograph.shape), micrograph)]
-masks = [CircularMask(config.coords / config.pixel_size, cutoff=0.75)]          # Cutoff pixels above radius of 3/4 image size
+masks = [CircularMask(config.coords / config.pixel_size, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
 model = GaussianImage(config=config, cloud=cloud, state=state, filters=filters, masks=masks)
 image = ifft(model(params))
 ```
