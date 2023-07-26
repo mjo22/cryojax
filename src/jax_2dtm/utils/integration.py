@@ -6,10 +6,10 @@ __all__ = ["nufft", "integrate_gaussians"]
 
 import jax
 import jax.numpy as jnp
-import tensorflow_nufft as tfft
-from jax.experimental import jax2tf
+#import tensorflow_nufft as tfft
+#from jax.experimental import jax2tf
 
-# from jax_finufft import nufft1
+from jax_finufft import nufft1
 from jax.scipy import special
 
 from .fft import fftfreqs1d
@@ -57,15 +57,15 @@ def nufft(
     """
     complex_density = density.astype(complex)
     periodic_coords = 2 * jnp.pi * coords / box_size
-    nufft1 = jax2tf.call_tf(
-        _tf_nufft1,
-        output_shape_dtype=jax.ShapeDtypeStruct(shape, complex_density.dtype),
-    )
-    ft = nufft1(
-        complex_density, jnp.flip(periodic_coords, axis=-1), shape, eps
-    )
-    # x, y = periodic_coords.T
-    # ft = nufft1(shape, complex_density, -y, -x, eps=eps)
+    #nufft1 = jax2tf.call_tf(
+    #    _tf_nufft1,
+    #    output_shape_dtype=jax.ShapeDtypeStruct(shape, complex_density.dtype),
+    #)
+    #ft = nufft1(
+    #    complex_density, jnp.flip(periodic_coords, axis=-1), shape, eps
+    #)
+    x, y = periodic_coords.T
+    ft = nufft1(shape, complex_density, -y, -x, eps=eps)
 
     return ft
 
@@ -109,18 +109,18 @@ def integrate_gaussians(
     return image
 
 
-def _tf_nufft1(source, points, shape, tol):
-    """
-    Wrapper for type-1 non-uniform FFT
-    from tensorflow-nufft.
-    """
-    return tfft.nufft(
-        source,
-        points,
-        grid_shape=shape,
-        transform_type="type_1",
-        tol=tol.numpy(),
-    )
+#def _tf_nufft1(source, points, shape, tol):
+#    """
+#    Wrapper for type-1 non-uniform FFT
+#    from tensorflow-nufft.
+#    """
+#    return tfft.nufft(
+#        source,
+#        points,
+#        grid_shape=shape,
+#        transform_type="type_1",
+#        tol=tol.numpy(),
+#    )
 
 
 @jax.jit

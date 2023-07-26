@@ -14,14 +14,11 @@ __all__ = [
 from abc import ABCMeta, abstractmethod
 from typing import Union, Optional
 from dataclasses import InitVar
-from functools import partial
 
-import jax
 import jax.numpy as jnp
 
 from .cloud import Cloud
 from .filters import AntiAliasingFilter
-from .mask import CircularMask
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
 from ..utils import fft, ifft
@@ -89,9 +86,7 @@ class Image(metaclass=ABCMeta):
             observed = self.config.pad(
                 observed,
                 mode="constant",
-                constant_values=observed[
-                    observed.shape[0] // 2, observed.shape[1] // 2
-                ],
+                constant_values=ifft(observed).mean(),
             )
             assert self.config.padded_shape == observed.shape
             observed = self.mask(self.crop(self.filter(observed)))

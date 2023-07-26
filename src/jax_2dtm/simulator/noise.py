@@ -167,11 +167,6 @@ class ExponentialNoise(GaussianNoise):
 
     def variance(self, freqs: Array) -> Array:
         """Power spectrum modeled by a pure exponential, plus a flat contribution."""
-        if self.xi == 0.0:
-            return self.alpha
-        else:
-            k_norm = jnp.linalg.norm(freqs, axis=-1)
-            scaling = (
-                1.0 / (k_norm**2 + jnp.divide(1, (self.xi) ** 2)) ** 1.5
-            )
-            return jnp.divide(self.kappa, self.xi) * scaling + self.alpha
+        k_norm = jnp.linalg.norm(freqs, axis=-1)
+        scaling = 1.0 / (k_norm**2 + jnp.divide(1, (self.xi) ** 2)) ** 1.5
+        return jnp.divide(self.kappa, self.xi) * scaling + self.alpha

@@ -4,14 +4,15 @@ Routines to compute FFTs.
 
 __all__ = ["ifft", "fft", "fftfreqs", "fftfreqs1d"]
 
+from typing import Any
+
 import jax.numpy as jnp
 import numpy as np
-from jax.scipy.signal import fftconvolve
 
 from ..core import Array, ArrayLike
 
 
-def ifft(ft: Array) -> Array:
+def ifft(ft: Array, **kwargs: Any) -> Array:
     """
     Helper routine to compute the inverse fourier transform
     from the output of a type 1 non-uniform FFT. Assume that
@@ -27,12 +28,12 @@ def ifft(ft: Array) -> Array:
     ift :
         Inverse fourier transform.
     """
-    ift = jnp.fft.fftshift(jnp.fft.ifftn(jnp.fft.ifftshift(ft)))
+    ift = jnp.fft.fftshift(jnp.fft.ifftn(jnp.fft.ifftshift(ft), **kwargs))
 
     return ift.real
 
 
-def fft(ift: Array) -> Array:
+def fft(ift: Array, **kwargs: Any) -> Array:
     """
     Helper routine to compute the fourier transform of an array
     to match the output of a type 1 non-uniform FFT.
@@ -47,7 +48,7 @@ def fft(ift: Array) -> Array:
     ft :
         Fourier transform of array.
     """
-    ft = jnp.fft.fftshift(jnp.fft.fftn(jnp.fft.ifftshift(ift)))
+    ft = jnp.fft.fftshift(jnp.fft.fftn(jnp.fft.ifftshift(ift), **kwargs))
 
     return ft
 
