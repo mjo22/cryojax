@@ -64,6 +64,7 @@ class Image(metaclass=ABCMeta):
     filters: InitVar[list[Filter] | None] = None
     masks: InitVar[list[Filter] | None] = None
     observed: InitVar[Array | None] = None
+    _process_observed: bool = True
 
     def __post_init__(self, filters, masks, observed):
         # Set filters
@@ -81,7 +82,7 @@ class Image(metaclass=ABCMeta):
         masks = [] if masks is None else masks
         object.__setattr__(self, "masks", masks)
         # Set observed data
-        if observed is not None:
+        if observed is not None and self._process_observed:
             assert self.config.shape == observed.shape
             observed = self.config.upsample(observed)
             # observed = fft(self.config.pad(
@@ -148,7 +149,7 @@ class Image(metaclass=ABCMeta):
     def update(self, params: Union[ParameterDict, ParameterState]) -> Image:
         """Return a new ImageModel based on a new ParameterState."""
         state = self.state.update(params) if type(params) is dict else params
-        return self.replace(state=state)
+        return self.replace(state=state, _process_observed=False)
 
 
 @dataclass
