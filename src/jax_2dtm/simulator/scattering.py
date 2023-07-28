@@ -65,6 +65,9 @@ class ImageConfig(Serializable):
     )
 
     coords: ArrayLike = field(pytree_node=False, init=False, encode=False)
+    padded_coords: ArrayLike = field(
+        pytree_node=False, init=False, encode=False
+    )
 
     pad_scale: float = field(pytree_node=False, default=1)
 
@@ -76,9 +79,13 @@ class ImageConfig(Serializable):
             fftfreqs(self.padded_shape, self.pixel_size)
         )
         coords = jnp.asarray(fftfreqs(self.shape, self.pixel_size, real=True))
+        padded_coords = jnp.asarray(
+            fftfreqs(self.padded_shape, self.pixel_size, real=True)
+        )
         object.__setattr__(self, "freqs", freqs)
         object.__setattr__(self, "padded_freqs", padded_freqs)
         object.__setattr__(self, "coords", coords)
+        object.__setattr__(self, "padded_coords", padded_coords)
 
     def crop(self, image: Array) -> Array:
         """Crop an image in real space."""

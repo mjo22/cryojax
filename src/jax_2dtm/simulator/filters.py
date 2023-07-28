@@ -65,7 +65,7 @@ class AntiAliasingFilter(Filter):
     rolloff : `float`
     """
 
-    cutoff: float = field(pytree_node=False, default=0.667)
+    cutoff: float = field(pytree_node=False, default=1.0)
     rolloff: float = field(pytree_node=False, default=0.1)
 
     def compute(self, freqs: Array) -> Array:

@@ -83,9 +83,9 @@ class Image(metaclass=ABCMeta):
         # Set observed data
         if observed is not None:
             assert self.config.shape == observed.shape
-            observed = self.config.upsample(observed)
+            observed = self.filter(self.config.upsample(fft(observed)))
             assert self.config.padded_shape == observed.shape
-            observed = self.mask(self.config.downsample(self.filter(observed)))
+            observed = fft(self.mask(self.config.crop(ifft(observed))))
             assert self.config.shape == observed.shape
         object.__setattr__(self, "observed", observed)
 
@@ -130,11 +130,8 @@ class Image(metaclass=ABCMeta):
 
     def mask(self, image: Array) -> Array:
         """Apply masks to image."""
-        if len(self.masks) > 0:
-            image = ifft(image)
-            for mask in self.masks:
-                image = mask(image)
-            image = fft(image)
+        for mask in self.masks:
+            image = mask(image)
         return image
 
     def residuals(self, state: Optional[ParameterState] = None):
@@ -168,7 +165,9 @@ class ScatteringImage(Image):
         scattering_image = self.filter(scattering_image)
         # Crop
         if crop:
-            scattering_image = self.config.crop(scattering_image)
+            scattering_image = fft(
+                self.mask(self.config.crop(ifft(scattering_image)))
+            )
 
         return scattering_image
 
@@ -197,12 +196,9 @@ class OpticsImage(ScatteringImage):
         ctf = state.optics(self.config.padded_freqs)
         optics_image = ctf * scattering_image
         # Crop
-        if self.config.pad_scale != 1:
-            optics_image = self.config.crop(optics_image)
-        # Apply masks to image
-        masked_image = self.mask(optics_image)
+        cropped_image = fft(self.mask(self.config.crop(ifft(optics_image))))
         # Rescale the image to desired mean and standard deviation
-        rescaled_image = state.intensity.rescale(masked_image)
+        rescaled_image = state.intensity.rescale(cropped_image)
 
         return rescaled_image
 
