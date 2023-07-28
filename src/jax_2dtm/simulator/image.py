@@ -83,7 +83,10 @@ class Image(metaclass=ABCMeta):
         # Set observed data
         if observed is not None:
             assert self.config.shape == observed.shape
-            observed = self.filter(self.config.upsample(fft(observed)))
+            observed = self.config.pad(
+                observed, constant_values=observed.mean()
+            )
+            observed = self.filter(fft(observed))
             assert self.config.padded_shape == observed.shape
             observed = fft(self.mask(self.config.crop(ifft(observed))))
             assert self.config.shape == observed.shape
