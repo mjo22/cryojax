@@ -20,6 +20,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Any
 
 import jax.numpy as jnp
+from jax.image import resize
 
 from ..core import dataclass, field, Array, ArrayLike, Serializable
 from ..utils import (
@@ -80,12 +81,24 @@ class ImageConfig(Serializable):
         object.__setattr__(self, "coords", coords)
 
     def crop(self, image: Array) -> Array:
-        """Crop an image in Fourier space."""
-        return fft(crop(ifft(image), self.shape))
+        """Crop an image in real space."""
+        return crop(image, self.shape)
 
     def pad(self, image: Array, **kwargs: Any) -> Array:
-        """Crop an image in Fourier space."""
-        return fft(pad(ifft(image), self.padded_shape, **kwargs))
+        """Pad an image in real space."""
+        return pad(image, self.padded_shape, **kwargs)
+
+    def downsample(
+        self, image: Array, method="lanczos5", **kwargs: Any
+    ) -> Array:
+        """Upsample an image in Fourier space."""
+        return resize(image, self.shape, method, antialias=False, **kwargs)
+
+    def upsample(
+        self, image: Array, method="lanczos5", **kwargs: Any
+    ) -> Array:
+        """Upsample an image in Fourier space."""
+        return resize(image, self.padded_shape, method, **kwargs)
 
 
 @dataclass

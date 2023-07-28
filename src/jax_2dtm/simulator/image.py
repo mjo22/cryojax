@@ -83,13 +83,9 @@ class Image(metaclass=ABCMeta):
         # Set observed data
         if observed is not None:
             assert self.config.shape == observed.shape
-            observed = self.config.pad(
-                observed,
-                mode="constant",
-                constant_values=ifft(observed).mean(),
-            )
+            observed = self.config.upsample(observed)
             assert self.config.padded_shape == observed.shape
-            observed = self.mask(self.crop(self.filter(observed)))
+            observed = self.mask(self.config.downsample(self.filter(observed)))
             assert self.config.shape == observed.shape
         object.__setattr__(self, "observed", observed)
 
@@ -141,12 +137,6 @@ class Image(metaclass=ABCMeta):
             image = fft(image)
         return image
 
-    def crop(self, image: Array) -> Array:
-        """Crop image from the padded to desired shape."""
-        if self.config.pad_scale != 1:
-            image = self.config.crop(image)
-        return image
-
     def residuals(self, state: Optional[ParameterState] = None):
         """Return the residuals between the model and observed data."""
         state = state or self.state
@@ -178,7 +168,7 @@ class ScatteringImage(Image):
         scattering_image = self.filter(scattering_image)
         # Crop
         if crop:
-            scattering_image = self.crop(scattering_image)
+            scattering_image = self.config.crop(scattering_image)
 
         return scattering_image
 
