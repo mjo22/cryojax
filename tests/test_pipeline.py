@@ -3,6 +3,7 @@ import pytest
 
 import numpy as np
 from jax import random
+from jax import config
 
 from jax_2dtm.io import load_grid_as_cloud
 
@@ -15,6 +16,7 @@ from jax_2dtm.simulator import (
 )
 from jax_2dtm.simulator import ScatteringImage, OpticsImage, GaussianImage
 
+config.update("jax_enable_x64", True)
 
 @pytest.fixture
 def setup():

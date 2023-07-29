@@ -25,7 +25,6 @@ from jax.image import resize
 from ..core import dataclass, field, Array, ArrayLike, Serializable
 from ..utils import (
     fft,
-    ifft,
     fftfreqs,
     bound,
     crop,
@@ -33,6 +32,7 @@ from ..utils import (
     nufft,
     integrate_gaussians,
     resize,
+    interpn,
 )
 
 
@@ -51,6 +51,14 @@ class ImageConfig(Serializable):
         Size of camera pixels, in dimensions of length.
     freqs : Array, shape `(N1, N2, 2)`
         The fourier wavevectors in the imaging plane.
+    padded_freqs : Array, shape `(M1, M2, 2)`
+        The fourier wavevectors in the imaging plane
+        in the padded coordinate system.
+    coords : Array, shape `(N1, N2, 2)`
+        The coordinates in the imaging plane.
+    padded_coords : Array, shape `(M1, M2, 2)`
+        The coordinates in the imaging plane
+        in the padded coordinate system.
     """
 
     shape: tuple[int, int] = field(pytree_node=False, encode=tuple)
@@ -113,7 +121,7 @@ class ScatteringConfig(ImageConfig, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def project(self, *args):
+    def project(self, *args: Any):
         """Projection method for image rendering."""
         raise NotImplementedError
 
@@ -121,17 +129,20 @@ class ScatteringConfig(ImageConfig, metaclass=ABCMeta):
 @dataclass
 class FourierSliceScattering(ScatteringConfig):
     """
-    Scatter points to image plane using the
+    Scatter points to the image plane using the
     Fourier-projection slice theorem.
-
-    Attributes
-    ----------
-
     """
 
-    def project(self, *args):
-        """Rasterize image with non-uniform FFTs."""
-        return project_with_slice(*args, self.padded_shape)
+    def project(self, *args: Any, **kwargs: Any):
+        """
+        Compute image by interpolating onto the
+        imaging plane.
+        """
+        density, coordinates, box_size = args
+        projection = project_with_slice(
+            density, coordinates, self.freqs, self.shape, **kwargs
+        )
+        return projection
 
 
 @dataclass
@@ -171,7 +182,7 @@ class GaussianScattering(ScatteringConfig):
 
     scale: float = field(pytree_node=False, default=1 / 3)
 
-    def project(self, *args):
+    def project(self, *args: Any):
         """Rasterize image by integrating over Gaussians."""
         return project_with_gaussians(
             *args,
@@ -184,9 +195,9 @@ class GaussianScattering(ScatteringConfig):
 def project_with_slice(
     density: Array,
     coordinates: Array,
-    box_size: Array,
+    freqs: Array,
     shape: tuple[int, int],
-    order: int = 1,
+    **kwargs,
 ) -> Array:
     """
     Project and interpolate 3D volume point cloud
@@ -198,21 +209,27 @@ def project_with_slice(
         Density point cloud in fourier space.
     coordinates :
         Coordinate system of point cloud.
-    box_size :
-        Box size of points.
+    freqs :
+        The image coordinates over which to evaluate
+        the interpolator.
     shape : `tuple[int, int]`
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
-    order : `int`
-        The order of the spline interpolation.
+    kwargs:
+        Passed to ``jax_2dtm.utils.interpolate.interpn``.
 
     Returns
     -------
     projection :
         The output image in fourier space.
     """
-    raise NotImplementedError
+    N1, N2 = shape
+    N = N1 * N2
+    xi = jnp.append(freqs.reshape((N, 2)), jnp.zeros((N, 1)), axis=-1)
+    flat = interpn(density, coordinates, xi)
+    projection = flat.reshape(shape)
+    return projection
 
 
 def project_with_nufft(
