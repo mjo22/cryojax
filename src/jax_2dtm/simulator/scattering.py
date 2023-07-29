@@ -219,13 +219,14 @@ def project_with_slice(
     """
     N1, N2, N3 = density.shape
     box_shape = jnp.array([N1, N2, N3])
-    coordinates = coordinates * box_shape * pixel_size + box_shape // 2
+    coordinates = jnp.fft.ifftshift(coordinates * box_shape * pixel_size)
+    density = jnp.fft.ifftshift(density)
     coordinates = jnp.transpose(
         jnp.expand_dims(coordinates[:, :, 0, :], axis=2),
         axes=[3, 0, 1, 2],
     )
     projection = map_coordinates(density, coordinates, **kwargs)[..., 0]
-    return projection
+    return jnp.fft.fftshift(projection)
 
 
 def project_with_nufft(
