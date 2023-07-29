@@ -32,6 +32,7 @@ from ..utils import (
     pad,
     nufft,
     integrate_gaussians,
+    resize,
 )
 
 
@@ -95,17 +96,13 @@ class ImageConfig(Serializable):
         """Pad an image in real space."""
         return pad(image, self.padded_shape, **kwargs)
 
-    def downsample(
-        self, image: Array, method="lanczos5", **kwargs: Any
-    ) -> Array:
+    def downsample(self, image: Array, **kwargs: Any) -> Array:
         """Upsample an image in Fourier space."""
-        return resize(image, self.shape, method, antialias=False, **kwargs)
+        return resize(image, self.shape, antialias=False, **kwargs)
 
-    def upsample(
-        self, image: Array, method="lanczos5", **kwargs: Any
-    ) -> Array:
+    def upsample(self, image: Array, **kwargs: Any) -> Array:
         """Upsample an image in Fourier space."""
-        return resize(image, self.padded_shape, method, **kwargs)
+        return resize(image, self.padded_shape, **kwargs)
 
 
 @dataclass
