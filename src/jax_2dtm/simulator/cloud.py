@@ -31,6 +31,8 @@ class Cloud(Serializable):
     coordinates: Array = field(pytree_node=False)
     box_size: Array = field(pytree_node=False)
 
+    real: bool = field(pytree_node=False, default=True)
+
     def view(self, pose: Pose) -> Cloud:
         """
         Compute an SE3 transformation of a point cloud,
@@ -41,9 +43,11 @@ class Cloud(Serializable):
         pose : `jax_2dtm.simulator.Pose`
             The imaging pose.
         """
-        coordinates = pose.transform(self.coordinates)
+        density, coordinates = pose.transform(
+            self.density, self.coordinates, real=self.real
+        )
 
-        return self.replace(coordinates=coordinates)
+        return self.replace(coordinates=coordinates, density=density)
 
     def project(self, scattering: ScatteringConfig) -> Array:
         """
@@ -58,4 +62,4 @@ class Cloud(Serializable):
             routine.
         """
 
-        return scattering.project(*self.iter_meta())
+        return scattering.project(*self.iter_meta()[:3])

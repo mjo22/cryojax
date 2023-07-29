@@ -20,7 +20,6 @@ from abc import ABCMeta, abstractmethod
 from typing import Any
 
 import jax.numpy as jnp
-from jax.image import resize
 
 from ..core import dataclass, field, Array, ArrayLike, Serializable
 from ..utils import (
@@ -32,7 +31,7 @@ from ..utils import (
     nufft,
     integrate_gaussians,
     resize,
-    interpn,
+    map_coordinates,
 )
 
 
@@ -138,11 +137,11 @@ class FourierSliceScattering(ScatteringConfig):
         Compute image by interpolating onto the
         imaging plane.
         """
-        density, coordinates, box_size = args
+        density, coordinates, _ = args
         projection = project_with_slice(
-            density, coordinates, self.freqs, self.shape, **kwargs
+            density, coordinates, self.pixel_size, **kwargs
         )
-        return projection
+        return resize(projection, self.padded_shape, antialias=False)
 
 
 @dataclass
@@ -195,8 +194,7 @@ class GaussianScattering(ScatteringConfig):
 def project_with_slice(
     density: Array,
     coordinates: Array,
-    freqs: Array,
-    shape: tuple[int, int],
+    pixel_size: float,
     **kwargs,
 ) -> Array:
     """
@@ -209,26 +207,24 @@ def project_with_slice(
         Density point cloud in fourier space.
     coordinates :
         Coordinate system of point cloud.
-    freqs :
-        The image coordinates over which to evaluate
-        the interpolator.
-    shape : `tuple[int, int]`
-        Shape of the imaging plane in pixels.
-        ``width, height = shape[0], shape[1]``
-        is the size of the desired imaging plane.
+    pixel_size :
+        Pixel size of grid.
     kwargs:
-        Passed to ``jax_2dtm.utils.interpolate.interpn``.
+        Passed to ``jax_2dtm.utils.interpolate.map_coordinates``.
 
     Returns
     -------
     projection :
         The output image in fourier space.
     """
-    N1, N2 = shape
-    N = N1 * N2
-    xi = jnp.append(freqs.reshape((N, 2)), jnp.zeros((N, 1)), axis=-1)
-    flat = interpn(density, coordinates, xi)
-    projection = flat.reshape(shape)
+    N1, N2, N3 = density.shape
+    box_shape = jnp.array([N1, N2, N3])
+    coordinates = coordinates * box_shape * pixel_size + box_shape // 2
+    coordinates = jnp.transpose(
+        jnp.expand_dims(coordinates[:, :, 0, :], axis=2),
+        axes=[3, 0, 1, 2],
+    )
+    projection = map_coordinates(density, coordinates, **kwargs)[..., 0]
     return projection
 
 

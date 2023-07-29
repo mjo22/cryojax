@@ -7,7 +7,7 @@ __all__ = [
     "nufft",
     "integrate_gaussians",
     "resize",
-    "interpn",
+    "map_coordinates",
     "bound",
     "crop",
     "pad",
@@ -18,5 +18,5 @@ from .fft import fft, ifft, fftfreqs
 from .averaging import radial_average
 from .spectrum import powerspectrum
 from .integration import nufft, integrate_gaussians
-from .interpolate import resize, interpn
+from .interpolate import resize, map_coordinates
 from .boundaries import bound, crop, pad

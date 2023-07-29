@@ -11,12 +11,12 @@ import numpy as np
 import jax.numpy as jnp
 from typing import Any
 from ..simulator import Cloud, ImageConfig
-from ..utils import fftfreqs, fft
+from ..utils import fftfreqs, fft, pad
 from ..core import Array, ArrayLike
 
 
 def load_grid_as_cloud(
-    filename: str, config: ImageConfig, **kwargs: Any
+    filename: str, config: ImageConfig, real: bool = True, **kwargs: Any
 ) -> Cloud:
     """
     Read a 3D template on a cartesian grid
@@ -28,6 +28,9 @@ def load_grid_as_cloud(
         Path to template.
     config :
         Image configuration.
+    real : `bool`
+        If ``True``, load volume in real space.
+        If ``False``, load in Fourier space.
     kwargs :
         Keyword arguments passed to
         ``jax_2dtm.simulator.coordinatize``.
@@ -44,7 +47,9 @@ def load_grid_as_cloud(
         * config.pixel_size
     )
     cloud = Cloud(
-        *coordinatize(template, config.pixel_size, **kwargs), box_size
+        *coordinatize(template, config.pixel_size, real=real, **kwargs),
+        box_size,
+        real=real,
     )
 
     return cloud
@@ -74,7 +79,6 @@ def coordinatize(
     template: ArrayLike,
     pixel_size: float,
     real: bool = True,
-    flatten: bool = True,
     **kwargs: Any,
 ) -> tuple[Array, ...]:
     """
@@ -89,18 +93,22 @@ def coordinatize(
     ----------
     density : shape `(N1, N2, N3)` or `(N1, N2)`
         3D volume or 2D image on a cartesian grid.
-    pixel_size : float
+    pixel_size : `float`
         Camera pixel size.
+    real : `bool`
+        If ``True``, return flattened density and coordinate
+        system in real space. If ``False``, return structured
+        coordinates in Fourier space.
     kwargs
         Keyword arguments passed to ``np.isclose``.
-        Disabled for ``real = True``.
+        Disabled for ``real = False``.
 
     Returns
     -------
-    density : shape `(N, ndim)`
-        Point cloud volume or image.
-    coords : shape `(N, ndim)`
-        Point cloud cartesian coordinate system.
+    density : shape `(N, ndim)` or `(N1, N2, ...)`
+        Volume or image.
+    coords : shape `(N, ndim)` or `(N1, N2, ..., ndim)`
+        Cartesian coordinate system.
     """
     ndim, shape = template.ndim, template.shape
 
@@ -111,18 +119,20 @@ def coordinatize(
         mask = np.where(~np.isclose(flat, 0.0, **kwargs))
         density = flat[mask]
     else:
-        flat = fft(template).ravel() if flatten else fft(template)
+        if shape != tuple(ndim * [shape[0]]):
+            template = pad(template, tuple(ndim * [max(shape)]))
+            shape = template.shape
+        density = fft(template)
         mask = True
-        density = flat
 
     # Create coordinate buffer
     N = density.size
-    coords = np.zeros((N, ndim)) if flatten else np.zeros((*shape, ndim))
+    coords = np.zeros((N, ndim)) if real else np.zeros((*shape, ndim))
 
     # Generate rectangular grid and fill coordinate array
     R = fftfreqs(shape, pixel_size, real=real)
     for i in range(ndim):
-        if flatten:
+        if real:
             coords[..., i] = R[..., i].ravel()[mask]
         else:
             coords[..., i] = R[..., i]

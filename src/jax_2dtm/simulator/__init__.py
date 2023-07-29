@@ -2,6 +2,9 @@ __all__ = [
     # Functional API
     "rotate_and_translate_rpy",
     "rotate_and_translate_wxyz",
+    "rotate_rpy",
+    "rotate_wxyz",
+    "translate",
     "project_with_nufft",
     "project_with_gaussians",
     "project_with_slice",
@@ -54,6 +57,9 @@ from typing import Union
 from .pose import (
     rotate_and_translate_rpy,
     rotate_and_translate_wxyz,
+    rotate_rpy,
+    rotate_wxyz,
+    translate,
     EulerPose,
     QuaternionPose,
 )

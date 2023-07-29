@@ -40,14 +40,26 @@ def crop(image: Array, shape: tuple[int, int]) -> Array:
     return cropped
 
 
-def pad(image: Array, shape: tuple[int, int], **kwargs) -> Array:
+def pad(image: Array, shape: tuple[int, ...], **kwargs) -> Array:
     """
-    Pad an image to a new shape.
+    Pad an image or volume to a new shape.
     """
-    x_pad = shape[0] - image.shape[0]
-    y_pad = shape[1] - image.shape[1]
-    padding = (
-        (x_pad // 2, x_pad // 2 + x_pad % 2),
-        (y_pad // 2, y_pad // 2 + y_pad % 2),
-    )
+    if len(shape) == 2:
+        x_pad = shape[0] - image.shape[0]
+        y_pad = shape[1] - image.shape[1]
+        padding = (
+            (x_pad // 2, x_pad // 2 + x_pad % 2),
+            (y_pad // 2, y_pad // 2 + y_pad % 2),
+        )
+    elif len(shape) == 3:
+        x_pad = shape[0] - image.shape[0]
+        y_pad = shape[1] - image.shape[1]
+        z_pad = shape[2] - image.shape[2]
+        padding = (
+            (x_pad // 2, x_pad // 2 + x_pad % 2),
+            (y_pad // 2, y_pad // 2 + y_pad % 2),
+            (z_pad // 2, z_pad // 2 + z_pad % 2),
+        )
+    else:
+        raise NotImplementedError(f"Cannot pad arrays with ndim={len(shape)}")
     return jnp.pad(image, padding, **kwargs)
