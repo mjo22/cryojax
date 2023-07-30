@@ -11,7 +11,7 @@ import numpy as np
 import jax.numpy as jnp
 from typing import Any
 from ..simulator import Cloud, ImageConfig
-from ..utils import fftfreqs, fft, pad
+from ..utils import fftfreqs, fft
 from ..core import Array, ArrayLike
 
 
@@ -97,7 +97,7 @@ def coordinatize(
         Camera pixel size.
     real : `bool`
         If ``True``, return flattened density and coordinate
-        system in real space. If ``False``, return structured
+        system in real space. If ``False``, return density
         coordinates in Fourier space.
     kwargs
         Keyword arguments passed to ``np.isclose``.
@@ -119,9 +119,6 @@ def coordinatize(
         mask = np.where(~np.isclose(flat, 0.0, **kwargs))
         density = flat[mask]
     else:
-        if shape != tuple(ndim * [shape[0]]):
-            template = pad(template, tuple(ndim * [max(shape)]))
-            shape = template.shape
         density = fft(template)
         mask = True
 

@@ -132,16 +132,19 @@ class FourierSliceScattering(ScatteringConfig):
     Fourier-projection slice theorem.
     """
 
+    order: int = field(pytree_node=False, default=1)
+
     def project(self, *args: Any, **kwargs: Any):
         """
         Compute image by interpolating onto the
         imaging plane.
         """
-        density, coordinates, _ = args
-        projection = project_with_slice(
-            density, coordinates, self.pixel_size, **kwargs
-        )
-        return resize(projection, self.padded_shape, antialias=False)
+        raise NotImplementedError
+        # density, coordinates, _ = args
+        # projection = project_with_slice(
+        #    density, coordinates, self.pixel_size, order=self.order, **kwargs
+        # )
+        # return resize(projection, self.padded_shape, antialias=False)
 
 
 @dataclass

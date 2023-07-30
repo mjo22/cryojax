@@ -9,14 +9,13 @@ __all__ = [
     "rotate_and_translate_wxyz",
     "rotate_rpy",
     "rotate_wxyz",
-    "translate",
+    "shift_phase",
     "Pose",
     "EulerPose",
     "QuaternionPose",
 ]
 
 from abc import ABCMeta, abstractmethod
-from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -84,9 +83,16 @@ class EulerPose(Pose):
                 coordinates, *self.iter_data()
             )
         else:
-            return translate(
-                density, coordinates, *self.iter_data()[:2]
-            ), rotate_rpy(coordinates, *self.iter_data()[2:], inverse=True)
+            raise NotImplementedError
+            # rotated_coordinates = rotate_rpy(
+            #    coordinates, *self.iter_data()[2:]
+            # )
+            # shifted_density = shift_phase(
+            #    density,
+            #    rotated_coordinates,
+            #    *self.iter_data()[:2],
+            # )
+            # return shifted_density, rotated_coordinates
 
 
 @dataclass
@@ -118,9 +124,14 @@ class QuaternionPose(Pose):
                 coordinates, *self.iter_data()
             )
         else:
-            return translate(
-                density, coordinates, *self.iter_data()[:2]
-            ), rotate_wxyz(coordinates, *self.iter_data()[2:], inverse=True)
+            raise NotImplementedError
+            # rotated_coordinates = rotate_wxyz(
+            #    coordinates, *self.iter_data()[2:]
+            # )
+            # shifted_density = shift_phase(
+            #    density, rotated_coordinates, *self.iter_data()[:2]
+            # )
+            # return shifted_density, rotated_coordinates
 
 
 @jax.jit
@@ -203,13 +214,12 @@ def rotate_and_translate_wxyz(
     return transformed
 
 
-# @partial(jax.jit, static_argnums=-1)
+@jax.jit
 def rotate_rpy(
     coords: Array,
     phi: float,
     theta: float,
     psi: float,
-    inverse: bool = False,
 ) -> Array:
     r"""
     Compute a coordinate rotation from
@@ -234,20 +244,18 @@ def rotate_rpy(
     N1, N2, N3 = coords.shape[:-1]
     N = N1 * N2 * N3
     rotation = SO3.from_rpy_radians(phi, theta, psi)
-    rotation = rotation.inverse() if inverse else rotation
     transformed = jax.vmap(rotation.apply)(coords.reshape((N, 3)))
 
     return transformed.reshape(coords.shape)
 
 
-# @partial(jax.jit, static_argnums=-1)
+@jax.jit
 def rotate_wxyz(
     coords: Array,
     qw: float,
     qx: float,
     qy: float,
     qz: float,
-    inverse: bool = False,
 ) -> Array:
     r"""
     Compute a coordinate rotation from a quaternion.
@@ -270,14 +278,13 @@ def rotate_wxyz(
     N = N1 * N2 * N3
     wxyz = jnp.array([qw, qx, qy, qz])
     rotation = SO3.from_quaternion_xyzw(wxyz)
-    rotation = rotation.inverse() if inverse else rotation
     transformed = jax.vmap(rotation.apply)(coords.reshape((N, 3)))
 
     return transformed.reshape(coords.shape)
 
 
 @jax.jit
-def translate(
+def shift_phase(
     density: Array,
     coords: Array,
     tx: float,
@@ -304,7 +311,7 @@ def translate(
         Rotated and translated coordinate system.
     """
     xyz = jnp.array([tx, ty, 0.0])
-    shift = jnp.exp(1.0j * jnp.matmul(coords, xyz))
+    shift = jnp.exp(1.0j * 2 * jnp.pi * jnp.matmul(coords, xyz))
     transformed = density * shift
 
     return transformed

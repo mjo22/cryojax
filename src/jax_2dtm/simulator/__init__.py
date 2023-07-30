@@ -2,12 +2,9 @@ __all__ = [
     # Functional API
     "rotate_and_translate_rpy",
     "rotate_and_translate_wxyz",
-    "rotate_rpy",
-    "rotate_wxyz",
-    "translate",
     "project_with_nufft",
     "project_with_gaussians",
-    "project_with_slice",
+    # "project_with_slice",
     "compute_anti_aliasing_filter",
     "compute_whitening_filter",
     "compute_circular_mask",
@@ -17,7 +14,7 @@ __all__ = [
     "ImageConfig",
     "NufftScattering",
     "GaussianScattering",
-    "FourierSliceScattering",
+    # "FourierSliceScattering"
     # Point clouds
     "Cloud",
     # Filters
@@ -57,9 +54,6 @@ from typing import Union
 from .pose import (
     rotate_and_translate_rpy,
     rotate_and_translate_wxyz,
-    rotate_rpy,
-    rotate_wxyz,
-    translate,
     EulerPose,
     QuaternionPose,
 )
@@ -68,14 +62,15 @@ Pose = Union[EulerPose, QuaternionPose]
 from .scattering import (
     project_with_nufft,
     project_with_gaussians,
-    project_with_slice,
     ImageConfig,
     NufftScattering,
     GaussianScattering,
-    FourierSliceScattering,
+    # FourierSliceScattering,
 )
 
-ScatteringConfig = Union[NufftScattering, GaussianScattering]
+ScatteringConfig = Union[
+    NufftScattering, GaussianScattering
+]  # , FourierSliceScattering]
 from .cloud import Cloud
 from .filters import (
     compute_anti_aliasing_filter,
