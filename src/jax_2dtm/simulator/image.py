@@ -64,7 +64,7 @@ class Image(metaclass=ABCMeta):
     filters: InitVar[list[Filter] | None] = None
     masks: InitVar[list[Filter] | None] = None
     observed: InitVar[Array | None] = None
-    _process_observed: bool = True
+    _process_observed: bool = field(pytree_node=False, default=True)
 
     def __post_init__(self, filters, masks, observed):
         # Set filters
@@ -227,7 +227,7 @@ class GaussianImage(OpticsImage):
         state = state or self.state
         simulated = self.render(state)
         noise = state.noise.sample(self.config.freqs * self.config.pixel_size)
-        return simulated + self.mask(noise)
+        return simulated + fft(self.mask(ifft(noise)))
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""

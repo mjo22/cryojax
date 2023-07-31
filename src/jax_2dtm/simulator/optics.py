@@ -78,8 +78,8 @@ class CTFOptics(Optics):
     b_factor : `jax_2dtm.types.Scalar`
     """
 
-    defocus_u: Scalar = 8000.0
-    defocus_v: Scalar = 8000.0
+    defocus_u: Scalar = 10000.0
+    defocus_v: Scalar = 10000.0
     defocus_angle: Scalar = 0.0
     voltage: Scalar = 300.0
     spherical_aberration: Scalar = 2.7
