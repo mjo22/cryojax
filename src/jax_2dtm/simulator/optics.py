@@ -138,6 +138,10 @@ def compute_ctf_power(
         The contrast transfer function.
     """
 
+    # Unit conversions
+    voltage *= 1000  # kV to V
+    spherical_aberration *= 1e7  # mm to Angstroms
+
     N1, N2 = freqs.shape[0:-1]
     theta = jnp.arctan2(freqs[..., 1], freqs[..., 0])
     k_sqr = jnp.sum(jnp.square(freqs), axis=-1)
