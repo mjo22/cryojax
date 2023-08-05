@@ -21,6 +21,7 @@ from .cloud import Cloud
 from .filters import AntiAliasingFilter
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
+from .intensity import rescale_image
 from ..utils import fft, ifft
 from ..core import dataclass, field, Array, Scalar
 from . import Filter, Mask, ScatteringConfig
@@ -84,14 +85,14 @@ class Image(metaclass=ABCMeta):
         # Set observed data
         if observed is not None and self._process_observed:
             assert self.config.shape == observed.shape
-            observed = self.config.upsample(observed)
-            # observed = fft(self.config.pad(
-            #    ifft(observed), constant_values=observed.mean()
-            # ))
-            observed = self.filter(observed)
+            observed = ifft(observed)
+            mean, std = observed.mean(), observed.std()
+            observed = fft(self.config.pad(observed, constant_values=mean))
             assert self.config.padded_shape == observed.shape
-            observed = fft(self.mask(self.config.crop(ifft(observed))))
+            observed = self.config.crop(ifft(self.filter(observed)))
             assert self.config.shape == observed.shape
+            observed = rescale_image(observed, std, mean)
+            observed = fft(self.mask(observed))
         object.__setattr__(self, "observed", observed)
 
     @abstractmethod
@@ -165,10 +166,10 @@ class ScatteringImage(Image):
         state = state or self.state
         # Compute scattering at image plane.
         cloud = self.cloud.view(state.pose)
-        scattering_image = cloud.project(self.config)
+        scattering_image = cloud.scatter(self.config)
         # Apply filters
         scattering_image = self.filter(scattering_image)
-        # Crop
+        # Optional cropping to view image at this stage in the pipeline
         if crop:
             scattering_image = fft(
                 self.mask(self.config.crop(ifft(scattering_image)))
@@ -195,17 +196,19 @@ class OpticsImage(ScatteringImage):
     def render(self, state: Optional[ParameterState] = None) -> Array:
         """Render an image from a model of the CTF."""
         state = state or self.state
-        # Compute scattering at image plane.
+        # Compute scattering at object plane.
         scattering_image = super().render(state, crop=False)
         # Compute and apply CTF
         ctf = state.optics(self.config.padded_freqs)
         optics_image = ctf * scattering_image
-        # Crop
-        cropped_image = fft(self.mask(self.config.crop(ifft(optics_image))))
-        # Rescale the image to desired mean and standard deviation
-        rescaled_image = state.intensity.rescale(cropped_image)
+        # Crop and rescale
+        rescaled_image = state.intensity.rescale(
+            self.config.crop(ifft(optics_image))
+        )
+        # Mask the image
+        masked_image = fft(self.mask(rescaled_image))
 
-        return rescaled_image
+        return masked_image
 
 
 @dataclass

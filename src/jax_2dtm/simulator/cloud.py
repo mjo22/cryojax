@@ -35,8 +35,13 @@ class Cloud(Serializable):
 
     def view(self, pose: Pose) -> Cloud:
         """
-        Compute an SE3 transformation of a point cloud,
+        Compute rotations and translations of a point cloud,
         by an imaging pose, considering only in-plane translations.
+
+        If the ``Cloud`` is in real space, the transformations will
+        rotate and translate the coordinates. If in Fourier space,
+        the coordinates will be rotated and the density will be
+        phase shifted.
 
         Arguments
         ---------
@@ -49,10 +54,10 @@ class Cloud(Serializable):
 
         return self.replace(coordinates=coordinates, density=density)
 
-    def project(self, scattering: ScatteringConfig) -> Array:
+    def scatter(self, scattering: ScatteringConfig) -> Array:
         """
-        Compute projection of the point cloud onto
-        an imaging plane.
+        Compute the 2D rendering of the point cloud in the
+        object plane.
 
         Arguments
         ---------
@@ -62,4 +67,4 @@ class Cloud(Serializable):
             routine.
         """
 
-        return scattering.project(*self.iter_meta()[:3])
+        return scattering.scatter(*self.iter_meta()[:3])

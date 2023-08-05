@@ -48,16 +48,21 @@ class ImageConfig(Serializable):
         is the size of the desired imaging plane.
     pixel_size : `float`
         Size of camera pixels, in dimensions of length.
-    freqs : Array, shape `(N1, N2, 2)`
+    freqs : `Array`, shape `(N1, N2, 2)`
         The fourier wavevectors in the imaging plane.
-    padded_freqs : Array, shape `(M1, M2, 2)`
+    padded_freqs : `Array`, shape `(M1, M2, 2)`
         The fourier wavevectors in the imaging plane
         in the padded coordinate system.
-    coords : Array, shape `(N1, N2, 2)`
+    coords : `Array`, shape `(N1, N2, 2)`
         The coordinates in the imaging plane.
-    padded_coords : Array, shape `(M1, M2, 2)`
+    padded_coords : `Array`, shape `(M1, M2, 2)`
         The coordinates in the imaging plane
         in the padded coordinate system.
+    pad_scale : `float`
+        The scale at which to pad (or upsample) the image
+        when computing it in the object plane. This
+        should be a floating point number greater than
+        or equal to 1. By default, it is 1 (no padding).
     """
 
     shape: tuple[int, int] = field(pytree_node=False, encode=tuple)
@@ -80,8 +85,10 @@ class ImageConfig(Serializable):
     pad_scale: float = field(pytree_node=False, default=1)
 
     def __post_init__(self):
+        # Set shape after padding
         padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
         object.__setattr__(self, "padded_shape", padded_shape)
+        # Set coordinates
         freqs = jnp.asarray(fftfreqs(self.shape, self.pixel_size))
         padded_freqs = jnp.asarray(
             fftfreqs(self.padded_shape, self.pixel_size)
@@ -104,7 +111,7 @@ class ImageConfig(Serializable):
         return pad(image, self.padded_shape, **kwargs)
 
     def downsample(self, image: Array, **kwargs: Any) -> Array:
-        """Upsample an image in Fourier space."""
+        """Downsample an image in Fourier space."""
         return resize(image, self.shape, antialias=False, **kwargs)
 
     def upsample(self, image: Array, **kwargs: Any) -> Array:
@@ -115,13 +122,16 @@ class ImageConfig(Serializable):
 @dataclass
 class ScatteringConfig(ImageConfig, metaclass=ABCMeta):
     """
-    Configuration for an image with a given
+    Configuration for an image with a particular
     scattering method.
+
+    In subclasses, overwrite the ``ScatteringConfig.scatter``
+    routine.
     """
 
     @abstractmethod
-    def project(self, *args: Any):
-        """Projection method for image rendering."""
+    def scatter(self, *args: Any):
+        """Scattering method for image rendering."""
         raise NotImplementedError
 
 
@@ -134,10 +144,11 @@ class FourierSliceScattering(ScatteringConfig):
 
     order: int = field(pytree_node=False, default=1)
 
-    def project(self, *args: Any, **kwargs: Any):
+    def scatter(self, *args: Any, **kwargs: Any):
         """
-        Compute image by interpolating onto the
-        imaging plane.
+        Compute an image by sampling a slice in the
+        rotated fourier transform and interpolating onto
+        a uniform grid in the object plane.
         """
         raise NotImplementedError
         # density, coordinates, _ = args
@@ -162,7 +173,7 @@ class NufftScattering(ScatteringConfig):
 
     eps: float = field(pytree_node=False, default=1e-6)
 
-    def project(self, *args):
+    def scatter(self, *args):
         """Rasterize image with non-uniform FFTs."""
         return project_with_nufft(*args, self.padded_shape, eps=self.eps)
 
@@ -184,7 +195,7 @@ class GaussianScattering(ScatteringConfig):
 
     scale: float = field(pytree_node=False, default=1 / 3)
 
-    def project(self, *args: Any):
+    def scatter(self, *args: Any):
         """Rasterize image by integrating over Gaussians."""
         return project_with_gaussians(
             *args,
@@ -247,11 +258,11 @@ def project_with_nufft(
 
     Arguments
     ---------
-    density :
+    density : `Array`, shape `(N,)`
         Density point cloud.
-    coordinates :
+    coordinates : `Array`, shape `(N, 3)`
         Coordinate system of point cloud.
-    box_size :
+    box_size : `Array`, shape `(3,)`
         Box size of points.
     shape : `tuple[int, int]`
         Shape of the imaging plane in pixels.
@@ -284,25 +295,26 @@ def project_with_gaussians(
     scale: float,
 ) -> Array:
     """
-    Project and interpolate 3D volume point cloud
-    onto imaging plane using a non-uniform FFT.
+    Project and rasterize 3D volume onto object plane
+    by considering each pixel to be a sum of gaussians.
 
-    See ``jax_2dtm.utils.integration.integrate_gaussians`` for more detail.
+    See ``jax_2dtm.utils.integration.integrate_gaussians``
+    for more detail.
 
     Arguments
     ---------
-    density :
+    density : `Array`, shape `(N,)`
         Density point cloud.
-    coordinates :
+    coordinates : `Array`, shape `(N, 3)`
         Coordinate system of point cloud.
-    box_size :
+    box_size : `Array`, shape `(3,)`
         Box size of points.
     shape : `tuple[int, int]`
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
     pixel_size : `float`
-        Pixel size
+        Pixel size.
     scale : `float`
         Scale of gaussians in density point cloud.
 

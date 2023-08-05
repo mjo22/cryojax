@@ -31,4 +31,4 @@ def test_deserialize_state(scattering_model, optics_model, noisy_model):
     models = [scattering_model, optics_model, noisy_model]
     for model in models:
         state = ParameterState.from_json(model.state.to_json())
-        np.testing.assert_allclose(model.replace(state=state)(), model())
+        np.testing.assert_allclose(model.update(state=state)(), model())
