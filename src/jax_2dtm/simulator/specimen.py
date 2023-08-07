@@ -13,6 +13,7 @@ from ..core import Array, dataclass, field, Serializable
 from . import ScatteringConfig
 
 
+@dataclass
 class Specimen(Serializable, metaclass=ABCMeta):
     """
     Abstraction of a biological specimen.
@@ -43,6 +44,7 @@ class Specimen(Serializable, metaclass=ABCMeta):
             ``ImageConfig``, subclassed to include a scattering
             routine.
         """
+        raise NotImplementedError
 
 
 @dataclass
@@ -52,13 +54,9 @@ class ElectronDensity(Specimen):
 
     Attributes
     ----------
-    density : Array, shape `(N,)`
-        3D electron density cloud.
-    coordinates : Array, shape `(N, 3)`
-        Cartesian coordinate system for density cloud.
-    box_size : Array, shape `(3,)`
-        3D cartesian  that ``coordinates`` lie in. This
-        should have dimensions of length.
+    density : `Array`
+    coordinates : `Array`
+    box_size : `Array`, shape `(3,)`
     """
 
     density: Array = field(pytree_node=False)
@@ -78,6 +76,16 @@ class ElectronDensity(Specimen):
 class ElectronCloud(ElectronDensity):
     """
     Abstraction of a 3D electron density point cloud.
+
+    Attributes
+    ----------
+    density : `Array`, shape `(N,)`
+        3D electron density cloud.
+    coordinates : `Array`, shape `(N, 3)`
+        Cartesian coordinate system for density cloud.
+    box_size : `Array`, shape `(3,)`
+        3D cartesian  that ``coordinates`` lie in. This
+        should have dimensions of length.
     """
 
     def view(self, pose: Pose) -> ElectronCloud:
@@ -101,6 +109,16 @@ class ElectronGrid(ElectronDensity):
     Abstraction of a 3D electron density voxel grid.
 
     The voxel grid is assumed to be in Fourier space.
+
+    Attributes
+    ----------
+    density : `Array`, shape `(N1, N2, N3)`
+        3D electron density grid.
+    coordinates : `Array`, shape `(N1, N2, N3, 3)`
+        Cartesian coordinate system for density grid.
+    box_size : `Array`, shape `(3,)`
+        3D cartesian  that ``coordinates`` lie in. This
+        should have dimensions of length.
     """
 
     def view(self, pose: Pose) -> ElectronGrid:
