@@ -18,43 +18,44 @@ from jax_2dtm.simulator import ScatteringImage, OpticsImage, GaussianImage
 
 config.update("jax_enable_x64", True)
 
+
 @pytest.fixture
 def setup():
     filename = os.path.join(
         os.path.dirname(__file__), "data", "3jar_13pf_bfm1_ps5_28.mrc"
     )
-    config = NufftScattering((81, 81), 5.32, eps=1e-4)
-    cloud = load_grid_as_cloud(filename, config)
-    return config, cloud
+    scattering = NufftScattering((81, 81), 5.32, eps=1e-4)
+    cloud = load_grid_as_cloud(filename, scattering)
+    return scattering, cloud
 
 
 @pytest.fixture
 def scattering_model(setup):
-    config, cloud = setup
+    scattering, cloud = setup
     state = ParameterState(pose=EulerPose())
-    return ScatteringImage(config=config, cloud=cloud, state=state)
+    return ScatteringImage(scattering=scattering, cloud=cloud, state=state)
 
 
 @pytest.fixture
 def optics_model(setup):
-    config, cloud = setup
+    scattering, cloud = setup
     state = ParameterState(pose=EulerPose(), optics=CTFOptics())
-    return OpticsImage(config=config, cloud=cloud, state=state)
+    return OpticsImage(scattering=scattering, cloud=cloud, state=state)
 
 
 @pytest.fixture
 def noisy_model(setup):
-    config, cloud = setup
+    scattering, cloud = setup
     key = random.PRNGKey(seed=0)
     state = ParameterState(
         pose=EulerPose(), optics=CTFOptics(), noise=WhiteNoise(key=key)
     )
-    return GaussianImage(config=config, cloud=cloud, state=state)
+    return GaussianImage(scattering=scattering, cloud=cloud, state=state)
 
 
 def test_shape(scattering_model):
     image = scattering_model()
-    assert image.shape == scattering_model.config.shape
+    assert image.shape == scattering_model.scattering.shape
 
 
 def test_update(noisy_model):

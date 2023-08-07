@@ -13,7 +13,7 @@ def test_normalization(optics_model):
 
 
 def test_rescale(optics_model):
-    N1, N2 = optics_model.config.shape
+    N1, N2 = optics_model.scattering.shape
     mu, N = 0.5, 5.5
     image = optics_model(dict(N=N, mu=mu))
     assert pytest.approx(image[N1 // 2, N2 // 2].real.item()) == (N1 * N2) * mu

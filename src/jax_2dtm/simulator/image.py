@@ -39,7 +39,7 @@ class Image(metaclass=ABCMeta):
 
     Attributes
     ----------
-    config : `jax_2dtm.simulator.ScatteringConfig`
+    scattering : `jax_2dtm.simulator.ScatteringConfig`
         The image and scattering model configuration.
     cloud : `jax_2dtm.simulator.Cloud`
         The point cloud used to render images.
@@ -50,12 +50,12 @@ class Image(metaclass=ABCMeta):
         ``AntiAliasingFilter`` with its default configuration.
     observed : `jax.Array`, optional
         The observed data in Fourier space. This must be the same
-        shape as ``config.shape``. ``ImageModel.observed`` will return
+        shape as ``scattering.shape``. ``ImageModel.observed`` will return
         the data with the filters applied.
     """
 
     state: ParameterState
-    config: ScatteringConfig = field(pytree_node=False)
+    scattering: ScatteringConfig = field(pytree_node=False)
     cloud: Cloud = field(pytree_node=False)
 
     filters: list[Filter] = field(pytree_node=False, init=False)
@@ -72,7 +72,7 @@ class Image(metaclass=ABCMeta):
         filters = (
             [
                 AntiAliasingFilter(
-                    self.config.pixel_size * self.config.padded_freqs
+                    self.scattering.pixel_size * self.scattering.padded_freqs
                 )
             ]
             if filters is None
@@ -84,13 +84,13 @@ class Image(metaclass=ABCMeta):
         object.__setattr__(self, "masks", masks)
         # Set observed data
         if observed is not None and self._process_observed:
-            assert self.config.shape == observed.shape
+            assert self.scattering.shape == observed.shape
             observed = ifft(observed)
             mean, std = observed.mean(), observed.std()
-            observed = fft(self.config.pad(observed, constant_values=mean))
-            assert self.config.padded_shape == observed.shape
-            observed = self.config.crop(ifft(self.filter(observed)))
-            assert self.config.shape == observed.shape
+            observed = fft(self.scattering.pad(observed, constant_values=mean))
+            assert self.scattering.padded_shape == observed.shape
+            observed = self.scattering.crop(ifft(self.filter(observed)))
+            assert self.scattering.shape == observed.shape
             observed = rescale_image(observed, std, mean)
             observed = fft(self.mask(observed))
         object.__setattr__(self, "observed", observed)
@@ -166,13 +166,13 @@ class ScatteringImage(Image):
         state = state or self.state
         # Compute scattering at image plane.
         cloud = self.cloud.view(state.pose)
-        scattering_image = cloud.scatter(self.config)
+        scattering_image = cloud.scatter(self.scattering)
         # Apply filters
         scattering_image = self.filter(scattering_image)
         # Optional cropping to view image at this stage in the pipeline
         if crop:
             scattering_image = fft(
-                self.mask(self.config.crop(ifft(scattering_image)))
+                self.mask(self.scattering.crop(ifft(scattering_image)))
             )
 
         return scattering_image
@@ -180,7 +180,7 @@ class ScatteringImage(Image):
     def sample(self, state: Optional[ParameterState] = None) -> Array:
         state = state or self.state
         simulated = self.render(state)
-        return self.config.crop(simulated)
+        return self.scattering.crop(simulated)
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
         raise NotImplementedError
@@ -199,11 +199,11 @@ class OpticsImage(ScatteringImage):
         # Compute scattering at object plane.
         scattering_image = super().render(state, crop=False)
         # Compute and apply CTF
-        ctf = state.optics(self.config.padded_freqs)
+        ctf = state.optics(self.scattering.padded_freqs)
         optics_image = ctf * scattering_image
         # Crop and rescale
         rescaled_image = state.intensity.rescale(
-            self.config.crop(ifft(optics_image))
+            self.scattering.crop(ifft(optics_image))
         )
         # Mask the image
         masked_image = fft(self.mask(rescaled_image))
@@ -229,7 +229,9 @@ class GaussianImage(OpticsImage):
         """Sample an image from a realization of the noise"""
         state = state or self.state
         simulated = self.render(state)
-        noise = state.noise.sample(self.config.freqs * self.config.pixel_size)
+        noise = state.noise.sample(
+            self.scattering.freqs * self.scattering.pixel_size
+        )
         return simulated + fft(self.mask(ifft(noise)))
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
@@ -237,7 +239,7 @@ class GaussianImage(OpticsImage):
         state = state or self.state
         residuals = self.residuals(state)
         variance = state.noise.variance(
-            self.config.freqs * self.config.pixel_size
+            self.scattering.freqs * self.scattering.pixel_size
         )
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         return loss.real / residuals.size
