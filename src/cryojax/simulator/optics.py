@@ -28,7 +28,7 @@ class Optics(Serializable, metaclass=ABCMeta):
     When writing subclasses,
 
         1) Overwrite the ``OpticsModel.compute`` method.
-        2) Use the ``jax_2dtm.types.dataclass`` decorator.
+        2) Use the ``cryojax.core.dataclass`` decorator.
     """
 
     @abstractmethod
@@ -63,19 +63,19 @@ class CTFOptics(Optics):
     Compute a Contrast Transfer Function (CTF).
 
     Also acts as a PyTree container for the CTF parameters.
-    See ``jax_2dtm.simulator.compute_ctf_power`` for more
+    See ``cryojax.simulator.compute_ctf_power`` for more
     information.
 
     Attributes
     ----------
-    defocus_u : `jax_2dtm.types.Scalar`
-    defocus_v : `jax_2dtm.types.Scalar`
-    defocus_angle : `jax_2dtm.types.Scalar`
-    voltage : `jax_2dtm.types.Scalar`
-    spherical_aberration : `jax_2dtm.types.Scalar`
-    amplitude_contrast_ratio : `jax_2dtm.types.Scalar`
-    phase_shift : `jax_2dtm.types.Scalar`
-    b_factor : `jax_2dtm.types.Scalar`
+    defocus_u : `cryojax.core.Scalar`
+    defocus_v : `cryojax.core.Scalar`
+    defocus_angle : `cryojax.core.Scalar`
+    voltage : `cryojax.core.Scalar`
+    spherical_aberration : `cryojax.core.Scalar`
+    amplitude_contrast_ratio : `cryojax.core.Scalar`
+    phase_shift : `cryojax.core.Scalar`
+    b_factor : `cryojax.core.Scalar`
     """
 
     defocus_u: Scalar = 10000.0

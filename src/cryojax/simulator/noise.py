@@ -29,7 +29,7 @@ class Noise(Serializable, metaclass=ABCMeta):
     When writing subclasses,
 
         1) Overwrite ``OpticsModel.sample``.
-        2) Use the ``jax_2dtm.types.dataclass`` decorator.
+        2) Use the ``cryojax.core.dataclass`` decorator.
     """
 
     key: Union[Array, random.PRNGKeyArray] = field(pytree_node=False)
@@ -59,7 +59,7 @@ class GaussianNoise(Noise):
     When writing subclasses,
 
         1) Overwrite ``OpticsModel.variance``.
-        2) Use the ``jax_2dtm.types.dataclass`` decorator.
+        2) Use the ``cryojax.core.dataclass`` decorator.
     """
 
     def sample(self, freqs: Array) -> Array:
@@ -93,7 +93,7 @@ class WhiteNoise(GaussianNoise):
 
     Attributes
     ----------
-    alpha : `jax_2dtm.types.Scalar`
+    alpha : `cryojax.core.Scalar`
         Variance of the white noise.
     """
 
@@ -111,13 +111,13 @@ class EmpiricalNoise(GaussianNoise):
 
     Attributes
     ----------
-    kappa : `jax_2dtm.types.Scalar`
+    kappa : `cryojax.core.Scalar`
         A scale factor for the variance.
-    sigma : `jax_2dtm.types.Scalar`
+    sigma : `cryojax.core.Scalar`
         An uncorrelated part of the variance.
     spectrum : `jax.Array`, shape `(N1, N2)`
         The measured power spectrum. Compute this
-        with ``jax_2dtm.simulator.compute_whitening_filter``.
+        with ``cryojax.simulator.compute_whitening_filter``.
         This must match the image shape!
     """
 
@@ -152,12 +152,12 @@ class ExponentialNoise(GaussianNoise):
 
     Attributes
     ----------
-    kappa : `jax_2dtm.types.Scalar`
+    kappa : `cryojax.core.Scalar`
         The "coupling strength".
-    xi : `jax_2dtm.types.Scalar`
+    xi : `cryojax.core.Scalar`
         The correlation length. This is measured
         in pixel units, not in physical length.
-    alpha : `jax_2dtm.types.Scalar`
+    alpha : `cryojax.core.Scalar`
         The uncorrelated part of the spectrum.
     """
 

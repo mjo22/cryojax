@@ -1,8 +1,8 @@
 __all__ = ["core", "io", "simulator", "utils"]
 
 
-from jax_2dtm import core, simulator, io, utils
-from jax_2dtm.jax_2dtm_version import __version__
+from cryojax import core, simulator, io, utils
+from cryojax.cryojax_version import __version__
 
 __author__ = "Michael O'Brien"
 __email__ = "michaelobrien@g.harvard.edu"

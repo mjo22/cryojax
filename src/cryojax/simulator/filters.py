@@ -56,7 +56,7 @@ class AntiAliasingFilter(Filter):
     Apply an anti-aliasing filter to an image.
 
     See documentation for
-    ``jax_2dtm.simulator.compute_anti_aliasing_filter``
+    ``cryojax.simulator.compute_anti_aliasing_filter``
     for more information.
 
     Attributes
@@ -82,7 +82,7 @@ class WhiteningFilter(Filter):
     Apply an whitening filter to an image.
 
     See documentation for
-    ``jax_2dtm.simulator.compute_whitening_filter``
+    ``cryojax.simulator.compute_whitening_filter``
     for more information.
     """
 

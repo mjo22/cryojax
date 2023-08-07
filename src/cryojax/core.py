@@ -187,7 +187,7 @@ def field(
         pytree.
     encode : `Any`
         Type hint for the field's json encoding.
-        If this is a ``Union`` of ``jax_2dtm``
+        If this is a ``Union`` of ``cryojax``
         objects, the decoder will try to find
         the correct one to instantiate.
     """

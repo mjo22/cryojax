@@ -18,9 +18,9 @@ class Intensity(Serializable):
 
     Attributes
     ----------
-    N : `jax_2dtm.types.Scalar`
+    N : `cryojax.core.Scalar`
         Intensity standard deviation
-    mu : `jax_2dtm.types.Scalar`
+    mu : `cryojax.core.Scalar`
         Intensity offset
     """
 

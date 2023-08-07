@@ -53,7 +53,7 @@ class CircularMask(Mask):
     Apply a circular mask to an image.
 
     See documentation for
-    ``jax_2dtm.simulator.compute_circular_mask``
+    ``cryojax.simulator.compute_circular_mask``
     for more information.
 
     Attributes

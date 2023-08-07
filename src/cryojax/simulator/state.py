@@ -64,13 +64,13 @@ class ParameterState(Serializable):
 
     Attributes
     ----------
-    pose : `jax_2dtm.simulator.Pose`
+    pose : `cryojax.simulator.Pose`
         The image pose.
-    optics : `jax_2dtm.simulator.OpticsModel`
+    optics : `cryojax.simulator.OpticsModel`
         The CTF model.
-    intensity : `jax_2dtm.simulator.Intensity`
+    intensity : `cryojax.simulator.Intensity`
         The intensity scaling.
-    noise : ``jax_2dtm.simulator.Noise``
+    noise : ``cryojax.simulator.Noise``
         The noise model.
     """
 

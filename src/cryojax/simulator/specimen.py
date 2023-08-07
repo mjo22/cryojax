@@ -26,7 +26,7 @@ class Specimen(Serializable, metaclass=ABCMeta):
 
         Arguments
         ---------
-        pose : `jax_2dtm.simulator.Pose`
+        pose : `cryojax.simulator.Pose`
             The imaging pose.
         """
         raise NotImplementedError
@@ -39,7 +39,7 @@ class Specimen(Serializable, metaclass=ABCMeta):
 
         Arguments
         ---------
-        scattering : `jax_2dtm.simulator.ScatteringConfig`
+        scattering : `cryojax.simulator.ScatteringConfig`
             The scattering configuration. This is an
             ``ImageConfig``, subclassed to include a scattering
             routine.

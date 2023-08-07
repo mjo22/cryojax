@@ -38,11 +38,11 @@ class Image(metaclass=ABCMeta):
 
     Attributes
     ----------
-    scattering : `jax_2dtm.simulator.ScatteringConfig`
+    scattering : `cryojax.simulator.ScatteringConfig`
         The image and scattering model configuration.
-    specimen : `jax_2dtm.simulator.Specimen`
+    specimen : `cryojax.simulator.Specimen`
         The specimen from which to render images.
-    state : `jax_2dtm.simulator.ParameterState`
+    state : `cryojax.simulator.ParameterState`
         The parameter state of the model.
     filters : `list[Filter]`
         A list of filters to apply to the image. By default, this is an

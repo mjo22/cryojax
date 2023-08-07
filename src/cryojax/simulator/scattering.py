@@ -167,7 +167,7 @@ class NufftScattering(ScatteringConfig):
     Attributes
     ----------
     eps : `float`
-        See ``jax_2dtm.utils.integration.nufft``
+        See ``cryojax.utils.integration.nufft``
         for documentation.
     """
 
@@ -189,7 +189,7 @@ class GaussianScattering(ScatteringConfig):
     scale : `float`
         Variance of a single gaussian density
         along each direction.
-        See ``jax_2dtm.utils.integration.integrate_gaussians``
+        See ``cryojax.utils.integration.integrate_gaussians``
         for more documentation.
     """
 
@@ -224,7 +224,7 @@ def project_with_slice(
     pixel_size :
         Pixel size of grid.
     kwargs:
-        Passed to ``jax_2dtm.utils.interpolate.map_coordinates``.
+        Passed to ``cryojax.utils.interpolate.map_coordinates``.
 
     Returns
     -------
@@ -254,7 +254,7 @@ def project_with_nufft(
     Project and interpolate 3D volume point cloud
     onto imaging plane using a non-uniform FFT.
 
-    See ``jax_2dtm.utils.integration.nufft`` for more detail.
+    See ``cryojax.utils.integration.nufft`` for more detail.
 
     Arguments
     ---------
@@ -298,7 +298,7 @@ def project_with_gaussians(
     Project and rasterize 3D volume onto object plane
     by considering each pixel to be a sum of gaussians.
 
-    See ``jax_2dtm.utils.integration.integrate_gaussians``
+    See ``cryojax.utils.integration.integrate_gaussians``
     for more detail.
 
     Arguments

@@ -34,13 +34,13 @@ class Pose(Serializable, metaclass=ABCMeta):
 
         1) Define angular coordinates
         2) Overwrite the ``Pose.transform`` method.
-        3) Use the ``jax_2dtm.types.dataclass`` decorator.
+        3) Use the ``cryojax.core.dataclass`` decorator.
 
     Attributes
     ----------`
-    offset_x : `jax_2dtm.types.Scalar`
+    offset_x : `cryojax.core.Scalar`
         In-plane translations in x direction.
-    offset_y : `jax_2dtm.types.Scalar`
+    offset_y : `cryojax.core.Scalar`
         In-plane translations in y direction.
     """
 
@@ -62,11 +62,11 @@ class EulerPose(Pose):
 
     Attributes
     ----------
-    view_phi : `jax_2dtm.types.Scalar`
+    view_phi : `cryojax.core.Scalar`
         Roll angles, ranging :math:`(-\pi, \pi]`.
-    view_theta : `jax_2dtm.types.Scalar`
+    view_theta : `cryojax.core.Scalar`
         Pitch angles, ranging :math:`(0, \pi]`.
-    view_psi : `jax_2dtm.types.Scalar`
+    view_psi : `cryojax.core.Scalar`
         Yaw angles, ranging :math:`(-\pi, \pi]`.
     """
 
@@ -102,11 +102,11 @@ class QuaternionPose(Pose):
 
     Attributes
     ----------
-    view_qx : `jax_2dtm.types.Scalar`
+    view_qx : `cryojax.core.Scalar`
 
-    view_qy : `jax_2dtm.types.Scalar`
+    view_qy : `cryojax.core.Scalar`
 
-    view_qz : `jax_2dtm.types.Scalar`
+    view_qz : `cryojax.core.Scalar`
 
     """
 

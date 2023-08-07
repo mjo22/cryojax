@@ -31,15 +31,15 @@ def load_grid_as_cloud(
     ----------
     filename : `str`
         Path to template.
-    config : `jax_2dtm.simulator.ImageConfig`
+    config : `cryojax.simulator.ImageConfig`
         Image configuration.
     kwargs :
         Keyword arguments passed to
-        ``jax_2dtm.io.coordinatize_voxels``.
+        ``cryojax.io.coordinatize_voxels``.
 
     Returns
     -------
-    cloud : `jax_2dtm.simulator.ElectronCloud`
+    cloud : `cryojax.simulator.ElectronCloud`
         Electron density in a point cloud representation,
         generated from a 3D voxel template. By default,
         voxels with zero density are masked.
@@ -72,12 +72,12 @@ def load_fourier_grid(filename: str, config: ImageConfig) -> ElectronCloud:
     ----------
     filename : `str`
         Path to template.
-    config : `jax_2dtm.simulator.ImageConfig`
+    config : `cryojax.simulator.ImageConfig`
         Image configuration.
 
     Returns
     -------
-    voxels : `jax_2dtm.simulator.ElectronGrid`
+    voxels : `cryojax.simulator.ElectronGrid`
         3D electron density in a 3D voxel grid representation.
     """
     # Load template
