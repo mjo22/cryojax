@@ -33,14 +33,14 @@ def setup():
 def scattering_model(setup):
     scattering, cloud = setup
     state = ParameterState(pose=EulerPose())
-    return ScatteringImage(scattering=scattering, cloud=cloud, state=state)
+    return ScatteringImage(scattering=scattering, specimen=cloud, state=state)
 
 
 @pytest.fixture
 def optics_model(setup):
     scattering, cloud = setup
     state = ParameterState(pose=EulerPose(), optics=CTFOptics())
-    return OpticsImage(scattering=scattering, cloud=cloud, state=state)
+    return OpticsImage(scattering=scattering, specimen=cloud, state=state)
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def noisy_model(setup):
     state = ParameterState(
         pose=EulerPose(), optics=CTFOptics(), noise=WhiteNoise(key=key)
     )
-    return GaussianImage(scattering=scattering, cloud=cloud, state=state)
+    return GaussianImage(scattering=scattering, specimen=cloud, state=state)
 
 
 def test_shape(scattering_model):

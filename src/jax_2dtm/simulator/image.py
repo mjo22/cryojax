@@ -17,14 +17,13 @@ from dataclasses import InitVar
 
 import jax.numpy as jnp
 
-from .cloud import Cloud
 from .filters import AntiAliasingFilter
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
 from .intensity import rescale_image
 from ..utils import fft, ifft
 from ..core import dataclass, field, Array, Scalar
-from . import Filter, Mask, ScatteringConfig
+from . import Filter, Mask, Specimen, ScatteringConfig
 
 
 @dataclass
@@ -41,8 +40,8 @@ class Image(metaclass=ABCMeta):
     ----------
     scattering : `jax_2dtm.simulator.ScatteringConfig`
         The image and scattering model configuration.
-    cloud : `jax_2dtm.simulator.Cloud`
-        The point cloud used to render images.
+    specimen : `jax_2dtm.simulator.Specimen`
+        The specimen from which to render images.
     state : `jax_2dtm.simulator.ParameterState`
         The parameter state of the model.
     filters : `list[Filter]`
@@ -56,7 +55,7 @@ class Image(metaclass=ABCMeta):
 
     state: ParameterState
     scattering: ScatteringConfig = field(pytree_node=False)
-    cloud: Cloud = field(pytree_node=False)
+    specimen: Specimen = field(pytree_node=False)
 
     filters: list[Filter] = field(pytree_node=False, init=False)
     masks: list[Mask] = field(pytree_node=False, init=False)
@@ -165,8 +164,8 @@ class ScatteringImage(Image):
         """Render the scattering pattern"""
         state = state or self.state
         # Compute scattering at image plane.
-        cloud = self.cloud.view(state.pose)
-        scattering_image = cloud.scatter(self.scattering)
+        specimen = self.specimen.view(state.pose)
+        scattering_image = specimen.scatter(self.scattering)
         # Apply filters
         scattering_image = self.filter(scattering_image)
         # Optional cropping to view image at this stage in the pipeline

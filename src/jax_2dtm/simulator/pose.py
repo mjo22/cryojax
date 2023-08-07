@@ -227,7 +227,7 @@ def rotate_rpy(
 
     Arguments
     ---------
-    coords : `jax.Array`, shape `(N1, N2, N3, 3)`
+    coords : `jax.Array`, shape `(N, 3)`
         Coordinate system.
     phi : `float`
         Roll angle, ranging :math:`(-\pi, \pi]`.
@@ -241,12 +241,10 @@ def rotate_rpy(
     transformed : `jax.Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
     """
-    N1, N2, N3 = coords.shape[:-1]
-    N = N1 * N2 * N3
     rotation = SO3.from_rpy_radians(phi, theta, psi)
-    transformed = jax.vmap(rotation.apply)(coords.reshape((N, 3)))
+    transformed = jax.vmap(rotation.apply)(coords)
 
-    return transformed.reshape(coords.shape)
+    return transformed
 
 
 @jax.jit
@@ -262,7 +260,7 @@ def rotate_wxyz(
 
     Arguments
     ---------
-    coords : `jax.Array` shape `(N1, N2, N3, 3)`
+    coords : `jax.Array` shape `(N, 3)`
         Coordinate system.
     qw : `float`
     qx : `float`
@@ -274,13 +272,12 @@ def rotate_wxyz(
     transformed : `jax.Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
     """
-    N1, N2, N3 = coords.shape[:-1]
-    N = N1 * N2 * N3
+
     wxyz = jnp.array([qw, qx, qy, qz])
     rotation = SO3.from_quaternion_xyzw(wxyz)
-    transformed = jax.vmap(rotation.apply)(coords.reshape((N, 3)))
+    transformed = jax.vmap(rotation.apply)(coords)
 
-    return transformed.reshape(coords.shape)
+    return transformed
 
 
 @jax.jit
@@ -296,9 +293,9 @@ def shift_phase(
 
     Arguments
     ---------
-    density : `jax.Array` shape `(N1, N2, N3)`
+    density : `jax.Array` shape `(N)`
         Coordinate system.
-    coords : `jax.Array` shape `(N1, N2, N3, 3)`
+    coords : `jax.Array` shape `(N, 3)`
         Coordinate system.
     tx : `float`
         In-plane translation in x direction.
@@ -307,7 +304,7 @@ def shift_phase(
 
     Returns
     -------
-    transformed : `jax.Array`, shape `(N1, N2, N3)`
+    transformed : `jax.Array`, shape `(N,)`
         Rotated and translated coordinate system.
     """
     xyz = jnp.array([tx, ty, 0.0])

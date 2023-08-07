@@ -1,4 +1,15 @@
-__all__ = ["load_mrc", "load_grid_as_cloud", "coordinatize"]
+__all__ = [
+    "load_mrc",
+    # Voxel representation I/O
+    "load_grid_as_cloud",
+    "load_fourier_grid",
+    "coordinatize_voxels",
+]
 
 
-from .load_volume import load_mrc, load_grid_as_cloud, coordinatize
+from .voxel import (
+    load_mrc,
+    load_grid_as_cloud,
+    load_fourier_grid,
+    coordinatize_voxels,
+)

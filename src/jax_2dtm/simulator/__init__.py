@@ -15,8 +15,9 @@ __all__ = [
     "NufftScattering",
     "GaussianScattering",
     # "FourierSliceScattering"
-    # Point clouds
-    "Cloud",
+    # Specimen representations
+    "ElectronCloud",
+    "ElectronGrid",
     # Filters
     "AntiAliasingFilter",
     "WhiteningFilter",
@@ -71,7 +72,9 @@ from .scattering import (
 ScatteringConfig = Union[
     NufftScattering, GaussianScattering
 ]  # , FourierSliceScattering]
-from .cloud import Cloud
+from .specimen import ElectronCloud, ElectronGrid
+
+Specimen = Union[ElectronCloud, ElectronGrid]
 from .filters import (
     compute_anti_aliasing_filter,
     compute_whitening_filter,
