@@ -5,16 +5,16 @@ import numpy as np
 from jax import random
 from jax import config
 
-from jax_2dtm.io import load_grid_as_cloud
+from cryojax.io import load_grid_as_cloud
 
-from jax_2dtm.simulator import NufftScattering
-from jax_2dtm.simulator import (
+from cryojax.simulator import NufftScattering
+from cryojax.simulator import (
     EulerPose,
     CTFOptics,
     WhiteNoise,
     ParameterState,
 )
-from jax_2dtm.simulator import ScatteringImage, OpticsImage, GaussianImage
+from cryojax.simulator import ScatteringImage, OpticsImage, GaussianImage
 
 config.update("jax_enable_x64", True)
 

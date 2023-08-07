@@ -2,7 +2,7 @@ from .test_pipeline import setup, scattering_model
 
 import jax.numpy as jnp
 import numpy as np
-from jax_2dtm.utils import fft, ifft
+from cryojax.utils import fft, ifft
 
 
 def test_fft(scattering_model):
@@ -20,7 +20,7 @@ def test_fft(scattering_model):
         jnp.fft.fftn(jnp.fft.ifftn(jnp.fft.fftn(random)).real),
         **fkwargs
     )
-    # Run tests with jax_2dtm.utils and random data
+    # Run tests with cryojax.utils and random data
     np.testing.assert_allclose(
         ifft(fft(random)), jnp.fft.ifftn(jnp.fft.fftn(random)).real, **rkwargs
     )

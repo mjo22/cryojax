@@ -8,9 +8,9 @@ import re
 from setuptools import find_packages, setup
 
 # PROJECT SPECIFIC
-NAME = "jax_2dtm"
+NAME = "cryojax"
 PACKAGES = find_packages(where="src")
-META_PATH = os.path.join("src", "jax_2dtm", "__init__.py")
+META_PATH = os.path.join("src", "cryojax", "__init__.py")
 CLASSIFIERS = [
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",

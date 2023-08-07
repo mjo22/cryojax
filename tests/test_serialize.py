@@ -2,7 +2,7 @@ from .test_pipeline import setup, scattering_model, noisy_model, optics_model
 
 import numpy as np
 
-from jax_2dtm.simulator import (
+from cryojax.simulator import (
     EulerPose,
     WhiteNoise,
     CTFOptics,

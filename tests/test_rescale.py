@@ -3,7 +3,7 @@ from .test_pipeline import setup, optics_model
 import pytest
 
 import jax.numpy as jnp
-from jax_2dtm.utils import ifft
+from cryojax.utils import ifft
 
 
 def test_normalization(optics_model):

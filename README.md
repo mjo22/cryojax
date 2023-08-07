@@ -1,5 +1,5 @@
-# 2D Template Matching of Cryo-EM images powered by JAX.
-This library is designed to be used for 2D template matching (2DTM) of cryo electron microscopy images. It is built on [JAX](https://github.com/google/jax).
+# Cryo-EM image simulation and analysis powered by JAX.
+This library is a modular framework for simulating forward models of cryo electron microscopy images. It is built on [JAX](https://github.com/google/jax).
 
 ## Summary
 
@@ -9,12 +9,12 @@ These models can be fed into standard statistical inference or optimization libr
 
 ## Installation
 
-Installing `jax-2dtm` is currently a bit more complicated than it should be because it relies on the library [tensorflow-nufft](https://github.com/mrphys/tensorflow-nufft) through the `jax` experimental feature [jax2tf](https://github.com/google/jax/blob/main/jax/experimental/jax2tf/README.md). Getting [tensorflow](https://github.com/tensorflow/tensorflow) to install besides `jax` is a bit of a pain. Once [jax-finufft](https://github.com/dfm/jax-finufft) adds GPU support, the `tensorflow` dependency will be replaced. In the following instructions, please install `tensorflow` and `jax` with either GPU or CPU support.
+Installing `cryojax` is currently a bit more complicated than it should be because it relies on the library [tensorflow-nufft](https://github.com/mrphys/tensorflow-nufft) through the `jax` experimental feature [jax2tf](https://github.com/google/jax/blob/main/jax/experimental/jax2tf/README.md). Getting [tensorflow](https://github.com/tensorflow/tensorflow) to install besides `jax` is a bit of a pain. Once [jax-finufft](https://github.com/dfm/jax-finufft) adds GPU support, the `tensorflow` dependency will be replaced. In the following instructions, please install `tensorflow` and `jax` with either GPU or CPU support.
 
 To start, I recommend creating a new virtual environment. For example, you could do this with `conda`.
 
 ```bash
-conda create -n jax-2dtm -c conda-forge python=3.10
+conda create -n cryojax -c conda-forge python=3.10
 ```
 
 I recommend using `python=3.10` because of recent features and best practices in type checking, but all that is necessary is `python>=3.7` for [dataclasses](https://docs.python.org/3/library/dataclasses.html) support. Custom dataclasses that are safe to pass to `jax` are heavily used in this library!
@@ -29,11 +29,11 @@ pip install tensorflow-nufft==0.12.0
 
 Next, [install JAX](https://github.com/google/jax#installation). I have found it easier to first install `tensorflow` and then `jax` because each try to install their own CUDA dependencies. `tensorflow` seems to be more strict about this.
 
-Finally, install `jax-2dtm`. For now, only a source build is supported.
+Finally, install `cryojax`. For now, only a source build is supported.
 
 ```bash
-git clone https://github.com/mjo22/jax-2dtm
-cd jax-2dtm
+git clone https://github.com/mjo22/cryojax
+cd cryojax
 python -m pip install .
 ```
 
@@ -47,9 +47,9 @@ The following is a basic workflow to generate an image with a gaussian white noi
 
 ```python
 import jax.numpy as jnp
-from jax_2dtm.utils import ifft
-from jax_2dtm.io import load_grid_as_cloud
-import jax_2dtm.simulator as js
+from cryojax.utils import ifft
+from cryojax.io import load_grid_as_cloud
+import cryojax.simulator as js
 
 template = "example.mrc"
 key = jax.random.PRNGKey(seed=0)
@@ -69,7 +69,7 @@ This workflow configures an initial model state at the library's default paramet
 If a `GaussianImage` is initialized with the field `observed`, the model will instead compute a Gaussian log-likelihood in Fourier space with a diagonal covariance tensor (or power spectrum).
 
 ```python
-from jax_2dtm.utils import fft
+from cryojax.utils import fft
 
 model = js.GaussianImage(scattering=scattering, specimen=cloud, state=state, observed=fft(observed))
 log_likelihood = model(params)
@@ -78,7 +78,7 @@ log_likelihood = model(params)
 Imaging models also accept a series of `Filter`s and `Mask`s. By default, this is an `AntiAliasingFilter` that cuts off modes above the Nyquist freqeuency. Alternatively, one could add a `WhiteningFilter` and a `CircularMask`.
 
 ```python
-from jax_2dtm.utils import fftfreqs
+from cryojax.utils import fftfreqs
 
 filters = [js.AntiAliasingFilter(scattering.pixel_size * scattering.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
            js.WhiteningFilter(scattering.pixel_size * scattering.freqs, fftfreqs(micrograph.shape), micrograph)]
@@ -87,11 +87,11 @@ model = js.GaussianImage(scattering=scattering, specimen=cloud, state=state, fil
 image = ifft(model(params))
 ```
 
-Alternative noise models are supported. For example, `EmpiricalNoise` stores an empirical covariance matrix. `ExponentialNoise` generates noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. In general, `jax-2dtm` is designed to be very extensible and new scattering, optics, and noise models can easily be implemented.
+Alternative noise models are supported. For example, `EmpiricalNoise` stores an empirical covariance matrix. `ExponentialNoise` generates noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. In general, `cryojax` is designed to be very extensible and new scattering, optics, and noise models can easily be implemented.
 
 ## Features
 
-Imaging models in `jax-2dtm` support `jax` functional transformations, such as automatic differentiation with `grad` and paralellization with `vmap` and `pmap`. Models also support GPU/TPU acceleration. Until GPU support for `jax-finufft` is added, `jit` compilation will not be supported because `tensorflow-nufft` does not compile.
+Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad` and paralellization with `vmap` and `pmap`. Models also support GPU/TPU acceleration. Until GPU support for `jax-finufft` is added, `jit` compilation will not be supported because `tensorflow-nufft` does not compile.
 
 ## Similar libraries
 
@@ -101,4 +101,4 @@ Imaging models in `jax-2dtm` support `jax` functional transformations, such as a
 
 ## Acknowledgments
 
-The tooling, packaging structure, and API in `jax-2dtm` are influenced by the library [tinygp](https://github.com/dfm/tinygp), which is also written in `jax` and makes use of custom, jax-friendly python `dataclasses`. Thank you for the developers for providing an excellent model for this package!
+The tooling, packaging structure, and API in `cryojax` are influenced by the library [tinygp](https://github.com/dfm/tinygp), which is also written in `jax` and makes use of custom, jax-friendly python `dataclasses`. Thank you for the developers for providing an excellent model for this package!
