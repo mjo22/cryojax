@@ -30,13 +30,13 @@ __all__ = [
     "QuaternionPose",
     ## Ice
     "EmpiricalIce",
-    "ExponentialIce",
+    "GaussianExponentialIce",
     ## Optics
     "CTFOptics",
     ## Electron dose
     "Dose",
     ## Detector models
-    "WhiteDetector",
+    "GaussianWhiteDetector",
     # Image models
     "ScatteringImage",
     "OpticsImage",
@@ -88,18 +88,18 @@ Filter = Union[AntiAliasingFilter, WhiteningFilter]
 from .mask import CircularMask, compute_circular_mask
 
 Mask = CircularMask
-from .ice import NullIce, ExponentialIce, EmpiricalIce
+from .ice import NullIce, EmpiricalIce, ExponentialNoiseIce
 
-Ice = Union[NullIce, ExponentialIce, EmpiricalIce]
+Ice = Union[NullIce, ExponentialNoiseIce, EmpiricalIce]
 from .optics import compute_ctf_power, NullOptics, CTFOptics
 
 Optics = Union[NullOptics, CTFOptics]
 from .exposure import rescale_image, UniformExposure
 
 Exposure = UniformExposure
-from .detector import NullDetector, WhiteDetector
+from .detector import NullDetector, WhiteNoiseDetector
 
-Detector = Union[NullDetector, WhiteDetector]
+Detector = Union[NullDetector, WhiteNoiseDetector]
 from .state import ParameterState
 from .image import ScatteringImage, OpticsImage, DetectorImage, GaussianImage
 

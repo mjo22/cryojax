@@ -29,7 +29,7 @@ class NullDetector(Detector, Noise):
 
 
 @dataclass
-class WhiteDetector(Detector, GaussianNoise):
+class WhiteNoiseDetector(Detector, GaussianNoise):
     """
     A detector with a gaussian white noise model.
 

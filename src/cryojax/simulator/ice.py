@@ -2,14 +2,14 @@
 Abstraction of the ice in a cryo-EM image.
 """
 
-__all__ = ["Ice", "NullIce", "ExponentialIce", "EmpiricalIce"]
+__all__ = ["Ice", "NullIce", "ExponentialNoiseIce", "EmpiricalIce"]
 
 import jax.numpy as jnp
 
 from abc import ABCMeta, abstractmethod
 from typing import Optional
 
-from .noise import GaussianNoise, Noise
+from .noise import GaussianNoise
 from ..core import dataclass, field, Serializable, Array, Scalar
 
 
@@ -57,7 +57,7 @@ class EmpiricalIce(Ice, GaussianNoise):
 
 
 @dataclass
-class ExponentialIce(Ice, GaussianNoise):
+class ExponentialNoiseIce(Ice, GaussianNoise):
     r"""
     Ice modeled as gaussian noise with a covariance
     matrix equal to an exponential decay, given by

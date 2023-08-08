@@ -11,7 +11,7 @@ from cryojax.simulator import NufftScattering
 from cryojax.simulator import (
     EulerPose,
     CTFOptics,
-    WhiteDetector,
+    WhiteNoiseDetector,
     ParameterState,
 )
 from cryojax.simulator import ScatteringImage, OpticsImage, GaussianImage
@@ -48,7 +48,9 @@ def noisy_model(setup):
     scattering, cloud = setup
     key = random.PRNGKey(seed=0)
     state = ParameterState(
-        pose=EulerPose(), optics=CTFOptics(), detector=WhiteDetector(key=key)
+        pose=EulerPose(),
+        optics=CTFOptics(),
+        detector=WhiteNoiseDetector(key=key),
     )
     return GaussianImage(scattering=scattering, specimen=cloud, state=state)
 

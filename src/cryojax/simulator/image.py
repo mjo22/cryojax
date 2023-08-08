@@ -8,6 +8,7 @@ __all__ = [
     "Image",
     "ScatteringImage",
     "OpticsImage",
+    "DetectorImage",
     "GaussianImage",
 ]
 
@@ -20,6 +21,7 @@ import jax.numpy as jnp
 from .filters import AntiAliasingFilter
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
+from .ice import NullIce
 from .exposure import rescale_image
 from ..utils import fft, ifft
 from ..core import dataclass, field, Array, Scalar
@@ -295,9 +297,10 @@ class GaussianImage(DetectorImage):
         state = state or self.state
         residuals = self.residuals(state)
         freqs = self.scattering.freqs * self.scattering.pixel_size
-        ctf = state.optics(freqs)
-        variance = ctf**2 * state.ice.variance(
-            freqs
-        ) + state.detector.variance(freqs)
+        # Variance from detector
+        variance = state.detector.variance(freqs)
+        # Variance from ice
+        if not isinstance(state.ice, NullIce):
+            variance += state.optics(freqs) ** 2 * state.ice.variance(freqs)
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         return loss.real / residuals.size
