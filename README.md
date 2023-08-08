@@ -55,8 +55,8 @@ template = "example.mrc"
 key = jax.random.PRNGKey(seed=0)
 scattering = cs.NufftScattering(shape=(320, 320), pixel_size=1.32)
 cloud = load_grid_as_cloud(template, config)
-pose, optics, exposure, detector = cs.EulerPose(), cs.CTFOptics(), cs.UniformExposure(), cs.WhiteDetector(key=key)
-state = cs.ParameterState(pose=pose, optics=optics, exposure=exposure, detector=detector)
+pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteDetector(key=key)
+state = cs.ParameterState(pose=pose, optics=optics, detector=detector)
 model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state)
 params = dict(view_phi=np.pi, defocus_u=8000., alpha=1.4)
 image = ifft(model(params))  # The image is returned in Fourier space.
