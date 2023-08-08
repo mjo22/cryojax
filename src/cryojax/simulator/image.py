@@ -20,7 +20,7 @@ import jax.numpy as jnp
 from .filters import AntiAliasingFilter
 from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
-from .intensity import rescale_image
+from .exposure import rescale_image
 from ..utils import fft, ifft
 from ..core import dataclass, field, Array, Scalar
 from . import Filter, Mask, Specimen, ScatteringConfig
@@ -62,24 +62,21 @@ class Image(metaclass=ABCMeta):
     observed: Optional[Array] = field(pytree_node=False, init=False)
 
     filters: InitVar[list[Filter] | None] = None
-    masks: InitVar[list[Filter] | None] = None
+    masks: InitVar[list[Mask] | None] = None
     observed: InitVar[Array | None] = None
     _process_observed: bool = field(pytree_node=False, default=True)
 
     def __post_init__(self, filters, masks, observed):
         # Set filters
-        filters = (
-            [
-                AntiAliasingFilter(
-                    self.scattering.pixel_size * self.scattering.padded_freqs
-                )
-            ]
-            if filters is None
-            else filters
-        )
+        if filters is None:
+            antialias = AntiAliasingFilter(
+                self.scattering.pixel_size * self.scattering.padded_freqs
+            )
+            filters = [antialias]
         object.__setattr__(self, "filters", filters)
         # Set masks
-        masks = [] if masks is None else masks
+        if masks is None:
+            masks = []
         object.__setattr__(self, "masks", masks)
         # Set observed data
         if observed is not None and self._process_observed:
@@ -201,7 +198,7 @@ class OpticsImage(ScatteringImage):
         ctf = state.optics(self.scattering.padded_freqs)
         optics_image = ctf * scattering_image
         # Crop and rescale
-        rescaled_image = state.intensity.rescale(
+        rescaled_image = state.exposure.rescale(
             self.scattering.crop(ifft(optics_image))
         )
         # Mask the image

@@ -30,8 +30,8 @@ __all__ = [
     "QuaternionPose",
     ## Optics
     "CTFOptics",
-    ## Imaging conditions
-    "Intensity",
+    ## Electron dose
+    "Dose",
     ## Noise models
     "WhiteNoise",
     "EmpiricalNoise",
@@ -89,7 +89,9 @@ Mask = CircularMask
 from .optics import compute_ctf_power, NullOptics, CTFOptics
 
 Optics = Union[NullOptics, CTFOptics]
-from .intensity import rescale_image, Intensity
+from .exposure import rescale_image, UniformExposure
+
+Exposure = UniformExposure
 from .noise import NullNoise, WhiteNoise, EmpiricalNoise, ExponentialNoise
 
 Noise = Union[NullNoise, WhiteNoise, EmpiricalNoise, ExponentialNoise]

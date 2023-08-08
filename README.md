@@ -49,15 +49,15 @@ The following is a basic workflow to generate an image with a gaussian white noi
 import jax.numpy as jnp
 from cryojax.utils import ifft
 from cryojax.io import load_grid_as_cloud
-import cryojax.simulator as js
+import cryojax.simulator as cs
 
 template = "example.mrc"
 key = jax.random.PRNGKey(seed=0)
-scattering = js.NufftScattering(shape=(320, 320), pixel_size=1.32)
+scattering = cs.NufftScattering(shape=(320, 320), pixel_size=1.32)
 cloud = load_grid_as_cloud(template, config)
-pose, optics, intensity, noise = js.EulerPose(), js.CTFOptics(), js.Intensity(), js.WhiteNoise(key=key)
-state = js.ParameterState(pose=pose, optics=optics, intensity=intensity, noise=noise)
-model = js.GaussianImage(scattering=scattering, specimen=cloud, state=state)
+pose, optics, exposure, noise = cs.EulerPose(), cs.CTFOptics(), cs.UniformExposure(), cs.WhiteNoise(key=key)
+state = cs.ParameterState(pose=pose, optics=optics, exposure=exposure, noise=noise)
+model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state)
 params = dict(view_phi=np.pi, defocus_u=8000., sigma=1.4)
 image = ifft(model(params))  # The image is returned in Fourier space.
 ```
@@ -71,7 +71,7 @@ If a `GaussianImage` is initialized with the field `observed`, the model will in
 ```python
 from cryojax.utils import fft
 
-model = js.GaussianImage(scattering=scattering, specimen=cloud, state=state, observed=fft(observed))
+model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state, observed=fft(observed))
 log_likelihood = model(params)
 ```
 
@@ -80,10 +80,10 @@ Imaging models also accept a series of `Filter`s and `Mask`s. By default, this i
 ```python
 from cryojax.utils import fftfreqs
 
-filters = [js.AntiAliasingFilter(scattering.pixel_size * scattering.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
-           js.WhiteningFilter(scattering.pixel_size * scattering.freqs, fftfreqs(micrograph.shape), micrograph)]
-masks = [js.CircularMask(scattering.coords / scattering.pixel_size, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
-model = js.GaussianImage(scattering=scattering, specimen=cloud, state=state, filters=filters, masks=masks)
+filters = [cs.AntiAliasingFilter(scattering.pixel_size * scattering.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
+           cs.WhiteningFilter(scattering.pixel_size * scattering.freqs, fftfreqs(micrograph.shape), micrograph)]
+masks = [cs.CircularMask(scattering.coords / scattering.pixel_size, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
+model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state, filters=filters, masks=masks)
 image = ifft(model(params))
 ```
 

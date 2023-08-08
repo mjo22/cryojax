@@ -13,9 +13,9 @@ from jax import random
 from ..core import dataclass, field, Scalar, Serializable
 from .pose import EulerPose
 from .optics import NullOptics
-from .intensity import Intensity
+from .exposure import UniformExposure
 from .noise import NullNoise
-from . import Pose, Optics, Noise
+from . import Pose, Optics, Exposure, Noise
 
 
 class ParameterDict(TypedDict):
@@ -68,15 +68,15 @@ class ParameterState(Serializable):
         The image pose.
     optics : `cryojax.simulator.OpticsModel`
         The CTF model.
-    intensity : `cryojax.simulator.Intensity`
-        The intensity scaling.
+    exposure : `cryojax.simulator.Exposure`
+        The model for intensity scaling.
     noise : ``cryojax.simulator.Noise``
         The noise model.
     """
 
     pose: Pose = field(default=EulerPose(), encode=Pose)
     optics: Optics = field(default=NullOptics(), encode=Optics)
-    intensity: Intensity = Intensity()
+    exposure: Exposure = UniformExposure()
     noise: Noise = field(
         default=NullNoise(key=random.PRNGKey(seed=0)), encode=Noise
     )
@@ -92,12 +92,12 @@ class ParameterState(Serializable):
         noise_update = {
             k: v for k, v in params.items() if hasattr(self.noise, k)
         }
-        intensity_update = {
-            k: v for k, v in params.items() if hasattr(self.intensity, k)
+        exposure_update = {
+            k: v for k, v in params.items() if hasattr(self.exposure, k)
         }
         return self.replace(
             pose=self.pose.replace(**pose_update),
             optics=self.optics.replace(**optics_update),
             noise=self.noise.replace(**noise_update),
-            intensity=self.intensity.replace(**intensity_update),
+            exposure=self.exposure.replace(**exposure_update),
         )

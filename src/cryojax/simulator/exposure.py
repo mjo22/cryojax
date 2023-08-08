@@ -1,10 +1,13 @@
 """
-Routines to handle varying imaging conditions.
+Routines to handle variations in image intensity
+due to electron exposure.
 """
 
 from __future__ import annotations
 
-__all__ = ["Intensity", "rescale_image"]
+__all__ = ["Exposure", "UniformExposure", "rescale_image"]
+
+from abc import ABCMeta, abstractmethod
 
 import jax.numpy as jnp
 
@@ -12,9 +15,26 @@ from ..core import dataclass, Array, Scalar, Serializable
 
 
 @dataclass
-class Intensity(Serializable):
+class Exposure(Serializable, metaclass=ABCMeta):
     """
-    An PyTree that controls image intensity rescaling.
+    An PyTree that controls parameters related to
+    variation in the image intensity. For example,
+    this includes the incoming electron dose and
+    radiation damage.
+    """
+
+    @abstractmethod
+    def rescale(self, image: Array, real: bool = True) -> Array:
+        """
+        Return the rescaled image.
+        """
+        raise NotImplementedError
+
+
+@dataclass
+class UniformExposure(Exposure):
+    """
+    Rescale the signal intensity uniformly.
 
     Attributes
     ----------
@@ -29,7 +49,7 @@ class Intensity(Serializable):
 
     def rescale(self, image: Array, real: bool = True) -> Array:
         """
-        Return the normalized image.
+        Return the scaled image.
         """
         return rescale_image(image, self.N, self.mu, real=real)
 

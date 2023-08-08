@@ -75,11 +75,11 @@ def test_update(noisy_model):
     assert offset_x == state.pose.offset_x
     assert view_phi == state.pose.view_phi
     assert voltage == state.optics.voltage
-    assert N == state.intensity.N
+    assert N == state.exposure.N
     assert alpha == state.noise.alpha
     # Test model update
     assert offset_x == model.state.pose.offset_x
     assert view_phi == model.state.pose.view_phi
     assert voltage == model.state.optics.voltage
-    assert N == model.state.intensity.N
+    assert N == model.state.exposure.N
     assert alpha == model.state.noise.alpha
