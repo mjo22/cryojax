@@ -90,7 +90,7 @@ class ParameterState(Serializable):
             update[field.name] = {
                 k: v
                 for k, v in params.items()
-                if hasattr(getattr(self, field.name), k)
+                if k in getattr(self, field.name).data
             }
         return self.replace(
             pose=self.pose.replace(**update["pose"]),
