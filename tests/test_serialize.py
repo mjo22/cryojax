@@ -4,7 +4,7 @@ import numpy as np
 
 from cryojax.simulator import (
     EulerPose,
-    WhiteNoise,
+    WhiteDetector,
     CTFOptics,
     UniformExposure,
     ParameterState,
@@ -15,12 +15,12 @@ def test_deserialize_state_components(noisy_model):
     """Test deserialization on each component of the state."""
     state = noisy_model.state
     pose = EulerPose.from_json(noisy_model.state.pose.to_json())
-    noise = WhiteNoise.from_json(noisy_model.state.noise.to_json())
+    detector = WhiteDetector.from_json(noisy_model.state.detector.to_json())
     optics = CTFOptics.from_json(noisy_model.state.optics.to_json())
     exposure = UniformExposure.from_json(noisy_model.state.exposure.to_json())
     model = noisy_model.replace(
         state=state.replace(
-            pose=pose, noise=noise, optics=optics, exposure=exposure
+            pose=pose, detector=detector, optics=optics, exposure=exposure
         )
     )
     np.testing.assert_allclose(noisy_model(), model())

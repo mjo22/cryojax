@@ -93,13 +93,15 @@ class Image(metaclass=ABCMeta):
 
     @abstractmethod
     def render(
-        self, state: Optional[ParameterState] = None, crop: bool = True
+        self, state: Optional[ParameterState] = None, view: bool = True
     ) -> Array:
         """Render an image given a parameter set."""
         raise NotImplementedError
 
     @abstractmethod
-    def sample(self, state: Optional[ParameterState] = None) -> Array:
+    def sample(
+        self, state: Optional[ParameterState] = None, view: bool = True
+    ) -> Array:
         """Sample the an image from a realization of the noise"""
         raise NotImplementedError
 
@@ -156,27 +158,44 @@ class ScatteringImage(Image):
     """
 
     def render(
-        self, state: Optional[ParameterState] = None, crop: bool = True
+        self, state: Optional[ParameterState] = None, view: bool = True
     ) -> Array:
-        """Render the scattering pattern"""
+        """Render the scattering pattern of the specimen."""
         state = state or self.state
         # Compute scattering at image plane.
         specimen = self.specimen.view(state.pose)
         scattering_image = specimen.scatter(self.scattering)
         # Apply filters
         scattering_image = self.filter(scattering_image)
-        # Optional cropping to view image at this stage in the pipeline
-        if crop:
+        # Optionally crop and mask image
+        if view:
             scattering_image = fft(
-                self.mask(self.scattering.crop(ifft(scattering_image)))
+                self.mask(
+                    state.exposure.rescale(
+                        self.scattering.crop(ifft(scattering_image))
+                    )
+                )
             )
 
         return scattering_image
 
     def sample(self, state: Optional[ParameterState] = None) -> Array:
+        """Sample the scattering pattern of the specimen and ice."""
         state = state or self.state
-        simulated = self.render(state)
-        return self.scattering.crop(simulated)
+        # Render an image with no ice
+        scattering_image = self.render(state)
+        # Sample from ice distribution
+        ice = self.filter(
+            state.ice.sample(
+                self.scattering.padded_freqs * self.scattering.pixel_size
+            )
+        )
+        # View ice
+        ice = fft(self.mask(self.scattering.crop(ifft(ice))))
+        # Create an icy image in the exit plane
+        icy_image = scattering_image + ice
+
+        return icy_image
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
         raise NotImplementedError
@@ -185,30 +204,79 @@ class ScatteringImage(Image):
 @dataclass
 class OpticsImage(ScatteringImage):
     """
-    Compute the scattering pattern on the imaging plane,
-    moduated by a CTF and rescaled.
+    Compute the image at the detector plane,
+    moduated by a CTF at a given electron dose.
     """
 
     def render(self, state: Optional[ParameterState] = None) -> Array:
-        """Render an image from a model of the CTF."""
+        """Render the image in the detector plane."""
         state = state or self.state
         # Compute scattering at object plane.
-        scattering_image = super().render(state, crop=False)
+        scattering_image = super().render(state, view=False)
         # Compute and apply CTF
         ctf = state.optics(self.scattering.padded_freqs)
         optics_image = ctf * scattering_image
-        # Crop and rescale
-        rescaled_image = state.exposure.rescale(
-            self.scattering.crop(ifft(optics_image))
+        # Crop, rescale, and mask image
+        optics_image = fft(
+            self.mask(
+                state.exposure.rescale(
+                    self.scattering.crop(ifft(optics_image))
+                )
+            )
         )
-        # Mask the image
-        masked_image = fft(self.mask(rescaled_image))
 
-        return masked_image
+        return optics_image
+
+    def sample(self, state: Optional[ParameterState] = None) -> Array:
+        """
+        Sample the image in the detector plane.
+        """
+        state = state or self.state
+        # Compute image
+        optics_image = self.render(state)
+        # Sample from ice distribution and apply ctf to it
+        ctf = state.optics(self.scattering.padded_freqs)
+        ice = ctf * self.filter(
+            state.ice.sample(
+                self.scattering.padded_freqs * self.scattering.pixel_size
+            )
+        )
+        # Crop and mask ice
+        ice = fft(self.mask(self.scattering.crop(ifft(ice))))
+        # Create icy image at detector plane
+        icy_image = optics_image + ice
+
+        return icy_image
 
 
 @dataclass
-class GaussianImage(OpticsImage):
+class DetectorImage(OpticsImage):
+    """
+    Compute the readout from the detector from the image
+    in the detector plane.
+    """
+
+    def sample(
+        self, state: Optional[ParameterState] = None, view: bool = True
+    ) -> Array:
+        """Sample an image from the detector readout."""
+        state = state or self.state
+        # Sample image at detector plane
+        icy_image = super().sample(state)
+        # Sample from noise distribution of detector
+        noise = state.detector.sample(
+            self.scattering.freqs * self.scattering.pixel_size
+        )
+        # Mask noise
+        noise = fft(self.mask(ifft(noise)))
+        # Detector readout
+        detector_image = icy_image + noise
+
+        return detector_image
+
+
+@dataclass
+class GaussianImage(DetectorImage):
     """
     Sample an image from a gaussian noise model, or compute
     the log-likelihood.
@@ -219,23 +287,17 @@ class GaussianImage(OpticsImage):
 
     def __post_init__(self, *args):
         super().__post_init__(*args)
-        assert isinstance(self.state.noise, GaussianNoise)
-
-    def sample(self, state: Optional[ParameterState] = None) -> Array:
-        """Sample an image from a realization of the noise"""
-        state = state or self.state
-        simulated = self.render(state)
-        noise = state.noise.sample(
-            self.scattering.freqs * self.scattering.pixel_size
-        )
-        return simulated + fft(self.mask(ifft(noise)))
+        assert isinstance(self.state.ice, GaussianNoise)
+        assert isinstance(self.state.detector, GaussianNoise)
 
     def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""
         state = state or self.state
         residuals = self.residuals(state)
-        variance = state.noise.variance(
-            self.scattering.freqs * self.scattering.pixel_size
-        )
+        freqs = self.scattering.freqs * self.scattering.pixel_size
+        ctf = state.optics(freqs)
+        variance = ctf**2 * state.ice.variance(
+            freqs
+        ) + state.detector.variance(freqs)
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         return loss.real / residuals.size

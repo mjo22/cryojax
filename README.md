@@ -55,16 +55,16 @@ template = "example.mrc"
 key = jax.random.PRNGKey(seed=0)
 scattering = cs.NufftScattering(shape=(320, 320), pixel_size=1.32)
 cloud = load_grid_as_cloud(template, config)
-pose, optics, exposure, noise = cs.EulerPose(), cs.CTFOptics(), cs.UniformExposure(), cs.WhiteNoise(key=key)
-state = cs.ParameterState(pose=pose, optics=optics, exposure=exposure, noise=noise)
+pose, optics, exposure, detector = cs.EulerPose(), cs.CTFOptics(), cs.UniformExposure(), cs.WhiteDetector(key=key)
+state = cs.ParameterState(pose=pose, optics=optics, exposure=exposure, detector=detector)
 model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state)
-params = dict(view_phi=np.pi, defocus_u=8000., sigma=1.4)
+params = dict(view_phi=np.pi, defocus_u=8000., alpha=1.4)
 image = ifft(model(params))  # The image is returned in Fourier space.
 ```
 
 Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a rasterzied grid is converted to a density point cloud and read into a `Cloud`. Alternatively, a user could instantiate a custom `Cloud`.
 
-This workflow configures an initial model state at the library's default parameters, then evaulates it at a state with an updated viewing angle `view_phi`, major axis defocus `defocus_u`, and noise variance `sigma`. For a more advanced example, see the tutorials section of the repository (stay tuned!).
+This workflow configures an initial model state at the library's default parameters, then evaulates it at a state with an updated viewing angle `view_phi`, major axis defocus `defocus_u`, and detector noise variance `alpha`. For a more advanced example, see the tutorials section of the repository (stay tuned!).
 
 If a `GaussianImage` is initialized with the field `observed`, the model will instead compute a Gaussian log-likelihood in Fourier space with a diagonal covariance tensor (or power spectrum).
 
@@ -87,7 +87,7 @@ model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state, fil
 image = ifft(model(params))
 ```
 
-Alternative noise models are supported. For example, `EmpiricalNoise` stores an empirical covariance matrix. `ExponentialNoise` generates noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. In general, `cryojax` is designed to be very extensible and new scattering, optics, and noise models can easily be implemented.
+Ice models are also supported. For example, `EmpiricalIce` stores an empirical measure of the ice power spectrum. `ExponentialIce` generates ice as noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a likelihood. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
 
 ## Features
 

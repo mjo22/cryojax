@@ -1,15 +1,10 @@
 """
-Noise models for cryo-EM images.
+Noise models for cryo-EM images. This is a collection of
+abstract base classes to be subclasses by stochastic cryojax
+models.
 """
 
-__all__ = [
-    "Noise",
-    "NullNoise",
-    "GaussianNoise",
-    "WhiteNoise",
-    "EmpiricalNoise",
-    "ExponentialNoise",
-]
+__all__ = ["Noise", "GaussianNoise"]
 
 from abc import ABCMeta, abstractmethod
 from typing import Union, Optional
@@ -18,7 +13,7 @@ import jax.numpy as jnp
 from jax import random
 
 from ..utils import fft
-from ..core import field, dataclass, Array, Scalar, Serializable
+from ..core import field, dataclass, Array, Serializable
 
 
 @dataclass
@@ -74,99 +69,3 @@ class GaussianNoise(Noise):
         variances are supported.
         """
         raise NotImplementedError
-
-
-@dataclass
-class NullNoise(Noise):
-    """
-    This class can be used as a null noise model.
-    """
-
-    def sample(self, freqs: Array) -> Array:
-        return 0.0
-
-
-@dataclass
-class WhiteNoise(GaussianNoise):
-    """
-    Gaussian white noise (flat power spectrum).
-
-    Attributes
-    ----------
-    alpha : `cryojax.core.Scalar`
-        Variance of the white noise.
-    """
-
-    alpha: Scalar = 1.0
-
-    def variance(self, freqs: Optional[Array] = None) -> Array:
-        """Flat power spectrum."""
-        return self.alpha
-
-
-@dataclass
-class EmpiricalNoise(GaussianNoise):
-    """
-    Gaussian noise with a measured power spectrum.
-
-    Attributes
-    ----------
-    kappa : `cryojax.core.Scalar`
-        A scale factor for the variance.
-    sigma : `cryojax.core.Scalar`
-        An uncorrelated part of the variance.
-    spectrum : `jax.Array`, shape `(N1, N2)`
-        The measured power spectrum. Compute this
-        with ``cryojax.simulator.compute_whitening_filter``.
-        This must match the image shape!
-    """
-
-    spectrum: Array = field(pytree_node=False)
-
-    kappa: Scalar = 1.0
-    alpha: Scalar = 0.0
-
-    def variance(self, freqs: Optional[Array] = None) -> Array:
-        """Power spectrum measured from a micrograph."""
-        return self.kappa * self.spectrum + self.alpha
-
-
-@dataclass
-class ExponentialNoise(GaussianNoise):
-    r"""
-    Gaussian noise with a covariance matrix equal to an exponential
-    decay, given by
-
-    .. math::
-        g(r) = \kappa \exp(- r / \xi),
-
-    where :math:`r` is a radial coordinate. The power spectrum
-    from such a correlation function (in two-dimensions) is given
-    by its Hankel transform pair
-
-    .. math::
-        P(k) = \frac{\kappa}{\xi} \frac{1}{(\xi^{-2} + k^2)^{3/2}} + \sigma,
-
-    where :math:`\sigma` is an uncorrelated contribution,
-    typically described as shot noise.
-
-    Attributes
-    ----------
-    kappa : `cryojax.core.Scalar`
-        The "coupling strength".
-    xi : `cryojax.core.Scalar`
-        The correlation length. This is measured
-        in pixel units, not in physical length.
-    alpha : `cryojax.core.Scalar`
-        The uncorrelated part of the spectrum.
-    """
-
-    kappa: Scalar = 1.0
-    xi: Scalar = 1.0
-    alpha: Scalar = 1.0
-
-    def variance(self, freqs: Array) -> Array:
-        """Power spectrum modeled by a pure exponential, plus a flat contribution."""
-        k_norm = jnp.linalg.norm(freqs, axis=-1)
-        scaling = 1.0 / (k_norm**2 + jnp.divide(1, (self.xi) ** 2)) ** 1.5
-        return jnp.divide(self.kappa, self.xi) * scaling + self.alpha

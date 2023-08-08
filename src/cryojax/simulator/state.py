@@ -13,10 +13,11 @@ from jax import random
 
 from ..core import dataclass, field, Scalar, Serializable
 from .pose import EulerPose
+from .ice import NullIce
 from .optics import NullOptics
 from .exposure import UniformExposure
-from .noise import NullNoise
-from . import Pose, Optics, Exposure, Noise
+from .detector import NullDetector
+from . import Pose, Ice, Optics, Exposure, Detector
 
 
 class ParameterDict(TypedDict):
@@ -48,10 +49,12 @@ class ParameterDict(TypedDict):
     phase_shift: Optional[Scalar]
     b_factor: Optional[Scalar]
 
-    # Noise parameters
-    sigma: Optional[Scalar]
+    # Ice parameters
     kappa: Optional[Scalar]
     xi: Optional[Scalar]
+
+    # Detector parameters
+    alpha: Optional[Scalar]
 
     # Image intensity
     N: Optional[Scalar]
@@ -67,19 +70,24 @@ class ParameterState(Serializable):
     ----------
     pose : `cryojax.simulator.Pose`
         The image pose.
+    ice : `cryojax.simulator.Ice`
+        The model of the ice.
     optics : `cryojax.simulator.OpticsModel`
         The CTF model.
     exposure : `cryojax.simulator.Exposure`
         The model for intensity scaling.
-    noise : ``cryojax.simulator.Noise``
-        The noise model.
+    detector : ``cryojax.simulator.Detector``
+        The model of the detector.
     """
 
     pose: Pose = field(default=EulerPose(), encode=Pose)
+    ice: Ice = field(
+        default=NullIce(key=random.PRNGKey(seed=1234)), encode=Ice
+    )
     optics: Optics = field(default=NullOptics(), encode=Optics)
-    exposure: Exposure = field(default=UniformExposure())
-    noise: Noise = field(
-        default=NullNoise(key=random.PRNGKey(seed=0)), encode=Noise
+    exposure: Exposure = field(default=UniformExposure(), encode=Exposure)
+    detector: Detector = field(
+        default=NullDetector(key=random.PRNGKey(seed=5678)), encode=Detector
     )
 
     def update(self, params: ParameterDict) -> ParameterState:
@@ -94,7 +102,8 @@ class ParameterState(Serializable):
             }
         return self.replace(
             pose=self.pose.replace(**update["pose"]),
+            ice=self.ice.replace(**update["ice"]),
             optics=self.optics.replace(**update["optics"]),
             exposure=self.exposure.replace(**update["exposure"]),
-            noise=self.noise.replace(**update["noise"]),
+            detector=self.detector.replace(**update["detector"]),
         )
