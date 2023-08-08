@@ -6,6 +6,7 @@ from __future__ import annotations
 
 __all__ = ["ParameterDict", "ParameterState"]
 
+import dataclasses
 from typing import TypedDict, Optional
 
 from jax import random
@@ -76,28 +77,24 @@ class ParameterState(Serializable):
 
     pose: Pose = field(default=EulerPose(), encode=Pose)
     optics: Optics = field(default=NullOptics(), encode=Optics)
-    exposure: Exposure = UniformExposure()
+    exposure: Exposure = field(default=UniformExposure())
     noise: Noise = field(
         default=NullNoise(key=random.PRNGKey(seed=0)), encode=Noise
     )
 
     def update(self, params: ParameterDict) -> ParameterState:
         """Return a new ParameterState based on a ParameterDict."""
-        pose_update = {
-            k: v for k, v in params.items() if hasattr(self.pose, k)
-        }
-        optics_update = {
-            k: v for k, v in params.items() if hasattr(self.optics, k)
-        }
-        noise_update = {
-            k: v for k, v in params.items() if hasattr(self.noise, k)
-        }
-        exposure_update = {
-            k: v for k, v in params.items() if hasattr(self.exposure, k)
-        }
+        fields = dataclasses.fields(self)
+        update = {}
+        for field in fields:
+            update[field.name] = {
+                k: v
+                for k, v in params.items()
+                if hasattr(getattr(self, field.name), k)
+            }
         return self.replace(
-            pose=self.pose.replace(**pose_update),
-            optics=self.optics.replace(**optics_update),
-            noise=self.noise.replace(**noise_update),
-            exposure=self.exposure.replace(**exposure_update),
+            pose=self.pose.replace(**update["pose"]),
+            optics=self.optics.replace(**update["optics"]),
+            exposure=self.exposure.replace(**update["exposure"]),
+            noise=self.noise.replace(**update["noise"]),
         )

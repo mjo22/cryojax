@@ -165,6 +165,8 @@ def compute_whitening_filter(
     spectrum : `jax.Array`, shape `(N1, N2)`
         The power spectrum isotropically averaged onto ``freqs``.
     """
+    M1, M2 = micrograph.shape
+    micrograph /= jnp.sqrt(M1 * M2)
     spectrum, _ = powerspectrum(micrograph, micrograph_freqs, grid=freqs)
 
     return 1 / jnp.sqrt(spectrum)
