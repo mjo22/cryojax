@@ -19,7 +19,7 @@ CLASSIFIERS = [
 ]
 INSTALL_REQUIRES = ["jax", "jaxlib", "jaxlie", "mrcfile", "dataclasses-json"]
 EXTRA_REQUIRE = {
-    "test": ["pytest>=3.6"],
+    "test": ["pytest>=3.6", "pycistem"],
     "docs": [],
 }
 EXTRA_REQUIRE["coverage"] = EXTRA_REQUIRE["test"] + ["pytest-cov"]

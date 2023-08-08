@@ -8,10 +8,11 @@ __all__ = [
     "Optics",
     "NullOptics",
     "CTFOptics",
-    "compute_ctf_power",
+    "compute_ctf",
 ]
 
 from abc import ABCMeta, abstractmethod
+from typing import Any, Optional
 
 import jax.numpy as jnp
 
@@ -32,10 +33,10 @@ class Optics(Serializable, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def compute(self, freqs: Array) -> Array:
+    def compute(self, freqs: Array, **kwargs: Any) -> Array:
         raise NotImplementedError
 
-    def __call__(self, freqs: Array) -> Array:
+    def __call__(self, freqs: Array, **kwargs: Any) -> Array:
         """
         Compute the optics model.
 
@@ -44,7 +45,7 @@ class Optics(Serializable, metaclass=ABCMeta):
         freqs : Array, shape `(N1, N2, 2)`
             The fourier wavevectors in the imaging plane.
         """
-        return self.compute(freqs)
+        return self.compute(freqs, **kwargs)
 
 
 @dataclass
@@ -53,7 +54,7 @@ class NullOptics(Optics):
     This class can be used as a null optics model.
     """
 
-    def compute(self, freqs: Array) -> Array:
+    def compute(self, freqs: Array, **kwargs: Any) -> Array:
         return jnp.array(1.0)
 
 
@@ -63,7 +64,7 @@ class CTFOptics(Optics):
     Compute a Contrast Transfer Function (CTF).
 
     Also acts as a PyTree container for the CTF parameters.
-    See ``cryojax.simulator.compute_ctf_power`` for more
+    See ``cryojax.simulator.compute_ctf`` for more
     information.
 
     Attributes
@@ -83,24 +84,24 @@ class CTFOptics(Optics):
     defocus_angle: Scalar = 0.0
     voltage: Scalar = 300.0
     spherical_aberration: Scalar = 2.7
-    amplitude_contrast_ratio: Scalar = 0.1
+    amplitude_contrast: Scalar = 0.1
     phase_shift: Scalar = 0.0
     b_factor: Scalar = 1.0
 
-    def compute(self, freqs: Array) -> Array:
-        return compute_ctf_power(freqs, *self.iter_data())
+    def compute(self, freqs: Array, **kwargs: Any) -> Array:
+        return compute_ctf(freqs, *self.iter_data(), **kwargs)
 
 
-def compute_ctf_power(
+def compute_ctf(
     freqs: Array,
     defocus_u: Scalar,
     defocus_v: Scalar,
     defocus_angle: Scalar,
     voltage: Scalar,
     spherical_aberration: Scalar,
-    amplitude_contrast_ratio: Scalar,
+    amplitude_contrast: Scalar,
     phase_shift: Scalar,
-    b_factor: Scalar,
+    b_factor: Optional[Scalar] = None,
     *,
     normalize: bool = True,
 ) -> Array:
@@ -111,7 +112,7 @@ def compute_ctf_power(
     ----------
     freqs : `jax.Array`, shape `(N1, N2, 2)`
         The wave vectors in the imaging plane, in units
-        of A.
+        of 1/A.
     defocus_u : float
         The defocus in the major axis in Angstroms.
     defocus_v : float
@@ -122,10 +123,10 @@ def compute_ctf_power(
         The accelerating voltage in kV.
     spherical_aberration : float
         The spherical aberration in mm.
-    amplitude_contrast_ratio : float
+    amplitude_contrast : float
         The amplitude contrast ratio.
     phase_shift : float
-        The phase shift in degrees.
+        The additional phase shift in radians.
     b_factor : float, optional
         The B factor in A^2. If not provided, the B factor is assumed to be 0.
     normalize : bool, optional
@@ -149,22 +150,26 @@ def compute_ctf_power(
     defocus = 0.5 * (
         defocus_u
         + defocus_v
-        + (defocus_u - defocus_v) * jnp.cos(2 * (theta - defocus_angle))
+        + (defocus_u - defocus_v) * jnp.cos(2.0 * (theta - defocus_angle))
     )
+    if jnp.isclose(jnp.abs(amplitude_contrast - 1.0), 1.0):
+        ac = jnp.pi / 2
+    else:
+        ac = jnp.arctan(
+            amplitude_contrast / jnp.sqrt(1.0 - amplitude_contrast**2)
+        )
 
-    lam = (12.2643 / (voltage + 0.97845e-6 * voltage * voltage)) ** 0.5
+    lam = 12.2643 / (voltage + 0.97845e-6 * voltage**2) ** 0.5
     gamma_defocus = -0.5 * defocus * lam * k_sqr
     gamma_sph = 0.25 * spherical_aberration * (lam**3) * (k_sqr**2)
-
-    gamma = (2 * jnp.pi) * (gamma_defocus + gamma_sph) - phase_shift
-    ctf = (1 - amplitude_contrast_ratio**2) ** 0.5 * jnp.sin(
-        gamma
-    ) - amplitude_contrast_ratio * jnp.cos(gamma)
+    gamma = (2 * jnp.pi) * (gamma_defocus + gamma_sph) - phase_shift - ac
+    ctf = jnp.sin(gamma)
 
     # We apply normalization before b-factor envelope
     if normalize:
         ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
 
-    ctf = ctf * jnp.exp(-0.25 * b_factor * k_sqr)
+    if b_factor is not None:
+        ctf = ctf * jnp.exp(-0.25 * b_factor * k_sqr)
 
     return ctf

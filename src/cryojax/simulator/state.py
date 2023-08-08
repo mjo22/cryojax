@@ -45,7 +45,7 @@ class ParameterDict(TypedDict):
     defocus_angle: Optional[Scalar]
     voltage: Optional[Scalar]
     spherical_aberration: Optional[Scalar]
-    amplitude_contrast_ratio: Optional[Scalar]
+    amplitude_contrast: Optional[Scalar]
     phase_shift: Optional[Scalar]
     b_factor: Optional[Scalar]
 
