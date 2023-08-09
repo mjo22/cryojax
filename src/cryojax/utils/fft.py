@@ -2,7 +2,7 @@
 Routines to compute FFTs.
 """
 
-__all__ = ["ifft", "fft", "fftfreqs", "fftfreqs1d"]
+__all__ = ["ifft", "fft", "fftfreqs", "fftfreqs1d", "cartesian_to_polar"]
 
 from typing import Any
 
@@ -88,13 +88,33 @@ def fftfreqs(
     return k_coords
 
 
-def fftfreqs1d(s: int, pixel_size: float, real: bool = False):
-    """
-    One-dimensional coordinates in real or fourier space
-    """
+def fftfreqs1d(s: int, pixel_size: float, real: bool = False) -> ArrayLike:
+    """One-dimensional coordinates in real or fourier space"""
     fftfreq = (
         lambda s: np.fft.fftfreq(s, 1 / pixel_size) * s
         if real
         else np.fft.fftfreq(s, pixel_size)
     )
     return np.fft.fftshift(fftfreq(s))
+
+
+def cartesian_to_polar(freqs: ArrayLike, square: bool = False) -> Array:
+    """
+    Convert from cartesian to polar coordinates.
+
+    Arguments
+    ---------
+    freqs : `ArrayLike`, shape `(N1, N2, 2)`
+        The cartesian coordinate system.
+    square : `bool`, optional
+        If ``True``, return the square of the
+        radial coordinate :math:`|r|^2`. Otherwise,
+        return :math:`|r|`.
+    """
+    theta = jnp.arctan2(freqs[..., 0], freqs[..., 1])
+    k_sqr = jnp.sum(jnp.square(freqs), axis=-1)
+    if square:
+        return k_sqr, theta
+    else:
+        kr = jnp.sqrt(k_sqr)
+        return kr, theta

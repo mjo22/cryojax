@@ -26,10 +26,10 @@ class NullIce(Ice, GaussianNoise):
     A 'null' ice model.
     """
 
-    def sample(self, freqs: Array) -> Array:
+    def sample(self, freqs: Optional[Array] = None) -> Array:
         return 0.0
 
-    def variance(self, freqs: Array) -> Array:
+    def variance(self, freqs: Optional[Array] = None) -> Array:
         return 0.0
 
 
@@ -85,7 +85,7 @@ class ExponentialNoiseIce(Ice, GaussianNoise):
     xi: Scalar = 1.0
 
     def variance(self, freqs: Array) -> Array:
-        """Power spectrum modeled by a pure exponential, plus a flat contribution."""
+        """Power spectrum modeled by a pure exponential."""
         k_norm = jnp.linalg.norm(freqs, axis=-1)
         scaling = 1.0 / (k_norm**2 + jnp.divide(1, (self.xi) ** 2)) ** 1.5
         return jnp.divide(self.kappa, self.xi) * scaling

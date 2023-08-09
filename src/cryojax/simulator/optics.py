@@ -16,6 +16,7 @@ from typing import Any, Optional
 
 import jax.numpy as jnp
 
+from ..utils import cartesian_to_polar
 from ..core import dataclass, Array, Scalar, Serializable
 
 
@@ -144,8 +145,7 @@ def compute_ctf(
     spherical_aberration *= 1e7  # mm to Angstroms
 
     N1, N2 = freqs.shape[0:-1]
-    theta = jnp.arctan2(freqs[..., 1], freqs[..., 0])
-    k_sqr = jnp.sum(jnp.square(freqs), axis=-1)
+    k_sqr, theta = cartesian_to_polar(freqs, square=True)
 
     defocus = 0.5 * (
         defocus_u
