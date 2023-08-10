@@ -47,7 +47,7 @@ The following is a basic workflow to generate an image with a gaussian white noi
 
 ```python
 import jax.numpy as jnp
-from cryojax.utils import ifft
+from cryojax.utils import irfft
 from cryojax.io import load_grid_as_cloud
 import cryojax.simulator as cs
 
@@ -59,7 +59,7 @@ pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteNoiseDetector(k
 state = cs.ParameterState(pose=pose, optics=optics, detector=detector)
 model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state)
 params = dict(view_phi=np.pi, defocus_u=8000., alpha=1.4)
-image = ifft(model(params))  # The image is returned in Fourier space.
+image = irfft(model(params))  # The image is returned in Fourier space.
 ```
 
 Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a rasterzied grid is converted to a density point cloud and read into a `Cloud`. Alternatively, a user could instantiate a custom `Cloud`.
@@ -84,7 +84,7 @@ filters = [cs.AntiAliasingFilter(scattering.pixel_size * scattering.freqs, cutof
            cs.WhiteningFilter(scattering.pixel_size * scattering.freqs, fftfreqs(micrograph.shape), micrograph)]
 masks = [cs.CircularMask(scattering.coords / scattering.pixel_size, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
 model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state, filters=filters, masks=masks)
-image = ifft(model(params))
+image = irfft(model(params))
 ```
 
 Ice models are also supported. For example, `EmpiricalIce` stores an empirical measure of the ice power spectrum. `ExponentialNoiseIce` generates ice as noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.

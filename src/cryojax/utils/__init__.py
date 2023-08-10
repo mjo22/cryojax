@@ -1,6 +1,7 @@
 __all__ = [
     "fft",
     "ifft",
+    "irfft",
     "fftfreqs",
     "cartesian_to_polar",
     "powerspectrum",
@@ -15,7 +16,7 @@ __all__ = [
 ]
 
 
-from .fft import fft, ifft, fftfreqs, cartesian_to_polar
+from .fft import fft, ifft, irfft, fftfreqs, cartesian_to_polar
 from .averaging import radial_average
 from .spectrum import powerspectrum
 from .integration import nufft, integrate_gaussians

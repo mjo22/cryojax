@@ -2,7 +2,7 @@ from .test_pipeline import setup, scattering_model
 
 import jax.numpy as jnp
 import numpy as np
-from cryojax.utils import fft, ifft
+from cryojax.utils import fft, irfft
 
 
 def test_fft(scattering_model):
@@ -22,10 +22,12 @@ def test_fft(scattering_model):
     )
     # Run tests with cryojax.utils and random data
     np.testing.assert_allclose(
-        ifft(fft(random)), jnp.fft.ifftn(jnp.fft.fftn(random)).real, **rkwargs
+        irfft(fft(random)), jnp.fft.ifftn(jnp.fft.fftn(random)).real, **rkwargs
     )
-    np.testing.assert_allclose(random, ifft(fft(random)), **rkwargs)
-    np.testing.assert_allclose(fft(random), fft(ifft(fft(random))), **fkwargs)
+    np.testing.assert_allclose(random, irfft(fft(random)), **rkwargs)
+    np.testing.assert_allclose(fft(random), fft(irfft(fft(random))), **fkwargs)
     # Run tests with an image
-    np.testing.assert_allclose(ifft(image), ifft(fft(ifft(image))), **rkwargs)
-    np.testing.assert_allclose(image, fft(ifft(image)), **fkwargs)
+    np.testing.assert_allclose(
+        irfft(image), irfft(fft(irfft(image))), **rkwargs
+    )
+    np.testing.assert_allclose(image, fft(irfft(image)), **fkwargs)

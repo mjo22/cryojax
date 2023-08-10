@@ -5,7 +5,7 @@ due to electron exposure.
 
 from __future__ import annotations
 
-__all__ = ["Exposure", "UniformExposure", "rescale_image"]
+__all__ = ["Exposure", "NullExposure", "UniformExposure", "rescale_image"]
 
 from abc import ABCMeta, abstractmethod
 
@@ -29,6 +29,18 @@ class Exposure(Serializable, metaclass=ABCMeta):
         Return the rescaled image.
         """
         raise NotImplementedError
+
+
+@dataclass
+class NullExposure(Exposure):
+    """
+    A `null` exposure model. Do not change the
+    image when it is passsed through the pipeline.
+    """
+
+    def rescale(self, image: Array, real: bool = True) -> Array:
+        """Return the image unchanged"""
+        return image
 
 
 @dataclass

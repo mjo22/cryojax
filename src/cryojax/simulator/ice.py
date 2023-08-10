@@ -26,8 +26,9 @@ class NullIce(Ice, GaussianNoise):
     A 'null' ice model.
     """
 
-    def sample(self, freqs: Optional[Array] = None) -> Array:
-        return 0.0
+    def sample(self, freqs: Array) -> Array:
+        shape = freqs.shape[0:-1]
+        return jnp.zeros(shape)
 
     def variance(self, freqs: Optional[Array] = None) -> Array:
         return 0.0

@@ -15,7 +15,7 @@ from ..core import dataclass, field, Scalar, Serializable
 from .pose import EulerPose
 from .ice import NullIce
 from .optics import NullOptics
-from .exposure import UniformExposure
+from .exposure import NullExposure
 from .detector import NullDetector
 from . import Pose, Ice, Optics, Exposure, Detector
 
@@ -85,7 +85,7 @@ class ParameterState(Serializable):
         default=NullIce(key=random.PRNGKey(seed=1234)), encode=Ice
     )
     optics: Optics = field(default=NullOptics(), encode=Optics)
-    exposure: Exposure = field(default=UniformExposure(), encode=Exposure)
+    exposure: Exposure = field(default=NullExposure(), encode=Exposure)
     detector: Detector = field(
         default=NullDetector(key=random.PRNGKey(seed=5678)), encode=Detector
     )

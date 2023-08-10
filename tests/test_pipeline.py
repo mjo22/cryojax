@@ -11,6 +11,7 @@ from cryojax.simulator import NufftScattering
 from cryojax.simulator import (
     EulerPose,
     CTFOptics,
+    UniformExposure,
     WhiteNoiseDetector,
     ParameterState,
 )
@@ -32,14 +33,14 @@ def setup():
 @pytest.fixture
 def scattering_model(setup):
     scattering, cloud = setup
-    state = ParameterState(pose=EulerPose())
+    state = ParameterState(pose=EulerPose(), exposure=UniformExposure())
     return ScatteringImage(scattering=scattering, specimen=cloud, state=state)
 
 
 @pytest.fixture
 def optics_model(setup):
     scattering, cloud = setup
-    state = ParameterState(pose=EulerPose(), optics=CTFOptics())
+    state = ParameterState(pose=EulerPose(), optics=CTFOptics(), exposure=UniformExposure())
     return OpticsImage(scattering=scattering, specimen=cloud, state=state)
 
 
@@ -50,6 +51,7 @@ def noisy_model(setup):
     state = ParameterState(
         pose=EulerPose(),
         optics=CTFOptics(),
+        exposure=UniformExposure(),
         detector=WhiteNoiseDetector(key=key),
     )
     return GaussianImage(scattering=scattering, specimen=cloud, state=state)

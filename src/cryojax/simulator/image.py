@@ -23,7 +23,7 @@ from .noise import GaussianNoise
 from .state import ParameterState, ParameterDict
 from .ice import NullIce
 from .exposure import rescale_image
-from ..utils import fft, ifft
+from ..utils import fft, ifft, irfft
 from ..core import dataclass, field, Array, Scalar
 from . import Filter, Mask, Specimen, ScatteringConfig
 
@@ -83,11 +83,11 @@ class Image(metaclass=ABCMeta):
         # Set observed data
         if observed is not None and self._process_observed:
             assert self.scattering.shape == observed.shape
-            observed = ifft(observed)
+            observed = irfft(observed)
             mean, std = observed.mean(), observed.std()
             observed = fft(self.scattering.pad(observed, constant_values=mean))
             assert self.scattering.padded_shape == observed.shape
-            observed = self.scattering.crop(ifft(self.filter(observed)))
+            observed = self.scattering.crop(irfft(self.filter(observed)))
             assert self.scattering.shape == observed.shape
             observed = rescale_image(observed, std, mean)
             observed = fft(self.mask(observed))

@@ -94,9 +94,9 @@ Ice = Union[NullIce, ExponentialNoiseIce, EmpiricalIce]
 from .optics import compute_ctf, NullOptics, CTFOptics
 
 Optics = Union[NullOptics, CTFOptics]
-from .exposure import rescale_image, UniformExposure
+from .exposure import rescale_image, NullExposure, UniformExposure
 
-Exposure = UniformExposure
+Exposure = Union[NullExposure, UniformExposure]
 from .detector import NullDetector, WhiteNoiseDetector
 
 Detector = Union[NullDetector, WhiteNoiseDetector]

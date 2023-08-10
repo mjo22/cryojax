@@ -24,8 +24,9 @@ class NullDetector(Detector, Noise):
     A 'null' detector.
     """
 
-    def sample(self, freqs: Optional[Array] = None) -> Array:
-        return 0.0
+    def sample(self, freqs: Array) -> Array:
+        shape = freqs.shape[0:-1]
+        return jnp.zeros(shape)
 
 
 @dataclass
