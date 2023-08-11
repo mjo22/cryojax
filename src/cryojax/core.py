@@ -5,6 +5,8 @@ See https://jax.readthedocs.io/en/latest/jax.typing.html for jax
 type hint conventions.
 """
 
+from __future__ import annotations
+
 __all__ = [
     "Array",
     "ArrayLike",
@@ -34,6 +36,7 @@ from jax.typing import ArrayLike
 import jax.numpy as jnp
 import numpy as np
 from dataclasses_json import DataClassJsonMixin, config
+from dataclasses_json.mm import JsonData
 
 
 Scalar = Union[float, Array]
@@ -66,8 +69,8 @@ def __dataclass_transform__(
 
 
 @__dataclass_transform__()
-def dataclass(clz: Type[Any]) -> Type[Any]:
-    data_clz: Any = dataclasses.dataclass(frozen=True)(clz)
+def dataclass(clz: Type[Any], **kwargs: Any) -> Type[Any]:
+    data_clz: Any = dataclasses.dataclass(frozen=True, **kwargs)(clz)
     meta_fields = []
     data_fields = []
     for name, field_info in data_clz.__dataclass_fields__.items():
@@ -117,15 +120,44 @@ def dataclass(clz: Type[Any]) -> Type[Any]:
     return data_clz
 
 
-# This section implements serialization functionality for jax-2dtm
+# This section implements serialization functionality for cryojax
 # objects. This subclasses DataClassJsonMixin from dataclasses-json
-# and provides custom encoding/decoding for Arrays and jax-2dtm
+# and provides custom encoding/decoding for Arrays and cryojax
 # objects.
 @dataclass
 class Serializable(DataClassJsonMixin):
     """
-    Base class for serializable ``jax-2dtm`` dataclasses.
+    Base class for serializable ``cryojax`` dataclasses.
     """
+
+    @classmethod
+    def load(cls, filename: str, **kwargs: Any) -> Serializable:
+        """
+        Load a ``cryojax`` object from a file.
+        """
+        with open(filename, "r", encoding="utf-8") as f:
+            s = f.read()
+        return cls.from_json(s, **kwargs)
+
+    def dump(self, filename: str, **kwargs: Any) -> Serializable:
+        """
+        Dump a ``cryojax`` object to a file.
+        """
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(self.to_json(**kwargs))
+
+    @classmethod
+    def loads(cls, s: JsonData, **kwargs: Any) -> Serializable:
+        """
+        Load a ``cryojax`` object from a json string.
+        """
+        return cls.from_json(s, **kwargs)
+
+    def dumps(self, **kwargs: Any) -> JsonData:
+        """
+        Dump a ``cryojax`` object to a json string.
+        """
+        return self.to_json(**kwargs)
 
 
 def dummy_encoder(x: Any) -> str:
@@ -190,6 +222,8 @@ def field(
         If this is a ``Union`` of ``cryojax``
         objects, the decoder will try to find
         the correct one to instantiate.
+        If this is a ``cryojax.simulator.Specimen``,
+        the decoder will read from a file.
     """
     metadata = dict(pytree_node=pytree_node)
     if encode is False:

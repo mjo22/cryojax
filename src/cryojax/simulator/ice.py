@@ -42,19 +42,22 @@ class EmpiricalIce(Ice, GaussianNoise):
 
     Attributes
     ----------
-    kappa : `cryojax.core.Scalar`
-        A scale factor for the variance.
     spectrum : `jax.Array`, shape `(N1, N2)`
         The measured power spectrum.
+    kappa : `cryojax.core.Scalar`
+        A scale factor for the variance.
+    gamma : `cryojax.core.Scalar`
+        The "white" part of the variance.
     """
 
     spectrum: Array = field(pytree_node=False)
 
     kappa: Scalar = 1.0
+    gamma: Scalar = 0.0
 
     def variance(self, freqs: Optional[Array] = None) -> Array:
         """Power spectrum measured from a micrograph."""
-        return self.kappa * self.spectrum
+        return self.kappa * self.spectrum + self.gamma
 
 
 @dataclass
@@ -80,13 +83,22 @@ class ExponentialNoiseIce(Ice, GaussianNoise):
     xi : `cryojax.core.Scalar`
         The correlation length. This is measured
         in pixel units, not in physical length.
+    gamma : `cryojax.core.Scalar`
+        The "white" part of the variance.
     """
 
-    kappa: Scalar = 1.0
+    kappa: Scalar = 0.1
     xi: Scalar = 1.0
+    gamma: Scalar = 0.1
 
     def variance(self, freqs: Array) -> Array:
         """Power spectrum modeled by a pure exponential."""
-        k_norm = jnp.linalg.norm(freqs, axis=-1)
-        scaling = 1.0 / (k_norm**2 + jnp.divide(1, (self.xi) ** 2)) ** 1.5
-        return jnp.divide(self.kappa, self.xi) * scaling
+        if self.xi != 0.0:
+            k_norm = jnp.linalg.norm(freqs, axis=-1)
+            scaling = (
+                1.0 / (k_norm**2 + jnp.divide(1, (self.xi) ** 2)) ** 1.5
+            )
+            scaling *= jnp.divide(self.kappa, self.xi)
+        else:
+            scaling = 0.0
+        return scaling + self.gamma

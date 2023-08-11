@@ -17,7 +17,7 @@ To start, I recommend creating a new virtual environment. For example, you could
 conda create -n cryojax -c conda-forge python=3.10
 ```
 
-I recommend using `python=3.10` because of recent features and best practices in type checking, but all that is necessary is `python>=3.7` for [dataclasses](https://docs.python.org/3/library/dataclasses.html) support. Custom dataclasses that are safe to pass to `jax` are heavily used in this library!
+Note that `python>=3.10` is required because of recent features in [dataclasses](https://docs.python.org/3/library/dataclasses.html) support. Custom dataclasses that are safe to pass to `jax` are heavily used in this library!
 
 Then, modify the [tensorflow installation](https://www.tensorflow.org/install/pip) instructions to install version 2.11.x. As I'm writing this, `tensorflow-nufft` supports up to version 2.11.x, which is tested on `3.7<=python<=3.10`. `tensorflow>=2.12.x` and `python>=3.11` may not be supported.
 
@@ -48,13 +48,12 @@ The following is a basic workflow to generate an image with a gaussian white noi
 ```python
 import jax.numpy as jnp
 from cryojax.utils import irfft
-from cryojax.io import load_grid_as_cloud
 import cryojax.simulator as cs
 
 template = "example.mrc"
 key = jax.random.PRNGKey(seed=0)
 scattering = cs.NufftScattering(shape=(320, 320), pixel_size=1.32)
-cloud = load_grid_as_cloud(template, config)
+cloud = cs.ElectronCloud.from_file(template)
 pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteNoiseDetector(key=key)
 state = cs.ParameterState(pose=pose, optics=optics, detector=detector)
 model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state)

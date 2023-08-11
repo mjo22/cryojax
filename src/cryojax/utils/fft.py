@@ -12,6 +12,7 @@ __all__ = [
 ]
 
 from typing import Any
+from collections.abc import Sequence
 
 import jax.numpy as jnp
 import numpy as np
@@ -101,8 +102,15 @@ def fftfreqs(
         2D or 3D cartesian coordinate system with
         zero in the center.
     """
-
-    k_coords1D = [fftfreqs1d(s, pixel_size, real) for s in shape]
+    ndim = len(shape)
+    if isinstance(pixel_size, (np.floating, float)):
+        pixel_size = ndim * [pixel_size]
+    else:
+        pixel_size = list(pixel_size)
+    assert len(pixel_size) == ndim
+    k_coords1D = []
+    for idx in range(ndim):
+        k_coords1D.append(fftfreqs1d(shape[idx], pixel_size[idx], real))
 
     k_coords = np.stack(np.meshgrid(*k_coords1D, indexing="ij"), axis=-1)
 

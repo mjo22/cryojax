@@ -20,6 +20,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Any
 
 import jax.numpy as jnp
+import numpy as np
 
 from ..core import dataclass, field, Array, ArrayLike, Serializable
 from ..utils import (
@@ -130,7 +131,7 @@ class ScatteringConfig(ImageConfig, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def scatter(self, *args: Any):
+    def scatter(self, *args: Any, **kwargs: Any):
         """Scattering method for image rendering."""
         raise NotImplementedError
 
@@ -144,7 +145,7 @@ class FourierSliceScattering(ScatteringConfig):
 
     order: int = field(pytree_node=False, default=1)
 
-    def scatter(self, *args: Any, **kwargs: Any):
+    def scatter(self, *args: Any):
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
@@ -153,9 +154,7 @@ class FourierSliceScattering(ScatteringConfig):
         raise NotImplementedError
         # density, coordinates, _ = args
         # projection = project_with_slice(
-        #    density, coordinates, self.pixel_size, order=self.order, **kwargs
-        # )
-        # return resize(projection, self.padded_shape, antialias=False)
+        #    *args, self.padded_shape, order=self.order, **kwargs)
 
 
 @dataclass
@@ -200,7 +199,6 @@ class GaussianScattering(ScatteringConfig):
         return project_with_gaussians(
             *args,
             self.padded_shape,
-            self.pixel_size,
             self.pixel_size * self.scale,
         )
 
@@ -208,7 +206,8 @@ class GaussianScattering(ScatteringConfig):
 def project_with_slice(
     density: Array,
     coordinates: Array,
-    pixel_size: float,
+    voxel_size: Array,
+    shape: tuple[int, int],
     **kwargs,
 ) -> Array:
     """
@@ -217,12 +216,16 @@ def project_with_slice(
 
     Arguments
     ---------
-    density :
-        Density point cloud in fourier space.
-    coordinates :
+    density : `Array`, shape `(N,)`
+        Density point cloud.
+    coordinates : `Array`, shape `(N, 3)`
         Coordinate system of point cloud.
-    pixel_size :
-        Pixel size of grid.
+    voxel_size : `Array`, shape `(3,)`
+        Voxel size in each dimension.
+    shape : `tuple[int, int]`
+        Shape of the imaging plane in pixels.
+        ``width, height = shape[0], shape[1]``
+        is the size of the desired imaging plane.
     kwargs:
         Passed to ``cryojax.utils.interpolate.map_coordinates``.
 
@@ -232,21 +235,25 @@ def project_with_slice(
         The output image in fourier space.
     """
     N1, N2, N3 = density.shape
-    box_shape = jnp.array([N1, N2, N3])
-    coordinates = jnp.fft.ifftshift(coordinates * box_shape * pixel_size)
+    dx, dy, dz = voxel_size
+    box_size = jnp.array([N1 * dx, N2 * dy, N3 * dz])
+    coordinates = jnp.fft.ifftshift(coordinates * box_size)
     density = jnp.fft.ifftshift(density)
     coordinates = jnp.transpose(
         jnp.expand_dims(coordinates[:, :, 0, :], axis=2),
         axes=[3, 0, 1, 2],
     )
-    projection = map_coordinates(density, coordinates, **kwargs)[..., 0]
-    return jnp.fft.fftshift(projection)
+    projection = jnp.fft.fftshift(
+        map_coordinates(density, coordinates, **kwargs)[..., 0]
+    )
+
+    return resize(projection, shape, antialias=False)
 
 
 def project_with_nufft(
     density: Array,
     coordinates: Array,
-    box_size: Array,
+    voxel_size: Array,
     shape: tuple[int, int],
     eps: float = 1e-6,
 ) -> Array:
@@ -262,8 +269,8 @@ def project_with_nufft(
         Density point cloud.
     coordinates : `Array`, shape `(N, 3)`
         Coordinate system of point cloud.
-    box_size : `Array`, shape `(3,)`
-        Box size of points.
+    voxel_size : `Array`, shape `(3,)`
+        Voxel size in each dimension.
     shape : `tuple[int, int]`
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
@@ -278,10 +285,10 @@ def project_with_nufft(
     projection :
         The output image in fourier space.
     """
-    masked = bound(density, coordinates[:, :2], box_size[:2])
-    projection = nufft(
-        masked, coordinates[:, :2], box_size[:2], shape, eps=eps
-    )
+    N1, N2 = shape
+    image_size = jnp.array(np.array([N1, N2]) * voxel_size[:2])
+    masked = bound(density, coordinates[:, :2], image_size)
+    projection = nufft(masked, coordinates[:, :2], image_size, shape, eps=eps)
 
     return projection
 
@@ -289,9 +296,8 @@ def project_with_nufft(
 def project_with_gaussians(
     density: Array,
     coordinates: Array,
-    box_size: Array,
+    voxel_size: Array,
     shape: tuple[int, int],
-    pixel_size: float,
     scale: float,
 ) -> Array:
     """
@@ -307,8 +313,6 @@ def project_with_gaussians(
         Density point cloud.
     coordinates : `Array`, shape `(N, 3)`
         Coordinate system of point cloud.
-    box_size : `Array`, shape `(3,)`
-        Box size of points.
     shape : `tuple[int, int]`
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
@@ -323,54 +327,15 @@ def project_with_gaussians(
     projection :
         The output image in fourier space.
     """
-    masked = bound(density, coordinates[:, :2], box_size[:2])
+    N1, N2 = shape
+    image_size = jnp.array(np.array([N1, N2]) * voxel_size[:2])
+    masked = bound(density, coordinates[:, :2], image_size)
     projection = integrate_gaussians(
         masked,
         coordinates[:, :2],
         scale,
         shape,
-        pixel_size,
+        voxel_size,
     )
 
     return fft(projection)
-
-
-def project_with_binning(
-    density: Array, coords: Array, shape: tuple[int, int, int]
-) -> Array:
-    """
-    Project 3D volume onto imaging plane
-    using a histogram.
-
-    Arguments
-    ----------
-    density : shape `(N,)`
-        3D volume.
-    coords : shape `(N, 3)`
-        Coordinate system.
-    shape :
-        A tuple denoting the shape of the output image, given
-        by ``(N1, N2)``
-    Returns
-    -------
-    projection : shape `(N1, N2)`
-        Projection of volume onto imaging plane,
-        which is taken to be over axis 2.
-    """
-    N1, N2 = shape[0], shape[1]
-    # Round coordinates for binning
-    rounded_coords = jnp.rint(coords).astype(int)
-    # Shift coordinates back to zero in the corner, rather than center
-    x_coords, y_coords = (
-        rounded_coords[:, 0] + N1 // 2,
-        rounded_coords[:, 1] + N2 // 2,
-    )
-    # Bin values on the same y-z plane
-    flat_coords = jnp.ravel_multi_index(
-        (x_coords, y_coords), (N1, N2), mode="clip"
-    )
-    projection = jnp.bincount(
-        flat_coords, weights=density, length=N1 * N2
-    ).reshape((N1, N2))
-
-    return projection

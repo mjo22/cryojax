@@ -11,18 +11,15 @@ __all__ = [
     "coordinatize_voxels",
 ]
 
-import mrcfile
+import mrcfile, os
 import numpy as np
 import jax.numpy as jnp
 from typing import Any
-from ..simulator import ElectronCloud, ElectronGrid, ImageConfig
 from ..utils import fftfreqs, fft
 from ..core import Array, ArrayLike
 
 
-def load_grid_as_cloud(
-    filename: str, config: ImageConfig, **kwargs: Any
-) -> ElectronCloud:
+def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict:
     """
     Read a 3D template on a cartesian grid
     to a ``Cloud``.
@@ -31,39 +28,36 @@ def load_grid_as_cloud(
     ----------
     filename : `str`
         Path to template.
-    config : `cryojax.simulator.ImageConfig`
-        Image configuration.
     kwargs :
         Keyword arguments passed to
         ``cryojax.io.coordinatize_voxels``.
 
     Returns
     -------
-    cloud : `cryojax.simulator.ElectronCloud`
+    cloud : `dict`
         Electron density in a point cloud representation,
         generated from a 3D voxel template. By default,
         voxels with zero density are masked.
+        Instantiates a ``cryojax.simulator.ElectronCloud``
     """
     # Load template
-    template = load_mrc(filename)
-    # Determine box_size, taking the z depth to be the longest
-    # box dimesion
-    depth = max(template.shape)
-    box_size = (
-        jnp.array((*config.padded_shape, depth), dtype=float)
-        * config.pixel_size
-    )
+    filename = os.path.abspath(filename)
+    template, voxel_size = load_mrc(filename)
     # Load density and coordinates
-    density, coordinates = coordinatize_voxels(
-        template, config.pixel_size, **kwargs
+    density, coordinates = coordinatize_voxels(template, voxel_size, **kwargs)
+    # Gather fields to instantiate an ElectronCloud
+    cloud = dict(
+        density=density,
+        coordinates=coordinates,
+        voxel_size=voxel_size,
+        filename=filename,
+        config=kwargs,
     )
-    # Instantiate a Cloud
-    cloud = ElectronCloud(density, coordinates, box_size)
 
     return cloud
 
 
-def load_fourier_grid(filename: str, config: ImageConfig) -> ElectronCloud:
+def load_fourier_grid(filename: str, **kwargs: Any) -> dict:
     """
     Read a 3D template on a cartesian grid
     to a ``Cloud``.
@@ -72,30 +66,27 @@ def load_fourier_grid(filename: str, config: ImageConfig) -> ElectronCloud:
     ----------
     filename : `str`
         Path to template.
-    config : `cryojax.simulator.ImageConfig`
-        Image configuration.
 
     Returns
     -------
-    voxels : `cryojax.simulator.ElectronGrid`
+    voxels : `dict`
         3D electron density in a 3D voxel grid representation.
+        Instantiates a ``cryojax.simulator.ElectronGrid``
     """
     # Load template
-    template = load_mrc(filename)
-    # Determine box_size, taking the z depth to be the longest
-    # box dimesion
-    depth = max(template.shape)
-    box_size = (
-        jnp.array((*config.padded_shape, depth), dtype=float)
-        * config.pixel_size
-    )
+    filename = os.path.abspath(filename)
+    template, voxel_size = load_mrc(filename)
     # Load density and coordinates
     density = fft(template)
-    coordinates = jnp.array(
-        fftfreqs(template.shape, config.pixel_size, real=False)
+    coordinates = jnp.array(fftfreqs(template.shape, voxel_size, real=False))
+    # Gather fields to instantiate an ElectronGrid
+    voxels = dict(
+        density=density,
+        coordinates=coordinates,
+        voxel_size=voxel_size,
+        filename=filename,
+        config=kwargs,
     )
-    # Instantiate a density in a voxel representation.
-    voxels = ElectronGrid(density, coordinates, box_size)
 
     return voxels
 
@@ -113,16 +104,22 @@ def load_mrc(filename: str) -> ArrayLike:
     -------
     template :
         Model in cartesian coordinates.
+    voxel_size :
+        The voxel_size in each dimension, stored
+        in the MRC file.
     """
     with mrcfile.open(filename) as mrc:
-        template = np.array(mrc.data)
+        template = np.asarray(mrc.data, dtype=float)
+        voxel_size = np.asarray(
+            [mrc.voxel_size.x, mrc.voxel_size.y, mrc.voxel_size.z], dtype=float
+        )
 
-    return template
+    return template, voxel_size
 
 
 def coordinatize_voxels(
     template: ArrayLike,
-    pixel_size: float,
+    voxel_size: ArrayLike,
     mask: bool = True,
     **kwargs: Any,
 ) -> tuple[Array, ...]:
@@ -138,8 +135,8 @@ def coordinatize_voxels(
     ----------
     template : shape `(N1, N2, N3)` or `(N1, N2)`
         3D volume or 2D image on a cartesian grid.
-    pixel_size : `float`
-        Camera pixel size.
+    voxel_size : shape `(3,)`
+        Voxel size of the template.
     mask : `bool`
         If ``True``, run template through ``numpy.isclose``
         to remove coordinates with zero electron density.
@@ -171,7 +168,7 @@ def coordinatize_voxels(
     coords = np.zeros((N, ndim))
 
     # Generate rectangular grid and fill coordinate array
-    R = fftfreqs(shape, pixel_size, real=True)
+    R = fftfreqs(shape, voxel_size, real=True)
     for i in range(ndim):
         if mask:
             coords[..., i] = R[..., i].ravel()[nonzero]

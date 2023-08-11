@@ -5,9 +5,7 @@ import numpy as np
 from jax import random
 from jax import config
 
-from cryojax.io import load_grid_as_cloud
-
-from cryojax.simulator import NufftScattering
+from cryojax.simulator import NufftScattering, ElectronCloud
 from cryojax.simulator import (
     EulerPose,
     CTFOptics,
@@ -26,7 +24,7 @@ def setup():
         os.path.dirname(__file__), "data", "3jar_13pf_bfm1_ps5_28.mrc"
     )
     scattering = NufftScattering((81, 81), 5.32, eps=1e-4)
-    cloud = load_grid_as_cloud(filename, scattering)
+    cloud = ElectronCloud.from_file(filename)
     return scattering, cloud
 
 
@@ -40,7 +38,9 @@ def scattering_model(setup):
 @pytest.fixture
 def optics_model(setup):
     scattering, cloud = setup
-    state = ParameterState(pose=EulerPose(), optics=CTFOptics(), exposure=UniformExposure())
+    state = ParameterState(
+        pose=EulerPose(), optics=CTFOptics(), exposure=UniformExposure()
+    )
     return OpticsImage(scattering=scattering, specimen=cloud, state=state)
 
 
