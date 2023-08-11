@@ -14,6 +14,7 @@ __all__ = [
     "dataclass",
     "field",
     "Serializable",
+    "CryojaxObject",
 ]
 
 
@@ -90,7 +91,9 @@ def dataclass(clz: Type[Any], **kwargs: Any) -> Type[Any]:
     def iterate_clz(x: Any) -> Tuple[Tuple[Any, ...], Tuple[Any, ...]]:
         data = tuple(getattr(x, name) for name in data_fields)
         meta = tuple(getattr(x, name) for name in meta_fields)
-        return data, meta
+        data_args = tuple(zip(data_fields, data))
+        meta_args = tuple(zip(meta_fields, meta))
+        return data_args, meta_args
 
     def iterate_data(x: Any) -> Tuple[Any, ...]:
         data = tuple(getattr(x, name) for name in data_fields)
@@ -100,13 +103,13 @@ def dataclass(clz: Type[Any], **kwargs: Any) -> Type[Any]:
         meta = tuple(getattr(x, name) for name in meta_fields)
         return meta
 
-    def clz_from_iterable(meta: Tuple[Any, ...], data: Tuple[Any, ...]) -> Any:
-        meta_args = tuple(zip(meta_fields, meta))
-        data_args = tuple(zip(data_fields, data))
+    def clz_from_iterable(
+        meta_args: Tuple[Any, ...], data_args: Tuple[Any, ...]
+    ) -> Any:
         kwargs = dict(meta_args + data_args)
         return data_clz(**kwargs)
 
-    jax.tree_util.register_pytree_node(
+    jax.tree_util.register_pytree_with_keys(
         data_clz, iterate_clz, clz_from_iterable
     )
 
@@ -186,23 +189,20 @@ class CryojaxObject(Serializable):
         """
         keys = params.keys()
         nleaves = len(keys)
-        if nleaves == 0:
-            return self
-        else:
+        if nleaves > 0:
             updates = {}
-            field_names, field_values = self.data
-            for idx, field in enumerate(field_names):
-                data = field_values[idx]
-                if field in keys:
-                    updates[field] = params[field]
-                elif isinstance(data, CryojaxObject):
-                    nested_updates = {}
-                    nested_names, _ = data.data
-                    for idx, nested_field in enumerate(nested_names):
-                        if nested_field in keys:
-                            nested_updates[nested_field] = params[nested_field]
-                    updates[field] = data.replace(**nested_updates)
+            names, fields = self.data
+            for idx in range(len(names)):
+                name, field = names[idx], fields[idx]
+                if name in keys:
+                    updates[name] = params[name]
+                elif isinstance(field, CryojaxObject):
+                    ns, _ = field.data
+                    u = {n: params[n] for n in ns if n in keys}
+                    updates[name] = field.replace(**u)
             return self.replace(**updates)
+        else:
+            return self
 
 
 def dummy_encoder(x: Any) -> str:
