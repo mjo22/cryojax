@@ -9,6 +9,7 @@ __all__ = [
     "compute_whitening_filter",
     "compute_circular_mask",
     "compute_ctf",
+    "magnify_image",
     "rescale_image",
     # Image configuration
     "ImageConfig",
@@ -91,7 +92,7 @@ Mask = CircularMask
 from .ice import NullIce, EmpiricalIce, ExponentialNoiseIce
 
 Ice = Union[NullIce, ExponentialNoiseIce, EmpiricalIce]
-from .optics import compute_ctf, NullOptics, CTFOptics
+from .optics import compute_ctf, magnify_image, NullOptics, CTFOptics
 
 Optics = Union[NullOptics, CTFOptics]
 from .exposure import rescale_image, NullExposure, UniformExposure

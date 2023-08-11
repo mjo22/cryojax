@@ -99,4 +99,4 @@ def test_update(noisy_model):
     assert N == model.state.exposure.N
     assert alpha == model.state.detector.alpha
     assert xi == model.state.ice.xi
-    assert magnification == model.state.ice.magnification
+    assert magnification == model.state.optics.magnification

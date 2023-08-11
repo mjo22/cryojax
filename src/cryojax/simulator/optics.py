@@ -8,6 +8,7 @@ __all__ = [
     "Optics",
     "NullOptics",
     "CTFOptics",
+    "magnify_image",
     "compute_ctf",
 ]
 
@@ -16,7 +17,7 @@ from typing import Any, Optional
 
 import jax.numpy as jnp
 
-from ..utils import cartesian_to_polar
+from ..utils import cartesian_to_polar, scale, ifft, fft
 from ..core import dataclass, Array, Scalar, CryojaxObject
 
 
@@ -44,21 +45,25 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
 
     @abstractmethod
     def compute(self, freqs: Array, **kwargs: Any) -> Array:
+        """Compute the optics model."""
         raise NotImplementedError
 
-    @abstractmethod
     def apply(self, ctf: Array, image: Array, **kwargs: Any) -> Array:
-        raise NotImplementedError
+        """Apply the optics model."""
+        return self.magnify(image, **kwargs)
+
+    def magnify(self, image: Array, **kwargs: Any) -> Array:
+        """Magnify an image using interpolation."""
+        if self.magnification == 1.0:
+            return image
+        else:
+            magnified = magnify_image(
+                ifft(image), self.magnification, antialias=False, **kwargs
+            )
+            return fft(magnified)
 
     def __call__(self, freqs: Array, **kwargs: Any) -> Array:
-        """
-        Compute the optics model.
-
-        Parameters
-        ----------
-        freqs : Array, shape `(N1, N2, 2)`
-            The fourier wavevectors in the imaging plane.
-        """
+        """Compute the optics model."""
         return self.compute(freqs, **kwargs)
 
 
@@ -67,9 +72,6 @@ class NullOptics(Optics):
     """
     This class can be used as a null optics model.
     """
-
-    def apply(self, ctf: Array, image: Array, **kwargs: Any) -> Array:
-        return image
 
     def compute(self, freqs: Array, **kwargs: Any) -> Array:
         return jnp.array(1.0)
@@ -106,6 +108,7 @@ class CTFOptics(Optics):
     b_factor: Scalar = 1.0
 
     def apply(self, ctf: Array, image: Array, **kwargs: Any) -> Array:
+        image = super().apply(ctf, image, **kwargs)
         return ctf * image
 
     def compute(self, freqs: Array, **kwargs: Any) -> Array:
@@ -113,16 +116,33 @@ class CTFOptics(Optics):
         return compute_ctf(freqs / magnification, *args, **kwargs)
 
 
+def magnify_image(image: Array, magnification: Scalar, **kwargs):
+    """
+    Magnify image using interpolation.
+
+    For more detail, see ``cryojax.utils.interpolation.scale``.
+
+    Parameters
+    ----------
+    image : `Array`, shape `(N1, N2)`
+        The image to be magnified.
+    magnification : `float`
+        The scale factor for the image.
+    """
+    s = jnp.array([magnification, magnification])
+    return scale(image, image.shape, s, **kwargs)
+
+
 def compute_ctf(
     freqs: Array,
-    defocus_u: Scalar,
-    defocus_v: Scalar,
-    defocus_angle: Scalar,
-    voltage: Scalar,
-    spherical_aberration: Scalar,
-    amplitude_contrast: Scalar,
-    phase_shift: Scalar,
-    b_factor: Optional[Scalar] = None,
+    defocus_u: float,
+    defocus_v: float,
+    defocus_angle: float,
+    voltage: float,
+    spherical_aberration: float,
+    amplitude_contrast: float,
+    phase_shift: float,
+    b_factor: Optional[float] = None,
     *,
     normalize: bool = True,
 ) -> Array:
@@ -134,23 +154,23 @@ def compute_ctf(
     freqs : `jax.Array`, shape `(N1, N2, 2)`
         The wave vectors in the imaging plane, in units
         of 1/A.
-    defocus_u : float
+    defocus_u : `float`
         The defocus in the major axis in Angstroms.
-    defocus_v : float
+    defocus_v : `float`
         The defocus in the minor axis in Angstroms.
-    defocus_angle : float
+    defocus_angle : `float`
         The defocus angle in degree.
-    voltage : float
+    voltage : `float`
         The accelerating voltage in kV.
-    spherical_aberration : float
+    spherical_aberration : `float`
         The spherical aberration in mm.
-    amplitude_contrast : float
+    amplitude_contrast : `float`
         The amplitude contrast ratio.
-    phase_shift : float
+    phase_shift : `float`
         The additional phase shift in radians.
-    b_factor : float, optional
+    b_factor : `float`, optional
         The B factor in A^2. If not provided, the B factor is assumed to be 0.
-    normalize : bool, optional
+    normalize : `bool`, optional
         Whether to normalize the CTF so that it has norm 1 in real space.
         Default is True.
 
