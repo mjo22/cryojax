@@ -12,12 +12,12 @@ from functools import partial
 
 from .pose import Pose
 from ..io import load_grid_as_cloud, load_fourier_grid
-from ..core import Array, dataclass, field, Serializable
+from ..core import Array, dataclass, field, CryojaxObject
 from . import ScatteringConfig
 
 
 @partial(dataclass, kw_only=True)
-class Specimen(Serializable, metaclass=ABCMeta):
+class Specimen(CryojaxObject, metaclass=ABCMeta):
     """
     Abstraction of a biological specimen.
     """

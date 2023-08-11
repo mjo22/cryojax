@@ -50,6 +50,7 @@ def radial_average(
     profile = jax.vmap(average)(bins)
 
     if grid is not None:
-        return jax.vmap(lambda idx: profile[idx])(jnp.digitize(grid, bins))
+        idxs = jnp.digitize(grid, bins).ravel()
+        return jax.vmap(lambda idx: profile[idx])(idxs).reshape(grid.shape)
     else:
         return profile

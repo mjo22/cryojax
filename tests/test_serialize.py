@@ -8,7 +8,7 @@ from cryojax.simulator import (
     ExponentialNoiseIce,
     CTFOptics,
     UniformExposure,
-    ParameterState,
+    PipelineState,
 )
 from cryojax.utils import irfft
 
@@ -36,10 +36,10 @@ def test_deserialize_state_components(noisy_model):
 
 
 def test_deserialize_state(scattering_model, optics_model, noisy_model):
-    """Test ParameterState deserialization"""
+    """Test PipelineState deserialization"""
     models = [scattering_model, optics_model, noisy_model]
     for model in models:
-        state = ParameterState.from_json(model.state.to_json())
+        state = PipelineState.from_json(model.state.to_json())
         np.testing.assert_allclose(
-            irfft(model.update(state)()), irfft(model())
+            irfft(model.replace(state=state)()), irfft(model())
         )

@@ -24,7 +24,7 @@ __all__ = [
     # Masks
     "CircularMask",
     # Model parameter configuration
-    "ParameterState",
+    "PipelineState",
     ## Pose
     "EulerPose",
     "QuaternionPose",
@@ -33,8 +33,8 @@ __all__ = [
     "GaussianExponentialIce",
     ## Optics
     "CTFOptics",
-    ## Electron dose
-    "Dose",
+    ## Electron exposure models
+    "UniformExposure",
     ## Detector models
     "GaussianWhiteDetector",
     # Image models
@@ -100,7 +100,7 @@ Exposure = Union[NullExposure, UniformExposure]
 from .detector import NullDetector, WhiteNoiseDetector
 
 Detector = Union[NullDetector, WhiteNoiseDetector]
-from .state import ParameterState
+from .state import PipelineState
 from .image import ScatteringImage, OpticsImage, DetectorImage, GaussianImage
 
 Image = Union[ScatteringImage, OpticsImage, DetectorImage, GaussianImage]

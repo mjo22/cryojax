@@ -13,11 +13,11 @@ import jax.numpy as jnp
 from jax import random
 
 from ..utils import fft
-from ..core import field, dataclass, Array, Serializable
+from ..core import field, dataclass, Array, CryojaxObject
 
 
 @dataclass
-class Noise(Serializable, metaclass=ABCMeta):
+class Noise(CryojaxObject, metaclass=ABCMeta):
     """
     Base PyTree container for a noise model.
 

@@ -20,7 +20,7 @@ import jax.numpy as jnp
 
 from .filters import AntiAliasingFilter
 from .noise import GaussianNoise
-from .state import ParameterState, ParameterDict
+from .state import PipelineState
 from .ice import NullIce
 from .exposure import rescale_image
 from ..utils import fft, ifft, irfft
@@ -44,18 +44,21 @@ class Image(metaclass=ABCMeta):
         The image and scattering model configuration.
     specimen : `cryojax.simulator.Specimen`
         The specimen from which to render images.
-    state : `cryojax.simulator.ParameterState`
+    state : `cryojax.simulator.PipelineState`
         The parameter state of the model.
     filters : `list[Filter]`
         A list of filters to apply to the image. By default, this is an
         ``AntiAliasingFilter`` with its default configuration.
+    masks : `list[Mask]`
+        A list of masks to apply to the image. By default, there are no
+        masks.
     observed : `jax.Array`, optional
         The observed data in Fourier space. This must be the same
         shape as ``scattering.shape``. ``ImageModel.observed`` will return
         the data with the filters applied.
     """
 
-    state: ParameterState
+    state: PipelineState
     scattering: ScatteringConfig
     specimen: Specimen
 
@@ -66,14 +69,12 @@ class Image(metaclass=ABCMeta):
     filters: InitVar[list[Filter] | None] = None
     masks: InitVar[list[Mask] | None] = None
     observed: InitVar[Array | None] = None
-    _process_observed: bool = field(pytree_node=False, default=True)
+    set_observed: bool = field(pytree_node=False, default=True)
 
     def __post_init__(self, filters, masks, observed):
         # Set filters
         if filters is None:
-            antialias = AntiAliasingFilter(
-                self.scattering.pixel_size * self.scattering.padded_freqs
-            )
+            antialias = AntiAliasingFilter(self.scattering.padded_freqs)
             filters = [antialias]
         object.__setattr__(self, "filters", filters)
         # Set masks
@@ -81,7 +82,7 @@ class Image(metaclass=ABCMeta):
             masks = []
         object.__setattr__(self, "masks", masks)
         # Set observed data
-        if observed is not None and self._process_observed:
+        if observed is not None and self.set_observed:
             assert self.scattering.shape == observed.shape
             observed = irfft(observed)
             mean, std = observed.mean(), observed.std()
@@ -95,26 +96,39 @@ class Image(metaclass=ABCMeta):
 
     @abstractmethod
     def render(
-        self, state: Optional[ParameterState] = None, view: bool = True
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+        view: bool = True,
     ) -> Array:
         """Render an image given a parameter set."""
         raise NotImplementedError
 
     @abstractmethod
     def sample(
-        self, state: Optional[ParameterState] = None, view: bool = True
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+        view: bool = True,
     ) -> Array:
         """Sample the an image from a realization of the noise"""
         raise NotImplementedError
 
     @abstractmethod
-    def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
+    def log_likelihood(
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+    ) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""
         raise NotImplementedError
 
     def __call__(
         self,
-        params: ParameterDict = {},
+        params: dict = {},
     ) -> Union[Array, Scalar]:
         """
         Evaluate the model at a parameter set.
@@ -122,11 +136,17 @@ class Image(metaclass=ABCMeta):
         If ``ImageModel.observed = None``, sample an image from
         a noise model. Otherwise, compute the log likelihood.
         """
-        state = self.state.update(params)
+        state = self.state.update(**params)
+        scattering = self.scattering.update(**params)
+        specimen = self.specimen.update(**params)
         if self.observed is None:
-            return self.sample(state)
+            return self.sample(
+                state=state, scattering=scattering, specimen=specimen
+            )
         else:
-            return self.log_likelihood(state)
+            return self.log_likelihood(
+                state=state, scattering=scattering, specimen=specimen
+            )
 
     def filter(self, image: Array) -> Array:
         """Apply filters to image."""
@@ -140,17 +160,33 @@ class Image(metaclass=ABCMeta):
             image = mask(image)
         return image
 
-    def residuals(self, state: Optional[ParameterState] = None):
+    def residuals(
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+    ):
         """Return the residuals between the model and observed data."""
         state = state or self.state
-        simulated = self.render(state)
+        scattering = scattering or self.scattering
+        specimen = specimen or self.specimen
+        simulated = self.render(
+            state=state, scattering=scattering, specimen=specimen
+        )
         residuals = self.observed - simulated
         return residuals
 
-    def update(self, params: Union[ParameterDict, ParameterState]) -> Image:
-        """Return a new ImageModel based on a new ParameterState."""
-        state = self.state.update(params) if type(params) is dict else params
-        return self.replace(state=state, _process_observed=False)
+    def update(self, **params: dict) -> Image:
+        """Return a new ImageModel based on a new PipelineState."""
+        state = self.state.update(**params)
+        scattering = self.scattering.update(**params)
+        specimen = self.specimen.update(**params)
+        return self.replace(
+            state=state,
+            scattering=scattering,
+            specimen=specimen,
+            set_observed=False,
+        )
 
 
 @dataclass
@@ -160,10 +196,16 @@ class ScatteringImage(Image):
     """
 
     def render(
-        self, state: Optional[ParameterState] = None, view: bool = True
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+        view: bool = True,
     ) -> Array:
         """Render the scattering pattern of the specimen."""
         state = state or self.state
+        scattering = scattering or self.scattering
+        specimen = specimen or self.specimen
         # Compute scattering at image plane.
         specimen = self.specimen.view(state.pose)
         scattering_image = specimen.scatter(self.scattering)
@@ -181,15 +223,24 @@ class ScatteringImage(Image):
 
         return scattering_image
 
-    def sample(self, state: Optional[ParameterState] = None) -> Array:
+    def sample(
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+    ) -> Array:
         """Sample the scattering pattern of the specimen and ice."""
         state = state or self.state
+        scattering = scattering or self.scattering
+        specimen = specimen or self.specimen
         # Render an image with no ice
-        scattering_image = self.render(state)
+        scattering_image = self.render(
+            state=state, scattering=scattering, specimen=specimen
+        )
         # Sample from ice distribution
         ice = self.filter(
             state.ice.sample(
-                self.scattering.padded_freqs * self.scattering.pixel_size
+                self.scattering.padded_freqs / self.scattering.pixel_size
             )
         )
         # View ice
@@ -199,7 +250,12 @@ class ScatteringImage(Image):
 
         return icy_image
 
-    def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
+    def log_likelihood(
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+    ) -> Scalar:
         raise NotImplementedError
 
 
@@ -210,13 +266,24 @@ class OpticsImage(ScatteringImage):
     moduated by a CTF at a given electron dose.
     """
 
-    def render(self, state: Optional[ParameterState] = None) -> Array:
+    def render(
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+    ) -> Array:
         """Render the image in the detector plane."""
         state = state or self.state
+        scattering = scattering or self.scattering
+        specimen = specimen or self.specimen
         # Compute scattering at object plane.
-        scattering_image = super().render(state, view=False)
+        scattering_image = super().render(
+            state=state, scattering=scattering, specimen=specimen, view=False
+        )
         # Compute and apply CTF
-        ctf = state.optics(self.scattering.padded_freqs)
+        ctf = state.optics(
+            self.scattering.padded_freqs / self.scattering.pixel_size
+        )
         optics_image = ctf * scattering_image
         # Crop, rescale, and mask image
         optics_image = fft(
@@ -229,18 +296,29 @@ class OpticsImage(ScatteringImage):
 
         return optics_image
 
-    def sample(self, state: Optional[ParameterState] = None) -> Array:
+    def sample(
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+    ) -> Array:
         """
         Sample the image in the detector plane.
         """
         state = state or self.state
+        scattering = scattering or self.scattering
+        specimen = specimen or self.specimen
         # Compute image
-        optics_image = self.render(state)
+        optics_image = self.render(
+            state=state, scattering=scattering, specimen=specimen
+        )
         # Sample from ice distribution and apply ctf to it
-        ctf = state.optics(self.scattering.padded_freqs)
+        ctf = state.optics(
+            self.scattering.padded_freqs / self.scattering.pixel_size
+        )
         ice = ctf * self.filter(
             state.ice.sample(
-                self.scattering.padded_freqs * self.scattering.pixel_size
+                self.scattering.padded_freqs / self.scattering.pixel_size
             )
         )
         # Crop and mask ice
@@ -259,15 +337,21 @@ class DetectorImage(OpticsImage):
     """
 
     def sample(
-        self, state: Optional[ParameterState] = None, view: bool = True
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+        view: bool = True,
     ) -> Array:
         """Sample an image from the detector readout."""
         state = state or self.state
+        scattering = scattering or self.scattering
+        specimen = specimen or self.specimen
         # Sample image at detector plane
         icy_image = super().sample(state)
         # Sample from noise distribution of detector
         noise = state.detector.sample(
-            self.scattering.freqs * self.scattering.pixel_size
+            self.scattering.freqs / self.scattering.pixel_size
         )
         # Mask noise
         noise = fft(self.mask(ifft(noise)))
@@ -292,15 +376,26 @@ class GaussianImage(DetectorImage):
         assert isinstance(self.state.ice, GaussianNoise)
         assert isinstance(self.state.detector, GaussianNoise)
 
-    def log_likelihood(self, state: Optional[ParameterState] = None) -> Scalar:
+    def log_likelihood(
+        self,
+        state: Optional[PipelineState] = None,
+        scattering: Optional[ScatteringConfig] = None,
+        specimen: Optional[Specimen] = None,
+    ) -> Scalar:
         """Evaluate the log-likelihood of the data given a parameter set."""
         state = state or self.state
-        residuals = self.residuals(state)
-        freqs = self.scattering.freqs * self.scattering.pixel_size
+        scattering = scattering or self.scattering
+        specimen = specimen or self.specimen
+        residuals = self.residuals(
+            state=state, scattering=scattering, specimen=specimen
+        )
+        freqs, pixel_size = self.scattering.freqs, self.scattering.pixel_size
         # Variance from detector
         variance = state.detector.variance(freqs)
         # Variance from ice
         if not isinstance(state.ice, NullIce):
-            variance += state.optics(freqs) ** 2 * state.ice.variance(freqs)
+            variance += state.optics(
+                freqs / pixel_size
+            ) ** 2 * state.ice.variance(freqs)
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         return loss.real / residuals.size

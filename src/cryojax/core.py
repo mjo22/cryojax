@@ -79,6 +79,8 @@ def dataclass(clz: Type[Any], **kwargs: Any) -> Type[Any]:
             data_fields.append(name)
         else:
             meta_fields.append(name)
+    meta_fields = tuple(meta_fields)
+    data_fields = tuple(data_fields)
 
     def replace(self: Any, **updates: _T) -> _T:
         return dataclasses.replace(self, **updates)
@@ -86,9 +88,17 @@ def dataclass(clz: Type[Any], **kwargs: Any) -> Type[Any]:
     data_clz.replace = replace
 
     def iterate_clz(x: Any) -> Tuple[Tuple[Any, ...], Tuple[Any, ...]]:
-        meta = tuple(getattr(x, name) for name in meta_fields)
         data = tuple(getattr(x, name) for name in data_fields)
+        meta = tuple(getattr(x, name) for name in meta_fields)
         return data, meta
+
+    def iterate_data(x: Any) -> Tuple[Any, ...]:
+        data = tuple(getattr(x, name) for name in data_fields)
+        return data
+
+    def iterate_meta(x: Any) -> Tuple[Any, ...]:
+        meta = tuple(getattr(x, name) for name in meta_fields)
+        return meta
 
     def clz_from_iterable(meta: Tuple[Any, ...], data: Tuple[Any, ...]) -> Any:
         meta_args = tuple(zip(meta_fields, meta))
@@ -101,18 +111,18 @@ def dataclass(clz: Type[Any], **kwargs: Any) -> Type[Any]:
     )
 
     # Hack to make this class act as a tuple when unpacked
-    data_clz.iter_data = lambda self: iterate_clz(self)[0]
-    data_clz.iter_meta = lambda self: iterate_clz(self)[1]
+    data_clz.iter_data = lambda self: iterate_data(self)
+    data_clz.iter_meta = lambda self: iterate_meta(self)
 
     @property
     def data(self) -> dict[str, Any]:
         """Return data of the model."""
-        return dict(zip(data_fields, iterate_clz(self)[0]))
+        return data_fields, iterate_data(self)
 
     @property
     def metadata(self) -> dict[str, Any]:
         """Return metadata of the model."""
-        return dict(zip(meta_fields, iterate_clz(self)[1]))
+        return meta_fields, iterate_meta(self)
 
     data_clz.data = data
     data_clz.metadata = metadata
@@ -158,6 +168,41 @@ class Serializable(DataClassJsonMixin):
         Dump a ``cryojax`` object to a json string.
         """
         return self.to_json(**kwargs)
+
+
+@dataclass
+class CryojaxObject(Serializable):
+    """
+    Base class for ``cryojax`` dataclasses.
+    """
+
+    def update(self, **params: dict) -> CryojaxObject:
+        """
+        Return a new CryojaxObject based on a dictionary.
+
+        If ``params`` contains any pytree nodes in this instance,
+        they will be updated. Nested ``CryojaxObject``s are
+        supported one level deep.
+        """
+        keys = params.keys()
+        nleaves = len(keys)
+        if nleaves == 0:
+            return self
+        else:
+            updates = {}
+            field_names, field_values = self.data
+            for idx, field in enumerate(field_names):
+                data = field_values[idx]
+                if field in keys:
+                    updates[field] = params[field]
+                elif isinstance(data, CryojaxObject):
+                    nested_updates = {}
+                    nested_names, _ = data.data
+                    for idx, nested_field in enumerate(nested_names):
+                        if nested_field in keys:
+                            nested_updates[nested_field] = params[nested_field]
+                    updates[field] = data.replace(**nested_updates)
+            return self.replace(**updates)
 
 
 def dummy_encoder(x: Any) -> str:

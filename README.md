@@ -55,7 +55,7 @@ key = jax.random.PRNGKey(seed=0)
 scattering = cs.NufftScattering(shape=(320, 320), pixel_size=1.32)
 cloud = cs.ElectronCloud.from_file(template)
 pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteNoiseDetector(key=key)
-state = cs.ParameterState(pose=pose, optics=optics, detector=detector)
+state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
 model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state)
 params = dict(view_phi=np.pi, defocus_u=8000., alpha=1.4)
 image = irfft(model(params))  # The image is returned in Fourier space.
@@ -79,9 +79,9 @@ Imaging models also accept a series of `Filter`s and `Mask`s. By default, this i
 ```python
 from cryojax.utils import fftfreqs
 
-filters = [cs.AntiAliasingFilter(scattering.pixel_size * scattering.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
-           cs.WhiteningFilter(scattering.pixel_size * scattering.freqs, fftfreqs(micrograph.shape), micrograph)]
-masks = [cs.CircularMask(scattering.coords / scattering.pixel_size, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
+filters = [cs.AntiAliasingFilter(scattering.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
+           cs.WhiteningFilter(scattering.freqs, fftfreqs(micrograph.shape), micrograph)]
+masks = [cs.CircularMask(scattering.coords, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
 model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state, filters=filters, masks=masks)
 image = irfft(model(params))
 ```

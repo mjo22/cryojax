@@ -17,10 +17,10 @@ from typing import Any, Optional
 import jax.numpy as jnp
 
 from ..utils import cartesian_to_polar
-from ..core import dataclass, Array, Scalar, Serializable
+from ..core import dataclass, Array, Scalar, CryojaxObject
 
 
-class Optics(Serializable, metaclass=ABCMeta):
+class Optics(CryojaxObject, metaclass=ABCMeta):
     """
     Base PyTree container for an optics model. This
     is designed to compute an optics model in Fourier
@@ -152,12 +152,9 @@ def compute_ctf(
         + defocus_v
         + (defocus_u - defocus_v) * jnp.cos(2.0 * (theta - defocus_angle))
     )
-    if jnp.isclose(jnp.abs(amplitude_contrast - 1.0), 1.0):
-        ac = jnp.pi / 2
-    else:
-        ac = jnp.arctan(
-            amplitude_contrast / jnp.sqrt(1.0 - amplitude_contrast**2)
-        )
+    ac = jnp.arctan(
+        amplitude_contrast / jnp.sqrt(1.0 - amplitude_contrast**2)
+    )
 
     lam = 12.2643 / (voltage + 0.97845e-6 * voltage**2) ** 0.5
     gamma_defocus = -0.5 * defocus * lam * k_sqr

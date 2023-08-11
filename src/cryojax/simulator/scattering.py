@@ -22,7 +22,7 @@ from typing import Any
 import jax.numpy as jnp
 import numpy as np
 
-from ..core import dataclass, field, Array, ArrayLike, Serializable
+from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
 from ..utils import (
     fft,
     fftfreqs,
@@ -37,7 +37,7 @@ from ..utils import (
 
 
 @dataclass
-class ImageConfig(Serializable):
+class ImageConfig(CryojaxObject):
     """
     Configuration for an electron microscopy image.
 
@@ -67,7 +67,7 @@ class ImageConfig(Serializable):
     """
 
     shape: tuple[int, int] = field(pytree_node=False, encode=tuple)
-    pixel_size: float = field(pytree_node=False)
+    pixel_size: float
 
     padded_shape: tuple[int, int] = field(
         pytree_node=False, init=False, encode=False
@@ -90,14 +90,10 @@ class ImageConfig(Serializable):
         padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
         object.__setattr__(self, "padded_shape", padded_shape)
         # Set coordinates
-        freqs = jnp.asarray(fftfreqs(self.shape, self.pixel_size))
-        padded_freqs = jnp.asarray(
-            fftfreqs(self.padded_shape, self.pixel_size)
-        )
-        coords = jnp.asarray(fftfreqs(self.shape, self.pixel_size, real=True))
-        padded_coords = jnp.asarray(
-            fftfreqs(self.padded_shape, self.pixel_size, real=True)
-        )
+        freqs = jnp.asarray(fftfreqs(self.shape))
+        padded_freqs = jnp.asarray(fftfreqs(self.padded_shape))
+        coords = jnp.asarray(fftfreqs(self.shape, real=True))
+        padded_coords = jnp.asarray(fftfreqs(self.padded_shape, real=True))
         object.__setattr__(self, "freqs", freqs)
         object.__setattr__(self, "padded_freqs", padded_freqs)
         object.__setattr__(self, "coords", coords)
@@ -145,7 +141,7 @@ class FourierSliceScattering(ScatteringConfig):
 
     order: int = field(pytree_node=False, default=1)
 
-    def scatter(self, *args: Any):
+    def scatter(self, *args):
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
@@ -194,12 +190,12 @@ class GaussianScattering(ScatteringConfig):
 
     scale: float = field(pytree_node=False, default=1 / 3)
 
-    def scatter(self, *args: Any):
+    def scatter(self, *args):
         """Rasterize image by integrating over Gaussians."""
         return project_with_gaussians(
             *args,
             self.padded_shape,
-            self.pixel_size * self.scale,
+            self.scale,
         )
 
 

@@ -10,11 +10,11 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional, Any
 
 from .noise import GaussianNoise, Noise
-from ..core import dataclass, Serializable, Array, Scalar
+from ..core import dataclass, Array, Scalar, CryojaxObject
 
 
 @dataclass
-class Detector(Serializable, metaclass=ABCMeta):
+class Detector(CryojaxObject, metaclass=ABCMeta):
     """
     Base class for an electron detector.
     """

@@ -21,11 +21,11 @@ import jax
 import jax.numpy as jnp
 from jaxlie import SE3, SO3
 
-from ..core import Array, Scalar, dataclass, Serializable
+from ..core import Array, Scalar, dataclass, CryojaxObject
 
 
 @dataclass
-class Pose(Serializable, metaclass=ABCMeta):
+class Pose(CryojaxObject, metaclass=ABCMeta):
     """
     Base class PyTree container for the image pose.
 

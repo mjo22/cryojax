@@ -11,11 +11,11 @@ from abc import ABCMeta, abstractmethod
 
 import jax.numpy as jnp
 
-from ..core import dataclass, Array, Scalar, Serializable
+from ..core import dataclass, Array, Scalar, CryojaxObject
 
 
 @dataclass
-class Exposure(Serializable, metaclass=ABCMeta):
+class Exposure(CryojaxObject, metaclass=ABCMeta):
     """
     An PyTree that controls parameters related to
     variation in the image intensity. For example,

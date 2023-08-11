@@ -10,11 +10,11 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional, Any
 
 from .noise import GaussianNoise
-from ..core import dataclass, field, Serializable, Array, Scalar
+from ..core import dataclass, field, Array, Scalar, CryojaxObject
 
 
 @dataclass
-class Ice(Serializable, metaclass=ABCMeta):
+class Ice(CryojaxObject, metaclass=ABCMeta):
     """
     Base class for an ice model.
     """
@@ -83,7 +83,7 @@ class ExponentialNoiseIce(GaussianNoise, Ice):
         The "coupling strength".
     xi : `cryojax.core.Scalar`
         The correlation length. This is measured
-        in pixel units, not in physical length.
+        in dimensions of length, not pixels.
     gamma : `cryojax.core.Scalar`
         The "white" part of the variance.
     """
