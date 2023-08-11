@@ -18,7 +18,7 @@ from dataclasses import InitVar
 
 import jax.numpy as jnp
 
-from .filters import AntiAliasingFilter
+from .filters import LowpassFilter
 from .noise import GaussianNoise
 from .state import PipelineState
 from .ice import NullIce
@@ -47,8 +47,8 @@ class Image(metaclass=ABCMeta):
     state : `cryojax.simulator.PipelineState`
         The parameter state of the model.
     filters : `list[Filter]`
-        A list of filters to apply to the image. By default, this is an
-        ``AntiAliasingFilter`` with its default configuration.
+        A list of filters to apply to the image. By default, this is a
+        ``LowpassFilter`` with used for antialiasing.
     masks : `list[Mask]`
         A list of masks to apply to the image. By default, there are no
         masks.
@@ -75,7 +75,7 @@ class Image(metaclass=ABCMeta):
         scattering = self.scattering
         # Set filters
         if filters is None:
-            antialias = AntiAliasingFilter(scattering.padded_freqs)
+            antialias = LowpassFilter(scattering.padded_freqs, cutoff=0.667)
             filters = [antialias]
         object.__setattr__(self, "filters", filters)
         # Set masks
@@ -267,7 +267,7 @@ class OpticsImage(ScatteringImage):
         )
         # Compute and apply CTF
         ctf = state.optics(padded_freqs / pixel_size)
-        optics_image = ctf * scattering_image
+        optics_image = state.optics.apply(ctf, scattering_image)
         # Crop, rescale, and mask image
         optics_image = fft(
             self.mask(
@@ -296,7 +296,8 @@ class OpticsImage(ScatteringImage):
         optics_image = self.render(state=state, specimen=specimen)
         # Sample from ice distribution and apply ctf to it
         ctf = state.optics(padded_freqs / pixel_size)
-        ice = ctf * self.filter(state.ice.sample(padded_freqs / pixel_size))
+        ice = self.filter(state.ice.sample(padded_freqs / pixel_size))
+        ice = state.optics.apply(ctf, ice)
         # Crop and mask ice
         ice = fft(self.mask(scattering.crop(ifft(ice))))
         # Create icy image at detector plane
@@ -322,10 +323,11 @@ class DetectorImage(OpticsImage):
         specimen = specimen or self.specimen
         scattering = self.scattering
         freqs, pixel_size = scattering.freqs, scattering.pixel_size
+        effective_pixel_size = pixel_size * state.optics.magnification
         # Sample image at detector plane
         icy_image = super().sample(state)
         # Sample from noise distribution of detector
-        noise = state.detector.sample(freqs / pixel_size)
+        noise = state.detector.sample(freqs / effective_pixel_size)
         # Mask noise
         noise = fft(self.mask(ifft(noise)))
         # Detector readout
@@ -359,10 +361,11 @@ class GaussianImage(DetectorImage):
         specimen = specimen or self.specimen
         scattering = self.scattering
         freqs, pixel_size = scattering.freqs, scattering.pixel_size
+        effective_pixel_size = pixel_size * state.optics.magnification
         # Get residuals
         residuals = self.residuals(state=state, specimen=specimen)
         # Variance from detector
-        variance = state.detector.variance(freqs / pixel_size)
+        variance = state.detector.variance(freqs / effective_pixel_size)
         # Variance from ice
         if not isinstance(state.ice, NullIce):
             variance += state.optics(

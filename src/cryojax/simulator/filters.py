@@ -5,10 +5,10 @@ Filters to apply to images in Fourier space
 from __future__ import annotations
 
 __all__ = [
-    "compute_anti_aliasing_filter",
+    "compute_lowpass_filter",
     "compute_whitening_filter",
     "Filter",
-    "AntiAliasingFilter",
+    "LowpassFilter",
     "WhiteningFilter",
 ]
 
@@ -51,17 +51,19 @@ class Filter(metaclass=ABCMeta):
 
 
 @dataclass
-class AntiAliasingFilter(Filter):
+class LowpassFilter(Filter):
     """
-    Apply an anti-aliasing filter to an image.
+    Apply a low-pass filter to an image.
 
     See documentation for
-    ``cryojax.simulator.compute_anti_aliasing_filter``
+    ``cryojax.simulator.compute_lowpass_filter``
     for more information.
 
     Attributes
     ----------
     cutoff : `float`
+        By default, this is set ``0.667``, which is
+        used for antialiasing.
     rolloff : `float`
     """
 
@@ -69,7 +71,7 @@ class AntiAliasingFilter(Filter):
     rolloff: float = field(pytree_node=False, default=0.05)
 
     def compute(self, freqs: Array) -> Array:
-        return compute_anti_aliasing_filter(
+        return compute_lowpass_filter(
             freqs,
             self.cutoff,
             self.rolloff,
@@ -95,7 +97,7 @@ class WhiteningFilter(Filter):
         return compute_whitening_filter(freqs, micrograph_freqs, micrograph)
 
 
-def compute_anti_aliasing_filter(
+def compute_lowpass_filter(
     freqs: Array,
     cutoff: float = 0.667,
     rolloff: float = 0.05,

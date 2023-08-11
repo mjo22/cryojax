@@ -74,14 +74,14 @@ model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state, obs
 log_likelihood = model(params)
 ```
 
-Imaging models also accept a series of `Filter`s and `Mask`s. By default, this is an `AntiAliasingFilter` that cuts off modes above the Nyquist freqeuency. Alternatively, one could add a `WhiteningFilter` and a `CircularMask`.
+Imaging models also accept a series of `Filter`s and `Mask`s. By default, this is a `LowpassFilter` used for anti-aliasing. Alternatively, one could add a `WhiteningFilter` and a `CircularMask`.
 
 ```python
 from cryojax.utils import fftfreqs
 
-filters = [cs.AntiAliasingFilter(scattering.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
+filters = [cs.LowpassFilter(scattering.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
            cs.WhiteningFilter(scattering.freqs, fftfreqs(micrograph.shape), micrograph)]
-masks = [cs.CircularMask(scattering.coords, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
+masks = [cs.CircularMask(scattering.coords, radius=1.0)]      # Cutoff pixels above radius equal to (half) image size
 model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state, filters=filters, masks=masks)
 image = irfft(model(params))
 ```

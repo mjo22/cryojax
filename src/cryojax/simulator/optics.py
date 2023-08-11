@@ -20,6 +20,7 @@ from ..utils import cartesian_to_polar
 from ..core import dataclass, Array, Scalar, CryojaxObject
 
 
+@dataclass
 class Optics(CryojaxObject, metaclass=ABCMeta):
     """
     Base PyTree container for an optics model. This
@@ -31,10 +32,22 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
 
         1) Overwrite the ``OpticsModel.compute`` method.
         2) Use the ``cryojax.core.dataclass`` decorator.
+
+    Attributes
+    ----------
+    magnification : `cryojax.core.Scalar`
+        The magnification relative to the rasterization
+        pixel size, stored in ``cryojax.simulator.ScatteringConfig``.
     """
+
+    magnification: Scalar = 1.0
 
     @abstractmethod
     def compute(self, freqs: Array, **kwargs: Any) -> Array:
+        raise NotImplementedError
+
+    @abstractmethod
+    def apply(self, ctf: Array, image: Array, **kwargs: Any) -> Array:
         raise NotImplementedError
 
     def __call__(self, freqs: Array, **kwargs: Any) -> Array:
@@ -54,6 +67,9 @@ class NullOptics(Optics):
     """
     This class can be used as a null optics model.
     """
+
+    def apply(self, ctf: Array, image: Array, **kwargs: Any) -> Array:
+        return image
 
     def compute(self, freqs: Array, **kwargs: Any) -> Array:
         return jnp.array(1.0)
@@ -89,8 +105,12 @@ class CTFOptics(Optics):
     phase_shift: Scalar = 0.0
     b_factor: Scalar = 1.0
 
+    def apply(self, ctf: Array, image: Array, **kwargs: Any) -> Array:
+        return ctf * image
+
     def compute(self, freqs: Array, **kwargs: Any) -> Array:
-        return compute_ctf(freqs, *self.iter_data(), **kwargs)
+        magnification, *args = self.iter_data()
+        return compute_ctf(freqs / magnification, *args, **kwargs)
 
 
 def compute_ctf(

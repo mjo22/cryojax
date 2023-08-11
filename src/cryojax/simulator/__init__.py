@@ -5,7 +5,7 @@ __all__ = [
     "project_with_nufft",
     "project_with_gaussians",
     # "project_with_slice",
-    "compute_anti_aliasing_filter",
+    "compute_lowpass_filter",
     "compute_whitening_filter",
     "compute_circular_mask",
     "compute_ctf",
@@ -19,7 +19,7 @@ __all__ = [
     "ElectronCloud",
     "ElectronGrid",
     # Filters
-    "AntiAliasingFilter",
+    "LowpassFilter",
     "WhiteningFilter",
     # Masks
     "CircularMask",
@@ -78,13 +78,13 @@ from .specimen import ElectronCloud, ElectronGrid
 
 Specimen = Union[ElectronCloud, ElectronGrid]
 from .filters import (
-    compute_anti_aliasing_filter,
+    compute_lowpass_filter,
     compute_whitening_filter,
-    AntiAliasingFilter,
+    LowpassFilter,
     WhiteningFilter,
 )
 
-Filter = Union[AntiAliasingFilter, WhiteningFilter]
+Filter = Union[LowpassFilter, WhiteningFilter]
 from .mask import CircularMask, compute_circular_mask
 
 Mask = CircularMask
