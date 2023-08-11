@@ -4,8 +4,10 @@ Abstraction of electron detectors in a cryo-EM image.
 
 __all__ = ["Detector", "NullDetector", "WhiteNoiseDetector"]
 
+import jax.numpy as jnp
+
 from abc import ABCMeta, abstractmethod
-from typing import Optional
+from typing import Optional, Any
 
 from .noise import GaussianNoise, Noise
 from ..core import dataclass, Serializable, Array, Scalar
@@ -17,9 +19,14 @@ class Detector(Serializable, metaclass=ABCMeta):
     Base class for an electron detector.
     """
 
+    @abstractmethod
+    def sample(self, *args: Any, **kwargs: Any) -> Array:
+        """Sample a realization from the detector model."""
+        raise NotImplementedError
+
 
 @dataclass
-class NullDetector(Detector, Noise):
+class NullDetector(Noise, Detector):
     """
     A 'null' detector.
     """
@@ -30,7 +37,7 @@ class NullDetector(Detector, Noise):
 
 
 @dataclass
-class WhiteNoiseDetector(Detector, GaussianNoise):
+class WhiteNoiseDetector(GaussianNoise, Detector):
     """
     A detector with a gaussian white noise model.
 

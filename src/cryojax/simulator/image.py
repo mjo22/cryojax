@@ -56,8 +56,8 @@ class Image(metaclass=ABCMeta):
     """
 
     state: ParameterState
-    scattering: ScatteringConfig = field(pytree_node=False)
-    specimen: Specimen = field(pytree_node=False)
+    scattering: ScatteringConfig
+    specimen: Specimen
 
     filters: list[Filter] = field(pytree_node=False, init=False)
     masks: list[Mask] = field(pytree_node=False, init=False)

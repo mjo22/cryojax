@@ -8,6 +8,7 @@ from jax import config
 from cryojax.simulator import NufftScattering, ElectronCloud
 from cryojax.simulator import (
     EulerPose,
+    ExponentialNoiseIce,
     CTFOptics,
     UniformExposure,
     WhiteNoiseDetector,
@@ -47,12 +48,12 @@ def optics_model(setup):
 @pytest.fixture
 def noisy_model(setup):
     scattering, cloud = setup
-    key = random.PRNGKey(seed=0)
     state = ParameterState(
         pose=EulerPose(),
+        ice=ExponentialNoiseIce(key=random.PRNGKey(seed=1)),
         optics=CTFOptics(),
         exposure=UniformExposure(),
-        detector=WhiteNoiseDetector(key=key),
+        detector=WhiteNoiseDetector(key=random.PRNGKey(seed=0)),
     )
     return GaussianImage(scattering=scattering, specimen=cloud, state=state)
 

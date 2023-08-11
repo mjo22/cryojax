@@ -7,7 +7,7 @@ __all__ = ["Ice", "NullIce", "ExponentialNoiseIce", "EmpiricalIce"]
 import jax.numpy as jnp
 
 from abc import ABCMeta, abstractmethod
-from typing import Optional
+from typing import Optional, Any
 
 from .noise import GaussianNoise
 from ..core import dataclass, field, Serializable, Array, Scalar
@@ -19,23 +19,24 @@ class Ice(Serializable, metaclass=ABCMeta):
     Base class for an ice model.
     """
 
+    @abstractmethod
+    def sample(self, *args: Any, **kwargs: Any) -> Array:
+        """Sample a realization from the ice model."""
+        raise NotImplementedError
+
 
 @dataclass
-class NullIce(Ice, GaussianNoise):
+class NullIce(GaussianNoise, Ice):
     """
     A 'null' ice model.
     """
-
-    def sample(self, freqs: Array) -> Array:
-        shape = freqs.shape[0:-1]
-        return jnp.zeros(shape)
 
     def variance(self, freqs: Optional[Array] = None) -> Array:
         return 0.0
 
 
 @dataclass
-class EmpiricalIce(Ice, GaussianNoise):
+class EmpiricalIce(GaussianNoise, Ice):
     """
     Ice modeled as gaussian noise with a
     measured power spectrum.
@@ -61,7 +62,7 @@ class EmpiricalIce(Ice, GaussianNoise):
 
 
 @dataclass
-class ExponentialNoiseIce(Ice, GaussianNoise):
+class ExponentialNoiseIce(GaussianNoise, Ice):
     r"""
     Ice modeled as gaussian noise with a covariance
     matrix equal to an exponential decay, given by
