@@ -64,14 +64,13 @@ def test_shape(scattering_model):
 
 
 def test_update(noisy_model):
-    offset_x, view_phi, voltage, N, alpha, xi, pixel_size = (
+    offset_x, view_phi, voltage, N, alpha, xi = (
         50.23,
         np.pi / 2.2,
         250.23,
         0.77,
         0.676,
         12342.0,
-        100.0,
     )
     params = dict(
         offset_x=offset_x,
@@ -79,14 +78,10 @@ def test_update(noisy_model):
         voltage=voltage,
         N=N,
         alpha=alpha,
-        pixel_size=pixel_size,
         xi=xi,
     )
-    scattering = noisy_model.scattering.update(**params)
     state = noisy_model.state.update(**params)
     model = noisy_model.update(**params)
-    # Test scatttering update
-    assert pixel_size == scattering.pixel_size
     # Test state update
     assert offset_x == state.pose.offset_x
     assert view_phi == state.pose.view_phi
@@ -95,7 +90,6 @@ def test_update(noisy_model):
     assert alpha == state.detector.alpha
     assert xi == state.ice.xi
     # Test model update
-    assert pixel_size == model.scattering.pixel_size
     assert offset_x == model.state.pose.offset_x
     assert view_phi == model.state.pose.view_phi
     assert voltage == model.state.optics.voltage

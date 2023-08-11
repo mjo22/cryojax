@@ -267,8 +267,6 @@ def field(
         If this is a ``Union`` of ``cryojax``
         objects, the decoder will try to find
         the correct one to instantiate.
-        If this is a ``cryojax.simulator.Specimen``,
-        the decoder will read from a file.
     """
     metadata = dict(pytree_node=pytree_node)
     if encode is False:

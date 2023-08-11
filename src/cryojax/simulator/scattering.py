@@ -48,7 +48,12 @@ class ImageConfig(CryojaxObject):
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
     pixel_size : `float`
-        Size of camera pixels, in dimensions of length.
+        Rasterization pixel size. Note that this
+        is the pixel size before applying any optics
+        and a physical length of the specimen.
+        For voxel-based representations of ``Specimen``,
+        this should be the same as the voxel size.
+        This is in dimensions of length.
     freqs : `Array`, shape `(N1, N2, 2)`
         The fourier wavevectors in the imaging plane.
     padded_freqs : `Array`, shape `(M1, M2, 2)`
@@ -67,21 +72,17 @@ class ImageConfig(CryojaxObject):
     """
 
     shape: tuple[int, int] = field(pytree_node=False, encode=tuple)
-    pixel_size: float
+    pixel_size: float = field(pytree_node=False)
 
     padded_shape: tuple[int, int] = field(
         pytree_node=False, init=False, encode=False
     )
 
-    freqs: ArrayLike = field(pytree_node=False, init=False, encode=False)
-    padded_freqs: ArrayLike = field(
-        pytree_node=False, init=False, encode=False
-    )
+    freqs: Array = field(pytree_node=False, init=False, encode=False)
+    padded_freqs: Array = field(pytree_node=False, init=False, encode=False)
 
-    coords: ArrayLike = field(pytree_node=False, init=False, encode=False)
-    padded_coords: ArrayLike = field(
-        pytree_node=False, init=False, encode=False
-    )
+    coords: Array = field(pytree_node=False, init=False, encode=False)
+    padded_coords: Array = field(pytree_node=False, init=False, encode=False)
 
     pad_scale: float = field(pytree_node=False, default=1)
 
