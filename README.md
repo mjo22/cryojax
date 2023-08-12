@@ -54,16 +54,16 @@ template = "example.mrc"
 key = jax.random.PRNGKey(seed=0)
 scattering = cs.NufftScattering(shape=(320, 320), resolution=1.32)
 cloud = cs.ElectronCloud.from_file(template)
-pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteNoiseDetector(key=key)
+pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteNoiseDetector(key=key, pixel_size=1.1)
 state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
 model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state)
-params = dict(view_phi=np.pi, defocus_u=8000., alpha=1.4, pixel_size=1.30)
+params = dict(view_phi=np.pi, defocus_u=8000., alpha=1.4, pixel_size=1.09)
 image = irfft(model(params))  # The image is returned in Fourier space.
 ```
 
 Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a rasterzied grid is converted to a density point cloud with the `ElectronCloud` autoloader. Alternatively, a user could call the `ElectronCloud` constructor.
 
-This workflow configures an initial model state at the library's default parameters, then evaulates it at a state with an updated viewing angle `view_phi`, major axis defocus `defocus_u`, detector noise variance `alpha`, and detector pixel size `pixel_size`. For a more advanced example, see the tutorials section of the repository (stay tuned!).
+This workflow configures an initial model state at the library's default parameters, then evaulates it at a state with an updated viewing angle `view_phi`, major axis defocus `defocus_u`, detector noise variance `alpha`, and detector pixel size `pixel_size`. For more advanced examples, see the tutorials section of the repository.
 
 If a `GaussianImage` is initialized with the field `observed`, the model will instead compute a Gaussian log-likelihood in Fourier space with a diagonal covariance tensor (or power spectrum).
 
