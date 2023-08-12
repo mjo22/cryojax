@@ -15,7 +15,7 @@ __all__ = [
     "ImageConfig",
     "NufftScattering",
     "GaussianScattering",
-    # "FourierSliceScattering"
+    "FourierSliceScattering"
     # Specimen representations
     "ElectronCloud",
     "ElectronGrid",
@@ -69,12 +69,12 @@ from .scattering import (
     ImageConfig,
     NufftScattering,
     GaussianScattering,
-    # FourierSliceScattering,
+    FourierSliceScattering,
 )
 
 ScatteringConfig = Union[
-    NufftScattering, GaussianScattering
-]  # , FourierSliceScattering]
+    NufftScattering, GaussianScattering, FourierSliceScattering
+]
 from .specimen import ElectronCloud, ElectronGrid
 
 Specimen = Union[ElectronCloud, ElectronGrid]

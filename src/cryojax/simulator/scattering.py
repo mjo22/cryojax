@@ -22,8 +22,9 @@ from typing import Any
 import jax.numpy as jnp
 import numpy as np
 
-from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
+from ..core import dataclass, field, Array, CryojaxObject
 from ..utils import (
+    irfft,
     fft,
     fftfreqs,
     bound,
@@ -146,10 +147,7 @@ class FourierSliceScattering(ScatteringConfig):
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
-        raise NotImplementedError
-        # density, coordinates, _ = args
-        # projection = project_with_slice(
-        #    *args, self.padded_shape, order=self.order, **kwargs)
+        return project_with_slice(*args, self.padded_shape, order=self.order)
 
 
 @dataclass
@@ -211,9 +209,9 @@ def project_with_slice(
 
     Arguments
     ---------
-    density : `Array`, shape `(N,)`
-        Density point cloud.
-    coordinates : `Array`, shape `(N, 3)`
+    density : `Array`, shape `(N1, N2, N3)`
+        Density grid in fourier space.
+    coordinates : `Array`, shape `(N1, N2, N3, 3)`
         Coordinate system of point cloud.
     voxel_size : `Array`, shape `(3,)`
         Voxel size in each dimension.
@@ -241,8 +239,18 @@ def project_with_slice(
     projection = jnp.fft.fftshift(
         map_coordinates(density, coordinates, **kwargs)[..., 0]
     )
+    projection = irfft(projection)
+    M1, M2 = shape
+    if N1 >= M1 and N2 >= M2:
+        projection = crop(projection, shape)
+    elif N1 <= M1 and N2 <= M2:
+        projection = pad(projection, shape, mode="edge")
+    else:
+        raise NotImplementedError(
+            "density.shape must be larger or smaller than shape in all dimensions"
+        )
 
-    return resize(projection, shape, antialias=False)
+    return fft(projection)
 
 
 def project_with_nufft(

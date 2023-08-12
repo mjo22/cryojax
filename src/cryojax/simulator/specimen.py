@@ -191,12 +191,10 @@ class ElectronGrid(ElectronDensity):
         # Flatten density and coordinates
         N1, N2, N3 = self.coordinates.shape[:-1]
         N = N1 * N2 * N3
-        density = self.density.reshape((N,))
+        density = self.density.ravel()
         coordinates = self.coordinates.reshape((N, 3))
         # Transform
-        density, coordinates = pose.transform(
-            self.density, coordinates, real=False
-        )
+        density, coordinates = pose.transform(density, coordinates, real=False)
         # Reshape back to voxel grid
         density = density.reshape(self.density.shape)
         coordinates = coordinates.reshape(self.coordinates.shape)

@@ -83,16 +83,15 @@ class EulerPose(Pose):
                 coordinates, *self.iter_data()
             )
         else:
-            raise NotImplementedError
-            # rotated_coordinates = rotate_rpy(
-            #    coordinates, *self.iter_data()[2:]
-            # )
-            # shifted_density = shift_phase(
-            #    density,
-            #    rotated_coordinates,
-            #    *self.iter_data()[:2],
-            # )
-            # return shifted_density, rotated_coordinates
+            rotated_coordinates = rotate_rpy(
+                coordinates, *self.iter_data()[2:]
+            )
+            shifted_density = shift_phase(
+                density,
+                coordinates,
+                *self.iter_data()[:2],
+            )
+            return shifted_density, rotated_coordinates
 
 
 @dataclass
@@ -124,14 +123,13 @@ class QuaternionPose(Pose):
                 coordinates, *self.iter_data()
             )
         else:
-            raise NotImplementedError
-            # rotated_coordinates = rotate_wxyz(
-            #    coordinates, *self.iter_data()[2:]
-            # )
-            # shifted_density = shift_phase(
-            #    density, rotated_coordinates, *self.iter_data()[:2]
-            # )
-            # return shifted_density, rotated_coordinates
+            rotated_coordinates = rotate_wxyz(
+                coordinates, *self.iter_data()[2:]
+            )
+            shifted_density = shift_phase(
+                density, coordinates, *self.iter_data()[:2]
+            )
+            return shifted_density, rotated_coordinates
 
 
 @jax.jit
