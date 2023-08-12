@@ -9,8 +9,8 @@ __all__ = [
     "compute_whitening_filter",
     "compute_circular_mask",
     "compute_ctf",
-    "magnify_image",
     "rescale_image",
+    "measure_image",
     # Image configuration
     "ImageConfig",
     "NufftScattering",
@@ -92,13 +92,13 @@ Mask = CircularMask
 from .ice import NullIce, EmpiricalIce, ExponentialNoiseIce
 
 Ice = Union[NullIce, ExponentialNoiseIce, EmpiricalIce]
-from .optics import compute_ctf, magnify_image, NullOptics, CTFOptics
+from .optics import compute_ctf, NullOptics, CTFOptics
 
 Optics = Union[NullOptics, CTFOptics]
 from .exposure import rescale_image, NullExposure, UniformExposure
 
 Exposure = Union[NullExposure, UniformExposure]
-from .detector import NullDetector, WhiteNoiseDetector
+from .detector import measure_image, NullDetector, WhiteNoiseDetector
 
 Detector = Union[NullDetector, WhiteNoiseDetector]
 from .state import PipelineState

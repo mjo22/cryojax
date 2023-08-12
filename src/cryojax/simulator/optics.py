@@ -8,7 +8,6 @@ __all__ = [
     "Optics",
     "NullOptics",
     "CTFOptics",
-    "magnify_image",
     "compute_ctf",
 ]
 
@@ -17,7 +16,7 @@ from typing import Any, Optional
 
 import jax.numpy as jnp
 
-from ..utils import cartesian_to_polar, scale, ifft, fft
+from ..utils import cartesian_to_polar
 from ..core import dataclass, Array, Scalar, CryojaxObject
 
 
@@ -33,34 +32,17 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
 
         1) Overwrite the ``OpticsModel.compute`` method.
         2) Use the ``cryojax.core.dataclass`` decorator.
-
-    Attributes
-    ----------
-    magnification : `cryojax.core.Scalar`
-        The magnification relative to the rasterization
-        pixel size, stored in ``cryojax.simulator.ScatteringConfig``.
     """
-
-    magnification: Scalar = 1.0
 
     @abstractmethod
     def compute(self, freqs: Array, **kwargs: Any) -> Array:
         """Compute the optics model."""
         raise NotImplementedError
 
+    @abstractmethod
     def apply(self, ctf: Array, image: Array, **kwargs: Any) -> Array:
         """Apply the optics model."""
-        return self.magnify(image, **kwargs)
-
-    def magnify(self, image: Array, **kwargs: Any) -> Array:
-        """Magnify an image using interpolation."""
-        if self.magnification == 1.0:
-            return image
-        else:
-            magnified = magnify_image(
-                ifft(image), self.magnification, antialias=False, **kwargs
-            )
-            return fft(magnified)
+        raise NotImplementedError
 
     def __call__(self, freqs: Array, **kwargs: Any) -> Array:
         """Compute the optics model."""
@@ -75,6 +57,9 @@ class NullOptics(Optics):
 
     def compute(self, freqs: Array, **kwargs: Any) -> Array:
         return jnp.array(1.0)
+
+    def apply(self, ctf: Array, image: Array, **kwargs: Any):
+        return image
 
 
 @dataclass
@@ -108,29 +93,10 @@ class CTFOptics(Optics):
     b_factor: Scalar = 1.0
 
     def apply(self, ctf: Array, image: Array, **kwargs: Any) -> Array:
-        image = super().apply(ctf, image, **kwargs)
         return ctf * image
 
     def compute(self, freqs: Array, **kwargs: Any) -> Array:
-        magnification, *args = self.iter_data()
-        return compute_ctf(freqs / magnification, *args, **kwargs)
-
-
-def magnify_image(image: Array, magnification: Scalar, **kwargs):
-    """
-    Magnify image using interpolation.
-
-    For more detail, see ``cryojax.utils.interpolation.scale``.
-
-    Parameters
-    ----------
-    image : `Array`, shape `(N1, N2)`
-        The image to be magnified.
-    magnification : `float`
-        The scale factor for the image.
-    """
-    s = jnp.array([magnification, magnification])
-    return scale(image, image.shape, s, **kwargs)
+        return compute_ctf(freqs, *self.iter_data(), **kwargs)
 
 
 def compute_ctf(

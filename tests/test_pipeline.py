@@ -53,7 +53,9 @@ def noisy_model(setup):
         ice=ExponentialNoiseIce(key=random.PRNGKey(seed=1)),
         optics=CTFOptics(),
         exposure=UniformExposure(),
-        detector=WhiteNoiseDetector(key=random.PRNGKey(seed=0)),
+        detector=WhiteNoiseDetector(
+            pixel_size=5.32, key=random.PRNGKey(seed=0)
+        ),
     )
     return GaussianImage(scattering=scattering, specimen=cloud, state=state)
 
@@ -64,14 +66,14 @@ def test_shape(scattering_model):
 
 
 def test_update(noisy_model):
-    offset_x, view_phi, voltage, N, alpha, xi, magnification = (
+    offset_x, view_phi, voltage, N, alpha, xi, pixel_size = (
         50.23,
         np.pi / 2.2,
         250.23,
         0.77,
         0.676,
         12342.0,
-        100.0,
+        4.0,
     )
     params = dict(
         offset_x=offset_x,
@@ -80,7 +82,7 @@ def test_update(noisy_model):
         N=N,
         alpha=alpha,
         xi=xi,
-        magnification=magnification,
+        pixel_size=pixel_size,
     )
     state = noisy_model.state.update(**params)
     model = noisy_model.update(**params)
@@ -91,7 +93,7 @@ def test_update(noisy_model):
     assert N == state.exposure.N
     assert alpha == state.detector.alpha
     assert xi == state.ice.xi
-    assert magnification == state.optics.magnification
+    assert pixel_size == state.detector.pixel_size
     # Test model update
     assert offset_x == model.state.pose.offset_x
     assert view_phi == model.state.pose.view_phi
@@ -99,4 +101,4 @@ def test_update(noisy_model):
     assert N == model.state.exposure.N
     assert alpha == model.state.detector.alpha
     assert xi == model.state.ice.xi
-    assert magnification == model.state.optics.magnification
+    assert pixel_size == model.state.detector.pixel_size

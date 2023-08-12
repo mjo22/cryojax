@@ -47,12 +47,10 @@ class ImageConfig(CryojaxObject):
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
-    pixel_size : `float`
-        Rasterization pixel size. Note that this
-        is the pixel size before applying any optics
-        and a physical length of the specimen.
+    resolution : `float`
+        Rasterization resolution.
         For voxel-based representations of ``Specimen``,
-        this should be the same as the voxel size.
+        this should be the same as the ``voxel_size``.
         This is in dimensions of length.
     freqs : `Array`, shape `(N1, N2, 2)`
         The fourier wavevectors in the imaging plane.
@@ -72,7 +70,7 @@ class ImageConfig(CryojaxObject):
     """
 
     shape: tuple[int, int] = field(pytree_node=False, encode=tuple)
-    pixel_size: float = field(pytree_node=False)
+    resolution: float = field(pytree_node=False)
 
     padded_shape: tuple[int, int] = field(
         pytree_node=False, init=False, encode=False
@@ -314,8 +312,8 @@ def project_with_gaussians(
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
-    pixel_size : `float`
-        Pixel size.
+    voxel_size : `float`
+        Voxel size.
     scale : `float`
         Scale of gaussians in density point cloud.
 
