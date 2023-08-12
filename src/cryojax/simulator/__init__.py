@@ -31,13 +31,14 @@ __all__ = [
     "QuaternionPose",
     ## Ice
     "EmpiricalIce",
-    "GaussianExponentialIce",
+    "ExponentialNoiseIce",
     ## Optics
     "CTFOptics",
     ## Electron exposure models
     "UniformExposure",
     ## Detector models
-    "GaussianWhiteDetector",
+    "CountingDetector",
+    "WhiteNoiseDetector",
     # Image models
     "ScatteringImage",
     "OpticsImage",
@@ -98,9 +99,14 @@ Optics = Union[NullOptics, CTFOptics]
 from .exposure import rescale_image, NullExposure, UniformExposure
 
 Exposure = Union[NullExposure, UniformExposure]
-from .detector import measure_image, NullDetector, WhiteNoiseDetector
+from .detector import (
+    measure_image,
+    NullDetector,
+    CountingDetector,
+    WhiteNoiseDetector,
+)
 
-Detector = Union[NullDetector, WhiteNoiseDetector]
+Detector = Union[NullDetector, CountingDetector, WhiteNoiseDetector]
 from .state import PipelineState
 from .image import ScatteringImage, OpticsImage, DetectorImage, GaussianImage
 

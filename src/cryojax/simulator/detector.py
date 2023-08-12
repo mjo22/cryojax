@@ -2,7 +2,12 @@
 Abstraction of electron detectors in a cryo-EM image.
 """
 
-__all__ = ["Detector", "NullDetector", "WhiteNoiseDetector"]
+__all__ = [
+    "Detector",
+    "NullDetector",
+    "CountingDetector",
+    "WhiteNoiseDetector",
+]
 
 import jax.numpy as jnp
 
