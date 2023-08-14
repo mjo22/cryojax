@@ -351,8 +351,12 @@ def make_rpy_rotation(
     Helper routine to generate a rotation in a particular
     convention.
     """
+    # Convert theta from [-pi/2, pi/2] to [0, pi]
+    theta += jnp.pi / 2
+    # Generate sequence of rotations
     rotations = [getattr(SO3, f"from_{axis}_radians") for axis in convention]
-    angles = [phi, theta, psi] if fixed else [psi, theta, phi]
+    # Gather set of angles (flip psi to match cisTEM)
+    angles = [phi, theta, -psi] if fixed else [-psi, theta, phi]
     rotation = (
         rotations[0](angles[0])
         @ rotations[1](angles[1])
