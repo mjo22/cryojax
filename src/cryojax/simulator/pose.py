@@ -83,7 +83,7 @@ class EulerPose(Pose):
     fixed: bool = field(pytree_node=False, default=False)
 
     view_phi: Scalar = 0.0
-    view_theta: Scalar = 0.0
+    view_theta: Scalar = jnp.pi / 2
     view_psi: Scalar = 0.0
 
     def transform(
