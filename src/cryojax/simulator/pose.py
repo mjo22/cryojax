@@ -16,12 +16,14 @@ __all__ = [
 ]
 
 from abc import ABCMeta, abstractmethod
+from typing import Any
+from functools import partial
 
 import jax
 import jax.numpy as jnp
 from jaxlie import SE3, SO3
 
-from ..core import Array, Scalar, dataclass, CryojaxObject
+from ..core import Array, Scalar, field, dataclass, CryojaxObject
 
 
 @dataclass
@@ -62,6 +64,13 @@ class EulerPose(Pose):
 
     Attributes
     ----------
+    convention : `str`
+        The sequence of axes over which to apply
+        rotation. This is a string of 3 characters
+        of x, y, and z. By default, `zyx`.
+    fixed : `bool`
+        If ``False``, axes rotation axes move with
+        each rotation.
     view_phi : `cryojax.core.Scalar`
         Roll angles, ranging :math:`(-\pi, \pi]`.
     view_theta : `cryojax.core.Scalar`
@@ -69,6 +78,9 @@ class EulerPose(Pose):
     view_psi : `cryojax.core.Scalar`
         Yaw angles, ranging :math:`(-\pi, \pi]`.
     """
+
+    convention: str = field(pytree_node=False, default="zyx")
+    fixed: bool = field(pytree_node=False, default=False)
 
     view_phi: Scalar = 0.0
     view_theta: Scalar = 0.0
@@ -80,11 +92,17 @@ class EulerPose(Pose):
         """Transform coordinates from a set of Euler angles."""
         if real:
             return density, rotate_and_translate_rpy(
-                coordinates, *self.iter_data()
+                coordinates,
+                *self.iter_data(),
+                convention=self.convention,
+                fixed=self.fixed,
             )
         else:
             rotated_coordinates = rotate_rpy(
-                coordinates, *self.iter_data()[2:]
+                coordinates,
+                *self.iter_data()[2:],
+                convention=self.convention,
+                fixed=self.fixed,
             )
             shifted_density = shift_phase(
                 density,
@@ -101,12 +119,10 @@ class QuaternionPose(Pose):
 
     Attributes
     ----------
+    view_qw : `cryojax.core.Scalar`
     view_qx : `cryojax.core.Scalar`
-
     view_qy : `cryojax.core.Scalar`
-
     view_qz : `cryojax.core.Scalar`
-
     """
 
     view_qw: Scalar = 1.0
@@ -132,7 +148,7 @@ class QuaternionPose(Pose):
             return shifted_density, rotated_coordinates
 
 
-@jax.jit
+@partial(jax.jit, static_argnames=["convention", "fixed"])
 def rotate_and_translate_rpy(
     coords: Array,
     tx: float,
@@ -140,6 +156,8 @@ def rotate_and_translate_rpy(
     phi: float,
     theta: float,
     psi: float,
+    convention: str = "zyx",
+    fixed: bool = False,
 ) -> Array:
     r"""
     Compute a coordinate rotation and translation from
@@ -147,7 +165,7 @@ def rotate_and_translate_rpy(
 
     Arguments
     ---------
-    coords : `jax.Array`, shape `(N, 3)`
+    coords : `Array`, shape `(N, 3)`
         Coordinate system.
     tx : `float`
         In-plane translation in x direction.
@@ -159,13 +177,17 @@ def rotate_and_translate_rpy(
         Pitch angle, ranging :math:`(0, \pi]`.
     psi : `float`
         Yaw angle, ranging :math:`(-\pi, \pi]`.
+    kwargs :
+        Keyword arguments passed to ``make_rpy_rotation``
 
     Returns
     -------
-    transformed : `jax.Array`, shape `(N, 3)`
+    transformed : `Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
     """
-    rotation = SO3.from_rpy_radians(phi, theta, psi)
+    rotation = make_rpy_rotation(
+        phi, theta, psi, convention=convention, fixed=fixed
+    )
     translation = jnp.array([tx, ty, 0.0])
     transformation = SE3.from_rotation_and_translation(rotation, translation)
     transformed = jax.vmap(transformation.apply)(coords)
@@ -189,7 +211,7 @@ def rotate_and_translate_wxyz(
 
     Arguments
     ---------
-    coords : `jax.Array` shape `(N, 3)`
+    coords : `Array` shape `(N, 3)`
         Coordinate system.
     tx : `float`
         In-plane translation in x direction.
@@ -202,7 +224,7 @@ def rotate_and_translate_wxyz(
 
     Returns
     -------
-    transformed : `jax.Array`, shape `(N, 3)`
+    transformed : `Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
     """
     wxyz_xyz = jnp.array([qw, qx, qy, qz, tx, ty, 0.0])
@@ -212,12 +234,14 @@ def rotate_and_translate_wxyz(
     return transformed
 
 
-@jax.jit
+@partial(jax.jit, static_argnames=["convention", "fixed"])
 def rotate_rpy(
     coords: Array,
     phi: float,
     theta: float,
     psi: float,
+    convention: str = "zyx",
+    fixed: bool = False,
 ) -> Array:
     r"""
     Compute a coordinate rotation from
@@ -225,7 +249,7 @@ def rotate_rpy(
 
     Arguments
     ---------
-    coords : `jax.Array`, shape `(N, 3)`
+    coords : `Array`, shape `(N, 3)`
         Coordinate system.
     phi : `float`
         Roll angle, ranging :math:`(-\pi, \pi]`.
@@ -233,13 +257,17 @@ def rotate_rpy(
         Pitch angle, ranging :math:`(0, \pi]`.
     psi : `float`
         Yaw angle, ranging :math:`(-\pi, \pi]`.
+    kwargs :
+        Keyword arguments passed to ``make_rpy_rotation``
 
     Returns
     -------
-    transformed : `jax.Array`, shape `(N, 3)`
+    transformed : `Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
     """
-    rotation = SO3.from_rpy_radians(phi, theta, psi)
+    rotation = make_rpy_rotation(
+        phi, theta, psi, convention=convention, fixed=fixed
+    )
     transformed = jax.vmap(rotation.apply)(coords)
 
     return transformed
@@ -258,7 +286,7 @@ def rotate_wxyz(
 
     Arguments
     ---------
-    coords : `jax.Array` shape `(N, 3)`
+    coords : `Array` shape `(N, 3)`
         Coordinate system.
     qw : `float`
     qx : `float`
@@ -267,7 +295,7 @@ def rotate_wxyz(
 
     Returns
     -------
-    transformed : `jax.Array`, shape `(N, 3)`
+    transformed : `Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
     """
 
@@ -291,9 +319,9 @@ def shift_phase(
 
     Arguments
     ---------
-    density : `jax.Array` shape `(N)`
+    density : `Array` shape `(N)`
         Coordinate system.
-    coords : `jax.Array` shape `(N, 3)`
+    coords : `Array` shape `(N, 3)`
         Coordinate system.
     tx : `float`
         In-plane translation in x direction.
@@ -302,7 +330,7 @@ def shift_phase(
 
     Returns
     -------
-    transformed : `jax.Array`, shape `(N,)`
+    transformed : `Array`, shape `(N,)`
         Rotated and translated coordinate system.
     """
     xyz = jnp.array([tx, ty, 0.0])
@@ -310,3 +338,25 @@ def shift_phase(
     transformed = density * shift
 
     return transformed
+
+
+def make_rpy_rotation(
+    phi: float,
+    theta: float,
+    psi: float,
+    convention: str = "zyx",
+    fixed: bool = False,
+) -> SO3:
+    """
+    Helper routine to generate a rotation in a particular
+    convention.
+    """
+    rotations = [getattr(SO3, f"from_{axis}_radians") for axis in convention]
+    angles = [phi, theta, psi] if fixed else [psi, theta, phi]
+    rotation = (
+        rotations[0](angles[0])
+        @ rotations[1](angles[1])
+        @ rotations[2](angles[2])
+    )
+
+    return rotation

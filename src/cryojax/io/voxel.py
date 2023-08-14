@@ -22,7 +22,9 @@ from ..core import Array, ArrayLike
 def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict:
     """
     Read a 3D template on a cartesian grid
-    to a ``Cloud``.
+    to a point cloud.
+
+    This is used to instantiate ``cryojax.simulator.ElectronCloud``.
 
     Parameters
     ----------
@@ -38,7 +40,6 @@ def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict:
         Electron density in a point cloud representation,
         generated from a 3D voxel template. By default,
         voxels with zero density are masked.
-        Instantiates a ``cryojax.simulator.ElectronCloud``
     """
     # Load template
     filename = os.path.abspath(filename)
@@ -59,8 +60,9 @@ def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict:
 
 def load_fourier_grid(filename: str, **kwargs: Any) -> dict:
     """
-    Read a 3D template on a cartesian grid
-    to a ``Cloud``.
+    Read a 3D template in Fourier space on a cartesian grid.
+
+    This is used to instantiate ``cryojax.simulator.ElectronGrid``.
 
     Parameters
     ----------
@@ -93,28 +95,42 @@ def load_fourier_grid(filename: str, **kwargs: Any) -> dict:
 
 def load_mrc(filename: str) -> ArrayLike:
     """
-    Read template to ``numpy`` array.
+    Read MRC data to ``numpy`` array.
 
     Parameters
     ----------
-    filename :
-        Path to template.
+    filename : `str`
+        Path to data.
 
     Returns
     -------
-    template :
+    data : `ArrayLike`, shape `(N1, N2, N3)` or `(N1, N2)`
         Model in cartesian coordinates.
-    voxel_size :
+    voxel_size : `ArrayLike`, shape `(3,)` or `(2,)`
         The voxel_size in each dimension, stored
         in the MRC file.
     """
     with mrcfile.open(filename) as mrc:
-        template = np.asarray(mrc.data, dtype=float)
-        voxel_size = np.asarray(
-            [mrc.voxel_size.x, mrc.voxel_size.y, mrc.voxel_size.z], dtype=float
-        )
+        data = np.asarray(mrc.data, dtype=float)
+        if data.ndim == 2:
+            voxel_size = np.asarray(
+                [mrc.voxel_size.x, mrc.voxel_size.y], dtype=float
+            )
+        elif data.ndim == 3:
+            voxel_size = np.asarray(
+                [mrc.voxel_size.x, mrc.voxel_size.y, mrc.voxel_size.z],
+                dtype=float,
+            )
+        else:
+            raise NotImplementedError(
+                "MRC files with 2D and 3D data are supported."
+            )
 
-    return template, voxel_size
+    assert all(
+        voxel_size != np.zeros(data.ndim)
+    ), "MRC file must set voxel size"
+
+    return data, voxel_size
 
 
 def coordinatize_voxels(
@@ -129,13 +145,13 @@ def coordinatize_voxels(
     ``ndim = template.ndim`` and ``N = N1*N2*N3 - M`` or
     ``N = N2*N3 - M``, where ``M`` is a number of points
     close to zero that are masked out. The coordinate system
-    has dimensions of length with zero in the center.
+    is set with dimensions of length with zero in the center.
 
     Parameters
     ----------
-    template : shape `(N1, N2, N3)` or `(N1, N2)`
+    template : `ArrayLike`, shape `(N1, N2, N3)` or `(N1, N2)`
         3D volume or 2D image on a cartesian grid.
-    voxel_size : shape `(3,)`
+    voxel_size : `ArrayLike`, shape `(3,)` or `(2,)`
         Voxel size of the template.
     mask : `bool`
         If ``True``, run template through ``numpy.isclose``
@@ -146,9 +162,9 @@ def coordinatize_voxels(
 
     Returns
     -------
-    density : shape `(N, ndim)`
+    density : `Array`, shape `(N, ndim)`
         Volume or image.
-    coords : shape `(N, ndim)`
+    coords : `Array`, shape `(N, ndim)`
         Cartesian coordinate system.
     """
     ndim, shape = template.ndim, template.shape

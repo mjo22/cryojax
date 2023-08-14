@@ -102,6 +102,7 @@ class Image(metaclass=ABCMeta):
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
         view: bool = True,
+        _pixel_size: Optional[float] = None,
     ) -> Array:
         """
         Render an image given a parameter set.
@@ -111,6 +112,11 @@ class Image(metaclass=ABCMeta):
         view : `bool`
             If ``True``, view the cropped,
             masked, and rescaled image.
+        _pixel_size : `float`, optional
+            The pixel size at which to sample from the noise.
+            This is an internal convenience parameter to avoid
+            boilerplate and should not be used in the
+            API.
         """
         raise NotImplementedError
 
@@ -119,19 +125,21 @@ class Image(metaclass=ABCMeta):
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
-        pixel_size: Optional[float] = None,
         signal: bool = True,
+        _pixel_size: Optional[float] = None,
     ) -> Array:
         """
         Sample the an image from a realization of the noise.
 
         Parameters
         ----------
-        pixel_size : `float`, optional
-            The pixel size at which to sample from the noise.
         signal : `bool`, optional
             If ``True``, view the protein signal overlayed
             onto the noise.
+        _pixel_size : `float`, optional
+            The pixel size at which to sample from the noise.
+            This is an internal convenience parameter to avoid
+            boilerplate and should not be used in the API.
         """
         raise NotImplementedError
 
@@ -234,8 +242,8 @@ class ScatteringImage(Image):
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
-        pixel_size: Optional[float] = None,
         signal: bool = True,
+        _pixel_size: Optional[float] = None,
     ) -> Array:
         """Sample the scattered wave in the exit plane."""
         state = state or self.state
@@ -246,7 +254,7 @@ class ScatteringImage(Image):
             scattering.padded_freqs,
             scattering.resolution,
         )
-        pixel_size = pixel_size or resolution
+        pixel_size = _pixel_size or resolution
         # Sample from ice distribution
         icy_image = self.filter(state.ice.sample(padded_freqs / pixel_size))
         if signal:
@@ -310,8 +318,8 @@ class OpticsImage(ScatteringImage):
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
-        pixel_size: Optional[float] = None,
         signal: bool = True,
+        _pixel_size: Optional[float] = None,
     ) -> Array:
         """Sample the image in the detector plane."""
         state = state or self.state
@@ -322,7 +330,7 @@ class OpticsImage(ScatteringImage):
             scattering.padded_freqs,
             scattering.resolution,
         )
-        pixel_size = pixel_size or resolution
+        pixel_size = _pixel_size or resolution
         # Sample from ice distribution and apply ctf to it
         ctf = state.optics(padded_freqs / pixel_size)
         icy_image = super().sample(
@@ -360,7 +368,9 @@ class DetectorImage(OpticsImage):
         resolution = scattering.resolution
         # Compute image at detector plane
         optics_image = super().render(
-            state=state, specimen=specimen, view=False
+            state=state,
+            specimen=specimen,
+            view=False,
         )
         # Measure image at detector pixel size
         detector_image = state.detector.measure(
@@ -399,7 +409,10 @@ class DetectorImage(OpticsImage):
             pixel_size = resolution
         # Sample ice at the detector plane
         ice = super().sample(
-            state=state, specimen=specimen, pixel_size=pixel_size, signal=False
+            state=state,
+            specimen=specimen,
+            _pixel_size=pixel_size,
+            signal=False,
         )
         # Sample from noise distribution of detector
         noise = state.detector.sample(padded_freqs / pixel_size)
