@@ -2,7 +2,7 @@
 
 Contributions to this repository are welcome and greatly appreciated! I would love
 for this package to grow and be supported by a larger community. This project is
-open-source under the MIT License and welcomes contributions in the form of bug
+open-source under the GNU GPL-3.0 License and welcomes contributions in the form of bug
 reports, feature requests, and pull requests.
 
 ## How to report a bug
