@@ -88,8 +88,10 @@ def map_coordinates(
     """
     N1, N2, N3 = input.shape
     box_shape = jnp.array([N3, N2, N1], dtype=float)[:, None, None, None]
+    # x, y, z = jnp.transpose(coordinates, axes=[3, 1, 0, 2])
+    # coordinates = jnp.stack([z, y, x])
     x, y, z = jnp.transpose(coordinates, axes=[3, 1, 0, 2])
-    coordinates = jnp.stack([z, y, x])
+    coordinates = jnp.stack([z, -y, x])
     # Flip negative valued frequencies to get the "array index coordinates".
     coordinates = jnp.where(
         coordinates < 0, box_shape + coordinates, coordinates

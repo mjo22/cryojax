@@ -115,7 +115,7 @@ class EulerPose(Pose):
                 inverse=not self.inverse,
             )
             shifted_density = shift_phase(
-                density, rotated_coordinates, *self.iter_data()[:2], rotation
+                density, coordinates, *self.iter_data()[:2], rotation.inverse()
             )
             return shifted_density, rotated_coordinates
 
@@ -152,7 +152,7 @@ class QuaternionPose(Pose):
                 coordinates, *self.iter_data()[2:]
             )
             shifted_density = shift_phase(
-                density, rotated_coordinates, *self.iter_data()[:2], rotation
+                density, coordinates, *self.iter_data()[:2], rotation
             )
             return shifted_density, rotated_coordinates
 
@@ -348,8 +348,8 @@ def shift_phase(
     transformed : `Array`, shape `(N,)`
         Rotated and translated coordinate system.
     """
-    xyz = jnp.array([tx, ty, 0.0])
-    # xyz = rotation.apply(xyz)
+    xyz = jnp.array([-tx, 0.0, ty])
+    xyz = rotation.apply(xyz)
     shift = jnp.exp(1.0j * 2 * jnp.pi * jnp.matmul(coords, xyz))
     transformed = density * shift
 

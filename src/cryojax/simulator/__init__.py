@@ -7,7 +7,7 @@ __all__ = [
     "rotate_wxyz",
     "project_with_nufft",
     "project_with_gaussians",
-    # "project_with_slice",
+    "extract_slice",
     "compute_lowpass_filter",
     "compute_whitening_filter",
     "compute_circular_mask",
@@ -73,6 +73,7 @@ Pose = Union[EulerPose, QuaternionPose]
 from .scattering import (
     project_with_nufft,
     project_with_gaussians,
+    extract_slice,
     ImageConfig,
     NufftScattering,
     GaussianScattering,

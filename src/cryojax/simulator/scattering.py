@@ -8,7 +8,7 @@ from __future__ import annotations
 __all__ = [
     "project_with_nufft",
     "project_with_gaussians",
-    "project_with_slice",
+    "extract_slice",
     "ImageConfig",
     "ScatteringConfig",
     "NufftScattering",
@@ -147,7 +147,7 @@ class FourierSliceScattering(ScatteringConfig):
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
-        return project_with_slice(*args, self.padded_shape, order=self.order)
+        return extract_slice(*args, self.padded_shape, order=self.order)
 
 
 @dataclass
@@ -196,7 +196,7 @@ class GaussianScattering(ScatteringConfig):
         )
 
 
-def project_with_slice(
+def extract_slice(
     density: Array,
     coordinates: Array,
     voxel_size: Array,
