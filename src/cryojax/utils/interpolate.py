@@ -74,12 +74,25 @@ def interpn(points: Array, values: Array, xi: Array, **kwargs: Any):
     return interpolator(xi)
 
 
-def map_coordinates(input: Array, coordinates: Array, order=1, **kwargs: Any):
+def map_coordinates(
+    input: Array, coordinates: Array, order=1, mode="wrap", cval=0.0
+):
     """
     Interpolate a set of points on a grid with a
     given coordinate system onto a new coordinate system.
 
-    Wraps ``jax.ndimage.map_coordinates``.
+    Wraps ``jax.ndimage.map_coordinates`` to match typical
+    python coordinate indexing conventions and also
+    ``cryojax`` conventions, which takes axes 0, 1, and 2
+    to be axes x, y, and z.
     """
+    N1, N2, N3 = input.shape
+    box_shape = jnp.array([N3, N2, N1], dtype=float)[:, None, None, None]
+    x, y, z = jnp.transpose(coordinates, axes=[3, 1, 0, 2])
+    coordinates = jnp.stack([z, y, x])
+    # Flip negative valued frequencies to get the "array index coordinates".
+    coordinates = jnp.where(
+        coordinates < 0, box_shape + coordinates, coordinates
+    )
 
-    return _map_coordinates(input, coordinates, order, **kwargs)
+    return _map_coordinates(input, coordinates, order, mode=mode, cval=cval)

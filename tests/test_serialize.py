@@ -1,6 +1,7 @@
 from .test_pipeline import setup, scattering_model, noisy_model, optics_model
 
 import numpy as np
+from jax import config
 
 from cryojax.simulator import (
     EulerPose,
@@ -10,7 +11,9 @@ from cryojax.simulator import (
     UniformExposure,
     PipelineState,
 )
-from cryojax.utils import irfft
+from cryojax.utils import fft
+
+config.update("jax_enable_x64", True)
 
 
 def test_deserialize_state_components(noisy_model):
@@ -32,7 +35,7 @@ def test_deserialize_state_components(noisy_model):
             exposure=exposure,
         )
     )
-    np.testing.assert_allclose(noisy_model(), model())
+    np.testing.assert_allclose(fft(noisy_model()), fft(model()))
 
 
 def test_deserialize_state(scattering_model, optics_model, noisy_model):
@@ -40,6 +43,4 @@ def test_deserialize_state(scattering_model, optics_model, noisy_model):
     models = [scattering_model, optics_model, noisy_model]
     for model in models:
         state = PipelineState.from_json(model.state.to_json())
-        np.testing.assert_allclose(
-            irfft(model.replace(state=state)()), irfft(model())
-        )
+        np.testing.assert_allclose(model.replace(state=state)(), model())

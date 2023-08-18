@@ -10,6 +10,8 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional, Any, Type
 from functools import partial
 
+import jax.numpy as jnp
+
 from .pose import Pose
 from ..io import load_grid_as_cloud, load_fourier_grid
 from ..core import Array, dataclass, field, CryojaxObject

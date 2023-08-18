@@ -71,6 +71,12 @@ class EulerPose(Pose):
     fixed : `bool`
         If ``False``, axes rotation axes move with
         each rotation.
+    inverse : `bool`
+        Compute the inverse rotation of the specified
+        convention. By default, ``False``. The value
+        of this argument is with respect to real space
+        rotations, so it is automatically inverted
+        when rotating in fourier space.
     view_phi : `cryojax.core.Scalar`
         Roll angles, ranging :math:`(-\pi, \pi]`.
     view_theta : `cryojax.core.Scalar`
@@ -81,6 +87,7 @@ class EulerPose(Pose):
 
     convention: str = field(pytree_node=False, default="zyx")
     fixed: bool = field(pytree_node=False, default=False)
+    inverse: bool = field(pytree_node=False, default=False)
 
     view_phi: Scalar = 0.0
     view_theta: Scalar = jnp.pi / 2
@@ -91,23 +98,24 @@ class EulerPose(Pose):
     ) -> Array:
         """Transform coordinates from a set of Euler angles."""
         if real:
-            return density, rotate_and_translate_rpy(
+            transformed_coords, _ = rotate_and_translate_rpy(
                 coordinates,
                 *self.iter_data(),
                 convention=self.convention,
                 fixed=self.fixed,
+                inverse=self.inverse,
             )
+            return density, transformed_coords
         else:
-            rotated_coordinates = rotate_rpy(
+            rotated_coordinates, rotation = rotate_rpy(
                 coordinates,
                 *self.iter_data()[2:],
                 convention=self.convention,
                 fixed=self.fixed,
+                inverse=not self.inverse,
             )
             shifted_density = shift_phase(
-                density,
-                coordinates,
-                *self.iter_data()[:2],
+                density, rotated_coordinates, *self.iter_data()[:2], rotation
             )
             return shifted_density, rotated_coordinates
 
@@ -135,20 +143,21 @@ class QuaternionPose(Pose):
     ) -> Array:
         """Transform coordinates from an offset and unit quaternion."""
         if real:
-            return density, rotate_and_translate_wxyz(
+            transformed_coords, _ = rotate_and_translate_wxyz(
                 coordinates, *self.iter_data()
             )
+            return density, transformed_coords
         else:
-            rotated_coordinates = rotate_wxyz(
+            rotated_coordinates, rotation = rotate_wxyz(
                 coordinates, *self.iter_data()[2:]
             )
             shifted_density = shift_phase(
-                density, coordinates, *self.iter_data()[:2]
+                density, rotated_coordinates, *self.iter_data()[:2], rotation
             )
             return shifted_density, rotated_coordinates
 
 
-@partial(jax.jit, static_argnames=["convention", "fixed"])
+@partial(jax.jit, static_argnames=["convention", "fixed", "inverse"])
 def rotate_and_translate_rpy(
     coords: Array,
     tx: float,
@@ -156,8 +165,7 @@ def rotate_and_translate_rpy(
     phi: float,
     theta: float,
     psi: float,
-    convention: str = "zyx",
-    fixed: bool = False,
+    **kwargs: Any,
 ) -> Array:
     r"""
     Compute a coordinate rotation and translation from
@@ -184,15 +192,15 @@ def rotate_and_translate_rpy(
     -------
     transformed : `Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
+    transformation : `jaxlie.SE3`
+        The rotation and translation.
     """
-    rotation = make_rpy_rotation(
-        phi, theta, psi, convention=convention, fixed=fixed
-    )
+    rotation = make_rpy_rotation(phi, theta, psi, **kwargs)
     translation = jnp.array([tx, ty, 0.0])
     transformation = SE3.from_rotation_and_translation(rotation, translation)
     transformed = jax.vmap(transformation.apply)(coords)
 
-    return transformed
+    return transformed, transformation
 
 
 @jax.jit
@@ -226,22 +234,23 @@ def rotate_and_translate_wxyz(
     -------
     transformed : `Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
+    transformation : `jaxlie.SE3`
+        The rotation and translation.
     """
     wxyz_xyz = jnp.array([qw, qx, qy, qz, tx, ty, 0.0])
     transformation = SE3(wxyz_xyz=wxyz_xyz)
     transformed = jax.vmap(transformation.apply)(coords)
 
-    return transformed
+    return transformed, transformation
 
 
-@partial(jax.jit, static_argnames=["convention", "fixed"])
+@partial(jax.jit, static_argnames=["convention", "fixed", "inverse"])
 def rotate_rpy(
     coords: Array,
     phi: float,
     theta: float,
     psi: float,
-    convention: str = "zyx",
-    fixed: bool = False,
+    **kwargs: Any,
 ) -> Array:
     r"""
     Compute a coordinate rotation from
@@ -264,13 +273,13 @@ def rotate_rpy(
     -------
     transformed : `Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
+    rotation : `jaxlie.SO3`
+        The rotation.
     """
-    rotation = make_rpy_rotation(
-        phi, theta, psi, convention=convention, fixed=fixed
-    )
+    rotation = make_rpy_rotation(phi, theta, psi, **kwargs)
     transformed = jax.vmap(rotation.apply)(coords)
 
-    return transformed
+    return transformed, rotation
 
 
 @jax.jit
@@ -297,13 +306,15 @@ def rotate_wxyz(
     -------
     transformed : `Array`, shape `(N, 3)`
         Rotated and translated coordinate system.
+    rotation : `jaxlie.SO3`
+        The rotation.
     """
 
     wxyz = jnp.array([qw, qx, qy, qz])
     rotation = SO3.from_quaternion_xyzw(wxyz)
     transformed = jax.vmap(rotation.apply)(coords)
 
-    return transformed
+    return transformed, rotation
 
 
 @jax.jit
@@ -312,6 +323,7 @@ def shift_phase(
     coords: Array,
     tx: float,
     ty: float,
+    rotation: SO3,
 ) -> Array:
     r"""
     Compute the phase shifted density field from
@@ -327,6 +339,9 @@ def shift_phase(
         In-plane translation in x direction.
     ty : `float`
         In-plane translation in y direction.
+    rotation : `jaxlie.SO3`
+        The rotation. In particular, this rotates
+        the translation vector.
 
     Returns
     -------
@@ -334,6 +349,7 @@ def shift_phase(
         Rotated and translated coordinate system.
     """
     xyz = jnp.array([tx, ty, 0.0])
+    # xyz = rotation.apply(xyz)
     shift = jnp.exp(1.0j * 2 * jnp.pi * jnp.matmul(coords, xyz))
     transformed = density * shift
 
@@ -346,21 +362,22 @@ def make_rpy_rotation(
     psi: float,
     convention: str = "zyx",
     fixed: bool = False,
+    inverse: bool = False,
 ) -> SO3:
     """
     Helper routine to generate a rotation in a particular
     convention.
     """
-    # Convert theta from [-pi/2, pi/2] to [0, pi]
-    theta += jnp.pi / 2
     # Generate sequence of rotations
     rotations = [getattr(SO3, f"from_{axis}_radians") for axis in convention]
-    # Gather set of angles (flip psi to match cisTEM)
-    angles = [phi, theta, -psi] if fixed else [-psi, theta, phi]
+    # Gather set of angles (flip psi and translate theta to match cisTEM)
+    theta += jnp.pi / 2
+    psi *= -1
+    angles = [phi, theta, psi] if fixed else [psi, theta, phi]
     rotation = (
         rotations[0](angles[0])
         @ rotations[1](angles[1])
         @ rotations[2](angles[2])
     )
 
-    return rotation
+    return rotation.inverse() if inverse else rotation

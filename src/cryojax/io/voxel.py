@@ -80,7 +80,10 @@ def load_fourier_grid(filename: str, **kwargs: Any) -> dict:
     template, voxel_size = load_mrc(filename)
     # Load density and coordinates
     density = fft(template)
-    coordinates = jnp.array(fftfreqs(template.shape, voxel_size, real=False))
+    coordinates = fftfreqs(template.shape, voxel_size, real=False)
+    # Only store central slice coordinates
+    # coordinates = jnp.expand_dims(coordinates[:, :, 0, :], axis=2)
+    coordinates = jnp.asarray(coordinates)
     # Gather fields to instantiate an ElectronGrid
     voxels = dict(
         density=density,

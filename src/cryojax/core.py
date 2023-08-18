@@ -268,7 +268,12 @@ def field(
         objects, the decoder will try to find
         the correct one to instantiate.
     """
-    metadata = dict(pytree_node=pytree_node)
+    if "metadata" in kwargs.keys():
+        metadata = kwargs["metadata"]
+        del kwargs["metadata"]
+    else:
+        metadata = {}
+    metadata.update(dict(pytree_node=pytree_node))
     if encode is False:
         serializer = config(decoder=dummy_decoder, encoder=dummy_encoder)
     elif get_origin(encode) is Union:

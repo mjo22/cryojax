@@ -8,7 +8,9 @@ from __future__ import annotations
 __all__ = ["Exposure", "NullExposure", "UniformExposure", "rescale_image"]
 
 from abc import ABCMeta, abstractmethod
+from functools import partial
 
+import jax
 import jax.numpy as jnp
 
 from ..core import dataclass, Array, Scalar, CryojaxObject
@@ -66,8 +68,9 @@ class UniformExposure(Exposure):
         return rescale_image(image, self.N, self.mu, real=real)
 
 
+@partial(jax.jit, static_argnames=["real"])
 def rescale_image(
-    image: Array, N: float, mu: float, real: bool = True
+    image: Array, N: float, mu: float, *, real: bool = True
 ) -> Array:
     """
     Normalize so that the image is mean mu
