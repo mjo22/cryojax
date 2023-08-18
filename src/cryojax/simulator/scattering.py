@@ -212,7 +212,7 @@ def project_with_slice(
     density : `Array`, shape `(N1, N2, N3)`
         Density grid in fourier space.
     coordinates : `Array`, shape `(N1, N2, N3, 3)`
-        Coordinate system of point cloud.
+        Frequency coordinate system.
     voxel_size : `Array`, shape `(3,)`
         Voxel size in each dimension.
     shape : `tuple[int, int]`
@@ -228,29 +228,37 @@ def project_with_slice(
         The output image in fourier space.
     """
     N1, N2, N3 = density.shape
+    if not all([Ni == N1 for Ni in [N1, N2, N3]]):
+        raise ValueError("Only cubic boxes are supported for fourier slice.")
     dx, dy, dz = voxel_size
     box_size = jnp.array([N1 * dx, N2 * dy, N3 * dz])
-    coordinates = jnp.fft.ifftshift(coordinates * box_size)
+    # Shift zero frequency component to beginning. Need to
+    # start converting to "array index coordinates".
     density = jnp.fft.ifftshift(density)
-    coordinates = jnp.transpose(
-        jnp.expand_dims(coordinates[:, :, 0, :], axis=2),
-        axes=[3, 0, 1, 2],
-    )
+    coordinates = jnp.fft.ifftshift(coordinates)
+    # Get central z slice
+    coordinates = box_size * jnp.expand_dims(coordinates[:, :, 0, :], axis=2)
+    # Interpolate and shift back to zero frequency in the center
     projection = jnp.fft.fftshift(
         map_coordinates(density, coordinates, **kwargs)[..., 0]
     )
-    projection = irfft(projection)
-    M1, M2 = shape
-    if N1 >= M1 and N2 >= M2:
-        projection = crop(projection, shape)
-    elif N1 <= M1 and N2 <= M2:
-        projection = pad(projection, shape, mode="edge")
-    else:
-        raise NotImplementedError(
-            "density.shape must be larger or smaller than shape in all dimensions"
-        )
+    # Upsample or downsample projection to desired size
+    projection = resize(projection, shape, antialias=False)
 
-    return fft(projection)
+    return projection
+    # Crop or pad to desired image size
+    # projection = irfft(projection)
+    # M1, M2 = shape
+    # if N1 >= M1 and N2 >= M2:
+    #    projection = crop(projection, shape)
+    # elif N1 <= M1 and N2 <= M2:
+    #    projection = pad(projection, shape, mode="edge")
+    # else:
+    #    raise NotImplementedError(
+    #        "density.shape must be larger or smaller than shape in all dimensions"
+    #    )
+
+    # return fft(projection)
 
 
 def project_with_nufft(

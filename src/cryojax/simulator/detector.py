@@ -9,6 +9,7 @@ __all__ = [
     "WhiteNoiseDetector",
 ]
 
+import jax
 import jax.numpy as jnp
 
 from abc import ABCMeta, abstractmethod
@@ -16,7 +17,7 @@ from typing import Optional, Any
 from functools import partial
 
 from .noise import GaussianNoise, Noise
-from ..utils import scale, ifft, fft
+from ..utils import scale
 from ..core import dataclass, field, Array, Scalar, CryojaxObject
 
 
@@ -71,15 +72,19 @@ class CountingDetector(Detector):
     method: str = field(pytree_node=False, default="lanczos5")
 
     def measure(self, image: Array, resolution: float) -> Array:
-        """Measure an image at the detector pixel size using interpolation."""
+        """
+        Measure an image at the detector pixel size using interpolation.
+
+        The image must be given in real space.
+        """
         measured = measure_image(
-            ifft(image),
+            image,
             resolution,
             self.pixel_size,
             method=self.method,
             antialias=False,
         )
-        return fft(measured)
+        return measured
 
     def sample(self, freqs: Array) -> Array:
         shape = freqs.shape[0:-1]
@@ -104,6 +109,7 @@ class WhiteNoiseDetector(GaussianNoise, CountingDetector):
         return self.alpha
 
 
+@partial(jax.jit, static_argnames=["method", "antialias"])
 def measure_image(
     image: Array, resolution: float, pixel_size: float, **kwargs
 ):

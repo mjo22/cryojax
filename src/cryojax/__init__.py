@@ -3,12 +3,9 @@ __all__ = ["core", "io", "simulator", "utils"]
 import importlib
 from cryojax.cryojax_version import __version__
 
-
 def __getattr__(name):
     return importlib.import_module("." + name, __name__)
 
-
-del importlib
 
 __author__ = "Michael O'Brien"
 __email__ = "michaelobrien@g.harvard.edu"

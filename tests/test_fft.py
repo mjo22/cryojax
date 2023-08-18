@@ -6,7 +6,7 @@ from cryojax.utils import fft, irfft
 
 
 def test_fft(scattering_model):
-    image = scattering_model()
+    image = fft(scattering_model())
     random = jnp.asarray(np.random.randn(*image.shape))
     # Set tolerance based on tests with jnp.fft + random data
     rkwargs = dict(zip(["atol", "rtol"], [1e-6, 5e-4]))

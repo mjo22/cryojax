@@ -4,6 +4,8 @@ Integration routines.
 
 __all__ = ["nufft", "integrate_gaussians"]
 
+from typing import Any
+
 import jax
 import jax.numpy as jnp
 import tensorflow_nufft as tfft
@@ -22,6 +24,7 @@ def nufft(
     box_size: Array,
     shape: tuple[int, int],
     eps: float = 1e-6,
+    **kwargs: Any
 ) -> Array:
     r"""
     Helper routine to compute a non-uniform FFT on the
@@ -57,12 +60,23 @@ def nufft(
     """
     complex_density = density.astype(complex)
     periodic_coords = 2 * jnp.pi * coords / box_size
+
+    def tf_nufft1(shape, density, coords, **kwargs):
+        return tfft.nufft(
+            density,
+            coords,
+            grid_shape=shape,
+            transform_type="type_1",
+            tol=eps,
+            **kwargs
+        )
+
     nufft1 = jax2tf.call_tf(
-        _tf_nufft1,
+        tf_nufft1,
         output_shape_dtype=jax.ShapeDtypeStruct(shape, complex_density.dtype),
     )
     ft = nufft1(
-        complex_density, jnp.flip(periodic_coords, axis=-1), shape, eps
+        shape, complex_density, jnp.flip(periodic_coords, axis=-1), **kwargs
     )
     # x, y = periodic_coords.T
     # ft = nufft1(shape, complex_density, -y, -x, eps=eps)
@@ -107,20 +121,6 @@ def integrate_gaussians(
     image = _integrate_gaussians(x, y, weights, centers, scales)
 
     return image
-
-
-def _tf_nufft1(source, points, shape, tol):
-    """
-    Wrapper for type-1 non-uniform FFT
-    from tensorflow-nufft.
-    """
-    return tfft.nufft(
-        source,
-        points,
-        grid_shape=shape,
-        transform_type="type_1",
-        tol=tol.numpy(),
-    )
 
 
 @jax.jit

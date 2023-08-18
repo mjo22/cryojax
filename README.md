@@ -45,6 +45,9 @@ Please note that this library is currently experimental and the API is subject t
 
 The following is a basic workflow to generate an image with a gaussian white noise model.
 
+First, instantiate the image formation method ("scattering") and its respective representation
+of an electron density ("specimen").
+
 ```python
 import jax.numpy as jnp
 from cryojax.utils import irfft
@@ -53,15 +56,26 @@ import cryojax.simulator as cs
 template = "example.mrc"
 key = jax.random.PRNGKey(seed=0)
 scattering = cs.NufftScattering(shape=(320, 320), resolution=1.32)
-cloud = cs.ElectronCloud.from_file(template)
-pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteNoiseDetector(key=key, pixel_size=1.1)
-state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
-model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state)
-params = dict(view_phi=np.pi, defocus_u=8000., alpha=1.4, pixel_size=1.09)
-image = irfft(model(params))  # The image is returned in Fourier space.
+specimen = cs.ElectronCloud.from_file(template)
 ```
 
-Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a rasterzied grid is converted to a density point cloud with the `ElectronCloud` autoloader. Alternatively, a user could call the `ElectronCloud` constructor.
+Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a rasterzied grid is converted to a density point cloud with the `ElectronCloud` autoloader. Alternatively, a user could call the `ElectronCloud` constructor. This is loaded in real-space and pairs with ``NufftScattering``, which rasterizes images using [non-uniform FFTs](https://github.com/mrphys/tensorflow-nufft). Alternatively, one could load the volume in fourier space and use the fourier-slice projection theorem.
+
+```python
+scattering = cs.FourierSliceScattering(shape=(320, 320), resolution=1.32)
+specimen = cs.ElectronGrid.from_file(template)
+```
+
+Next, the model is configured at initial pose, contrast transfer function, and detector parameters
+and an image model is chosen.
+
+```python
+pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteNoiseDetector(key=key, pixel_size=1.1)
+state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
+model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state)
+params = dict(view_phi=np.pi, defocus_u=8000., alpha=1.4, pixel_size=1.09)
+image = model(params)
+```
 
 This workflow configures an initial model state at the library's default parameters, then evaulates it at a state with an updated viewing angle `view_phi`, major axis defocus `defocus_u`, detector noise variance `alpha`, and detector pixel size `pixel_size`. For more advanced examples, see the tutorials section of the repository.
 
@@ -70,11 +84,11 @@ If a `GaussianImage` is initialized with the field `observed`, the model will in
 ```python
 from cryojax.utils import fft
 
-model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state, observed=fft(observed))
+model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=fft(observed))
 log_likelihood = model(params)
 ```
 
-Imaging models also accept a series of `Filter`s and `Mask`s. By default, this is a `LowpassFilter` used for anti-aliasing. Alternatively, one could add a `WhiteningFilter` and a `CircularMask`.
+Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
 from cryojax.utils import fftfreqs
@@ -82,15 +96,15 @@ from cryojax.utils import fftfreqs
 filters = [cs.LowpassFilter(scattering.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
            cs.WhiteningFilter(scattering.freqs, fftfreqs(micrograph.shape), micrograph)]
 masks = [cs.CircularMask(scattering.coords, radius=1.0)]      # Cutoff pixels above radius equal to (half) image size
-model = cs.GaussianImage(scattering=scattering, specimen=cloud, state=state, filters=filters, masks=masks)
-image = irfft(model(params))
+model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, filters=filters, masks=masks)
+image = model(params)
 ```
 
 Ice models are also supported. For example, `EmpiricalIce` stores an empirical measure of the ice power spectrum. `ExponentialNoiseIce` generates ice as noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
 
 ## Features
 
-Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad` and paralellization with `vmap` and `pmap`. Models also support GPU/TPU acceleration. Until GPU support for `jax-finufft` is added, `jit` compilation will not be supported because `tensorflow-nufft` does not compile.
+Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration. Until GPU support for `jax-finufft` is added, models using the `NufftScattering` method will not support `jit`, `vmap`, and `pmap`. This is because `tensorflow-nufft` does not compile.
 
 ## Similar libraries
 

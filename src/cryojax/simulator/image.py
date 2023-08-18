@@ -13,17 +13,16 @@ __all__ = [
 ]
 
 from abc import ABCMeta, abstractmethod
-from typing import Union, Optional, Any
+from typing import Union, Optional
 from dataclasses import InitVar
 
 import jax.numpy as jnp
 
-from .filters import LowpassFilter
 from .noise import GaussianNoise
 from .state import PipelineState
 from .ice import NullIce
 from .exposure import rescale_image
-from ..utils import fft, ifft, irfft
+from ..utils import fft, irfft
 from ..core import dataclass, field, Array, Scalar
 from . import Filter, Mask, Specimen, ScatteringConfig
 
@@ -54,7 +53,7 @@ class Image(metaclass=ABCMeta):
         A list of masks to apply to the image. By default, there are no
         masks.
     observed : `jax.Array`, optional
-        The observed data in Fourier space. This must be the same
+        The observed data in real space. This must be the same
         shape as ``scattering.shape``. ``ImageModel.observed`` will return
         the data with the filters applied.
     """
@@ -63,37 +62,25 @@ class Image(metaclass=ABCMeta):
     specimen: Specimen
     scattering: ScatteringConfig = field(pytree_node=False)
 
-    filters: list[Filter] = field(pytree_node=False, init=False)
-    masks: list[Mask] = field(pytree_node=False, init=False)
+    filters: list[Filter] = field(pytree_node=False, default_factory=list)
+    masks: list[Mask] = field(pytree_node=False, default_factory=list)
     observed: Optional[Array] = field(pytree_node=False, init=False)
 
-    filters: InitVar[list[Filter] | None] = None
-    masks: InitVar[list[Mask] | None] = None
     observed: InitVar[Array | None] = None
     set_observed: bool = field(pytree_node=False, default=True)
 
-    def __post_init__(self, filters, masks, observed):
-        scattering = self.scattering
-        # Set filters
-        if filters is None:
-            antialias = LowpassFilter(scattering.padded_freqs, cutoff=0.667)
-            filters = [antialias]
-        object.__setattr__(self, "filters", filters)
-        # Set masks
-        if masks is None:
-            masks = []
-        object.__setattr__(self, "masks", masks)
+    def __post_init__(self, observed):
         # Set observed data
+        scattering = self.scattering
         if observed is not None and self.set_observed:
             assert scattering.shape == observed.shape
-            observed = irfft(observed)
             mean, std = observed.mean(), observed.std()
-            observed = fft(scattering.pad(observed, constant_values=mean))
+            observed = scattering.pad(observed, constant_values=mean)
             assert scattering.padded_shape == observed.shape
-            observed = scattering.crop(irfft(self.filter(observed)))
+            observed = scattering.crop(irfft(self.filter(fft(observed))))
             assert scattering.shape == observed.shape
             observed = rescale_image(observed, std, mean)
-            observed = fft(self.mask(observed))
+            observed = self.mask(observed)
         object.__setattr__(self, "observed", observed)
 
     @abstractmethod
@@ -111,7 +98,9 @@ class Image(metaclass=ABCMeta):
         ----------
         view : `bool`
             If ``True``, view the cropped,
-            masked, and rescaled image.
+            masked, and rescaled image in real
+            space. If ``False``, return the image
+            at this place in the pipeline.
         _pixel_size : `float`, optional
             The pixel size at which to sample from the noise.
             This is an internal convenience parameter to avoid
@@ -135,7 +124,8 @@ class Image(metaclass=ABCMeta):
         ----------
         signal : `bool`, optional
             If ``True``, view the protein signal overlayed
-            onto the noise.
+            onto the noise. If ``False``, just return
+            the noise given at this place in the pipeline.
         _pixel_size : `float`, optional
             The pixel size at which to sample from the noise.
             This is an internal convenience parameter to avoid
@@ -228,11 +218,9 @@ class ScatteringImage(Image):
         scattering_image = self.filter(scattering_image)
         # Optionally crop and mask image
         if view:
-            scattering_image = fft(
-                self.mask(
-                    state.exposure.rescale(
-                        scattering.crop(ifft(scattering_image))
-                    )
+            scattering_image = self.mask(
+                state.exposure.rescale(
+                    scattering.crop(irfft(scattering_image))
                 )
             )
 
@@ -261,7 +249,7 @@ class ScatteringImage(Image):
             # Render an image with no ice
             scattering_image = self.render(state=state, specimen=specimen)
             # View ice
-            icy_image = fft(self.mask(scattering.crop(ifft(icy_image))))
+            icy_image = self.mask(scattering.crop(irfft(icy_image)))
             # Create an icy image in the exit plane
             icy_image += scattering_image
 
@@ -306,10 +294,8 @@ class OpticsImage(ScatteringImage):
         optics_image = state.optics.apply(ctf, scattering_image)
         # Optionally crop, rescale, and mask image
         if view:
-            optics_image = fft(
-                self.mask(
-                    state.exposure.rescale(scattering.crop(ifft(optics_image)))
-                )
+            optics_image = self.mask(
+                state.exposure.rescale(scattering.crop(irfft(optics_image)))
             )
 
         return optics_image
@@ -341,7 +327,7 @@ class OpticsImage(ScatteringImage):
             # Render an image with no ice
             optics_image = self.render(state=state, specimen=specimen)
             # View ice
-            icy_image = fft(self.mask(scattering.crop(ifft(icy_image))))
+            icy_image = self.mask(scattering.crop(irfft(icy_image)))
             # Create icy image in the detector plane
             icy_image += optics_image
 
@@ -374,16 +360,12 @@ class DetectorImage(OpticsImage):
         )
         # Measure image at detector pixel size
         detector_image = state.detector.measure(
-            optics_image, resolution=resolution
+            irfft(optics_image), resolution=resolution
         )
         # Optionally crop, rescale, and mask image
         if view:
-            detector_image = fft(
-                self.mask(
-                    state.exposure.rescale(
-                        scattering.crop(ifft(detector_image))
-                    )
-                )
+            detector_image = self.mask(
+                state.exposure.rescale(scattering.crop(detector_image))
             )
 
         return detector_image
@@ -421,7 +403,7 @@ class DetectorImage(OpticsImage):
             # Render an image from noiseless detector readout
             detector_image = self.render(state=state, specimen=specimen)
             # View noise
-            noisy_image = fft(self.mask(scattering.crop(ifft(noisy_image))))
+            noisy_image = self.mask(scattering.crop(irfft(noisy_image)))
             # Detector readout
             noisy_image += detector_image
 
@@ -459,7 +441,7 @@ class GaussianImage(DetectorImage):
         else:
             pixel_size = resolution
         # Get residuals
-        residuals = self.residuals(state=state, specimen=specimen)
+        residuals = fft(self.residuals(state=state, specimen=specimen))
         # Variance from detector
         variance = state.detector.variance(freqs / pixel_size)
         # Variance from ice
@@ -467,4 +449,6 @@ class GaussianImage(DetectorImage):
             ctf = state.optics(freqs / pixel_size)
             variance += ctf**2 * state.ice.variance(freqs / pixel_size)
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
-        return loss.real / residuals.size
+        loss = (loss.real / residuals.size) / residuals.size
+
+        return loss

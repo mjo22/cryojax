@@ -13,7 +13,9 @@ __all__ = [
 
 from abc import ABCMeta, abstractmethod
 from typing import Any, Optional
+from functools import partial
 
+import jax
 import jax.numpy as jnp
 
 from ..utils import cartesian_to_polar
@@ -99,6 +101,7 @@ class CTFOptics(Optics):
         return compute_ctf(freqs, *self.iter_data(), **kwargs)
 
 
+@partial(jax.jit, static_argnames=["normalize"])
 def compute_ctf(
     freqs: Array,
     defocus_u: float,
