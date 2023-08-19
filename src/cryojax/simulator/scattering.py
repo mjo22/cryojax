@@ -242,23 +242,18 @@ def extract_slice(
     projection = jnp.fft.fftshift(
         map_coordinates(density, coordinates, **kwargs)[..., 0]
     )
-    # Upsample or downsample projection to desired size
-    projection = resize(projection, shape, antialias=False)
-
-    return projection
     # Crop or pad to desired image size
-    # projection = irfft(projection)
-    # M1, M2 = shape
-    # if N1 >= M1 and N2 >= M2:
-    #    projection = crop(projection, shape)
-    # elif N1 <= M1 and N2 <= M2:
-    #    projection = pad(projection, shape, mode="edge")
-    # else:
-    #    raise NotImplementedError(
-    #        "density.shape must be larger or smaller than shape in all dimensions"
-    #    )
-
-    # return fft(projection)
+    projection = irfft(projection)
+    M1, M2 = shape
+    if N1 >= M1 and N2 >= M2:
+        projection = crop(projection, shape)
+    elif N1 <= M1 and N2 <= M2:
+        projection = pad(projection, shape, mode="edge")
+    else:
+        raise NotImplementedError(
+            "density.shape must be larger or smaller than shape in all dimensions"
+        )
+    return fft(projection)
 
 
 def project_with_nufft(

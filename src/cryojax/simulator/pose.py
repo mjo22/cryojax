@@ -115,7 +115,10 @@ class EulerPose(Pose):
                 inverse=not self.inverse,
             )
             shifted_density = shift_phase(
-                density, coordinates, *self.iter_data()[:2], rotation.inverse()
+                density,
+                coordinates,
+                *self.iter_data()[:2],
+                rotation.inverse(),
             )
             return shifted_density, rotated_coordinates
 
@@ -196,7 +199,7 @@ def rotate_and_translate_rpy(
         The rotation and translation.
     """
     rotation = make_rpy_rotation(phi, theta, psi, **kwargs)
-    translation = jnp.array([tx, ty, 0.0])
+    translation = jnp.array([ty, tx, 0.0])
     transformation = SE3.from_rotation_and_translation(rotation, translation)
     transformed = jax.vmap(transformation.apply)(coords)
 
@@ -237,7 +240,7 @@ def rotate_and_translate_wxyz(
     transformation : `jaxlie.SE3`
         The rotation and translation.
     """
-    wxyz_xyz = jnp.array([qw, qx, qy, qz, tx, ty, 0.0])
+    wxyz_xyz = jnp.array([qw, qx, qy, qz, ty, tx, 0.0])
     transformation = SE3(wxyz_xyz=wxyz_xyz)
     transformed = jax.vmap(transformation.apply)(coords)
 
@@ -348,9 +351,9 @@ def shift_phase(
     transformed : `Array`, shape `(N,)`
         Rotated and translated coordinate system.
     """
-    xyz = jnp.array([-tx, 0.0, ty])
+    xyz = jnp.array([ty, tx, 0.0])
     xyz = rotation.apply(xyz)
-    shift = jnp.exp(1.0j * 2 * jnp.pi * jnp.matmul(coords, xyz))
+    shift = jnp.exp(-1.0j * 2 * jnp.pi * jnp.matmul(coords, xyz))
     transformed = density * shift
 
     return transformed
@@ -370,9 +373,10 @@ def make_rpy_rotation(
     """
     # Generate sequence of rotations
     rotations = [getattr(SO3, f"from_{axis}_radians") for axis in convention]
-    # Gather set of angles (flip psi and translate theta to match cisTEM)
+    # Gather set of angles (match conventions with cisTEM)
     theta += jnp.pi / 2
-    psi *= -1
+    psi += jnp.pi / 2
+    phi += jnp.pi
     angles = [phi, theta, psi] if fixed else [psi, theta, phi]
     rotation = (
         rotations[0](angles[0])

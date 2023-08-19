@@ -75,9 +75,10 @@ def nufft(
         tf_nufft1,
         output_shape_dtype=jax.ShapeDtypeStruct(shape, complex_density.dtype),
     )
-    ft = nufft1(
-        shape, complex_density, jnp.flip(periodic_coords, axis=-1), **kwargs
-    )
+    # ft = nufft1(
+    #    shape, complex_density, jnp.flip(periodic_coords, axis=-1), **kwargs
+    # )
+    ft = nufft1(shape, complex_density, periodic_coords, **kwargs)
     # x, y = periodic_coords.T
     # ft = nufft1(shape, complex_density, -y, -x, eps=eps)
 

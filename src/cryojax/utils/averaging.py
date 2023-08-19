@@ -12,6 +12,7 @@ import jax.numpy as jnp
 from ..core import Array
 
 
+@jax.jit
 def radial_average(
     image: Array,
     norm: Array,
@@ -43,11 +44,12 @@ def radial_average(
     """
     dr = bins[1] - bins[0]
 
-    def average(r_i):
+    def average(carry, r_i):
         mask = jnp.logical_and(norm >= r_i, norm < r_i + dr)
-        return jnp.sum(jnp.where(mask, image, 0.0)) / jnp.sum(mask)
+        return carry, jnp.sum(jnp.where(mask, image, 0.0)) / jnp.sum(mask)
 
-    profile = jax.vmap(average)(bins)
+    _, profile = jax.lax.scan(average, None, bins)
+    # profile = jax.vmap(average)(bins)
 
     if grid is not None:
         idxs = jnp.digitize(grid, bins).ravel()

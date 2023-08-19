@@ -15,7 +15,7 @@ import mrcfile, os
 import numpy as np
 import jax.numpy as jnp
 from typing import Any
-from ..utils import fftfreqs, fft
+from ..utils import fftfreqs, fft, pad
 from ..core import Array, ArrayLike
 
 
@@ -58,7 +58,7 @@ def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict:
     return cloud
 
 
-def load_fourier_grid(filename: str, **kwargs: Any) -> dict:
+def load_fourier_grid(filename: str, pad_scale=1.0) -> dict:
     """
     Read a 3D template in Fourier space on a cartesian grid.
 
@@ -78,19 +78,19 @@ def load_fourier_grid(filename: str, **kwargs: Any) -> dict:
     # Load template
     filename = os.path.abspath(filename)
     template, voxel_size = load_mrc(filename)
+    # Pad template
+    padded_shape = tuple([int(s * pad_scale) for s in template.shape])
+    template = pad(template, padded_shape)
     # Load density and coordinates
     density = fft(template)
-    coordinates = fftfreqs(template.shape, voxel_size, real=False)
-    # Only store central slice coordinates
-    # coordinates = jnp.expand_dims(coordinates[:, :, 0, :], axis=2)
-    coordinates = jnp.asarray(coordinates)
+    coordinates = jnp.asarray(fftfreqs(template.shape, voxel_size, real=False))
     # Gather fields to instantiate an ElectronGrid
     voxels = dict(
         density=density,
         coordinates=coordinates,
         voxel_size=voxel_size,
         filename=filename,
-        config=kwargs,
+        config=dict(pad_scale=pad_scale),
     )
 
     return voxels
