@@ -37,7 +37,6 @@ class Pose(CryojaxObject, metaclass=ABCMeta):
         1) Define angular coordinates
         2) Overwrite the ``Pose.transform`` method.
         3) Use the ``cryojax.core.dataclass`` decorator.
-
     Attributes
     ----------`
     offset_x : `cryojax.core.Scalar`
@@ -51,7 +50,7 @@ class Pose(CryojaxObject, metaclass=ABCMeta):
 
     @abstractmethod
     def transform(
-        density: Array, coordinates: Array, real: bool = True
+        self, density: Array, coordinates: Array, real: bool = True
     ) -> Array:
         """Transformation method for a particular pose convention."""
         raise NotImplementedError
@@ -95,7 +94,7 @@ class EulerPose(Pose):
 
     def transform(
         self, density: Array, coordinates: Array, real: bool = True
-    ) -> Array:
+    ) -> tuple[Array, Array]:
         """Transform coordinates from a set of Euler angles."""
         if real:
             transformed_coords, _ = rotate_and_translate_rpy(
@@ -143,7 +142,7 @@ class QuaternionPose(Pose):
 
     def transform(
         self, density: Array, coordinates: Array, real: bool = True
-    ) -> Array:
+    ) -> tuple[Array, Array]:
         """Transform coordinates from an offset and unit quaternion."""
         if real:
             transformed_coords, _ = rotate_and_translate_wxyz(
@@ -169,7 +168,7 @@ def rotate_and_translate_rpy(
     theta: float,
     psi: float,
     **kwargs: Any,
-) -> Array:
+) -> tuple[Array, SE3]:
     r"""
     Compute a coordinate rotation and translation from
     a set of euler angles and an in-plane translation vector.
@@ -215,7 +214,7 @@ def rotate_and_translate_wxyz(
     qx: float,
     qy: float,
     qz: float,
-) -> Array:
+) -> tuple[Array, SE3]:
     r"""
     Compute a coordinate rotation and translation from
     a quaternion and an in-plane translation vector.
@@ -247,21 +246,21 @@ def rotate_and_translate_wxyz(
     return transformed, transformation
 
 
-@partial(jax.jit, static_argnames=["convention", "fixed", "inverse"])
+# @partial(jax.jit, static_argnames=["convention", "fixed", "inverse"])
 def rotate_rpy(
     coords: Array,
     phi: float,
     theta: float,
     psi: float,
     **kwargs: Any,
-) -> Array:
+) -> tuple[Array, SO3]:
     r"""
     Compute a coordinate rotation from
     a set of euler angles.
 
     Arguments
     ---------
-    coords : `Array`, shape `(N, 3)`
+    coords : `Array`, shape `(N, 3)` or `(N1, N2, N3, 3)`
         Coordinate system.
     phi : `float`
         Roll angle, ranging :math:`(-\pi, \pi]`.
@@ -274,31 +273,41 @@ def rotate_rpy(
 
     Returns
     -------
-    transformed : `Array`, shape `(N, 3)`
+    transformed : `Array`, shape `(N, 3)` or `(N1, N2, N3, 3)`
         Rotated and translated coordinate system.
     rotation : `jaxlie.SO3`
         The rotation.
     """
+    shape = coords.shape
     rotation = make_rpy_rotation(phi, theta, psi, **kwargs)
-    transformed = jax.vmap(rotation.apply)(coords)
+    if len(shape) == 2:
+        transformed = jax.vmap(rotation.apply)(coords)
+    elif len(shape) == 4:
+        N1, N2, N3 = shape[0:-1]
+        transformed = jax.vmap(rotation.apply)(coords.reshape(N1 * N2 * N3, 3))
+        transformed = transformed.reshape((N1, N2, N3, 3))
+    else:
+        raise ValueError(
+            "coords must either be shape (N, 3) or (N1, N2, N3, 3)"
+        )
 
     return transformed, rotation
 
 
-@jax.jit
+# @jax.jit
 def rotate_wxyz(
     coords: Array,
     qw: float,
     qx: float,
     qy: float,
     qz: float,
-) -> Array:
+) -> tuple[Array, SO3]:
     r"""
     Compute a coordinate rotation from a quaternion.
 
     Arguments
     ---------
-    coords : `Array` shape `(N, 3)`
+    coords : `Array` shape `(N, 3)` or `(N1, N2, N3, 3)`
         Coordinate system.
     qw : `float`
     qx : `float`
@@ -307,20 +316,29 @@ def rotate_wxyz(
 
     Returns
     -------
-    transformed : `Array`, shape `(N, 3)`
+    transformed : `Array`, shape `(N, 3)` or `(N1, N2, N3, 3)`
         Rotated and translated coordinate system.
     rotation : `jaxlie.SO3`
         The rotation.
     """
-
+    shape = coords.shape
     wxyz = jnp.array([qw, qx, qy, qz])
     rotation = SO3.from_quaternion_xyzw(wxyz)
-    transformed = jax.vmap(rotation.apply)(coords)
+    if len(shape) == 2:
+        transformed = jax.vmap(rotation.apply)(coords)
+    elif len(shape) == 4:
+        N1, N2, N3 = shape[0:-1]
+        transformed = jax.vmap(rotation.apply)(coords.reshape(N1 * N2 * N3, 3))
+        transformed = transformed.reshape((N1, N2, N3, 3))
+    else:
+        raise ValueError(
+            "coords must either be shape (N, 3) or (N1, N2, N3, 3)"
+        )
 
     return transformed, rotation
 
 
-@jax.jit
+# @jax.jit
 def shift_phase(
     density: Array,
     coords: Array,
@@ -334,9 +352,9 @@ def shift_phase(
 
     Arguments
     ---------
-    density : `Array` shape `(N)`
+    density : `Array` shape `(N)` or `(N1, N2, N3)`
         Coordinate system.
-    coords : `Array` shape `(N, 3)`
+    coords : `Array` shape `(N, 3)` or `(N1, N2, N3, 3)`
         Coordinate system.
     tx : `float`
         In-plane translation in x direction.
@@ -348,11 +366,11 @@ def shift_phase(
 
     Returns
     -------
-    transformed : `Array`, shape `(N,)`
+    transformed : `Array`, shape `(N,)` or `(N1, N2, N3)`
         Rotated and translated coordinate system.
     """
     xyz = jnp.array([ty, tx, 0.0])
-    xyz = rotation.apply(xyz)
+    # xyz = rotation.apply(xyz)
     shift = jnp.exp(-1.0j * 2 * jnp.pi * jnp.matmul(coords, xyz))
     transformed = density * shift
 

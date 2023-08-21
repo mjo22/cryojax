@@ -235,9 +235,9 @@ def extract_slice(
     # Shift zero frequency component to beginning. Need to
     # start converting to "array index coordinates".
     density = jnp.fft.ifftshift(density)
-    coordinates = jnp.fft.ifftshift(coordinates)
-    # Get central z slice
-    coordinates = box_size * jnp.expand_dims(coordinates[:, :, 0, :], axis=2)
+    coordinates = jnp.fft.ifftshift(coordinates, axes=[0, 1, 2])
+    # Now, make coordinates dimensionless
+    coordinates *= box_size
     # Interpolate and shift back to zero frequency in the center
     projection = jnp.fft.fftshift(
         map_coordinates(density, coordinates, **kwargs)[..., 0]

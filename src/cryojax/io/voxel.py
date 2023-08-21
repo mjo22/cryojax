@@ -84,6 +84,11 @@ def load_fourier_grid(filename: str, pad_scale=1.0) -> dict:
     # Load density and coordinates
     density = fft(template)
     coordinates = jnp.asarray(fftfreqs(template.shape, voxel_size, real=False))
+    # Get central z slice
+    _, _, N3 = density.shape
+    coordinates = jnp.expand_dims(
+        coordinates[:, :, N3 // 2 + N3 % 2, :], axis=2
+    )
     # Gather fields to instantiate an ElectronGrid
     voxels = dict(
         density=density,
