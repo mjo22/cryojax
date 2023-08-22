@@ -16,7 +16,7 @@ import numpy as np
 import jax.numpy as jnp
 from typing import Any
 from ..utils import fftfreqs, fft, pad
-from ..core import Array, ArrayLike
+from ..core import Array
 
 
 def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict:
@@ -44,7 +44,14 @@ def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict:
     # Load template
     filename = os.path.abspath(filename)
     template, voxel_size = load_mrc(filename)
-    # Load density and coordinates
+    # Change how template sits in the box to match cisTEM
+    # Ideally we would have this read in from the MRC and be the
+    # same for all I/O methods. Because tensorflow-nufft has
+    # its own xyz conventions
+    vx, vy, vz = voxel_size
+    template = jnp.transpose(template, axes=[1, 2, 0])
+    voxel_size = np.asarray([vy, vz, vx])
+    # Load flattened density and coordinates
     density, coordinates = coordinatize_voxels(template, voxel_size, **kwargs)
     # Gather fields to instantiate an ElectronCloud
     cloud = dict(
@@ -78,17 +85,19 @@ def load_fourier_grid(filename: str, pad_scale=1.0) -> dict:
     # Load template
     filename = os.path.abspath(filename)
     template, voxel_size = load_mrc(filename)
+    # Change how template sits in box to match cisTEM
+    vx, vy, vz = voxel_size
+    template = jnp.transpose(template, axes=[2, 1, 0])
+    voxel_size = np.asarray([vz, vy, vx])
     # Pad template
     padded_shape = tuple([int(s * pad_scale) for s in template.shape])
     template = pad(template, padded_shape)
     # Load density and coordinates
     density = fft(template)
-    coordinates = jnp.asarray(fftfreqs(template.shape, voxel_size, real=False))
+    coordinates = fftfreqs(template.shape, voxel_size, real=False)
+    coordinates = jnp.asarray(coordinates)
     # Get central z slice
-    _, _, N3 = density.shape
-    coordinates = jnp.expand_dims(
-        coordinates[:, :, N3 // 2 + N3 % 2, :], axis=2
-    )
+    coordinates = jnp.expand_dims(coordinates[:, :, 0, :], axis=2)
     # Gather fields to instantiate an ElectronGrid
     voxels = dict(
         density=density,
@@ -101,7 +110,7 @@ def load_fourier_grid(filename: str, pad_scale=1.0) -> dict:
     return voxels
 
 
-def load_mrc(filename: str) -> ArrayLike:
+def load_mrc(filename: str) -> tuple[np.ndarray, np.ndarray]:
     """
     Read MRC data to ``numpy`` array.
 
@@ -118,6 +127,7 @@ def load_mrc(filename: str) -> ArrayLike:
         The voxel_size in each dimension, stored
         in the MRC file.
     """
+    # Read MRC
     with mrcfile.open(filename) as mrc:
         data = np.asarray(mrc.data, dtype=float)
         if data.ndim == 2:
@@ -142,9 +152,10 @@ def load_mrc(filename: str) -> ArrayLike:
 
 
 def coordinatize_voxels(
-    template: ArrayLike,
-    voxel_size: ArrayLike,
+    template: np.ndarray,
+    voxel_size: np.ndarray,
     mask: bool = True,
+    indexing="xy",
     **kwargs: Any,
 ) -> tuple[Array, ...]:
     """
@@ -176,6 +187,7 @@ def coordinatize_voxels(
         Cartesian coordinate system.
     """
     ndim, shape = template.ndim, template.shape
+    # Change how template sits in the box to match cisTEM
 
     # Mask out points where the electron density is close
     # to zero.
@@ -191,8 +203,8 @@ def coordinatize_voxels(
     N = density.size
     coords = np.zeros((N, ndim))
 
-    # Generate rectangular grid and fill coordinate array
-    R = fftfreqs(shape, voxel_size, real=True)
+    # Generate rectangular grid and fill coordinate array.
+    R = fftfreqs(shape, voxel_size, real=True, indexing=indexing)
     for i in range(ndim):
         if mask:
             coords[..., i] = R[..., i].ravel()[nonzero]

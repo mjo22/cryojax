@@ -102,9 +102,7 @@ def rescale_image(
         normalized_image = (image - image.mean()) / image.std()
         rescaled_image = N * normalized_image + mu
     else:
-        normalized_image = image.at[N1 // 2, N2 // 2].set(0.0)
+        normalized_image = image.at[0, 0].set(0.0)
         normalized_image /= jnp.linalg.norm(normalized_image) / (N1 * N2)
-        rescaled_image = (
-            (normalized_image * N).at[N1 // 2, N2 // 2].set(mu * N1 * N2)
-        )
+        rescaled_image = (normalized_image * N).at[0, 0].set(mu * N1 * N2)
     return rescaled_image

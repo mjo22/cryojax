@@ -7,7 +7,7 @@ __all__ = ["bound", "crop", "pad"]
 import jax
 import jax.numpy as jnp
 
-from ..core import Array
+from ..core import Array, ArrayLike
 
 
 @jax.jit

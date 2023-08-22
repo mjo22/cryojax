@@ -11,8 +11,7 @@ __all__ = [
     "cartesian_to_polar",
 ]
 
-from typing import Any
-from collections.abc import Sequence
+from typing import Any, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -47,7 +46,7 @@ def ifft(ft: Array, real: bool = False, **kwargs: Any) -> Array:
     ift : `Array`
         Inverse fourier transform.
     """
-    ift = jnp.fft.fftshift(jnp.fft.ifftn(jnp.fft.ifftshift(ft), **kwargs))
+    ift = jnp.fft.fftshift(jnp.fft.ifftn(ft, **kwargs))
 
     if real:
         return ift.real
@@ -70,14 +69,17 @@ def fft(ift: Array, **kwargs: Any) -> Array:
     ft : `Array`
         Fourier transform of array.
     """
-    ft = jnp.fft.fftshift(jnp.fft.fftn(jnp.fft.ifftshift(ift), **kwargs))
+    ft = jnp.fft.fftn(jnp.fft.ifftshift(ift), **kwargs)
 
     return ft
 
 
 def fftfreqs(
-    shape: tuple[int, ...], pixel_size: float = 1.0, real: bool = False
-) -> ArrayLike:
+    shape: tuple[int, ...],
+    pixel_size: Union[float, ArrayLike] = 1.0,
+    real: bool = False,
+    indexing: str = "xy",
+) -> np.ndarray:
     """
     Create a radial coordinate system on a grid.
     This can be used for real and fourier space
@@ -89,7 +91,7 @@ def fftfreqs(
     shape : `tuple[int, ...]`
         Shape of the voxel grid, with
         ``ndim = len(shape)``.
-    pixel_size : `float`
+    pixel_size : `float` or `ArrayLike`, shape `(ndim,)`
         Image pixel size.
     real : `bool`
         Choose whether to create coordinate system
@@ -108,11 +110,10 @@ def fftfreqs(
     else:
         pixel_size = list(pixel_size)
     assert len(pixel_size) == ndim
-    k_coords1D = []
-    for idx in range(ndim):
-        k_coords1D.append(fftfreqs1d(shape[idx], pixel_size[idx], real))
-
-    k_coords = np.stack(np.meshgrid(*k_coords1D, indexing="ij"), axis=-1)
+    k_coords1D = [
+        fftfreqs1d(shape[idx], pixel_size[idx], real) for idx in range(ndim)
+    ]
+    k_coords = np.stack(np.meshgrid(*k_coords1D, indexing=indexing), axis=-1)
 
     return k_coords
 
@@ -120,14 +121,16 @@ def fftfreqs(
 def fftfreqs1d(s: int, pixel_size: float, real: bool = False) -> ArrayLike:
     """One-dimensional coordinates in real or fourier space"""
     fftfreq = (
-        lambda s: np.fft.fftfreq(s, 1 / pixel_size) * s
+        lambda s: np.fft.fftshift(np.fft.fftfreq(s, 1 / pixel_size)) * s
         if real
         else np.fft.fftfreq(s, pixel_size)
     )
-    return np.fft.fftshift(fftfreq(s))
+    return fftfreq(s)
 
 
-def cartesian_to_polar(freqs: ArrayLike, square: bool = False) -> Array:
+def cartesian_to_polar(
+    freqs: ArrayLike, square: bool = False
+) -> tuple[Array, Array]:
     """
     Convert from cartesian to polar coordinates.
 

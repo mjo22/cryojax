@@ -82,7 +82,7 @@ def nufft(
     # x, y = periodic_coords.T
     # ft = nufft1(shape, complex_density, -y, -x, eps=eps)
 
-    return ft
+    return jnp.fft.ifftshift(ft)
 
 
 def integrate_gaussians(

@@ -144,15 +144,12 @@ class ElectronCloud(ElectronDensity):
 
     def view(self, pose: Pose) -> ElectronCloud:
         """
-        Compute rotations and translations of a point cloud,
-        by an imaging pose, considering only in-plane translations.
+        Compute rotations of a point cloud by an imaging pose.
 
-        This transformation will rotate and translate the density
-        cloud's coordinates.
+        This transformation will return a new density cloud
+        with rotated coordinates.
         """
-        _, coordinates = pose.transform(
-            self.density, self.coordinates, real=True
-        )
+        coordinates = pose.rotate(self.coordinates, real=True)
 
         return self.replace(coordinates=coordinates)
 
@@ -172,29 +169,26 @@ class ElectronGrid(ElectronDensity):
     """
     Abstraction of a 3D electron density voxel grid.
 
-    The voxel grid is assumed to be in Fourier space.
+    The voxel grid should be given in Fourier space.
 
     Attributes
     ----------
     density : `Array`, shape `(N1, N2, N3)`
-        3D electron density grid.
-    coordinates : `Array`, shape `(N1, N2, N3, 3)`
-        Cartesian coordinate system for density grid.
+        3D electron density grid in Fourier space.
+    coordinates : `Array`, shape `(N1, N2, 1, 3)`
+        Central slice of cartesian coordinate system.
     """
 
     def view(self, pose: Pose) -> ElectronGrid:
         """
-        Compute rotations and translations of a point cloud,
-        by an imaging pose, considering only in-plane translations.
+        Compute rotations of a point cloud by an imaging pose.
 
-        This transformation will rotate the coordinates and phase shift
-        the density.
+        This transformation will rotate the coordinates with a
+        backrotation
         """
-        density, coordinates = pose.transform(
-            self.density, self.coordinates, real=False
-        )
+        coordinates = pose.rotate(self.coordinates, real=False)
 
-        return self.replace(density=density, coordinates=coordinates)
+        return self.replace(coordinates=coordinates)
 
     @classmethod
     def from_mrc(

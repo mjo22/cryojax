@@ -5,8 +5,6 @@ Routines that compute coordinate rotations and translations.
 from __future__ import annotations
 
 __all__ = [
-    "rotate_and_translate_rpy",
-    "rotate_and_translate_wxyz",
     "rotate_rpy",
     "rotate_wxyz",
     "shift_phase",
@@ -17,7 +15,6 @@ __all__ = [
 
 from abc import ABCMeta, abstractmethod
 from typing import Any
-from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -49,11 +46,23 @@ class Pose(CryojaxObject, metaclass=ABCMeta):
     offset_y: Scalar = 0.0
 
     @abstractmethod
-    def transform(
-        self, density: Array, coordinates: Array, real: bool = True
-    ) -> Array:
-        """Transformation method for a particular pose convention."""
+    def rotate(self, coordinates: Array, real: bool = True) -> Array:
+        """Rotation method for a particular pose convention."""
         raise NotImplementedError
+
+    def translate(self, density: Array, coordinates: Array) -> Array:
+        """
+        Translate a 2D electron density in real space by
+        applying phase shifts in fourier space.
+        """
+        tx, ty = self.offset_x, self.offset_y
+        shifted_density = shift_phase(
+            density,
+            coordinates,
+            tx,
+            ty,
+        )
+        return shifted_density
 
 
 @dataclass
@@ -67,59 +76,55 @@ class EulerPose(Pose):
         The sequence of axes over which to apply
         rotation. This is a string of 3 characters
         of x, y, and z. By default, `zyx`.
-    fixed : `bool`
-        If ``False``, axes rotation axes move with
+    intrinsic : `bool`
+        If ``True``, follow the intrinsic rotation
+        convention. If ``False``, rotation axes move with
         each rotation.
     inverse : `bool`
         Compute the inverse rotation of the specified
         convention. By default, ``False``. The value
-        of this argument is with respect to real space
+        of this argument is with respect to fourier space
         rotations, so it is automatically inverted
-        when rotating in fourier space.
+        when rotating in real space.
     view_phi : `cryojax.core.Scalar`
-        Roll angles, ranging :math:`(-\pi, \pi]`.
+        Roll angle, ranging :math:`(-\pi, \pi]`.
     view_theta : `cryojax.core.Scalar`
-        Pitch angles, ranging :math:`(0, \pi]`.
+        Pitch angle, ranging :math:`(-\pi, \pi]`.
     view_psi : `cryojax.core.Scalar`
-        Yaw angles, ranging :math:`(-\pi, \pi]`.
+        Yaw angle, ranging :math:`(-\pi, \pi]`.
     """
 
-    convention: str = field(pytree_node=False, default="zyx")
-    fixed: bool = field(pytree_node=False, default=False)
+    convention: str = field(pytree_node=False, default="zyz")
+    intrinsic: bool = field(pytree_node=False, default=True)
     inverse: bool = field(pytree_node=False, default=False)
+    degrees: bool = field(pytree_node=False, default=False)
 
     view_phi: Scalar = 0.0
-    view_theta: Scalar = jnp.pi / 2
+    view_theta: Scalar = 0.0
     view_psi: Scalar = 0.0
 
-    def transform(
-        self, density: Array, coordinates: Array, real: bool = True
-    ) -> tuple[Array, Array]:
-        """Transform coordinates from a set of Euler angles."""
+    def rotate(self, coordinates: Array, real: bool = True) -> Array:
+        """Rotate coordinates from a set of Euler angles."""
         if real:
-            transformed_coords, _ = rotate_and_translate_rpy(
-                coordinates,
-                *self.iter_data(),
-                convention=self.convention,
-                fixed=self.fixed,
-                inverse=self.inverse,
-            )
-            return density, transformed_coords
-        else:
-            rotated_coordinates, rotation = rotate_rpy(
+            rotated, _ = rotate_rpy(
                 coordinates,
                 *self.iter_data()[2:],
                 convention=self.convention,
-                fixed=self.fixed,
+                intrinsic=self.intrinsic,
                 inverse=not self.inverse,
+                degrees=self.degrees,
             )
-            shifted_density = shift_phase(
-                density,
+            return rotated
+        else:
+            rotated, _ = rotate_rpy(
                 coordinates,
-                *self.iter_data()[:2],
-                rotation.inverse(),
+                *self.iter_data()[2:],
+                convention=self.convention,
+                intrinsic=self.intrinsic,
+                inverse=self.inverse,
+                degrees=self.degrees,
             )
-            return shifted_density, rotated_coordinates
+            return rotated
 
 
 @dataclass
@@ -135,118 +140,31 @@ class QuaternionPose(Pose):
     view_qz : `cryojax.core.Scalar`
     """
 
+    inverse: bool = field(pytree_node=False, default=False)
+
     view_qw: Scalar = 1.0
     view_qx: Scalar = 0.0
     view_qy: Scalar = 0.0
     view_qz: Scalar = 0.0
 
-    def transform(
-        self, density: Array, coordinates: Array, real: bool = True
-    ) -> tuple[Array, Array]:
-        """Transform coordinates from an offset and unit quaternion."""
+    def rotate(self, coordinates: Array, real: bool = True) -> Array:
+        """Rotate coordinates from a unit quaternion."""
         if real:
-            transformed_coords, _ = rotate_and_translate_wxyz(
-                coordinates, *self.iter_data()
+            rotated, _ = rotate_wxyz(
+                coordinates,
+                *self.iter_data()[2:],
+                inverse=not self.inverse,
             )
-            return density, transformed_coords
+            return rotated
         else:
-            rotated_coordinates, rotation = rotate_wxyz(
-                coordinates, *self.iter_data()[2:]
+            rotated, _ = rotate_wxyz(
+                coordinates,
+                *self.iter_data()[2:],
+                inverse=self.inverse,
             )
-            shifted_density = shift_phase(
-                density, coordinates, *self.iter_data()[:2], rotation
-            )
-            return shifted_density, rotated_coordinates
+            return rotated
 
 
-@partial(jax.jit, static_argnames=["convention", "fixed", "inverse"])
-def rotate_and_translate_rpy(
-    coords: Array,
-    tx: float,
-    ty: float,
-    phi: float,
-    theta: float,
-    psi: float,
-    **kwargs: Any,
-) -> tuple[Array, SE3]:
-    r"""
-    Compute a coordinate rotation and translation from
-    a set of euler angles and an in-plane translation vector.
-
-    Arguments
-    ---------
-    coords : `Array`, shape `(N, 3)`
-        Coordinate system.
-    tx : `float`
-        In-plane translation in x direction.
-    ty : `float`
-        In-plane translation in y direction.
-    phi : `float`
-        Roll angle, ranging :math:`(-\pi, \pi]`.
-    theta : `float`
-        Pitch angle, ranging :math:`(0, \pi]`.
-    psi : `float`
-        Yaw angle, ranging :math:`(-\pi, \pi]`.
-    kwargs :
-        Keyword arguments passed to ``make_rpy_rotation``
-
-    Returns
-    -------
-    transformed : `Array`, shape `(N, 3)`
-        Rotated and translated coordinate system.
-    transformation : `jaxlie.SE3`
-        The rotation and translation.
-    """
-    rotation = make_rpy_rotation(phi, theta, psi, **kwargs)
-    translation = jnp.array([ty, tx, 0.0])
-    transformation = SE3.from_rotation_and_translation(rotation, translation)
-    transformed = jax.vmap(transformation.apply)(coords)
-
-    return transformed, transformation
-
-
-@jax.jit
-def rotate_and_translate_wxyz(
-    coords: Array,
-    tx: float,
-    ty: float,
-    qw: float,
-    qx: float,
-    qy: float,
-    qz: float,
-) -> tuple[Array, SE3]:
-    r"""
-    Compute a coordinate rotation and translation from
-    a quaternion and an in-plane translation vector.
-
-    Arguments
-    ---------
-    coords : `Array` shape `(N, 3)`
-        Coordinate system.
-    tx : `float`
-        In-plane translation in x direction.
-    ty : `float`
-        In-plane translation in y direction.
-    qw : `float`
-    qx : `float`
-    qy : `float`
-    qz : `float`
-
-    Returns
-    -------
-    transformed : `Array`, shape `(N, 3)`
-        Rotated and translated coordinate system.
-    transformation : `jaxlie.SE3`
-        The rotation and translation.
-    """
-    wxyz_xyz = jnp.array([qw, qx, qy, qz, ty, tx, 0.0])
-    transformation = SE3(wxyz_xyz=wxyz_xyz)
-    transformed = jax.vmap(transformation.apply)(coords)
-
-    return transformed, transformation
-
-
-# @partial(jax.jit, static_argnames=["convention", "fixed", "inverse"])
 def rotate_rpy(
     coords: Array,
     phi: float,
@@ -263,11 +181,11 @@ def rotate_rpy(
     coords : `Array`, shape `(N, 3)` or `(N1, N2, N3, 3)`
         Coordinate system.
     phi : `float`
-        Roll angle, ranging :math:`(-\pi, \pi]`.
+        First rotation axis, ranging :math:`(-\pi, \pi]`.
     theta : `float`
-        Pitch angle, ranging :math:`(0, \pi]`.
+        Second rotation axis, ranging :math:`(-\pi, \pi]`.
     psi : `float`
-        Yaw angle, ranging :math:`(-\pi, \pi]`.
+        Third rotation axis, ranging :math:`(-\pi, \pi]`.
     kwargs :
         Keyword arguments passed to ``make_rpy_rotation``
 
@@ -279,7 +197,7 @@ def rotate_rpy(
         The rotation.
     """
     shape = coords.shape
-    rotation = make_rpy_rotation(phi, theta, psi, **kwargs)
+    rotation = make_euler_rotation(phi, theta, psi, **kwargs)
     if len(shape) == 2:
         transformed = jax.vmap(rotation.apply)(coords)
     elif len(shape) == 4:
@@ -294,13 +212,13 @@ def rotate_rpy(
     return transformed, rotation
 
 
-# @jax.jit
 def rotate_wxyz(
     coords: Array,
     qw: float,
     qx: float,
     qy: float,
     qz: float,
+    inverse: bool = False,
 ) -> tuple[Array, SO3]:
     r"""
     Compute a coordinate rotation from a quaternion.
@@ -324,6 +242,7 @@ def rotate_wxyz(
     shape = coords.shape
     wxyz = jnp.array([qw, qx, qy, qz])
     rotation = SO3.from_quaternion_xyzw(wxyz)
+    rotation = rotation.inverse if inverse else rotation
     if len(shape) == 2:
         transformed = jax.vmap(rotation.apply)(coords)
     elif len(shape) == 4:
@@ -338,13 +257,11 @@ def rotate_wxyz(
     return transformed, rotation
 
 
-# @jax.jit
 def shift_phase(
     density: Array,
     coords: Array,
     tx: float,
     ty: float,
-    rotation: SO3,
 ) -> Array:
     r"""
     Compute the phase shifted density field from
@@ -352,38 +269,36 @@ def shift_phase(
 
     Arguments
     ---------
-    density : `Array` shape `(N)` or `(N1, N2, N3)`
-        Coordinate system.
-    coords : `Array` shape `(N, 3)` or `(N1, N2, N3, 3)`
+    density : `Array` shape `(N1, N2)`
+        In-plane electron density in fourier
+        space.
+    coords : `Array` shape `(N1, N2, 2)`
         Coordinate system.
     tx : `float`
         In-plane translation in x direction.
     ty : `float`
         In-plane translation in y direction.
-    rotation : `jaxlie.SO3`
-        The rotation. In particular, this rotates
-        the translation vector.
 
     Returns
     -------
-    transformed : `Array`, shape `(N,)` or `(N1, N2, N3)`
-        Rotated and translated coordinate system.
+    shifted : `Array`, shape `(N1, N2)`
+        Shifted electron density.
     """
-    xyz = jnp.array([ty, tx, 0.0])
-    # xyz = rotation.apply(xyz)
-    shift = jnp.exp(-1.0j * 2 * jnp.pi * jnp.matmul(coords, xyz))
-    transformed = density * shift
+    xy = jnp.array([tx, ty])
+    shift = jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(coords, xy)))
+    shifted = density * shift
 
-    return transformed
+    return shifted
 
 
-def make_rpy_rotation(
+def make_euler_rotation(
     phi: float,
     theta: float,
     psi: float,
-    convention: str = "zyx",
-    fixed: bool = False,
+    convention: str = "zyz",
+    intrinsic: bool = True,
     inverse: bool = False,
+    degrees: bool = False,
 ) -> SO3:
     """
     Helper routine to generate a rotation in a particular
@@ -391,15 +306,13 @@ def make_rpy_rotation(
     """
     # Generate sequence of rotations
     rotations = [getattr(SO3, f"from_{axis}_radians") for axis in convention]
-    # Gather set of angles (match conventions with cisTEM)
-    theta += jnp.pi / 2
-    psi += jnp.pi / 2
-    phi += jnp.pi
-    angles = [phi, theta, psi] if fixed else [psi, theta, phi]
-    rotation = (
-        rotations[0](angles[0])
-        @ rotations[1](angles[1])
-        @ rotations[2](angles[2])
-    )
+    if degrees:
+        phi = jnp.deg2rad(phi)
+        theta = jnp.deg2rad(theta)
+        psi = jnp.deg2rad(psi)
+    R1 = rotations[0](phi)
+    R2 = rotations[1](theta)
+    R3 = rotations[2](psi)
+    R = R1 @ R2 @ R3 if intrinsic else R3 @ R2 @ R1
 
-    return rotation.inverse() if inverse else rotation
+    return R.inverse() if inverse else R

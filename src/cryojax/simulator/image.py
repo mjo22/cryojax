@@ -114,7 +114,7 @@ class Image(metaclass=ABCMeta):
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
-        signal: bool = True,
+        view: bool = True,
         _pixel_size: Optional[float] = None,
     ) -> Array:
         """
@@ -122,7 +122,7 @@ class Image(metaclass=ABCMeta):
 
         Parameters
         ----------
-        signal : `bool`, optional
+        view : `bool`, optional
             If ``True``, view the protein signal overlayed
             onto the noise. If ``False``, just return
             the noise given at this place in the pipeline.
@@ -184,7 +184,12 @@ class Image(metaclass=ABCMeta):
         return residuals
 
     def update(self, **params: dict) -> Image:
-        """Return a new ImageModel based on a new PipelineState."""
+        """
+        Return a new ImageModel based on a set of new parameters
+
+        This overrwrites the ``CryojaxObject`` update to only allow
+        updates in the ``Specimen`` and ``PipelineState``.
+        ."""
         state = self.state.update(**params)
         specimen = self.specimen.update(**params)
         return self.replace(
@@ -211,9 +216,19 @@ class ScatteringImage(Image):
         state = state or self.state
         specimen = specimen or self.specimen
         scattering = self.scattering
-        # Compute scattering at image plane.
+        # Gather scattering configuration
+        padded_freqs, resolution = (
+            scattering.padded_freqs,
+            scattering.resolution,
+        )
+        # View an orientation of the specimen
         specimen = self.specimen.view(state.pose)
+        # Compute the image at the exit plane
         scattering_image = specimen.scatter(scattering)
+        # Apply translation (phase shifts) to the image
+        scattering_image = state.pose.translate(
+            scattering_image, padded_freqs / resolution
+        )
         # Apply filters
         scattering_image = self.filter(scattering_image)
         # Optionally crop and mask image
@@ -230,7 +245,7 @@ class ScatteringImage(Image):
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
-        signal: bool = True,
+        view: bool = True,
         _pixel_size: Optional[float] = None,
     ) -> Array:
         """Sample the scattered wave in the exit plane."""
@@ -245,7 +260,7 @@ class ScatteringImage(Image):
         pixel_size = _pixel_size or resolution
         # Sample from ice distribution
         icy_image = self.filter(state.ice.sample(padded_freqs / pixel_size))
-        if signal:
+        if view:
             # Render an image with no ice
             scattering_image = self.render(state=state, specimen=specimen)
             # View ice
@@ -304,7 +319,7 @@ class OpticsImage(ScatteringImage):
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
-        signal: bool = True,
+        view: bool = True,
         _pixel_size: Optional[float] = None,
     ) -> Array:
         """Sample the image in the detector plane."""
@@ -319,11 +334,9 @@ class OpticsImage(ScatteringImage):
         pixel_size = _pixel_size or resolution
         # Sample from ice distribution and apply ctf to it
         ctf = state.optics(padded_freqs / pixel_size)
-        icy_image = super().sample(
-            state=state, specimen=specimen, signal=False
-        )
+        icy_image = super().sample(state=state, specimen=specimen, view=False)
         icy_image = state.optics.apply(ctf, icy_image)
-        if signal:
+        if view:
             # Render an image with no ice
             optics_image = self.render(state=state, specimen=specimen)
             # View ice
@@ -374,7 +387,7 @@ class DetectorImage(OpticsImage):
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
-        signal: bool = True,
+        view: bool = True,
     ) -> Array:
         """Sample an image from the detector readout."""
         state = state or self.state
@@ -394,12 +407,12 @@ class DetectorImage(OpticsImage):
             state=state,
             specimen=specimen,
             _pixel_size=pixel_size,
-            signal=False,
+            view=False,
         )
         # Sample from noise distribution of detector
         noise = state.detector.sample(padded_freqs / pixel_size)
         noisy_image = ice + noise
-        if signal:
+        if view:
             # Render an image from noiseless detector readout
             detector_image = self.render(state=state, specimen=specimen)
             # View noise
@@ -440,7 +453,10 @@ class GaussianImage(DetectorImage):
             pixel_size = state.detector.pixel_size
         else:
             pixel_size = resolution
-        # Get residuals
+        # Zero mode coordinate in second axis
+        _, N2 = scattering.shape
+        z = N2 // 2 + N2 % 2
+        # Get residuals, cropping redundant frequencies
         residuals = fft(self.residuals(state=state, specimen=specimen))
         # Variance from detector
         variance = state.detector.variance(freqs / pixel_size)
@@ -448,6 +464,10 @@ class GaussianImage(DetectorImage):
         if not isinstance(state.ice, NullIce):
             ctf = state.optics(freqs / pixel_size)
             variance += ctf**2 * state.ice.variance(freqs / pixel_size)
+        # Crop redundant frequencies
+        residuals = residuals[:, :z]
+        if isinstance(variance, Array):
+            variance = variance[:, :z]
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         loss = (loss.real / residuals.size) / residuals.size
 

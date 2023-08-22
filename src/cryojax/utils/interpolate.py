@@ -4,8 +4,9 @@ Interpolation routines.
 
 __all__ = ["resize", "scale", "scale_and_translate", "map_coordinates"]
 
-from typing import Any
+from typing import Any, Union
 
+import jax
 import jax.numpy as jnp
 from jax._src.third_party.scipy.interpolate import RegularGridInterpolator
 from jax.scipy.ndimage import map_coordinates as _map_coordinates
@@ -14,13 +15,22 @@ from jax.image import scale_and_translate as _scale_and_translate
 from ..core import Array
 
 
-def resize(image: Array, shape: tuple[int, int], method="lanczos5", **kwargs):
+def resize(
+    image: Array,
+    shape: tuple[int, int],
+    method="lanczos5",
+    align_corners=True,
+    **kwargs
+):
     """
     Resize an image with interpolation.
 
     Wraps ``jax.image.resize``.
     """
-    return _resize(image, shape, method, **kwargs)
+    if align_corners:
+        return _resize_with_aligned_corners(image, shape, method, **kwargs)
+    else:
+        return _resize(image, shape, method, **kwargs)
 
 
 def scale_and_translate(
@@ -78,16 +88,11 @@ def map_coordinates(
     input: Array, coordinates: Array, order=1, mode="wrap", cval=0.0
 ):
     """
-    Interpolate a set of points on a grid with a
-    given coordinate system onto a new coordinate system.
-
-    Wraps ``jax.ndimage.map_coordinates`` to match typical
-    python coordinate indexing conventions and also
-    ``cryojax`` conventions, which takes axes 0, 1, and 2
-    to be axes x, y, and z.
+    Interpolate a set of points in fourier space on a grid
+    with a given coordinate system onto a new coordinate system.
     """
     N1, N2, N3 = input.shape
-    box_shape = jnp.array([N3, N2, N1], dtype=float)[:, None, None, None]
+    box_shape = jnp.array([N2, N1, N3], dtype=float)[:, None, None, None]
     coordinates = jnp.transpose(coordinates, axes=[3, 0, 1, 2])
     # Flip negative valued frequencies to get the "array index coordinates".
     coordinates = jnp.where(
@@ -95,3 +100,35 @@ def map_coordinates(
     )
 
     return _map_coordinates(input, coordinates, order, mode=mode, cval=cval)
+
+
+def _resize_with_aligned_corners(
+    image: Array,
+    shape: tuple[int, ...],
+    method: Union[str, jax.image.ResizeMethod],
+    antialias: bool = False,
+) -> Array:
+    """
+    Alternative to jax.image.resize(), which emulates
+    align_corners=True in PyTorch's interpolation functions.
+
+    Adapted from https://github.com/google/jax/issues/11206.
+    ."""
+    spatial_dims = tuple(
+        i
+        for i in range(len(shape))
+        if not jax.core.symbolic_equal_dim(image.shape[i], shape[i])
+    )
+    scale = jnp.array(
+        [(shape[i] - 1.0) / (image.shape[i] - 1.0) for i in spatial_dims]
+    )
+    translation = -(scale / 2.0 - 0.5)
+    return _scale_and_translate(
+        image,
+        shape,
+        method=method,
+        scale=scale,
+        spatial_dims=spatial_dims,
+        translation=translation,
+        antialias=antialias,
+    )

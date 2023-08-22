@@ -7,12 +7,10 @@ from __future__ import annotations
 
 __all__ = [
     "project_with_nufft",
-    "project_with_gaussians",
     "extract_slice",
     "ImageConfig",
     "ScatteringConfig",
     "NufftScattering",
-    "GaussianScattering",
     "FourierSliceScattering",
 ]
 
@@ -27,11 +25,9 @@ from ..utils import (
     irfft,
     fft,
     fftfreqs,
-    bound,
     crop,
     pad,
     nufft,
-    integrate_gaussians,
     resize,
     map_coordinates,
 )
@@ -107,13 +103,17 @@ class ImageConfig(CryojaxObject):
         """Pad an image in real space."""
         return pad(image, self.padded_shape, **kwargs)
 
-    def downsample(self, image: Array, **kwargs: Any) -> Array:
+    def downsample(
+        self, image: Array, method="lanczos5", **kwargs: Any
+    ) -> Array:
         """Downsample an image in Fourier space."""
-        return resize(image, self.shape, antialias=False, **kwargs)
+        return resize(
+            image, self.shape, antialias=False, method=method, **kwargs
+        )
 
-    def upsample(self, image: Array, **kwargs: Any) -> Array:
+    def upsample(self, image: Array, method="bicubic", **kwargs: Any) -> Array:
         """Upsample an image in Fourier space."""
-        return resize(image, self.padded_shape, **kwargs)
+        return resize(image, self.padded_shape, method=method, **kwargs)
 
 
 @dataclass
@@ -170,32 +170,6 @@ class NufftScattering(ScatteringConfig):
         return project_with_nufft(*args, self.padded_shape, eps=self.eps)
 
 
-@dataclass
-class GaussianScattering(ScatteringConfig):
-    """
-    Scatter points to image by computing
-    gaussian integrals.
-
-    Attributes
-    ----------
-    scale : `float`
-        Variance of a single gaussian density
-        along each direction.
-        See ``cryojax.utils.integration.integrate_gaussians``
-        for more documentation.
-    """
-
-    scale: float = field(pytree_node=False, default=1 / 3)
-
-    def scatter(self, *args):
-        """Rasterize image by integrating over Gaussians."""
-        return project_with_gaussians(
-            *args,
-            self.padded_shape,
-            self.scale,
-        )
-
-
 def extract_slice(
     density: Array,
     coordinates: Array,
@@ -211,8 +185,8 @@ def extract_slice(
     ---------
     density : `Array`, shape `(N1, N2, N3)`
         Density grid in fourier space.
-    coordinates : `Array`, shape `(N1, N2, N3, 3)`
-        Frequency coordinate system.
+    coordinates : `Array`, shape `(N1, N2, 1, 3)`
+        Frequency central slice coordinate system.
     voxel_size : `Array`, shape `(3,)`
         Voxel size in each dimension.
     shape : `tuple[int, int]`
@@ -232,16 +206,13 @@ def extract_slice(
         raise ValueError("Only cubic boxes are supported for fourier slice.")
     dx, dy, dz = voxel_size
     box_size = jnp.array([N1 * dx, N2 * dy, N3 * dz])
-    # Shift zero frequency component to beginning. Need to
-    # start converting to "array index coordinates".
-    density = jnp.fft.ifftshift(density)
-    coordinates = jnp.fft.ifftshift(coordinates, axes=[0, 1, 2])
-    # Now, make coordinates dimensionless
+    # Need to convert to "array index coordinates".
+    # Make coordinates dimensionless
     coordinates *= box_size
-    # Interpolate and shift back to zero frequency in the center
-    projection = jnp.fft.fftshift(
-        map_coordinates(density, coordinates, **kwargs)[..., 0]
-    )
+    # Interpolate and get the slice
+    projection = map_coordinates(density, coordinates, **kwargs)[..., 0]
+    # Set zero frequency component to zero
+    projection = projection.at[0, 0].set(0.0 + 0.0j)
     # Crop or pad to desired image size
     projection = irfft(projection)
     M1, M2 = shape
@@ -293,55 +264,9 @@ def project_with_nufft(
     """
     N1, N2 = shape
     image_size = jnp.array(np.array([N1, N2]) * voxel_size[:2])
-    masked = bound(density, coordinates[:, :2], image_size)
-    projection = nufft(masked, coordinates[:, :2], image_size, shape, eps=eps)
+    coordinates = jnp.flip(coordinates[:, :2], axis=-1)
+    projection = nufft(density, coordinates, image_size, shape, eps=eps)
+    # Set zero frequency component to zero
+    projection = projection.at[0, 0].set(0.0 + 0.0j)
 
     return projection
-
-
-def project_with_gaussians(
-    density: Array,
-    coordinates: Array,
-    voxel_size: Array,
-    shape: tuple[int, int],
-    scale: float,
-) -> Array:
-    """
-    Project and rasterize 3D volume onto object plane
-    by considering each pixel to be a sum of gaussians.
-
-    See ``cryojax.utils.integration.integrate_gaussians``
-    for more detail.
-
-    Arguments
-    ---------
-    density : `Array`, shape `(N,)`
-        Density point cloud.
-    coordinates : `Array`, shape `(N, 3)`
-        Coordinate system of point cloud.
-    shape : `tuple[int, int]`
-        Shape of the imaging plane in pixels.
-        ``width, height = shape[0], shape[1]``
-        is the size of the desired imaging plane.
-    voxel_size : `float`
-        Voxel size.
-    scale : `float`
-        Scale of gaussians in density point cloud.
-
-    Returns
-    -------
-    projection :
-        The output image in fourier space.
-    """
-    N1, N2 = shape
-    image_size = jnp.array(np.array([N1, N2]) * voxel_size[:2])
-    masked = bound(density, coordinates[:, :2], image_size)
-    projection = integrate_gaussians(
-        masked,
-        coordinates[:, :2],
-        scale,
-        shape,
-        voxel_size,
-    )
-
-    return fft(projection)

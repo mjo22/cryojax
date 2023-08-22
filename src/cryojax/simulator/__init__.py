@@ -1,12 +1,9 @@
 __all__ = [
     # Functional API
-    "rotate_and_translate_rpy",
     "rotate_rpy",
-    "shift_phase",
-    "rotate_and_translate_wxyz",
     "rotate_wxyz",
+    "shift_phase",
     "project_with_nufft",
-    "project_with_gaussians",
     "extract_slice",
     "compute_lowpass_filter",
     "compute_whitening_filter",
@@ -17,7 +14,6 @@ __all__ = [
     # Image configuration
     "ImageConfig",
     "NufftScattering",
-    "GaussianScattering",
     "FourierSliceScattering"
     # Specimen representations
     "ElectronCloud",
@@ -51,17 +47,17 @@ __all__ = [
     "ScatteringConfig",
     "Pose",
     "Filter",
+    "Mask",
     "Optics",
-    "Intensity",
-    "Noise",
+    "Exposure",
+    "Ice",
+    "Detector",
     "Image",
 ]
 
 from typing import Union
 
 from .pose import (
-    rotate_and_translate_rpy,
-    rotate_and_translate_wxyz,
     rotate_rpy,
     rotate_wxyz,
     shift_phase,
@@ -72,17 +68,13 @@ from .pose import (
 Pose = Union[EulerPose, QuaternionPose]
 from .scattering import (
     project_with_nufft,
-    project_with_gaussians,
     extract_slice,
     ImageConfig,
     NufftScattering,
-    GaussianScattering,
     FourierSliceScattering,
 )
 
-ScatteringConfig = Union[
-    NufftScattering, GaussianScattering, FourierSliceScattering
-]
+ScatteringConfig = Union[NufftScattering, FourierSliceScattering]
 from .specimen import ElectronCloud, ElectronGrid
 
 Specimen = Union[ElectronCloud, ElectronGrid]
@@ -118,5 +110,3 @@ from .state import PipelineState
 from .image import ScatteringImage, OpticsImage, DetectorImage, GaussianImage
 
 Image = Union[ScatteringImage, OpticsImage, DetectorImage, GaussianImage]
-
-del Union
