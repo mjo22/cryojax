@@ -101,7 +101,7 @@ class CTFOptics(Optics):
         return compute_ctf(freqs, *self.iter_data(), **kwargs)
 
 
-@partial(jax.jit, static_argnames=["normalize"])
+@partial(jax.jit, static_argnames=["b_factor", "normalize", "degrees"])
 def compute_ctf(
     freqs: Array,
     defocus_u: float,
@@ -142,7 +142,8 @@ def compute_ctf(
         The B factor in A^2. If not provided, the B factor is assumed to be 0.
     normalize : `bool`, optional
         Whether to normalize the CTF so that it has norm 1 in real space.
-        Default is True.
+        Default is ``True``. The normalization is only applied when ``b_factor``
+        is provided.
     degrees : `bool`, optional
         Whether or not the ``defocus_angle`` and ``phase_shift`` are given
         in degrees or radians.
@@ -160,6 +161,7 @@ def compute_ctf(
         phase_shift = jnp.deg2rad(phase_shift)
         defocus_angle = jnp.deg2rad(defocus_angle)
 
+    # Polar coordinate system
     N1, N2 = freqs.shape[0:-1]
     k_sqr, theta = cartesian_to_polar(freqs, square=True)
 
@@ -178,11 +180,11 @@ def compute_ctf(
     gamma = (2 * jnp.pi) * (gamma_defocus + gamma_sph) - phase_shift - ac
     ctf = jnp.sin(gamma)
 
-    # We apply normalization before b-factor envelope
-    if normalize:
-        ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
-
+    # Apply b-factor envelope
     if b_factor is not None:
+        # We apply normalization before b-factor envelope
+        if normalize:
+            ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
         ctf = ctf * jnp.exp(-0.25 * b_factor * k_sqr)
 
     return ctf

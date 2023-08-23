@@ -98,7 +98,6 @@ def map_coordinates(
     coordinates = jnp.where(
         coordinates < 0, box_shape + coordinates, coordinates
     )
-
     return _map_coordinates(input, coordinates, order, mode=mode, cval=cval)
 
 

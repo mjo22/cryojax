@@ -140,6 +140,8 @@ class FourierSliceScattering(ScatteringConfig):
     """
 
     order: int = field(pytree_node=False, default=1)
+    mode: str = field(pytree_node=False, default="wrap")
+    cval: complex = field(pytree_node=False, default=0.0 + 0.0j)
 
     def scatter(self, *args):
         """
@@ -147,7 +149,13 @@ class FourierSliceScattering(ScatteringConfig):
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
-        return extract_slice(*args, self.padded_shape, order=self.order)
+        return extract_slice(
+            *args,
+            self.padded_shape,
+            order=self.order,
+            mode=self.mode,
+            cval=self.cval,
+        )
 
 
 @dataclass
@@ -232,7 +240,7 @@ def project_with_nufft(
     coordinates: Array,
     voxel_size: Array,
     shape: tuple[int, int],
-    eps: float = 1e-6,
+    **kwargs,
 ) -> Array:
     """
     Project and interpolate 3D volume point cloud
@@ -252,10 +260,8 @@ def project_with_nufft(
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
-    eps : `float`
-        Desired precision in computing the volume
-        projection. See `finufft <https://finufft.readthedocs.io/en/latest/>`_
-        for more detail.
+    kwargs:
+        Passed to ``cryojax.utils.integration.nufft``.
 
     Returns
     -------
@@ -265,7 +271,7 @@ def project_with_nufft(
     M1, M2 = shape
     image_size = jnp.array(np.array([M1, M2]) * voxel_size[:2])
     coordinates = jnp.flip(coordinates[:, :2], axis=-1)
-    projection = nufft(density, coordinates, image_size, shape, eps=eps)
+    projection = nufft(density, coordinates, image_size, shape, **kwargs)
     # Set zero frequency component to zero
     projection = projection.at[0, 0].set(0.0 + 0.0j)
 
