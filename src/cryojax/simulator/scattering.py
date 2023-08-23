@@ -217,12 +217,14 @@ def extract_slice(
     # Need to convert to "array index coordinates".
     # Make coordinates dimensionless
     coordinates *= box_size
-    # Interpolate and get the slice
-    projection = map_coordinates(density, coordinates, **kwargs)[..., 0]
+    # Interpolate on the upper half plane get the slice
+    z = N2 // 2 + 1
+    projection = map_coordinates(density, coordinates[:, :z], **kwargs)[..., 0]
     # Set zero frequency component to zero
     projection = projection.at[0, 0].set(0.0 + 0.0j)
+    # Transform back to real space
+    projection = jnp.fft.fftshift(jnp.fft.irfftn(projection, s=(N1, N2)))
     # Crop or pad to desired image size
-    projection = irfft(projection)
     M1, M2 = shape
     if N1 >= M1 and N2 >= M2:
         projection = crop(projection, shape)
