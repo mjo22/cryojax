@@ -84,7 +84,7 @@ If a `GaussianImage` is initialized with the field `observed`, the model will in
 ```python
 from cryojax.utils import fft
 
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=fft(observed))
+model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=observed)
 log_likelihood = model(params)
 ```
 
