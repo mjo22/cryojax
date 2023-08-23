@@ -3,6 +3,7 @@ __all__ = [
     "rotate_rpy",
     "rotate_wxyz",
     "shift_phase",
+    "make_euler_rotation",
     "project_with_nufft",
     "extract_slice",
     "compute_lowpass_filter",
@@ -61,6 +62,7 @@ from .pose import (
     rotate_rpy,
     rotate_wxyz,
     shift_phase,
+    make_euler_rotation,
     EulerPose,
     QuaternionPose,
 )

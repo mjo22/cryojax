@@ -8,6 +8,7 @@ __all__ = [
     "rotate_rpy",
     "rotate_wxyz",
     "shift_phase",
+    "make_euler_rotation",
     "Pose",
     "EulerPose",
     "QuaternionPose",
@@ -18,7 +19,7 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-from jaxlie import SE3, SO3
+from jaxlie import SO3
 
 from ..core import Array, Scalar, field, dataclass, CryojaxObject
 
@@ -97,7 +98,7 @@ class EulerPose(Pose):
     convention: str = field(pytree_node=False, default="zyz")
     intrinsic: bool = field(pytree_node=False, default=True)
     inverse: bool = field(pytree_node=False, default=False)
-    degrees: bool = field(pytree_node=False, default=False)
+    degrees: bool = field(pytree_node=False, default=True)
 
     view_phi: Scalar = 0.0
     view_theta: Scalar = 0.0

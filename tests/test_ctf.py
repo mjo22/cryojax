@@ -33,7 +33,7 @@ def test_ctf_with_cistem(
     optics = CTFOptics(
         defocus_u=defocus1,
         defocus_v=defocus2,
-        defocus_angle=np.deg2rad(asti_angle),
+        defocus_angle=asti_angle,
         voltage=kV,
         spherical_aberration=cs,
         amplitude_contrast=ac,

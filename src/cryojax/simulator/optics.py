@@ -114,6 +114,7 @@ def compute_ctf(
     b_factor: Optional[float] = None,
     *,
     normalize: bool = True,
+    degrees: bool = True,
 ) -> Array:
     """
     Computes CTF with given parameters.
@@ -128,7 +129,7 @@ def compute_ctf(
     defocus_v : `float`
         The defocus in the minor axis in Angstroms.
     defocus_angle : `float`
-        The defocus angle in degree.
+        The defocus angle.
     voltage : `float`
         The accelerating voltage in kV.
     spherical_aberration : `float`
@@ -136,12 +137,15 @@ def compute_ctf(
     amplitude_contrast : `float`
         The amplitude contrast ratio.
     phase_shift : `float`
-        The additional phase shift in radians.
+        The additional phase shift.
     b_factor : `float`, optional
         The B factor in A^2. If not provided, the B factor is assumed to be 0.
     normalize : `bool`, optional
         Whether to normalize the CTF so that it has norm 1 in real space.
         Default is True.
+    degrees : `bool`, optional
+        Whether or not the ``defocus_angle`` and ``phase_shift`` are given
+        in degrees or radians.
 
     Returns
     -------
@@ -152,6 +156,9 @@ def compute_ctf(
     # Unit conversions
     voltage *= 1000  # kV to V
     spherical_aberration *= 1e7  # mm to Angstroms
+    if degrees:  # degrees to radians
+        phase_shift = jnp.deg2rad(phase_shift)
+        defocus_angle = jnp.deg2rad(defocus_angle)
 
     N1, N2 = freqs.shape[0:-1]
     k_sqr, theta = cartesian_to_polar(freqs, square=True)

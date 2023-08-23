@@ -73,7 +73,7 @@ and an image model is chosen.
 pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteNoiseDetector(key=key, pixel_size=1.1)
 state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state)
-params = dict(view_phi=np.pi, defocus_u=8000., alpha=1.4, pixel_size=1.09)
+params = dict(view_phi=180, defocus_u=8000., alpha=1.4, pixel_size=1.09)
 image = model(params)
 ```
 

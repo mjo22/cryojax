@@ -62,12 +62,12 @@ class LowpassFilter(Filter):
     Attributes
     ----------
     cutoff : `float`
-        By default, this is set ``0.667``, which is
-        used for antialiasing.
+        By default, this is set ``1.0``, which cuts off
+        modes above the Nyquist frequency.
     rolloff : `float`
     """
 
-    cutoff: float = field(pytree_node=False, default=0.667)
+    cutoff: float = field(pytree_node=False, default=1.0)
     rolloff: float = field(pytree_node=False, default=0.05)
 
     def compute(self, freqs: Array) -> Array:

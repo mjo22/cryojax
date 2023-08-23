@@ -224,7 +224,7 @@ def extract_slice(
         raise NotImplementedError(
             "density.shape must be larger or smaller than shape in all dimensions"
         )
-    return fft(projection)
+    return fft(projection) / jnp.sqrt(M1 * M2)
 
 
 def project_with_nufft(
@@ -262,11 +262,11 @@ def project_with_nufft(
     projection :
         The output image in fourier space.
     """
-    N1, N2 = shape
-    image_size = jnp.array(np.array([N1, N2]) * voxel_size[:2])
+    M1, M2 = shape
+    image_size = jnp.array(np.array([M1, M2]) * voxel_size[:2])
     coordinates = jnp.flip(coordinates[:, :2], axis=-1)
     projection = nufft(density, coordinates, image_size, shape, eps=eps)
     # Set zero frequency component to zero
     projection = projection.at[0, 0].set(0.0 + 0.0j)
 
-    return projection
+    return projection / jnp.sqrt(M1 * M2)

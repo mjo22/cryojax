@@ -5,7 +5,12 @@ import numpy as np
 from jax import random
 from jax import config
 
-from cryojax.simulator import NufftScattering, ElectronCloud
+from cryojax.simulator import (
+    NufftScattering,
+    FourierSliceScattering,
+    ElectronCloud,
+    ElectronGrid,
+)
 from cryojax.simulator import (
     EulerPose,
     ExponentialNoiseIce,
@@ -24,7 +29,9 @@ def setup():
     filename = os.path.join(
         os.path.dirname(__file__), "data", "3jar_13pf_bfm1_ps5_28.mrc"
     )
-    scattering = NufftScattering((81, 81), 5.32, eps=1e-4)
+    # scattering = FourierSliceScattering(shape=(81, 81), resolution=5.32, eps=1e-4)
+    # cloud = ElectronGrid.from_file(filename)
+    scattering = NufftScattering(shape=(81, 81), resolution=5.32, eps=1e-4)
     cloud = ElectronCloud.from_file(filename)
     return scattering, cloud
 
@@ -32,7 +39,9 @@ def setup():
 @pytest.fixture
 def scattering_model(setup):
     scattering, cloud = setup
-    state = PipelineState(pose=EulerPose(), exposure=UniformExposure())
+    state = PipelineState(
+        pose=EulerPose(degrees=False), exposure=UniformExposure()
+    )
     return ScatteringImage(scattering=scattering, specimen=cloud, state=state)
 
 
@@ -40,7 +49,9 @@ def scattering_model(setup):
 def optics_model(setup):
     scattering, cloud = setup
     state = PipelineState(
-        pose=EulerPose(), optics=CTFOptics(), exposure=UniformExposure()
+        pose=EulerPose(degrees=False),
+        optics=CTFOptics(),
+        exposure=UniformExposure(),
     )
     return OpticsImage(scattering=scattering, specimen=cloud, state=state)
 
@@ -49,7 +60,7 @@ def optics_model(setup):
 def noisy_model(setup):
     scattering, cloud = setup
     state = PipelineState(
-        pose=EulerPose(),
+        pose=EulerPose(degrees=False),
         ice=ExponentialNoiseIce(key=random.PRNGKey(seed=1)),
         optics=CTFOptics(),
         exposure=UniformExposure(),

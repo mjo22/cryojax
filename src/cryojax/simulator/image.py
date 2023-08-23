@@ -223,16 +223,15 @@ class ScatteringImage(Image):
         )
         # View an orientation of the specimen
         specimen = self.specimen.view(state.pose)
-        # Compute the image at the exit plane
+        # Compute the image at the exit plane at the updated pose
         scattering_image = specimen.scatter(scattering)
         # Apply translation (phase shifts) to the image
         scattering_image = state.pose.translate(
             scattering_image, padded_freqs / resolution
         )
-        # Apply filters
-        scattering_image = self.filter(scattering_image)
-        # Optionally crop and mask image
+        # Optionally filter, crop, and mask image
         if view:
+            scattering_image = self.filter(scattering_image)
             scattering_image = self.mask(
                 state.exposure.rescale(
                     scattering.crop(irfft(scattering_image))
@@ -259,10 +258,12 @@ class ScatteringImage(Image):
         )
         pixel_size = _pixel_size or resolution
         # Sample from ice distribution
-        icy_image = self.filter(state.ice.sample(padded_freqs / pixel_size))
+        icy_image = state.ice.sample(padded_freqs / pixel_size)
         if view:
             # Render an image with no ice
             scattering_image = self.render(state=state, specimen=specimen)
+            # Apply filters to the ice
+            icy_image = self.filter(icy_image)
             # View ice
             icy_image = self.mask(scattering.crop(irfft(icy_image)))
             # Create an icy image in the exit plane
@@ -307,8 +308,9 @@ class OpticsImage(ScatteringImage):
         # Compute and apply CTF
         ctf = state.optics(padded_freqs / resolution)
         optics_image = state.optics.apply(ctf, scattering_image)
-        # Optionally crop, rescale, and mask image
+        # Optionally filter, crop, rescale, and mask image
         if view:
+            optics_image = self.filter(optics_image)
             optics_image = self.mask(
                 state.exposure.rescale(scattering.crop(irfft(optics_image)))
             )
@@ -339,6 +341,8 @@ class OpticsImage(ScatteringImage):
         if view:
             # Render an image with no ice
             optics_image = self.render(state=state, specimen=specimen)
+            # Apply filters to the ice
+            icy_image = self.filter(icy_image)
             # View ice
             icy_image = self.mask(scattering.crop(irfft(icy_image)))
             # Create icy image in the detector plane
@@ -375,8 +379,10 @@ class DetectorImage(OpticsImage):
         detector_image = state.detector.measure(
             irfft(optics_image), resolution=resolution
         )
-        # Optionally crop, rescale, and mask image
+        # Optionally filter, crop, rescale, and mask image
         if view:
+            if len(self.filters) > 0:
+                detector_image = irfft(self.filter(fft(detector_image)))
             detector_image = self.mask(
                 state.exposure.rescale(scattering.crop(detector_image))
             )
@@ -415,6 +421,8 @@ class DetectorImage(OpticsImage):
         if view:
             # Render an image from noiseless detector readout
             detector_image = self.render(state=state, specimen=specimen)
+            # Apply filters to noise
+            noisy_image = self.filter(noisy_image)
             # View noise
             noisy_image = self.mask(scattering.crop(irfft(noisy_image)))
             # Detector readout
