@@ -1,5 +1,5 @@
 # Cryo-EM image simulation and analysis powered by JAX.
-This library is a modular framework for simulating forward models of cryo electron microscopy images. It is built on [JAX](https://github.com/google/jax).
+This library is a modular framework for simulating forward models of cryo electron microscopy images. It is designed with 2D template matching analysis in mind, but it can be used generally. `cryojax` is, of course, built on [JAX](https://github.com/google/jax).
 
 ## Summary
 
@@ -84,7 +84,7 @@ If a `GaussianImage` is initialized with the field `observed`, the model will in
 ```python
 from cryojax.utils import fft
 
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=fft(observed))
+model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=observed)
 log_likelihood = model(params)
 ```
 
