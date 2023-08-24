@@ -1,5 +1,5 @@
 """
-Routines for dealing with image boundaries.
+Routines for dealing with image edges.
 """
 
 __all__ = ["bound", "crop", "pad"]

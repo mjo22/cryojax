@@ -14,7 +14,7 @@ from jax.experimental import jax2tf
 # from jax_finufft import nufft1
 from jax.scipy import special
 
-from .fft import fftfreqs1d
+from .coordinates import fftfreqs1d
 from ..core import Array
 
 

@@ -30,9 +30,9 @@ def setup():
         os.path.dirname(__file__), "data", "3jar_13pf_bfm1_ps5_28.mrc"
     )
     # scattering = FourierSliceScattering(shape=(81, 81), resolution=5.32, eps=1e-4)
-    # cloud = ElectronGrid.from_file(filename)
-    scattering = NufftScattering(shape=(81, 81), resolution=5.32, eps=1e-4)
-    cloud = ElectronCloud.from_file(filename)
+    # cloud = ElectronGrid.from_file(filename, resolution=5.32)
+    scattering = NufftScattering(shape=(81, 81), eps=1e-4)
+    cloud = ElectronCloud.from_file(filename, resolution=5.32)
     return scattering, cloud
 
 

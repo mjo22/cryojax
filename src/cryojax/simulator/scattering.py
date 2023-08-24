@@ -44,11 +44,6 @@ class ImageConfig(CryojaxObject):
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
-    resolution : `float`
-        Rasterization resolution.
-        For voxel-based representations of ``Specimen``,
-        this should be the same as the ``voxel_size``.
-        This is in dimensions of length.
     freqs : `Array`, shape `(N1, N2, 2)`
         The fourier wavevectors in the imaging plane.
     padded_freqs : `Array`, shape `(M1, M2, 2)`
@@ -67,7 +62,6 @@ class ImageConfig(CryojaxObject):
     """
 
     shape: tuple[int, int] = field(pytree_node=False, encode=tuple)
-    resolution: float = field(pytree_node=False)
 
     padded_shape: tuple[int, int] = field(
         pytree_node=False, init=False, encode=False
@@ -143,14 +137,16 @@ class FourierSliceScattering(ScatteringConfig):
     mode: str = field(pytree_node=False, default="wrap")
     cval: complex = field(pytree_node=False, default=0.0 + 0.0j)
 
-    def scatter(self, *args):
+    def scatter(self, density: Array, coordinates: Array, resolution: float):
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
         return extract_slice(
-            *args,
+            density,
+            coordinates,
+            resolution,
             self.padded_shape,
             order=self.order,
             mode=self.mode,
@@ -173,15 +169,21 @@ class NufftScattering(ScatteringConfig):
 
     eps: float = field(pytree_node=False, default=1e-6)
 
-    def scatter(self, *args):
+    def scatter(self, density: Array, coordinates: Array, resolution: float):
         """Rasterize image with non-uniform FFTs."""
-        return project_with_nufft(*args, self.padded_shape, eps=self.eps)
+        return project_with_nufft(
+            density,
+            coordinates,
+            resolution,
+            self.padded_shape,
+            eps=self.eps,
+        )
 
 
 def extract_slice(
     density: Array,
     coordinates: Array,
-    voxel_size: Array,
+    resolution: float,
     shape: tuple[int, int],
     **kwargs,
 ) -> Array:
@@ -195,8 +197,8 @@ def extract_slice(
         Density grid in fourier space.
     coordinates : `Array`, shape `(N1, N2, 1, 3)`
         Frequency central slice coordinate system.
-    voxel_size : `Array`, shape `(3,)`
-        Voxel size in each dimension.
+    resolution : float
+        The rasterization resolution.
     shape : `tuple[int, int]`
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
@@ -212,8 +214,8 @@ def extract_slice(
     N1, N2, N3 = density.shape
     if not all([Ni == N1 for Ni in [N1, N2, N3]]):
         raise ValueError("Only cubic boxes are supported for fourier slice.")
-    dx, dy, dz = voxel_size
-    box_size = jnp.array([N1 * dx, N2 * dy, N3 * dz])
+    dx = resolution
+    box_size = jnp.array([N1 * dx, N2 * dx, N3 * dx])
     # Need to convert to "array index coordinates".
     # Make coordinates dimensionless
     coordinates *= box_size
@@ -240,7 +242,7 @@ def extract_slice(
 def project_with_nufft(
     density: Array,
     coordinates: Array,
-    voxel_size: Array,
+    resolution: float,
     shape: tuple[int, int],
     **kwargs,
 ) -> Array:
@@ -256,8 +258,8 @@ def project_with_nufft(
         Density point cloud.
     coordinates : `Array`, shape `(N, 3)`
         Coordinate system of point cloud.
-    voxel_size : `Array`, shape `(3,)`
-        Voxel size in each dimension.
+    resolution : float
+        The rasterization resolution.
     shape : `tuple[int, int]`
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
@@ -271,7 +273,7 @@ def project_with_nufft(
         The output image in fourier space.
     """
     M1, M2 = shape
-    image_size = jnp.array(np.array([M1, M2]) * voxel_size[:2])
+    image_size = jnp.array(np.array([M1, M2]) * resolution)
     coordinates = jnp.flip(coordinates[:, :2], axis=-1)
     projection = nufft(density, coordinates, image_size, shape, **kwargs)
     # Set zero frequency component to zero

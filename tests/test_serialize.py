@@ -4,6 +4,8 @@ import numpy as np
 from jax import config
 
 from cryojax.simulator import (
+    ElectronCloud,
+    NufftScattering,
     EulerPose,
     WhiteNoiseDetector,
     ExponentialNoiseIce,
@@ -46,3 +48,11 @@ def test_deserialize_state(scattering_model, optics_model, noisy_model):
         np.testing.assert_allclose(
             model.replace(state=state)(), model(), rtol=1e-6
         )
+
+
+def test_deserialize_specimen(setup):
+    """Test specimen deserialization."""
+    _, cloud = setup
+    assert (
+        ElectronCloud.from_json(cloud.to_json()).to_json() == cloud.to_json()
+    )

@@ -2,6 +2,8 @@ __all__ = [
     "fft",
     "ifft",
     "irfft",
+    "make_coordinates",
+    "make_frequencies",
     "fftfreqs",
     "cartesian_to_polar",
     "powerspectrum",
@@ -18,9 +20,15 @@ __all__ = [
 ]
 
 
-from .fft import fft, ifft, irfft, fftfreqs, cartesian_to_polar
-from .averaging import radial_average
+from .fft import fft, ifft, irfft
+from .coordinates import (
+    make_coordinates,
+    make_frequencies,
+    fftfreqs,
+    cartesian_to_polar,
+)
+from .average import radial_average
 from .spectrum import powerspectrum
-from .integration import nufft, integrate_gaussians
-from .interpolation import resize, scale, scale_and_translate, map_coordinates
-from .boundaries import bound, crop, pad
+from .integrate import nufft, integrate_gaussians
+from .interpolate import resize, scale, scale_and_translate, map_coordinates
+from .edges import bound, crop, pad

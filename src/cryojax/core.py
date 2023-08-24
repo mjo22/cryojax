@@ -118,12 +118,12 @@ def dataclass(clz: Type[Any], **kwargs: Any) -> Type[Any]:
     data_clz.iter_meta = lambda self: iterate_meta(self)
 
     @property
-    def data(self) -> dict[str, Any]:
+    def data(self) -> tuple[tuple, tuple]:
         """Return data of the model."""
         return data_fields, iterate_data(self)
 
     @property
-    def metadata(self) -> dict[str, Any]:
+    def metadata(self) -> tuple[tuple, tuple]:
         """Return metadata of the model."""
         return meta_fields, iterate_meta(self)
 
@@ -273,7 +273,7 @@ def field(
         del kwargs["metadata"]
     else:
         metadata = {}
-    metadata.update(dict(pytree_node=pytree_node))
+    metadata.update(dict(pytree_node=pytree_node, encode=encode))
     if encode is False:
         serializer = config(decoder=dummy_decoder, encoder=dummy_encoder)
     elif get_origin(encode) is Union:

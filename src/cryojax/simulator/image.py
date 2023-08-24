@@ -219,7 +219,7 @@ class ScatteringImage(Image):
         # Gather scattering configuration
         padded_freqs, resolution = (
             scattering.padded_freqs,
-            scattering.resolution,
+            specimen.resolution,
         )
         # View an orientation of the specimen
         specimen = self.specimen.view(state.pose)
@@ -254,7 +254,7 @@ class ScatteringImage(Image):
         # Gather scattering configuration
         padded_freqs, resolution = (
             scattering.padded_freqs,
-            scattering.resolution,
+            specimen.resolution,
         )
         pixel_size = _pixel_size or resolution
         # Sample from ice distribution
@@ -299,7 +299,7 @@ class OpticsImage(ScatteringImage):
         # Gather scattering configuration
         padded_freqs, resolution = (
             scattering.padded_freqs,
-            scattering.resolution,
+            specimen.resolution,
         )
         # Compute scattering at object plane.
         scattering_image = super().render(
@@ -331,7 +331,7 @@ class OpticsImage(ScatteringImage):
         # Gather scattering configuration
         padded_freqs, resolution = (
             scattering.padded_freqs,
-            scattering.resolution,
+            specimen.resolution,
         )
         pixel_size = _pixel_size or resolution
         # Sample from ice distribution and apply ctf to it
@@ -368,7 +368,7 @@ class DetectorImage(OpticsImage):
         specimen = specimen or self.specimen
         scattering = self.scattering
         # Gather scattering configuration
-        resolution = scattering.resolution
+        resolution = specimen.resolution
         # Compute image at detector plane
         optics_image = super().render(
             state=state,
@@ -402,7 +402,7 @@ class DetectorImage(OpticsImage):
         # Gather image configuration
         padded_freqs, resolution = (
             scattering.padded_freqs,
-            scattering.resolution,
+            specimen.resolution,
         )
         if hasattr(state.detector, "pixel_size"):
             pixel_size = state.detector.pixel_size
@@ -456,7 +456,7 @@ class GaussianImage(DetectorImage):
         specimen = specimen or self.specimen
         scattering = self.scattering
         # Gather image configuration
-        freqs, resolution = scattering.freqs, scattering.resolution
+        freqs, resolution = scattering.freqs, specimen.resolution
         if hasattr(state.detector, "pixel_size"):
             pixel_size = state.detector.pixel_size
         else:

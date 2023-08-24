@@ -48,16 +48,13 @@ def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict:
     # Ideally we would have this read in from the MRC and be the
     # same for all I/O methods. Because tensorflow-nufft has
     # its own xyz conventions
-    vx, vy, vz = voxel_size
     template = jnp.transpose(template, axes=[1, 2, 0])
-    voxel_size = np.asarray([vy, vz, vx])
     # Load flattened density and coordinates
     density, coordinates = coordinatize_voxels(template, voxel_size, **kwargs)
     # Gather fields to instantiate an ElectronCloud
     cloud = dict(
         density=density,
         coordinates=coordinates,
-        voxel_size=voxel_size,
         filename=filename,
         config=kwargs,
     )
@@ -86,9 +83,7 @@ def load_fourier_grid(filename: str, pad_scale=1.0) -> dict:
     filename = os.path.abspath(filename)
     template, voxel_size = load_mrc(filename)
     # Change how template sits in box to match cisTEM
-    vx, vy, vz = voxel_size
     template = jnp.transpose(template, axes=[2, 1, 0])
-    voxel_size = np.asarray([vz, vy, vx])
     # Pad template
     padded_shape = tuple([int(s * pad_scale) for s in template.shape])
     template = pad(template, padded_shape)
@@ -102,7 +97,6 @@ def load_fourier_grid(filename: str, pad_scale=1.0) -> dict:
     voxels = dict(
         density=density,
         coordinates=coordinates,
-        voxel_size=voxel_size,
         filename=filename,
         config=dict(pad_scale=pad_scale),
     )
@@ -146,14 +140,17 @@ def load_mrc(filename: str) -> tuple[np.ndarray, np.ndarray]:
 
     assert all(
         voxel_size != np.zeros(data.ndim)
-    ), "MRC file must set voxel size"
+    ), "MRC file must set the voxel size."
+    assert all(
+        voxel_size == voxel_size[0]
+    ), "Voxel size must be same in all dimensions."
 
-    return data, voxel_size
+    return data, voxel_size[0]
 
 
 def coordinatize_voxels(
     template: np.ndarray,
-    voxel_size: np.ndarray,
+    voxel_size: float,
     mask: bool = True,
     indexing="xy",
     **kwargs: Any,
@@ -170,7 +167,7 @@ def coordinatize_voxels(
     ----------
     template : `ArrayLike`, shape `(N1, N2, N3)` or `(N1, N2)`
         3D volume or 2D image on a cartesian grid.
-    voxel_size : `ArrayLike`, shape `(3,)` or `(2,)`
+    voxel_size : float
         Voxel size of the template.
     mask : `bool`
         If ``True``, run template through ``numpy.isclose``

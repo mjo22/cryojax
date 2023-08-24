@@ -55,15 +55,15 @@ import cryojax.simulator as cs
 
 template = "example.mrc"
 key = jax.random.PRNGKey(seed=0)
-scattering = cs.NufftScattering(shape=(320, 320), resolution=1.32)
-specimen = cs.ElectronCloud.from_file(template)
+scattering = cs.NufftScattering(shape=(320, 320))
+specimen = cs.ElectronCloud.from_file(template, resolution=1.1)
 ```
 
 Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a rasterzied grid is converted to a density point cloud with the `ElectronCloud` autoloader. Alternatively, a user could call the `ElectronCloud` constructor. This is loaded in real-space and pairs with ``NufftScattering``, which rasterizes images using [non-uniform FFTs](https://github.com/mrphys/tensorflow-nufft). Alternatively, one could load the volume in fourier space and use the fourier-slice projection theorem.
 
 ```python
-scattering = cs.FourierSliceScattering(shape=(320, 320), resolution=1.32)
-specimen = cs.ElectronGrid.from_file(template)
+scattering = cs.FourierSliceScattering(shape=(320, 320))
+specimen = cs.ElectronGrid.from_file(template, resolution=1.1)
 ```
 
 Next, the model is configured at initial pose, contrast transfer function, and detector parameters

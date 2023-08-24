@@ -8,7 +8,7 @@ from typing import Optional
 
 import jax.numpy as jnp
 
-from .averaging import radial_average
+from .average import radial_average
 from ..core import Array
 
 

@@ -9,6 +9,7 @@ __all__ = ["Specimen", "ElectronDensity", "ElectronCloud", "ElectronGrid"]
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Any, Type
 from functools import partial
+from dataclasses import fields
 
 import jax.numpy as jnp
 
@@ -22,11 +23,27 @@ from . import ScatteringConfig
 class Specimen(CryojaxObject, metaclass=ABCMeta):
     """
     Abstraction of a biological specimen.
+
+    Attributes
+    ----------
+    filename : `str`, optional
+        The path to where the specimen is saved.
+        This is required for deserialization and
+        is used in ``Specimen.from_file``.
+    config : `dict`, optional
+        The deserialization settings for
+        ``Specimen.from_file``.
+    resolution : `float`
+        Rasterization resolution.
+        This is in dimensions of length.
     """
 
     # Fields configuring the file loader.
     filename: Optional[str] = field(pytree_node=False, default=None)
     config: dict = field(pytree_node=False, default_factory=dict)
+
+    # The resolution of the specimen
+    resolution: float
 
     @abstractmethod
     def view(self, pose: Pose) -> Specimen:
@@ -58,7 +75,9 @@ class Specimen(CryojaxObject, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def from_file(
-        cls: Type[Specimen], filename: str, **kwargs: Any
+        cls: Type[Specimen],
+        filename: str,
+        config: Optional[dict] = None,
     ) -> Specimen:
         """
         Load a Specimen from a file.
@@ -76,7 +95,21 @@ class Specimen(CryojaxObject, metaclass=ABCMeta):
         ``cryojax.core.Serializable.from_dict`` in order to
         avoid saving the large arrays typically stored in ``Specimen``.
         """
-        return cls.from_file(kvs["filename"], **kvs["config"])
+        # Get fields that we want to decode
+        fs = fields(cls)
+        encoded = [
+            f.name
+            for f in fs
+            if (
+                not "encode" in f.metadata or f.metadata["encode"] is not False
+            )
+            and f.name not in ["filename", "config"]
+        ]
+        updates = {k: kvs[k] for k in encoded}
+        # Get filename and configuration for I/O
+        filename = kvs.pop("filename")
+        config = kvs.pop("config")
+        return cls.from_file(filename, config=config, **updates)
 
 
 @dataclass
@@ -92,17 +125,11 @@ class ElectronDensity(Specimen):
         The density contrast.
     coordinates : `Array`
         The coordinate system.
-    voxel_size : `Array`, shape (3,)
-        The voxel size of the electron density map.
-    filename : `str`, optional
-        The path to where the density is saved. This is required for
-        deserialization.
     """
 
     # Fields describing the density map.
     density: Array = field(pytree_node=False, encode=False)
     coordinates: Array = field(pytree_node=False, encode=False)
-    voxel_size: Array = field(pytree_node=False, encode=False)
 
     def scatter(self, scattering: ScatteringConfig) -> Array:
         """
@@ -110,20 +137,26 @@ class ElectronDensity(Specimen):
         object plane.
         """
         return scattering.scatter(
-            self.density, self.coordinates, self.voxel_size
+            self.density, self.coordinates, self.resolution
         )
 
     @classmethod
     def from_file(
-        cls: Type[ElectronDensity], *args: Any, **kwargs: Any
+        cls: Type[ElectronDensity],
+        filename: str,
+        config: dict = {},
+        **kwargs: Any,
     ) -> ElectronDensity:
         """Load a Specimen."""
-        return cls.from_mrc(*args, **kwargs)
+        return cls.from_mrc(filename, config=config, **kwargs)
 
     @classmethod
     @abstractmethod
     def from_mrc(
-        cls: Type[ElectronDensity], filename: str, **kwargs: Any
+        cls: Type[ElectronDensity],
+        filename: str,
+        config: dict = {},
+        **kwargs: Any,
     ) -> ElectronDensity:
         """Load a Specimen from MRC file format."""
         raise NotImplementedError
@@ -155,13 +188,16 @@ class ElectronCloud(ElectronDensity):
 
     @classmethod
     def from_mrc(
-        cls: Type[ElectronCloud], filename: str, **kwargs: Any
+        cls: Type[ElectronCloud],
+        filename: str,
+        config: dict = {},
+        **kwargs: Any,
     ) -> ElectronCloud:
         """
         See ``cryojax.io.voxel.load_grid_as_cloud`` for
         documentation.
         """
-        return cls(**load_grid_as_cloud(filename, **kwargs))
+        return cls(**load_grid_as_cloud(filename, **config), **kwargs)
 
 
 @dataclass
@@ -192,10 +228,13 @@ class ElectronGrid(ElectronDensity):
 
     @classmethod
     def from_mrc(
-        cls: Type[ElectronGrid], filename: str, **kwargs: Any
+        cls: Type[ElectronGrid],
+        filename: str,
+        config: dict = {},
+        **kwargs: Any,
     ) -> ElectronGrid:
         """
         See ``cryojax.io.voxel.load_fourier_grid`` for
         documentation.
         """
-        return cls(**load_fourier_grid(filename, **kwargs))
+        return cls(**load_fourier_grid(filename, **config), **kwargs)
