@@ -107,8 +107,8 @@ class Specimen(CryojaxObject, metaclass=ABCMeta):
         ]
         updates = {k: kvs[k] for k in encoded}
         # Get filename and configuration for I/O
-        filename = kvs.pop("filename")
-        config = kvs.pop("config")
+        filename = kvs["filename"]
+        config = kvs["config"]
         return cls.from_file(filename, config=config, **updates)
 
 

@@ -135,7 +135,9 @@ class FourierSliceScattering(ScatteringConfig):
 
     order: int = field(pytree_node=False, default=1)
     mode: str = field(pytree_node=False, default="wrap")
-    cval: complex = field(pytree_node=False, default=0.0 + 0.0j)
+    cval: complex = field(
+        pytree_node=False, default=0.0 + 0.0j, encode=complex
+    )
 
     def scatter(self, density: Array, coordinates: Array, resolution: float):
         """

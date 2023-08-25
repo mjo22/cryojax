@@ -88,7 +88,7 @@ from .filters import (
 )
 
 Filter = Union[LowpassFilter, WhiteningFilter]
-from .mask import CircularMask, compute_circular_mask
+from .masks import CircularMask, compute_circular_mask
 
 Mask = CircularMask
 from .ice import NullIce, EmpiricalIce, ExponentialNoiseIce
@@ -109,6 +109,7 @@ from .detector import (
 
 Detector = Union[NullDetector, CountingDetector, WhiteNoiseDetector]
 from .state import PipelineState
-from .image import ScatteringImage, OpticsImage, DetectorImage, GaussianImage
+from .image import ScatteringImage, OpticsImage, DetectorImage
+from .likelihood import GaussianImage
 
 Image = Union[ScatteringImage, OpticsImage, DetectorImage, GaussianImage]

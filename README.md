@@ -79,15 +79,6 @@ image = model(params)
 
 This workflow configures an initial model state at the library's default parameters, then evaulates it at a state with an updated viewing angle `view_phi`, major axis defocus `defocus_u`, detector noise variance `alpha`, and detector pixel size `pixel_size`. For more advanced examples, see the tutorials section of the repository.
 
-If a `GaussianImage` is initialized with the field `observed`, the model will instead compute a Gaussian log-likelihood in Fourier space with a diagonal covariance tensor (or power spectrum).
-
-```python
-from cryojax.utils import fft
-
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=observed)
-log_likelihood = model(params)
-```
-
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
@@ -100,7 +91,25 @@ model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, 
 image = model(params)
 ```
 
-Ice models are also supported. For example, `EmpiricalIce` stores an empirical measure of the ice power spectrum. `ExponentialNoiseIce` generates ice as noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
+If a `GaussianImage` is initialized with the field `observed`, the model will instead compute a Gaussian log-likelihood in Fourier space with a diagonal covariance tensor (or power spectrum).
+
+```python
+from cryojax.utils import fft
+
+model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=observed)
+log_likelihood = model(params)
+```
+
+Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s. JAX functional transformation can now be applied to the model!
+
+```python
+@jax.jit
+@jax.value_and_grad
+def loss(params):
+    return model(params)
+```
+
+Additional components can be plugged into the `Image` model's `PipelineState`. For example, `Ice` models are supported. For example, `EmpiricalIce` stores an empirical measure of the ice power spectrum. `ExponentialNoiseIce` generates ice as noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
 
 ## Features
 

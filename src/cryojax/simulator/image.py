@@ -1,5 +1,5 @@
 """
-Routines to model image formation.
+Image formation models.
 """
 
 from __future__ import annotations
@@ -9,26 +9,19 @@ __all__ = [
     "ScatteringImage",
     "OpticsImage",
     "DetectorImage",
-    "GaussianImage",
 ]
 
 from abc import ABCMeta, abstractmethod
 from typing import Union, Optional
-from dataclasses import InitVar
 
-import jax.numpy as jnp
-
-from .noise import GaussianNoise
 from .state import PipelineState
-from .ice import NullIce
-from .exposure import rescale_image
 from ..utils import fft, irfft
-from ..core import dataclass, field, Array, Scalar
+from ..core import CryojaxObject, dataclass, field, Array, Scalar
 from . import Filter, Mask, Specimen, ScatteringConfig
 
 
 @dataclass
-class Image(metaclass=ABCMeta):
+class Image(CryojaxObject, metaclass=ABCMeta):
     """
     Base class for an imaging model. Note that the
     model is a PyTree and is therefore immmutable.
@@ -59,29 +52,14 @@ class Image(metaclass=ABCMeta):
     """
 
     state: PipelineState
-    specimen: Specimen
-    scattering: ScatteringConfig = field(pytree_node=False)
+    specimen: Specimen = field(encode=Specimen)
+    scattering: ScatteringConfig = field(
+        pytree_node=False, encode=ScatteringConfig
+    )
 
     filters: list[Filter] = field(pytree_node=False, default_factory=list)
     masks: list[Mask] = field(pytree_node=False, default_factory=list)
-    observed: Optional[Array] = field(pytree_node=False, init=False)
-
-    observed: InitVar[Array | None] = None
-    set_observed: bool = field(pytree_node=False, default=True)
-
-    def __post_init__(self, observed):
-        # Set observed data
-        scattering = self.scattering
-        if observed is not None and self.set_observed:
-            assert scattering.shape == observed.shape
-            mean, std = observed.mean(), observed.std()
-            observed = scattering.pad(observed, constant_values=mean)
-            assert scattering.padded_shape == observed.shape
-            observed = scattering.crop(irfft(self.filter(fft(observed))))
-            assert scattering.shape == observed.shape
-            observed = rescale_image(observed, std, mean)
-            observed = self.mask(observed)
-        object.__setattr__(self, "observed", observed)
+    observed: Optional[Array] = field(pytree_node=False, default=None)
 
     @abstractmethod
     def render(
@@ -182,21 +160,6 @@ class Image(metaclass=ABCMeta):
         simulated = self.render(state=state, specimen=specimen)
         residuals = self.observed - simulated
         return residuals
-
-    def update(self, **params: dict) -> Image:
-        """
-        Return a new ImageModel based on a set of new parameters
-
-        This overrwrites the ``CryojaxObject`` update to only allow
-        updates in the ``Specimen`` and ``PipelineState``.
-        ."""
-        state = self.state.update(**params)
-        specimen = self.specimen.update(**params)
-        return self.replace(
-            state=state,
-            specimen=specimen,
-            set_observed=False,
-        )
 
 
 @dataclass
@@ -429,54 +392,3 @@ class DetectorImage(OpticsImage):
             noisy_image += detector_image
 
         return noisy_image
-
-
-@dataclass
-class GaussianImage(DetectorImage):
-    """
-    Sample an image from a gaussian noise model, or compute
-    the log-likelihood.
-
-    Note that this computes the likelihood in Fourier space,
-    which allows one to model an arbitrary noise power spectrum.
-    """
-
-    def __post_init__(self, *args):
-        super().__post_init__(*args)
-        assert isinstance(self.state.ice, GaussianNoise)
-        assert isinstance(self.state.detector, GaussianNoise)
-
-    def log_likelihood(
-        self,
-        state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
-    ) -> Scalar:
-        """Evaluate the log-likelihood of the data given a parameter set."""
-        state = state or self.state
-        specimen = specimen or self.specimen
-        scattering = self.scattering
-        # Gather image configuration
-        freqs, resolution = scattering.freqs, specimen.resolution
-        if hasattr(state.detector, "pixel_size"):
-            pixel_size = state.detector.pixel_size
-        else:
-            pixel_size = resolution
-        # Zero mode coordinate in second axis
-        _, N2 = scattering.shape
-        z = N2 // 2 + N2 % 2
-        # Get residuals, cropping redundant frequencies
-        residuals = fft(self.residuals(state=state, specimen=specimen))
-        # Variance from detector
-        variance = state.detector.variance(freqs / pixel_size)
-        # Variance from ice
-        if not isinstance(state.ice, NullIce):
-            ctf = state.optics(freqs / pixel_size)
-            variance += ctf**2 * state.ice.variance(freqs / pixel_size)
-        # Crop redundant frequencies
-        residuals = residuals[:, :z]
-        if isinstance(variance, Array):
-            variance = variance[:, :z]
-        loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
-        loss = (loss.real / residuals.size) / residuals.size
-
-        return loss

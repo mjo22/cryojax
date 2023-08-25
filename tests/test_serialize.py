@@ -14,6 +14,9 @@ from cryojax.simulator import (
     CTFOptics,
     UniformExposure,
     PipelineState,
+    ScatteringImage,
+    OpticsImage,
+    GaussianImage,
 )
 from cryojax.utils import fft
 
@@ -59,3 +62,12 @@ def test_deserialize_specimen(setup):
     # assert (
     #    ElectronCloud.from_json(cloud.to_json()).to_json() == cloud.to_json()
     # )
+
+
+def test_deserialize_model(scattering_model, optics_model, noisy_model):
+    """Test model deserialization."""
+    types = [ScatteringImage, OpticsImage, GaussianImage]
+    models = [scattering_model, optics_model, noisy_model]
+    for idx, model in enumerate(models):
+        test_model = types[idx].from_json(model.to_json())
+        np.testing.assert_allclose(test_model(), model(), rtol=1e-6)

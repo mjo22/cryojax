@@ -133,6 +133,47 @@ def dataclass(clz: Type[Any], **kwargs: Any) -> Type[Any]:
     return data_clz
 
 
+def field(
+    pytree_node: bool = True,
+    encode: Any = Array,
+    **kwargs: Any,
+) -> Any:
+    """
+    Add metadata to usual dataclass fields.
+
+    Parameters
+    ----------
+    pytree_node : `bool`
+        Determine if field is to be part of the
+        pytree.
+    encode : `Any`
+        Type hint for the field's json encoding.
+        If this is a ``Union`` of ``cryojax``
+        objects, the decoder will try to find
+        the correct one to instantiate.
+    """
+    if "metadata" in kwargs.keys():
+        metadata = kwargs["metadata"]
+        del kwargs["metadata"]
+    else:
+        metadata = {}
+    metadata.update(dict(pytree_node=pytree_node, encode=encode))
+    if encode is False:
+        serializer = config(decoder=_dummy_decoder, encoder=_dummy_encoder)
+    elif get_origin(encode) is Union:
+        serializer = config(decoder=lambda x: _union_decoder(x, encode))
+    elif encode == Array:
+        serializer = config(encoder=_np_encoder, decoder=_jax_decoder)
+    elif encode == np.ndarray:
+        serializer = config(encoder=_np_encoder, decoder=_np_decoder)
+    elif encode == complex:
+        serializer = config(encoder=_complex_encoder, decoder=_complex_decoder)
+    else:
+        serializer = {}
+    metadata.update(serializer)
+    return dataclasses.field(metadata=metadata, **kwargs)
+
+
 # This section implements serialization functionality for cryojax
 # objects. This subclasses DataClassJsonMixin from dataclasses-json
 # and provides custom encoding/decoding for Arrays and cryojax
@@ -185,7 +226,7 @@ class CryojaxObject(Serializable):
 
         If ``params`` contains any pytree nodes in this instance,
         they will be updated. Nested ``CryojaxObject``s are
-        supported one level deep.
+        supported.
         """
         keys = params.keys()
         nleaves = len(keys)
@@ -197,24 +238,22 @@ class CryojaxObject(Serializable):
                 if name in keys:
                     updates[name] = params[name]
                 elif isinstance(field, CryojaxObject):
-                    ns, _ = field.data
-                    u = {n: params[n] for n in ns if n in keys}
-                    updates[name] = field.replace(**u)
+                    updates[name] = field.update(**params)
             return self.replace(**updates)
         else:
             return self
 
 
-def dummy_encoder(x: Any) -> str:
+def _dummy_encoder(x: Any) -> str:
     pass
 
 
-def dummy_decoder(x: Any) -> Any:
+def _dummy_decoder(x: Any) -> Any:
     """Return dummy"""
     pass
 
 
-def np_encoder(x: Any) -> Any:
+def _np_encoder(x: Any) -> Any:
     """Encoder for jax arrays and datatypes."""
     if isinstance(x, Array):
         return np.array(x).tolist()
@@ -224,17 +263,27 @@ def np_encoder(x: Any) -> Any:
         return x
 
 
-def np_decoder(x: Any) -> Any:
+def _np_decoder(x: Any) -> Any:
     """Decode list to jax array."""
     return np.asarray(x) if isinstance(x, list) else x
 
 
-def jax_decoder(x: Any) -> Any:
+def _jax_decoder(x: Any) -> Any:
     """Decode list to jax array."""
     return jnp.asarray(x) if isinstance(x, list) else x
 
 
-def union_decoder(x: Any, union: _UnionGenericAlias) -> Any:
+def _complex_encoder(x: Any) -> Any:
+    """Encode a complex number as a string"""
+    return str(x)
+
+
+def _complex_decoder(x: Any) -> Any:
+    """Decode a complex number"""
+    return eval(x)
+
+
+def _union_decoder(x: Any, union: _UnionGenericAlias) -> Any:
     """Decode a union type hint."""
     instance = None
     for cls in get_args(union):
@@ -242,47 +291,8 @@ def union_decoder(x: Any, union: _UnionGenericAlias) -> Any:
             temp = cls.from_dict(x)
             assert set(x.keys()) == set(temp.to_dict().keys())
             instance = temp
-        except (KeyError, TypeError, AssertionError):
-            pass
+        except (KeyError, TypeError, AssertionError) as err:
+            print(cls, err)
     if instance is None:
         raise TypeError(f"Could not decode from {union}")
     return instance
-
-
-def field(
-    pytree_node: bool = True,
-    encode: Any = Array,
-    **kwargs: Any,
-) -> Any:
-    """
-    Add metadata to usual dataclass fields.
-
-    Parameters
-    ----------
-    pytree_node : `bool`
-        Determine if field is to be part of the
-        pytree.
-    encode : `Any`
-        Type hint for the field's json encoding.
-        If this is a ``Union`` of ``cryojax``
-        objects, the decoder will try to find
-        the correct one to instantiate.
-    """
-    if "metadata" in kwargs.keys():
-        metadata = kwargs["metadata"]
-        del kwargs["metadata"]
-    else:
-        metadata = {}
-    metadata.update(dict(pytree_node=pytree_node, encode=encode))
-    if encode is False:
-        serializer = config(decoder=dummy_decoder, encoder=dummy_encoder)
-    elif get_origin(encode) is Union:
-        serializer = config(decoder=lambda x: union_decoder(x, encode))
-    elif encode == Array:
-        serializer = config(encoder=np_encoder, decoder=jax_decoder)
-    elif encode == np.ndarray:
-        serializer = config(encoder=np_encoder, decoder=np_decoder)
-    else:
-        serializer = {}
-    metadata.update(serializer)
-    return dataclasses.field(metadata=metadata, **kwargs)
