@@ -4,7 +4,7 @@ Routines for representing and operating on 3D point clouds.
 
 from __future__ import annotations
 
-__all__ = ["Specimen", "ElectronDensity", "ElectronCloud", "ElectronGrid"]
+__all__ = ["Specimen", "Voxels", "ElectronCloud", "ElectronGrid"]
 
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Any, Type
@@ -111,11 +111,9 @@ class Specimen(CryojaxObject, metaclass=ABCMeta):
 
 
 @dataclass
-class ElectronDensity(Specimen):
+class Voxels(Specimen):
     """
-    Electron density contrast representation of a specimen.
-
-    This base class represents a voxel-based electron density.
+    Voxel-based electron density contrast representation of a specimen.
 
     Attributes
     ----------
@@ -140,30 +138,30 @@ class ElectronDensity(Specimen):
 
     @classmethod
     def from_file(
-        cls: Type[ElectronDensity],
+        cls: Type[Voxels],
         filename: str,
         config: dict = {},
         **kwargs: Any,
-    ) -> ElectronDensity:
+    ) -> Voxels:
         """Load a Specimen."""
         return cls.from_mrc(filename, config=config, **kwargs)
 
     @classmethod
     @abstractmethod
     def from_mrc(
-        cls: Type[ElectronDensity],
+        cls: Type[Voxels],
         filename: str,
         config: dict = {},
         **kwargs: Any,
-    ) -> ElectronDensity:
+    ) -> Voxels:
         """Load a Specimen from MRC file format."""
         raise NotImplementedError
 
 
 @dataclass
-class ElectronCloud(ElectronDensity):
+class ElectronCloud(Voxels):
     """
-    Abstraction of a 3D electron density point cloud.
+    Abstraction of a 3D electron density voxel point cloud.
 
     Attributes
     ----------
@@ -199,7 +197,7 @@ class ElectronCloud(ElectronDensity):
 
 
 @dataclass
-class ElectronGrid(ElectronDensity):
+class ElectronGrid(Voxels):
     """
     Abstraction of a 3D electron density voxel grid.
 
