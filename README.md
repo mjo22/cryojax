@@ -49,12 +49,10 @@ First, instantiate the image formation method ("scattering") and its respective 
 of an electron density ("specimen").
 
 ```python
-import jax.numpy as jnp
-from cryojax.utils import irfft
+import jax
 import cryojax.simulator as cs
 
 template = "example.mrc"
-key = jax.random.PRNGKey(seed=0)
 scattering = cs.NufftScattering(shape=(320, 320))
 specimen = cs.ElectronCloud.from_file(template, resolution=1.1)
 ```
@@ -70,14 +68,15 @@ Next, the model is configured at initial pose, contrast transfer function, and d
 and an image model is chosen.
 
 ```python
+key = jax.random.PRNGKey(seed=0)
 pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteNoiseDetector(key=key, pixel_size=1.1)
 state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state)
-params = dict(view_phi=180, defocus_u=8000., alpha=1.4, pixel_size=1.09)
+params = dict(view_phi=180, defocus_u=8000., pixel_size=1.09)
 image = model(params)
 ```
 
-This workflow configures an initial model state at the library's default parameters, then evaulates it at a state with an updated viewing angle `view_phi`, major axis defocus `defocus_u`, detector noise variance `alpha`, and detector pixel size `pixel_size`. For more advanced examples, see the tutorials section of the repository.
+This workflow configures an initial model state at the library's default parameters, then evaulates it at a state with an updated viewing angle `view_phi`, major axis defocus `defocus_u`, and detector pixel size `pixel_size`.
 
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
@@ -94,13 +93,11 @@ image = model(params)
 If a `GaussianImage` is initialized with the field `observed`, the model will instead compute a Gaussian log-likelihood in Fourier space with a diagonal covariance tensor (or power spectrum).
 
 ```python
-from cryojax.utils import fft
-
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=observed)
 log_likelihood = model(params)
 ```
 
-Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s. JAX functional transformation can now be applied to the model!
+Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s. `jax` functional transformations can now be applied to the model!
 
 ```python
 @jax.jit
@@ -109,7 +106,11 @@ def loss(params):
     return model(params)
 ```
 
-Additional components can be plugged into the `Image` model's `PipelineState`. For example, `Ice` models are supported. For example, `EmpiricalIce` stores an empirical measure of the ice power spectrum. `ExponentialNoiseIce` generates ice as noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
+Note that in order to jit-compile the `model` we must create a wrapper for it because it is a `dataclass`, not a function.
+
+Additional components can be plugged into the `Image` model's `PipelineState`. For example, `Ice` models are supported. For example, `EmpiricalIce` stores an empirical measure of the ice power spectrum. `ExponentialNoiseIce` generates ice as noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
+
+For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
 
 ## Features
 
