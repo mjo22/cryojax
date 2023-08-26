@@ -50,6 +50,7 @@ of an electron density ("specimen").
 
 ```python
 import jax
+import jax.numpy as jnp
 import cryojax.simulator as cs
 
 template = "example.mrc"
@@ -78,7 +79,7 @@ image = model()
 This computes an image at the instantiated model configuration. We can then compute the model at a set of updated parameters using python keyword arguments.
 
 ```python
-params = dict(view_phi=180, defocus_u=8000., pixel_size=1.09)
+params = dict(view_phi=jnp.asarray(180.), defocus_u=jnp.asarray(8000.), pixel_size=jnp.asarray(1.09))
 image = model(**params)
 ```
 
