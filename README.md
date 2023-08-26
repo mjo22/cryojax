@@ -5,13 +5,11 @@ This library is a modular framework for simulating forward models of cryo electr
 
 The core of this package is its ability to simulate cryo-EM images. Starting with a 3D electron density map, one can simulate a scattering process onto the imaging plane with modulation by the instrument optics. Images are then sampled from models of the noise or the corresponding log-likelihood is computed.
 
-These models can be fed into standard statistical inference or optimization libraries in `jax`, such as [numpyro](https://github.com/pyro-ppl/numpyro) or [jaxopt](https://github.com/google/jaxopt).
+These models can be fed into standard statistical inference, optimization, and model building libraries in `jax`, such as [numpyro](https://github.com/pyro-ppl/numpyro), [jaxopt](https://github.com/google/jaxopt), or [flax](https://github.com/google/flax). The `jax` ecosystem is rich and growing fast!
 
 ## Installation
 
-Installing `cryojax` is currently a bit more complicated than it should be because it relies on the library [tensorflow-nufft](https://github.com/mrphys/tensorflow-nufft) through the `jax` experimental feature [jax2tf](https://github.com/google/jax/blob/main/jax/experimental/jax2tf/README.md). Getting [tensorflow](https://github.com/tensorflow/tensorflow) to install besides `jax` is a bit of a pain. Once [jax-finufft](https://github.com/dfm/jax-finufft) adds GPU support, the `tensorflow` dependency will be replaced. In the following instructions, please install `tensorflow` and `jax` with either GPU or CPU support.
-
-To start, I recommend creating a new virtual environment. For example, you could do this with `conda`.
+Installing `cryojax` is simple. To start, I recommend creating a new virtual environment. For example, you could do this with `conda`.
 
 ```bash
 conda create -n cryojax -c conda-forge python=3.10
@@ -19,15 +17,9 @@ conda create -n cryojax -c conda-forge python=3.10
 
 Note that `python>=3.10` is required because of recent features in [dataclasses](https://docs.python.org/3/library/dataclasses.html) support. Custom dataclasses that are safe to pass to `jax` are heavily used in this library!
 
-Then, modify the [tensorflow installation](https://www.tensorflow.org/install/pip) instructions to install version 2.11.x. As I'm writing this, `tensorflow-nufft` supports up to version 2.11.x, which is tested on `3.7<=python<=3.10`. `tensorflow>=2.12.x` and `python>=3.11` may not be supported.
+First, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support.
 
-Now [install tensorflow-nufft](https://mrphys.github.io/tensorflow-nufft/guide/start/) with
-
-```bash
-pip install tensorflow-nufft==0.12.0
-```
-
-Next, [install JAX](https://github.com/google/jax#installation). I have found it easier to first install `tensorflow` and then `jax` because each try to install their own CUDA dependencies. `tensorflow` seems to be more strict about this.
+Next, [install jax-finufft](https://github.com/dfm/jax-finufft). Non-uniform FFTs are provided as an option for computing image projections. Note that this package does not yet provide GPU support, but there are plans to do so.
 
 Finally, install `cryojax`. For now, only a source build is supported.
 
@@ -56,7 +48,7 @@ scattering = cs.NufftScattering(shape=(320, 320))
 specimen = cs.ElectronCloud.from_file(template, resolution=1.1)
 ```
 
-Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density is converted to a density point cloud with the `ElectronCloud` autoloader. Alternatively, a user could call the `ElectronCloud` constructor. This is loaded in real-space and pairs with ``NufftScattering``, which computes volume projections using [non-uniform FFTs](https://github.com/mrphys/tensorflow-nufft). Alternatively, one could load the volume in fourier space and use the fourier-slice projection theorem.
+Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density is converted to a density point cloud with the `ElectronCloud` autoloader. Alternatively, a user could call the `ElectronCloud` constructor. This is loaded in real-space and pairs with ``NufftScattering``, which computes volume projections using [non-uniform FFTs](https://github.com/dfm/jax-finufft). Alternatively, one could load the volume in fourier space and use the fourier-slice projection theorem.
 
 ```python
 scattering = cs.FourierSliceScattering(shape=(320, 320))
@@ -125,7 +117,7 @@ For these more advanced examples, see the tutorials section of the repository. I
 
 ## Features
 
-- Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration. Until GPU support for `jax-finufft` is added, models using the `NufftScattering` method will not support `jit`, `vmap`, and `pmap`. This is because `tensorflow-nufft` does not compile.
+- Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration. However, until GPU support for `jax-finufft` is added, models using the `NufftScattering` method will not support the GPU.
 
 - `CryojaxObjects`, including `Image` models, are JSON serializable thanks to the package `dataclasses-json`. The method `CryojaxObject.dumps` serializes the object as a JSON string, and `CryojaxObject.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.GaussianImage.load("model.json")`.
 

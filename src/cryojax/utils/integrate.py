@@ -8,10 +8,7 @@ from typing import Any, Union
 
 import jax
 import jax.numpy as jnp
-import tensorflow_nufft as tfft
-from jax.experimental import jax2tf
-
-# from jax_finufft import nufft1
+from jax_finufft import nufft1
 from jax.scipy import special
 
 from .coordinates import fftfreqs1d
@@ -29,13 +26,11 @@ def nufft(
     r"""
     Helper routine to compute a non-uniform FFT on the
     imaging plane for a 3D point cloud.
-    Mask out points that lie out of bounds.
 
     .. warning::
-        If any values in ``coords`` lies out of bounds of
-        :math:`$(-3\pi, 3\pi]$`, this method will crash.
-        This means that ``density`` cannot be
-        arbitrarily cropped, only to a certain extent.
+        If any values in ``2 * np.pi * coords / box_size``
+        lies out of bounds of :math:`$(-3\pi, 3\pi]$`,
+        this method will crash.
 
     Arguments
     ---------
@@ -52,6 +47,8 @@ def nufft(
         Precision of the non-uniform FFT. See
         `finufft <https://finufft.readthedocs.io/en/latest/>`_
         for more detail.
+    kwargs :
+        Keyword arguments passed to ``jax_finufft.nufft1``.
     Return
     ------
     ft : `Array`, shape ``shape``
@@ -61,26 +58,8 @@ def nufft(
     complex_density = jnp.asarray(density.astype(complex))
     periodic_coords = 2 * jnp.pi * coords / box_size
 
-    def tf_nufft1(shape, density, coords, **kwargs):
-        return tfft.nufft(
-            density,
-            coords,
-            grid_shape=shape,
-            transform_type="type_1",
-            tol=eps,
-            **kwargs
-        )
-
-    nufft1 = jax2tf.call_tf(
-        tf_nufft1,
-        output_shape_dtype=jax.ShapeDtypeStruct(shape, complex_density.dtype),
-    )
-    # ft = nufft1(
-    #    shape, complex_density, jnp.flip(periodic_coords, axis=-1), **kwargs
-    # )
-    ft = nufft1(shape, complex_density, periodic_coords, **kwargs)
-    # x, y = periodic_coords.T
-    # ft = nufft1(shape, complex_density, -y, -x, eps=eps)
+    x, y = periodic_coords.T
+    ft = nufft1(shape, complex_density, -x, -y, eps=eps, **kwargs)
 
     return jnp.fft.ifftshift(ft)
 

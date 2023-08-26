@@ -46,8 +46,9 @@ def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict[str, Any]:
     template, voxel_size = load_mrc(filename)
     # Change how template sits in the box to match cisTEM
     # Ideally we would have this read in from the MRC and be the
-    # same for all I/O methods. Because tensorflow-nufft has
-    # its own xyz conventions
+    # same for all I/O methods. However, the algorithms used all
+    # have their own xyz conventions. This is made to match
+    # jax-finufft.
     template = jnp.transpose(template, axes=[1, 2, 0])
     # Load flattened density and coordinates
     density, coordinates = coordinatize_voxels(template, voxel_size, **kwargs)
