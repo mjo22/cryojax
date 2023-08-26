@@ -18,7 +18,7 @@ import numpy as np
 from ..core import Array, ArrayLike
 
 
-def make_coordinates(*args: Any, **kwargs: Any) -> np.ndarray:
+def make_coordinates(*args: Any, **kwargs: Any) -> Array:
     """
     Wraps ``cryojax.utils.coordinates.fftfreqs``
     for ``real = True``.
@@ -26,7 +26,7 @@ def make_coordinates(*args: Any, **kwargs: Any) -> np.ndarray:
     return fftfreqs(*args, real=True, **kwargs)
 
 
-def make_frequencies(*args: Any, **kwargs: Any) -> np.ndarray:
+def make_frequencies(*args: Any, **kwargs: Any) -> Array:
     """
     Wraps ``cryojax.utils.coordinates.fftfreqs``
     for ``real = False``.
@@ -36,10 +36,10 @@ def make_frequencies(*args: Any, **kwargs: Any) -> np.ndarray:
 
 def fftfreqs(
     shape: tuple[int, ...],
-    pixel_size: Union[float, ArrayLike] = 1.0,
+    pixel_size: Union[float, np.ndarray] = 1.0,
     real: bool = False,
     indexing: str = "xy",
-) -> np.ndarray:
+) -> Array:
     """
     Create a radial coordinate system on a grid.
     This can be used for real and fourier space
@@ -51,7 +51,7 @@ def fftfreqs(
     shape : `tuple[int, ...]`
         Shape of the voxel grid, with
         ``ndim = len(shape)``.
-    pixel_size : `float` or `ArrayLike`, shape `(ndim,)`
+    pixel_size : `float` or `np.ndarray`, shape `(ndim,)`
         Image pixel size.
     real : `bool`
         Choose whether to create coordinate system
@@ -75,10 +75,10 @@ def fftfreqs(
     ]
     k_coords = np.stack(np.meshgrid(*k_coords1D, indexing=indexing), axis=-1)
 
-    return k_coords
+    return jnp.asarray(k_coords)
 
 
-def fftfreqs1d(s: int, pixel_size: float, real: bool = False) -> ArrayLike:
+def fftfreqs1d(s: int, pixel_size: float, real: bool = False) -> np.ndarray:
     """One-dimensional coordinates in real or fourier space"""
     fftfreq = (
         lambda s: np.fft.fftshift(np.fft.fftfreq(s, 1 / pixel_size)) * s

@@ -4,7 +4,7 @@ Integration routines.
 
 __all__ = ["nufft", "integrate_gaussians"]
 
-from typing import Any
+from typing import Any, Union
 
 import jax
 import jax.numpy as jnp
@@ -15,13 +15,13 @@ from jax.experimental import jax2tf
 from jax.scipy import special
 
 from .coordinates import fftfreqs1d
-from ..core import Array
+from ..core import Array, ArrayLike
 
 
 def nufft(
-    density: Array,
-    coords: Array,
-    box_size: Array,
+    density: ArrayLike,
+    coords: ArrayLike,
+    box_size: Union[float, ArrayLike],
     shape: tuple[int, int],
     eps: float = 1e-6,
     **kwargs: Any
@@ -35,30 +35,30 @@ def nufft(
         If any values in ``coords`` lies out of bounds of
         :math:`$(-3\pi, 3\pi]$`, this method will crash.
         This means that ``density`` cannot be
-        arbitrarily cropped and translated out of frame,
-        rather only to a certain extent.
+        arbitrarily cropped, only to a certain extent.
 
     Arguments
     ---------
-    density : shape `(N,)`
+    density : `ArrayLike`, shape `(N,)`
         Density point cloud over which to compute
         the fourier transform.
-    coords : shape `(N, 2)`
+    coords : `ArrayLike`, shape `(N, 2)`
         Coordinate system for density cloud.
-    box_size : shape `(2,)`
+    box_size : `float` or `ArrayLike`, shape `(2,)`
         2D imaging plane that ``coords`` lies in.
-    shape :
+    shape : `tuple[int, int]`
         Desired output shape of the transform.
-    eps :
+    eps : `float`
         Precision of the non-uniform FFT. See
         `finufft <https://finufft.readthedocs.io/en/latest/>`_
         for more detail.
     Return
     ------
-    ft : Array, shape ``shape``
+    ft : `Array`, shape ``shape``
         Fourier transform.
     """
-    complex_density = density.astype(complex)
+    coords = jnp.asarray(coords)
+    complex_density = jnp.asarray(density.astype(complex))
     periodic_coords = 2 * jnp.pi * coords / box_size
 
     def tf_nufft1(shape, density, coords, **kwargs):
@@ -86,12 +86,12 @@ def nufft(
 
 
 def integrate_gaussians(
-    weights: Array,
-    centers: Array,
-    scales: Array,
+    weights: ArrayLike,
+    centers: ArrayLike,
+    scales: ArrayLike,
     shape: tuple[int, int],
     pixel_size: float,
-):
+) -> Array:
     """
     Integrate a sum of Gaussians over a grid given by the given shape.
 
@@ -106,11 +106,11 @@ def integrate_gaussians(
         The number of dimensions is inferred from the length of this sequence.
     pixel_size : `float`
         Pixel size.
-    weights : `Array`, shape `(N,)`
+    weights : `ArrayLike`, shape `(N,)`
         Weights of Gaussian densities.
-    centers : `Array`, shape `(N, 2)`
+    centers : `ArrayLike`, shape `(N, 2)`
         Centers of Gaussian densities.
-    scales : `Array`, shape `(N,)`
+    scales : `ArrayLike`, shape `(N,)`
         Scales of Gaussian densities.
 
     Returns
@@ -126,22 +126,26 @@ def integrate_gaussians(
 
 @jax.jit
 def _integrate_gaussians(
-    x: Array, y: Array, weights: Array, centers: Array, scales: Array
-):
+    x: ArrayLike,
+    y: ArrayLike,
+    weights: ArrayLike,
+    centers: ArrayLike,
+    scales: ArrayLike,
+) -> Array:
     """
     Integrate a Gaussian density over a set of intervals given by boundaries.
 
     Parameters
     ----------
-    x : `Array`, shape `(M1 + 1,)`
+    x : `ArrayLike`, shape `(M1 + 1,)`
         x boundary of intervals to integrate over.
-    y : `Array`, shape `(M2 + 1,)`
+    y : `ArrayLike`, shape `(M2 + 1,)`
         y boundary of intervals to integrate over.
-    weights : `Array`, shape `(N,)`
+    weights : `ArrayLike`, shape `(N,)`
         Gaussian weights
-    centers : `Array`, shape `(N, 2)`
+    centers : `ArrayLike`, shape `(N, 2)`
         Centers of Gaussian densities.
-    scales : `Array`, shape `(N,)`
+    scales : `ArrayLike`, shape `(N,)`
         Scales of Gaussian densities.
 
     Returns

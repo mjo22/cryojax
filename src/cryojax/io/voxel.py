@@ -16,10 +16,10 @@ import numpy as np
 import jax.numpy as jnp
 from typing import Any
 from ..utils import fftfreqs, fft, pad
-from ..core import Array
+from ..core import Array, ArrayLike
 
 
-def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict:
+def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict[str, Any]:
     """
     Read a 3D template on a cartesian grid
     to a point cloud.
@@ -62,7 +62,7 @@ def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict:
     return cloud
 
 
-def load_fourier_grid(filename: str, pad_scale=1.0) -> dict:
+def load_fourier_grid(filename: str, pad_scale=1.0) -> dict[str, Any]:
     """
     Read a 3D template in Fourier space on a cartesian grid.
 
@@ -104,7 +104,7 @@ def load_fourier_grid(filename: str, pad_scale=1.0) -> dict:
     return voxels
 
 
-def load_mrc(filename: str) -> tuple[np.ndarray, np.ndarray]:
+def load_mrc(filename: str) -> tuple[np.ndarray, float]:
     """
     Read MRC data to ``numpy`` array.
 
@@ -149,12 +149,12 @@ def load_mrc(filename: str) -> tuple[np.ndarray, np.ndarray]:
 
 
 def coordinatize_voxels(
-    template: np.ndarray,
+    template: ArrayLike,
     voxel_size: float,
     mask: bool = True,
     indexing="xy",
     **kwargs: Any,
-) -> tuple[Array, ...]:
+) -> tuple[Array, Array]:
     """
     Returns 3D volume or 2D image and its coordinate system.
     By default, coordinates are shape ``(N, ndim)``, where
@@ -183,9 +183,8 @@ def coordinatize_voxels(
     coords : `Array`, shape `(N, ndim)`
         Cartesian coordinate system.
     """
+    template = jnp.asarray(template)
     ndim, shape = template.ndim, template.shape
-    # Change how template sits in the box to match cisTEM
-
     # Mask out points where the electron density is close
     # to zero.
     flat = template.ravel()

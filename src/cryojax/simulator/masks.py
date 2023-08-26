@@ -34,7 +34,7 @@ class Mask(metaclass=ABCMeta):
 
     coords: InitVar[ArrayLike]
 
-    def __post_init__(self, *args):
+    def __post_init__(self, *args: Any):
         object.__setattr__(self, "mask", self.compute(*args))
 
     @abstractmethod
@@ -42,7 +42,7 @@ class Mask(metaclass=ABCMeta):
         """Compute the mask."""
         raise NotImplementedError
 
-    def __call__(self, image: Array) -> Array:
+    def __call__(self, image: ArrayLike) -> Array:
         """Apply the mask to an image."""
         return self.mask * image
 
@@ -65,7 +65,7 @@ class CircularMask(Mask):
     radius: float = field(pytree_node=False, default=0.95)
     rolloff: float = field(pytree_node=False, default=0.05)
 
-    def compute(self, coords: Array) -> Array:
+    def compute(self, coords: ArrayLike) -> Array:
         return compute_circular_mask(
             coords,
             self.radius,
@@ -74,7 +74,7 @@ class CircularMask(Mask):
 
 
 def compute_circular_mask(
-    coords: Array,
+    coords: ArrayLike,
     cutoff: float = 0.95,
     rolloff: float = 0.05,
 ) -> Array:
@@ -83,7 +83,7 @@ def compute_circular_mask(
 
     Parameters
     ----------
-    coords : `jax.Array`, shape `(N1, N2, 2)`
+    coords : `ArrayLike`, shape `(N1, N2, 2)`
         The image coordiantes, in units of pixels.
     cutoff : `float`, optional
         The cutoff radius as a fraction of half
@@ -94,9 +94,10 @@ def compute_circular_mask(
 
     Returns
     -------
-    mask : `jax.Array`, shape `(N1, N2)`
+    mask : `Array`, shape `(N1, N2)`
         An array representing the circular mask.
     """
+    coords = jnp.asarray(coords)
 
     r_max = min(coords.shape[0:2]) // 2
     r_cut = cutoff * r_max

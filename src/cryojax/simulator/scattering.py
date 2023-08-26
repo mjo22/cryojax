@@ -20,9 +20,8 @@ from typing import Any
 import jax.numpy as jnp
 import numpy as np
 
-from ..core import dataclass, field, Array, CryojaxObject
+from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
 from ..utils import (
-    irfft,
     fft,
     fftfreqs,
     crop,
@@ -80,32 +79,34 @@ class ImageConfig(CryojaxObject):
         padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
         object.__setattr__(self, "padded_shape", padded_shape)
         # Set coordinates
-        freqs = jnp.asarray(fftfreqs(self.shape))
-        padded_freqs = jnp.asarray(fftfreqs(self.padded_shape))
-        coords = jnp.asarray(fftfreqs(self.shape, real=True))
-        padded_coords = jnp.asarray(fftfreqs(self.padded_shape, real=True))
+        freqs = fftfreqs(self.shape)
+        padded_freqs = fftfreqs(self.padded_shape)
+        coords = fftfreqs(self.shape, real=True)
+        padded_coords = fftfreqs(self.padded_shape, real=True)
         object.__setattr__(self, "freqs", freqs)
         object.__setattr__(self, "padded_freqs", padded_freqs)
         object.__setattr__(self, "coords", coords)
         object.__setattr__(self, "padded_coords", padded_coords)
 
-    def crop(self, image: Array) -> Array:
+    def crop(self, image: ArrayLike) -> Array:
         """Crop an image in real space."""
         return crop(image, self.shape)
 
-    def pad(self, image: Array, **kwargs: Any) -> Array:
+    def pad(self, image: ArrayLike, **kwargs: Any) -> Array:
         """Pad an image in real space."""
         return pad(image, self.padded_shape, **kwargs)
 
     def downsample(
-        self, image: Array, method="lanczos5", **kwargs: Any
+        self, image: ArrayLike, method="lanczos5", **kwargs: Any
     ) -> Array:
         """Downsample an image in Fourier space."""
         return resize(
             image, self.shape, antialias=False, method=method, **kwargs
         )
 
-    def upsample(self, image: Array, method="bicubic", **kwargs: Any) -> Array:
+    def upsample(
+        self, image: ArrayLike, method="bicubic", **kwargs: Any
+    ) -> Array:
         """Upsample an image in Fourier space."""
         return resize(image, self.padded_shape, method=method, **kwargs)
 
@@ -139,7 +140,9 @@ class FourierSliceScattering(ScatteringConfig):
         pytree_node=False, default=0.0 + 0.0j, encode=complex
     )
 
-    def scatter(self, density: Array, coordinates: Array, resolution: float):
+    def scatter(
+        self, density: ArrayLike, coordinates: ArrayLike, resolution: float
+    ) -> Array:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
@@ -171,7 +174,9 @@ class NufftScattering(ScatteringConfig):
 
     eps: float = field(pytree_node=False, default=1e-6)
 
-    def scatter(self, density: Array, coordinates: Array, resolution: float):
+    def scatter(
+        self, density: ArrayLike, coordinates: ArrayLike, resolution: float
+    ) -> Array:
         """Rasterize image with non-uniform FFTs."""
         return project_with_nufft(
             density,
@@ -183,11 +188,11 @@ class NufftScattering(ScatteringConfig):
 
 
 def extract_slice(
-    density: Array,
-    coordinates: Array,
+    density: ArrayLike,
+    coordinates: ArrayLike,
     resolution: float,
     shape: tuple[int, int],
-    **kwargs,
+    **kwargs: Any,
 ) -> Array:
     """
     Project and interpolate 3D volume point cloud
@@ -195,9 +200,9 @@ def extract_slice(
 
     Arguments
     ---------
-    density : `Array`, shape `(N1, N2, N3)`
+    density : `ArrayLike`, shape `(N1, N2, N3)`
         Density grid in fourier space.
-    coordinates : `Array`, shape `(N1, N2, 1, 3)`
+    coordinates : `ArrayLike`, shape `(N1, N2, 1, 3)`
         Frequency central slice coordinate system.
     resolution : float
         The rasterization resolution.
@@ -213,6 +218,7 @@ def extract_slice(
     projection :
         The output image in fourier space.
     """
+    density, coordinates = jnp.asarray(density), jnp.asarray(coordinates)
     N1, N2, N3 = density.shape
     if not all([Ni == N1 for Ni in [N1, N2, N3]]):
         raise ValueError("Only cubic boxes are supported for fourier slice.")
@@ -242,11 +248,11 @@ def extract_slice(
 
 
 def project_with_nufft(
-    density: Array,
-    coordinates: Array,
+    density: ArrayLike,
+    coordinates: ArrayLike,
     resolution: float,
     shape: tuple[int, int],
-    **kwargs,
+    **kwargs: Any,
 ) -> Array:
     """
     Project and interpolate 3D volume point cloud
@@ -256,9 +262,9 @@ def project_with_nufft(
 
     Arguments
     ---------
-    density : `Array`, shape `(N,)`
+    density : `ArrayLike`, shape `(N,)`
         Density point cloud.
-    coordinates : `Array`, shape `(N, 3)`
+    coordinates : `ArrayLike`, shape `(N, 3)`
         Coordinate system of point cloud.
     resolution : float
         The rasterization resolution.
@@ -274,6 +280,7 @@ def project_with_nufft(
     projection :
         The output image in fourier space.
     """
+    density, coordinates = jnp.asarray(density), jnp.asarray(coordinates)
     M1, M2 = shape
     image_size = jnp.array(np.array([M1, M2]) * resolution)
     coordinates = jnp.flip(coordinates[:, :2], axis=-1)

@@ -16,7 +16,14 @@ from typing import Union, Optional
 
 from .state import PipelineState
 from ..utils import fft, irfft
-from ..core import CryojaxObject, dataclass, field, Array, Scalar
+from ..core import (
+    dataclass,
+    field,
+    ParameterDict,
+    Array,
+    ArrayLike,
+    CryojaxObject,
+)
 from . import Filter, Mask, Specimen, ScatteringConfig
 
 
@@ -45,10 +52,9 @@ class Image(CryojaxObject, metaclass=ABCMeta):
     masks : `list[Mask]`
         A list of masks to apply to the image. By default, there are no
         masks.
-    observed : `jax.Array`, optional
+    observed : `Array`, optional
         The observed data in real space. This must be the same
-        shape as ``scattering.shape``. ``ImageModel.observed`` will return
-        the data with the filters applied.
+        shape as ``scattering.shape``.
     """
 
     state: PipelineState
@@ -116,14 +122,14 @@ class Image(CryojaxObject, metaclass=ABCMeta):
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
-    ) -> Scalar:
+    ) -> Union[float, Array]:
         """Evaluate the log-likelihood of the data given a parameter set."""
         raise NotImplementedError
 
     def __call__(
         self,
-        params: dict = {},
-    ) -> Union[Array, Scalar]:
+        **params: ParameterDict,
+    ) -> Union[float, Array]:
         """
         Evaluate the model at a parameter set.
 
@@ -137,13 +143,13 @@ class Image(CryojaxObject, metaclass=ABCMeta):
         else:
             return self.log_likelihood(state=state, specimen=specimen)
 
-    def filter(self, image: Array) -> Array:
+    def filter(self, image: ArrayLike) -> Array:
         """Apply filters to image."""
         for filter in self.filters:
             image = filter(image)
         return image
 
-    def mask(self, image: Array) -> Array:
+    def mask(self, image: ArrayLike) -> Array:
         """Apply masks to image."""
         for mask in self.masks:
             image = mask(image)
@@ -238,7 +244,7 @@ class ScatteringImage(Image):
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
-    ) -> Scalar:
+    ) -> Union[float, Array]:
         raise NotImplementedError
 
 

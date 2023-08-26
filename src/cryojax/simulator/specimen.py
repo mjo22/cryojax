@@ -11,11 +11,9 @@ from typing import Optional, Any, Type
 from functools import partial
 from dataclasses import fields
 
-import jax.numpy as jnp
-
 from .pose import Pose
 from ..io import load_grid_as_cloud, load_fourier_grid
-from ..core import Array, dataclass, field, CryojaxObject
+from ..core import Array, Parameter, dataclass, field, CryojaxObject
 from . import ScatteringConfig
 
 
@@ -43,7 +41,7 @@ class Specimen(CryojaxObject, metaclass=ABCMeta):
     config: dict = field(pytree_node=False, default_factory=dict)
 
     # The resolution of the specimen
-    resolution: float
+    resolution: Parameter
 
     @abstractmethod
     def view(self, pose: Pose) -> Specimen:

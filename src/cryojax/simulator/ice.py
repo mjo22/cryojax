@@ -10,7 +10,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional, Any
 
 from .noise import GaussianNoise
-from ..core import dataclass, field, Array, Scalar, CryojaxObject
+from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
 
 
 @dataclass
@@ -31,7 +31,7 @@ class NullIce(GaussianNoise, Ice):
     A 'null' ice model.
     """
 
-    def variance(self, freqs: Optional[Array] = None) -> Array:
+    def variance(self, freqs: Optional[ArrayLike] = None) -> Array:
         return 0.0
 
 
@@ -45,18 +45,18 @@ class EmpiricalIce(GaussianNoise, Ice):
     ----------
     spectrum : `jax.Array`, shape `(N1, N2)`
         The measured power spectrum.
-    kappa : `cryojax.core.Scalar`
+    kappa : `cryojax.core.Parameter`
         A scale factor for the variance.
-    gamma : `cryojax.core.Scalar`
+    gamma : `cryojax.core.Parameter`
         The "white" part of the variance.
     """
 
     spectrum: Array = field(pytree_node=False)
 
-    kappa: Scalar = 1.0
-    gamma: Scalar = 0.0
+    kappa: Parameter = 1.0
+    gamma: Parameter = 0.0
 
-    def variance(self, freqs: Optional[Array] = None) -> Array:
+    def variance(self, freqs: Optional[ArrayLike] = None) -> Array:
         """Power spectrum measured from a micrograph."""
         return self.kappa * self.spectrum + self.gamma
 
@@ -79,21 +79,22 @@ class ExponentialNoiseIce(GaussianNoise, Ice):
 
     Attributes
     ----------
-    kappa : `cryojax.core.Scalar`
+    kappa : `cryojax.core.Parameter`
         The "coupling strength".
-    xi : `cryojax.core.Scalar`
+    xi : `cryojax.core.Parameter`
         The correlation length. This is measured
         in dimensions of length, not pixels.
-    gamma : `cryojax.core.Scalar`
+    gamma : `cryojax.core.Parameter`
         The "white" part of the variance.
     """
 
-    kappa: Scalar = 0.1
-    xi: Scalar = 1.0
-    gamma: Scalar = 0.1
+    kappa: Parameter = 0.1
+    xi: Parameter = 1.0
+    gamma: Parameter = 0.1
 
-    def variance(self, freqs: Array) -> Array:
+    def variance(self, freqs: ArrayLike) -> Array:
         """Power spectrum modeled by a pure exponential."""
+        freqs = jnp.asarray(freqs)
         if self.xi != 0.0:
             k_norm = jnp.linalg.norm(freqs, axis=-1)
             scaling = (

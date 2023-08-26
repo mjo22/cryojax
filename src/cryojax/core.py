@@ -10,7 +10,8 @@ from __future__ import annotations
 __all__ = [
     "Array",
     "ArrayLike",
-    "Scalar",
+    "Parameter",
+    "ParameterDict",
     "dataclass",
     "field",
     "Serializable",
@@ -21,6 +22,7 @@ __all__ = [
 import dataclasses
 import jax
 from typing import (
+    Annotated,
     Any,
     Callable,
     Tuple,
@@ -40,8 +42,11 @@ from dataclasses_json import DataClassJsonMixin, config
 from dataclasses_json.mm import JsonData
 
 
-Scalar = Union[float, Array]
+Parameter = Union[float, Annotated[Array, (), jnp.floating]]
 """Type alias for Union[float, Array]"""
+
+ParameterDict = dict[str, Parameter]
+"""Type alias for dict[str, Parameter]"""
 
 
 # This section follows the implementation in tinygp, which is based closely on the
@@ -220,7 +225,7 @@ class CryojaxObject(Serializable):
     Base class for ``cryojax`` dataclasses.
     """
 
-    def update(self, **params: dict) -> CryojaxObject:
+    def update(self, **params: ParameterDict) -> CryojaxObject:
         """
         Return a new CryojaxObject based on a dictionary.
 

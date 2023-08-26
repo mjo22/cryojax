@@ -4,24 +4,23 @@ Interpolation routines.
 
 __all__ = ["resize", "scale", "scale_and_translate", "map_coordinates"]
 
-from typing import Any, Union
+from typing import Union
 
 import jax
 import jax.numpy as jnp
-from jax._src.third_party.scipy.interpolate import RegularGridInterpolator
 from jax.scipy.ndimage import map_coordinates as _map_coordinates
 from jax.image import resize as _resize
 from jax.image import scale_and_translate as _scale_and_translate
-from ..core import Array
+from ..core import Array, ArrayLike
 
 
 def resize(
-    image: Array,
+    image: ArrayLike,
     shape: tuple[int, int],
     method="lanczos5",
     align_corners=True,
     **kwargs
-):
+) -> Array:
     """
     Resize an image with interpolation.
 
@@ -34,18 +33,19 @@ def resize(
 
 
 def scale_and_translate(
-    image: Array,
+    image: ArrayLike,
     shape: tuple[int, int],
     scale: Array,
     translation: Array,
     method="lanczos5",
     **kwargs
-):
+) -> Array:
     """
     Resize, scale, and translate an image with interpolation.
 
     Wraps ``jax.image.scale_and_translate``.
     """
+    image = jnp.asarray(image)
     spatial_dims = (0, 1)
     N1, N2 = image.shape
     translation += (1 - scale) * jnp.array([N2 // 2, N1 // 2], dtype=float)
@@ -55,12 +55,12 @@ def scale_and_translate(
 
 
 def scale(
-    image: Array,
+    image: ArrayLike,
     shape: tuple[int, int],
-    scale: Array,
+    scale: ArrayLike,
     method="lanczos5",
     **kwargs
-):
+) -> Array:
     """
     Resize and scale an image with interpolation.
 
@@ -72,25 +72,14 @@ def scale(
     )
 
 
-def interpn(points: Array, values: Array, xi: Array, **kwargs: Any):
-    """
-    Interpolate a set of points on a grid with a
-    given coordinate system onto a new coordinate system.
-
-    Wraps ``jax._src.third_party.scipy.interpolate.RegularGridInterpolator``.
-    """
-    interpolator = RegularGridInterpolator(points, values, **kwargs)
-
-    return interpolator(xi)
-
-
 def map_coordinates(
-    input: Array, coordinates: Array, order=1, mode="wrap", cval=0.0
-):
+    input: ArrayLike, coordinates: ArrayLike, order=1, mode="wrap", cval=0.0
+) -> Array:
     """
     Interpolate a set of points in fourier space on a grid
     with a given coordinate system onto a new coordinate system.
     """
+    input, coordinates = jnp.asarray(input), jnp.asarray(coordinates)
     N1, N2, N3 = input.shape
     box_shape = jnp.array([N1, N2, N3], dtype=float)[:, None, None, None]
     coordinates = jnp.transpose(coordinates, axes=[3, 0, 1, 2])
@@ -102,7 +91,7 @@ def map_coordinates(
 
 
 def _resize_with_aligned_corners(
-    image: Array,
+    image: ArrayLike,
     shape: tuple[int, ...],
     method: Union[str, jax.image.ResizeMethod],
     antialias: bool = False,
@@ -113,6 +102,7 @@ def _resize_with_aligned_corners(
 
     Adapted from https://github.com/google/jax/issues/11206.
     ."""
+    image = jnp.asarray(image)
     spatial_dims = tuple(
         i
         for i in range(len(shape))

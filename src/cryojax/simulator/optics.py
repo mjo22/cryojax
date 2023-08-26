@@ -19,7 +19,7 @@ import jax
 import jax.numpy as jnp
 
 from ..utils import cartesian_to_polar
-from ..core import dataclass, Array, Scalar, CryojaxObject
+from ..core import dataclass, Array, ArrayLike, Parameter, CryojaxObject
 
 
 @dataclass
@@ -37,16 +37,16 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def compute(self, freqs: Array, **kwargs: Any) -> Array:
+    def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
         """Compute the optics model."""
         raise NotImplementedError
 
     @abstractmethod
-    def apply(self, ctf: Array, image: Array, **kwargs: Any) -> Array:
+    def apply(self, ctf: ArrayLike, image: ArrayLike, **kwargs: Any) -> Array:
         """Apply the optics model."""
         raise NotImplementedError
 
-    def __call__(self, freqs: Array, **kwargs: Any) -> Array:
+    def __call__(self, freqs: ArrayLike, **kwargs: Any) -> Array:
         """Compute the optics model."""
         return self.compute(freqs, **kwargs)
 
@@ -57,10 +57,10 @@ class NullOptics(Optics):
     This class can be used as a null optics model.
     """
 
-    def compute(self, freqs: Array, **kwargs: Any) -> Array:
+    def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
         return jnp.array(1.0)
 
-    def apply(self, ctf: Array, image: Array, **kwargs: Any):
+    def apply(self, ctf: Array, image: ArrayLike, **kwargs: Any):
         return image
 
 
@@ -75,35 +75,35 @@ class CTFOptics(Optics):
 
     Attributes
     ----------
-    defocus_u : `cryojax.core.Scalar`
-    defocus_v : `cryojax.core.Scalar`
-    defocus_angle : `cryojax.core.Scalar`
-    voltage : `cryojax.core.Scalar`
-    spherical_aberration : `cryojax.core.Scalar`
-    amplitude_contrast_ratio : `cryojax.core.Scalar`
-    phase_shift : `cryojax.core.Scalar`
-    b_factor : `cryojax.core.Scalar`
+    defocus_u : `cryojax.core.Parameter`
+    defocus_v : `cryojax.core.Parameter`
+    defocus_angle : `cryojax.core.Parameter`
+    voltage : `cryojax.core.Parameter`
+    spherical_aberration : `cryojax.core.Parameter`
+    amplitude_contrast_ratio : `cryojax.core.Parameter`
+    phase_shift : `cryojax.core.Parameter`
+    b_factor : `cryojax.core.Parameter`
     """
 
-    defocus_u: Scalar = 10000.0
-    defocus_v: Scalar = 10000.0
-    defocus_angle: Scalar = 0.0
-    voltage: Scalar = 300.0
-    spherical_aberration: Scalar = 2.7
-    amplitude_contrast: Scalar = 0.1
-    phase_shift: Scalar = 0.0
-    b_factor: Scalar = 1.0
+    defocus_u: Parameter = 10000.0
+    defocus_v: Parameter = 10000.0
+    defocus_angle: Parameter = 0.0
+    voltage: Parameter = 300.0
+    spherical_aberration: Parameter = 2.7
+    amplitude_contrast: Parameter = 0.1
+    phase_shift: Parameter = 0.0
+    b_factor: Parameter = 1.0
 
-    def apply(self, ctf: Array, image: Array, **kwargs: Any) -> Array:
+    def apply(self, ctf: ArrayLike, image: ArrayLike, **kwargs: Any) -> Array:
         return ctf * image
 
-    def compute(self, freqs: Array, **kwargs: Any) -> Array:
+    def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
         return compute_ctf(freqs, *self.iter_data(), **kwargs)
 
 
 @partial(jax.jit, static_argnames=["b_factor", "normalize", "degrees"])
 def compute_ctf(
-    freqs: Array,
+    freqs: ArrayLike,
     defocus_u: float,
     defocus_v: float,
     defocus_angle: float,
@@ -153,7 +153,7 @@ def compute_ctf(
     ctf : `jax.Array`, shape `(N1, N2)`
         The contrast transfer function.
     """
-
+    freqs = jnp.asarray(freqs)
     # Unit conversions
     voltage *= 1000  # kV to V
     spherical_aberration *= 1e7  # mm to Angstroms

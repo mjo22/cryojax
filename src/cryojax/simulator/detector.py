@@ -18,7 +18,7 @@ from functools import partial
 
 from .noise import GaussianNoise, Noise
 from ..utils import scale
-from ..core import dataclass, field, Array, Scalar, CryojaxObject
+from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
 
 
 @partial(dataclass, kw_only=True)
@@ -28,7 +28,7 @@ class Detector(CryojaxObject, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def measure(self, image: Array, resolution: float) -> Array:
+    def measure(self, image: ArrayLike, resolution: float) -> Array:
         """Measure the `perfect` detector readout."""
         raise NotImplementedError
 
@@ -44,10 +44,10 @@ class NullDetector(Noise, Detector):
     A 'null' detector.
     """
 
-    def measure(self, image: Array, resolution: float) -> Array:
+    def measure(self, image: ArrayLike, resolution: float) -> Array:
         return image
 
-    def sample(self, freqs: Array) -> Array:
+    def sample(self, freqs: ArrayLike) -> Array:
         shape = freqs.shape[0:-1]
         return jnp.zeros(shape)
 
@@ -60,7 +60,7 @@ class CountingDetector(Detector):
 
     Attributes
     ----------
-    pixel_size : `cryojax.core.Scalar`
+    pixel_size : `cryojax.core.Parameter`
         The pixel size measured by the detector.
         This is in dimensions of physical length.
     method : `bool`, optional
@@ -68,10 +68,10 @@ class CountingDetector(Detector):
         the image at the ``pixel_size``.
     """
 
-    pixel_size: Scalar
+    pixel_size: Parameter
     method: str = field(pytree_node=False, default="lanczos5")
 
-    def measure(self, image: Array, resolution: float) -> Array:
+    def measure(self, image: ArrayLike, resolution: float) -> Array:
         """
         Measure an image at the detector pixel size using interpolation.
 
@@ -86,7 +86,7 @@ class CountingDetector(Detector):
         )
         return measured
 
-    def sample(self, freqs: Array) -> Array:
+    def sample(self, freqs: ArrayLike) -> Array:
         shape = freqs.shape[0:-1]
         return jnp.zeros(shape)
 
@@ -98,20 +98,20 @@ class WhiteNoiseDetector(GaussianNoise, CountingDetector):
 
     Attributes
     ----------
-    alpha : `cryojax.core.Scalar`
+    alpha : `cryojax.core.Parameter`
         Variance of the white noise.
     """
 
-    alpha: Scalar = 1.0
+    alpha: Parameter = 1.0
 
-    def variance(self, freqs: Optional[Array] = None) -> Array:
+    def variance(self, freqs: Optional[ArrayLike] = None) -> Array:
         """Flat power spectrum."""
         return self.alpha
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])
 def measure_image(
-    image: Array, resolution: float, pixel_size: float, **kwargs
+    image: ArrayLike, resolution: float, pixel_size: float, **kwargs
 ):
     """
     Measure an image at a given pixel size using interpolation.

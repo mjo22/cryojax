@@ -6,7 +6,7 @@ from __future__ import annotations
 
 __all__ = ["GaussianImage"]
 
-from typing import Optional
+from typing import Optional, Union
 
 import jax.numpy as jnp
 
@@ -15,7 +15,7 @@ from .state import PipelineState
 from .ice import NullIce
 from .image import DetectorImage
 from ..utils import fft
-from ..core import dataclass, Array, Scalar
+from ..core import dataclass, Array
 from . import Specimen
 
 
@@ -37,7 +37,7 @@ class GaussianImage(DetectorImage):
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Specimen] = None,
-    ) -> Scalar:
+    ) -> Union[float, Array]:
         """Evaluate the log-likelihood of the data given a parameter set."""
         state = state or self.state
         specimen = specimen or self.specimen

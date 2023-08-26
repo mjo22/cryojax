@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 from jaxlie import SO3
 
-from ..core import Array, Scalar, field, dataclass, CryojaxObject
+from ..core import Array, ArrayLike, Parameter, field, dataclass, CryojaxObject
 
 
 @dataclass
@@ -37,21 +37,21 @@ class Pose(CryojaxObject, metaclass=ABCMeta):
         3) Use the ``cryojax.core.dataclass`` decorator.
     Attributes
     ----------`
-    offset_x : `cryojax.core.Scalar`
+    offset_x : `cryojax.core.Parameter`
         In-plane translations in x direction.
-    offset_y : `cryojax.core.Scalar`
+    offset_y : `cryojax.core.Parameter`
         In-plane translations in y direction.
     """
 
-    offset_x: Scalar = 0.0
-    offset_y: Scalar = 0.0
+    offset_x: Parameter = 0.0
+    offset_y: Parameter = 0.0
 
     @abstractmethod
-    def rotate(self, coordinates: Array, real: bool = True) -> Array:
+    def rotate(self, coordinates: ArrayLike, real: bool = True) -> Array:
         """Rotation method for a particular pose convention."""
         raise NotImplementedError
 
-    def translate(self, density: Array, coordinates: Array) -> Array:
+    def translate(self, density: ArrayLike, coordinates: ArrayLike) -> Array:
         """
         Translate a 2D electron density in real space by
         applying phase shifts in fourier space.
@@ -87,11 +87,11 @@ class EulerPose(Pose):
         of this argument is with respect to fourier space
         rotations, so it is automatically inverted
         when rotating in real space.
-    view_phi : `cryojax.core.Scalar`
+    view_phi : `cryojax.core.Parameter`
         Roll angle, ranging :math:`(-\pi, \pi]`.
-    view_theta : `cryojax.core.Scalar`
+    view_theta : `cryojax.core.Parameter`
         Pitch angle, ranging :math:`(-\pi, \pi]`.
-    view_psi : `cryojax.core.Scalar`
+    view_psi : `cryojax.core.Parameter`
         Yaw angle, ranging :math:`(-\pi, \pi]`.
     """
 
@@ -100,11 +100,11 @@ class EulerPose(Pose):
     inverse: bool = field(pytree_node=False, default=False)
     degrees: bool = field(pytree_node=False, default=True)
 
-    view_phi: Scalar = 0.0
-    view_theta: Scalar = 0.0
-    view_psi: Scalar = 0.0
+    view_phi: Parameter = 0.0
+    view_theta: Parameter = 0.0
+    view_psi: Parameter = 0.0
 
-    def rotate(self, coordinates: Array, real: bool = True) -> Array:
+    def rotate(self, coordinates: ArrayLike, real: bool = True) -> Array:
         """Rotate coordinates from a set of Euler angles."""
         if real:
             rotated, _ = rotate_rpy(
@@ -135,20 +135,20 @@ class QuaternionPose(Pose):
 
     Attributes
     ----------
-    view_qw : `cryojax.core.Scalar`
-    view_qx : `cryojax.core.Scalar`
-    view_qy : `cryojax.core.Scalar`
-    view_qz : `cryojax.core.Scalar`
+    view_qw : `cryojax.core.Parameter`
+    view_qx : `cryojax.core.Parameter`
+    view_qy : `cryojax.core.Parameter`
+    view_qz : `cryojax.core.Parameter`
     """
 
     inverse: bool = field(pytree_node=False, default=False)
 
-    view_qw: Scalar = 1.0
-    view_qx: Scalar = 0.0
-    view_qy: Scalar = 0.0
-    view_qz: Scalar = 0.0
+    view_qw: Parameter = 1.0
+    view_qx: Parameter = 0.0
+    view_qy: Parameter = 0.0
+    view_qz: Parameter = 0.0
 
-    def rotate(self, coordinates: Array, real: bool = True) -> Array:
+    def rotate(self, coordinates: ArrayLike, real: bool = True) -> Array:
         """Rotate coordinates from a unit quaternion."""
         if real:
             rotated, _ = rotate_wxyz(
@@ -167,7 +167,7 @@ class QuaternionPose(Pose):
 
 
 def rotate_rpy(
-    coords: Array,
+    coords: ArrayLike,
     phi: float,
     theta: float,
     psi: float,
@@ -197,6 +197,7 @@ def rotate_rpy(
     rotation : `jaxlie.SO3`
         The rotation.
     """
+    coords = jnp.asarray(coords)
     shape = coords.shape
     rotation = make_euler_rotation(phi, theta, psi, **kwargs)
     if len(shape) == 2:
@@ -214,7 +215,7 @@ def rotate_rpy(
 
 
 def rotate_wxyz(
-    coords: Array,
+    coords: ArrayLike,
     qw: float,
     qx: float,
     qy: float,
@@ -240,6 +241,7 @@ def rotate_wxyz(
     rotation : `jaxlie.SO3`
         The rotation.
     """
+    coords = jnp.asarray(coords)
     shape = coords.shape
     wxyz = jnp.array([qw, qx, qy, qz])
     rotation = SO3.from_quaternion_xyzw(wxyz)
@@ -259,8 +261,8 @@ def rotate_wxyz(
 
 
 def shift_phase(
-    density: Array,
-    coords: Array,
+    density: ArrayLike,
+    coords: ArrayLike,
     tx: float,
     ty: float,
 ) -> Array:
@@ -285,6 +287,7 @@ def shift_phase(
     shifted : `Array`, shape `(N1, N2)`
         Shifted electron density.
     """
+    coords, density = jnp.asarray(coords), jnp.asarray(density)
     xy = jnp.array([tx, ty])
     shift = jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(coords, xy)))
     shifted = density * shift

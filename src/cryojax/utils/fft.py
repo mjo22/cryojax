@@ -8,10 +8,10 @@ from typing import Any
 
 import jax.numpy as jnp
 
-from ..core import Array
+from ..core import Array, ArrayLike
 
 
-def irfft(ft: Array, **kwargs: Any) -> Array:
+def irfft(ft: ArrayLike, **kwargs: Any) -> Array:
     """
     Convenience wrapper for ``cryojax.utils.fft.ifft``
     for ``real = True``.
@@ -19,7 +19,7 @@ def irfft(ft: Array, **kwargs: Any) -> Array:
     return ifft(ft, real=True, **kwargs)
 
 
-def ifft(ft: Array, real: bool = False, **kwargs: Any) -> Array:
+def ifft(ft: ArrayLike, real: bool = False, **kwargs: Any) -> Array:
     """
     Helper routine to compute the inverse fourier transform
     from the output of a type 1 non-uniform FFT. Assume that
@@ -27,7 +27,7 @@ def ifft(ft: Array, real: bool = False, **kwargs: Any) -> Array:
 
     Arguments
     ---------
-    ft : `Array`
+    ft : `ArrayLike`
         Fourier transform array. Assumes that the zero
         frequency component is in the center.
     real : `bool`
@@ -46,14 +46,14 @@ def ifft(ft: Array, real: bool = False, **kwargs: Any) -> Array:
         return ift
 
 
-def fft(ift: Array, **kwargs: Any) -> Array:
+def fft(ift: ArrayLike, **kwargs: Any) -> Array:
     """
     Helper routine to compute the fourier transform of an array
     to match the output of a type 1 non-uniform FFT.
 
     Arguments
     ---------
-    ift : `Array`
+    ift : `ArrayLike`
         Array in real space. Assumes that the zero
         frequency component is in the center.
     Returns

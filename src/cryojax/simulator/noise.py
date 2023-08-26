@@ -13,7 +13,7 @@ import jax.numpy as jnp
 from jax import random
 
 from ..utils import fft
-from ..core import field, dataclass, Array, CryojaxObject
+from ..core import field, dataclass, Array, ArrayLike, CryojaxObject
 
 
 @dataclass
@@ -34,7 +34,7 @@ class Noise(CryojaxObject, metaclass=ABCMeta):
         object.__setattr__(self, "key", self.key.astype(jnp.uint32))
 
     @abstractmethod
-    def sample(self, freqs: Array) -> Array:
+    def sample(self, freqs: ArrayLike) -> Array:
         """
         Sample a realization of the noise.
 
@@ -57,13 +57,14 @@ class GaussianNoise(Noise):
         2) Use the ``cryojax.core.dataclass`` decorator.
     """
 
-    def sample(self, freqs: Array) -> Array:
+    def sample(self, freqs: ArrayLike) -> Array:
+        freqs = jnp.asarray(freqs)
         spectrum = self.variance(freqs)
         white_noise = fft(random.normal(self.key, shape=freqs.shape[0:-1]))
         return spectrum * white_noise
 
     @abstractmethod
-    def variance(self, freqs: Optional[Array] = None) -> Array:
+    def variance(self, freqs: Optional[ArrayLike] = None) -> Array:
         """
         The variance tensor of the gaussian. Only diagonal
         variances are supported.

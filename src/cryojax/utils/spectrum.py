@@ -9,17 +9,17 @@ from typing import Optional
 import jax.numpy as jnp
 
 from .average import radial_average
-from ..core import Array
+from ..core import Array, ArrayLike
 
 
 def powerspectrum(
-    image: Array,
-    freqs: Array,
+    image: ArrayLike,
+    freqs: ArrayLike,
     pixel_size: float = 1.0,
     k_min: Optional[float] = None,
     k_max: Optional[float] = None,
-    grid: Optional[Array] = None,
-):
+    grid: Optional[ArrayLike] = None,
+) -> tuple[Array, Array]:
     """
     Compute the power spectrum of an image averaged on a set
     of radial bins. This does not compute the zero mode of

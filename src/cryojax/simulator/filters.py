@@ -37,7 +37,7 @@ class Filter(metaclass=ABCMeta):
 
     freqs: InitVar[ArrayLike]
 
-    def __post_init__(self, *args):
+    def __post_init__(self, *args: Any):
         object.__setattr__(self, "filter", self.compute(*args))
 
     @abstractmethod
@@ -45,7 +45,7 @@ class Filter(metaclass=ABCMeta):
         """Compute the filter."""
         raise NotImplementedError
 
-    def __call__(self, image: Array) -> Array:
+    def __call__(self, image: ArrayLike) -> Array:
         """Apply the filter to an image."""
         return self.filter * image
 
@@ -70,7 +70,7 @@ class LowpassFilter(Filter):
     cutoff: float = field(pytree_node=False, default=1.0)
     rolloff: float = field(pytree_node=False, default=0.05)
 
-    def compute(self, freqs: Array) -> Array:
+    def compute(self, freqs: ArrayLike) -> Array:
         return compute_lowpass_filter(
             freqs,
             self.cutoff,
@@ -88,17 +88,20 @@ class WhiteningFilter(Filter):
     for more information.
     """
 
-    micrograph_freqs: InitVar[Array]
-    micrograph: InitVar[Array]
+    micrograph_freqs: InitVar[ArrayLike]
+    micrograph: InitVar[ArrayLike]
 
     def compute(
-        self, freqs: Array, micrograph_freqs: Array, micrograph: Array
+        self,
+        freqs: ArrayLike,
+        micrograph_freqs: ArrayLike,
+        micrograph: ArrayLike,
     ) -> Array:
         return compute_whitening_filter(freqs, micrograph_freqs, micrograph)
 
 
 def compute_lowpass_filter(
-    freqs: Array,
+    freqs: ArrayLike,
     cutoff: float = 0.667,
     rolloff: float = 0.05,
 ) -> Array:
@@ -107,7 +110,7 @@ def compute_lowpass_filter(
 
     Parameters
     ----------
-    freqs : `jax.Array`, shape `(N1, N2, 2)`
+    freqs : `ArrayLike`, shape `(N1, N2, 2)`
         The fourier wavevectors in the imaging plane.
     cutoff : `float`, optional
         The cutoff frequency as a fraction of the Nyquist frequency,
@@ -118,10 +121,9 @@ def compute_lowpass_filter(
 
     Returns
     -------
-    mask : `jax.Array`, shape `(N1, N2)`
+    mask : `Array`, shape `(N1, N2)`
         An array representing the anti-aliasing filter.
     """
-
     k_max = 1.0 / 2.0
     k_cut = cutoff * k_max
 
@@ -144,7 +146,7 @@ def compute_lowpass_filter(
 
 
 def compute_whitening_filter(
-    freqs: Array, micrograph_freqs: Array, micrograph: Array
+    freqs: ArrayLike, micrograph_freqs: ArrayLike, micrograph: ArrayLike
 ) -> Array:
     """
     Compute a whitening filter from a micrograph. This is taken
@@ -153,12 +155,12 @@ def compute_whitening_filter(
 
     Parameters
     ----------
-    micrograph : `jax.Array`, shape `(M1, M2)`
+    micrograph : `ArrayLike`, shape `(M1, M2)`
         The micrograph in fourier space.
-    micrograph_freqs : `jax.Array`, shape `(M1, M2, 2)`
+    micrograph_freqs : `ArrayLike`, shape `(M1, M2, 2)`
         The frequency range of the desired wavevectors.
         These should be in pixel units, not physical length.
-    freqs : `jax.Array`, shape `(N1, N2, 2)`
+    freqs : `ArrayLike`, shape `(N1, N2, 2)`
         The frequency range of the desired wavevectors.
         These should be in pixel units, not physical length.
 
@@ -167,6 +169,7 @@ def compute_whitening_filter(
     spectrum : `jax.Array`, shape `(N1, N2)`
         The power spectrum isotropically averaged onto ``freqs``.
     """
+    micrograph = jnp.asarray(micrograph)
     M1, M2 = micrograph.shape
     micrograph /= jnp.sqrt(M1 * M2)
     spectrum, _ = powerspectrum(micrograph, micrograph_freqs, grid=freqs)

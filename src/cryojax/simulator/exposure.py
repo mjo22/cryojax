@@ -13,7 +13,7 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
-from ..core import dataclass, Array, Scalar, CryojaxObject
+from ..core import dataclass, Array, ArrayLike, Parameter, CryojaxObject
 
 
 @dataclass
@@ -26,7 +26,7 @@ class Exposure(CryojaxObject, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def rescale(self, image: Array, real: bool = True) -> Array:
+    def rescale(self, image: ArrayLike, real: bool = True) -> Array:
         """
         Return the rescaled image.
         """
@@ -40,7 +40,7 @@ class NullExposure(Exposure):
     image when it is passsed through the pipeline.
     """
 
-    def rescale(self, image: Array, real: bool = True) -> Array:
+    def rescale(self, image: ArrayLike, real: bool = True) -> Array:
         """Return the image unchanged"""
         return image
 
@@ -52,16 +52,16 @@ class UniformExposure(Exposure):
 
     Attributes
     ----------
-    N : `cryojax.core.Scalar`
+    N : `cryojax.core.Parameter`
         Intensity standard deviation
-    mu : `cryojax.core.Scalar`
+    mu : `cryojax.core.Parameter`
         Intensity offset
     """
 
-    N: Scalar = 1.0
-    mu: Scalar = 0.0
+    N: Parameter = 1.0
+    mu: Parameter = 0.0
 
-    def rescale(self, image: Array, real: bool = True) -> Array:
+    def rescale(self, image: ArrayLike, real: bool = True) -> Array:
         """
         Return the scaled image.
         """
@@ -70,7 +70,7 @@ class UniformExposure(Exposure):
 
 @partial(jax.jit, static_argnames=["real"])
 def rescale_image(
-    image: Array, N: float, mu: float, *, real: bool = True
+    image: ArrayLike, N: float, mu: float, *, real: bool = True
 ) -> Array:
     """
     Normalize so that the image is mean mu
@@ -96,6 +96,7 @@ def rescale_image(
         Image rescaled to have mean ``mu`` and standard
         deviation ``N``.
     """
+    image = jnp.asarray(image)
     N1, N2 = image.shape
     # First normalize image to zero mean and unit standard deviation
     if real:

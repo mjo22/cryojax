@@ -11,12 +11,13 @@ from ..core import Array, ArrayLike
 
 
 @jax.jit
-def bound(density: Array, coords: Array, box_size: Array) -> Array:
+def bound(density: ArrayLike, coords: ArrayLike, box_size: ArrayLike) -> Array:
     """
     Use a boolean mask to set density values out of
     bounds to zero. The mask is ``True`` for
     all points outside of the box_size, and False otherwise.
     """
+    coords, box_size = jnp.asarray(coords), jnp.asarray(box_size)
     x, y = coords.T
     Lx, Ly = box_size[0], box_size[1]
     x_mask = jnp.logical_or(x < -Lx / 2, x >= Lx / 2)

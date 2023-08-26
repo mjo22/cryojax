@@ -9,15 +9,15 @@ from typing import Optional
 import jax
 import jax.numpy as jnp
 
-from ..core import Array
+from ..core import Array, ArrayLike
 
 
 @jax.jit
 def radial_average(
-    image: Array,
-    norm: Array,
-    bins: Array,
-    grid: Optional[Array] = None,
+    image: ArrayLike,
+    norm: ArrayLike,
+    bins: ArrayLike,
+    grid: Optional[ArrayLike] = None,
 ) -> Array:
     """
     Radially average vectors r with a given magnitude
@@ -25,23 +25,25 @@ def radial_average(
 
     Arguments
     ---------
-    image : `jax.Array`, shape `(M1, M2)`
+    image : `ArrayLike`, shape `(M1, M2)`
         Two-dimensional image.
-    norm : `jax.Array`, shape `(M1, M2)`
+    norm : `ArrayLike`, shape `(M1, M2)`
         Radial coordinate system of image.
-    bins : `jax.Array`, shape `(M,)`
+    bins : `ArrayLike`, shape `(M,)`
         Radial bins for averaging. These
         must be evenly spaced.
-    grid : `jax.Array`, shape `(N1, N2)`, optional
+    grid : `ArrayLike`, shape `(N1, N2)`, optional
         If ``None``, evalulate the spectrum as a 1D
         profile. Otherwise, evaluate the spectrum on this
         2D grid of frequencies.
 
     Returns
     -------
-    average : `jax.Array`, shape `(M,)` or `(N1, N2)`
+    average : `ArrayLike`, shape `(M,)` or `(N1, N2)`
         Radial average of image.
     """
+    bins = jnp.asarray(bins)
+
     dr = bins[1] - bins[0]
 
     def average(carry, r_i):
@@ -49,7 +51,6 @@ def radial_average(
         return carry, jnp.sum(jnp.where(mask, image, 0.0)) / jnp.sum(mask)
 
     _, profile = jax.lax.scan(average, None, bins)
-    # profile = jax.vmap(average)(bins)
 
     if grid is not None:
         idxs = jnp.digitize(grid, bins).ravel()
