@@ -41,9 +41,7 @@ This will install the remaining dependencies, such as [jaxlie](https://github.co
 
 ## Usage
 
-Please note that this library is currently experimental and the API is subject to change!
-
-The following is a basic workflow to generate an image with a gaussian white noise model.
+Please note that this library is currently experimental and the API is subject to change! The following is a basic workflow to generate an image with a gaussian white noise model.
 
 First, instantiate the image formation method ("scattering") and its respective representation
 of an electron density ("specimen").
