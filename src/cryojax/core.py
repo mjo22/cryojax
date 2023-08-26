@@ -19,6 +19,7 @@ __all__ = [
 ]
 
 
+import base64
 import dataclasses
 import jax
 from typing import (
@@ -38,6 +39,7 @@ from jax.typing import ArrayLike
 
 import jax.numpy as jnp
 import numpy as np
+
 from dataclasses_json import DataClassJsonMixin, config
 from dataclasses_json.mm import JsonData
 
@@ -171,8 +173,6 @@ def field(
         serializer = config(encoder=_np_encoder, decoder=_jax_decoder)
     elif encode == np.ndarray:
         serializer = config(encoder=_np_encoder, decoder=_np_decoder)
-    elif encode == complex:
-        serializer = config(encoder=_complex_encoder, decoder=_complex_decoder)
     else:
         serializer = {}
     metadata.update(serializer)
@@ -250,42 +250,49 @@ class CryojaxObject(Serializable):
 
 
 def _dummy_encoder(x: Any) -> str:
+    """Encode nothing"""
     pass
 
 
 def _dummy_decoder(x: Any) -> Any:
-    """Return dummy"""
+    """Decode nothing"""
     pass
 
 
 def _np_encoder(x: Any) -> Any:
-    """Encoder for jax arrays and datatypes."""
-    if isinstance(x, Array):
-        return np.array(x).tolist()
-    elif isinstance(x, np.generic):
-        return x.item()
+    """Numpy array encoder"""
+    if isinstance(x, (np.ndarray, Array)):
+        x = np.asarray(x)
+        data_b64 = base64.b64encode(np.ascontiguousarray(x).data)
+        return dict(
+            __ndarray__=data_b64.decode("ascii"),
+            dtype=str(x.dtype),
+            shape=x.shape,
+        )
+    elif isinstance(x, complex):
+        return dict(__complex__=True, real=x.real, imag=x.imag)
     else:
         return x
 
 
 def _np_decoder(x: Any) -> Any:
-    """Decode list to jax array."""
-    return np.asarray(x) if isinstance(x, list) else x
+    """Numpy array decoder"""
+    if isinstance(x, dict) and "__ndarray__" in x:
+        data = base64.b64decode(x["__ndarray__"])
+        return np.frombuffer(data, x["dtype"]).reshape(x["shape"])
+    elif isinstance(x, dict) and "__complex__" in x:
+        return complex(x["real"], x["imag"])
+    else:
+        return x
 
 
 def _jax_decoder(x: Any) -> Any:
-    """Decode list to jax array."""
-    return jnp.asarray(x) if isinstance(x, list) else x
-
-
-def _complex_encoder(x: Any) -> Any:
-    """Encode a complex number as a string"""
-    return str(x)
-
-
-def _complex_decoder(x: Any) -> Any:
-    """Decode a complex number"""
-    return eval(x)
+    """Jax array decoder"""
+    a = _np_decoder(x)
+    if isinstance(a, np.ndarray):
+        return jnp.asarray(a)
+    else:
+        return a
 
 
 def _union_decoder(x: Any, union: _UnionGenericAlias) -> Any:
@@ -296,8 +303,8 @@ def _union_decoder(x: Any, union: _UnionGenericAlias) -> Any:
             temp = cls.from_dict(x)
             assert set(x.keys()) == set(temp.to_dict().keys())
             instance = temp
-        except (KeyError, TypeError, AssertionError) as err:
-            print(cls, err)
+        except (KeyError, TypeError, AssertionError):
+            pass
     if instance is None:
         raise TypeError(f"Could not decode from {union}")
     return instance

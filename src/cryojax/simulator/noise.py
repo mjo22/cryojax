@@ -27,11 +27,7 @@ class Noise(CryojaxObject, metaclass=ABCMeta):
         2) Use the ``cryojax.core.dataclass`` decorator.
     """
 
-    key: Union[Array, random.PRNGKeyArray] = field(pytree_node=False)
-
-    def __post_init__(self):
-        # The below is a nasty hack, required for deserialization
-        object.__setattr__(self, "key", self.key.astype(jnp.uint32))
+    key: Array = field(pytree_node=False)
 
     @abstractmethod
     def sample(self, freqs: ArrayLike) -> Array:

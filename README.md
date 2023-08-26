@@ -127,7 +127,9 @@ For these more advanced examples, see the tutorials section of the repository. I
 
 ## Features
 
-Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration. Until GPU support for `jax-finufft` is added, models using the `NufftScattering` method will not support `jit`, `vmap`, and `pmap`. This is because `tensorflow-nufft` does not compile.
+- Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration. Until GPU support for `jax-finufft` is added, models using the `NufftScattering` method will not support `jit`, `vmap`, and `pmap`. This is because `tensorflow-nufft` does not compile.
+
+- `CryojaxObjects`, including `Image` models, are JSON serializable thanks to the package `dataclasses-json`. The method `CryojaxObject.dumps` serializes the object as a JSON string, and `CryojaxObject.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.GaussianImage.load("model.json")`.
 
 ## Similar libraries
 
