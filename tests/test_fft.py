@@ -1,10 +1,16 @@
+import pytest
+
 import jax.numpy as jnp
 import numpy as np
 from cryojax.utils import fft, irfft
 
 
-def test_fft(scattering_model):
-    image = fft(scattering_model())
+@pytest.mark.parametrize(
+    "model", ["scattering_model", "optics_model", "noisy_model"]
+)
+def test_fft(model, request):
+    model = request.getfixturevalue(model)
+    image = fft(model())
     random = jnp.asarray(np.random.randn(*image.shape))
     # Set tolerance based on tests with jnp.fft + random data
     rkwargs = dict(zip(["atol", "rtol"], [1e-6, 5e-4]))

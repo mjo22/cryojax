@@ -1,5 +1,13 @@
-def test_shape(scattering_model):
-    image = scattering_model()
-    padded_image = scattering_model(view=False)
-    assert image.shape == scattering_model.scattering.shape
-    assert padded_image.shape == scattering_model.scattering.padded_shape
+import pytest
+
+
+@pytest.mark.parametrize(
+    "model", ["scattering_model", "optics_model", "noisy_model"]
+)
+def test_shape(model, request):
+    """Make sure shapes are as expected"""
+    model = request.getfixturevalue(model)
+    image = model()
+    padded_image = model(view=False)
+    assert image.shape == model.scattering.shape
+    assert padded_image.shape == model.scattering.padded_shape

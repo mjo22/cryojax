@@ -1,3 +1,5 @@
+import pytest
+
 import numpy as np
 from jax import config
 
@@ -31,15 +33,12 @@ def test_deserialize_state_components(noisy_model):
     np.testing.assert_allclose(fft(noisy_model()), fft(model()))
 
 
-def test_deserialize_state(scattering_model, optics_model, noisy_model):
+def test_deserialize_state(state):
     """Test PipelineState deserialization"""
-    models = [scattering_model, optics_model, noisy_model]
-    for model in models:
-        state = cs.PipelineState.from_json(model.state.to_json())
-        assert state.to_json() == model.state.to_json()
-        np.testing.assert_allclose(
-            model.replace(state=state)(), model(), rtol=1e-6
-        )
+    assert (
+        cs.PipelineState.from_json(state.to_json()).to_json()
+        == state.to_json()
+    )
 
 
 def test_deserialize_specimen(setup):
@@ -53,21 +52,24 @@ def test_deserialize_specimen(setup):
     # )
 
 
-def test_deserialize_filters_and_masks(filters, masks):
+@pytest.mark.parametrize("filters_or_masks", ["filters", "masks"])
+def test_deserialize_filters_and_masks(filters_or_masks, request):
     """Test model deserialization."""
-    filters_and_masks = [*filters, *masks]
-    types = [getattr(cs, f.__class__.__name__) for f in filters_and_masks]
-    for idx, f in enumerate(filters_and_masks):
+    filters_or_masks = request.getfixturevalue(filters_or_masks)
+    types = [getattr(cs, f.__class__.__name__) for f in filters_or_masks]
+    for idx, f in enumerate(filters_or_masks):
         test = types[idx].from_json(f.to_json())
         assert test.to_json() == f.to_json()
         np.testing.assert_allclose(test.compute(), f.compute(), rtol=1e-6)
 
 
-def test_deserialize_model(scattering_model, optics_model, noisy_model):
+@pytest.mark.parametrize(
+    "model", ["scattering_model", "optics_model", "noisy_model"]
+)
+def test_deserialize_model(model, request):
     """Test model deserialization."""
-    models = [scattering_model, optics_model, noisy_model]
-    types = [getattr(cs, model.__class__.__name__) for model in models]
-    for idx, model in enumerate(models):
-        test_model = types[idx].from_json(model.to_json())
-        assert model.to_json() == test_model.to_json()
-        np.testing.assert_allclose(test_model(), model(), rtol=1e-6)
+    model = request.getfixturevalue(model)
+    cls = getattr(cs, model.__class__.__name__)
+    test_model = cls.from_json(model.to_json())
+    assert model.to_json() == test_model.to_json()
+    np.testing.assert_allclose(test_model(), model(), rtol=1e-6)

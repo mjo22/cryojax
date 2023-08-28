@@ -84,11 +84,9 @@ This method is inherited from the `cryojax` base class, `CryojaxObject`. The int
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
-from cryojax.utils import fftfreqs
-
-filters = [cs.LowpassFilter(scattering.freqs, cutoff=0.667),  # Cutoff modes above 2/3 Nyquist frequency
-           cs.WhiteningFilter(scattering.freqs, fftfreqs(micrograph.shape), micrograph)]
-masks = [cs.CircularMask(scattering.coords, radius=1.0)]      # Cutoff pixels above radius equal to (half) image size
+filters = [cs.LowpassFilter(scattering.padded_shape, cutoff=1.0),  # Cutoff modes above Nyquist frequency
+           cs.WhiteningFilter(scattering.padded_shape, micrograph=micrograph)]
+masks = [cs.CircularMask(scattering.shape, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, filters=filters, masks=masks)
 image = model(**params)
 ```

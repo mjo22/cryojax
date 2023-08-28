@@ -31,8 +31,7 @@ def filters(setup):
 @pytest.fixture
 def masks(setup):
     scattering, _ = setup
-    # return [cs.CircularMask(scattering.shape)]
-    return []
+    return [cs.CircularMask(scattering.shape)]
 
 
 @pytest.fixture
