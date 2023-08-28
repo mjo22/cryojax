@@ -23,7 +23,8 @@ import numpy as np
 from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
 from ..utils import (
     fft,
-    fftfreqs,
+    make_frequencies,
+    make_coordinates,
     crop,
     pad,
     nufft,
@@ -79,10 +80,10 @@ class ImageConfig(CryojaxObject):
         padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
         object.__setattr__(self, "padded_shape", padded_shape)
         # Set coordinates
-        freqs = fftfreqs(self.shape)
-        padded_freqs = fftfreqs(self.padded_shape)
-        coords = fftfreqs(self.shape, real=True)
-        padded_coords = fftfreqs(self.padded_shape, real=True)
+        freqs = make_frequencies(self.shape)
+        padded_freqs = make_frequencies(self.padded_shape)
+        coords = make_coordinates(self.shape)
+        padded_coords = make_coordinates(self.padded_shape)
         object.__setattr__(self, "freqs", freqs)
         object.__setattr__(self, "padded_freqs", padded_freqs)
         object.__setattr__(self, "coords", coords)

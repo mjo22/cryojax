@@ -13,35 +13,37 @@ __all__ = [
 ]
 
 from abc import ABCMeta, abstractmethod
-from dataclasses import InitVar
 from typing import Any
 
+import numpy as np
 import jax.numpy as jnp
 
-from ..utils import powerspectrum
-from ..core import dataclass, field, Array, ArrayLike
+from ..utils import powerspectrum, make_frequencies
+from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
 
 
 @dataclass
-class Filter(metaclass=ABCMeta):
+class Filter(CryojaxObject, metaclass=ABCMeta):
     """
     Base class for computing and applying an image filter.
 
     Attributes
     ----------
-    freqs : `jax.Array`
-        The fourier wavevectors in the imaging plane.
+    shape : `tuple[int, int]`
+        The image shape.
+    filter : `Array`, shape `shape`
+        The filter. Note that this is automatically
+        computed upon instantiation.
     """
 
-    filter: Array = field(pytree_node=False, init=False)
+    shape: tuple[int, int] = field(pytree_node=False)
+    filter: Array = field(pytree_node=False, init=False, encode=False)
 
-    freqs: InitVar[ArrayLike]
-
-    def __post_init__(self, *args: Any):
-        object.__setattr__(self, "filter", self.compute(*args))
+    def __post_init__(self, *args: Any, **kwargs: Any):
+        object.__setattr__(self, "filter", self.compute(*args, **kwargs))
 
     @abstractmethod
-    def compute(self, *args: tuple[Any, ...]) -> Array:
+    def compute(self, *args: Any, **kwargs: Any) -> Array:
         """Compute the filter."""
         raise NotImplementedError
 
@@ -62,19 +64,18 @@ class LowpassFilter(Filter):
     Attributes
     ----------
     cutoff : `float`
-        By default, this is set ``1.0``, which cuts off
+        By default, ``0.95``, This cuts off
         modes above the Nyquist frequency.
     rolloff : `float`
+        By default, ``0.05``.
     """
 
-    cutoff: float = field(pytree_node=False, default=1.0)
+    cutoff: float = field(pytree_node=False, default=0.95)
     rolloff: float = field(pytree_node=False, default=0.05)
 
-    def compute(self, freqs: ArrayLike) -> Array:
+    def compute(self, **kwargs) -> Array:
         return compute_lowpass_filter(
-            freqs,
-            self.cutoff,
-            self.rolloff,
+            self.shape, self.cutoff, self.rolloff, **kwargs
         )
 
 
@@ -88,42 +89,42 @@ class WhiteningFilter(Filter):
     for more information.
     """
 
-    micrograph_freqs: InitVar[ArrayLike]
-    micrograph: InitVar[ArrayLike]
+    micrograph: ArrayLike = field(pytree_node=False)
 
-    def compute(
-        self,
-        freqs: ArrayLike,
-        micrograph_freqs: ArrayLike,
-        micrograph: ArrayLike,
-    ) -> Array:
-        return compute_whitening_filter(freqs, micrograph_freqs, micrograph)
+    def compute(self, **kwargs: Any) -> Array:
+        return compute_whitening_filter(self.shape, self.micrograph, **kwargs)
 
 
 def compute_lowpass_filter(
-    freqs: ArrayLike,
+    shape: tuple[int, int],
     cutoff: float = 0.667,
     rolloff: float = 0.05,
+    **kwargs: Any,
 ) -> Array:
     """
-    Create an anti-aliasing filter.
+    Create a low-pass filter.
 
     Parameters
     ----------
-    freqs : `ArrayLike`, shape `(N1, N2, 2)`
-        The fourier wavevectors in the imaging plane.
+    shape : `tuple[int, int]`
+        The shape of the filter. This is used to compute the image
+        coordinates.
     cutoff : `float`, optional
         The cutoff frequency as a fraction of the Nyquist frequency,
-        by default 0.667.
+        By default, ``0.667``.
     rolloff : `float`, optional
-        The rolloff width as a fraction of the Nyquist frequency,
-        by default 0.05.
+        The rolloff width as a fraction of the Nyquist frequency.
+        By default, ``0.05``.
+    kwargs :
+        Keyword arguments passed to ``cryojax.utils.make_coordinates``.
 
     Returns
     -------
-    mask : `Array`, shape `(N1, N2)`
+    mask : `Array`, shape `shape`
         An array representing the anti-aliasing filter.
     """
+    freqs = make_frequencies(shape, **kwargs)
+
     k_max = 1.0 / 2.0
     k_cut = cutoff * k_max
 
@@ -146,7 +147,7 @@ def compute_lowpass_filter(
 
 
 def compute_whitening_filter(
-    freqs: ArrayLike, micrograph_freqs: ArrayLike, micrograph: ArrayLike
+    shape: tuple[int, int], micrograph: ArrayLike, **kwargs: Any
 ) -> Array:
     """
     Compute a whitening filter from a micrograph. This is taken
@@ -155,23 +156,24 @@ def compute_whitening_filter(
 
     Parameters
     ----------
+    shape : `tuple[int, int]`
+        The shape of the filter. This is used to compute the image
+        coordinates.
     micrograph : `ArrayLike`, shape `(M1, M2)`
         The micrograph in fourier space.
-    micrograph_freqs : `ArrayLike`, shape `(M1, M2, 2)`
-        The frequency range of the desired wavevectors.
-        These should be in pixel units, not physical length.
-    freqs : `ArrayLike`, shape `(N1, N2, 2)`
-        The frequency range of the desired wavevectors.
-        These should be in pixel units, not physical length.
 
     Returns
     -------
-    spectrum : `jax.Array`, shape `(N1, N2)`
-        The power spectrum isotropically averaged onto ``freqs``.
+    spectrum : `Array`, shape `shape`
+        The power spectrum isotropically averaged onto a coordinate
+        system whose shape is set by ``shape``.
     """
     micrograph = jnp.asarray(micrograph)
-    M1, M2 = micrograph.shape
-    micrograph /= jnp.sqrt(M1 * M2)
+    # Make coordinates
+    freqs = make_frequencies(shape, **kwargs)
+    micrograph_freqs = make_frequencies(micrograph.shape, *kwargs)
+    # Compute power spectrum
+    micrograph /= jnp.sqrt(np.prod(micrograph.shape))
     spectrum, _ = powerspectrum(micrograph, micrograph_freqs, grid=freqs)
 
     return 1 / jnp.sqrt(spectrum)

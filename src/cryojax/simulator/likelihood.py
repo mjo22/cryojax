@@ -30,8 +30,32 @@ class GaussianImage(DetectorImage):
     """
 
     def __post_init__(self):
-        assert isinstance(self.state.ice, GaussianNoise)
-        assert isinstance(self.state.detector, GaussianNoise)
+        if not isinstance(self.state.ice, GaussianNoise):
+            raise ValueError("A GaussianNoise Ice model is required.")
+        if not isinstance(self.state.detector, GaussianNoise):
+            raise ValueError("A GaussianNoise Detector model is required.")
+
+    def variance(
+        self,
+        state: Optional[PipelineState] = None,
+        specimen: Optional[Specimen] = None,
+    ) -> Array:
+        state = state or self.state
+        specimen = specimen or self.specimen
+        scattering = self.scattering
+        # Gather image configuration
+        freqs, resolution = scattering.freqs, specimen.resolution
+        if hasattr(state.detector, "pixel_size"):
+            pixel_size = state.detector.pixel_size
+        else:
+            pixel_size = resolution
+        # Variance from detector
+        variance = state.detector.variance(freqs / pixel_size)
+        # Variance from ice
+        if not isinstance(state.ice, NullIce):
+            ctf = state.optics(freqs / pixel_size)
+            variance += ctf**2 * state.ice.variance(freqs / pixel_size)
+        return variance
 
     def log_likelihood(
         self,
@@ -42,24 +66,13 @@ class GaussianImage(DetectorImage):
         state = state or self.state
         specimen = specimen or self.specimen
         scattering = self.scattering
-        # Gather image configuration
-        freqs, resolution = scattering.freqs, specimen.resolution
-        if hasattr(state.detector, "pixel_size"):
-            pixel_size = state.detector.pixel_size
-        else:
-            pixel_size = resolution
-        # Zero mode coordinate in second axis
+        # Get variance
+        variance = self.variance(state=state, specimen=specimen)
+        # Get residuals
+        residuals = fft(self.residuals(state=state, specimen=specimen))
+        # Crop redundant frequencies
         _, N2 = scattering.shape
         z = N2 // 2 + 1
-        # Get residuals, cropping redundant frequencies
-        residuals = fft(self.residuals(state=state, specimen=specimen))
-        # Variance from detector
-        variance = state.detector.variance(freqs / pixel_size)
-        # Variance from ice
-        if not isinstance(state.ice, NullIce):
-            ctf = state.optics(freqs / pixel_size)
-            variance += ctf**2 * state.ice.variance(freqs / pixel_size)
-        # Crop redundant frequencies
         residuals = residuals[:, :z]
         if isinstance(variance, Array):
             variance = variance[:, :z]

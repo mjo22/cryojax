@@ -60,22 +60,22 @@ def fftfreqs(
 
     Returns
     -------
-    k_coords : shape `(*shape, ndim)`
-        2D or 3D cartesian coordinate system with
-        zero in the center.
+    coords : shape `(*shape, ndim)`
+        2D or 3D cartesian coordinate system.
     """
     ndim = len(shape)
+    shape = (*shape[:2][::-1], *shape[2:]) if indexing == "xy" else shape
     if isinstance(pixel_size, (np.floating, float)):
         pixel_size = ndim * [pixel_size]
     else:
         pixel_size = list(pixel_size)
     assert len(pixel_size) == ndim
-    k_coords1D = [
+    coords1D = [
         fftfreqs1d(shape[idx], pixel_size[idx], real) for idx in range(ndim)
     ]
-    k_coords = np.stack(np.meshgrid(*k_coords1D, indexing=indexing), axis=-1)
+    coords = np.stack(np.meshgrid(*coords1D, indexing=indexing), axis=-1)
 
-    return jnp.asarray(k_coords)
+    return jnp.asarray(coords)
 
 
 def fftfreqs1d(s: int, pixel_size: float, real: bool = False) -> np.ndarray:

@@ -295,16 +295,20 @@ def _jax_decoder(x: Any) -> Any:
         return a
 
 
-def _union_decoder(x: Any, union: _UnionGenericAlias) -> Any:
+def _union_decoder(x: Any, hint: _UnionGenericAlias) -> Any:
     """Decode a union type hint."""
-    instance = None
-    for cls in get_args(union):
-        try:
-            temp = cls.from_dict(x)
-            assert set(x.keys()) == set(temp.to_dict().keys())
-            instance = temp
-        except (KeyError, TypeError, AssertionError):
-            pass
-    if instance is None:
-        raise TypeError(f"Could not decode from {union}")
-    return instance
+    ys = x if type(x) is list else [x]
+    instances = []
+    for y in ys:
+        instance = None
+        for cls in get_args(hint):
+            try:
+                temp = cls.from_dict(y)
+                assert set(y.keys()) == set(temp.to_dict().keys())
+                instance = temp
+            except (KeyError, TypeError, AssertionError):
+                pass
+        if instance is None:
+            raise TypeError(f"Could not decode from {hint}")
+        instances.append(instance)
+    return instances if type(x) is list else instances[0]

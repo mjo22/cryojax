@@ -63,8 +63,12 @@ class Image(CryojaxObject, metaclass=ABCMeta):
         pytree_node=False, encode=ScatteringConfig
     )
 
-    filters: list[Filter] = field(pytree_node=False, default_factory=list)
-    masks: list[Mask] = field(pytree_node=False, default_factory=list)
+    filters: list[Filter] = field(
+        pytree_node=False, default_factory=list, encode=Filter
+    )
+    masks: list[Mask] = field(
+        pytree_node=False, default_factory=list, encode=Mask
+    )
     observed: Optional[Array] = field(pytree_node=False, default=None)
 
     @abstractmethod
@@ -225,7 +229,7 @@ class ScatteringImage(Image):
             scattering.padded_freqs,
             specimen.resolution,
         )
-        pixel_size = _pixel_size or resolution
+        pixel_size = resolution if _pixel_size is None else _pixel_size
         # Sample from ice distribution
         icy_image = state.ice.sample(padded_freqs / pixel_size)
         if view:
@@ -302,7 +306,7 @@ class OpticsImage(ScatteringImage):
             scattering.padded_freqs,
             specimen.resolution,
         )
-        pixel_size = _pixel_size or resolution
+        pixel_size = resolution if _pixel_size is None else _pixel_size
         # Sample from ice distribution and apply ctf to it
         ctf = state.optics(padded_freqs / pixel_size)
         icy_image = super().sample(state=state, specimen=specimen, view=False)

@@ -11,34 +11,36 @@ __all__ = [
 ]
 
 from abc import ABCMeta, abstractmethod
-from dataclasses import InitVar
 from typing import Any
 
 import jax.numpy as jnp
 
-from ..core import dataclass, field, Array, ArrayLike
+from ..utils import make_coordinates
+from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
 
 
 @dataclass
-class Mask(metaclass=ABCMeta):
+class Mask(CryojaxObject, metaclass=ABCMeta):
     """
-    Base class for computing and applying an image filter.
+    Base class for computing and applying an image mask.
 
     Attributes
     ----------
-    coords : `jax.Array`
-        The image coordinates in real space.
+    shape : `tuple[int, int]`
+        The image shape.
+    mask : `Array`, shape `shape`
+        The mask. Note that this is automatically
+        computed upon instantiation.
     """
 
-    mask: Array = field(pytree_node=False, init=False)
+    shape: tuple[int, int] = field(pytree_node=False)
+    mask: Array = field(pytree_node=False, init=False, encode=False)
 
-    coords: InitVar[ArrayLike]
-
-    def __post_init__(self, *args: Any):
-        object.__setattr__(self, "mask", self.compute(*args))
+    def __post_init__(self, *args: Any, **kwargs: Any):
+        object.__setattr__(self, "mask", self.compute(*args, **kwargs))
 
     @abstractmethod
-    def compute(self, *args: tuple[Any, ...]) -> Array:
+    def compute(self, *args: Any, **kwargs: Any) -> Array:
         """Compute the mask."""
         raise NotImplementedError
 
@@ -59,45 +61,49 @@ class CircularMask(Mask):
     Attributes
     ----------
     radius : `float`
+        By default, ``0.95``.
     rolloff : `float`
+        By default, ``0.05``.
     """
 
     radius: float = field(pytree_node=False, default=0.95)
     rolloff: float = field(pytree_node=False, default=0.05)
 
-    def compute(self, coords: ArrayLike) -> Array:
+    def compute(self, **kwargs: Any) -> Array:
         return compute_circular_mask(
-            coords,
-            self.radius,
-            self.rolloff,
+            self.shape, self.radius, self.rolloff, **kwargs
         )
 
 
 def compute_circular_mask(
-    coords: ArrayLike,
+    shape: tuple[int, int],
     cutoff: float = 0.95,
     rolloff: float = 0.05,
+    **kwargs: Any,
 ) -> Array:
     """
-    Create an anti-aliasing filter.
+    Create a circular mask.
 
     Parameters
     ----------
-    coords : `ArrayLike`, shape `(N1, N2, 2)`
-        The image coordiantes, in units of pixels.
+    shape : `tuple[int, int]`
+        The shape of the mask. This is used to compute the image
+        coordinates.
     cutoff : `float`, optional
         The cutoff radius as a fraction of half
-        the smallest box dimension. By default 1.0.
+        the smallest box dimension. By default, ``0.95``.
     rolloff : `float`, optional
         The rolloff width as a fraction of the smallest box dimension.
-        By default 0.05.
+        By default, ``0.05``.
+    kwargs :
+        Keyword arguments passed to ``cryojax.utils.make_coordinates``.
 
     Returns
     -------
-    mask : `Array`, shape `(N1, N2)`
+    mask : `Array`, shape `shape`
         An array representing the circular mask.
     """
-    coords = jnp.asarray(coords)
+    coords = make_coordinates(shape, **kwargs)
 
     r_max = min(coords.shape[0:2]) // 2
     r_cut = cutoff * r_max
