@@ -1,5 +1,3 @@
-from .test_pipeline import setup, scattering_model
-
 import jax.numpy as jnp
 import numpy as np
 from cryojax.utils import fft, irfft
