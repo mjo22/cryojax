@@ -43,9 +43,11 @@ import numpy as np
 from dataclasses_json import DataClassJsonMixin, config
 from dataclasses_json.mm import JsonData
 
+Float = Union[float, Annotated[Array, (), jnp.floating]]
+"""Type alias for Union[float, Annotated[Array, (), jnp.floating]]"""
 
 Parameter = Union[float, Annotated[Array, (), jnp.floating]]
-"""Type alias for Union[float, Array]"""
+"""Type alias for Union[float, Annotated[Array, (), jnp.floating]]"""
 
 ParameterDict = dict[str, Parameter]
 """Type alias for dict[str, Parameter]"""

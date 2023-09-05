@@ -43,6 +43,7 @@ class Noise(CryojaxObject, metaclass=ABCMeta):
         raise NotImplementedError
 
 
+@dataclass
 class GaussianNoise(Noise):
     """
     Base PyTree container for a gaussian noise model.
