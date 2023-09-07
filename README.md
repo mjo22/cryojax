@@ -60,7 +60,7 @@ Then, an `Image` model is chosen. Here, we choose `GaussianImage`.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
-pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.WhiteDetector(key=key, pixel_size=1.1)
+pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.GaussianDetector(key=key, pixel_size=1.1)
 state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state)
 image = model()
@@ -109,7 +109,7 @@ def loss(params):
 
 Note that in order to jit-compile the `model` we must create a wrapper for it because it is a `dataclass`, not a function. Alternatively, one could create a custom loss function from calling `Image` methods directly, such as `Image.render`.
 
-Additional components can be plugged into the `Image` model's `PipelineState`. For example, `Ice` models are supported. For example, `EmpiricalIce` stores an empirical measure of the ice power spectrum. `ExpIce` generates ice as gaussian noise whose correlations decay exponentially. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
+Additional components can be plugged into the `Image` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` uniformly scales the signal to a given standard deviation. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
 
 For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
 

@@ -38,10 +38,10 @@ def masks(setup):
 def state():
     return cs.PipelineState(
         pose=cs.EulerPose(degrees=False),
-        ice=cs.ExpIce(key=random.PRNGKey(seed=1)),
+        ice=cs.GaussianIce(key=random.PRNGKey(seed=1)),
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(),
-        detector=cs.WhiteDetector(pixel_size=5.32, key=random.PRNGKey(seed=0)),
+        detector=cs.GaussianDetector(pixel_size=5.32, key=random.PRNGKey(seed=0)),
     )
 
 

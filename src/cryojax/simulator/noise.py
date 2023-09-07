@@ -1,18 +1,15 @@
 """
-Noise models for cryo-EM images. This is a collection of
-abstract base classes to be subclasses by stochastic cryojax
-models.
+Noise models for cryo-EM images.
 """
 
 __all__ = ["Noise", "GaussianNoise"]
 
 from abc import ABCMeta, abstractmethod
-from typing import Union, Optional, Any, Type
 
 import jax.numpy as jnp
 from jax import random
 
-from .kernel import Kernel
+from .kernel import Kernel, Constant
 from ..utils import fft
 from ..core import field, dataclass, Array, ArrayLike, CryojaxObject
 
@@ -55,16 +52,10 @@ class GaussianNoise(Noise):
         2) Use the ``cryojax.core.dataclass`` decorator.
     """
 
+    variance: Kernel = field(default_factory=Constant, encode=Kernel)
+
     def sample(self, freqs: ArrayLike) -> Array:
         freqs = jnp.asarray(freqs)
         spectrum = self.variance(freqs)
         white_noise = fft(random.normal(self.key, shape=freqs.shape[0:-1]))
         return spectrum * white_noise
-
-    @abstractmethod
-    def variance(self, freqs: Optional[ArrayLike] = None) -> Array:
-        """
-        The variance tensor of the gaussian. Only diagonal
-        variances are supported.
-        """
-        raise NotImplementedError

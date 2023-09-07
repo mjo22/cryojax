@@ -7,8 +7,8 @@ def test_update(noisy_model):
         view_phi,
         voltage,
         N,
-        lambda_d,
-        beta_i,
+        alpha,
+        xi,
         pixel_size,
         resolution,
     ) = (
@@ -26,8 +26,8 @@ def test_update(noisy_model):
         view_phi=view_phi,
         voltage=voltage,
         N=N,
-        lambda_d=lambda_d,
-        beta_i=beta_i,
+        alpha=alpha,
+        xi=xi,
         pixel_size=pixel_size,
         resolution=resolution,
     )
@@ -41,14 +41,14 @@ def test_update(noisy_model):
     assert view_phi == state.pose.view_phi
     assert voltage == state.optics.voltage
     assert N == state.exposure.N
-    assert lambda_d == state.detector.lambda_d
-    assert beta_i == state.ice.beta_i
+    assert alpha == state.detector.variance.alpha
+    assert xi == state.ice.variance.xi
     assert pixel_size == state.detector.pixel_size
     # Test model update
     assert offset_x == model.state.pose.offset_x
     assert view_phi == model.state.pose.view_phi
     assert voltage == model.state.optics.voltage
     assert N == model.state.exposure.N
-    assert lambda_d == model.state.detector.lambda_d
-    assert beta_i == model.state.ice.beta_i
+    assert alpha == model.state.detector.variance.alpha
+    assert xi == model.state.ice.variance.xi
     assert pixel_size == model.state.detector.pixel_size

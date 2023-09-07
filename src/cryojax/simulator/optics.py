@@ -36,10 +36,16 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
 
         1) Overwrite the ``OpticsModel.compute`` method.
         2) Use the ``cryojax.core.dataclass`` decorator.
+
+    Attributes
+    ----------
+    envelope : `cryojax.simulator.Kernel`
+        A kernel that computes the envelope function of
+        the optics model. By default, ``Gaussian()``.
     """
 
     envelope: Optional[Kernel] = field(
-        default=Gaussian(beta=1.0), encode=Kernel
+        default_factory=Gaussian, encode=Kernel
     )
 
     @abstractmethod

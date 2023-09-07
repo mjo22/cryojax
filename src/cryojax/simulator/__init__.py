@@ -30,15 +30,14 @@ __all__ = [
     "EulerPose",
     "QuaternionPose",
     ## Ice
-    "EmpiricalIce",
-    "ExpIce",
+    "GaussianIce",
     ## Optics
     "CTFOptics",
     ## Electron exposure models
     "UniformExposure",
     ## Detector models
     "CountingDetector",
-    "WhiteDetector",
+    "GaussianDetector",
     # Image models
     "ScatteringImage",
     "OpticsImage",
@@ -114,9 +113,9 @@ from .masks import CircularMask, compute_circular_mask
 Mask = CircularMask
 """Type alias for Mask subclasses"""
 
-from .ice import NullIce, EmpiricalIce, ExpIce
+from .ice import NullIce, GaussianIce
 
-Ice = Union[NullIce, ExpIce, EmpiricalIce]
+Ice = Union[NullIce, GaussianIce]
 """Type alias for Ice subclasses"""
 
 from .optics import compute_ctf, NullOptics, CTFOptics
@@ -133,10 +132,10 @@ from .detector import (
     measure_image,
     NullDetector,
     CountingDetector,
-    WhiteDetector,
+    GaussianDetector,
 )
 
-Detector = Union[NullDetector, CountingDetector, WhiteDetector]
+Detector = Union[NullDetector, CountingDetector, GaussianDetector]
 """Type alias for Detector subclasses"""
 
 from .state import PipelineState

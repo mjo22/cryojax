@@ -10,9 +10,9 @@ from typing import Optional, Union
 
 import jax.numpy as jnp
 
-from .noise import GaussianNoise
 from .state import PipelineState
-from .ice import NullIce
+from .ice import NullIce, GaussianIce
+from .detector import NullDetector, GaussianDetector
 from .image import DetectorImage
 from ..utils import fft
 from ..core import dataclass, Array
@@ -30,10 +30,10 @@ class GaussianImage(DetectorImage):
     """
 
     def __post_init__(self):
-        if not isinstance(self.state.ice, GaussianNoise):
-            raise ValueError("A GaussianNoise Ice model is required.")
-        if not isinstance(self.state.detector, GaussianNoise):
-            raise ValueError("A GaussianNoise Detector model is required.")
+        if not isinstance(self.state.ice, (NullIce, GaussianIce)):
+            raise ValueError("A GaussianIce model is required.")
+        if not isinstance(self.state.detector, (NullDetector, GaussianDetector)):
+            raise ValueError("A GaussianDetector model is required.")
 
     def variance(
         self,
@@ -45,12 +45,13 @@ class GaussianImage(DetectorImage):
         scattering = self.scattering
         # Gather image configuration
         freqs, resolution = scattering.freqs, specimen.resolution
-        if hasattr(state.detector, "pixel_size"):
+        # Variance from detector
+        if not isinstance(state.ice, NullDetector):
             pixel_size = state.detector.pixel_size
+            variance = state.detector.variance(freqs / pixel_size)
         else:
             pixel_size = resolution
-        # Variance from detector
-        variance = state.detector.variance(freqs / pixel_size)
+            variance = 0.0
         # Variance from ice
         if not isinstance(state.ice, NullIce):
             ctf = state.optics(freqs / pixel_size)
