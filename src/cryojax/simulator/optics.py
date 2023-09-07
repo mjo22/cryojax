@@ -105,13 +105,13 @@ class CTFOptics(Optics):
     b_factor : `cryojax.core.Parameter`
     """
 
-    defocus_u: Parameter = 10000.0
-    defocus_v: Parameter = 10000.0
-    defocus_angle: Parameter = 0.0
-    voltage: Parameter = 300.0
-    spherical_aberration: Parameter = 2.7
-    amplitude_contrast: Parameter = 0.1
-    phase_shift: Parameter = 0.0
+    defocus_u: Parameter = field(default=10000.0)
+    defocus_v: Parameter = field(default=10000.0)
+    defocus_angle: Parameter = field(default=0.0)
+    voltage: Parameter = field(default=300.0)
+    spherical_aberration: Parameter = field(default=2.7)
+    amplitude_contrast: Parameter = field(default=0.1)
+    phase_shift: Parameter = field(default=0.0)
 
     def apply(self, ctf: ArrayLike, image: ArrayLike, **kwargs: Any) -> Array:
         return ctf * image

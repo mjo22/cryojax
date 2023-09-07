@@ -43,8 +43,8 @@ class Pose(CryojaxObject, metaclass=ABCMeta):
         In-plane translations in y direction.
     """
 
-    offset_x: Parameter = 0.0
-    offset_y: Parameter = 0.0
+    offset_x: Parameter = field(default=0.0)
+    offset_y: Parameter = field(default=0.0)
 
     @abstractmethod
     def rotate(self, coordinates: ArrayLike, real: bool = True) -> Array:
@@ -100,9 +100,9 @@ class EulerPose(Pose):
     inverse: bool = field(pytree_node=False, default=False)
     degrees: bool = field(pytree_node=False, default=True)
 
-    view_phi: Parameter = 0.0
-    view_theta: Parameter = 0.0
-    view_psi: Parameter = 0.0
+    view_phi: Parameter = field(default=0.0)
+    view_theta: Parameter = field(default=0.0)
+    view_psi: Parameter = field(default=0.0)
 
     def rotate(self, coordinates: ArrayLike, real: bool = True) -> Array:
         """Rotate coordinates from a set of Euler angles."""
@@ -143,10 +143,10 @@ class QuaternionPose(Pose):
 
     inverse: bool = field(pytree_node=False, default=False)
 
-    view_qw: Parameter = 1.0
-    view_qx: Parameter = 0.0
-    view_qy: Parameter = 0.0
-    view_qz: Parameter = 0.0
+    view_qw: Parameter = field(default=1.0)
+    view_qx: Parameter = field(default=0.0)
+    view_qy: Parameter = field(default=0.0)
+    view_qz: Parameter = field(default=0.0)
 
     def rotate(self, coordinates: ArrayLike, real: bool = True) -> Array:
         """Rotate coordinates from a unit quaternion."""

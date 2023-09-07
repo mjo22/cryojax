@@ -16,7 +16,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Any
 from functools import partial
 
-from .noise import GaussianNoise, Noise
+from .noise import GaussianNoise
 from .kernel import Constant
 from ..utils import scale
 from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
@@ -69,7 +69,7 @@ class CountingDetector(Detector):
         the image at the ``pixel_size``.
     """
 
-    pixel_size: Parameter
+    pixel_size: Parameter = field()
     method: str = field(pytree_node=False, default="bicubic")
 
     def measure(self, image: ArrayLike, resolution: float) -> Array:

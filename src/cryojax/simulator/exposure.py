@@ -13,7 +13,7 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
-from ..core import dataclass, Array, ArrayLike, Parameter, CryojaxObject
+from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
 
 
 @dataclass
@@ -58,8 +58,8 @@ class UniformExposure(Exposure):
         Intensity offset
     """
 
-    N: Parameter = 1.0
-    mu: Parameter = 0.0
+    N: Parameter = field(default=1.0)
+    mu: Parameter = field(default=0.0)
 
     def rescale(self, image: ArrayLike, real: bool = True) -> Array:
         """

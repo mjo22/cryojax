@@ -99,8 +99,8 @@ class Kernel(CryojaxObject, metaclass=ABCMeta):
 class Sum(Kernel):
     """A helper to represent the sum of two kernels"""
 
-    kernel1: Kernel
-    kernel2: Kernel
+    kernel1: Kernel = field()
+    kernel2: Kernel = field()
 
     def evaluate(self, freqs: ArrayLike) -> Array:
         return self.kernel1.evaluate(freqs) + self.kernel2.evaluate(freqs)
@@ -110,8 +110,8 @@ class Sum(Kernel):
 class Product(Kernel):
     """A helper to represent the product of two kernels"""
 
-    kernel1: Kernel
-    kernel2: Kernel
+    kernel1: Kernel = field()
+    kernel2: Kernel = field()
 
     def evaluate(self, freqs: ArrayLike) -> Array:
         return self.kernel1.evaluate(freqs) * self.kernel2.evaluate(freqs)
@@ -128,7 +128,7 @@ class Constant(Kernel):
         The value of the kernel.
     """
 
-    value: Parameter = 1.0
+    value: Parameter = field(default=1.0)
 
     def evaluate(self, freqs: Optional[ArrayLike] = None) -> Array:
         if jnp.ndim(self.value) != 0:
@@ -167,9 +167,9 @@ class Exp(Kernel):
         An offset added to the above equation.
     """
 
-    amplitude: Parameter = 0.1
-    scale: Parameter = 1.0
-    offset: Parameter = 0.0
+    amplitude: Parameter = field(default=0.1)
+    scale: Parameter = field(default=1.0)
+    offset: Parameter = field(default=0.0)
 
     def evaluate(self, freqs: ArrayLike) -> Array:
         if self.scale != 0.0:
@@ -205,9 +205,9 @@ class Gaussian(Kernel):
         An offset added to the above equation.
     """
 
-    amplitude: Parameter = 1.0
-    b_factor: Parameter = 1.0
-    offset: Parameter = 0.0
+    amplitude: Parameter = field(default=1.0)
+    b_factor: Parameter = field(default=1.0)
+    offset: Parameter = field(default=0.0)
 
     def evaluate(self, freqs: ArrayLike) -> Array:
         k_sqr = jnp.sum(freqs**2, axis=-1)
@@ -231,8 +231,8 @@ class Empirical(Kernel):
 
     measurement: Array = field(pytree_node=False)
 
-    amplitude: Parameter = 1.0
-    offset: Parameter = 0.0
+    amplitude: Parameter = field(default=1.0)
+    offset: Parameter = field(default=0.0)
 
     def evaluate(self, freqs: Optional[ArrayLike] = None) -> Array:
         """Return the scaled and offset measurement."""
