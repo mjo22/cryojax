@@ -6,8 +6,6 @@ from __future__ import annotations
 
 __all__ = ["PipelineState"]
 
-from jax import random
-
 from ..core import dataclass, field, CryojaxObject
 from .pose import EulerPose
 from .ice import NullIce
@@ -38,10 +36,10 @@ class PipelineState(CryojaxObject):
 
     pose: Pose = field(default=EulerPose(), encode=Pose)
     ice: Ice = field(
-        default=NullIce(key=random.PRNGKey(seed=1234)), encode=Ice
+        default=NullIce(), encode=Ice
     )
     optics: Optics = field(default=NullOptics(), encode=Optics)
     exposure: Exposure = field(default=NullExposure(), encode=Exposure)
     detector: Detector = field(
-        default=NullDetector(key=random.PRNGKey(seed=5678)), encode=Detector
+        default=NullDetector(), encode=Detector
     )

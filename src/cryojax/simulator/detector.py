@@ -41,7 +41,7 @@ class Detector(CryojaxObject, metaclass=ABCMeta):
 
 
 @partial(dataclass, kw_only=True)
-class NullDetector(Noise, Detector):
+class NullDetector(Detector):
     """
     A 'null' detector.
     """
@@ -50,8 +50,7 @@ class NullDetector(Noise, Detector):
         return image
 
     def sample(self, freqs: ArrayLike) -> Array:
-        shape = freqs.shape[0:-1]
-        return jnp.zeros(shape)
+        return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
 
 @partial(dataclass, kw_only=True)
@@ -71,7 +70,7 @@ class CountingDetector(Detector):
     """
 
     pixel_size: Parameter
-    method: str = field(pytree_node=False, default="lanczos5")
+    method: str = field(pytree_node=False, default="bicubic")
 
     def measure(self, image: ArrayLike, resolution: float) -> Array:
         """
@@ -89,8 +88,7 @@ class CountingDetector(Detector):
         return measured
 
     def sample(self, freqs: ArrayLike) -> Array:
-        shape = freqs.shape[0:-1]
-        return jnp.zeros(shape)
+        return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
 
 @partial(dataclass, kw_only=True)

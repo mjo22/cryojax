@@ -2,11 +2,12 @@
 Implementation of a Kernel. Put simply, these are fourier-space 
 functions commonly applied to images. The word "kernel" is
 borrowed from the theory of gaussian processes, where a kernel
-is jargon for a covariance function. One can think of this
-implementation as a fourier-space version of any stationary kernel,
-since these yield a diagonal covariance in fourier space.
+is jargon for a covariance function. These functions are
+technically the fourier-space version of any stationary
+covariance kernel, but in ``cryojax`` the term kernel is used
+in a broader sense.
 
-These classes are modified from the library tinygp.
+These classes are modified from the library ``tinygp``.
 """
 
 from __future__ import annotations
@@ -41,7 +42,7 @@ from ..core import (
 P = ParamSpec("P")
 
 
-@partial(dataclass, kw_only=True, init=False)
+@partial(dataclass, kw_only=True)
 class Kernel(CryojaxObject, metaclass=ABCMeta):
     """
     The base class for all kernels.
@@ -123,16 +124,16 @@ class Constant(Kernel):
 
     Attributes
     ----------
-    alpha : `cryojax.core.Parameter`
+    value : `cryojax.core.Parameter`
         The value of the kernel.
     """
 
-    alpha: Parameter = 1.0
+    value: Parameter = 1.0
 
-    def evaluate(self, freqs: ArrayLike) -> Array:
-        if jnp.ndim(self.alpha) != 0:
+    def evaluate(self, freqs: Optional[ArrayLike] = None) -> Array:
+        if jnp.ndim(self.value) != 0:
             raise ValueError("The value of a constant kernel must be a scalar")
-        return self.alpha
+        return self.value
 
 
 @dataclass
@@ -155,25 +156,29 @@ class Exp(Kernel):
 
     Attributes
     ----------
-    kappa : `cryojax.core.Parameter`
+    amplitude : `cryojax.core.Parameter`
         The amplitude of the kernel, equal to :math:`\kappa`
+        in the above equation. Note that this has dimensions
+        of inverse volume.
+    scale : `cryojax.core.Parameter`
+        The length scale of the kernel, equal to :math:`\xi`
         in the above equation.
-    xi : `cryojax.core.Parameter`
-        The length scale of the kernel, equal to :math:`\beta`
-        in the above equation.
+    offset : `cryojax.core.Parameter`
+        An offset added to the above equation.
     """
 
-    kappa: Parameter = 1.0
-    xi: Parameter = 1.0
+    amplitude: Parameter = 0.1
+    scale: Parameter = 1.0
+    offset: Parameter = 0.0
 
     def evaluate(self, freqs: ArrayLike) -> Array:
-        if self.xi != 0.0:
+        if self.scale != 0.0:
             k_sqr = jnp.sum(freqs**2, axis=-1)
-            scaling = 1.0 / (k_sqr + jnp.divide(1, (self.xi) ** 2)) ** 1.5
-            scaling *= jnp.divide(self.kappa, self.xi)
+            scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
+            scaling *= jnp.divide(self.amplitude, self.scale)
         else:
             scaling = 0.0
-        return scaling
+        return scaling + self.offset
 
 
 @dataclass
@@ -190,21 +195,24 @@ class Gaussian(Kernel):
 
     Attributes
     ----------
-    kappa : `cryojax.core.Parameter`
+    amplitude : `cryojax.core.Parameter`
         The amplitude of the kernel, equal to :math:`\kappa`
         in the above equation.
-    beta : `cryojax.core.Parameter`
+    b_factor : `cryojax.core.Parameter`
         The length scale of the kernel, equal to :math:`\beta`
         in the above equation.
+    offset : `cryojax.core.Parameter`
+        An offset added to the above equation.
     """
 
-    kappa: Parameter = 1.0
-    beta: Parameter = 1.0
+    amplitude: Parameter = 1.0
+    b_factor: Parameter = 1.0
+    offset: Parameter = 0.0
 
     def evaluate(self, freqs: ArrayLike) -> Array:
-        k_sqr = jnp.linalg.norm(freqs, axis=-1) ** 2
-        scaling = self.kappa * jnp.exp(-0.5 * self.beta * k_sqr)
-        return scaling
+        k_sqr = jnp.sum(freqs**2, axis=-1)
+        scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
+        return scaling + self.offset
 
 
 @dataclass
@@ -215,17 +223,20 @@ class Empirical(Kernel):
 
     Attributes
     ----------
-    kappa : `cryojax.core.Parameter`
+    amplitude : `cryojax.core.Parameter`
         An amplitude scaling for the kernel.
+    offset : `cryojax.core.Parameter`
+        An offset added to the above equation.
     """
 
     measurement: Array = field(pytree_node=False)
 
-    kappa: Parameter = 1.0
+    amplitude: Parameter = 1.0
+    offset: Parameter = 0.0
 
     def evaluate(self, freqs: Optional[ArrayLike] = None) -> Array:
         """Return the scaled and offset measurement."""
-        return self.kappa * self.measurement
+        return self.amplitude * self.measurement + self.offset
 
 
 @dataclass

@@ -10,7 +10,7 @@ from typing import Any
 import jax.numpy as jnp
 
 from .kernel import Exp
-from .noise import Noise, GaussianNoise
+from .noise import GaussianNoise
 from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
 from . import Kernel
 
@@ -28,14 +28,13 @@ class Ice(CryojaxObject, metaclass=ABCMeta):
 
 
 @dataclass
-class NullIce(Noise, Ice):
+class NullIce(Ice):
     """
     A 'null' ice model.
     """
 
     def sample(self, freqs: ArrayLike) -> Array:
-        shape = freqs.shape[0:-1]
-        return jnp.zeros(shape)
+        return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
 
 @dataclass
@@ -51,4 +50,4 @@ class GaussianIce(GaussianNoise, Ice):
         ``Exp()``.
     """
 
-    variance: Kernel = field(default=Exp(), encode=Kernel)
+    variance: Kernel = field(default_factory=Exp, encode=Kernel)

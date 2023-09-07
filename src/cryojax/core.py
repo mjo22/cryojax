@@ -234,6 +234,9 @@ class CryojaxObject(Serializable):
         If ``params`` contains any pytree nodes in this instance,
         they will be updated. Nested ``CryojaxObject``s are
         supported.
+        
+        Note that the update will fail for nodes with identical
+        names.
         """
         keys = params.keys()
         nleaves = len(keys)
