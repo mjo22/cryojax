@@ -6,19 +6,20 @@ __all__ = [
     "Detector",
     "NullDetector",
     "CountingDetector",
-    "WhiteNoiseDetector",
+    "WhiteDetector",
 ]
 
 import jax
 import jax.numpy as jnp
 
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Any
+from typing import Any
 from functools import partial
 
 from .noise import GaussianNoise, Noise
 from ..utils import scale
 from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
+from .kernel import Constant
 
 
 @partial(dataclass, kw_only=True)
@@ -92,21 +93,26 @@ class CountingDetector(Detector):
 
 
 @partial(dataclass, kw_only=True)
-class WhiteNoiseDetector(GaussianNoise, CountingDetector):
+class WhiteDetector(GaussianNoise, CountingDetector):
     """
     A detector with a gaussian white noise model.
 
     Attributes
     ----------
-    alpha : `cryojax.core.Parameter`
-        Variance of the white noise.
+    lambda_d : `cryojax.core.Parameter`
+        Variance of the detector noise.
     """
 
-    alpha: Parameter = 1.0
+    kernel: Constant = field(pytree_node=False, init=False, encode=False)
 
-    def variance(self, freqs: Optional[ArrayLike] = None) -> Array:
+    lambda_d: Parameter = 1.0
+
+    def __post_init__(self):
+        object.__setattr__(self, "kernel", Constant(self.lambda_d))
+
+    def variance(self, freqs: ArrayLike) -> Array:
         """Flat power spectrum."""
-        return self.alpha
+        return self.kernel(freqs)
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])

@@ -18,8 +18,10 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
+from .kernel import Gaussian
 from ..utils import cartesian_to_polar
-from ..core import dataclass, Array, ArrayLike, Parameter, CryojaxObject
+from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
+from . import Kernel
 
 
 @dataclass
@@ -36,6 +38,10 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
         2) Use the ``cryojax.core.dataclass`` decorator.
     """
 
+    envelope: Optional[Kernel] = field(
+        default=Gaussian(beta=1.0), encode=Kernel
+    )
+
     @abstractmethod
     def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
         """Compute the optics model."""
@@ -48,7 +54,13 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
 
     def __call__(self, freqs: ArrayLike, **kwargs: Any) -> Array:
         """Compute the optics model."""
-        return self.compute(freqs, **kwargs)
+        if self.envelope is None:
+            ctf = self.compute(freqs, **kwargs)
+            return ctf
+        else:
+            ctf = self.compute(freqs, normalize=True, **kwargs)
+            envelope = self.envelope(freqs)
+            return envelope * ctf
 
 
 @dataclass
@@ -56,6 +68,8 @@ class NullOptics(Optics):
     """
     This class can be used as a null optics model.
     """
+
+    envelope: Optional[Kernel] = None
 
     def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
         return jnp.array(1.0)
@@ -92,16 +106,15 @@ class CTFOptics(Optics):
     spherical_aberration: Parameter = 2.7
     amplitude_contrast: Parameter = 0.1
     phase_shift: Parameter = 0.0
-    b_factor: Parameter = 1.0
 
     def apply(self, ctf: ArrayLike, image: ArrayLike, **kwargs: Any) -> Array:
         return ctf * image
 
     def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
-        return compute_ctf(freqs, *self.iter_data(), **kwargs)
+        return compute_ctf(freqs, *self.iter_data()[1:], **kwargs)
 
 
-@partial(jax.jit, static_argnames=["b_factor", "normalize", "degrees"])
+@partial(jax.jit, static_argnames=["normalize", "degrees"])
 def compute_ctf(
     freqs: ArrayLike,
     defocus_u: float,
@@ -111,9 +124,8 @@ def compute_ctf(
     spherical_aberration: float,
     amplitude_contrast: float,
     phase_shift: float,
-    b_factor: Optional[float] = None,
     *,
-    normalize: bool = True,
+    normalize: bool = False,
     degrees: bool = True,
 ) -> Array:
     """
@@ -138,12 +150,9 @@ def compute_ctf(
         The amplitude contrast ratio.
     phase_shift : `float`
         The additional phase shift.
-    b_factor : `float`, optional
-        The B factor in A^2. If not provided, the B factor is assumed to be 0.
     normalize : `bool`, optional
         Whether to normalize the CTF so that it has norm 1 in real space.
-        Default is ``True``. The normalization is only applied when ``b_factor``
-        is provided.
+        Default is ``False``.
     degrees : `bool`, optional
         Whether or not the ``defocus_angle`` and ``phase_shift`` are given
         in degrees or radians.
@@ -162,7 +171,6 @@ def compute_ctf(
         defocus_angle = jnp.deg2rad(defocus_angle)
 
     # Polar coordinate system
-    N1, N2 = freqs.shape[0:-1]
     k_sqr, theta = cartesian_to_polar(freqs, square=True)
 
     defocus = 0.5 * (
@@ -180,11 +188,8 @@ def compute_ctf(
     gamma = (2 * jnp.pi) * (gamma_defocus + gamma_sph) - phase_shift - ac
     ctf = jnp.sin(gamma)
 
-    # Apply b-factor envelope
-    if b_factor is not None:
-        # We apply normalization before b-factor envelope
-        if normalize:
-            ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
-        ctf = ctf * jnp.exp(-0.25 * b_factor * k_sqr)
+    if normalize:
+        N1, N2 = freqs.shape[0:-1]
+        ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
 
     return ctf

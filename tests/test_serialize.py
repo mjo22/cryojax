@@ -13,10 +13,8 @@ def test_deserialize_state_components(noisy_model):
     """Test deserialization on each component of the state."""
     state = noisy_model.state
     pose = cs.EulerPose.from_json(noisy_model.state.pose.to_json())
-    ice = cs.ExponentialNoiseIce.from_json(noisy_model.state.ice.to_json())
-    detector = cs.WhiteNoiseDetector.from_json(
-        noisy_model.state.detector.to_json()
-    )
+    ice = cs.ExpIce.from_json(noisy_model.state.ice.to_json())
+    detector = cs.WhiteDetector.from_json(noisy_model.state.detector.to_json())
     optics = cs.CTFOptics.from_json(noisy_model.state.optics.to_json())
     exposure = cs.UniformExposure.from_json(
         noisy_model.state.exposure.to_json()

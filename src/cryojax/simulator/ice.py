@@ -2,13 +2,12 @@
 Abstraction of the ice in a cryo-EM image.
 """
 
-__all__ = ["Ice", "NullIce", "ExponentialNoiseIce", "EmpiricalIce"]
-
-import jax.numpy as jnp
+__all__ = ["Ice", "NullIce", "ExpIce", "EmpiricalIce"]
 
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Any
 
+from .kernel import Sum, Constant, Exp, Empirical
 from .noise import GaussianNoise
 from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
 
@@ -41,66 +40,69 @@ class EmpiricalIce(GaussianNoise, Ice):
     Ice modeled as gaussian noise with a
     measured power spectrum.
 
+    For more detail, see
+    ``cryojax.simulator.kernel.Empirical``.
+
     Attributes
     ----------
     spectrum : `jax.Array`, shape `(N1, N2)`
         The measured power spectrum.
-    kappa : `cryojax.core.Parameter`
+    kappa_i : `cryojax.core.Parameter`
         A scale factor for the variance.
-    gamma : `cryojax.core.Parameter`
-        The "white" part of the variance.
+    lambda_i : `cryojax.core.Parameter`
+        A variance offset.
     """
 
     spectrum: Array = field(pytree_node=False)
+    kernel: Sum = field(pytree_node=False, init=False, encode=False)
 
-    kappa: Parameter = 1.0
-    gamma: Parameter = 0.0
+    kappa_i: Parameter = 1.0
+    lambda_i: Parameter = 0.0
+
+    def __post_init__(self):
+        empirical = Empirical(
+            measurement=self.spectrum,
+            amplitude=self.kappa_i,
+        )
+        constant = Constant(value=self.lambda_i)
+        object.__setattr__(self, "kernel", Sum(empirical, constant))
 
     def variance(self, freqs: Optional[ArrayLike] = None) -> Array:
         """Power spectrum measured from a micrograph."""
-        return self.kappa * self.spectrum + self.gamma
+        return self.kernel(freqs)
 
 
 @dataclass
-class ExponentialNoiseIce(GaussianNoise, Ice):
+class ExpIce(GaussianNoise, Ice):
     r"""
     Ice modeled as gaussian noise with a covariance
-    matrix equal to an exponential decay, given by
-
-    .. math::
-        g(r) = \kappa \exp(- r / \xi),
-
-    where :math:`r` is a radial coordinate. The power spectrum
-    from such a correlation function (in two-dimensions) is given
-    by its Hankel transform pair
-
-    .. math::
-        P(k) = \frac{\kappa}{\xi} \frac{1}{(\xi^{-2} + k^2)^{3/2}},
+    matrix equal to an exponential decay. For more
+    detail, see ``cryojax.simulator.kernel.Exp``.
 
     Attributes
     ----------
-    kappa : `cryojax.core.Parameter`
+    kappa_i : `cryojax.core.Parameter`
         The "coupling strength".
-    xi : `cryojax.core.Parameter`
-        The correlation length. This is measured
-        in dimensions of length, not pixels.
-    gamma : `cryojax.core.Parameter`
+    beta_i : `cryojax.core.Parameter`
+        The correlation length.
+    lambda_i : `cryojax.core.Parameter`
         The "white" part of the variance.
     """
 
-    kappa: Parameter = 0.1
-    xi: Parameter = 1.0
-    gamma: Parameter = 0.1
+    kernel: Sum = field(pytree_node=False, init=False, encode=False)
+
+    kappa_i: Parameter = 0.1
+    beta_i: Parameter = 1.0
+    lambda_i: Parameter = 0.1
+
+    def __post_init__(self):
+        exp = Exp(
+            amplitude=self.kappa_i,
+            beta=self.beta_i,
+        )
+        constant = Constant(value=self.lambda_i)
+        object.__setattr__(self, "kernel", Sum(exp, constant))
 
     def variance(self, freqs: ArrayLike) -> Array:
         """Power spectrum modeled by a pure exponential."""
-        freqs = jnp.asarray(freqs)
-        if self.xi != 0.0:
-            k_norm = jnp.linalg.norm(freqs, axis=-1)
-            scaling = (
-                1.0 / (k_norm**2 + jnp.divide(1, (self.xi) ** 2)) ** 1.5
-            )
-            scaling *= jnp.divide(self.kappa, self.xi)
-        else:
-            scaling = 0.0
-        return scaling + self.gamma
+        return self.kernel(freqs)

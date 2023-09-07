@@ -17,23 +17,31 @@ __all__ = [
     "Sum",
     "Constant",
     "Exp",
-    "ExpSquared",
+    "Gaussian",
     "Empirical",
     "Custom",
 ]
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, Union, Callable, Concatenate, ParamSpec
+from typing import Any, Union, Callable, Concatenate, ParamSpec, Optional
 from functools import partial
 
 import jax.numpy as jnp
 
-from ..core import dataclass, field, Float, ArrayLike, Array, CryojaxObject
+from ..core import (
+    dataclass,
+    field,
+    Float,
+    Parameter,
+    ArrayLike,
+    Array,
+    CryojaxObject,
+)
 
 P = ParamSpec("P")
 
 
-@partial(dataclass, kw_only=True)
+@partial(dataclass, kw_only=True, init=False)
 class Kernel(CryojaxObject, metaclass=ABCMeta):
     """
     The base class for all kernels.
@@ -49,12 +57,18 @@ class Kernel(CryojaxObject, metaclass=ABCMeta):
     def evaluate(self, freqs: ArrayLike, **kwargs: Any) -> Array:
         """
         Evaluate the kernel at a set of frequencies.
+
+        Parameters
+        ----------
+        freqs : `ArrayLike`, shape `(..., 2)`
+            The wave vectors in the imaging plane, in
+            cartesain coordinates.
         """
         pass
 
-    def __call__(self, freqs: ArrayLike, **kwargs: Any) -> Array:
+    def __call__(self, freqs: ArrayLike, *args: Any, **kwargs: Any) -> Array:
         freqs = jnp.asarray(freqs)
-        return self.evaluate(freqs, **kwargs)
+        return self.evaluate(freqs, *args, **kwargs)
 
     def __add__(self, other: Union[Kernel, Float]) -> Kernel:
         if isinstance(other, Kernel):
@@ -84,8 +98,8 @@ class Kernel(CryojaxObject, metaclass=ABCMeta):
 class Sum(Kernel):
     """A helper to represent the sum of two kernels"""
 
-    kernel1: Kernel = field(pytree_node=False)
-    kernel2: Kernel = field(pytree_node=False)
+    kernel1: Kernel
+    kernel2: Kernel
 
     def evaluate(self, freqs: ArrayLike) -> Array:
         return self.kernel1.evaluate(freqs) + self.kernel2.evaluate(freqs)
@@ -95,8 +109,8 @@ class Sum(Kernel):
 class Product(Kernel):
     """A helper to represent the product of two kernels"""
 
-    kernel1: Kernel = field(pytree_node=False)
-    kernel2: Kernel = field(pytree_node=False)
+    kernel1: Kernel
+    kernel2: Kernel
 
     def evaluate(self, freqs: ArrayLike) -> Array:
         return self.kernel1.evaluate(freqs) * self.kernel2.evaluate(freqs)
@@ -109,16 +123,16 @@ class Constant(Kernel):
 
     Attributes
     ----------
-    constant : `cryojax.core.Float`
+    value : `cryojax.core.Parameter`
         The value of the kernel.
     """
 
-    constant: Float = field(pytree_node=False, default=jnp.zeros(1.0))
+    value: Parameter = 1.0
 
     def evaluate(self, freqs: ArrayLike) -> Array:
-        if jnp.ndim(self.constant) != 0:
+        if jnp.ndim(self.value) != 0:
             raise ValueError("The value of a constant kernel must be a scalar")
-        return self.constant
+        return self.value
 
 
 @dataclass
@@ -128,99 +142,90 @@ class Exp(Kernel):
     function equal to an exponential decay, given by
 
     .. math::
-        g(r) = \kappa \exp(- r / \xi),
+        g(r) = \kappa \exp(- r / \beta),
 
-    where :math:`r` is a radial coordinate. The power spectrum
-    from such a correlation function (in two-dimensions) is given
-    by its Hankel transform pair
+    where :math:`r = \sqrt{x^2 + y^2}` is a radial coordinate.
+    The power spectrum from such a correlation function (in two-dimensions)
+    is given by its Hankel transform pair
 
     .. math::
-        P(k) = \frac{\kappa}{\xi} \frac{1}{(\xi^{-2} + k^2)^{3/2}},
+        P(k) = \frac{\kappa}{\beta} \frac{1}{(\beta^{-2} + k^2)^{3/2}}.
+
+    Here, :math:`\beta` has dimensions of length.
 
     Attributes
     ----------
-    amplitude : `cryojax.core.Float`
+    amplitude : `cryojax.core.Parameter`
         The amplitude of the kernel, equal to :math:`\kappa`
         in the above equation.
-    scale : `cryojax.core.Float`
-        The length scale of the kernel, equal to :math:`\xi`
+    beta : `cryojax.core.Parameter`
+        The length scale of the kernel, equal to :math:`\beta`
         in the above equation.
-    constant : `cryojax.core.Float`
-        A constant offset for the kernel, added to the above equation.
     """
 
-    amplitude: Float = field(pytree_node=False, default=jnp.array(1.0))
-    scale: Float = field(pytree_node=False, default=jnp.array(1.0))
-    constant: Float = field(pytree_node=False, default=jnp.array(0.0))
+    amplitude: Parameter = 1.0
+    beta: Parameter = 1.0
 
     def evaluate(self, freqs: ArrayLike) -> Array:
-        if self.scale != 0.0:
-            k_sqr = jnp.linalg.norm(freqs, axis=-1) ** 2
-            scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
-            scaling *= jnp.divide(self.amplitude, self.scale)
+        if self.beta != 0.0:
+            k_sqr = jnp.sum(freqs**2, axis=-1)
+            scaling = 1.0 / (k_sqr + jnp.divide(1, (self.beta) ** 2)) ** 1.5
+            scaling *= jnp.divide(self.amplitude, self.beta)
         else:
             scaling = 0.0
-        return scaling + self.constant
+        return scaling
 
 
 @dataclass
-class ExpSquared(Kernel):
+class Gaussian(Kernel):
     r"""
     This kernel represents a simple gaussian.
     Specifically, this is
 
     .. math::
-        P(k) = \kappa \exp(- \beta k^2 / 4),
+        P(k) = \kappa \exp(- \beta k^2 / 2),
 
-    where :math:`k^2` is the norm squared of the
-    wave vector. Here, :math:`\beta` has dimensions
-    of length squared.
+    where :math:`k^2` is the length of the wave vector.
+    Here, :math:`\beta` has dimensions of length squared.
 
     Attributes
     ----------
-    amplitude : `cryojax.core.Float`
+    amplitude : `cryojax.core.Parameter`
         The amplitude of the kernel, equal to :math:`\kappa`
         in the above equation.
-    scale : `cryojax.core.Float`
+    beta : `cryojax.core.Parameter`
         The length scale of the kernel, equal to :math:`\beta`
         in the above equation.
-    constant : `cryojax.core.Float`
-        A constant offset for the kernel, added to the above equation.
     """
 
-    amplitude: Float = field(pytree_node=False, default=jnp.array(1.0))
-    scale: Float = field(pytree_node=False, default=jnp.array(1.0))
-    constant: Float = field(pytree_node=False, default=jnp.array(0.0))
+    amplitude: Parameter = 1.0
+    beta: Parameter = 1.0
 
     def evaluate(self, freqs: ArrayLike) -> Array:
         k_sqr = jnp.linalg.norm(freqs, axis=-1) ** 2
-        scaling = self.amplitude * jnp.exp(-0.25 * self.scale * k_sqr)
-        return scaling + self.constant
+        scaling = self.amplitude * jnp.exp(-0.5 * self.beta * k_sqr)
+        return scaling
 
 
 @dataclass
 class Empirical(Kernel):
     r"""
-    This kernel stores a measured array, rather
-    than computing one from a model. The array
-    is given a scaling and an offset.
+    This kernel stores a measured array, rather than
+    computing one from a model.
 
     Attributes
     ----------
-    amplitude : `cryojax.core.Float`
+    amplitude : `cryojax.core.Parameter`
         An amplitude scaling for the kernel.
-    constant : `cryojax.core.Float`
-        A constant offset for the kernel.
     """
 
     measurement: Array = field(pytree_node=False)
 
-    amplitude: Float = field(pytree_node=False, default=jnp.array(1.0))
-    constant: Float = field(pytree_node=False, default=jnp.array(0.0))
+    amplitude: Parameter = 1.0
 
-    def evaluate(self, freqs: ArrayLike) -> Array:
+    def evaluate(self, freqs: Optional[ArrayLike] = None) -> Array:
         """Return the scaled and offset measurement."""
-        return self.amplitude * self.measurement + self.constant
+        return self.amplitude * self.measurement
 
 
 @dataclass
@@ -235,7 +240,9 @@ class Custom(Kernel):
         :func:`Kernel.evaluate`.
     """
 
-    function: Callable[Concatenate[ArrayLike, P], Array]
+    function: Callable[Concatenate[ArrayLike, P], Array] = field(
+        pytree_node=False
+    )
 
     def evaluate(
         self, freqs: ArrayLike, *args: P.args, **kwargs: P.kwargs

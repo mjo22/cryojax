@@ -7,11 +7,12 @@ models.
 __all__ = ["Noise", "GaussianNoise"]
 
 from abc import ABCMeta, abstractmethod
-from typing import Union, Optional
+from typing import Union, Optional, Any, Type
 
 import jax.numpy as jnp
 from jax import random
 
+from .kernel import Kernel
 from ..utils import fft
 from ..core import field, dataclass, Array, ArrayLike, CryojaxObject
 

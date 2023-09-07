@@ -31,19 +31,27 @@ __all__ = [
     "QuaternionPose",
     ## Ice
     "EmpiricalIce",
-    "ExponentialNoiseIce",
+    "ExpIce",
     ## Optics
     "CTFOptics",
     ## Electron exposure models
     "UniformExposure",
     ## Detector models
     "CountingDetector",
-    "WhiteNoiseDetector",
+    "WhiteDetector",
     # Image models
     "ScatteringImage",
     "OpticsImage",
     "DetectorImage",
     "GaussianImage",
+    # Kernels
+    "Sum",
+    "Product",
+    "Constant",
+    "Exp",
+    "Gaussian",
+    "Empirical",
+    "Custom",
     # Type hints
     "ScatteringConfig",
     "Pose",
@@ -54,9 +62,14 @@ __all__ = [
     "Ice",
     "Detector",
     "Image",
+    "Kernel",
 ]
 
 from typing import Union
+
+from .kernel import Sum, Product, Constant, Exp, Gaussian, Empirical, Custom
+
+Kernel = Union[Sum, Product, Constant, Exp, Gaussian, Empirical, Custom]
 
 from .pose import (
     rotate_rpy,
@@ -101,9 +114,9 @@ from .masks import CircularMask, compute_circular_mask
 Mask = CircularMask
 """Type alias for Mask subclasses"""
 
-from .ice import NullIce, EmpiricalIce, ExponentialNoiseIce
+from .ice import NullIce, EmpiricalIce, ExpIce
 
-Ice = Union[NullIce, ExponentialNoiseIce, EmpiricalIce]
+Ice = Union[NullIce, ExpIce, EmpiricalIce]
 """Type alias for Ice subclasses"""
 
 from .optics import compute_ctf, NullOptics, CTFOptics
@@ -120,10 +133,10 @@ from .detector import (
     measure_image,
     NullDetector,
     CountingDetector,
-    WhiteNoiseDetector,
+    WhiteDetector,
 )
 
-Detector = Union[NullDetector, CountingDetector, WhiteNoiseDetector]
+Detector = Union[NullDetector, CountingDetector, WhiteDetector]
 """Type alias for Detector subclasses"""
 
 from .state import PipelineState
