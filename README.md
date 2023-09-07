@@ -60,7 +60,9 @@ Then, an `Image` model is chosen. Here, we choose `GaussianImage`.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
-pose, optics, detector = cs.EulerPose(), cs.CTFOptics(), cs.GaussianDetector(key=key, pixel_size=1.1)
+pose = cs.EulerPose(view_phi=0.0, view_theta=0.0, view_psi=0.0)
+optics = cs.CTFOptics(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
+detector = cs.GaussianDetector(key=key, pixel_size=1.1, variance=cs.Constant(1.0))
 state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state)
 image = model()
@@ -69,7 +71,7 @@ image = model()
 This computes an image at the instantiated model configuration. We can then compute the model at a set of updated parameters using python keyword arguments.
 
 ```python
-params = dict(view_phi=jnp.asarray(180.), defocus_u=jnp.asarray(8000.), pixel_size=jnp.asarray(1.09))
+params = dict(view_phi=jnp.asarray(180.), defocus_v=jnp.asarray(10000.), pixel_size=jnp.asarray(1.09))
 image = model(**params)
 ```
 
