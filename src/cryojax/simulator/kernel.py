@@ -46,7 +46,7 @@ P = ParamSpec("P")
 class Kernel(CryojaxObject, metaclass=ABCMeta):
     """
     The base class for all kernels.
-    
+
     By convention, Kernels should be defined to
     be dimensionless (up to a scale factor).
 
@@ -172,7 +172,7 @@ class Exp(Kernel):
         An offset added to the above equation.
     """
 
-    amplitude: Parameter = field(default=0.1)
+    amplitude: Parameter = field(default=1.0)
     scale: Parameter = field(default=1.0)
     offset: Parameter = field(default=0.0)
 
@@ -180,7 +180,7 @@ class Exp(Kernel):
         if self.scale != 0.0:
             k_sqr = jnp.sum(freqs**2, axis=-1)
             scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
-            scaling *= jnp.divide(self.amplitude, self.scale)
+            scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
         else:
             scaling = 0.0
         return scaling + self.offset
@@ -199,10 +199,10 @@ class Gaussian(Kernel):
     wave vector. Here, :math:`\beta` has dimensions of length
     squared. The real-space version of this function is given
     by
-    
+
     .. math::
         g(r) = \frac{\kappa}{2\pi \beta} \exp(- r^2 / (2 \beta)),
-        
+
     where :math:`r^2 = x^2 + y^2`.
 
     Attributes
