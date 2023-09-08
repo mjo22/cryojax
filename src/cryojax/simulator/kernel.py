@@ -46,6 +46,9 @@ P = ParamSpec("P")
 class Kernel(CryojaxObject, metaclass=ABCMeta):
     """
     The base class for all kernels.
+    
+    By convention, Kernels should be defined to
+    be dimensionless (up to a scale factor).
 
     To create a subclass,
 
@@ -143,16 +146,18 @@ class Exp(Kernel):
     function equal to an exponential decay, given by
 
     .. math::
-        g(r) = \kappa \exp(- r / \xi),
+        g(r) = \frac{\kappa}{2 \pi \xi^2} \exp(- r / \xi),
 
     where :math:`r = \sqrt{x^2 + y^2}` is a radial coordinate.
-    The power spectrum from such a correlation function (in two-dimensions)
-    is given by its Hankel transform pair
+    Here, :math:`\xi` has dimensions of length and :math:`g(r)`
+    has dimensions of inverse area. The power spectrum from such
+    a correlation function (in two-dimensions) is given by its
+    Hankel transform pair
 
     .. math::
-        P(k) = \frac{\kappa}{\xi} \frac{1}{(\xi^{-2} + k^2)^{3/2}}.
+        P(k) = \frac{\kappa}{2 \pi \xi^3} \frac{1}{(\xi^{-2} + k^2)^{3/2}}.
 
-    Here, :math:`\xi` has dimensions of length.
+    Here :math:`\kappa` is a scale factor.
 
     Attributes
     ----------
@@ -190,8 +195,15 @@ class Gaussian(Kernel):
     .. math::
         P(k) = \kappa \exp(- \beta k^2 / 2),
 
-    where :math:`k^2` is the length of the wave vector.
-    Here, :math:`\beta` has dimensions of length squared.
+    where :math:`k^2 = k_x^2 + k_y^2` is the length of the
+    wave vector. Here, :math:`\beta` has dimensions of length
+    squared. The real-space version of this function is given
+    by
+    
+    .. math::
+        g(r) = \frac{\kappa}{2\pi \beta} \exp(- r^2 / (2 \beta)),
+        
+    where :math:`r^2 = x^2 + y^2`.
 
     Attributes
     ----------
