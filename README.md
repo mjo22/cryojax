@@ -81,7 +81,7 @@ This workflow evaulates a new image at a state with an updated viewing angle `vi
 model = model.update(**params)
 ```
 
-This method is inherited from the `cryojax` base class, `CryojaxObject`. The intention is to make it simple to work with nested class structures!
+This method is inherited from the `cryojax` base class, `CryojaxObject`. The intention is to make it simple to work with nested class structures! Note that it does have limitations. If two parameters are identically named across different nested `CryojaxObject`s, this will fail. In this case, first update the lower level objects.
 
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
@@ -109,7 +109,7 @@ def loss(params):
     return model(**params)
 ```
 
-Note that in order to jit-compile the `model` we must create a wrapper for it because it is a `dataclass`, not a function. Alternatively, one could create a custom loss function from calling `Image` methods directly, such as `Image.render`.
+Note that in order to jit-compile the `model` we must create a wrapper for it because it is a `dataclass`, not a function. In some cases, it may be necessary to jit a longer `loss` wrapper. Here, one should instantiate the model inside `loss`. Additionally, one could create a custom likelihood function by calling `Image` methods directly, such as `Image.render`.
 
 Additional components can be plugged into the `Image` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` uniformly scales the signal to a given standard deviation. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
 
