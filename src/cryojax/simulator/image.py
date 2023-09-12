@@ -197,7 +197,7 @@ class ScatteringImage(Image):
         # Compute the image at the exit plane at the updated pose
         scattering_image = specimen.scatter(scattering)
         # Apply translation (phase shifts) to the image
-        scattering_image = state.pose.translate(
+        scattering_image = state.pose.shift(
             scattering_image, padded_freqs / resolution
         )
         # Optionally filter, crop, and mask image
@@ -272,12 +272,12 @@ class OpticsImage(ScatteringImage):
             scattering.padded_freqs,
             specimen.resolution,
         )
-        # Compute scattering at object plane.
+        # Compute scattering in the exit plane.
         scattering_image = super().render(
             state=state, specimen=specimen, view=False
         )
         # Compute and apply CTF
-        ctf = state.optics(padded_freqs / resolution)
+        ctf = state.optics(padded_freqs / resolution, pose=state.pose)
         optics_image = state.optics.apply(ctf, scattering_image)
         # Optionally filter, crop, rescale, and mask image
         if view:
@@ -306,7 +306,7 @@ class OpticsImage(ScatteringImage):
         )
         pixel_size = resolution if _pixel_size is None else _pixel_size
         # Sample from ice distribution and apply ctf to it
-        ctf = state.optics(padded_freqs / pixel_size)
+        ctf = state.optics(padded_freqs / pixel_size, pose=state.pose)
         icy_image = super().sample(state=state, specimen=specimen, view=False)
         icy_image = state.optics.apply(ctf, icy_image)
         if view:

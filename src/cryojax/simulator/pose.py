@@ -38,20 +38,25 @@ class Pose(CryojaxObject, metaclass=ABCMeta):
     Attributes
     ----------`
     offset_x : `cryojax.core.Parameter`
-        In-plane translations in x direction.
+        In-plane translation in x direction.
     offset_y : `cryojax.core.Parameter`
-        In-plane translations in y direction.
+        In-plane translation in y direction.
+    offset_z : `cryojax.core.Parameter`
+        Out-of-plane translation in the z
+        direction. The translation is measured
+        relative to the configured defocus.
     """
 
     offset_x: Parameter = field(default=0.0)
     offset_y: Parameter = field(default=0.0)
+    offset_z: Parameter = field(default=0.0)
 
     @abstractmethod
     def rotate(self, coordinates: ArrayLike, real: bool = True) -> Array:
         """Rotation method for a particular pose convention."""
         raise NotImplementedError
 
-    def translate(self, density: ArrayLike, coordinates: ArrayLike) -> Array:
+    def shift(self, density: ArrayLike, coordinates: ArrayLike) -> Array:
         """
         Translate a 2D electron density in real space by
         applying phase shifts in fourier space.
@@ -109,7 +114,7 @@ class EulerPose(Pose):
         if real:
             rotated, _ = rotate_rpy(
                 coordinates,
-                *self.iter_data()[2:],
+                *self.iter_data()[3:],
                 convention=self.convention,
                 intrinsic=self.intrinsic,
                 inverse=not self.inverse,
@@ -119,7 +124,7 @@ class EulerPose(Pose):
         else:
             rotated, _ = rotate_rpy(
                 coordinates,
-                *self.iter_data()[2:],
+                *self.iter_data()[3:],
                 convention=self.convention,
                 intrinsic=self.intrinsic,
                 inverse=self.inverse,
@@ -153,14 +158,14 @@ class QuaternionPose(Pose):
         if real:
             rotated, _ = rotate_wxyz(
                 coordinates,
-                *self.iter_data()[2:],
+                *self.iter_data()[3:],
                 inverse=not self.inverse,
             )
             return rotated
         else:
             rotated, _ = rotate_wxyz(
                 coordinates,
-                *self.iter_data()[2:],
+                *self.iter_data()[3:],
                 inverse=self.inverse,
             )
             return rotated

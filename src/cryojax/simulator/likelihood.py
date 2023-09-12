@@ -56,7 +56,7 @@ class GaussianImage(DetectorImage):
             variance = 0.0
         # Variance from ice
         if not isinstance(state.ice, NullIce):
-            ctf = state.optics(freqs / pixel_size)
+            ctf = state.optics(freqs / pixel_size, pose=state.pose)
             variance += ctf**2 * state.ice.variance(freqs / pixel_size)
         return variance
 

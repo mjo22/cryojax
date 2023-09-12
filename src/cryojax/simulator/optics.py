@@ -18,6 +18,7 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
+from .pose import Pose
 from .kernel import Kernel, Gaussian
 from ..utils import cartesian_to_polar
 from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
@@ -46,7 +47,9 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
     envelope: Optional[Kernel] = field(default_factory=Gaussian)
 
     @abstractmethod
-    def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
+    def compute(
+        self, freqs: ArrayLike, pose: Optional[Pose] = None, **kwargs: Any
+    ) -> Array:
         """Compute the optics model."""
         raise NotImplementedError
 
@@ -74,7 +77,9 @@ class NullOptics(Optics):
 
     envelope: Optional[Kernel] = field(default=None)
 
-    def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
+    def compute(
+        self, freqs: ArrayLike, pose: Optional[Pose] = None, **kwargs: Any
+    ) -> Array:
         return jnp.array(1.0)
 
     def apply(self, ctf: Array, image: ArrayLike, **kwargs: Any):
@@ -92,6 +97,7 @@ class CTFOptics(Optics):
 
     Attributes
     ----------
+    degrees : `bool`
     defocus_u : `cryojax.core.Parameter`
     defocus_v : `cryojax.core.Parameter`
     defocus_angle : `cryojax.core.Parameter`
@@ -101,6 +107,8 @@ class CTFOptics(Optics):
     phase_shift : `cryojax.core.Parameter`
     b_factor : `cryojax.core.Parameter`
     """
+
+    degrees: bool = field(pytree_node=False, default=True)
 
     defocus_u: Parameter = field(default=10000.0)
     defocus_v: Parameter = field(default=10000.0)
@@ -113,8 +121,22 @@ class CTFOptics(Optics):
     def apply(self, ctf: ArrayLike, image: ArrayLike, **kwargs: Any) -> Array:
         return ctf * image
 
-    def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
-        return compute_ctf(freqs, *self.iter_data()[1:], **kwargs)
+    def compute(
+        self, freqs: ArrayLike, pose: Optional[Pose] = None, **kwargs: Any
+    ) -> Array:
+        defocus_offset = 0.0 if pose is None else pose.offset_z
+        return compute_ctf(
+            freqs,
+            self.defocus_u + defocus_offset,
+            self.defocus_v + defocus_offset,
+            self.defocus_angle,
+            self.voltage,
+            self.spherical_aberration,
+            self.amplitude_contrast,
+            self.phase_shift,
+            degrees=self.degrees,
+            **kwargs,
+        )
 
 
 @partial(jax.jit, static_argnames=["normalize", "degrees"])
