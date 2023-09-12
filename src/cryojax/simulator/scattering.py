@@ -61,17 +61,15 @@ class ImageConfig(CryojaxObject):
         or equal to 1. By default, it is 1 (no padding).
     """
 
-    shape: tuple[int, int] = field(pytree_node=False, encode=tuple)
+    shape: tuple[int, int] = field(pytree_node=False)
 
-    padded_shape: tuple[int, int] = field(
-        pytree_node=False, init=False, encode=False
-    )
+    padded_shape: tuple[int, int] = field(pytree_node=False, init=False)
 
-    freqs: Array = field(pytree_node=False, init=False, encode=False)
-    padded_freqs: Array = field(pytree_node=False, init=False, encode=False)
+    freqs: Array = field(pytree_node=False, init=False)
+    padded_freqs: Array = field(pytree_node=False, init=False)
 
-    coords: Array = field(pytree_node=False, init=False, encode=False)
-    padded_coords: Array = field(pytree_node=False, init=False, encode=False)
+    coords: Array = field(pytree_node=False, init=False)
+    padded_coords: Array = field(pytree_node=False, init=False)
 
     pad_scale: float = field(pytree_node=False, default=1)
 

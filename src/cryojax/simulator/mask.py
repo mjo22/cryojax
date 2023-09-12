@@ -34,7 +34,7 @@ class Mask(CryojaxObject, metaclass=ABCMeta):
     """
 
     shape: tuple[int, int] = field(pytree_node=False)
-    mask: Array = field(pytree_node=False, init=False, encode=False)
+    mask: Array = field(pytree_node=False, init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
         object.__setattr__(self, "mask", self.compute(*args, **kwargs))

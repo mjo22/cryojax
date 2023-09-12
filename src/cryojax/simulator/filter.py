@@ -37,7 +37,7 @@ class Filter(CryojaxObject, metaclass=ABCMeta):
     """
 
     shape: tuple[int, int] = field(pytree_node=False)
-    filter: Array = field(pytree_node=False, init=False, encode=False)
+    filter: Array = field(pytree_node=False, init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
         object.__setattr__(self, "filter", self.compute(*args, **kwargs))

@@ -152,23 +152,36 @@ def field(
     pytree_node : `bool`
         Determine if field is to be part of the
         pytree.
-    encode : `Any`, optional
-        Type hint for the field's json encoding.
+    encode : `Any`
+        Type hint for the field's json encoding. If
+        `False`, do not encode the field.
     """
+    # Inspect kwargs
     if "metadata" in kwargs.keys():
         metadata = kwargs["metadata"]
         del kwargs["metadata"]
     else:
         metadata = {}
-    metadata.update(dict(pytree_node=pytree_node, encode=encode))
-    if encode is False:
-        serializer = config(decoder=_dummy_decoder, encoder=_dummy_encoder)
-    elif encode == Array:
-        serializer = config(encoder=_np_encoder, decoder=_jax_decoder)
-    elif encode == np.ndarray:
-        serializer = config(encoder=_np_encoder, decoder=_np_decoder)
+    if "init" in kwargs.keys():
+        init = kwargs["init"]
     else:
-        serializer = config(encoder=_cryojax_encoder, decoder=_cryojax_decoder)
+        init = True
+    metadata.update(dict(pytree_node=pytree_node, encode=encode))
+    # Set serialization metadata
+    if init:
+        if encode is False:
+            serializer = config(decoder=_dummy_decoder, encoder=_dummy_encoder)
+        elif encode == Array:
+            serializer = config(encoder=_np_encoder, decoder=_jax_decoder)
+        elif encode == np.ndarray:
+            serializer = config(encoder=_np_encoder, decoder=_np_decoder)
+        else:
+            serializer = config(
+                encoder=_cryojax_encoder, decoder=_cryojax_decoder
+            )
+    else:
+        serializer = config(decoder=_dummy_decoder, encoder=_dummy_encoder)
+
     metadata.update(serializer)
     return dataclasses.field(metadata=metadata, **kwargs)
 
