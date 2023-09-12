@@ -10,13 +10,13 @@ from typing import Optional, Union
 
 import jax.numpy as jnp
 
+from .specimen import Specimen
 from .state import PipelineState
 from .ice import NullIce, GaussianIce
 from .detector import NullDetector, GaussianDetector
 from .image import DetectorImage
 from ..utils import fft
 from ..core import dataclass, Array
-from . import Specimen
 
 
 @dataclass
@@ -32,7 +32,9 @@ class GaussianImage(DetectorImage):
     def __post_init__(self):
         if not isinstance(self.state.ice, (NullIce, GaussianIce)):
             raise ValueError("A GaussianIce model is required.")
-        if not isinstance(self.state.detector, (NullDetector, GaussianDetector)):
+        if not isinstance(
+            self.state.detector, (NullDetector, GaussianDetector)
+        ):
             raise ValueError("A GaussianDetector model is required.")
 
     def variance(

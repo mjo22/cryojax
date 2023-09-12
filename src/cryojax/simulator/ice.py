@@ -9,10 +9,9 @@ from typing import Any
 
 import jax.numpy as jnp
 
-from .kernel import Exp
+from .kernel import Kernel, Exp
 from .noise import GaussianNoise
 from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
-from . import Kernel
 
 
 @dataclass
@@ -50,4 +49,4 @@ class GaussianIce(GaussianNoise, Ice):
         ``Exp()``.
     """
 
-    variance: Kernel = field(default_factory=Exp, encode=Kernel)
+    variance: Kernel = field(default_factory=Exp)

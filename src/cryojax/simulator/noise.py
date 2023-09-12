@@ -48,7 +48,7 @@ class GaussianNoise(Noise):
         1) Overwrite ``GaussianNoise.variance``.
     """
 
-    variance: Kernel = field(default_factory=Constant, encode=Kernel)
+    variance: Kernel = field(default_factory=Constant)
 
     def sample(self, freqs: ArrayLike) -> Array:
         spectrum = self.variance(freqs)

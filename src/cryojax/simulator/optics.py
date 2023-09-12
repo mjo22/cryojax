@@ -18,10 +18,9 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
-from .kernel import Gaussian
+from .kernel import Kernel, Gaussian
 from ..utils import cartesian_to_polar
 from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
-from . import Kernel
 
 
 @dataclass
@@ -44,9 +43,7 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
         the optics model. By default, ``Gaussian()``.
     """
 
-    envelope: Optional[Kernel] = field(
-        default_factory=Gaussian, encode=Kernel
-    )
+    envelope: Optional[Kernel] = field(default_factory=Gaussian)
 
     @abstractmethod
     def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
@@ -75,7 +72,7 @@ class NullOptics(Optics):
     This class can be used as a null optics model.
     """
 
-    envelope: Optional[Kernel] = None
+    envelope: Optional[Kernel] = field(default=None)
 
     def compute(self, freqs: ArrayLike, **kwargs: Any) -> Array:
         return jnp.array(1.0)

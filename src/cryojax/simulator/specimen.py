@@ -11,10 +11,10 @@ from typing import Optional, Any, Type
 from functools import partial
 from dataclasses import fields
 
+from .scattering import ScatteringConfig
 from .pose import Pose
 from ..io import load_grid_as_cloud, load_fourier_grid
 from ..core import Array, Parameter, dataclass, field, CryojaxObject
-from . import ScatteringConfig
 
 
 @partial(dataclass, kw_only=True)

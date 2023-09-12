@@ -30,9 +30,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    _UnionGenericAlias,
-    get_args,
-    get_origin,
 )
 from jax import Array
 from jax.typing import ArrayLike
@@ -155,11 +152,8 @@ def field(
     pytree_node : `bool`
         Determine if field is to be part of the
         pytree.
-    encode : `Any`
+    encode : `Any`, optional
         Type hint for the field's json encoding.
-        If this is a ``Union`` of ``cryojax``
-        objects, the decoder will try to find
-        the correct one to instantiate.
     """
     if "metadata" in kwargs.keys():
         metadata = kwargs["metadata"]
@@ -169,14 +163,12 @@ def field(
     metadata.update(dict(pytree_node=pytree_node, encode=encode))
     if encode is False:
         serializer = config(decoder=_dummy_decoder, encoder=_dummy_encoder)
-    elif get_origin(encode) is Union:
-        serializer = config(decoder=lambda x: _union_decoder(x, encode))
     elif encode == Array:
         serializer = config(encoder=_np_encoder, decoder=_jax_decoder)
     elif encode == np.ndarray:
         serializer = config(encoder=_np_encoder, decoder=_np_decoder)
     else:
-        serializer = {}
+        serializer = config(encoder=_cryojax_encoder, decoder=_cryojax_decoder)
     metadata.update(serializer)
     return dataclasses.field(metadata=metadata, **kwargs)
 
@@ -234,7 +226,7 @@ class CryojaxObject(Serializable):
         If ``params`` contains any pytree nodes in this instance,
         they will be updated. Nested ``CryojaxObject``s are
         supported.
-        
+
         Note that the update will fail for nodes with identical
         names.
         """
@@ -277,7 +269,7 @@ def _np_encoder(x: Any) -> Any:
     elif isinstance(x, complex):
         return dict(__complex__=True, real=x.real, imag=x.imag)
     else:
-        return x
+        return _cryojax_encoder(x)
 
 
 def _np_decoder(x: Any) -> Any:
@@ -288,7 +280,7 @@ def _np_decoder(x: Any) -> Any:
     elif isinstance(x, dict) and "__complex__" in x:
         return complex(x["real"], x["imag"])
     else:
-        return x
+        return _cryojax_decoder(x)
 
 
 def _jax_decoder(x: Any) -> Any:
@@ -300,20 +292,26 @@ def _jax_decoder(x: Any) -> Any:
         return a
 
 
-def _union_decoder(x: Any, hint: _UnionGenericAlias) -> Any:
-    """Decode a union type hint."""
-    ys = x if type(x) is list else [x]
-    instances = []
-    for y in ys:
-        instance = None
-        for cls in get_args(hint):
-            try:
-                temp = cls.from_dict(y)
-                assert set(y.keys()) == set(temp.to_dict().keys())
-                instance = temp
-            except (KeyError, TypeError, AssertionError):
-                pass
-        if instance is None:
-            raise TypeError(f"Could not decode from {hint}")
-        instances.append(instance)
-    return instances if type(x) is list else instances[0]
+def _cryojax_encoder(x: Any) -> Any:
+    """Encode a CryojaxObject or a list of them."""
+    if isinstance(x, CryojaxObject):
+        return dict(
+            __name__=x.__class__.__name__, __dataclass_fields__=x.to_dict()
+        )
+    elif isinstance(x, list):
+        return [_cryojax_encoder(xi) for xi in x]
+    else:
+        return x
+
+
+def _cryojax_decoder(x: Any) -> Any:
+    """Decode a CryojaxObject or a list of them."""
+    if isinstance(x, dict) and "__name__" in x:
+        from . import simulator
+
+        cls = getattr(simulator, x["__name__"])
+        return cls.from_dict(x["__dataclass_fields__"])
+    elif isinstance(x, list):
+        return [_cryojax_decoder(xi) for xi in x]
+    else:
+        return x

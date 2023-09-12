@@ -15,7 +15,7 @@ __all__ = [
     # Image configuration
     "ImageConfig",
     "NufftScattering",
-    "FourierSliceScattering"
+    "FourierSliceScattering",
     # Specimen representations
     "ElectronCloud",
     "ElectronGrid",
@@ -30,12 +30,16 @@ __all__ = [
     "EulerPose",
     "QuaternionPose",
     ## Ice
+    "NullIce",
     "GaussianIce",
     ## Optics
+    "NullOptics",
     "CTFOptics",
     ## Electron exposure models
+    "NullExposure",
     "UniformExposure",
     ## Detector models
+    "NullDetector",
     "CountingDetector",
     "GaussianDetector",
     # Image models
@@ -51,7 +55,8 @@ __all__ = [
     "Gaussian",
     "Empirical",
     "Custom",
-    # Type hints
+    # Abstract classes
+    "Specimen",
     "ScatteringConfig",
     "Pose",
     "Filter",
@@ -64,83 +69,52 @@ __all__ = [
     "Kernel",
 ]
 
-from typing import Union
-
-from .kernel import Sum, Product, Constant, Exp, Gaussian, Empirical, Custom
-
-Kernel = Union[Sum, Product, Constant, Exp, Gaussian, Empirical, Custom]
-
+from .kernel import (
+    Kernel,
+    Sum,
+    Product,
+    Constant,
+    Exp,
+    Gaussian,
+    Empirical,
+    Custom,
+)
 from .pose import (
     rotate_rpy,
     rotate_wxyz,
     shift_phase,
     make_euler_rotation,
+    Pose,
     EulerPose,
     QuaternionPose,
 )
-
-Pose = Union[EulerPose, QuaternionPose]
-"""Type alias for Pose subclasses"""
-
 from .scattering import (
     project_with_nufft,
     extract_slice,
     ImageConfig,
+    ScatteringConfig,
     NufftScattering,
     FourierSliceScattering,
 )
-
-ScatteringConfig = Union[NufftScattering, FourierSliceScattering]
-"""Type alias for ScatteringConfig subclasses"""
-
-from .specimen import ElectronCloud, ElectronGrid
-
-Specimen = Union[ElectronCloud, ElectronGrid]
-"""Type alias for Specimen subclasses"""
-
-from .filters import (
+from .specimen import Specimen, ElectronCloud, ElectronGrid
+from .filter import (
     compute_lowpass_filter,
     compute_whitening_filter,
+    Filter,
     LowpassFilter,
     WhiteningFilter,
 )
-
-Filter = Union[LowpassFilter, WhiteningFilter]
-"""Type alias for Filter subclasses"""
-
-from .masks import CircularMask, compute_circular_mask
-
-Mask = CircularMask
-"""Type alias for Mask subclasses"""
-
-from .ice import NullIce, GaussianIce
-
-Ice = Union[NullIce, GaussianIce]
-"""Type alias for Ice subclasses"""
-
-from .optics import compute_ctf, NullOptics, CTFOptics
-
-Optics = Union[NullOptics, CTFOptics]
-"""Type alias for Optics subclasses"""
-
-from .exposure import rescale_image, NullExposure, UniformExposure
-
-Exposure = Union[NullExposure, UniformExposure]
-"""Type alias for Exposure subclasses"""
-
+from .mask import Mask, CircularMask, compute_circular_mask
+from .ice import Ice, NullIce, GaussianIce
+from .optics import compute_ctf, Optics, NullOptics, CTFOptics
+from .exposure import rescale_image, Exposure, NullExposure, UniformExposure
 from .detector import (
     measure_image,
+    Detector,
     NullDetector,
     CountingDetector,
     GaussianDetector,
 )
-
-Detector = Union[NullDetector, CountingDetector, GaussianDetector]
-"""Type alias for Detector subclasses"""
-
 from .state import PipelineState
-from .image import ScatteringImage, OpticsImage, DetectorImage
+from .image import Image, ScatteringImage, OpticsImage, DetectorImage
 from .likelihood import GaussianImage
-
-Image = Union[ScatteringImage, OpticsImage, DetectorImage, GaussianImage]
-"""Type alias for Image subclasses"""

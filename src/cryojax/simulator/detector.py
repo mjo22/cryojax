@@ -17,10 +17,9 @@ from typing import Any
 from functools import partial
 
 from .noise import GaussianNoise
-from .kernel import Constant
+from .kernel import Kernel, Constant
 from ..utils import scale
 from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
-from . import Kernel
 
 
 @partial(dataclass, kw_only=True)
@@ -105,7 +104,7 @@ class GaussianDetector(GaussianNoise, CountingDetector):
         ``Constant()``.
     """
 
-    variance: Kernel = field(default_factory=Constant, encode=Kernel)
+    variance: Kernel = field(default_factory=Constant)
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])

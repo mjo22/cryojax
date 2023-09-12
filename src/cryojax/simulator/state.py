@@ -7,12 +7,11 @@ from __future__ import annotations
 __all__ = ["PipelineState"]
 
 from ..core import dataclass, field, CryojaxObject
-from .pose import EulerPose
-from .ice import NullIce
-from .optics import NullOptics
-from .exposure import NullExposure
-from .detector import NullDetector
-from . import Pose, Ice, Optics, Exposure, Detector
+from .pose import Pose, EulerPose
+from .ice import Ice, NullIce
+from .optics import Optics, NullOptics
+from .exposure import Exposure, NullExposure
+from .detector import Detector, NullDetector
 
 
 @dataclass
@@ -34,12 +33,8 @@ class PipelineState(CryojaxObject):
         The model of the detector.
     """
 
-    pose: Pose = field(default=EulerPose(), encode=Pose)
-    ice: Ice = field(
-        default=NullIce(), encode=Ice
-    )
-    optics: Optics = field(default=NullOptics(), encode=Optics)
-    exposure: Exposure = field(default=NullExposure(), encode=Exposure)
-    detector: Detector = field(
-        default=NullDetector(), encode=Detector
-    )
+    pose: Pose = field(default=EulerPose())
+    ice: Ice = field(default=NullIce())
+    optics: Optics = field(default=NullOptics())
+    exposure: Exposure = field(default=NullExposure())
+    detector: Detector = field(default=NullDetector())

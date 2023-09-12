@@ -14,6 +14,10 @@ __all__ = [
 from abc import ABCMeta, abstractmethod
 from typing import Union, Optional
 
+from .filter import Filter
+from .mask import Mask
+from .specimen import Specimen
+from .scattering import ScatteringConfig
 from .state import PipelineState
 from ..utils import fft, irfft
 from ..core import (
@@ -57,18 +61,12 @@ class Image(CryojaxObject, metaclass=ABCMeta):
         shape as ``scattering.shape``.
     """
 
-    state: PipelineState
-    specimen: Specimen = field(encode=Specimen)
-    scattering: ScatteringConfig = field(
-        pytree_node=False, encode=ScatteringConfig
-    )
+    state: PipelineState = field()
+    specimen: Specimen = field()
+    scattering: ScatteringConfig = field(pytree_node=False)
 
-    filters: list[Filter] = field(
-        pytree_node=False, default_factory=list, encode=Filter
-    )
-    masks: list[Mask] = field(
-        pytree_node=False, default_factory=list, encode=Mask
-    )
+    filters: list[Filter] = field(pytree_node=False, default_factory=list)
+    masks: list[Mask] = field(pytree_node=False, default_factory=list)
     observed: Optional[Array] = field(pytree_node=False, default=None)
 
     @abstractmethod
