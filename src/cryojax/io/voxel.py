@@ -54,7 +54,7 @@ def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict[str, Any]:
     density, coordinates = coordinatize_voxels(template, voxel_size, **kwargs)
     # Gather fields to instantiate an ElectronCloud
     cloud = dict(
-        density=density,
+        weights=density,
         coordinates=coordinates,
         filename=filename,
         config=kwargs,
@@ -96,7 +96,7 @@ def load_fourier_grid(filename: str, pad_scale=1.0) -> dict[str, Any]:
     coordinates = jnp.expand_dims(coordinates[:, :, 0, :], axis=2)
     # Gather fields to instantiate an ElectronGrid
     voxels = dict(
-        density=density,
+        weights=density,
         coordinates=coordinates,
         filename=filename,
         config=dict(pad_scale=pad_scale),

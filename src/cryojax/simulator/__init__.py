@@ -16,7 +16,7 @@ __all__ = [
     "ImageConfig",
     "NufftScattering",
     "FourierSliceScattering",
-    # Specimen representations
+    # Electron density representations
     "ElectronCloud",
     "ElectronGrid",
     # Filters
@@ -24,7 +24,10 @@ __all__ = [
     "WhiteningFilter",
     # Masks
     "CircularMask",
-    # Model parameter configuration
+    # Biological specimen
+    "Specimen",
+    "Helix",
+    ## Pipeline configuration
     "PipelineState",
     ## Pose
     "EulerPose",
@@ -56,7 +59,8 @@ __all__ = [
     "Empirical",
     "Custom",
     # Abstract classes
-    "Specimen",
+    "ElectronDensity",
+    "Voxels",
     "ScatteringConfig",
     "Pose",
     "Filter",
@@ -96,7 +100,8 @@ from .scattering import (
     NufftScattering,
     FourierSliceScattering,
 )
-from .specimen import Specimen, ElectronCloud, ElectronGrid
+from .specimen import Specimen, Helix
+from .density import ElectronDensity, Voxels, ElectronCloud, ElectronGrid
 from .filter import (
     compute_lowpass_filter,
     compute_whitening_filter,

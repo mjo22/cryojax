@@ -17,12 +17,12 @@ from .detector import Detector, NullDetector
 @dataclass
 class PipelineState(CryojaxObject):
     """
-    PyTree container for the state of an ``ImageModel``.
+    A container for the state of the imaging pipeline.
 
     Attributes
     ----------
     pose : `cryojax.simulator.Pose`
-        The image pose.
+        The pose of the specimen.
     ice : `cryojax.simulator.Ice`
         The model of the ice.
     optics : `cryojax.simulator.OpticsModel`

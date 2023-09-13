@@ -10,27 +10,28 @@ config.update("jax_enable_x64", False)
 
 
 @pytest.fixture
-def setup():
-    filename = os.path.join(
-        os.path.dirname(__file__), "data", "3jar_13pf_bfm1_ps5_28.mrc"
-    )
-    scattering = cs.FourierSliceScattering(shape=(81, 81))
-    specimen = cs.ElectronGrid.from_file(filename, resolution=5.32)
-    # scattering = cs.NufftScattering(shape=(81, 81), eps=1e-4)
-    # specimen = cs.ElectronCloud.from_file(filename, resolution=5.32)
-    return scattering, specimen
+def scattering():
+    # return cs.NufftScattering(shape=(81, 81), eps=1e-4)
+    return cs.FourierSliceScattering(shape=(81, 81))
 
 
 @pytest.fixture
-def filters(setup):
-    scattering, _ = setup
+def density():
+    filename = os.path.join(
+        os.path.dirname(__file__), "data", "3jar_13pf_bfm1_ps5_28.mrc"
+    )
+    # return cs.ElectronCloud.from_file(filename, resolution=5.32)
+    return cs.ElectronGrid.from_file(filename, resolution=5.32)
+
+
+@pytest.fixture
+def filters(scattering):
     return [cs.LowpassFilter(scattering.padded_shape)]
     # return []
 
 
 @pytest.fixture
-def masks(setup):
-    scattering, _ = setup
+def masks(scattering):
     return [cs.CircularMask(scattering.shape)]
 
 
@@ -41,13 +42,19 @@ def state():
         ice=cs.GaussianIce(key=random.PRNGKey(seed=1)),
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(),
-        detector=cs.GaussianDetector(pixel_size=5.32, key=random.PRNGKey(seed=0)),
+        detector=cs.GaussianDetector(
+            pixel_size=5.32, key=random.PRNGKey(seed=0)
+        ),
     )
 
 
 @pytest.fixture
-def scattering_model(setup, state, filters, masks):
-    scattering, specimen = setup
+def specimen(density):
+    return cs.Specimen(density=density)
+
+
+@pytest.fixture
+def scattering_model(scattering, specimen, state, filters, masks):
     return cs.ScatteringImage(
         scattering=scattering,
         specimen=specimen,
@@ -58,8 +65,7 @@ def scattering_model(setup, state, filters, masks):
 
 
 @pytest.fixture
-def optics_model(setup, state, filters, masks):
-    scattering, specimen = setup
+def optics_model(scattering, specimen, state, filters, masks):
     return cs.OpticsImage(
         scattering=scattering,
         specimen=specimen,
@@ -70,8 +76,7 @@ def optics_model(setup, state, filters, masks):
 
 
 @pytest.fixture
-def noisy_model(setup, state, filters, masks):
-    scattering, specimen = setup
+def noisy_model(scattering, specimen, state, filters, masks):
     return cs.GaussianImage(
         scattering=scattering,
         specimen=specimen,
@@ -82,8 +87,7 @@ def noisy_model(setup, state, filters, masks):
 
 
 @pytest.fixture
-def maskless_model(setup, state, filters):
-    scattering, specimen = setup
+def maskless_model(scattering, specimen, state, filters):
     return cs.OpticsImage(
         scattering=scattering,
         specimen=specimen,

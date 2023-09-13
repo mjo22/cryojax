@@ -14,7 +14,9 @@ def test_deserialize_state_components(noisy_model):
     state = noisy_model.state
     pose = cs.EulerPose.from_json(noisy_model.state.pose.to_json())
     ice = cs.GaussianIce.from_json(noisy_model.state.ice.to_json())
-    detector = cs.GaussianDetector.from_json(noisy_model.state.detector.to_json())
+    detector = cs.GaussianDetector.from_json(
+        noisy_model.state.detector.to_json()
+    )
     optics = cs.CTFOptics.from_json(noisy_model.state.optics.to_json())
     exposure = cs.UniformExposure.from_json(
         noisy_model.state.exposure.to_json()
@@ -39,11 +41,11 @@ def test_deserialize_state(state):
     )
 
 
-def test_deserialize_specimen(setup):
+def test_deserialize_density(density):
     """Test specimen deserialization."""
-    _, cloud = setup
     assert (
-        cs.ElectronGrid.from_json(cloud.to_json()).to_json() == cloud.to_json()
+        cs.ElectronGrid.from_json(density.to_json()).to_json()
+        == density.to_json()
     )
     # assert (
     #    ElectronCloud.from_json(cloud.to_json()).to_json() == cloud.to_json()

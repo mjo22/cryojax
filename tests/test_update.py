@@ -35,7 +35,7 @@ def test_update(noisy_model):
     specimen = noisy_model.specimen.update(**params)
     model = noisy_model.update(**params)
     # Test specimen update
-    assert resolution == specimen.resolution
+    assert resolution == specimen.density.resolution
     # Test state update
     assert offset_x == state.pose.offset_x
     assert view_phi == state.pose.view_phi

@@ -46,7 +46,7 @@ class GaussianImage(DetectorImage):
         specimen = specimen or self.specimen
         scattering = self.scattering
         # Gather image configuration
-        freqs, resolution = scattering.freqs, specimen.resolution
+        freqs, resolution = scattering.freqs, specimen.density.resolution
         # Variance from detector
         if not isinstance(state.ice, NullDetector):
             pixel_size = state.detector.pixel_size

@@ -44,19 +44,19 @@ import jax.numpy as jnp
 import cryojax.simulator as cs
 
 template = "example.mrc"
-scattering = cs.NufftScattering(shape=(320, 320))
-specimen = cs.ElectronCloud.from_file(template, resolution=1.1)
+scattering = cs.FourierSliceScattering(shape=(320, 320))
+density = cs.ElectronGrid.from_file(template, resolution=1.1)
 ```
 
-Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density is converted to a density point cloud with the `ElectronCloud` autoloader. Alternatively, a user could call the `ElectronCloud` constructor. This is loaded in real-space and pairs with ``NufftScattering``, which computes volume projections using [non-uniform FFTs](https://github.com/dfm/jax-finufft). Alternatively, one could load the volume in fourier space and use the fourier-slice projection theorem.
+Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. We can now intstantiate the biological `Specimen`.
 
 ```python
-scattering = cs.FourierSliceScattering(shape=(320, 320))
-specimen = cs.ElectronGrid.from_file(template, resolution=1.1)
+specimen = cs.Specimen(density=density)
 ```
 
-Next, the model is configured at initial `Pose`, `Optics`, and `Detector` parameters.
-Then, an `Image` model is chosen. Here, we choose `GaussianImage`.
+This is just a container for the parameters stored in the electron density. More generally, it can represent biological specimen that have parameters beyond those stored in the electron density (such as a `Helix`).
+
+Next, the model is configured for a given realization of the specimen. Here, `Pose`, `Optics`, and `Detector` models and their respective parameters are initialized. These are stored in the `PipelineState` container.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
@@ -64,6 +64,11 @@ pose = cs.EulerPose(view_phi=0.0, view_theta=0.0, view_psi=0.0)
 optics = cs.CTFOptics(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
 detector = cs.GaussianDetector(key=key, pixel_size=1.1, variance=cs.Constant(1.0))
 state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
+```
+
+Then, an `Image` model is chosen. Here, we choose `GaussianImage`.
+
+```python
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state)
 image = model()
 ```
