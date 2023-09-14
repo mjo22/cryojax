@@ -43,7 +43,7 @@ class Detector(CryojaxObject, metaclass=ABCMeta):
         """
         Measure an image at the detector pixel size.
         """
-        pixel_size = self.pixel_size or resolution
+        pixel_size = resolution if self.pixel_size is None else self.pixel_size
         measured = measure_image(
             image,
             resolution,
