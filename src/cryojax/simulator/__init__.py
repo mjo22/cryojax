@@ -43,7 +43,6 @@ __all__ = [
     "UniformExposure",
     ## Detector models
     "NullDetector",
-    "CountingDetector",
     "GaussianDetector",
     # Image models
     "ScatteringImage",
@@ -117,7 +116,6 @@ from .detector import (
     measure_image,
     Detector,
     NullDetector,
-    CountingDetector,
     GaussianDetector,
 )
 from .state import PipelineState
