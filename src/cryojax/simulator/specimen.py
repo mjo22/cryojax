@@ -4,7 +4,7 @@ Abstractions of biological specimen.
 
 from __future__ import annotations
 
-__all__ = ["Specimen", "MixtureSpecimen"]
+__all__ = ["Specimen", "SpecimenMixture"]
 
 from typing import Any
 
@@ -61,11 +61,12 @@ class Specimen(CryojaxObject):
 
     @property
     def density(self) -> ElectronDensity:
+        """Get the electron density."""
         return self._density
 
 
 @dataclass
-class MixtureSpecimen(CryojaxObject):
+class SpecimenMixture(CryojaxObject):
     """
     A biological specimen at a mixture of conformations.
 
@@ -84,7 +85,7 @@ class MixtureSpecimen(CryojaxObject):
 
     @property
     def density(self) -> ElectronDensity:
-        """Evaluate the electron density at the given conformation."""
+        """Evaluate the electron density at the configured conformation."""
         coordinate = self.conformation.coordinate
         if not (-len(coordinate) <= coordinate < len(coordinate)):
             raise ValueError("The conformational coordinate is out-of-bounds.")
