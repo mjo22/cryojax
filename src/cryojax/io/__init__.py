@@ -1,15 +1,7 @@
-__all__ = [
-    "load_mrc",
-    # Voxel representation I/O
-    "load_grid_as_cloud",
-    "load_fourier_grid",
-    "coordinatize_voxels",
-]
+from . import voxel
 
+from .voxel import *
 
-from .voxel import (
-    load_mrc,
-    load_grid_as_cloud,
-    load_fourier_grid,
-    coordinatize_voxels,
-)
+__all__ = voxel.__all__
+
+__all__.extend([voxel])

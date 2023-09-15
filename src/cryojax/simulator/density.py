@@ -1,5 +1,5 @@
 """
-Routines for representing and operating on 3D point clouds.
+Electron density representations.
 """
 
 from __future__ import annotations
