@@ -21,7 +21,7 @@ def density():
         os.path.dirname(__file__), "data", "3jar_13pf_bfm1_ps5_28.mrc"
     )
     # return cs.ElectronCloud.from_file(filename, resolution=5.32)
-    return cs.ElectronGrid.from_file(filename, resolution=5.32)
+    return cs.ElectronGrid.from_file(filename)
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def state():
 
 @pytest.fixture
 def specimen(density):
-    return cs.Specimen(density=density)
+    return cs.Specimen(density=density, resolution=5.32)
 
 
 @pytest.fixture

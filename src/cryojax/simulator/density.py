@@ -36,17 +36,11 @@ class ElectronDensity(CryojaxObject, metaclass=ABCMeta):
     config : `dict`, optional
         The deserialization settings for
         ``ElectronDensity.from_file``.
-    resolution : `float`
-        Rasterization resolution.
-        This is in dimensions of length.
     """
 
     # Fields configuring the file loader.
     filename: Optional[str] = field(pytree_node=False, default=None)
     config: dict = field(pytree_node=False, default_factory=dict)
-
-    # The resolution of the electron density
-    resolution: Parameter = field()
 
     @abstractmethod
     def view(self, pose: Pose) -> ElectronDensity:
@@ -61,7 +55,9 @@ class ElectronDensity(CryojaxObject, metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def scatter(self, scattering: ScatteringConfig) -> Array:
+    def scatter(
+        self, scattering: ScatteringConfig, resolution: Parameter
+    ) -> Array:
         """
         Compute the scattered wave of the electron
         density in the exit plane.
@@ -72,6 +68,8 @@ class ElectronDensity(CryojaxObject, metaclass=ABCMeta):
             The scattering configuration. This is an
             ``ImageConfig``, subclassed to include a scattering
             routine.
+        resolution : `cryojax.core.Parameter`
+            The rasterization resolution.
         """
         raise NotImplementedError
 
@@ -134,14 +132,14 @@ class Voxels(ElectronDensity):
     weights: Array = field(pytree_node=False, encode=False)
     coordinates: Array = field(pytree_node=False, encode=False)
 
-    def scatter(self, scattering: ScatteringConfig) -> Array:
+    def scatter(
+        self, scattering: ScatteringConfig, resolution: Parameter
+    ) -> Array:
         """
         Compute the 2D rendering of the point cloud in the
         object plane.
         """
-        return scattering.scatter(
-            self.weights, self.coordinates, self.resolution
-        )
+        return scattering.scatter(self.weights, self.coordinates, resolution)
 
     @classmethod
     def from_file(

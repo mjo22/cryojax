@@ -11,7 +11,7 @@ from typing import Any
 from .scattering import ScatteringConfig
 from .density import ElectronDensity
 from .pose import Pose
-from ..core import Array, dataclass, field, CryojaxObject
+from ..core import Parameter, Array, dataclass, field, CryojaxObject
 
 
 @dataclass
@@ -21,12 +21,16 @@ class Specimen(CryojaxObject):
 
     Attributes
     ----------
+    resolution : `cryojax.core.Parameter`
+        Rasterization resolution.
+        This is in dimensions of length.
     density : `cryojax.simulator.ElectronDensity`
         The electron density representation of the
         specimen.
     """
 
     density: ElectronDensity = field()
+    resolution: Parameter = field()
 
     def view(self, pose: Pose, **kwargs: Any) -> Specimen:
         """
@@ -51,7 +55,7 @@ class Specimen(CryojaxObject):
         scattering : `cryojax.simulator.ScatteringConfig`
             The scattering configuration.
         """
-        return self.density.scatter(scattering, **kwargs)
+        return self.density.scatter(scattering, self.resolution, **kwargs)
 
 
 @dataclass

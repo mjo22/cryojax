@@ -190,7 +190,7 @@ class ScatteringImage(Image):
         # Gather scattering configuration
         padded_freqs, resolution = (
             scattering.padded_freqs,
-            specimen.density.resolution,
+            specimen.resolution,
         )
         # View an orientation of the specimen
         specimen = self.specimen.view(state.pose)
@@ -225,7 +225,7 @@ class ScatteringImage(Image):
         # Gather scattering configuration
         padded_freqs, resolution = (
             scattering.padded_freqs,
-            specimen.density.resolution,
+            specimen.resolution,
         )
         pixel_size = resolution if _pixel_size is None else _pixel_size
         # Sample from ice distribution
@@ -270,7 +270,7 @@ class OpticsImage(ScatteringImage):
         # Gather scattering configuration
         padded_freqs, resolution = (
             scattering.padded_freqs,
-            specimen.density.resolution,
+            specimen.resolution,
         )
         # Compute scattering in the exit plane.
         scattering_image = super().render(
@@ -302,7 +302,7 @@ class OpticsImage(ScatteringImage):
         # Gather scattering configuration
         padded_freqs, resolution = (
             scattering.padded_freqs,
-            specimen.density.resolution,
+            specimen.resolution,
         )
         pixel_size = resolution if _pixel_size is None else _pixel_size
         # Sample from ice distribution and apply ctf to it
@@ -339,7 +339,7 @@ class DetectorImage(OpticsImage):
         specimen = specimen or self.specimen
         scattering = self.scattering
         # Gather scattering configuration
-        resolution = specimen.density.resolution
+        resolution = specimen.resolution
         # Compute image at detector plane
         optics_image = super().render(
             state=state,
@@ -373,7 +373,7 @@ class DetectorImage(OpticsImage):
         # Gather image configuration
         padded_freqs, resolution = (
             scattering.padded_freqs,
-            specimen.density.resolution,
+            specimen.resolution,
         )
         if hasattr(state.detector, "pixel_size"):
             pixel_size = state.detector.pixel_size
