@@ -19,9 +19,8 @@ __all__ = [
 ]
 
 
-import base64
 import dataclasses
-import jax
+from types import FunctionType
 from typing import (
     Annotated,
     Any,
@@ -31,12 +30,16 @@ from typing import (
     TypeVar,
     Union,
 )
+
+import jax
 from jax import Array
 from jax.typing import ArrayLike
 
 import jax.numpy as jnp
 import numpy as np
 
+import marshal
+import base64
 from dataclasses_json import DataClassJsonMixin, config
 from dataclasses_json.mm import JsonData
 
@@ -275,14 +278,12 @@ def _np_encoder(x: Any) -> Any:
         x = np.asarray(x)
         data_b64 = base64.b64encode(np.ascontiguousarray(x).data)
         return dict(
-            __ndarray__=data_b64.decode("ascii"),
+            __ndarray__=data_b64.decode(),
             dtype=str(x.dtype),
             shape=x.shape,
         )
-    elif isinstance(x, complex):
-        return dict(__complex__=True, real=x.real, imag=x.imag)
     else:
-        return _cryojax_encoder(x)
+        return _object_encoder(x)
 
 
 def _np_decoder(x: Any) -> Any:
@@ -290,10 +291,8 @@ def _np_decoder(x: Any) -> Any:
     if isinstance(x, dict) and "__ndarray__" in x:
         data = base64.b64decode(x["__ndarray__"])
         return np.frombuffer(data, x["dtype"]).reshape(x["shape"])
-    elif isinstance(x, dict) and "__complex__" in x:
-        return complex(x["real"], x["imag"])
     else:
-        return _cryojax_decoder(x)
+        return _object_decoder(x)
 
 
 def _jax_decoder(x: Any) -> Any:
@@ -305,26 +304,70 @@ def _jax_decoder(x: Any) -> Any:
         return a
 
 
-def _cryojax_encoder(x: Any) -> Any:
-    """Encode a CryojaxObject or a list of them."""
+def _object_encoder(x: Any) -> Any:
+    """Encoder for python objects, or collections of them."""
     if isinstance(x, CryojaxObject):
-        return dict(
-            __name__=x.__class__.__name__, __dataclass_fields__=x.to_dict()
-        )
+        return _cryojax_encoder(x)
+    elif isinstance(x, FunctionType):
+        return _function_encoder(x)
+    elif isinstance(x, complex):
+        return _complex_encoder(x)
     elif isinstance(x, list):
-        return [_cryojax_encoder(xi) for xi in x]
+        return [_object_encoder(xi) for xi in x]
     else:
         return x
 
 
-def _cryojax_decoder(x: Any) -> Any:
-    """Decode a CryojaxObject or a list of them."""
-    if isinstance(x, dict) and "__name__" in x:
-        from . import simulator
-
-        cls = getattr(simulator, x["__name__"])
-        return cls.from_dict(x["__dataclass_fields__"])
+def _object_decoder(x: Any) -> Any:
+    """Decoder for python objects, or collections of them."""
+    if isinstance(x, dict) and "__class__" in x:
+        return _cryojax_decoder(x)
+    if isinstance(x, dict) and "__code__" in x:
+        return _function_decoder(x)
+    elif isinstance(x, dict) and "__complex__" in x:
+        return _complex_decoder(x)
     elif isinstance(x, list):
-        return [_cryojax_decoder(xi) for xi in x]
+        return [_object_decoder(xi) for xi in x]
     else:
         return x
+
+
+def _cryojax_encoder(x: CryojaxObject) -> dict[str, Union[str, dict]]:
+    """Encode a CryojaxObject"""
+    return dict(__class__=x.__class__.__name__, __dict__=x.to_dict())
+
+
+def _cryojax_decoder(x: dict[str, Union[str, dict]]) -> CryojaxObject:
+    """Decode a CryojaxObject"""
+    from . import simulator
+
+    cls = getattr(simulator, x["__class__"])
+    return cls.from_dict(x["__dict__"])
+
+
+def _function_encoder(x: FunctionType) -> dict[str, str]:
+    """Encode a FunctionType"""
+    print(marshal.dumps(x.__code__))
+    return dict(
+        __name__=x.__name__,
+        __code__=marshal.dumps(x.__code__).decode("raw_unicode_escape"),
+    )
+
+
+def _function_decoder(x: dict[str, str]) -> FunctionType:
+    """Decode a FunctionType"""
+    return FunctionType(
+        marshal.loads(bytes(x["__code__"], "raw_unicode_escape")),
+        globals(),
+        x["__name__"],
+    )
+
+
+def _complex_encoder(x: complex) -> dict[str, Union[str, float]]:
+    """Encode a complex number"""
+    return dict(__complex__=True, real=x.real, imag=x.imag)
+
+
+def _complex_decoder(x: dict[str, Union[str, float]]) -> complex:
+    """Decode a complex number"""
+    return complex(x["real"], x["imag"])

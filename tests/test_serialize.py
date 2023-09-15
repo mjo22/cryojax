@@ -73,3 +73,15 @@ def test_deserialize_model(model, request):
     test_model = cls.from_json(model.to_json())
     assert model.to_json() == test_model.to_json()
     np.testing.assert_allclose(test_model(), model(), rtol=1e-6)
+
+
+def test_serialize_function():
+    """Test function serialization as a dataclass field."""
+
+    def f(x):
+        return 2 * x
+
+    x = 10
+    kernel = cs.Custom(function=f)
+    deserialized_kernel = cs.Custom.from_json(kernel.to_json())
+    assert kernel(x) == deserialized_kernel(x)
