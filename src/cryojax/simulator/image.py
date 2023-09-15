@@ -186,19 +186,8 @@ class ScatteringImage(Image):
         state = state or self.state
         specimen = specimen or self.specimen
         scattering = self.scattering
-        # Gather scattering configuration
-        padded_freqs, resolution = (
-            scattering.padded_freqs,
-            specimen.resolution,
-        )
-        # View an orientation of the specimen
-        specimen = self.specimen.view(state.pose)
-        # Compute the image at the exit plane at the updated pose
-        scattering_image = specimen.scatter(scattering)
-        # Apply translation (phase shifts) to the image
-        scattering_image = state.pose.shift(
-            scattering_image, padded_freqs / resolution
-        )
+        # Compute the image at the exit plane at the given pose
+        scattering_image = specimen.scatter(scattering, state.pose)
         # Optionally filter, crop, and mask image
         if view:
             scattering_image = self.filter(scattering_image)

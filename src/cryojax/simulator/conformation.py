@@ -4,7 +4,8 @@ Abstractions of protein conformations.
 
 __all__ = ["Conformation", "Discrete", "Continuous"]
 
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
+from typing import Any
 
 from ..core import CryojaxObject, dataclass, field, Parameter
 
@@ -14,6 +15,11 @@ class Conformation(CryojaxObject, metaclass=ABCMeta):
     """
     Base class for a protein conformation.
     """
+
+    @property
+    @abstractmethod
+    def coordinate(self) -> Any:
+        raise NotImplementedError
 
 
 @dataclass
@@ -25,12 +31,13 @@ class Discrete(Conformation):
     ----------
     m : `int`
         The conformation at which to evaluate the model.
-    M : `int`
-        The number of conformations in the model.
     """
 
     m: int = field(default=0)
-    M: int = field(pytree_node=False, default=1)
+
+    @property
+    def coordinate(self) -> int:
+        return self.m
 
 
 @dataclass
@@ -45,3 +52,7 @@ class Continuous(Conformation):
     """
 
     z: Parameter = field(default=0.0)
+
+    @property
+    def coordinate(self) -> Parameter:
+        return self.z

@@ -2,8 +2,9 @@ from . import (
     kernel,
     pose,
     scattering,
-    specimen,
     conformation,
+    specimen,
+    helix,
     density,
     filter,
     mask,
@@ -19,8 +20,9 @@ from . import (
 from .kernel import *
 from .pose import *
 from .scattering import *
-from .specimen import *
 from .conformation import *
+from .specimen import *
+from .helix import *
 from .density import *
 from .filter import *
 from .mask import *
@@ -37,8 +39,9 @@ __all__ = (
     kernel.__all__
     + pose.__all__
     + scattering.__all__
-    + specimen.__all__
     + conformation.__all__
+    + specimen.__all__
+    + helix.__all__
     + density.__all__
     + filter.__all__
     + mask.__all__
@@ -56,8 +59,9 @@ __all__.extend(
         kernel,
         pose,
         scattering,
-        specimen,
         conformation,
+        specimen,
+        helix,
         density,
         filter,
         mask,

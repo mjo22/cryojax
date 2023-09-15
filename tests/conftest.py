@@ -50,7 +50,7 @@ def state():
 
 @pytest.fixture
 def specimen(density):
-    return cs.Specimen(density=density, resolution=5.32)
+    return cs.Specimen(density, resolution=5.32)
 
 
 @pytest.fixture

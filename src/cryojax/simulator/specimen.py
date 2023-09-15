@@ -4,13 +4,14 @@ Abstractions of biological specimen.
 
 from __future__ import annotations
 
-__all__ = ["Specimen", "Helix"]
+__all__ = ["Specimen", "MixtureSpecimen"]
 
 from typing import Any
 
 from .scattering import ScatteringConfig
 from .density import ElectronDensity
 from .pose import Pose
+from .conformation import Discrete
 from ..core import Parameter, Array, dataclass, field, CryojaxObject
 
 
@@ -21,31 +22,20 @@ class Specimen(CryojaxObject):
 
     Attributes
     ----------
+    _density : `cryojax.simulator.ElectronDensity`
+        The electron density representation of the
+        specimen.
     resolution : `cryojax.core.Parameter`
         Rasterization resolution.
         This is in dimensions of length.
-    density : `cryojax.simulator.ElectronDensity`
-        The electron density representation of the
-        specimen.
     """
 
-    density: ElectronDensity = field()
+    _density: ElectronDensity = field()
     resolution: Parameter = field()
 
-    def view(self, pose: Pose, **kwargs: Any) -> Specimen:
-        """
-        View the specimen at the given pose.
-
-        Arguments
-        ---------
-        pose : `cryojax.simulator.Pose`
-            The imaging pose.
-        """
-        density = self.density.view(pose, **kwargs)
-
-        return self.replace(density=density)
-
-    def scatter(self, scattering: ScatteringConfig, **kwargs: Any) -> Array:
+    def scatter(
+        self, scattering: ScatteringConfig, pose: Pose, **kwargs: Any
+    ) -> Array:
         """
         Compute the scattered wave of the specimen in the
         exit plane.
@@ -54,41 +44,48 @@ class Specimen(CryojaxObject):
         ---------
         scattering : `cryojax.simulator.ScatteringConfig`
             The scattering configuration.
+        pose : `cryojax.simulator.Pose`
+            The imaging pose.
         """
-        return self.density.scatter(scattering, self.resolution, **kwargs)
+        freqs = scattering.padded_freqs / self.resolution
+        # View the electron density map at a given pose
+        density = self.density.view(pose, **kwargs)
+        # Compute the scattering image
+        scattering_image = density.scatter(
+            scattering, self.resolution, **kwargs
+        )
+        # Apply translation
+        scattering_image = pose.shift(scattering_image, freqs)
+
+        return scattering_image
+
+    @property
+    def density(self) -> ElectronDensity:
+        return self._density
 
 
 @dataclass
-class Helix(Specimen):
+class MixtureSpecimen(CryojaxObject):
     """
-    Abstraction of a helical filament.
+    A biological specimen at a mixture of conformations.
 
     Attributes
     ----------
-    density : `cryojax.simulator.ElectronDensity`
+    _density : `list[cryojax.simulator.ElectronDensity]`
         The electron density representation of the
-        helical subunit.
+        specimen.
+    conformation : `cryojax.simulator.Discrete`
+        The conformational variable at which to evaulate
+        the electron density.
     """
 
-    def view(self, pose: Pose, **kwargs: Any) -> Specimen:
-        """
-        View the specimen at the given pose.
+    _density: list[ElectronDensity] = field()
+    conformation: Discrete = field(default_factory=Discrete)
 
-        Arguments
-        ---------
-        pose : `cryojax.simulator.Pose`
-            The imaging pose.
-        """
-        raise NotImplementedError
-
-    def scatter(self, scattering: ScatteringConfig, **kwargs: Any) -> Array:
-        """
-        Compute the scattered wave of the specimen in the
-        exit plane.
-
-        Arguments
-        ---------
-        scattering : `cryojax.simulator.ScatteringConfig`
-            The scattering configuration.
-        """
-        raise NotImplementedError
+    @property
+    def density(self) -> ElectronDensity:
+        """Evaluate the electron density at the given conformation."""
+        coordinate = self.conformation.coordinate
+        if not (-len(coordinate) <= coordinate < len(coordinate)):
+            raise ValueError("The conformational coordinate is out-of-bounds.")
+        return self._density[coordinate]
