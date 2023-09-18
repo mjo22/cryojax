@@ -7,6 +7,7 @@ from __future__ import annotations
 __all__ = ["Specimen", "SpecimenMixture"]
 
 from typing import Any
+from functools import partial
 
 from .scattering import ScatteringConfig
 from .density import ElectronDensity
@@ -15,14 +16,14 @@ from .conformation import Discrete
 from ..core import Parameter, Array, dataclass, field, CryojaxObject
 
 
-@dataclass
+@partial(dataclass, kw_only=True)
 class Specimen(CryojaxObject):
     """
     Abstraction of a biological specimen.
 
     Attributes
     ----------
-    _density : `cryojax.simulator.ElectronDensity`
+    density : `cryojax.simulator.ElectronDensity`
         The electron density representation of the
         specimen.
     resolution : `cryojax.core.Parameter`
@@ -30,8 +31,8 @@ class Specimen(CryojaxObject):
         This is in dimensions of length.
     """
 
-    _density: ElectronDensity = field()
     resolution: Parameter = field()
+    density: ElectronDensity = field()
 
     def scatter(
         self, scattering: ScatteringConfig, pose: Pose, **kwargs: Any
@@ -60,9 +61,9 @@ class Specimen(CryojaxObject):
         return scattering_image
 
     @property
-    def density(self) -> ElectronDensity:
+    def draw(self) -> ElectronDensity:
         """Get the electron density."""
-        return self._density
+        return self.density
 
 
 @dataclass
@@ -72,7 +73,7 @@ class SpecimenMixture(CryojaxObject):
 
     Attributes
     ----------
-    _density : `list[cryojax.simulator.ElectronDensity]`
+    density : `list[cryojax.simulator.ElectronDensity]`
         The electron density representation of the
         specimen.
     conformation : `cryojax.simulator.Discrete`
@@ -80,13 +81,13 @@ class SpecimenMixture(CryojaxObject):
         the electron density.
     """
 
-    _density: list[ElectronDensity] = field()
+    density: list[ElectronDensity] = field()
     conformation: Discrete = field(default_factory=Discrete)
 
     @property
-    def density(self) -> ElectronDensity:
-        """Evaluate the electron density at the configured conformation."""
+    def draw(self) -> ElectronDensity:
+        """Draw the electron density at the configured conformation."""
         coordinate = self.conformation.coordinate
         if not (-len(coordinate) <= coordinate < len(coordinate)):
             raise ValueError("The conformational coordinate is out-of-bounds.")
-        return self._density[coordinate]
+        return self.density[coordinate]

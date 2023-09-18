@@ -17,6 +17,7 @@ from typing import Union, Optional
 from .filter import Filter
 from .mask import Mask
 from .specimen import Specimen
+from .helix import Helix
 from .scattering import ScatteringConfig
 from .state import PipelineState
 from ..utils import fft, irfft
@@ -43,7 +44,7 @@ class Image(CryojaxObject, metaclass=ABCMeta):
 
     Attributes
     ----------
-    specimen : `cryojax.simulator.Specimen`
+    specimen : `cryojax.simulator.Specimen` or `cryojax.simulator.Helix`
         The specimen from which to render images.
     state : `cryojax.simulator.PipelineState`
         The state of the model pipeline.
@@ -61,7 +62,7 @@ class Image(CryojaxObject, metaclass=ABCMeta):
     """
 
     state: PipelineState = field()
-    specimen: Specimen = field()
+    specimen: Union[Specimen, Helix] = field()
     scattering: ScatteringConfig = field(pytree_node=False)
 
     filters: list[Filter] = field(pytree_node=False, default_factory=list)
