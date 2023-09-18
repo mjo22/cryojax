@@ -51,10 +51,10 @@ density = cs.ElectronGrid.from_file(template)
 Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. We can now intstantiate the biological `Specimen`.
 
 ```python
-specimen = cs.Specimen(density=density, resolution=1.1)
+specimen = cs.Specimen(density, resolution=1.1)
 ```
 
-This is just a container for the parameters stored in the electron density. More generally, it can represent biological specimen that have parameters beyond those stored in the electron density (such as a `Helix`).
+This is a container for the parameters and metadata stored in the electron density, along with additional parameters such as the rasterization `resolution`.
 
 Next, the model is configured for a given realization of the specimen. Here, `Pose`, `Optics`, and `Detector` models and their respective parameters are initialized. These are stored in the `PipelineState` container.
 
