@@ -5,7 +5,7 @@ This library is a modular framework for simulating forward models of cryo electr
 
 The core of this package is its ability to simulate cryo-EM images. Starting with a 3D electron density map, one can simulate a scattering process onto the imaging plane with modulation by the instrument optics. Images are then sampled from models of the noise or the corresponding log-likelihood is computed.
 
-These models can be fed into standard statistical inference, optimization, and model building libraries in `jax`, such as [numpyro](https://github.com/pyro-ppl/numpyro), [jaxopt](https://github.com/google/jaxopt), or [flax](https://github.com/google/flax). The `jax` ecosystem is rich and growing fast!
+These models can be fed into standard sampling, optimization, and model building libraries in `jax`, such as [blackjax](https://github.com/blackjax-devs/blackjax), [jaxopt](https://github.com/google/jaxopt), or [flax](https://github.com/google/flax). There are plans to build integration with probabilistic programming libraries, such as [numpyro](https://github.com/pyro-ppl/numpyro). The `jax` ecosystem is rich and growing fast!
 
 ## Installation
 
