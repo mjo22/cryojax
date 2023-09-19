@@ -11,12 +11,13 @@ from typing import Optional, Union
 import jax.numpy as jnp
 
 from .specimen import Specimen
+from .helix import Helix
 from .state import PipelineState
 from .ice import NullIce, GaussianIce
 from .detector import NullDetector, GaussianDetector
 from .image import DetectorImage
 from ..utils import fft
-from ..core import dataclass, Array
+from ..core import dataclass, Array, Float
 
 
 @dataclass
@@ -40,8 +41,8 @@ class GaussianImage(DetectorImage):
     def variance(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
-    ) -> Array:
+        specimen: Optional[Union[Specimen, Helix]] = None,
+    ) -> Union[Array, Float]:
         state = state or self.state
         specimen = specimen or self.specimen
         scattering = self.scattering
@@ -63,8 +64,8 @@ class GaussianImage(DetectorImage):
     def log_likelihood(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
-    ) -> Union[float, Array]:
+        specimen: Optional[Union[Specimen, Helix]] = None,
+    ) -> Float:
         """Evaluate the log-likelihood of the data given a parameter set."""
         state = state or self.state
         specimen = specimen or self.specimen
