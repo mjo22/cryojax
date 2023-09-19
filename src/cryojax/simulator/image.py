@@ -37,8 +37,8 @@ class Image(CryojaxObject, metaclass=ABCMeta):
     Base class for an imaging model. Note that the
     model is a PyTree and is therefore immmutable.
 
-    Use ``ImageModel.update`` to return a new model
-    with modified parameters, and call ``ImageModel``
+    Use ``Image.update`` to return a new model
+    with modified parameters, and call ``Image``
     or its ``render``, ``sample``, or ``log_likelihood``
     routines to evaluate the model.
 
@@ -51,14 +51,15 @@ class Image(CryojaxObject, metaclass=ABCMeta):
     scattering : `cryojax.simulator.ScatteringConfig`
         The image and scattering model configuration.
     filters : `list[Filter]`
-        A list of filters to apply to the image. By default, this is a
-        ``LowpassFilter`` with used for antialiasing.
+        A list of filters to apply to the image.
     masks : `list[Mask]`
-        A list of masks to apply to the image. By default, there are no
-        masks.
+        A list of masks to apply to the image.
     observed : `Array`, optional
         The observed data in real space. This must be the same
-        shape as ``scattering.shape``.
+        shape as ``scattering.shape``. Note that the user
+        should preprocess the observed data before passing it
+        to the image, such as applying the ``filters`` and
+        ``masks``.
     """
 
     state: PipelineState = field()
@@ -243,7 +244,7 @@ class ScatteringImage(Image):
 class OpticsImage(ScatteringImage):
     """
     Compute the image at the detector plane,
-    moduated by a CTF at a given electron dose.
+    moduated by a CTF.
     """
 
     def render(
