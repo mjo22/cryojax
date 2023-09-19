@@ -73,7 +73,7 @@ class Image(CryojaxObject, metaclass=ABCMeta):
     def render(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
         _pixel_size: Optional[float] = None,
     ) -> Array:
@@ -99,7 +99,7 @@ class Image(CryojaxObject, metaclass=ABCMeta):
     def sample(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
         _pixel_size: Optional[float] = None,
     ) -> Array:
@@ -123,7 +123,7 @@ class Image(CryojaxObject, metaclass=ABCMeta):
     def log_likelihood(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
     ) -> Union[float, Array]:
         """Evaluate the log-likelihood of the data given a parameter set."""
         raise NotImplementedError
@@ -160,7 +160,7 @@ class Image(CryojaxObject, metaclass=ABCMeta):
     def residuals(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
     ):
         """Return the residuals between the model and observed data."""
         state = state or self.state
@@ -180,7 +180,7 @@ class ScatteringImage(Image):
     def render(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
     ) -> Array:
         """Render the scattered wave in the exit plane."""
@@ -203,7 +203,7 @@ class ScatteringImage(Image):
     def sample(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
         _pixel_size: Optional[float] = None,
     ) -> Array:
@@ -234,7 +234,7 @@ class ScatteringImage(Image):
     def log_likelihood(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
     ) -> Union[float, Array]:
         raise NotImplementedError
 
@@ -249,7 +249,7 @@ class OpticsImage(ScatteringImage):
     def render(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
     ) -> Array:
         """Render the image in the detector plane."""
@@ -280,7 +280,7 @@ class OpticsImage(ScatteringImage):
     def sample(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
         _pixel_size: Optional[float] = None,
     ) -> Array:
@@ -321,7 +321,7 @@ class DetectorImage(OpticsImage):
     def render(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
     ) -> Array:
         state = state or self.state
@@ -352,7 +352,7 @@ class DetectorImage(OpticsImage):
     def sample(
         self,
         state: Optional[PipelineState] = None,
-        specimen: Optional[Specimen] = None,
+        specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
     ) -> Array:
         """Sample an image from the detector readout."""

@@ -180,7 +180,7 @@ def field(
             serializer = config(encoder=_np_encoder, decoder=_np_decoder)
         else:
             serializer = config(
-                encoder=_cryojax_encoder, decoder=_cryojax_decoder
+                encoder=_object_encoder, decoder=_object_decoder
             )
     else:
         serializer = config(decoder=_dummy_decoder, encoder=_dummy_encoder)

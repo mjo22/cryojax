@@ -90,8 +90,8 @@ class Helix(CryojaxObject):
 
     @property
     def draw(self) -> Conformations:
-        """Return an array where each elements updates a
-        conformation object."""
+        """Return an array where each element updates a
+        Conformation."""
         if isinstance(self.conformations, Callable):
             return self.conformations(self.lattice)
         else:
