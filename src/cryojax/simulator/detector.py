@@ -2,11 +2,7 @@
 Abstraction of electron detectors in a cryo-EM image.
 """
 
-__all__ = [
-    "Detector",
-    "NullDetector",
-    "GaussianDetector",
-]
+__all__ = ["Detector", "NullDetector", "GaussianDetector", "pixelize_image"]
 
 import jax
 import jax.numpy as jnp
@@ -17,7 +13,7 @@ from functools import partial
 
 from .noise import GaussianNoise
 from .kernel import Kernel, Constant
-from ..utils import scale
+from ..utils import scale, irfft
 from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
 
 
@@ -39,23 +35,26 @@ class Detector(CryojaxObject, metaclass=ABCMeta):
     pixel_size: Optional[Parameter] = field(default=None)
     method: str = field(pytree_node=False, default="bicubic")
 
-    def measure(self, image: ArrayLike, resolution: float) -> Array:
+    def pixelize(self, image: ArrayLike, resolution: float) -> Array:
         """
-        Measure an image at the detector pixel size.
+        Pixelize an image at a given resolution to
+        the detector pixel size.
         """
         pixel_size = resolution if self.pixel_size is None else self.pixel_size
-        measured = measure_image(
+        pixelized = pixelize_image(
             image,
             resolution,
             pixel_size,
             method=self.method,
             antialias=False,
         )
-        return measured
+        return pixelized
 
     @abstractmethod
-    def sample(self, *args: Any, **kwargs: Any) -> Array:
-        """Sample a realization from the detector."""
+    def sample(
+        self, freqs: ArrayLike, image: Optional[ArrayLike] = None
+    ) -> Array:
+        """Sample a realization from the detector noise model."""
         raise NotImplementedError
 
 
@@ -65,7 +64,9 @@ class NullDetector(Detector):
     A 'null' detector.
     """
 
-    def sample(self, freqs: ArrayLike) -> Array:
+    def sample(
+        self, freqs: ArrayLike, image: Optional[ArrayLike] = None
+    ) -> Array:
         return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
 
@@ -85,9 +86,14 @@ class GaussianDetector(GaussianNoise, Detector):
 
     variance: Kernel = field(default_factory=Constant)
 
+    def sample(
+        self, freqs: ArrayLike, image: Optional[ArrayLike] = None
+    ) -> Array:
+        return irfft(super().sample(freqs))
+
 
 @partial(jax.jit, static_argnames=["method", "antialias"])
-def measure_image(
+def pixelize_image(
     image: ArrayLike, resolution: float, pixel_size: float, **kwargs
 ):
     """

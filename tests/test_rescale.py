@@ -1,25 +1,26 @@
 import pytest
 
-import jax.numpy as jnp
-from cryojax.utils import fft, irfft
+from jax import config
+
+from cryojax.utils import irfft
+from cryojax.simulator import NullExposure
+
+config.update("jax_enable_x64", True)
 
 
-def test_normalization(maskless_model):
-    state = maskless_model.state.update(N=1.0, mu=0.0)
-    image = maskless_model.render(state=state)
-    assert pytest.approx(image.mean().item()) == 0.0
-    assert pytest.approx(image.std().item()) == 1.0
-
-
-def test_rescale(maskless_model):
-    N1, N2 = maskless_model.scattering.shape
-    mu, N = 0.5, 5.5
-    state = maskless_model.state.update(N=N, mu=mu)
-    image = fft(maskless_model.render(state=state))
-    assert pytest.approx(image[0, 0].real.item()) == (N1 * N2) * mu
-    assert pytest.approx(irfft(image).mean().item()) == mu
+@pytest.mark.parametrize(
+    "rescaled_model", ["scattering_model", "optics_model"]
+)
+def test_rescale(rescaled_model, request):
+    rescaled_model = request.getfixturevalue(rescaled_model)
+    exposure = rescaled_model.state.exposure
+    mu, N = exposure.mu, exposure.N
+    # Initialize null model
+    null_model = rescaled_model.update(exposure=NullExposure())
+    # Compute images
+    null_image = irfft(null_model.render(view=False))
+    rescaled_image = irfft(rescaled_model.render(view=False))
     assert (
-        pytest.approx(jnp.linalg.norm(image.at[0, 0].set(0.0)).item())
-        == (N1 * N2) * N
+        pytest.approx(rescaled_image.sum().item())
+        == (N * null_image + mu).sum().item()
     )
-    assert pytest.approx(irfft(image).std().item()) == N

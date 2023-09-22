@@ -41,7 +41,7 @@ def state():
         pose=cs.EulerPose(degrees=False),
         ice=cs.GaussianIce(key=random.PRNGKey(seed=1)),
         optics=cs.CTFOptics(),
-        exposure=cs.UniformExposure(),
+        exposure=cs.UniformExposure(N=1e5, mu=1.0),
         detector=cs.GaussianDetector(
             pixel_size=5.32, key=random.PRNGKey(seed=0)
         ),

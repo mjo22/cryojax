@@ -6,12 +6,14 @@ from __future__ import annotations
 
 __all__ = ["Specimen", "SpecimenMixture"]
 
-from typing import Any
+from typing import Any, Optional
 from functools import partial
 
 from .scattering import ScatteringConfig
 from .density import ElectronDensity
+from .exposure import Exposure
 from .pose import Pose
+from .optics import Optics
 from .conformation import Discrete
 from ..core import Parameter, Array, dataclass, field, CryojaxObject
 
@@ -35,7 +37,12 @@ class Specimen(CryojaxObject):
     density: ElectronDensity = field()
 
     def scatter(
-        self, scattering: ScatteringConfig, pose: Pose, **kwargs: Any
+        self,
+        scattering: ScatteringConfig,
+        pose: Pose,
+        exposure: Optional[Exposure] = None,
+        optics: Optional[Optics] = None,
+        **kwargs: Any,
     ) -> Array:
         """
         Compute the scattered wave of the specimen in the
@@ -47,18 +54,25 @@ class Specimen(CryojaxObject):
             The scattering configuration.
         pose : `cryojax.simulator.Pose`
             The imaging pose.
+        optics : `cryojax.simulator.Optics`, optional
+            The instrument optics.
         """
         freqs = scattering.padded_freqs / self.resolution
         # View the electron density map at a given pose
         density = self.density.view(pose, **kwargs)
         # Compute the scattering image
-        scattering_image = density.scatter(
-            scattering, self.resolution, **kwargs
-        )
+        image = density.scatter(scattering, self.resolution, **kwargs)
         # Apply translation
-        scattering_image = pose.shift(scattering_image, freqs)
+        image = pose.shift(image, freqs)
+        # Compute and apply CTF
+        if optics is not None:
+            ctf = optics(freqs, pose=pose)
+            image = optics.apply(ctf, image)
+        # Apply the electron exposure model
+        if exposure is not None:
+            image = exposure.scale(image, real=False)
 
-        return scattering_image
+        return image
 
     @property
     def draw(self) -> ElectronDensity:

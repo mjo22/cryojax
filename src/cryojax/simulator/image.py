@@ -76,7 +76,6 @@ class Image(CryojaxObject, metaclass=ABCMeta):
         state: Optional[PipelineState] = None,
         specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
-        _pixel_size: Optional[float] = None,
     ) -> Array:
         """
         Render an image given a parameter set.
@@ -88,11 +87,6 @@ class Image(CryojaxObject, metaclass=ABCMeta):
             masked, and rescaled image in real
             space. If ``False``, return the image
             at this place in the pipeline.
-        _pixel_size : `float`, optional
-            The pixel size at which to sample from the noise.
-            This is an internal convenience parameter to avoid
-            boilerplate and should not be used in the
-            API.
         """
         raise NotImplementedError
 
@@ -102,7 +96,6 @@ class Image(CryojaxObject, metaclass=ABCMeta):
         state: Optional[PipelineState] = None,
         specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
-        _pixel_size: Optional[float] = None,
     ) -> Array:
         """
         Sample the an image from a realization of the noise.
@@ -113,10 +106,6 @@ class Image(CryojaxObject, metaclass=ABCMeta):
             If ``True``, view the protein signal overlayed
             onto the noise. If ``False``, just return
             the noise given at this place in the pipeline.
-        _pixel_size : `float`, optional
-            The pixel size at which to sample from the noise.
-            This is an internal convenience parameter to avoid
-            boilerplate and should not be used in the API.
         """
         raise NotImplementedError
 
@@ -136,7 +125,7 @@ class Image(CryojaxObject, metaclass=ABCMeta):
         """
         Evaluate the model at a parameter set.
 
-        If ``ImageModel.observed = None``, sample an image from
+        If ``Image.observed = None``, sample an image from
         a noise model. Otherwise, compute the log likelihood.
         """
         state = self.state.update(**params)
@@ -189,14 +178,15 @@ class ScatteringImage(Image):
         specimen = specimen or self.specimen
         scattering = self.scattering
         # Compute the image at the exit plane at the given pose
-        scattering_image = specimen.scatter(scattering, state.pose)
-        # Optionally filter, crop, and mask image
+        scattering_image = specimen.scatter(
+            scattering, state.pose, exposure=state.exposure
+        )
         if view:
+            # Apply filters
             scattering_image = self.filter(scattering_image)
+            # View
             scattering_image = self.mask(
-                state.exposure.rescale(
-                    scattering.crop(irfft(scattering_image))
-                )
+                scattering.crop(irfft(scattering_image))
             )
 
         return scattering_image
@@ -206,38 +196,37 @@ class ScatteringImage(Image):
         state: Optional[PipelineState] = None,
         specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
-        _pixel_size: Optional[float] = None,
     ) -> Array:
         """Sample the scattered wave in the exit plane."""
         state = state or self.state
         specimen = specimen or self.specimen
         scattering = self.scattering
-        # Gather scattering configuration
-        padded_freqs, resolution = (
-            scattering.padded_freqs,
-            specimen.resolution,
+        # Compute the image at the exit plane
+        scattering_image = self.render(
+            state=state, specimen=specimen, view=False
         )
-        pixel_size = resolution if _pixel_size is None else _pixel_size
-        # Sample from ice distribution
-        icy_image = state.ice.sample(padded_freqs / pixel_size)
+        # Sample a realization of the ice
+        ice_image = state.ice.scatter(
+            scattering, resolution=specimen.resolution
+        )
+        # Add the ice to the image
+        scattering_image += ice_image
         if view:
-            # Render an image with no ice
-            scattering_image = self.render(state=state, specimen=specimen)
-            # Apply filters to the ice
-            icy_image = self.filter(icy_image)
+            # Apply filters
+            scattering_image = self.filter(scattering_image)
             # View ice
-            icy_image = self.mask(scattering.crop(irfft(icy_image)))
-            # Create an icy image in the exit plane
-            icy_image += scattering_image
+            scattering_image = self.mask(
+                scattering.crop(irfft(scattering_image))
+            )
 
-        return icy_image
+        return scattering_image
 
     def log_likelihood(
         self,
         state: Optional[PipelineState] = None,
         specimen: Optional[Union[Specimen, Helix]] = None,
     ) -> Union[float, Array]:
-        raise NotImplementedError
+        return 0.0
 
 
 @dataclass
@@ -257,24 +246,18 @@ class OpticsImage(ScatteringImage):
         state = state or self.state
         specimen = specimen or self.specimen
         scattering = self.scattering
-        # Gather scattering configuration
-        padded_freqs, resolution = (
-            scattering.padded_freqs,
-            specimen.resolution,
+        # Compute image in detector plane
+        optics_image = specimen.scatter(
+            scattering,
+            state.pose,
+            exposure=state.exposure,
+            optics=state.optics,
         )
-        # Compute scattering in the exit plane.
-        scattering_image = super().render(
-            state=state, specimen=specimen, view=False
-        )
-        # Compute and apply CTF
-        ctf = state.optics(padded_freqs / resolution, pose=state.pose)
-        optics_image = state.optics.apply(ctf, scattering_image)
-        # Optionally filter, crop, rescale, and mask image
         if view:
+            # Apply filters
             optics_image = self.filter(optics_image)
-            optics_image = self.mask(
-                state.exposure.rescale(scattering.crop(irfft(optics_image)))
-            )
+            # View
+            optics_image = self.mask(scattering.crop(irfft(optics_image)))
 
         return optics_image
 
@@ -283,33 +266,26 @@ class OpticsImage(ScatteringImage):
         state: Optional[PipelineState] = None,
         specimen: Optional[Union[Specimen, Helix]] = None,
         view: bool = True,
-        _pixel_size: Optional[float] = None,
     ) -> Array:
         """Sample the image in the detector plane."""
         state = state or self.state
         specimen = specimen or self.specimen
         scattering = self.scattering
-        # Gather scattering configuration
-        padded_freqs, resolution = (
-            scattering.padded_freqs,
-            specimen.resolution,
+        # Compute the image at the detector plane
+        optics_image = self.render(state=state, specimen=specimen, view=False)
+        # Sample a realization of the ice
+        ice_image = state.ice.scatter(
+            scattering, resolution=specimen.resolution, optics=state.optics
         )
-        pixel_size = resolution if _pixel_size is None else _pixel_size
-        # Sample from ice distribution and apply ctf to it
-        ctf = state.optics(padded_freqs / pixel_size, pose=state.pose)
-        icy_image = super().sample(state=state, specimen=specimen, view=False)
-        icy_image = state.optics.apply(ctf, icy_image)
+        # Add the ice to the image
+        optics_image += ice_image
         if view:
-            # Render an image with no ice
-            optics_image = self.render(state=state, specimen=specimen)
-            # Apply filters to the ice
-            icy_image = self.filter(icy_image)
-            # View ice
-            icy_image = self.mask(scattering.crop(irfft(icy_image)))
-            # Create icy image in the detector plane
-            icy_image += optics_image
+            # Apply filters
+            optics_image = self.filter(optics_image)
+            # View
+            optics_image = self.mask(scattering.crop(irfft(optics_image)))
 
-        return icy_image
+        return optics_image
 
 
 @dataclass
@@ -328,27 +304,22 @@ class DetectorImage(OpticsImage):
         state = state or self.state
         specimen = specimen or self.specimen
         scattering = self.scattering
-        # Gather scattering configuration
-        resolution = specimen.resolution
         # Compute image at detector plane
         optics_image = super().render(
-            state=state,
-            specimen=specimen,
-            view=False,
+            state=state, specimen=specimen, view=False
         )
-        # Measure image at detector pixel size
-        detector_image = state.detector.measure(
-            irfft(optics_image), resolution=resolution
+        # Compute image at detector pixel size
+        pixelized_image = state.detector.pixelize(
+            irfft(optics_image), resolution=specimen.resolution
         )
-        # Optionally filter, crop, rescale, and mask image
         if view:
+            # Apply filters
             if len(self.filters) > 0:
-                detector_image = irfft(self.filter(fft(detector_image)))
-            detector_image = self.mask(
-                state.exposure.rescale(scattering.crop(detector_image))
-            )
+                pixelized_image = irfft(self.filter(fft(pixelized_image)))
+            # View
+            pixelized_image = self.mask(scattering.crop(pixelized_image))
 
-        return detector_image
+        return pixelized_image
 
     def sample(
         self,
@@ -360,33 +331,32 @@ class DetectorImage(OpticsImage):
         state = state or self.state
         specimen = specimen or self.specimen
         scattering = self.scattering
-        # Gather image configuration
-        padded_freqs, resolution = (
-            scattering.padded_freqs,
-            specimen.resolution,
-        )
-        if hasattr(state.detector, "pixel_size"):
+        # Determine pixel size
+        if state.detector.pixel_size is not None:
             pixel_size = state.detector.pixel_size
         else:
-            pixel_size = resolution
-        # Sample ice at the detector plane
-        ice = super().sample(
-            state=state,
-            specimen=specimen,
-            _pixel_size=pixel_size,
-            view=False,
+            pixel_size = specimen.resolution
+        # Frequencies
+        freqs = scattering.padded_freqs / pixel_size
+        # The specimen image at the detector pixel size
+        pixelized_image = self.render(
+            state=state, specimen=specimen, view=False
         )
-        # Sample from noise distribution of detector
-        noise = state.detector.sample(padded_freqs / pixel_size)
-        noisy_image = ice + noise
+        # The ice image at the detector pixel size
+        ice_image = irfft(
+            state.ice.scatter(
+                scattering, resolution=pixel_size, optics=state.optics
+            )
+        )
+        # Measure the detector readout
+        image = pixelized_image + ice_image
+        noise = state.detector.sample(freqs, image=image)
+        detector_readout = image + noise
         if view:
-            # Render an image from noiseless detector readout
-            detector_image = self.render(state=state, specimen=specimen)
-            # Apply filters to noise
-            noisy_image = self.filter(noisy_image)
-            # View noise
-            noisy_image = self.mask(scattering.crop(irfft(noisy_image)))
-            # Detector readout
-            noisy_image += detector_image
+            # Apply filters
+            if len(self.filters) > 0:
+                detector_readout = irfft(self.filter(fft(detector_readout)))
+            # View
+            detector_readout = self.mask(scattering.crop(detector_readout))
 
-        return noisy_image
+        return detector_readout

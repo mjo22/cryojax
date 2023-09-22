@@ -347,7 +347,6 @@ def _cryojax_decoder(x: dict[str, Union[str, dict]]) -> CryojaxObject:
 
 def _function_encoder(x: FunctionType) -> dict[str, str]:
     """Encode a FunctionType"""
-    print(marshal.dumps(x.__code__))
     return dict(
         __name__=x.__name__,
         __code__=marshal.dumps(x.__code__).decode("raw_unicode_escape"),

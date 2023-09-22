@@ -26,9 +26,9 @@ class Exposure(CryojaxObject, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def rescale(self, image: ArrayLike, real: bool = True) -> Array:
+    def scale(self, image: ArrayLike, real: bool = False) -> Array:
         """
-        Return the rescaled image.
+        Return the scaled image.
         """
         raise NotImplementedError
 
@@ -40,7 +40,7 @@ class NullExposure(Exposure):
     image when it is passsed through the pipeline.
     """
 
-    def rescale(self, image: ArrayLike, real: bool = True) -> Array:
+    def scale(self, image: ArrayLike, real: bool = False) -> Array:
         """Return the image unchanged"""
         return image
 
@@ -48,20 +48,20 @@ class NullExposure(Exposure):
 @dataclass
 class UniformExposure(Exposure):
     """
-    Rescale the signal intensity uniformly.
+    Scale the signal intensity uniformly.
 
     Attributes
     ----------
     N : `cryojax.core.Parameter`
-        Intensity standard deviation
+        Intensity scaling.
     mu : `cryojax.core.Parameter`
-        Intensity offset
+        Intensity offset.
     """
 
-    N: Parameter = field(default=1.0)
+    N: Parameter = field(default=1e5)
     mu: Parameter = field(default=0.0)
 
-    def rescale(self, image: ArrayLike, real: bool = True) -> Array:
+    def scale(self, image: ArrayLike, real: bool = False) -> Array:
         """
         Return the scaled image.
         """
@@ -70,7 +70,7 @@ class UniformExposure(Exposure):
 
 @partial(jax.jit, static_argnames=["real"])
 def rescale_image(
-    image: ArrayLike, N: float, mu: float, *, real: bool = True
+    image: ArrayLike, N: float, mu: float, *, real: bool = False
 ) -> Array:
     """
     Normalize so that the image is mean mu
@@ -93,17 +93,15 @@ def rescale_image(
     Returns
     -------
     rescaled_image : `jax.Array`, shape `(N1, N2)`
-        Image rescaled to have mean ``mu`` and standard
-        deviation ``N``.
+        Image rescaled by an offset ``mu`` and scale factor ``N``.
     """
     image = jnp.asarray(image)
     N1, N2 = image.shape
-    # First normalize image to zero mean and unit standard deviation
     if real:
-        normalized_image = (image - image.mean()) / image.std()
-        rescaled_image = N * normalized_image + mu
+        rescaled_image = N * image + mu
     else:
-        normalized_image = image.at[0, 0].set(0.0)
-        normalized_image /= jnp.linalg.norm(normalized_image) / (N1 * N2)
-        rescaled_image = (normalized_image * N).at[0, 0].set(mu * N1 * N2)
+        rescaled_image = N * image
+        rescaled_image = rescaled_image.at[0, 0].set(
+            rescaled_image[0, 0] + (mu * N1 * N2)
+        )
     return rescaled_image

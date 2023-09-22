@@ -13,7 +13,7 @@ from ..core import Array, ArrayLike
 
 def irfft(ft: ArrayLike, **kwargs: Any) -> Array:
     """
-    Convenience wrapper for ``cryojax.utils.fft.ifft``
+    Convenience wrapper for ``cryojax.utils.fourier.ifft``
     for ``real = True``.
     """
     return ifft(ft, real=True, **kwargs)

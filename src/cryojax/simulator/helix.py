@@ -13,6 +13,7 @@ import jax.numpy as jnp
 
 from .specimen import Specimen
 from .pose import Pose
+from .optics import Optics
 from .scattering import ScatteringConfig
 
 from ..core import Parameter, dataclass, field, Array, CryojaxObject
@@ -79,7 +80,11 @@ class Helix(CryojaxObject):
         )
 
     def scatter(
-        self, scattering: ScatteringConfig, pose: Pose, **kwargs: Any
+        self,
+        scattering: ScatteringConfig,
+        pose: Pose,
+        optics: Optional[Optics] = None,
+        **kwargs: Any,
     ) -> Array:
         """
         Compute the scattered wave of the specimen in the
@@ -94,18 +99,12 @@ class Helix(CryojaxObject):
             The scattering configuration for the subunit.
         pose : `cryojax.simulator.Pose`
             The center of mass imaging pose of the helix.
+        optics : `cryojax.simulator.Optics`, optional
+            The instrument optics.
         """
-        freqs = scattering.padded_freqs / self.resolution
-        # View the electron density map at a given pose
-        density = self.subunit.density.view(pose, **kwargs)
-        # Compute the scattering image
-        scattering_image = density.scatter(
-            scattering, self.resolution, **kwargs
-        )
-        # Apply translation
-        scattering_image = pose.shift(scattering_image, freqs)
+        image = self.subunit.scatter(scattering, pose, optics=optics, **kwargs)
 
-        return scattering_image
+        return image
 
     @property
     def resolution(self) -> Parameter:
