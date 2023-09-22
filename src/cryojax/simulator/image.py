@@ -135,6 +135,21 @@ class Image(CryojaxObject, metaclass=ABCMeta):
         else:
             return self.log_likelihood(state=state, specimen=specimen)
 
+    def view(self, image: ArrayLike, real: bool = False) -> Array:
+        """
+        View the image. This function applies
+        filters, crops the image, then applies masks.
+        """
+        # Apply filters
+        if real:
+            if len(self.filters) > 0:
+                image = irfft(self.filter(fft(image)))
+        else:
+            image = irfft(self.filter(image))
+        # View
+        image = self.mask(self.scattering.crop(image))
+        return image
+
     def filter(self, image: ArrayLike) -> Array:
         """Apply filters to image."""
         for filter in self.filters:
@@ -182,12 +197,7 @@ class ScatteringImage(Image):
             scattering, state.pose, exposure=state.exposure
         )
         if view:
-            # Apply filters
-            scattering_image = self.filter(scattering_image)
-            # View
-            scattering_image = self.mask(
-                scattering.crop(irfft(scattering_image))
-            )
+            scattering_image = self.view(scattering_image)
 
         return scattering_image
 
@@ -212,12 +222,7 @@ class ScatteringImage(Image):
         # Add the ice to the image
         scattering_image += ice_image
         if view:
-            # Apply filters
-            scattering_image = self.filter(scattering_image)
-            # View ice
-            scattering_image = self.mask(
-                scattering.crop(irfft(scattering_image))
-            )
+            scattering_image = self.view(scattering_image)
 
         return scattering_image
 
@@ -254,10 +259,7 @@ class OpticsImage(ScatteringImage):
             optics=state.optics,
         )
         if view:
-            # Apply filters
-            optics_image = self.filter(optics_image)
-            # View
-            optics_image = self.mask(scattering.crop(irfft(optics_image)))
+            optics_image = self.view(optics_image)
 
         return optics_image
 
@@ -280,10 +282,7 @@ class OpticsImage(ScatteringImage):
         # Add the ice to the image
         optics_image += ice_image
         if view:
-            # Apply filters
-            optics_image = self.filter(optics_image)
-            # View
-            optics_image = self.mask(scattering.crop(irfft(optics_image)))
+            optics_image = self.view(optics_image)
 
         return optics_image
 
@@ -313,11 +312,7 @@ class DetectorImage(OpticsImage):
             irfft(optics_image), resolution=specimen.resolution
         )
         if view:
-            # Apply filters
-            if len(self.filters) > 0:
-                pixelized_image = irfft(self.filter(fft(pixelized_image)))
-            # View
-            pixelized_image = self.mask(scattering.crop(pixelized_image))
+            pixelized_image = self.view(pixelized_image, real=True)
 
         return pixelized_image
 
@@ -343,20 +338,15 @@ class DetectorImage(OpticsImage):
             state=state, specimen=specimen, view=False
         )
         # The ice image at the detector pixel size
-        ice_image = irfft(
-            state.ice.scatter(
-                scattering, resolution=pixel_size, optics=state.optics
-            )
+        ice_image = state.ice.scatter(
+            scattering, resolution=pixel_size, optics=state.optics
         )
+        ice_image = irfft(ice_image)
         # Measure the detector readout
         image = pixelized_image + ice_image
         noise = state.detector.sample(freqs, image=image)
         detector_readout = image + noise
         if view:
-            # Apply filters
-            if len(self.filters) > 0:
-                detector_readout = irfft(self.filter(fft(detector_readout)))
-            # View
-            detector_readout = self.mask(scattering.crop(detector_readout))
+            detector_readout = self.view(detector_readout, real=True)
 
         return detector_readout
