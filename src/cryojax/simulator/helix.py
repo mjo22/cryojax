@@ -29,39 +29,53 @@ class Helix(CryojaxObject):
     """
     Abstraction of a helical filament.
 
+    This class acts just like a ``Specimen``, however
+    it assembles a helix from a subunit.
+
     Attributes
     ----------
     subunit : `cryojax.simulator.Specimen`
         The helical subunit.
-    rise : `cryojax.core.Parameter`
-        The helical rise.
-    twist : `cryojax.core.Parameter`
-        The helical twist.
-    n_subunit : `int`
-        The number of subunits in the lattice.
-    lattice : `Lattice`
-        The 3D cartesian lattice coordinates for each subunit.
+    rise : `cryojax.core.Parameter` or `cryojax.core.Array`
+        The helical rise. This has dimensions
+        of length.
+    twist : `cryojax.core.Parameter` or `cryojax.core.Array`
+        The helical twist, given in degrees if
+        ``degrees = True`` and radians otherwise.
+    repeat : `cryojax.core.Array`, shape `(3,)` or `(n_repeat, 3)`
+        The displacement vector between two subunits,
+        longitudinally in contact.
     conformations : `Conformations` or `Callable[[Lattice], Conformations]`, optional
         The conformation of `subunit` at each lattice sitte.
         This can either be a fixed set of conformations or a function
         that computes conformations based on the lattice positions.
+    n_repeat : `int`
+        The number of longitudinal repeats of the helix.
+        By default, ``1``.
+    degrees : `bool`
+        Whether or not the helical repeat is given in
+        degrees. By default, ``True``.
+    lattice : `Lattice`
+        The 3D cartesian lattice coordinates for each subunit.
     """
 
     subunit: Specimen = field()
     rise: Parameter = field()
     twist: Parameter = field()
+    repeat: Parameter = field()
     conformations: Optional[
         Union[Conformations, Callable[[Lattice], Conformations]]
     ] = field(default=None)
 
-    n_subunit: int = field(pytree_node=False)
+    n_repeat: int = field(pytree_node=False, default=1)
+    degrees: bool = field(pytree_node=False, default=True)
     lattice: Lattice = field(pytree_node=False, init=False)
 
     def __post_init__(self):
         object.__setattr__(
             self,
             "lattice",
-            compute_lattice(self.rise, self.twist, self.n_subunit),
+            compute_lattice(self.rise, self.twist, self.repeat, self.n_repeat),
         )
 
     def scatter(
@@ -77,11 +91,21 @@ class Helix(CryojaxObject):
         Arguments
         ---------
         scattering : `cryojax.simulator.ScatteringConfig`
-            The scattering configuration.
+            The scattering configuration for the subunit.
         pose : `cryojax.simulator.Pose`
-            The imaging pose.
+            The center of mass imaging pose of the helix.
         """
-        raise NotImplementedError
+        freqs = scattering.padded_freqs / self.resolution
+        # View the electron density map at a given pose
+        density = self.subunit.density.view(pose, **kwargs)
+        # Compute the scattering image
+        scattering_image = density.scatter(
+            scattering, self.resolution, **kwargs
+        )
+        # Apply translation
+        scattering_image = pose.shift(scattering_image, freqs)
+
+        return scattering_image
 
     @property
     def resolution(self) -> Parameter:
@@ -98,7 +122,9 @@ class Helix(CryojaxObject):
             return self.conformations
 
 
-def compute_lattice(rise: float, twist: float, n_subunit: int) -> Lattice:
+def compute_lattice(
+    rise: float, twist: float, repeat: Array, n_repeat: int
+) -> Lattice:
     """
     Compute the lattice points for a given
     helical rise and twist.
@@ -107,7 +133,16 @@ def compute_lattice(rise: float, twist: float, n_subunit: int) -> Lattice:
         The helical rise.
     twist : `float`
         The helical twist.
-    n_subunit : `int`
-        The number of subunits in the lattice.
+    repeat : `cryojax.core.Array`, shape `(3,)`
+        The displacement vector between two subunits,
+        longitudinally in contact.
+    n_repeat : `int`
+        The number of longitudinal repeats of the helix.
+        By default, ``1``.
     """
-    return jnp.zeros((n_subunit, 3))
+    pitch = 2 * jnp.pi * rise / twist  # Helical pitch (distance between turns)
+    d = jnp.linalg.norm(repeat)
+    turns_per_repeat = int(d / pitch)  # Number of turns
+    subunits_per_repeat = int(d / rise)  # Number of points per turn
+    n_subunits = turns_per_repeat * subunits_per_repeat
+    return jnp.zeros((n_subunits, 3))
