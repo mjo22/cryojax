@@ -131,7 +131,7 @@ def build_model(params: dict[str, jax.Array]):
     return model()
 ```
 
-Note that the `PipelineState` and `Specimen` contain all of the model parameters. The `ElectronDensity`, `ScatteringConfig`, `Filter`s, and `Mask`s all do computation at runtime that should not be included in the loss function evaluation. We can now create the loss!
+Note that the `PipelineState` and `Specimen` contain all of the model parameters. The `ElectronDensity`, `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization that should not be included in the loss function evaluation. We can now create the loss!
 
 ```python
 @jax.jit
