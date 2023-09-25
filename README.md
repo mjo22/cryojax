@@ -31,7 +31,7 @@ python -m pip install .
 
 This will install the remaining dependencies, such as [jaxlie](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, [mrcfile](https://github.com/ccpem/mrcfile) for I/O, and [dataclasses-json](https://github.com/lidatong/dataclasses-json) for serialization.
 
-## Usage
+## Building a model
 
 Please note that this library is currently experimental and the API is subject to change! The following is a basic workflow to generate an image with a gaussian white noise model.
 
@@ -73,7 +73,32 @@ model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state)
 image = model()
 ```
 
-This computes an image at the instantiated model configuration. We can then compute the model at a set of updated parameters using python keyword arguments.
+Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
+
+```python
+filters = [cs.LowpassFilter(scattering.padded_shape, cutoff=1.0),  # Cutoff modes above Nyquist frequency
+           cs.WhiteningFilter(scattering.padded_shape, micrograph=micrograph)]
+masks = [cs.CircularMask(scattering.shape, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
+model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, filters=filters, masks=masks)
+image = model()
+```
+
+If a `GaussianImage` is initialized with the field `observed`, the model will instead compute a Gaussian log-likelihood in Fourier space with a diagonal covariance tensor (or power spectrum).
+
+```python
+model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=observed)
+log_likelihood = model()
+```
+
+Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
+
+Additional components can be plugged into the `Image` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` multiplies the image by a scale factor. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
+
+For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
+
+## Updating the model
+
+All of the above examples compute an image at the instantiated model configuration. We can also compute the model at a set of updated parameters using python keyword arguments.
 
 ```python
 params = dict(view_phi=jnp.asarray(180.), defocus_v=jnp.asarray(10000.), pixel_size=jnp.asarray(1.09))
@@ -86,39 +111,45 @@ This workflow evaulates a new image at a state with an updated viewing angle `vi
 model = model.update(**params)
 ```
 
-This method is inherited from the `cryojax` base class, `CryojaxObject`. The intention is to make it simple to work with nested class structures! Note that it does have limitations. If two parameters are identically named across different nested `CryojaxObject`s, this will fail. In this case, first update the lower level objects.
+This method is inherited from the `cryojax` base class, `CryojaxObject`. It is essentially a recursive search across the object hierarchy. The intention is to make it easy to work with nested class structures, but note that it has limitations. If two parameters are identically named across different nested `CryojaxObject`s (i.e. if there are collisions), this will fail. In general, rather than relying on `update`, it is better to write a function that will build a model at the desired parameters. The below section on loss functions gives such an example.
 
-Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
+## Creating a loss function
 
-```python
-filters = [cs.LowpassFilter(scattering.padded_shape, cutoff=1.0),  # Cutoff modes above Nyquist frequency
-           cs.WhiteningFilter(scattering.padded_shape, micrograph=micrograph)]
-masks = [cs.CircularMask(scattering.shape, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, filters=filters, masks=masks)
-image = model(**params)
-```
-
-If a `GaussianImage` is initialized with the field `observed`, the model will instead compute a Gaussian log-likelihood in Fourier space with a diagonal covariance tensor (or power spectrum).
+In `jax`, we ultimately want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must build the model.
 
 ```python
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=observed)
-log_likelihood = model(**params)
+def build_model(params: dict[str, jax.Array]):
+    # Build the Specimen
+    specimen = specimen.update(**params)
+    # Build the PipelineState
+    pose = pose.update(**params)
+    optics = optics.update(**params)
+    detector = detector.update(**params)
+    state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
+    # Build the model
+    model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, filters=filters, masks=masks, observed=observed)
+    return model()
 ```
 
-Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s. `jax` functional transformations can now be applied to the model!
+Note that the `PipelineState` and `Specimen` contain all of the model parameters. The `ElectronDensity`, `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization that should not be included in the loss function evaluation. We can now create the loss!
 
 ```python
 @jax.jit
 @jax.value_and_grad
-def loss(params):
-    return model(**params)
+def loss(params: dict[str, jax.Array]):
+    model = build_model(params)
+    return model()
 ```
 
-Note that in order to jit-compile the `model` we must create a wrapper for it because it is a `dataclass`, not a function. In some cases, it may be necessary to jit a longer `loss` wrapper. Here, one should instantiate the model inside `loss`. Additionally, one could create a custom likelihood function by calling `Image` methods directly, such as `Image.render`.
+Finally, we can evaluate the log_likelihood.
 
-Additional components can be plugged into the `Image` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` uniformly scales the signal to a given standard deviation. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
+```python
+log_likelihood = loss(params)
+```
 
-For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
+To summarize, this example creates a loss function at an arbitrary set of `Specimen`, `Pose`, `Optics`, and `Detector` parameters. If there are collisions in the parameter names, one must be more careful with the `update` step and also build these objects inside the loss function. In fact, there is no need to use the `update` function at all. This is just for convenience. There are many ways to write `build_model`!
+
+Note that one could also write a custom log likelihood function simply by instantiating a model without the observed data.
 
 ## Features
 
