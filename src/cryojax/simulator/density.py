@@ -14,7 +14,7 @@ __all__ = [
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Any, Type
 from jaxtyping import Array
-from dataclasses import fields
+from dataclasses import fields, replace
 
 from .scattering import ScatteringConfig
 from .pose import Pose
@@ -204,7 +204,7 @@ class ElectronCloud(Voxels):
         """
         coordinates = pose.rotate(self.coordinates, real=True)
 
-        return self.update(coordinates=coordinates)
+        return replace(self, coordinates=coordinates)
 
     @classmethod
     def from_mrc(
@@ -246,7 +246,7 @@ class ElectronGrid(Voxels):
         """
         coordinates = pose.rotate(self.coordinates, real=False)
 
-        return self.update(coordinates=coordinates)
+        return replace(self, coordinates=coordinates)
 
     @classmethod
     def from_mrc(

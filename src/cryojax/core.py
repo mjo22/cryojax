@@ -6,7 +6,6 @@ from __future__ import annotations
 
 __all__ = ["field", "Module"]
 
-import dataclasses
 from types import FunctionType
 from typing import Any, Union
 from jaxtyping import Array, ArrayLike, Float, Complex, Int
@@ -96,7 +95,7 @@ class _Serializable(DataClassJsonMixin):
             s = f.read()
         return cls.from_json(s, **kwargs)
 
-    def dump(self, filename: str, **kwargs: Any) -> _Serializable:
+    def dump(self, filename: str, **kwargs: Any):
         """
         Dump a ``cryojax`` object to a file.
         """
@@ -122,17 +121,6 @@ class Module(eqx.Module, _Serializable):
     Base class for ``cryojax`` objects.
     """
 
-    def update(self, **kwargs: Any) -> Module:
-        """
-        Update a set of ``Module`` attributes.
-
-        Similar to ``dataclasses.replace``.
-        """
-        values = [kwargs[k] for k in kwargs]
-        return eqx.tree_at(
-            lambda x: [getattr(x, k) for k in kwargs], self, values
-        )
-
 
 # 0-d array type hints
 Real_ = Float[Array, ""]
@@ -149,10 +137,10 @@ RealVector = Float[Array, "N"]
 """Type hint for a real-valued vector."""
 
 ComplexVector = Complex[Array, "N"]
-"""Type hint for an complex-valued image."""
+"""Type hint for an complex-valued vector."""
 
 Vector = Union[RealVector, ComplexVector]
-"""Type hint for an image."""
+"""Type hint for a vector."""
 
 # 2-d array type hints
 RealImage = Float[Array, "N1 N2"]

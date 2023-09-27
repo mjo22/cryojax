@@ -1,11 +1,11 @@
 # Cryo-EM image simulation and analysis powered by JAX.
-This library is a modular framework for simulating forward models of cryo electron microscopy images. It is designed with 2D template matching analysis in mind, but it can be used generally. `cryojax` is, of course, built on [JAX](https://github.com/google/jax).
+This library is a modular framework for simulating forward models of cryo electron microscopy images. It is designed with 2D template matching analysis in mind, but it can be used generally. `cryojax` is, of course, built on [jax](https://github.com/google/jax). It also uses [equinox](https://github.com/patrick-kidger/equinox/) to build models, so all `equinox` functionality is supported in `cryojax`.
 
 ## Summary
 
 The core of this package is its ability to simulate cryo-EM images. Starting with a 3D electron density map, one can simulate a scattering process onto the imaging plane with modulation by the instrument optics. Images are then sampled from models of the noise or the corresponding log-likelihood is computed.
 
-These models can be fed into standard sampling, optimization, and model building libraries in `jax`, such as [blackjax](https://github.com/blackjax-devs/blackjax), [jaxopt](https://github.com/google/jaxopt), or [flax](https://github.com/google/flax). There are plans to build integration with probabilistic programming libraries, such as [numpyro](https://github.com/pyro-ppl/numpyro). The `jax` ecosystem is rich and growing fast!
+These models can be fed into standard sampling, optimization, and model building libraries in `jax`, such as [blackjax](https://github.com/blackjax-devs/blackjax), [optax](https://github.com/google-deepmind/optax), or [numpyro](https://github.com/pyro-ppl/numpyro). The `jax` ecosystem is rich and growing fast!
 
 ## Installation
 
@@ -99,12 +99,16 @@ For these more advanced examples, see the tutorials section of the repository. I
 In `jax`, we ultimately want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must build the model.
 
 ```python
+from dataclasses import replace
+
 def build_model(params: dict[str, jax.Array]) -> cs.GaussianImage:
     # Build the PipelineState
-    pose = pose.update(view_phi=params["view_phi"])
-    optics = optics.update(defocus_u=params["defocus_u"])
-    detector = detector.update(pixel_size=params["pixel_size"])
-    state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
+    pose_update = replace(pose, view_phi=params["view_phi"])
+    optics_update = replace(optics, defocus_u=params["defocus_u"])
+    detector_update = replace(detector, pixel_size=params["pixel_size"])
+    state = cs.PipelineState(
+        pose=pose_update, optics=optics_update, detector=detector_update
+    )
     # Build the model
     model = cs.GaussianImage(
         scattering=scattering, specimen=specimen, state=state, observed=observed
@@ -128,7 +132,7 @@ Finally, we can evaluate the log_likelihood.
 log_likelihood = loss(params)
 ```
 
-To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. In general, there are many ways to write `build_model`!
+To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. In general, there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more complex use cases.
 
 Note that one could also write a custom log likelihood function simply by instantiating a model without the observed data.
 
