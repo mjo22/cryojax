@@ -36,7 +36,7 @@ class Filter(Module, metaclass=ABCMeta):
     """
 
     shape: tuple[int, int] = field(static=True)
-    filter: Image = field(init=False)
+    filter: Image = field(static=True, init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
         self.filter = self.compute(*args, **kwargs)

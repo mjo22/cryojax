@@ -110,7 +110,7 @@ class ElectronDensity(Module, metaclass=ABCMeta):
         ``cryojax.core.Serializable.from_dict`` in order to
         avoid saving the large arrays typically stored in ``ElectronDensity``.
         """
-        # Get fields that we want to decode
+        # Get the fields that we want to decode
         fs = fields(cls)
         encoded = [
             f.name
