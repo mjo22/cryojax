@@ -33,7 +33,7 @@ class Mask(Module, metaclass=ABCMeta):
     """
 
     shape: tuple[int, int] = field()
-    mask: RealImage = field(init=False)
+    mask: RealImage = field(static=True, init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
         self.mask = self.compute(*args, **kwargs)

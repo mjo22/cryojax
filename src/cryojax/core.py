@@ -13,6 +13,7 @@ from jaxtyping import Array, ArrayLike, Float, Complex, Int
 import jax.numpy as jnp
 import numpy as np
 
+import dataclasses
 import equinox as eqx
 
 import marshal
@@ -40,36 +41,41 @@ def field(
     init = kwargs.pop("init", True)
     # Equinox kwargs
     static = kwargs.pop("static", False)
-    _array_converter = (
-        lambda x: jnp.asarray(x) if isinstance(x, ArrayLike) else x
-    )
-    _converter = lambda x: x if static else _array_converter
+    if static:
+        _converter = lambda x: x
+    else:
+        # This converter is necessary when a parameter is typed as,
+        # for example, Optional[Real_].
+        _converter = (
+            lambda x: jnp.asarray(x) if isinstance(x, ArrayLike) else x
+        )
     converter = kwargs.pop("converter", _converter)
-    # Set serialization metadata
+    # Get serialization metadata
     if init:
         if encode is False:
-            serializer = config(decoder=_dummy_decoder, encoder=_dummy_encoder)
+            encoder = config(decoder=_dummy_decoder, encoder=_dummy_encoder)
         elif encode == Array:
-            serializer = config(encoder=_np_encoder, decoder=_jax_decoder)
+            encoder = config(encoder=_np_encoder, decoder=_jax_decoder)
         elif encode == np.ndarray:
-            serializer = config(encoder=_np_encoder, decoder=_np_decoder)
+            encoder = config(encoder=_np_encoder, decoder=_np_decoder)
         else:
-            serializer = config(
-                encoder=_object_encoder, decoder=_object_decoder
-            )
+            encoder = config(encoder=_object_encoder, decoder=_object_decoder)
     else:
-        serializer = config(decoder=_dummy_decoder, encoder=_dummy_encoder)
-    # Update metadata
-    metadata.update(dict(encode=encode))
-    metadata.update(serializer)
+        encoder = config(decoder=_dummy_decoder, encoder=_dummy_encoder)
+    # Update metadata for serialization
+    metadata["encode"] = encode
+    metadata.update(encoder)
+    # Update metadata for equinox
+    metadata["converter"] = converter
+    if static:
+        metadata["static"] = True
 
-    # FIXME: For some reason the converter and static
-    # metadata is not attaching to eqx.field() when this
-    # is wrapped.
+    # FIXME: We really should be wrapping eqx.field.
+    # For some reason, when metadata is passed as a
+    # keyword to eqx.field, converter and static
+    # are not added to the metadata.
 
-    return eqx.field(
-        converter=converter,
-        static=static,
+    return dataclasses.field(
         metadata=metadata,
         init=init,
         **kwargs,

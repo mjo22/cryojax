@@ -75,10 +75,10 @@ class ImageConfig(Module):
 
     padded_shape: tuple[int, int] = field(static=True, init=False)
 
-    freqs: ImageCoords = field(init=False)
-    padded_freqs: ImageCoords = field(init=False)
-    coords: ImageCoords = field(init=False)
-    padded_coords: ImageCoords = field(init=False)
+    freqs: ImageCoords = field(static=True, init=False)
+    padded_freqs: ImageCoords = field(static=True, init=False)
+    coords: ImageCoords = field(static=True, init=False)
+    padded_coords: ImageCoords = field(static=True, init=False)
 
     def __post_init__(self):
         # Set shape after padding

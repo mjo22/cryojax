@@ -7,8 +7,6 @@ __all__ = ["Conformation", "Discrete", "Continuous"]
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
-import jax.numpy as jnp
-
 from ..core import Module, field, Real_, Integer_
 
 
