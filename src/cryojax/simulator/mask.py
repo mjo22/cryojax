@@ -16,40 +16,38 @@ from typing import Any
 import jax.numpy as jnp
 
 from ..utils import make_coordinates
-from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
+from ..core import field, Module, RealImage
 
 
-@dataclass
-class Mask(CryojaxObject, metaclass=ABCMeta):
+class Mask(Module, metaclass=ABCMeta):
     """
     Base class for computing and applying an image mask.
 
     Attributes
     ----------
-    shape : `tuple[int, int]`
+    shape :
         The image shape.
-    mask : `Array`, shape `shape`
+    mask :
         The mask. Note that this is automatically
         computed upon instantiation.
     """
 
-    shape: tuple[int, int] = field(pytree_node=False)
-    mask: Array = field(pytree_node=False, init=False)
+    shape: tuple[int, int] = field()
+    mask: RealImage = field(init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
-        object.__setattr__(self, "mask", self.compute(*args, **kwargs))
+        self.mask = self.compute(*args, **kwargs)
 
     @abstractmethod
-    def compute(self, *args: Any, **kwargs: Any) -> Array:
+    def compute(self, *args: Any, **kwargs: Any) -> RealImage:
         """Compute the mask."""
         raise NotImplementedError
 
-    def __call__(self, image: ArrayLike) -> Array:
+    def __call__(self, image: RealImage) -> RealImage:
         """Apply the mask to an image."""
         return self.mask * image
 
 
-@dataclass
 class CircularMask(Mask):
     """
     Apply a circular mask to an image.
@@ -60,16 +58,16 @@ class CircularMask(Mask):
 
     Attributes
     ----------
-    radius : `float`
+    radius :
         By default, ``0.95``.
-    rolloff : `float`
+    rolloff :
         By default, ``0.05``.
     """
 
-    radius: float = field(pytree_node=False, default=0.95)
-    rolloff: float = field(pytree_node=False, default=0.05)
+    radius: float = field(static=True, default=0.95)
+    rolloff: float = field(static=True, default=0.05)
 
-    def compute(self, **kwargs: Any) -> Array:
+    def compute(self, **kwargs: Any) -> RealImage:
         return compute_circular_mask(
             self.shape, self.radius, self.rolloff, **kwargs
         )
@@ -80,19 +78,19 @@ def compute_circular_mask(
     cutoff: float = 0.95,
     rolloff: float = 0.05,
     **kwargs: Any,
-) -> Array:
+) -> RealImage:
     """
     Create a circular mask.
 
     Parameters
     ----------
-    shape : `tuple[int, int]`
+    shape :
         The shape of the mask. This is used to compute the image
         coordinates.
-    cutoff : `float`, optional
+    cutoff :
         The cutoff radius as a fraction of half
         the smallest box dimension. By default, ``0.95``.
-    rolloff : `float`, optional
+    rolloff :
         The rolloff width as a fraction of the smallest box dimension.
         By default, ``0.05``.
     kwargs :

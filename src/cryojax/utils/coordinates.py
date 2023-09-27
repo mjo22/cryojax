@@ -11,14 +11,15 @@ __all__ = [
 ]
 
 from typing import Union, Any
+from jaxtyping import Array, Float
 
 import jax.numpy as jnp
 import numpy as np
 
-from ..core import Array, ArrayLike
+from ..core import Image, ImageCoords
 
 
-def make_coordinates(*args: Any, **kwargs: Any) -> Array:
+def make_coordinates(*args: Any, **kwargs: Any) -> Float[Array, "... D"]:
     """
     Wraps ``cryojax.utils.coordinates.fftfreqs``
     for ``real = True``.
@@ -26,7 +27,7 @@ def make_coordinates(*args: Any, **kwargs: Any) -> Array:
     return fftfreqs(*args, real=True, **kwargs)
 
 
-def make_frequencies(*args: Any, **kwargs: Any) -> Array:
+def make_frequencies(*args: Any, **kwargs: Any) -> Float[Array, "... D"]:
     """
     Wraps ``cryojax.utils.coordinates.fftfreqs``
     for ``real = False``.
@@ -39,7 +40,7 @@ def fftfreqs(
     pixel_size: Union[float, np.ndarray] = 1.0,
     real: bool = False,
     indexing: str = "xy",
-) -> Array:
+) -> Float[Array, "... D"]:
     """
     Create a radial coordinate system on a grid.
     This can be used for real and fourier space
@@ -48,19 +49,19 @@ def fftfreqs(
 
     Arguments
     ---------
-    shape : `tuple[int, ...]`
+    shape :
         Shape of the voxel grid, with
         ``ndim = len(shape)``.
-    pixel_size : `float` or `np.ndarray`, shape `(ndim,)`
+    pixel_size :
         Image pixel size.
-    real : `bool`
+    real :
         Choose whether to create coordinate system
         in real or fourier space.
 
 
     Returns
     -------
-    coords : shape `(*shape, ndim)`
+    coords :
         2D or 3D cartesian coordinate system.
     """
     ndim = len(shape)
@@ -89,16 +90,16 @@ def fftfreqs1d(s: int, pixel_size: float, real: bool = False) -> np.ndarray:
 
 
 def cartesian_to_polar(
-    freqs: ArrayLike, square: bool = False
-) -> tuple[Array, Array]:
+    freqs: ImageCoords, square: bool = False
+) -> tuple[Image, Image]:
     """
     Convert from cartesian to polar coordinates.
 
     Arguments
     ---------
-    freqs : `ArrayLike`, shape `(N1, N2, 2)`
+    freqs :
         The cartesian coordinate system.
-    square : `bool`, optional
+    square :
         If ``True``, return the square of the
         radial coordinate :math:`|r|^2`. Otherwise,
         return :math:`|r|`.

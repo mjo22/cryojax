@@ -19,40 +19,38 @@ import numpy as np
 import jax.numpy as jnp
 
 from ..utils import powerspectrum, make_frequencies
-from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
+from ..core import field, Module, Image, RealImage, ComplexImage
 
 
-@dataclass
-class Filter(CryojaxObject, metaclass=ABCMeta):
+class Filter(Module, metaclass=ABCMeta):
     """
     Base class for computing and applying an image filter.
 
     Attributes
     ----------
-    shape : `tuple[int, int]`
+    shape :
         The image shape.
-    filter : `Array`, shape `shape`
+    filter :
         The filter. Note that this is automatically
         computed upon instantiation.
     """
 
-    shape: tuple[int, int] = field(pytree_node=False)
-    filter: Array = field(pytree_node=False, init=False)
+    shape: tuple[int, int] = field(static=True)
+    filter: Image = field(init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
-        object.__setattr__(self, "filter", self.compute(*args, **kwargs))
+        self.filter = self.compute(*args, **kwargs)
 
     @abstractmethod
-    def compute(self, *args: Any, **kwargs: Any) -> Array:
+    def compute(self, *args: Any, **kwargs: Any) -> Image:
         """Compute the filter."""
         raise NotImplementedError
 
-    def __call__(self, image: ArrayLike) -> Array:
+    def __call__(self, image: ComplexImage) -> ComplexImage:
         """Apply the filter to an image."""
         return self.filter * image
 
 
-@dataclass
 class LowpassFilter(Filter):
     """
     Apply a low-pass filter to an image.
@@ -63,23 +61,22 @@ class LowpassFilter(Filter):
 
     Attributes
     ----------
-    cutoff : `float`
+    cutoff :
         By default, ``0.95``, This cuts off
         modes above the Nyquist frequency.
-    rolloff : `float`
+    rolloff :
         By default, ``0.05``.
     """
 
-    cutoff: float = field(pytree_node=False, default=0.95)
-    rolloff: float = field(pytree_node=False, default=0.05)
+    cutoff: float = field(static=True, default=0.95)
+    rolloff: float = field(static=True, default=0.05)
 
-    def compute(self, **kwargs) -> Array:
+    def compute(self, **kwargs) -> RealImage:
         return compute_lowpass_filter(
             self.shape, self.cutoff, self.rolloff, **kwargs
         )
 
 
-@dataclass
 class WhiteningFilter(Filter):
     """
     Apply an whitening filter to an image.
@@ -89,9 +86,9 @@ class WhiteningFilter(Filter):
     for more information.
     """
 
-    micrograph: ArrayLike = field(pytree_node=False)
+    micrograph: ComplexImage = field(static=True)
 
-    def compute(self, **kwargs: Any) -> Array:
+    def compute(self, **kwargs: Any) -> RealImage:
         return compute_whitening_filter(self.shape, self.micrograph, **kwargs)
 
 
@@ -100,19 +97,19 @@ def compute_lowpass_filter(
     cutoff: float = 0.667,
     rolloff: float = 0.05,
     **kwargs: Any,
-) -> Array:
+) -> RealImage:
     """
     Create a low-pass filter.
 
     Parameters
     ----------
-    shape : `tuple[int, int]`
+    shape :
         The shape of the filter. This is used to compute the image
         coordinates.
-    cutoff : `float`, optional
+    cutoff :
         The cutoff frequency as a fraction of the Nyquist frequency,
         By default, ``0.667``.
-    rolloff : `float`, optional
+    rolloff :
         The rolloff width as a fraction of the Nyquist frequency.
         By default, ``0.05``.
     kwargs :
@@ -147,8 +144,8 @@ def compute_lowpass_filter(
 
 
 def compute_whitening_filter(
-    shape: tuple[int, int], micrograph: ArrayLike, **kwargs: Any
-) -> Array:
+    shape: tuple[int, int], micrograph: ComplexImage, **kwargs: Any
+) -> RealImage:
     """
     Compute a whitening filter from a micrograph. This is taken
     to be the inverse square root of the 2D radially averaged
@@ -156,15 +153,15 @@ def compute_whitening_filter(
 
     Parameters
     ----------
-    shape : `tuple[int, int]`
+    shape :
         The shape of the filter. This is used to compute the image
         coordinates.
-    micrograph : `ArrayLike`, shape `(M1, M2)`
+    micrograph :
         The micrograph in fourier space.
 
     Returns
     -------
-    spectrum : `Array`, shape `shape`
+    spectrum :
         The power spectrum isotropically averaged onto a coordinate
         system whose shape is set by ``shape``.
     """

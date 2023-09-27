@@ -6,21 +6,17 @@ from __future__ import annotations
 
 __all__ = ["GaussianImage"]
 
-from typing import Optional, Union
+from typing import Union
 
 import jax.numpy as jnp
 
-from .specimen import Specimen
-from .helix import Helix
-from .state import PipelineState
 from .ice import NullIce, GaussianIce
 from .detector import NullDetector, GaussianDetector
 from .image import DetectorImage
-from ..utils import fft
-from ..core import dataclass, Array, Float
+from ..utils import fftn
+from ..core import Real_, RealImage, Image
 
 
-@dataclass
 class GaussianImage(DetectorImage):
     """
     Sample an image from a gaussian noise model, or compute
@@ -38,49 +34,36 @@ class GaussianImage(DetectorImage):
         ):
             raise ValueError("A GaussianDetector model is required.")
 
-    def variance(
-        self,
-        state: Optional[PipelineState] = None,
-        specimen: Optional[Union[Specimen, Helix]] = None,
-    ) -> Union[Array, Float]:
-        state = state or self.state
-        specimen = specimen or self.specimen
-        scattering = self.scattering
-        # Gather image configuration
-        freqs, resolution = scattering.freqs, specimen.resolution
-        # Variance from detector
-        if not isinstance(state.ice, NullDetector):
-            pixel_size = state.detector.pixel_size
-            variance = state.detector.variance(freqs / pixel_size)
-        else:
-            pixel_size = resolution
-            variance = 0.0
-        # Variance from ice
-        if not isinstance(state.ice, NullIce):
-            ctf = state.optics(freqs / pixel_size, pose=state.pose)
-            variance += ctf**2 * state.ice.variance(freqs / pixel_size)
-        return variance
-
-    def log_likelihood(
-        self,
-        state: Optional[PipelineState] = None,
-        specimen: Optional[Union[Specimen, Helix]] = None,
-    ) -> Float:
+    def log_likelihood(self) -> Real_:
         """Evaluate the log-likelihood of the data given a parameter set."""
-        state = state or self.state
-        specimen = specimen or self.specimen
-        scattering = self.scattering
         # Get variance
-        variance = self.variance(state=state, specimen=specimen)
+        variance = self.variance
         # Get residuals
-        residuals = fft(self.residuals(state=state, specimen=specimen))
+        residuals = fftn(self.residuals)
         # Crop redundant frequencies
-        _, N2 = scattering.shape
+        _, N2 = self.scattering.shape
         z = N2 // 2 + 1
         residuals = residuals[:, :z]
-        if isinstance(variance, Array):
+        if isinstance(variance, Image):
             variance = variance[:, :z]
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         loss = (loss.real / residuals.size) / residuals.size
 
         return loss
+
+    @property
+    def variance(self) -> Union[Real_, RealImage]:
+        # Gather image configuration
+        freqs, resolution = self.scattering.freqs, self.specimen.resolution
+        # Variance from detector
+        if not isinstance(self.state.ice, NullDetector):
+            pixel_size = self.state.detector.pixel_size
+            variance = self.state.detector.variance(freqs / pixel_size)
+        else:
+            pixel_size = resolution
+            variance = 0.0
+        # Variance from ice
+        if not isinstance(self.state.ice, NullIce):
+            ctf = self.state.optics(freqs / pixel_size, pose=self.state.pose)
+            variance += ctf**2 * self.state.ice.variance(freqs / pixel_size)
+        return variance

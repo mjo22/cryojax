@@ -25,25 +25,17 @@ __all__ = [
 
 from abc import ABCMeta, abstractmethod
 from typing import Any, Union, Callable, Concatenate, ParamSpec, Optional
-from functools import partial
+from jaxtyping import Array
 
 import jax.numpy as jnp
 
-from ..core import (
-    dataclass,
-    field,
-    Float,
-    Parameter,
-    ArrayLike,
-    Array,
-    CryojaxObject,
-)
+from ..core import field, Module
+from ..core import Real_, ImageCoords, RealImage, Image
 
 P = ParamSpec("P")
 
 
-@partial(dataclass, kw_only=True)
-class Kernel(CryojaxObject, metaclass=ABCMeta):
+class Kernel(Module, metaclass=ABCMeta):
     """
     The base class for all kernels.
 
@@ -58,23 +50,23 @@ class Kernel(CryojaxObject, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def evaluate(self, freqs: ArrayLike, **kwargs: Any) -> Array:
+    def evaluate(self, freqs: ImageCoords, **kwargs: Any) -> Array:
         """
         Evaluate the kernel at a set of frequencies.
 
-        Parameters
+        Arguments
         ----------
-        freqs : `ArrayLike`, shape `(..., 2)`
+        freqs :
             The wave vectors in the imaging plane, in
             cartesain coordinates.
         """
         pass
 
-    def __call__(self, freqs: ArrayLike, *args: Any, **kwargs: Any) -> Array:
+    def __call__(self, freqs: ImageCoords, *args: Any, **kwargs: Any) -> Array:
         freqs = jnp.asarray(freqs)
         return self.evaluate(freqs, *args, **kwargs)
 
-    def __add__(self, other: Union[Kernel, Float]) -> Kernel:
+    def __add__(self, other: Union[Kernel, float]) -> Kernel:
         if isinstance(other, Kernel):
             return Sum(self, other)
         return Sum(self, Constant(other))
@@ -87,7 +79,7 @@ class Kernel(CryojaxObject, metaclass=ABCMeta):
             return Sum(other, self)
         return Sum(Constant(other), self)
 
-    def __mul__(self, other: Union[Kernel, Float]) -> Kernel:
+    def __mul__(self, other: Union[Kernel, float]) -> Kernel:
         if isinstance(other, Kernel):
             return Product(self, other)
         return Product(self, Constant(other))
@@ -98,48 +90,44 @@ class Kernel(CryojaxObject, metaclass=ABCMeta):
         return Product(Constant(other), self)
 
 
-@dataclass
 class Sum(Kernel):
     """A helper to represent the sum of two kernels"""
 
     kernel1: Kernel = field()
     kernel2: Kernel = field()
 
-    def evaluate(self, freqs: ArrayLike) -> Array:
+    def evaluate(self, freqs: ImageCoords) -> Array:
         return self.kernel1.evaluate(freqs) + self.kernel2.evaluate(freqs)
 
 
-@dataclass
 class Product(Kernel):
     """A helper to represent the product of two kernels"""
 
     kernel1: Kernel = field()
     kernel2: Kernel = field()
 
-    def evaluate(self, freqs: ArrayLike) -> Array:
+    def evaluate(self, freqs: ImageCoords) -> Array:
         return self.kernel1.evaluate(freqs) * self.kernel2.evaluate(freqs)
 
 
-@dataclass
 class Constant(Kernel):
     """
     This kernel returns a constant.
 
     Attributes
     ----------
-    value : `cryojax.core.Parameter`
+    value :
         The value of the kernel.
     """
 
-    value: Parameter = field(default=1.0)
+    value: Real_ = field(default=1.0)
 
-    def evaluate(self, freqs: Optional[ArrayLike] = None) -> Array:
+    def evaluate(self, freqs: Optional[ImageCoords] = None) -> Real_:
         if jnp.ndim(self.value) != 0:
             raise ValueError("The value of a constant kernel must be a scalar")
         return self.value
 
 
-@dataclass
 class Exp(Kernel):
     r"""
     This kernel, in real space, represents a covariance
@@ -161,22 +149,22 @@ class Exp(Kernel):
 
     Attributes
     ----------
-    amplitude : `cryojax.core.Parameter`
+    amplitude :
         The amplitude of the kernel, equal to :math:`\kappa`
         in the above equation. Note that this has dimensions
         of inverse volume.
-    scale : `cryojax.core.Parameter`
+    scale :
         The length scale of the kernel, equal to :math:`\xi`
         in the above equation.
-    offset : `cryojax.core.Parameter`
+    offset :
         An offset added to the above equation.
     """
 
-    amplitude: Parameter = field(default=1.0)
-    scale: Parameter = field(default=1.0)
-    offset: Parameter = field(default=0.0)
+    amplitude: Real_ = field(default=1.0)
+    scale: Real_ = field(default=1.0)
+    offset: Real_ = field(default=0.0)
 
-    def evaluate(self, freqs: ArrayLike) -> Array:
+    def evaluate(self, freqs: ImageCoords) -> RealImage:
         if self.scale != 0.0:
             k_sqr = jnp.sum(freqs**2, axis=-1)
             scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
@@ -186,7 +174,6 @@ class Exp(Kernel):
         return scaling + self.offset
 
 
-@dataclass
 class Gaussian(Kernel):
     r"""
     This kernel represents a simple gaussian.
@@ -207,51 +194,51 @@ class Gaussian(Kernel):
 
     Attributes
     ----------
-    amplitude : `cryojax.core.Parameter`
+    amplitude :
         The amplitude of the kernel, equal to :math:`\kappa`
         in the above equation.
-    b_factor : `cryojax.core.Parameter`
+    b_factor :
         The length scale of the kernel, equal to :math:`\beta`
         in the above equation.
-    offset : `cryojax.core.Parameter`
+    offset :
         An offset added to the above equation.
     """
 
-    amplitude: Parameter = field(default=1.0)
-    b_factor: Parameter = field(default=1.0)
-    offset: Parameter = field(default=0.0)
+    amplitude: Real_ = field(default=1.0)
+    b_factor: Real_ = field(default=1.0)
+    offset: Real_ = field(default=0.0)
 
-    def evaluate(self, freqs: ArrayLike) -> Array:
+    def evaluate(self, freqs: ImageCoords) -> RealImage:
         k_sqr = jnp.sum(freqs**2, axis=-1)
         scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
         return scaling + self.offset
 
 
-@dataclass
 class Empirical(Kernel):
     r"""
-    This kernel stores a measured array, rather than
+    This kernel stores a measured image, rather than
     computing one from a model.
 
     Attributes
     ----------
-    amplitude : `cryojax.core.Parameter`
+    measurement :
+        The measured image.
+    amplitude :
         An amplitude scaling for the kernel.
-    offset : `cryojax.core.Parameter`
+    offset :
         An offset added to the above equation.
     """
 
-    measurement: Array = field(pytree_node=False)
+    measurement: Image = field(static=True)
 
-    amplitude: Parameter = field(default=1.0)
-    offset: Parameter = field(default=0.0)
+    amplitude: Real_ = field(default=1.0)
+    offset: Real_ = field(default=0.0)
 
-    def evaluate(self, freqs: Optional[ArrayLike] = None) -> Array:
+    def evaluate(self, freqs: Optional[ImageCoords] = None) -> Image:
         """Return the scaled and offset measurement."""
         return self.amplitude * self.measurement + self.offset
 
 
-@dataclass
 class Custom(Kernel):
     """
     A custom kernel class implemented as a callable.
@@ -263,11 +250,9 @@ class Custom(Kernel):
         :func:`Kernel.evaluate`.
     """
 
-    function: Callable[Concatenate[ArrayLike, P], Array] = field(
-        pytree_node=False
-    )
+    function: Callable[Concatenate[ImageCoords, P], Array] = field(static=True)
 
     def evaluate(
-        self, freqs: ArrayLike, *args: P.args, **kwargs: P.kwargs
+        self, freqs: ImageCoords, *args: P.args, **kwargs: P.kwargs
     ) -> Array:
         return self.function(freqs, *args, **kwargs)

@@ -13,17 +13,16 @@ from .scattering import ScatteringConfig
 from .kernel import Kernel, Exp
 from .optics import Optics
 from .noise import GaussianNoise
-from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
+from ..core import field, Module, Real_, ComplexImage, Image, ImageCoords
 
 
-@dataclass
-class Ice(CryojaxObject, metaclass=ABCMeta):
+class Ice(Module, metaclass=ABCMeta):
     """
     Base class for an ice model.
     """
 
     @abstractmethod
-    def sample(self, *args: Any, **kwargs: Any) -> Array:
+    def sample(self, *args: Any, **kwargs: Any) -> Image:
         """Sample a realization from the ice model."""
         raise NotImplementedError
 
@@ -31,53 +30,51 @@ class Ice(CryojaxObject, metaclass=ABCMeta):
     def scatter(
         self,
         scattering: ScatteringConfig,
-        resolution: float,
+        resolution: Real_,
         optics: Optional[Optics] = None,
         **kwargs: Any,
-    ) -> Array:
+    ) -> ComplexImage:
         """
         Scatter a realization of ice model onto the imaging plane.
 
         Arguments
         ---------
-        scattering : `cryojax.simulator.ScatteringConfig`
+        scattering :
             The scattering configuration.
-        resolution : `float`
+        resolution :
             The resolution of the image.
-        optics : `cryojax.simulator.Optics`, optional
+        optics :
             The instrument optics.
         """
         raise NotImplementedError
 
 
-@dataclass
 class NullIce(Ice):
     """
     A 'null' ice model.
     """
 
-    def sample(self, freqs: ArrayLike) -> Array:
+    def sample(self, freqs: ImageCoords) -> Image:
         return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
     def scatter(
         self,
         scattering: ScatteringConfig,
-        resolution: float,
+        resolution: Real_,
         optics: Optional[Optics] = None,
         **kwargs: Any,
-    ) -> Array:
+    ) -> ComplexImage:
         freqs = scattering.padded_freqs / resolution
         return self.sample(freqs, **kwargs)
 
 
-@dataclass
 class GaussianIce(GaussianNoise, Ice):
     r"""
     Ice modeled as gaussian noise.
 
     Attributes
     ----------
-    variance : `cryojax.simulator.Kernel`
+    variance :
         A kernel that computes the variance
         of the ice, modeled as noise. By default,
         ``Exp()``.
@@ -88,10 +85,10 @@ class GaussianIce(GaussianNoise, Ice):
     def scatter(
         self,
         scattering: ScatteringConfig,
-        resolution: float,
+        resolution: Real_,
         optics: Optional[Optics] = None,
         **kwargs: Any,
-    ) -> Array:
+    ) -> ComplexImage:
         # Sample an ice realization
         freqs = scattering.padded_freqs / resolution
         ice = self.sample(freqs, **kwargs)

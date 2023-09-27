@@ -4,22 +4,22 @@ Helper routines to compute power spectra.
 
 __all__ = ["powerspectrum"]
 
-from typing import Optional
+from typing import Optional, Union
 
 import jax.numpy as jnp
 
 from .average import radial_average
-from ..core import Array, ArrayLike
+from ..core import RealVector, RealImage, ComplexImage, ImageCoords
 
 
 def powerspectrum(
-    image: ArrayLike,
-    freqs: ArrayLike,
+    image: ComplexImage,
+    freqs: ImageCoords,
     pixel_size: float = 1.0,
     k_min: Optional[float] = None,
     k_max: Optional[float] = None,
-    grid: Optional[ArrayLike] = None,
-) -> tuple[Array, Array]:
+    grid: Optional[ImageCoords] = None,
+) -> tuple[Union[RealImage, RealVector], RealVector]:
     """
     Compute the power spectrum of an image averaged on a set
     of radial bins. This does not compute the zero mode of
@@ -27,22 +27,22 @@ def powerspectrum(
 
     Arguments
     ---------
-    image : `jax.Array`, shape `(N1, N2)`
+    image :
         An image in Fourier space.
-    freqs : `jax.Array`, shape `(N1, N2, 2)`
+    freqs :
         The frequency range of the desired wavevectors.
-    pixel_size : float
+    pixel_size :
         The pixel size of the frequency grid.
-    grid : `jax.Array`, shape `(M1, M2, 2)`, optional
+    grid :
         If ``None``, evalulate the spectrum as a 1D
         profile. Otherwise, evaluate the spectrum on this
         2D grid of frequencies.
     Returns
     -------
-    spectrum : `jax.Array`, shape `(max(L1, L2) // 2,)` or `(L1, L2)`
+    spectrum : shape `(max(L1, L2) // 2,)` or `(L1, L2)`
         Power spectrum up to the Nyquist frequency. ``(L1, L2)`` can
         be ``(M1, M2)`` or ``(N1, N2)``.
-    k_bins : `jax.Array`, shape `(max(L1, L2) // 2,)`
+    k_bins : shape `(max(L1, L2) // 2,)`
         Radial bins for averaging. The minimum wavenumber
         and wavenumber spacing is computed as ``1 / max(L1, L2)``.
         ``(L1, L2)`` can be ``(M1, M2)`` or ``(N1, N2)``.

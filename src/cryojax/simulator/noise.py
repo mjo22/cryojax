@@ -5,40 +5,41 @@ Noise models for cryo-EM images.
 __all__ = ["Noise", "GaussianNoise"]
 
 from abc import ABCMeta, abstractmethod
+from typing import Union
+from jaxtyping import Array, PRNGKeyArray
 
 from jax import random
 
 from .kernel import Kernel, Constant
-from ..utils import fft
-from ..core import field, dataclass, Array, ArrayLike, CryojaxObject
+from ..utils import fftn
+from ..core import field, Module, ImageCoords, ComplexImage
 
 
-@dataclass
-class Noise(CryojaxObject, metaclass=ABCMeta):
+class Noise(Module, metaclass=ABCMeta):
     """
-    Base PyTree container for a noise model.
+    Base class for a noise model.
 
     When writing subclasses,
 
         1) Overwrite ``Noise.sample``.
     """
 
-    key: Array = field(pytree_node=False)
+    key: Union[Array, PRNGKeyArray] = field(
+        static=True, default=random.PRNGKey(seed=0)
+    )
 
     @abstractmethod
-    def sample(self, freqs: ArrayLike) -> Array:
+    def sample(self, freqs: ImageCoords) -> ComplexImage:
         """
         Sample a realization of the noise.
 
         Parameters
         ----------
-        freqs : `jax.Array`, shape `(N1, N2, 2)`, optional
-            The wave vectors in the imaging plane.
+        freqs : The wave vectors in the imaging plane.
         """
         raise NotImplementedError
 
 
-@dataclass
 class GaussianNoise(Noise):
     """
     Base PyTree container for a gaussian noise model.
@@ -50,7 +51,7 @@ class GaussianNoise(Noise):
 
     variance: Kernel = field(default_factory=Constant)
 
-    def sample(self, freqs: ArrayLike) -> Array:
+    def sample(self, freqs: ImageCoords) -> ComplexImage:
         spectrum = self.variance(freqs)
-        white_noise = fft(random.normal(self.key, shape=freqs.shape[0:-1]))
+        white_noise = fftn(random.normal(self.key, shape=freqs.shape[0:-1]))
         return spectrum * white_noise

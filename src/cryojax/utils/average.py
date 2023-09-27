@@ -4,42 +4,42 @@ Routines to compute radial averages of images.
 
 __all__ = ["radial_average"]
 
-from typing import Optional
+from typing import Optional, Union
 
 import jax
 import jax.numpy as jnp
 
-from ..core import Array, ArrayLike
+from ..core import RealVector, Vector, Image, ImageCoords
 
 
 @jax.jit
 def radial_average(
-    image: ArrayLike,
-    norm: ArrayLike,
-    bins: ArrayLike,
-    grid: Optional[ArrayLike] = None,
-) -> Array:
+    image: Image,
+    norm: Image,
+    bins: RealVector,
+    grid: Optional[ImageCoords] = None,
+) -> Union[Image, Vector]:
     """
     Radially average vectors r with a given magnitude
     coordinate system |r|.
 
     Arguments
     ---------
-    image : `ArrayLike`, shape `(M1, M2)`
+    image :
         Two-dimensional image.
-    norm : `ArrayLike`, shape `(M1, M2)`
+    norm :
         Radial coordinate system of image.
-    bins : `ArrayLike`, shape `(M,)`
+    bins :
         Radial bins for averaging. These
         must be evenly spaced.
-    grid : `ArrayLike`, shape `(N1, N2)`, optional
+    grid :
         If ``None``, evalulate the spectrum as a 1D
         profile. Otherwise, evaluate the spectrum on this
         2D grid of frequencies.
 
     Returns
     -------
-    average : `ArrayLike`, shape `(M,)` or `(N1, N2)`
+    average :
         Radial average of image.
     """
     bins = jnp.asarray(bins)

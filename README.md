@@ -15,8 +15,6 @@ Installing `cryojax` is simple. To start, I recommend creating a new virtual env
 conda create -n cryojax -c conda-forge python=3.10
 ```
 
-Note that `python>=3.10` is required because of recent features in [dataclasses](https://docs.python.org/3/library/dataclasses.html) support. Custom dataclasses that are safe to pass to `jax` are heavily used in this library!
-
 First, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support.
 
 Next, [install jax-finufft](https://github.com/dfm/jax-finufft). Non-uniform FFTs are provided as an option for computing image projections. Note that this package does not yet provide GPU support, but there are plans to do so.
@@ -29,7 +27,7 @@ cd cryojax
 python -m pip install .
 ```
 
-This will install the remaining dependencies, such as [jaxlie](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, [mrcfile](https://github.com/ccpem/mrcfile) for I/O, and [dataclasses-json](https://github.com/lidatong/dataclasses-json) for serialization.
+This will install the remaining dependencies, such as [equinox](https://github.com/patrick-kidger/equinox/) for jax-friendly dataclasses, [jaxlie](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, [mrcfile](https://github.com/ccpem/mrcfile) for I/O, and [dataclasses-json](https://github.com/lidatong/dataclasses-json) for serialization.
 
 ## Building a model
 
@@ -66,7 +64,7 @@ detector = cs.GaussianDetector(key=key, pixel_size=1.1, variance=cs.Constant(1.0
 state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
 ```
 
-Then, an `Image` model is chosen. Here, we choose `GaussianImage`.
+Then, an `ImagePipeline` model is chosen. Here, we choose `GaussianImage`.
 
 ```python
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state)
@@ -92,51 +90,34 @@ log_likelihood = model()
 
 Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
 
-Additional components can be plugged into the `Image` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` multiplies the image by a scale factor. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
+Additional components can be plugged into the `ImagePipeline` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` multiplies the image by a scale factor. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
 
 For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
-
-## Updating the model
-
-All of the above examples compute an image at the instantiated model configuration. We can also compute the model at a set of updated parameters using python keyword arguments.
-
-```python
-params = dict(view_phi=jnp.asarray(180.), defocus_v=jnp.asarray(10000.), pixel_size=jnp.asarray(1.09))
-image = model(**params)
-```
-
-This workflow evaulates a new image at a state with an updated viewing angle `view_phi`, major axis defocus `defocus_u`, and detector pixel size `pixel_size`. If we want to get a new model at these updated parameters, we can simply call the `model.update` method.
-
-```python
-model = model.update(**params)
-```
-
-This method is inherited from the `cryojax` base class, `CryojaxObject`. It is essentially a recursive search across the object hierarchy. The intention is to make it easy to work with nested class structures, but note that it has limitations. If two parameters are identically named across different nested `CryojaxObject`s (i.e. if there are collisions), this will fail. In general, rather than relying on `update`, it is better to write a function that will build a model at the desired parameters. The below section on loss functions gives such an example.
 
 ## Creating a loss function
 
 In `jax`, we ultimately want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must build the model.
 
 ```python
-def build_model(params: dict[str, jax.Array]):
-    # Build the Specimen
-    specimen = specimen.update(**params)
+def build_model(params: dict[str, jax.Array]) -> cs.GaussianImage:
     # Build the PipelineState
-    pose = pose.update(**params)
-    optics = optics.update(**params)
-    detector = detector.update(**params)
+    pose = pose.update(view_phi=params["view_phi"])
+    optics = optics.update(defocus_u=params["defocus_u"])
+    detector = detector.update(pixel_size=params["pixel_size"])
     state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
     # Build the model
-    model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, filters=filters, masks=masks, observed=observed)
-    return model()
+    model = cs.GaussianImage(
+        scattering=scattering, specimen=specimen, state=state, observed=observed
+    )
+    return model
 ```
 
-Note that the `PipelineState` and `Specimen` contain all of the model parameters. The `ElectronDensity`, `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization that should not be included in the loss function evaluation. We can now create the loss!
+Note that the `PipelineState` contains all of the model parameters in this example. `Specimen` can also contain model parameters. The `ElectronDensity`, `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization that should not be included in the loss function evaluation. We can now create the loss!
 
 ```python
 @jax.jit
 @jax.value_and_grad
-def loss(params: dict[str, jax.Array]):
+def loss(params: dict[str, jax.Array]) -> jax.Array:
     model = build_model(params)
     return model()
 ```
@@ -147,7 +128,7 @@ Finally, we can evaluate the log_likelihood.
 log_likelihood = loss(params)
 ```
 
-To summarize, this example creates a loss function at an arbitrary set of `Specimen`, `Pose`, `Optics`, and `Detector` parameters. If there are collisions in the parameter names, one must be more careful with the `update` step and also build these objects inside the loss function. In fact, there is no need to use the `update` function at all. This is just for convenience. There are many ways to write `build_model`!
+To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. In general, there are many ways to write `build_model`!
 
 Note that one could also write a custom log likelihood function simply by instantiating a model without the observed data.
 
@@ -155,14 +136,10 @@ Note that one could also write a custom log likelihood function simply by instan
 
 - Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration. However, until GPU support for `jax-finufft` is added, models using the `NufftScattering` method will not support the GPU.
 
-- `CryojaxObject`s, including `Image` models, are JSON serializable thanks to the package `dataclasses-json`. The method `CryojaxObject.dumps` serializes the object as a JSON string, and `CryojaxObject.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.GaussianImage.load("model.json")`.
+- cryojax `Module`s, including `ImagePipeline` models, are JSON serializable thanks to the package `dataclasses-json`. The method `Module.dumps` serializes the object as a JSON string, and `Module.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.GaussianImage.load("model.json")`.
 
 ## Similar libraries
 
 - [cisTEM](https://github.com/timothygrant80/cisTEM): A software to process cryo-EM images of macromolecular complexes and obtain high-resolution 3D reconstructions from them. The recent experimental release of `cisTEM` has implemented a successful 2DTM program.
 
 - [BioEM](https://github.com/bio-phys/BioEM): Bayesian inference of Electron Microscopy. This codebase calculates the posterior probability of a structural model given multiple experimental EM images.
-
-## Acknowledgments
-
-The tooling, packaging structure, and API in `cryojax` are influenced by the library [tinygp](https://github.com/dfm/tinygp), which is also written in `jax` and makes use of custom, jax-friendly python `dataclasses`. Thank you for the developers for providing an excellent model for this package!

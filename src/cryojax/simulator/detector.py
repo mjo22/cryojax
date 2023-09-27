@@ -8,34 +8,41 @@ import jax
 import jax.numpy as jnp
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, Optional
+from typing import Optional, Any
 from functools import partial
 
 from .noise import GaussianNoise
 from .kernel import Kernel, Constant
-from ..utils import scale, irfft
-from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
+from ..utils import scale, irfftn
+from ..core import (
+    field,
+    Module,
+    Real_,
+    RealImage,
+    ImageCoords,
+)
 
 
-@partial(dataclass, kw_only=True)
-class Detector(CryojaxObject, metaclass=ABCMeta):
+class Detector(Module, metaclass=ABCMeta):
     """
     Base class for an electron detector.
 
     Attributes
     ----------
-    pixel_size : `cryojax.core.Parameter`
+    pixel_size :
         The pixel size measured by the detector.
         This is in dimensions of physical length.
-    method : `bool`, optional
+    method :
         The interpolation method used for measuring
         the image at the ``pixel_size``.
     """
 
-    pixel_size: Optional[Parameter] = field(default=None)
-    method: str = field(pytree_node=False, default="bicubic")
+    pixel_size: Optional[Real_] = field(
+        default=None, converter=lambda x: x if x is None else jnp.asarray(x)
+    )
+    method: str = field(static=True, default="bicubic")
 
-    def pixelize(self, image: ArrayLike, resolution: float) -> Array:
+    def pixelize(self, image: RealImage, resolution: Real_) -> RealImage:
         """
         Pixelize an image at a given resolution to
         the detector pixel size.
@@ -52,25 +59,27 @@ class Detector(CryojaxObject, metaclass=ABCMeta):
 
     @abstractmethod
     def sample(
-        self, freqs: ArrayLike, image: Optional[ArrayLike] = None
-    ) -> Array:
+        self,
+        freqs: ImageCoords,
+        image: Optional[RealImage] = None,
+    ) -> RealImage:
         """Sample a realization from the detector noise model."""
         raise NotImplementedError
 
 
-@partial(dataclass, kw_only=True)
 class NullDetector(Detector):
     """
     A 'null' detector.
     """
 
     def sample(
-        self, freqs: ArrayLike, image: Optional[ArrayLike] = None
-    ) -> Array:
+        self,
+        freqs: ImageCoords,
+        image: Optional[RealImage] = None,
+    ) -> RealImage:
         return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
 
-@partial(dataclass, kw_only=True)
 class GaussianDetector(GaussianNoise, Detector):
     """
     A detector with a gaussian noise model. By default,
@@ -87,15 +96,17 @@ class GaussianDetector(GaussianNoise, Detector):
     variance: Kernel = field(default_factory=Constant)
 
     def sample(
-        self, freqs: ArrayLike, image: Optional[ArrayLike] = None
-    ) -> Array:
-        return irfft(super().sample(freqs))
+        self,
+        freqs: ImageCoords,
+        image: Optional[RealImage] = None,
+    ) -> RealImage:
+        return irfftn(super().sample(freqs))
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])
 def pixelize_image(
-    image: ArrayLike, resolution: float, pixel_size: float, **kwargs
-):
+    image: RealImage, resolution: Real_, pixel_size: Real_, **kwargs: Any
+) -> RealImage:
     """
     Measure an image at a given pixel size using interpolation.
 
@@ -103,12 +114,12 @@ def pixelize_image(
 
     Parameters
     ----------
-    image : `Array`, shape `(N1, N2)`
+    image :
         The image to be magnified.
-    resolution : `float`
+    resolution :
         The resolution, in physical length, of
         the image.
-    pixel_size : `float`
+    pixel_size :
         The pixel size of the detector.
     """
     scale_factor = resolution / pixel_size

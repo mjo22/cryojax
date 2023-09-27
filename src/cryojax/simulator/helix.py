@@ -1,13 +1,13 @@
 """
-Abstractions of helical filaments
+Abstractions of helical filaments.
 """
 
 from __future__ import annotations
 
 __all__ = ["Helix", "compute_lattice"]
 
-from typing import Any, Union, Annotated, Optional, Callable
-from functools import partial
+from typing import Any, Union, Optional, Callable
+from jaxtyping import Array, Float, Int
 
 import jax
 import jax.numpy as jnp
@@ -17,17 +17,17 @@ from .pose import Pose
 from .optics import Optics
 from .scattering import ScatteringConfig
 
-from ..core import Parameter, dataclass, field, Array, CryojaxObject
+from ..core import field, Module
+from ..core import Real_, RealVector, ComplexImage
 
-Lattice = Annotated[Array, (..., 3), jnp.floating]
+Lattice = Float[Array, "N 3"]
 """Type hint for array where each element is a lattice coordinate."""
 
-Conformations = Annotated[Array, (...), Union[jnp.floating, int]]
+Conformations = Union[Float[Array, "N"], Int[Array, "N"]]
 """Type hint for array where each element updates a Conformation."""
 
 
-@partial(dataclass, kw_only=True)
-class Helix(CryojaxObject):
+class Helix(Module):
     """
     Abstraction of a helical filament.
 
@@ -36,26 +36,26 @@ class Helix(CryojaxObject):
 
     Attributes
     ----------
-    subunit : `cryojax.simulator.Specimen`
+    subunit :
         The helical subunit.
-    rise : `Parameter` or `Array`, shape `(n_subunits,)`
+    rise :
         The helical rise. This has dimensions
         of length.
-    twist : `Parameter` or `Array`, shape `(n_subunits,)`
+    twist :
         The helical twist, given in degrees if
         ``degrees = True`` and radians otherwise.
-    radius : `Parameter` or `Array`, shape `(n_subunits,)`
+    radius :
         The radius of the helix.
-    conformations : `Array` or `Callable[[Lattice], Array]`, optional
+    conformations :
         The conformation of `subunit` at each lattice site.
         This can either be a fixed set of conformations or a function
         that computes conformations based on the lattice positions.
         In either case, the `Array` should be shape `(n_start*n_subunits,)`.
-    n_start : `int`
+    n_start :
         The start number of the helix. By default, ``1``.
-    n_subunits : `int`, optional
+    n_subunits :
         The number of subunits in the assembly.
-    degrees : `bool`
+    degrees :
         Whether or not the helical twist is given in
         degrees. By default, ``True``.
     lattice : `Lattice`
@@ -63,30 +63,26 @@ class Helix(CryojaxObject):
     """
 
     subunit: Specimen = field()
-    rise: Parameter = field()
-    twist: Parameter = field()
-    radius: Parameter = field(default=1)
+    rise: Union[Real_, RealVector] = field()
+    twist: Union[Real_, RealVector] = field()
+    lattice: Lattice = field(static=True, init=False)
+    radius: Union[Real_, RealVector] = field(default=1)
     conformations: Optional[
         Union[Conformations, Callable[[Lattice], Conformations]]
     ] = field(default=None)
 
-    n_start: int = field(pytree_node=False, default=1)
-    n_subunits: Optional[int] = field(pytree_node=False, default=None)
-    degrees: bool = field(pytree_node=False, default=True)
-    lattice: Lattice = field(pytree_node=False, init=False)
+    n_start: int = field(static=True, default=1)
+    n_subunits: Optional[int] = field(static=True, default=None)
+    degrees: bool = field(static=True, default=True)
 
     def __post_init__(self):
-        object.__setattr__(
-            self,
-            "lattice",
-            compute_lattice(
-                self.rise,
-                self.twist,
-                radius=self.radius,
-                n_start=self.n_start,
-                n_subunits=self.n_subunits,
-                degrees=self.degrees,
-            ),
+        self.lattice = compute_lattice(
+            self.rise,
+            self.twist,
+            radius=self.radius,
+            n_start=self.n_start,
+            n_subunits=self.n_subunits,
+            degrees=self.degrees,
         )
 
     def scatter(
@@ -95,7 +91,7 @@ class Helix(CryojaxObject):
         pose: Pose,
         optics: Optional[Optics] = None,
         **kwargs: Any,
-    ) -> Array:
+    ) -> ComplexImage:
         """
         Compute the scattered wave of the specimen in the
         exit plane.
@@ -105,11 +101,11 @@ class Helix(CryojaxObject):
 
         Arguments
         ---------
-        scattering : `cryojax.simulator.ScatteringConfig`
+        scattering :
             The scattering configuration for the subunit.
-        pose : `cryojax.simulator.Pose`
+        pose :
             The center of mass imaging pose of the helix.
-        optics : `cryojax.simulator.Optics`, optional
+        optics :
             The instrument optics.
         """
         image = self.subunit.scatter(scattering, pose, optics=optics, **kwargs)
@@ -117,7 +113,7 @@ class Helix(CryojaxObject):
         return image
 
     @property
-    def resolution(self) -> Parameter:
+    def resolution(self) -> Real_:
         """Hack to make this class act like a Specimen."""
         return self.subunit.resolution
 
@@ -132,9 +128,9 @@ class Helix(CryojaxObject):
 
 
 def compute_lattice(
-    rise: float,
-    twist: float,
-    radius: float = 1.0,
+    rise: Real_,
+    twist: Real_,
+    radius: Real_ = 1.0,
     n_start: int = 1,
     n_subunits: Optional[int] = None,
     *,
@@ -144,13 +140,13 @@ def compute_lattice(
     Compute the lattice points of a helix for a given
     rise, twist, radius, and start number.
 
-    Parameters
+    Real_s
     ----------
-    rise : `float` or `Array`, shape (n_subunits,)
+    rise : `Real_` or `RealVector`, shape `(n_subunits,)`
         The helical rise.
-    twist : `float` or `Array`, shape (n_subunits,)
+    twist : `Real_` or `RealVector`, shape `(n_subunits,)`
         The helical twist.
-    radius : `float` or `Array`, shape (n_subunits,)
+    radius : `Real_` or `RealVector`, shape `(n_subunits,)`
         The radius of the helix.
     n_start : `int`
         The start number of the helix.
@@ -160,12 +156,12 @@ def compute_lattice(
         is really equal to ``n_start * n_subunits``.
         By default, ``2 * jnp.pi / twist``.
     degrees : `bool`
-        Whether or not the angular parameters
+        Whether or not the angular Real_s
         are given in degrees or radians.
 
     Returns
     -------
-    lattice : `Array`, shape (n_start*n_subunits, 3)
+    lattice : shape (n_start*n_subunits, 3)
         The helical lattice.
     """
     # Convert to radians

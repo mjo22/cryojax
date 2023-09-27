@@ -15,17 +15,24 @@ __all__ = [
 ]
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Any, Union
 
 import jax
 import jax.numpy as jnp
 from jaxlie import SO3
 
-from ..core import Array, ArrayLike, Parameter, field, dataclass, CryojaxObject
+from ..core import (
+    field,
+    Module,
+    Real_,
+    ComplexImage,
+    ImageCoords,
+    CloudCoords,
+    VolumeCoords,
+)
 
 
-@dataclass
-class Pose(CryojaxObject, metaclass=ABCMeta):
+class Pose(Module, metaclass=ABCMeta):
     """
     Base class PyTree container for the image pose.
 
@@ -34,29 +41,34 @@ class Pose(CryojaxObject, metaclass=ABCMeta):
 
         1) Define angular coordinates
         2) Overwrite the ``Pose.transform`` method.
-        3) Use the ``cryojax.core.dataclass`` decorator.
     Attributes
     ----------`
-    offset_x : `cryojax.core.Parameter`
+    offset_x :
         In-plane translation in x direction.
-    offset_y : `cryojax.core.Parameter`
+    offset_y :
         In-plane translation in y direction.
-    offset_z : `cryojax.core.Parameter`
+    offset_z :
         Out-of-plane translation in the z
         direction. The translation is measured
         relative to the configured defocus.
     """
 
-    offset_x: Parameter = field(default=0.0)
-    offset_y: Parameter = field(default=0.0)
-    offset_z: Parameter = field(default=0.0)
+    offset_x: Real_ = field(default=0.0)
+    offset_y: Real_ = field(default=0.0)
+    offset_z: Real_ = field(default=0.0)
 
     @abstractmethod
-    def rotate(self, coordinates: ArrayLike, real: bool = True) -> Array:
+    def rotate(
+        self,
+        coordinates: Union[VolumeCoords, CloudCoords],
+        real: bool = True,
+    ) -> Union[VolumeCoords, CloudCoords]:
         """Rotation method for a particular pose convention."""
         raise NotImplementedError
 
-    def shift(self, density: ArrayLike, coordinates: ArrayLike) -> Array:
+    def shift(
+        self, density: ComplexImage, coordinates: ImageCoords
+    ) -> ComplexImage:
         """
         Translate a 2D electron density in real space by
         applying phase shifts in fourier space.
@@ -71,50 +83,55 @@ class Pose(CryojaxObject, metaclass=ABCMeta):
         return shifted_density
 
 
-@dataclass
 class EulerPose(Pose):
     """
     An image pose using Euler angles.
 
     Attributes
     ----------
-    convention : `str`
+    convention :
         The sequence of axes over which to apply
         rotation. This is a string of 3 characters
         of x, y, and z. By default, `zyx`.
-    intrinsic : `bool`
+    intrinsic :
         If ``True``, follow the intrinsic rotation
         convention. If ``False``, rotation axes move with
         each rotation.
-    inverse : `bool`
+    inverse :
         Compute the inverse rotation of the specified
         convention. By default, ``False``. The value
         of this argument is with respect to fourier space
         rotations, so it is automatically inverted
         when rotating in real space.
-    view_phi : `cryojax.core.Parameter`
+    view_phi :
         Roll angle, ranging :math:`(-\pi, \pi]`.
-    view_theta : `cryojax.core.Parameter`
+    view_theta :
         Pitch angle, ranging :math:`(-\pi, \pi]`.
-    view_psi : `cryojax.core.Parameter`
+    view_psi :
         Yaw angle, ranging :math:`(-\pi, \pi]`.
     """
 
-    convention: str = field(pytree_node=False, default="zyz")
-    intrinsic: bool = field(pytree_node=False, default=True)
-    inverse: bool = field(pytree_node=False, default=False)
-    degrees: bool = field(pytree_node=False, default=True)
+    convention: str = field(static=True, default="zyz")
+    intrinsic: bool = field(static=True, default=True)
+    inverse: bool = field(static=True, default=False)
+    degrees: bool = field(static=True, default=True)
 
-    view_phi: Parameter = field(default=0.0)
-    view_theta: Parameter = field(default=0.0)
-    view_psi: Parameter = field(default=0.0)
+    view_phi: Real_ = field(default=0.0)
+    view_theta: Real_ = field(default=0.0)
+    view_psi: Real_ = field(default=0.0)
 
-    def rotate(self, coordinates: ArrayLike, real: bool = True) -> Array:
+    def rotate(
+        self,
+        coordinates: Union[VolumeCoords, CloudCoords],
+        real: bool = True,
+    ) -> Union[VolumeCoords, CloudCoords]:
         """Rotate coordinates from a set of Euler angles."""
         if real:
             rotated, _ = rotate_rpy(
                 coordinates,
-                *self.iter_data()[3:],
+                phi=self.view_phi,
+                theta=self.view_theta,
+                psi=self.view_psi,
                 convention=self.convention,
                 intrinsic=self.intrinsic,
                 inverse=not self.inverse,
@@ -124,7 +141,9 @@ class EulerPose(Pose):
         else:
             rotated, _ = rotate_rpy(
                 coordinates,
-                *self.iter_data()[3:],
+                phi=self.view_phi,
+                theta=self.view_theta,
+                psi=self.view_psi,
                 convention=self.convention,
                 intrinsic=self.intrinsic,
                 inverse=self.inverse,
@@ -133,71 +152,80 @@ class EulerPose(Pose):
             return rotated
 
 
-@dataclass
 class QuaternionPose(Pose):
     """
     An image pose using unit Quaternions.
 
     Attributes
     ----------
-    view_qw : `cryojax.core.Parameter`
-    view_qx : `cryojax.core.Parameter`
-    view_qy : `cryojax.core.Parameter`
-    view_qz : `cryojax.core.Parameter`
+    view_qw :
+    view_qx :
+    view_qy :
+    view_qz :
     """
 
-    inverse: bool = field(pytree_node=False, default=False)
+    inverse: bool = field(static=True, default=False)
 
-    view_qw: Parameter = field(default=1.0)
-    view_qx: Parameter = field(default=0.0)
-    view_qy: Parameter = field(default=0.0)
-    view_qz: Parameter = field(default=0.0)
+    view_qw: Real_ = field(default=1.0)
+    view_qx: Real_ = field(default=0.0)
+    view_qy: Real_ = field(default=0.0)
+    view_qz: Real_ = field(default=0.0)
 
-    def rotate(self, coordinates: ArrayLike, real: bool = True) -> Array:
+    def rotate(
+        self,
+        coordinates: Union[VolumeCoords, CloudCoords],
+        real: bool = True,
+    ) -> Union[VolumeCoords, CloudCoords]:
         """Rotate coordinates from a unit quaternion."""
         if real:
             rotated, _ = rotate_wxyz(
                 coordinates,
-                *self.iter_data()[3:],
+                qw=self.view_qw,
+                qx=self.view_qx,
+                qy=self.view_qy,
+                qz=self.view_qz,
                 inverse=not self.inverse,
             )
             return rotated
         else:
             rotated, _ = rotate_wxyz(
                 coordinates,
-                *self.iter_data()[3:],
+                qw=self.view_qw,
+                qx=self.view_qx,
+                qy=self.view_qy,
+                qz=self.view_qz,
                 inverse=self.inverse,
             )
             return rotated
 
 
 def rotate_rpy(
-    coords: ArrayLike,
-    phi: float,
-    theta: float,
-    psi: float,
+    coords: Union[VolumeCoords, CloudCoords],
+    phi: Real_,
+    theta: Real_,
+    psi: Real_,
     **kwargs: Any,
-) -> tuple[Array, SO3]:
+) -> tuple[Union[VolumeCoords, CloudCoords], SO3]:
     r"""
     Compute a coordinate rotation from
     a set of euler angles.
 
     Arguments
     ---------
-    coords : `Array`, shape `(N, 3)` or `(N1, N2, N3, 3)`
+    coords :
         Coordinate system.
-    phi : `float`
+    phi :
         First rotation axis, ranging :math:`(-\pi, \pi]`.
-    theta : `float`
+    theta :
         Second rotation axis, ranging :math:`(-\pi, \pi]`.
-    psi : `float`
+    psi :
         Third rotation axis, ranging :math:`(-\pi, \pi]`.
     kwargs :
         Keyword arguments passed to ``make_rpy_rotation``
 
     Returns
     -------
-    transformed : `Array`, shape `(N, 3)` or `(N1, N2, N3, 3)`
+    transformed :
         Rotated and translated coordinate system.
     rotation : `jaxlie.SO3`
         The rotation.
@@ -220,30 +248,30 @@ def rotate_rpy(
 
 
 def rotate_wxyz(
-    coords: ArrayLike,
-    qw: float,
-    qx: float,
-    qy: float,
-    qz: float,
+    coords: Union[VolumeCoords, CloudCoords],
+    qw: Real_,
+    qx: Real_,
+    qy: Real_,
+    qz: Real_,
     inverse: bool = False,
-) -> tuple[Array, SO3]:
+) -> tuple[Union[VolumeCoords, CloudCoords], SO3]:
     r"""
     Compute a coordinate rotation from a quaternion.
 
     Arguments
     ---------
-    coords : `Array` shape `(N, 3)` or `(N1, N2, N3, 3)`
+    coords :
         Coordinate system.
-    qw : `float`
-    qx : `float`
-    qy : `float`
-    qz : `float`
+    qw :
+    qx :
+    qy :
+    qz :
 
     Returns
     -------
-    transformed : `Array`, shape `(N, 3)` or `(N1, N2, N3, 3)`
+    transformed :
         Rotated and translated coordinate system.
-    rotation : `jaxlie.SO3`
+    rotation :
         The rotation.
     """
     coords = jnp.asarray(coords)
@@ -266,25 +294,25 @@ def rotate_wxyz(
 
 
 def shift_phase(
-    density: ArrayLike,
-    coords: ArrayLike,
-    tx: float,
-    ty: float,
-) -> Array:
+    density: ComplexImage,
+    coords: ImageCoords,
+    tx: Real_,
+    ty: Real_,
+) -> ComplexImage:
     r"""
     Compute the phase shifted density field from
     an in-plane real space translation.
 
     Arguments
     ---------
-    density : `Array` shape `(N1, N2)`
+    density :
         In-plane electron density in fourier
         space.
-    coords : `Array` shape `(N1, N2, 2)`
+    coords :
         Coordinate system.
-    tx : `float`
+    tx :
         In-plane translation in x direction.
-    ty : `float`
+    ty :
         In-plane translation in y direction.
 
     Returns
@@ -301,9 +329,9 @@ def shift_phase(
 
 
 def make_euler_rotation(
-    phi: float,
-    theta: float,
-    psi: float,
+    phi: Union[float, Real_],
+    theta: Union[float, Real_],
+    psi: Union[float, Real_],
     convention: str = "zyz",
     intrinsic: bool = True,
     inverse: bool = False,

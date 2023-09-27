@@ -1,7 +1,10 @@
-__all__ = ["core", "io", "simulator", "utils"]
+__all__ = ["Module", "field", "io", "simulator", "utils"]
 
 import importlib
 from cryojax.cryojax_version import __version__
+
+from .core import Module, field
+
 
 def __getattr__(name):
     return importlib.import_module("." + name, __name__)

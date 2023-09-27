@@ -6,7 +6,7 @@ from jax import config
 
 import cryojax.simulator as cs
 
-config.update("jax_enable_x64", False)
+config.update("jax_enable_x64", True)
 
 
 @pytest.fixture
