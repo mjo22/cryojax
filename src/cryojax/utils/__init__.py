@@ -1,5 +1,5 @@
 from . import (
-    fourier,
+    fft,
     coordinates,
     average,
     spectrum,
@@ -8,7 +8,7 @@ from . import (
     edges,
 )
 
-from .fourier import *
+from .fft import *
 from .coordinates import *
 from .average import *
 from .spectrum import *
@@ -17,7 +17,7 @@ from .interpolate import *
 from .edges import *
 
 __all__ = (
-    fourier.__all__
+    fft.__all__
     + coordinates.__all__
     + average.__all__
     + spectrum.__all__
@@ -27,5 +27,5 @@ __all__ = (
 )
 
 __all__.extend(
-    [fourier, coordinates, average, spectrum, integrate, interpolate, edges]
+    [fft, coordinates, average, spectrum, integrate, interpolate, edges]
 )

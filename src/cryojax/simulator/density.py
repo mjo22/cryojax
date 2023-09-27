@@ -13,17 +13,24 @@ __all__ = [
 
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Any, Type
-from functools import partial
+from jaxtyping import Array
 from dataclasses import fields
 
 from .scattering import ScatteringConfig
 from .pose import Pose
 from ..io import load_grid_as_cloud, load_fourier_grid
-from ..core import Array, Parameter, dataclass, field, CryojaxObject
+from ..core import field, Module
+from ..core import (
+    Real_,
+    ComplexImage,
+    ComplexVolume,
+    VolumeCoords,
+    RealCloud,
+    CloudCoords,
+)
 
 
-@partial(dataclass, kw_only=True)
-class ElectronDensity(CryojaxObject, metaclass=ABCMeta):
+class ElectronDensity(Module, metaclass=ABCMeta):
     """
     Abstraction of an electron density map.
 
@@ -39,8 +46,14 @@ class ElectronDensity(CryojaxObject, metaclass=ABCMeta):
     """
 
     # Fields configuring the file loader.
-    filename: Optional[str] = field(pytree_node=False, default=None)
-    config: dict = field(pytree_node=False, default_factory=dict)
+    filename: Optional[str] = field(static=True)
+    config: dict = field(static=True)
+
+    def __init__(
+        self, *, filename: Optional[str] = None, config: Optional[dict] = None
+    ):
+        self.filename = filename
+        self.config = config or dict()
 
     @abstractmethod
     def view(self, pose: Pose) -> ElectronDensity:
@@ -56,19 +69,19 @@ class ElectronDensity(CryojaxObject, metaclass=ABCMeta):
 
     @abstractmethod
     def scatter(
-        self, scattering: ScatteringConfig, resolution: Parameter
-    ) -> Array:
+        self, scattering: ScatteringConfig, resolution: Real_
+    ) -> ComplexImage:
         """
         Compute the scattered wave of the electron
         density in the exit plane.
 
         Arguments
         ---------
-        scattering : `cryojax.simulator.ScatteringConfig`
+        scattering :
             The scattering configuration. This is an
             ``ImageConfig``, subclassed to include a scattering
             routine.
-        resolution : `cryojax.core.Parameter`
+        resolution :
             The rasterization resolution.
         """
         raise NotImplementedError
@@ -114,7 +127,6 @@ class ElectronDensity(CryojaxObject, metaclass=ABCMeta):
         return cls.from_file(filename, config=config, **updates)
 
 
-@dataclass
 class Voxels(ElectronDensity):
     """
     Voxel-based electron density contrast representation
@@ -122,19 +134,24 @@ class Voxels(ElectronDensity):
 
     Attributes
     ----------
-    weights : `Array`
+    weights :
         The density contrast.
-    coordinates : `Array`
+    coordinates :
         The coordinate system.
     """
 
     # Fields describing the density map.
-    weights: Array = field(pytree_node=False, encode=False)
-    coordinates: Array = field(pytree_node=False, encode=False)
+    weights: Array = field(static=True, encode=False)
+    coordinates: Array = field(static=True, encode=False)
+
+    def __init__(self, *, weights: Array, coordinates: Array, **kwargs):
+        super().__init__(**kwargs)
+        self.weights = weights
+        self.coordinates = coordinates
 
     def scatter(
-        self, scattering: ScatteringConfig, resolution: Parameter
-    ) -> Array:
+        self, scattering: ScatteringConfig, resolution: Real_
+    ) -> ComplexImage:
         """
         Compute the 2D rendering of the point cloud in the
         object plane.
@@ -163,18 +180,20 @@ class Voxels(ElectronDensity):
         raise NotImplementedError
 
 
-@dataclass
 class ElectronCloud(Voxels):
     """
     Abstraction of a 3D electron density voxel point cloud.
 
     Attributes
     ----------
-    weights : `Array`, shape `(N,)`
+    weights : `RealCloud`
         3D electron density cloud.
-    coordinates : `Array`, shape `(N, 3)`
+    coordinates : `CloudCoords`
         Cartesian coordinate system for density cloud.
     """
+
+    weights: RealCloud = field(static=True, encode=False)
+    coordinates: CloudCoords = field(static=True, encode=False)
 
     def view(self, pose: Pose) -> ElectronCloud:
         """
@@ -185,7 +204,7 @@ class ElectronCloud(Voxels):
         """
         coordinates = pose.rotate(self.coordinates, real=True)
 
-        return self.replace(coordinates=coordinates)
+        return self.update(coordinates=coordinates)
 
     @classmethod
     def from_mrc(
@@ -201,7 +220,6 @@ class ElectronCloud(Voxels):
         return cls(**load_grid_as_cloud(filename, **config), **kwargs)
 
 
-@dataclass
 class ElectronGrid(Voxels):
     """
     Abstraction of a 3D electron density voxel grid.
@@ -210,11 +228,14 @@ class ElectronGrid(Voxels):
 
     Attributes
     ----------
-    weights : `Array`, shape `(N1, N2, N3)`
+    weights : `ComplexVolume`, shape `(N1, N2, N3)`
         3D electron density grid in Fourier space.
-    coordinates : `Array`, shape `(N1, N2, 1, 3)`
+    coordinates : `VolumeCoords`, shape `(N1, N2, 1, 3)`
         Central slice of cartesian coordinate system.
     """
+
+    weights: ComplexVolume = field(static=True, encode=False)
+    coordinates: VolumeCoords = field(static=True, encode=False)
 
     def view(self, pose: Pose) -> ElectronGrid:
         """
@@ -225,7 +246,7 @@ class ElectronGrid(Voxels):
         """
         coordinates = pose.rotate(self.coordinates, real=False)
 
-        return self.replace(coordinates=coordinates)
+        return self.update(coordinates=coordinates)
 
     @classmethod
     def from_mrc(

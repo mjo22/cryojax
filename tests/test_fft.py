@@ -2,7 +2,7 @@ import pytest
 
 import jax.numpy as jnp
 import numpy as np
-from cryojax.utils import fft, irfft
+from cryojax.utils import fftn, irfftn
 
 
 @pytest.mark.parametrize(
@@ -10,7 +10,7 @@ from cryojax.utils import fft, irfft
 )
 def test_fft(model, request):
     model = request.getfixturevalue(model)
-    image = fft(model())
+    image = fftn(model())
     random = jnp.asarray(np.random.randn(*image.shape))
     # Set tolerance based on tests with jnp.fft + random data
     rkwargs = dict(zip(["atol", "rtol"], [1e-6, 5e-4]))
@@ -26,12 +26,16 @@ def test_fft(model, request):
     )
     # Run tests with cryojax.utils and random data
     np.testing.assert_allclose(
-        irfft(fft(random)), jnp.fft.ifftn(jnp.fft.fftn(random)).real, **rkwargs
+        irfftn(fftn(random)),
+        jnp.fft.ifftn(jnp.fft.fftn(random)).real,
+        **rkwargs
     )
-    np.testing.assert_allclose(random, irfft(fft(random)), **rkwargs)
-    np.testing.assert_allclose(fft(random), fft(irfft(fft(random))), **fkwargs)
+    np.testing.assert_allclose(random, irfftn(fftn(random)), **rkwargs)
+    np.testing.assert_allclose(
+        fftn(random), fftn(irfftn(fftn(random))), **fkwargs
+    )
     # Run tests with an image
     np.testing.assert_allclose(
-        irfft(image), irfft(fft(irfft(image))), **rkwargs
+        irfftn(image), irfftn(fftn(irfftn(image))), **rkwargs
     )
-    np.testing.assert_allclose(image, fft(irfft(image)), **fkwargs)
+    np.testing.assert_allclose(image, fftn(irfftn(image)), **fkwargs)

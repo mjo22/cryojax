@@ -4,22 +4,22 @@ Interpolation routines.
 
 __all__ = ["resize", "scale", "scale_and_translate", "map_coordinates"]
 
-from typing import Union
+from typing import Union, Any
+from jaxtyping import Array, Float
 
 import jax
 import jax.numpy as jnp
 from jax.scipy.ndimage import map_coordinates as _map_coordinates
 from jax.image import resize as _resize
 from jax.image import scale_and_translate as _scale_and_translate
-from ..core import Array, ArrayLike
 
 
 def resize(
-    image: ArrayLike,
+    image: Array,
     shape: tuple[int, int],
     method="lanczos5",
-    align_corners=True,
-    **kwargs
+    align_corners: bool = True,
+    **kwargs: Any
 ) -> Array:
     """
     Resize an image with interpolation.
@@ -33,10 +33,10 @@ def resize(
 
 
 def scale_and_translate(
-    image: ArrayLike,
+    image: Array,
     shape: tuple[int, int],
-    scale: Array,
-    translation: Array,
+    scale: Float[Array, "2"],
+    translation: Float[Array, "2"],
     method="lanczos5",
     **kwargs
 ) -> Array:
@@ -55,9 +55,9 @@ def scale_and_translate(
 
 
 def scale(
-    image: ArrayLike,
+    image: Array,
     shape: tuple[int, int],
-    scale: ArrayLike,
+    scale: Float[Array, "2"],
     method="lanczos5",
     **kwargs
 ) -> Array:
@@ -73,7 +73,7 @@ def scale(
 
 
 def map_coordinates(
-    input: ArrayLike, coordinates: ArrayLike, order=1, mode="wrap", cval=0.0
+    input: Array, coordinates: Array, order=1, mode="wrap", cval=0.0
 ) -> Array:
     """
     Interpolate a set of points in fourier space on a grid
@@ -91,7 +91,7 @@ def map_coordinates(
 
 
 def _resize_with_aligned_corners(
-    image: ArrayLike,
+    image: Array,
     shape: tuple[int, ...],
     method: Union[str, jax.image.ResizeMethod],
     antialias: bool = False,

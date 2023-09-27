@@ -7,7 +7,6 @@ from __future__ import annotations
 __all__ = ["Specimen", "SpecimenMixture"]
 
 from typing import Any, Optional
-from functools import partial
 
 from .scattering import ScatteringConfig
 from .density import ElectronDensity
@@ -15,26 +14,25 @@ from .exposure import Exposure
 from .pose import Pose
 from .optics import Optics
 from .conformation import Discrete
-from ..core import Parameter, Array, dataclass, field, CryojaxObject
+from ..core import Real_, field, Module, ComplexImage
 
 
-@partial(dataclass, kw_only=True)
-class Specimen(CryojaxObject):
+class Specimen(Module):
     """
     Abstraction of a biological specimen.
 
     Attributes
     ----------
-    density : `cryojax.simulator.ElectronDensity`
+    density :
         The electron density representation of the
         specimen.
-    resolution : `cryojax.core.Parameter`
-        Rasterization resolution.
-        This is in dimensions of length.
+    resolution :
+        Rasterization resolution. This is in
+        dimensions of length.
     """
 
-    resolution: Parameter = field()
     density: ElectronDensity = field()
+    resolution: Real_ = field()
 
     def scatter(
         self,
@@ -43,18 +41,20 @@ class Specimen(CryojaxObject):
         exposure: Optional[Exposure] = None,
         optics: Optional[Optics] = None,
         **kwargs: Any,
-    ) -> Array:
+    ) -> ComplexImage:
         """
         Compute the scattered wave of the specimen in the
         exit plane.
 
         Arguments
         ---------
-        scattering : `cryojax.simulator.ScatteringConfig`
+        scattering :
             The scattering configuration.
-        pose : `cryojax.simulator.Pose`
+        pose :
             The imaging pose.
-        optics : `cryojax.simulator.Optics`, optional
+        exposure :
+            The exposure model.
+        optics :
             The instrument optics.
         """
         freqs = scattering.padded_freqs / self.resolution
@@ -80,8 +80,7 @@ class Specimen(CryojaxObject):
         return self.density
 
 
-@dataclass
-class SpecimenMixture(CryojaxObject):
+class SpecimenMixture(Module):
     """
     A biological specimen at a mixture of conformations.
 

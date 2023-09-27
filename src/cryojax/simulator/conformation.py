@@ -7,11 +7,12 @@ __all__ = ["Conformation", "Discrete", "Continuous"]
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
-from ..core import CryojaxObject, dataclass, field, Parameter
+import jax.numpy as jnp
+
+from ..core import Module, field, Real_, Integer_
 
 
-@dataclass
-class Conformation(CryojaxObject, metaclass=ABCMeta):
+class Conformation(Module, metaclass=ABCMeta):
     """
     Base class for a protein conformation.
     """
@@ -22,37 +23,33 @@ class Conformation(CryojaxObject, metaclass=ABCMeta):
         raise NotImplementedError
 
 
-@dataclass
 class Discrete(Conformation):
     """
     A discrete-valued conformational coordinate.
 
     Attributes
     ----------
-    m : `int`
-        The conformation at which to evaluate the model.
+    m : The conformation at which to evaluate the model.
     """
 
-    m: int = field(default=0)
+    m: Integer_ = field(default=0)
 
     @property
-    def coordinate(self) -> int:
+    def coordinate(self) -> Integer_:
         return self.m
 
 
-@dataclass
 class Continuous(Conformation):
     """
     A continuous conformational coordinate.
 
     Attributes
     ----------
-    z : `cryojax.core.Parameter`
-        The conformation at which to evaluate the model.
+    z : The conformation at which to evaluate the model.
     """
 
-    z: Parameter = field(default=0.0)
+    z: Real_ = field(default=0.0)
 
     @property
-    def coordinate(self) -> Parameter:
+    def coordinate(self) -> Real_:
         return self.z

@@ -17,7 +17,15 @@ CLASSIFIERS = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
-INSTALL_REQUIRES = ["jax", "jaxlib", "jaxlie", "mrcfile", "dataclasses-json"]
+INSTALL_REQUIRES = [
+    "jax",
+    "jaxlib",
+    "equinox",
+    "jaxtyping",
+    "jaxlie",
+    "mrcfile",
+    "dataclasses-json",
+]
 EXTRA_REQUIRE = {
     "test": ["pytest>=3.6", "pycistem"],
     "docs": [],
@@ -63,7 +71,7 @@ if __name__ == "__main__":
         long_description_content_type="text/markdown",
         packages=PACKAGES,
         package_dir={"": "src"},
-        python_requires=">=3.6",
+        python_requires=">=3.10",
         install_requires=INSTALL_REQUIRES,
         extras_require=EXTRA_REQUIRE,
         classifiers=CLASSIFIERS,

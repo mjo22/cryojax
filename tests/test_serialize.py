@@ -4,7 +4,7 @@ import numpy as np
 from jax import config
 
 import cryojax.simulator as cs
-from cryojax.utils import fft
+from cryojax.utils import fftn
 
 config.update("jax_enable_x64", True)
 
@@ -21,8 +21,8 @@ def test_deserialize_state_components(noisy_model):
     exposure = cs.UniformExposure.from_json(
         noisy_model.state.exposure.to_json()
     )
-    model = noisy_model.replace(
-        state=state.replace(
+    model = noisy_model.update(
+        state=state.update(
             pose=pose,
             detector=detector,
             ice=ice,
@@ -30,7 +30,7 @@ def test_deserialize_state_components(noisy_model):
             exposure=exposure,
         )
     )
-    np.testing.assert_allclose(fft(noisy_model()), fft(model()))
+    np.testing.assert_allclose(fftn(noisy_model()), fftn(model()))
 
 
 def test_deserialize_state(state):

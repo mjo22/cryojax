@@ -2,24 +2,26 @@
 Routines to compute FFTs.
 """
 
-__all__ = ["ifft", "irfft", "fft"]
+__all__ = ["ifftn", "irfftn", "fftn"]
 
-from typing import Any
+from typing import Any, Union
 
 import jax.numpy as jnp
 
-from ..core import Array, ArrayLike
+from ..core import Image, Volume
 
 
-def irfft(ft: ArrayLike, **kwargs: Any) -> Array:
+def irfftn(ft: Union[Image, Volume], **kwargs: Any) -> Union[Image, Volume]:
     """
-    Convenience wrapper for ``cryojax.utils.fourier.ifft``
+    Convenience wrapper for ``cryojax.utils.fft.ifftn``
     for ``real = True``.
     """
-    return ifft(ft, real=True, **kwargs)
+    return ifftn(ft, real=True, **kwargs)
 
 
-def ifft(ft: ArrayLike, real: bool = False, **kwargs: Any) -> Array:
+def ifftn(
+    ft: Union[Image, Volume], real: bool = False, **kwargs: Any
+) -> Union[Image, Volume]:
     """
     Helper routine to compute the inverse fourier transform
     from the output of a type 1 non-uniform FFT. Assume that
@@ -27,7 +29,7 @@ def ifft(ft: ArrayLike, real: bool = False, **kwargs: Any) -> Array:
 
     Arguments
     ---------
-    ft : `ArrayLike`
+    ft :
         Fourier transform array. Assumes that the zero
         frequency component is in the center.
     real : `bool`
@@ -35,7 +37,7 @@ def ifft(ft: ArrayLike, real: bool = False, **kwargs: Any) -> Array:
         of a real-valued function.
     Returns
     -------
-    ift : `Array`
+    ift :
         Inverse fourier transform.
     """
     ift = jnp.fft.fftshift(jnp.fft.ifftn(ft, **kwargs))
@@ -46,19 +48,19 @@ def ifft(ft: ArrayLike, real: bool = False, **kwargs: Any) -> Array:
         return ift
 
 
-def fft(ift: ArrayLike, **kwargs: Any) -> Array:
+def fftn(ift: Union[Image, Volume], **kwargs: Any) -> Union[Image, Volume]:
     """
     Helper routine to compute the fourier transform of an array
     to match the output of a type 1 non-uniform FFT.
 
     Arguments
     ---------
-    ift : `ArrayLike`
+    ift :
         Array in real space. Assumes that the zero
         frequency component is in the center.
     Returns
     -------
-    ft : `Array`
+    ft :
         Fourier transform of array.
     """
     ft = jnp.fft.fftn(jnp.fft.ifftshift(ift), **kwargs)

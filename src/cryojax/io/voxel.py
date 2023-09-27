@@ -15,8 +15,10 @@ import mrcfile, os
 import numpy as np
 import jax.numpy as jnp
 from typing import Any
-from ..utils import fftfreqs, fft, pad
-from ..core import Array, ArrayLike
+from jaxtyping import Float
+from ..utils import fftfreqs, fftn, pad
+
+from ..core import RealCloud, CloudCoords
 
 
 def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict[str, Any]:
@@ -63,7 +65,7 @@ def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict[str, Any]:
     return cloud
 
 
-def load_fourier_grid(filename: str, pad_scale=1.0) -> dict[str, Any]:
+def load_fourier_grid(filename: str, pad_scale: float = 1.0) -> dict[str, Any]:
     """
     Read a 3D template in Fourier space on a cartesian grid.
 
@@ -89,7 +91,7 @@ def load_fourier_grid(filename: str, pad_scale=1.0) -> dict[str, Any]:
     padded_shape = tuple([int(s * pad_scale) for s in template.shape])
     template = pad(template, padded_shape)
     # Load density and coordinates
-    density = fft(template)
+    density = fftn(template)
     coordinates = fftfreqs(template.shape, voxel_size, real=False)
     coordinates = jnp.asarray(coordinates)
     # Get central z slice
@@ -150,12 +152,12 @@ def load_mrc(filename: str) -> tuple[np.ndarray, float]:
 
 
 def coordinatize_voxels(
-    template: ArrayLike,
+    template: Float[np.ndarray, "N1 N2 N3"],
     voxel_size: float,
     mask: bool = True,
     indexing="xy",
     **kwargs: Any,
-) -> tuple[Array, Array]:
+) -> tuple[RealCloud, CloudCoords]:
     """
     Returns 3D volume or 2D image and its coordinate system.
     By default, coordinates are shape ``(N, ndim)``, where
@@ -166,7 +168,7 @@ def coordinatize_voxels(
 
     Parameters
     ----------
-    template : `ArrayLike`, shape `(N1, N2, N3)` or `(N1, N2)`
+    template : `np.ndarray`, shape `(N1, N2, N3)` or `(N1, N2)`
         3D volume or 2D image on a cartesian grid.
     voxel_size : float
         Voxel size of the template.

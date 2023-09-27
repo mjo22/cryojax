@@ -21,16 +21,16 @@ import jax.numpy as jnp
 from .pose import Pose
 from .kernel import Kernel, Gaussian
 from ..utils import cartesian_to_polar
-from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
+from ..core import field, Module
+from ..core import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
-@dataclass
-class Optics(CryojaxObject, metaclass=ABCMeta):
+class Optics(Module, metaclass=ABCMeta):
     """
     Base PyTree container for an optics model. This
     is designed to compute an optics model in Fourier
-    Space given some frequencies and parameters, and
-    also store model parameters as a PyTree node.
+    Space given some frequencies and Real_s, and
+    also store model Real_s as a PyTree node.
 
     When writing subclasses,
 
@@ -39,7 +39,7 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
 
     Attributes
     ----------
-    envelope : `cryojax.simulator.Kernel`
+    envelope :
         A kernel that computes the envelope function of
         the optics model. By default, ``Gaussian()``.
     """
@@ -48,17 +48,19 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
 
     @abstractmethod
     def compute(
-        self, freqs: ArrayLike, pose: Optional[Pose] = None, **kwargs: Any
-    ) -> Array:
+        self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
+    ) -> Image:
         """Compute the optics model."""
         raise NotImplementedError
 
     @abstractmethod
-    def apply(self, ctf: ArrayLike, image: ArrayLike, **kwargs: Any) -> Array:
+    def apply(
+        self, ctf: Image, image: ComplexImage, **kwargs: Any
+    ) -> ComplexImage:
         """Apply the optics model."""
         raise NotImplementedError
 
-    def __call__(self, freqs: ArrayLike, **kwargs: Any) -> Array:
+    def __call__(self, freqs: ImageCoords, **kwargs: Any) -> ComplexImage:
         """Compute the optics model."""
         if self.envelope is None:
             ctf = self.compute(freqs, **kwargs)
@@ -69,7 +71,6 @@ class Optics(CryojaxObject, metaclass=ABCMeta):
             return envelope * ctf
 
 
-@dataclass
 class NullOptics(Optics):
     """
     This class can be used as a null optics model.
@@ -78,52 +79,52 @@ class NullOptics(Optics):
     envelope: Optional[Kernel] = field(default=None)
 
     def compute(
-        self, freqs: ArrayLike, pose: Optional[Pose] = None, **kwargs: Any
-    ) -> Array:
+        self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
+    ) -> ComplexImage:
         return jnp.array(1.0)
 
-    def apply(self, ctf: Array, image: ArrayLike, **kwargs: Any):
+    def apply(self, ctf: RealImage, image: ComplexImage, **kwargs: Any):
         return image
 
 
-@dataclass
 class CTFOptics(Optics):
     """
     Compute a Contrast Transfer Function (CTF).
 
-    Also acts as a PyTree container for the CTF parameters.
+    Also acts as a PyTree container for the CTF Real_s.
     See ``cryojax.simulator.compute_ctf`` for more
     information.
 
     Attributes
     ----------
-    degrees : `bool`
-    defocus_u : `cryojax.core.Parameter`
-    defocus_v : `cryojax.core.Parameter`
-    defocus_angle : `cryojax.core.Parameter`
-    voltage : `cryojax.core.Parameter`
-    spherical_aberration : `cryojax.core.Parameter`
-    amplitude_contrast_ratio : `cryojax.core.Parameter`
-    phase_shift : `cryojax.core.Parameter`
-    b_factor : `cryojax.core.Parameter`
+    degrees :
+    defocus_u :
+    defocus_v :
+    defocus_angle :
+    voltage :
+    spherical_aberration :
+    amplitude_contrast_ratio :
+    phase_shift :
     """
 
-    degrees: bool = field(pytree_node=False, default=True)
+    degrees: bool = field(static=True, default=True)
 
-    defocus_u: Parameter = field(default=10000.0)
-    defocus_v: Parameter = field(default=10000.0)
-    defocus_angle: Parameter = field(default=0.0)
-    voltage: Parameter = field(default=300.0)
-    spherical_aberration: Parameter = field(default=2.7)
-    amplitude_contrast: Parameter = field(default=0.1)
-    phase_shift: Parameter = field(default=0.0)
+    defocus_u: Real_ = field(default=10000.0)
+    defocus_v: Real_ = field(default=10000.0)
+    defocus_angle: Real_ = field(default=0.0)
+    voltage: Real_ = field(default=300.0)
+    spherical_aberration: Real_ = field(default=2.7)
+    amplitude_contrast: Real_ = field(default=0.1)
+    phase_shift: Real_ = field(default=0.0)
 
-    def apply(self, ctf: ArrayLike, image: ArrayLike, **kwargs: Any) -> Array:
+    def apply(
+        self, ctf: RealImage, image: ComplexImage, **kwargs: Any
+    ) -> ComplexImage:
         return ctf * image
 
     def compute(
-        self, freqs: ArrayLike, pose: Optional[Pose] = None, **kwargs: Any
-    ) -> Array:
+        self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
+    ) -> RealImage:
         defocus_offset = 0.0 if pose is None else pose.offset_z
         return compute_ctf(
             freqs,
@@ -141,50 +142,50 @@ class CTFOptics(Optics):
 
 @partial(jax.jit, static_argnames=["normalize", "degrees"])
 def compute_ctf(
-    freqs: ArrayLike,
-    defocus_u: float,
-    defocus_v: float,
-    defocus_angle: float,
-    voltage: float,
-    spherical_aberration: float,
-    amplitude_contrast: float,
-    phase_shift: float,
+    freqs: ImageCoords,
+    defocus_u: Real_,
+    defocus_v: Real_,
+    defocus_angle: Real_,
+    voltage: Real_,
+    spherical_aberration: Real_,
+    amplitude_contrast: Real_,
+    phase_shift: Real_,
     *,
     normalize: bool = False,
     degrees: bool = True,
-) -> Array:
+) -> RealImage:
     """
-    Computes CTF with given parameters.
+    Computes CTF with given Real_s.
 
-    Parameters
+    Real_s
     ----------
-    freqs : `jax.Array`, shape `(N1, N2, 2)`
+    freqs :
         The wave vectors in the imaging plane, in units
         of 1/A.
-    defocus_u : `float`
+    defocus_u :
         The defocus in the major axis in Angstroms.
-    defocus_v : `float`
+    defocus_v :
         The defocus in the minor axis in Angstroms.
-    defocus_angle : `float`
+    defocus_angle :
         The defocus angle.
-    voltage : `float`
+    voltage :
         The accelerating voltage in kV.
-    spherical_aberration : `float`
+    spherical_aberration :
         The spherical aberration in mm.
-    amplitude_contrast : `float`
+    amplitude_contrast :
         The amplitude contrast ratio.
-    phase_shift : `float`
+    phase_shift :
         The additional phase shift.
-    normalize : `bool`, optional
+    normalize :
         Whether to normalize the CTF so that it has norm 1 in real space.
         Default is ``False``.
-    degrees : `bool`, optional
+    degrees :
         Whether or not the ``defocus_angle`` and ``phase_shift`` are given
         in degrees or radians.
 
     Returns
     -------
-    ctf : `jax.Array`, shape `(N1, N2)`
+    ctf :
         The contrast transfer function.
     """
     freqs = jnp.asarray(freqs)

@@ -11,57 +11,52 @@ from abc import ABCMeta, abstractmethod
 from functools import partial
 
 import jax
-import jax.numpy as jnp
 
-from ..core import dataclass, field, Array, ArrayLike, Parameter, CryojaxObject
+from ..core import field, Module, Image, Real_
 
 
-@dataclass
-class Exposure(CryojaxObject, metaclass=ABCMeta):
+class Exposure(Module, metaclass=ABCMeta):
     """
-    An PyTree that controls parameters related to
-    variation in the image intensity. For example,
-    this includes the incoming electron dose and
-    radiation damage.
+    Controls parameters related to variation in
+    the image intensity.
+
+    For example, this might include
+    the incoming electron dose and radiation damage.
     """
 
     @abstractmethod
-    def scale(self, image: ArrayLike, real: bool = False) -> Array:
+    def scale(self, image: Image, real: bool = False) -> Image:
         """
         Return the scaled image.
         """
         raise NotImplementedError
 
 
-@dataclass
 class NullExposure(Exposure):
     """
     A `null` exposure model. Do not change the
     image when it is passsed through the pipeline.
     """
 
-    def scale(self, image: ArrayLike, real: bool = False) -> Array:
+    def scale(self, image: Image, real: bool = False) -> Image:
         """Return the image unchanged"""
         return image
 
 
-@dataclass
 class UniformExposure(Exposure):
     """
     Scale the signal intensity uniformly.
 
     Attributes
     ----------
-    N : `cryojax.core.Parameter`
-        Intensity scaling.
-    mu : `cryojax.core.Parameter`
-        Intensity offset.
+    N : Intensity scaling.
+    mu : Intensity offset.
     """
 
-    N: Parameter = field(default=1e5)
-    mu: Parameter = field(default=0.0)
+    N: Real_ = field(default=1e5)
+    mu: Real_ = field(default=0.0)
 
-    def scale(self, image: ArrayLike, real: bool = False) -> Array:
+    def scale(self, image: Image, real: bool = False) -> Image:
         """
         Return the scaled image.
         """
@@ -70,32 +65,29 @@ class UniformExposure(Exposure):
 
 @partial(jax.jit, static_argnames=["real"])
 def rescale_image(
-    image: ArrayLike, N: float, mu: float, *, real: bool = False
-) -> Array:
+    image: Image, N: float, mu: float, *, real: bool = False
+) -> Image:
     """
     Normalize so that the image is mean mu
     and standard deviation N in real space.
 
     Parameters
     ----------
-    image : `jax.Array`, shape `(N1, N2)`
+    image :
         The image in either real or Fourier space.
         If in Fourier space, the zero frequency
         component should be in the center of the image.
-    N : `float`
-        Intensity scale factor.
-    mu : `float`
-        Intensity offset.
-    real : `bool`
+    N : Intensity scale factor.
+    mu : Intensity offset.
+    real :
         If ``True``, the given ``image`` is in real
         space. If ``False``, it is in Fourier space.
 
     Returns
     -------
-    rescaled_image : `jax.Array`, shape `(N1, N2)`
+    rescaled_image :
         Image rescaled by an offset ``mu`` and scale factor ``N``.
     """
-    image = jnp.asarray(image)
     N1, N2 = image.shape
     if real:
         rescaled_image = N * image + mu

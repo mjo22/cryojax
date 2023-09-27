@@ -20,9 +20,19 @@ from typing import Any
 import jax.numpy as jnp
 import numpy as np
 
-from ..core import dataclass, field, Array, ArrayLike, CryojaxObject
+from ..core import (
+    field,
+    Module,
+    RealImage,
+    ComplexImage,
+    ImageCoords,
+    ComplexVolume,
+    VolumeCoords,
+    RealCloud,
+    CloudCoords,
+)
 from ..utils import (
-    fft,
+    fftn,
     make_frequencies,
     make_coordinates,
     crop,
@@ -33,84 +43,76 @@ from ..utils import (
 )
 
 
-@dataclass
-class ImageConfig(CryojaxObject):
+class ImageConfig(Module):
     """
     Configuration for an electron microscopy image.
 
     Attributes
     ----------
-    shape : `tuple[int, int]`
+    shape :
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
-    freqs : `Array`, shape `(N1, N2, 2)`
-        The fourier wavevectors in the imaging plane.
-    padded_freqs : `Array`, shape `(M1, M2, 2)`
-        The fourier wavevectors in the imaging plane
-        in the padded coordinate system.
-    coords : `Array`, shape `(N1, N2, 2)`
-        The coordinates in the imaging plane.
-    padded_coords : `Array`, shape `(M1, M2, 2)`
-        The coordinates in the imaging plane
-        in the padded coordinate system.
-    pad_scale : `float`
+    pad_scale :
         The scale at which to pad (or upsample) the image
         when computing it in the object plane. This
         should be a floating point number greater than
         or equal to 1. By default, it is 1 (no padding).
+    freqs :
+        The fourier wavevectors in the imaging plane.
+    padded_freqs :
+        The fourier wavevectors in the imaging plane
+        in the padded coordinate system.
+    coords :
+        The coordinates in the imaging plane.
+    padded_coords :
+        The coordinates in the imaging plane
+        in the padded coordinate system.
     """
 
-    shape: tuple[int, int] = field(pytree_node=False)
+    shape: tuple[int, int] = field(static=True)
+    pad_scale: float = field(static=True, default=1.0)
 
-    padded_shape: tuple[int, int] = field(pytree_node=False, init=False)
+    padded_shape: tuple[int, int] = field(static=True, init=False)
 
-    freqs: Array = field(pytree_node=False, init=False)
-    padded_freqs: Array = field(pytree_node=False, init=False)
-
-    coords: Array = field(pytree_node=False, init=False)
-    padded_coords: Array = field(pytree_node=False, init=False)
-
-    pad_scale: float = field(pytree_node=False, default=1)
+    freqs: ImageCoords = field(init=False)
+    padded_freqs: ImageCoords = field(init=False)
+    coords: ImageCoords = field(init=False)
+    padded_coords: ImageCoords = field(init=False)
 
     def __post_init__(self):
         # Set shape after padding
         padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
-        object.__setattr__(self, "padded_shape", padded_shape)
+        self.padded_shape = padded_shape
         # Set coordinates
-        freqs = make_frequencies(self.shape)
-        padded_freqs = make_frequencies(self.padded_shape)
-        coords = make_coordinates(self.shape)
-        padded_coords = make_coordinates(self.padded_shape)
-        object.__setattr__(self, "freqs", freqs)
-        object.__setattr__(self, "padded_freqs", padded_freqs)
-        object.__setattr__(self, "coords", coords)
-        object.__setattr__(self, "padded_coords", padded_coords)
+        self.freqs = make_frequencies(self.shape)
+        self.padded_freqs = make_frequencies(self.padded_shape)
+        self.coords = make_coordinates(self.shape)
+        self.padded_coords = make_coordinates(self.padded_shape)
 
-    def crop(self, image: ArrayLike) -> Array:
-        """Crop an image in real space."""
+    def crop(self, image: RealImage) -> RealImage:
+        """Crop an image."""
         return crop(image, self.shape)
 
-    def pad(self, image: ArrayLike, **kwargs: Any) -> Array:
-        """Pad an image in real space."""
+    def pad(self, image: RealImage, **kwargs: Any) -> RealImage:
+        """Pad an image."""
         return pad(image, self.padded_shape, **kwargs)
 
     def downsample(
-        self, image: ArrayLike, method="lanczos5", **kwargs: Any
-    ) -> Array:
-        """Downsample an image in Fourier space."""
+        self, image: ComplexImage, method="lanczos5", **kwargs: Any
+    ) -> ComplexImage:
+        """Downsample an image."""
         return resize(
             image, self.shape, antialias=False, method=method, **kwargs
         )
 
     def upsample(
-        self, image: ArrayLike, method="bicubic", **kwargs: Any
-    ) -> Array:
-        """Upsample an image in Fourier space."""
+        self, image: ComplexImage, method="bicubic", **kwargs: Any
+    ) -> ComplexImage:
+        """Upsample an image."""
         return resize(image, self.padded_shape, method=method, **kwargs)
 
 
-@dataclass
 class ScatteringConfig(ImageConfig, metaclass=ABCMeta):
     """
     Configuration for an image with a particular
@@ -121,25 +123,27 @@ class ScatteringConfig(ImageConfig, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def scatter(self, *args: Any, **kwargs: Any):
+    def scatter(self, *args: Any, **kwargs: Any) -> ComplexImage:
         """Scattering method for image rendering."""
         raise NotImplementedError
 
 
-@dataclass
 class FourierSliceScattering(ScatteringConfig):
     """
     Scatter points to the image plane using the
     Fourier-projection slice theorem.
     """
 
-    order: int = field(pytree_node=False, default=1)
-    mode: str = field(pytree_node=False, default="wrap")
-    cval: complex = field(pytree_node=False, default=0.0 + 0.0j)
+    order: int = field(static=True, default=1)
+    mode: str = field(static=True, default="wrap")
+    cval: complex = field(static=True, default=0.0 + 0.0j)
 
     def scatter(
-        self, density: ArrayLike, coordinates: ArrayLike, resolution: float
-    ) -> Array:
+        self,
+        density: ComplexVolume,
+        coordinates: VolumeCoords,
+        resolution: float,
+    ) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
@@ -156,7 +160,6 @@ class FourierSliceScattering(ScatteringConfig):
         )
 
 
-@dataclass
 class NufftScattering(ScatteringConfig):
     """
     Scatter points to image plane using a
@@ -169,11 +172,11 @@ class NufftScattering(ScatteringConfig):
         for documentation.
     """
 
-    eps: float = field(pytree_node=False, default=1e-6)
+    eps: float = field(static=True, default=1e-6)
 
     def scatter(
-        self, density: ArrayLike, coordinates: ArrayLike, resolution: float
-    ) -> Array:
+        self, density: RealCloud, coordinates: CloudCoords, resolution: float
+    ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         return project_with_nufft(
             density,
@@ -185,25 +188,25 @@ class NufftScattering(ScatteringConfig):
 
 
 def extract_slice(
-    density: ArrayLike,
-    coordinates: ArrayLike,
+    density: ComplexVolume,
+    coordinates: VolumeCoords,
     resolution: float,
     shape: tuple[int, int],
     **kwargs: Any,
-) -> Array:
+) -> ComplexImage:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using the fourier slice theorem.
 
     Arguments
     ---------
-    density : `ArrayLike`, shape `(N1, N2, N3)`
+    density : shape `(N1, N2, N3)`
         Density grid in fourier space.
-    coordinates : `ArrayLike`, shape `(N1, N2, 1, 3)`
+    coordinates : shape `(N1, N2, 1, 3)`
         Frequency central slice coordinate system.
-    resolution : float
+    resolution :
         The rasterization resolution.
-    shape : `tuple[int, int]`
+    shape :
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
@@ -241,16 +244,16 @@ def extract_slice(
         raise NotImplementedError(
             "density.shape must be larger or smaller than shape in all dimensions"
         )
-    return fft(projection) / jnp.sqrt(M1 * M2)
+    return fftn(projection) / jnp.sqrt(M1 * M2)
 
 
 def project_with_nufft(
-    density: ArrayLike,
-    coordinates: ArrayLike,
+    density: RealCloud,
+    coordinates: CloudCoords,
     resolution: float,
     shape: tuple[int, int],
     **kwargs: Any,
-) -> Array:
+) -> ComplexImage:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using a non-uniform FFT.
@@ -259,13 +262,13 @@ def project_with_nufft(
 
     Arguments
     ---------
-    density : `ArrayLike`, shape `(N,)`
+    density : shape `(N,)`
         Density point cloud.
-    coordinates : `ArrayLike`, shape `(N, 3)`
+    coordinates : shape `(N, 3)`
         Coordinate system of point cloud.
-    resolution : float
+    resolution :
         The rasterization resolution.
-    shape : `tuple[int, int]`
+    shape :
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.

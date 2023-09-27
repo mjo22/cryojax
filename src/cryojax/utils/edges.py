@@ -4,14 +4,19 @@ Routines for dealing with image edges.
 
 __all__ = ["bound", "crop", "pad"]
 
+from typing import Union
+from jaxtyping import Array, Float
+
 import jax
 import jax.numpy as jnp
 
-from ..core import Array, ArrayLike
+from ..core import Cloud, CloudCoords, Image, Volume
 
 
 @jax.jit
-def bound(density: ArrayLike, coords: ArrayLike, box_size: ArrayLike) -> Array:
+def bound(
+    density: Cloud, coords: CloudCoords, box_size: Float[Array, "2"]
+) -> Cloud:
     """
     Use a boolean mask to set density values out of
     bounds to zero. The mask is ``True`` for
@@ -28,7 +33,7 @@ def bound(density: ArrayLike, coords: ArrayLike, box_size: ArrayLike) -> Array:
     return masked_density
 
 
-def crop(image: Array, shape: tuple[int, int]) -> Array:
+def crop(image: Image, shape: tuple[int, int]) -> Image:
     """
     Crop an image to a new shape.
     """
@@ -41,7 +46,9 @@ def crop(image: Array, shape: tuple[int, int]) -> Array:
     return cropped
 
 
-def pad(image: Array, shape: tuple[int, ...], **kwargs) -> Array:
+def pad(
+    image: Union[Image, Volume], shape: tuple[int, ...], **kwargs
+) -> Union[Image, Volume]:
     """
     Pad an image or volume to a new shape.
     """
