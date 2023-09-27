@@ -139,8 +139,8 @@ Note that one could also write a custom log likelihood function simply by instan
 ## Features
 
 - Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration. However, until GPU support for `jax-finufft` is added, models using the `NufftScattering` method will not support the GPU.
-
-- cryojax `Module`s, including `ImagePipeline` models, are JSON serializable thanks to the package `dataclasses-json`. The method `Module.dumps` serializes the object as a JSON string, and `Module.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.GaussianImage.load("model.json")`.
+- `cryojax.Module`s, including `ImagePipeline` models, are JSON serializable thanks to the package `dataclasses-json`. The method `Module.dumps` serializes the object as a JSON string, and `Module.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.GaussianImage.load("model.json")`.
+- A `cryojax.Module` is just an `equinox.Module` with added serialization functionality. Therefore, the entire `equinox` ecosystem is available for usage!
 
 ## Similar libraries
 
