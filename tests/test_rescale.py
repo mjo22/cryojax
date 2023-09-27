@@ -1,5 +1,6 @@
 import pytest
 
+from dataclasses import replace
 from jax import config
 
 from cryojax.utils import irfftn
@@ -16,8 +17,8 @@ def test_rescale(rescaled_model, request):
     exposure = rescaled_model.state.exposure
     mu, N = exposure.mu, exposure.N
     # Create null model
-    state = rescaled_model.state.update(exposure=NullExposure())
-    null_model = rescaled_model.update(state=state)
+    state = replace(rescaled_model.state, exposure=NullExposure())
+    null_model = replace(rescaled_model, state=state)
     # Compute images
     null_image = irfftn(null_model.render(view=False))
     rescaled_image = irfftn(rescaled_model.render(view=False))
