@@ -26,7 +26,7 @@ from ..types import Real_, RealVector, ComplexImage
 Lattice = Float[Array, "N 3"]
 """Type hint for array where each element is a lattice coordinate."""
 
-Conformations = Union[Float[np.ndarray, "N"], Int[np.ndarray, "N"]]
+Conformations = Union[Float[Array, "N"], Int[Array, "N"]]
 """Type hint for array where each element updates a Conformation."""
 
 
@@ -112,7 +112,19 @@ class Helix(Module):
         optics :
             The instrument optics.
         """
-        image = self.subunit.scatter(scattering, pose, optics=optics, **kwargs)
+        # Draw the conformations of each subunit
+        subunits = self.draw()
+        # Compute the pose of each subunit
+        poses = self.n_subunits * [pose]
+        # Compute all projection images
+        scatter = lambda s, p: s.scatter(
+            scattering, pose=p, optics=optics, **kwargs
+        )
+        images = jtu.tree_map(
+            scatter, subunits, poses, is_leaf=lambda s: isinstance(s, Specimen)
+        )
+        # Sum them all together
+        image = jtu.tree_reduce(lambda x, y: x + y, images)
 
         return image
 
