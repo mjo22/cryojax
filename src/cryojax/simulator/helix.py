@@ -16,6 +16,7 @@ import jax.tree_util as jtu
 import equinox as eqx
 
 from .specimen import Specimen
+from .exposure import Exposure
 from .pose import Pose
 from .optics import Optics
 from .scattering import ScatteringConfig
@@ -93,6 +94,7 @@ class Helix(Module):
         self,
         scattering: ScatteringConfig,
         pose: Pose,
+        exposure: Optional[Exposure] = None,
         optics: Optional[Optics] = None,
         **kwargs: Any,
     ) -> ComplexImage:
@@ -115,10 +117,17 @@ class Helix(Module):
         # Draw the conformations of each subunit
         subunits = self.draw()
         # Compute the pose of each subunit
-        poses = self.n_subunits * [pose]
+        offset = jnp.asarray((pose.offset_x, pose.offset_y, pose.offset_z))
+        where = lambda p: (p.offset_x, p.offset_y, p.offset_z)
+        poses = list(
+            map(
+                lambda r: eqx.tree_at(where, pose, tuple([*r])),
+                self.lattice + offset,
+            )
+        )
         # Compute all projection images
         scatter = lambda s, p: s.scatter(
-            scattering, pose=p, optics=optics, **kwargs
+            scattering, pose=p, exposure=exposure, optics=optics, **kwargs
         )
         images = jtu.tree_map(
             scatter, subunits, poses, is_leaf=lambda s: isinstance(s, Specimen)
@@ -139,16 +148,14 @@ class Helix(Module):
             not hasattr(self.subunit, "conformation")
             or self.conformations is None
         ):
-            return self.n_subunits * [self.subunit]
+            return self.n_subunits * self.n_start * [self.subunit]
         else:
             if isinstance(self.conformations, Callable):
-                c = self.conformations(self.lattice)
+                cs = self.conformations(self.lattice)
             else:
-                c = self.conformations
-            get_leaf = lambda subunit: subunit.conformation.coordinate
-            return jtu.tree_map(
-                lambda c: eqx.tree_at(get_leaf, self.subunit, c), c.tolist()
-            )
+                cs = self.conformations
+            where = lambda s: s.conformation.coordinate
+            return list(map(lambda c: eqx.tree_at(where, self.subunit, c), cs))
 
 
 def compute_lattice(
