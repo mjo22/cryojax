@@ -12,7 +12,8 @@ from jax import random
 
 from .kernel import Kernel, Constant
 from ..utils import fftn
-from ..core import field, Module, ImageCoords, ComplexImage
+from ..core import field, Module
+from ..types import ImageCoords, ComplexImage
 
 
 class Noise(Module, metaclass=ABCMeta):
@@ -24,9 +25,7 @@ class Noise(Module, metaclass=ABCMeta):
         1) Overwrite ``Noise.sample``.
     """
 
-    key: Union[Array, PRNGKeyArray] = field(
-        static=True, default=random.PRNGKey(seed=0)
-    )
+    key: Union[Array, PRNGKeyArray] = field(static=True, kw_only=True)
 
     @abstractmethod
     def sample(self, freqs: ImageCoords) -> ComplexImage:

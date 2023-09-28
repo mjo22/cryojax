@@ -6,6 +6,7 @@ from __future__ import annotations
 
 __all__ = ["Specimen", "SpecimenMixture"]
 
+from dataclasses import KW_ONLY
 from typing import Any, Optional
 
 from .scattering import ScatteringConfig
@@ -14,7 +15,8 @@ from .exposure import Exposure
 from .pose import Pose
 from .optics import Optics
 from .conformation import Discrete
-from ..core import Real_, field, Module, ComplexImage
+from ..core import field, Module
+from ..types import Real_, ComplexImage
 
 
 class Specimen(Module):
@@ -29,10 +31,15 @@ class Specimen(Module):
     resolution :
         Rasterization resolution. This is in
         dimensions of length.
+    conformation :
+        The conformational variable at which to evaulate
+        the electron density. This should be overwritten
+        in subclasses.
     """
 
     density: ElectronDensity = field()
     resolution: Real_ = field()
+    conformation: Any = field(default=None)
 
     def scatter(
         self,
@@ -58,8 +65,10 @@ class Specimen(Module):
             The instrument optics.
         """
         freqs = scattering.padded_freqs / self.resolution
+        # Draw the electron density at a particular conformation
+        density = self.draw()
         # View the electron density map at a given pose
-        density = self.density.view(pose, **kwargs)
+        density = density.view(pose, **kwargs)
         # Compute the scattering image
         image = density.scatter(scattering, self.resolution, **kwargs)
         # Apply translation
@@ -74,7 +83,6 @@ class Specimen(Module):
 
         return image
 
-    @property
     def draw(self) -> ElectronDensity:
         """Get the electron density."""
         return self.density
@@ -83,21 +91,11 @@ class Specimen(Module):
 class SpecimenMixture(Module):
     """
     A biological specimen at a mixture of conformations.
-
-    Attributes
-    ----------
-    density : `list[cryojax.simulator.ElectronDensity]`
-        The electron density representation of the
-        specimen.
-    conformation : `cryojax.simulator.Discrete`
-        The conformational variable at which to evaulate
-        the electron density.
     """
 
     density: list[ElectronDensity] = field()
     conformation: Discrete = field(default_factory=Discrete)
 
-    @property
     def draw(self) -> ElectronDensity:
         """Draw the electron density at the configured conformation."""
         coordinate = self.conformation.coordinate

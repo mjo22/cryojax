@@ -22,7 +22,7 @@ from .pose import Pose
 from .kernel import Kernel, Gaussian
 from ..utils import cartesian_to_polar
 from ..core import field, Module
-from ..core import Real_, RealImage, ComplexImage, Image, ImageCoords
+from ..types import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
 class Optics(Module, metaclass=ABCMeta):

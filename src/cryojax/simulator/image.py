@@ -23,7 +23,8 @@ from .helix import Helix
 from .scattering import ScatteringConfig
 from .state import PipelineState
 from ..utils import fftn, irfftn
-from ..core import field, Module, RealImage, ComplexImage, Image, Real_
+from ..core import field, Module
+from ..types import RealImage, ComplexImage, Image, Real_
 
 
 class ImagePipeline(Module, metaclass=ABCMeta):

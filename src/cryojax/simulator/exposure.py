@@ -12,7 +12,8 @@ from functools import partial
 
 import jax
 
-from ..core import field, Module, Image, Real_
+from ..core import field, Module
+from ..types import Image, Real_
 
 
 class Exposure(Module, metaclass=ABCMeta):

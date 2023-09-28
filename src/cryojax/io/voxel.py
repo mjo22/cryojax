@@ -17,8 +17,7 @@ import jax.numpy as jnp
 from typing import Any
 from jaxtyping import Float
 from ..utils import fftfreqs, fftn, pad
-
-from ..core import RealCloud, CloudCoords
+from ..types import RealCloud, CloudCoords
 
 
 def load_grid_as_cloud(filename: str, **kwargs: Any) -> dict[str, Any]:

@@ -20,7 +20,7 @@ CLASSIFIERS = [
 INSTALL_REQUIRES = [
     "jax",
     "jaxlib",
-    "equinox",
+    "equinox>=0.11.0",
     "jaxtyping",
     "jaxlie",
     "mrcfile",

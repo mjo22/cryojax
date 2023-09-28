@@ -7,6 +7,7 @@ __all__ = ["Detector", "NullDetector", "GaussianDetector", "pixelize_image"]
 import jax
 import jax.numpy as jnp
 
+from dataclasses import KW_ONLY
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Any
 from functools import partial
@@ -14,13 +15,8 @@ from functools import partial
 from .noise import GaussianNoise
 from .kernel import Kernel, Constant
 from ..utils import scale, irfftn
-from ..core import (
-    field,
-    Module,
-    Real_,
-    RealImage,
-    ImageCoords,
-)
+from ..core import field, Module
+from ..types import Real_, RealImage, ImageCoords
 
 
 class Detector(Module, metaclass=ABCMeta):
@@ -37,9 +33,7 @@ class Detector(Module, metaclass=ABCMeta):
         the image at the ``pixel_size``.
     """
 
-    pixel_size: Optional[Real_] = field(
-        default=None, converter=lambda x: x if x is None else jnp.asarray(x)
-    )
+    pixel_size: Optional[Real_] = field(default=None)
     method: str = field(static=True, default="bicubic")
 
     def pixelize(self, image: RealImage, resolution: Real_) -> RealImage:
@@ -87,7 +81,7 @@ class GaussianDetector(GaussianNoise, Detector):
 
     Attributes
     ----------
-    variance : `cryojax.simulator.Kernel`
+    variance :
         A kernel that computes the variance
         of the detector noise. By default,
         ``Constant()``.

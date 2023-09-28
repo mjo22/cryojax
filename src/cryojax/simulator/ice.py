@@ -13,7 +13,8 @@ from .scattering import ScatteringConfig
 from .kernel import Kernel, Exp
 from .optics import Optics
 from .noise import GaussianNoise
-from ..core import field, Module, Real_, ComplexImage, Image, ImageCoords
+from ..core import field, Module
+from ..types import Real_, ComplexImage, Image, ImageCoords
 
 
 class Ice(Module, metaclass=ABCMeta):

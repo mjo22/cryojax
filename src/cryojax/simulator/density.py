@@ -20,7 +20,7 @@ from .scattering import ScatteringConfig
 from .pose import Pose
 from ..io import load_grid_as_cloud, load_fourier_grid
 from ..core import field, Module
-from ..core import (
+from ..types import (
     Real_,
     ComplexImage,
     ComplexVolume,

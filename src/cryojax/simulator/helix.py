@@ -11,6 +11,9 @@ from jaxtyping import Array, Float, Int
 
 import jax
 import jax.numpy as jnp
+import numpy as np
+import jax.tree_util as jtu
+import equinox as eqx
 
 from .specimen import Specimen
 from .pose import Pose
@@ -18,12 +21,12 @@ from .optics import Optics
 from .scattering import ScatteringConfig
 
 from ..core import field, Module
-from ..core import Real_, RealVector, ComplexImage
+from ..types import Real_, RealVector, ComplexImage
 
 Lattice = Float[Array, "N 3"]
 """Type hint for array where each element is a lattice coordinate."""
 
-Conformations = Union[Float[Array, "N"], Int[Array, "N"]]
+Conformations = Union[Float[np.ndarray, "N"], Int[np.ndarray, "N"]]
 """Type hint for array where each element updates a Conformation."""
 
 
@@ -65,7 +68,6 @@ class Helix(Module):
     subunit: Specimen = field()
     rise: Union[Real_, RealVector] = field()
     twist: Union[Real_, RealVector] = field()
-    lattice: Lattice = field(static=True, init=False)
     radius: Union[Real_, RealVector] = field(default=1)
     conformations: Optional[
         Union[Conformations, Callable[[Lattice], Conformations]]
@@ -74,6 +76,8 @@ class Helix(Module):
     n_start: int = field(static=True, default=1)
     n_subunits: Optional[int] = field(static=True, default=None)
     degrees: bool = field(static=True, default=True)
+
+    lattice: Lattice = field(static=True, init=False)
 
     def __post_init__(self):
         self.lattice = compute_lattice(
@@ -117,20 +121,28 @@ class Helix(Module):
         """Hack to make this class act like a Specimen."""
         return self.subunit.resolution
 
-    @property
-    def draw(self) -> Conformations:
-        """Return an array where each element updates a
-        Conformation."""
-        if isinstance(self.conformations, Callable):
-            return self.conformations(self.lattice)
+    def draw(self) -> list[Specimen]:
+        """Draw a realization of all of the subunits"""
+        if (
+            not hasattr(self.subunit, "conformation")
+            or self.conformations is None
+        ):
+            return self.n_subunits * [self.subunit]
         else:
-            return self.conformations
+            if isinstance(self.conformations, Callable):
+                c = self.conformations(self.lattice)
+            else:
+                c = self.conformations
+            get_leaf = lambda subunit: subunit.conformation.coordinate
+            return jtu.tree_map(
+                lambda c: eqx.tree_at(get_leaf, self.subunit, c), c.tolist()
+            )
 
 
 def compute_lattice(
-    rise: Real_,
-    twist: Real_,
-    radius: Real_ = 1.0,
+    rise: Union[Real_, RealVector],
+    twist: Union[Real_, RealVector],
+    radius: Union[Real_, RealVector] = 1.0,
     n_start: int = 1,
     n_subunits: Optional[int] = None,
     *,
@@ -148,20 +160,20 @@ def compute_lattice(
         The helical twist.
     radius : `Real_` or `RealVector`, shape `(n_subunits,)`
         The radius of the helix.
-    n_start : `int`
+    n_start :
         The start number of the helix.
-    n_subunits : `int`, optional
+    n_subunits :
         The number of subunits in the assembly for
         a single helix. The total number of subunits
         is really equal to ``n_start * n_subunits``.
         By default, ``2 * jnp.pi / twist``.
-    degrees : `bool`
+    degrees :
         Whether or not the angular Real_s
         are given in degrees or radians.
 
     Returns
     -------
-    lattice : shape (n_start*n_subunits, 3)
+    lattice : shape `(n_start*n_subunits, 3)`
         The helical lattice.
     """
     # Convert to radians

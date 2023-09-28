@@ -14,7 +14,7 @@ from .ice import NullIce, GaussianIce
 from .detector import NullDetector, GaussianDetector
 from .image import DetectorImage
 from ..utils import fftn
-from ..core import Real_, RealImage, Image
+from ..types import Real_, RealImage, Image
 
 
 class GaussianImage(DetectorImage):

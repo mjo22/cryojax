@@ -19,7 +19,8 @@ import numpy as np
 import jax.numpy as jnp
 
 from ..utils import powerspectrum, make_frequencies
-from ..core import field, Module, Image, RealImage, ComplexImage
+from ..core import field, Module
+from ..types import Image, RealImage, ComplexImage
 
 
 class Filter(Module, metaclass=ABCMeta):

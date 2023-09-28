@@ -30,7 +30,7 @@ from jaxtyping import Array
 import jax.numpy as jnp
 
 from ..core import field, Module
-from ..core import Real_, ImageCoords, RealImage, Image
+from ..types import Real_, ImageCoords, RealImage, Image
 
 P = ParamSpec("P")
 

@@ -15,7 +15,7 @@ Installing `cryojax` is simple. To start, I recommend creating a new virtual env
 conda create -n cryojax -c conda-forge python=3.10
 ```
 
-First, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support.
+Note that `python>=3.10` is required due to recent features in `dataclasses`. Now, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support.
 
 Next, [install jax-finufft](https://github.com/dfm/jax-finufft). Non-uniform FFTs are provided as an option for computing image projections. Note that this package does not yet provide GPU support, but there are plans to do so.
 

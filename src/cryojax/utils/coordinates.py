@@ -16,7 +16,7 @@ from jaxtyping import Array, Float
 import jax.numpy as jnp
 import numpy as np
 
-from ..core import Image, ImageCoords
+from ..types import Image, ImageCoords
 
 
 def make_coordinates(*args: Any, **kwargs: Any) -> Float[Array, "... D"]:

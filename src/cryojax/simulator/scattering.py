@@ -20,9 +20,8 @@ from typing import Any
 import jax.numpy as jnp
 import numpy as np
 
-from ..core import (
-    field,
-    Module,
+from ..core import field, Module
+from ..types import (
     RealImage,
     ComplexImage,
     ImageCoords,

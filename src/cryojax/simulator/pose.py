@@ -21,15 +21,8 @@ import jax
 import jax.numpy as jnp
 from jaxlie import SO3
 
-from ..core import (
-    field,
-    Module,
-    Real_,
-    ComplexImage,
-    ImageCoords,
-    CloudCoords,
-    VolumeCoords,
-)
+from ..core import field, Module
+from ..types import Real_, ComplexImage, ImageCoords, CloudCoords, VolumeCoords
 
 
 class Pose(Module, metaclass=ABCMeta):
