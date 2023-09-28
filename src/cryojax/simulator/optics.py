@@ -27,15 +27,15 @@ from ..types import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 class Optics(Module, metaclass=ABCMeta):
     """
-    Base PyTree container for an optics model. This
+    Base class for an optics model. This
     is designed to compute an optics model in Fourier
-    Space given some frequencies and Real_s, and
-    also store model Real_s as a PyTree node.
+    space given some frequencies, and apply the model
+    to an image.
 
     When writing subclasses,
 
-        1) Overwrite the ``OpticsModel.compute`` method.
-        2) Use the ``cryojax.core.dataclass`` decorator.
+        1) Overwrite the ``Optics.compute`` method.
+        2) Overwrite the ``Optics.apply`` method.
 
     Attributes
     ----------
@@ -61,7 +61,7 @@ class Optics(Module, metaclass=ABCMeta):
         raise NotImplementedError
 
     def __call__(self, freqs: ImageCoords, **kwargs: Any) -> ComplexImage:
-        """Compute the optics model."""
+        """Compute the optics model with an envelope."""
         if self.envelope is None:
             ctf = self.compute(freqs, **kwargs)
             return ctf
@@ -73,7 +73,7 @@ class Optics(Module, metaclass=ABCMeta):
 
 class NullOptics(Optics):
     """
-    This class can be used as a null optics model.
+    A null optics model.
     """
 
     envelope: Optional[Kernel] = field(default=None)
@@ -91,7 +91,6 @@ class CTFOptics(Optics):
     """
     Compute a Contrast Transfer Function (CTF).
 
-    Also acts as a PyTree container for the CTF Real_s.
     See ``cryojax.simulator.compute_ctf`` for more
     information.
 
@@ -155,10 +154,10 @@ def compute_ctf(
     degrees: bool = True,
 ) -> RealImage:
     """
-    Computes CTF with given Real_s.
+    Computes a real-valued CTF.
 
-    Real_s
-    ----------
+    Arguments
+    ---------
     freqs :
         The wave vectors in the imaging plane, in units
         of 1/A.
