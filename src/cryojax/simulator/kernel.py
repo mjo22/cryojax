@@ -165,12 +165,9 @@ class Exp(Kernel):
     offset: Real_ = field(default=0.0)
 
     def evaluate(self, freqs: ImageCoords) -> RealImage:
-        if self.scale != 0.0:
-            k_sqr = jnp.sum(freqs**2, axis=-1)
-            scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
-            scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
-        else:
-            scaling = 0.0
+        k_sqr = jnp.sum(freqs**2, axis=-1)
+        scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
+        scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
         return scaling + self.offset
 
 
