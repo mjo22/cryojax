@@ -7,7 +7,6 @@ __all__ = ["Detector", "NullDetector", "GaussianDetector", "pixelize_image"]
 import jax
 import jax.numpy as jnp
 
-from dataclasses import KW_ONLY
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Any
 from functools import partial

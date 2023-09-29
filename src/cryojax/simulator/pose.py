@@ -5,8 +5,7 @@ Routines that compute coordinate rotations and translations.
 from __future__ import annotations
 
 __all__ = [
-    "rotate_rpy",
-    "rotate_wxyz",
+    "rotate",
     "shift_phase",
     "make_euler_rotation",
     "Pose",
@@ -16,24 +15,31 @@ __all__ = [
 
 from abc import ABCMeta, abstractmethod
 from typing import Any, Union
+from jaxtyping import Float, Array
 
 import jax
 import jax.numpy as jnp
 from jaxlie import SO3
 
 from ..core import field, Module
-from ..types import Real_, ComplexImage, ImageCoords, CloudCoords, VolumeCoords
+from ..types import (
+    Real_,
+    ComplexImage,
+    ImageCoords,
+    CloudCoords,
+    VolumeCoords,
+)
 
 
 class Pose(Module, metaclass=ABCMeta):
     """
-    Base class PyTree container for the image pose.
+    Base class for the image pose.
 
     Subclasses should choose a viewing convention,
     such as with Euler angles or Quaternions. In particular,
 
-        1) Define angular coordinates
-        2) Overwrite the ``Pose.transform`` method.
+        1) Define angular coordinates.
+        2) Overwrite the ``Pose.rotation`` property.
     Attributes
     ----------`
     offset_x :
@@ -50,14 +56,19 @@ class Pose(Module, metaclass=ABCMeta):
     offset_y: Real_ = field(default=0.0)
     offset_z: Real_ = field(default=0.0)
 
-    @abstractmethod
     def rotate(
         self,
         coordinates: Union[VolumeCoords, CloudCoords],
         real: bool = True,
     ) -> Union[VolumeCoords, CloudCoords]:
-        """Rotation method for a particular pose convention."""
-        raise NotImplementedError
+        """
+        Rotate coordinates from a particular convention.
+
+        By default, compute the inverse rotation if rotating in
+        real-space.
+        """
+        rotation = self.rotation.inverse() if real else self.rotation
+        return rotate(coordinates, rotation)
 
     def shift(
         self, density: ComplexImage, coordinates: ImageCoords
@@ -75,6 +86,17 @@ class Pose(Module, metaclass=ABCMeta):
         )
         return shifted_density
 
+    @property
+    def offset(self) -> Float[Array, "3"]:
+        """The translation vector."""
+        return jnp.asarray((self.offset_x, self.offset_y, self.offset_z))
+
+    @property
+    @abstractmethod
+    def rotation(self) -> SO3:
+        """Generate a rotation."""
+        raise NotImplementedError
+
 
 class EulerPose(Pose):
     """
@@ -85,7 +107,7 @@ class EulerPose(Pose):
     convention :
         The sequence of axes over which to apply
         rotation. This is a string of 3 characters
-        of x, y, and z. By default, `zyx`.
+        of x, y, and z. By default, `zyz`.
     intrinsic :
         If ``True``, follow the intrinsic rotation
         convention. If ``False``, rotation axes move with
@@ -97,11 +119,11 @@ class EulerPose(Pose):
         rotations, so it is automatically inverted
         when rotating in real space.
     view_phi :
-        Roll angle, ranging :math:`(-\pi, \pi]`.
+        First rotation axis, ranging :math:`(-\pi, \pi]`.
     view_theta :
-        Pitch angle, ranging :math:`(-\pi, \pi]`.
+        Second rotation axis, ranging :math:`(-\pi, \pi]`.
     view_psi :
-        Yaw angle, ranging :math:`(-\pi, \pi]`.
+        Third rotation axis, ranging :math:`(-\pi, \pi]`.
     """
 
     convention: str = field(static=True, default="zyz")
@@ -113,36 +135,18 @@ class EulerPose(Pose):
     view_theta: Real_ = field(default=0.0)
     view_psi: Real_ = field(default=0.0)
 
-    def rotate(
-        self,
-        coordinates: Union[VolumeCoords, CloudCoords],
-        real: bool = True,
-    ) -> Union[VolumeCoords, CloudCoords]:
-        """Rotate coordinates from a set of Euler angles."""
-        if real:
-            rotated, _ = rotate_rpy(
-                coordinates,
-                phi=self.view_phi,
-                theta=self.view_theta,
-                psi=self.view_psi,
-                convention=self.convention,
-                intrinsic=self.intrinsic,
-                inverse=not self.inverse,
-                degrees=self.degrees,
-            )
-            return rotated
-        else:
-            rotated, _ = rotate_rpy(
-                coordinates,
-                phi=self.view_phi,
-                theta=self.view_theta,
-                psi=self.view_psi,
-                convention=self.convention,
-                intrinsic=self.intrinsic,
-                inverse=self.inverse,
-                degrees=self.degrees,
-            )
-            return rotated
+    @property
+    def rotation(self) -> SO3:
+        """Generate a rotation from a set of Euler angles."""
+        R = make_euler_rotation(
+            self.view_phi,
+            self.view_theta,
+            self.view_psi,
+            degrees=self.degrees,
+            convention=self.convention,
+            intrinsic=self.intrinsic,
+        )
+        return R.inverse() if self.inverse else R
 
 
 class QuaternionPose(Pose):
@@ -164,114 +168,36 @@ class QuaternionPose(Pose):
     view_qy: Real_ = field(default=0.0)
     view_qz: Real_ = field(default=0.0)
 
-    def rotate(
-        self,
-        coordinates: Union[VolumeCoords, CloudCoords],
-        real: bool = True,
-    ) -> Union[VolumeCoords, CloudCoords]:
-        """Rotate coordinates from a unit quaternion."""
-        if real:
-            rotated, _ = rotate_wxyz(
-                coordinates,
-                qw=self.view_qw,
-                qx=self.view_qx,
-                qy=self.view_qy,
-                qz=self.view_qz,
-                inverse=not self.inverse,
-            )
-            return rotated
-        else:
-            rotated, _ = rotate_wxyz(
-                coordinates,
-                qw=self.view_qw,
-                qx=self.view_qx,
-                qy=self.view_qy,
-                qz=self.view_qz,
-                inverse=self.inverse,
-            )
-            return rotated
-
-
-def rotate_rpy(
-    coords: Union[VolumeCoords, CloudCoords],
-    phi: Real_,
-    theta: Real_,
-    psi: Real_,
-    **kwargs: Any,
-) -> tuple[Union[VolumeCoords, CloudCoords], SO3]:
-    r"""
-    Compute a coordinate rotation from
-    a set of euler angles.
-
-    Arguments
-    ---------
-    coords :
-        Coordinate system.
-    phi :
-        First rotation axis, ranging :math:`(-\pi, \pi]`.
-    theta :
-        Second rotation axis, ranging :math:`(-\pi, \pi]`.
-    psi :
-        Third rotation axis, ranging :math:`(-\pi, \pi]`.
-    kwargs :
-        Keyword arguments passed to ``make_rpy_rotation``
-
-    Returns
-    -------
-    transformed :
-        Rotated and translated coordinate system.
-    rotation : `jaxlie.SO3`
-        The rotation.
-    """
-    coords = jnp.asarray(coords)
-    shape = coords.shape
-    rotation = make_euler_rotation(phi, theta, psi, **kwargs)
-    if len(shape) == 2:
-        transformed = jax.vmap(rotation.apply)(coords)
-    elif len(shape) == 4:
-        N1, N2, N3 = shape[0:-1]
-        transformed = jax.vmap(rotation.apply)(coords.reshape(N1 * N2 * N3, 3))
-        transformed = transformed.reshape((N1, N2, N3, 3))
-    else:
-        raise ValueError(
-            "coords must either be shape (N, 3) or (N1, N2, N3, 3)"
+    @property
+    def rotation(self) -> SO3:
+        """Generate rotation from a unit quaternion."""
+        wxyz = jnp.array(
+            [self.view_qw, self.view_qx, self.view_qy, self.view_qz]
         )
+        R = SO3(wxyz=wxyz)
+        return R.inverse() if self.inverse else R
 
-    return transformed, rotation
 
-
-def rotate_wxyz(
+def rotate(
     coords: Union[VolumeCoords, CloudCoords],
-    qw: Real_,
-    qx: Real_,
-    qy: Real_,
-    qz: Real_,
-    inverse: bool = False,
-) -> tuple[Union[VolumeCoords, CloudCoords], SO3]:
+    rotation: SO3,
+) -> Union[VolumeCoords, CloudCoords]:
     r"""
-    Compute a coordinate rotation from a quaternion.
+    Compute a coordinate rotation.
 
     Arguments
     ---------
     coords :
         Coordinate system.
-    qw :
-    qx :
-    qy :
-    qz :
-
-    Returns
-    -------
-    transformed :
-        Rotated and translated coordinate system.
     rotation :
-        The rotation.
+        The rotation object.
+
+    Returns
+    -------
+    transformed :
+        Rotated coordinate system.
     """
-    coords = jnp.asarray(coords)
     shape = coords.shape
-    wxyz = jnp.array([qw, qx, qy, qz])
-    rotation = SO3.from_quaternion_xyzw(wxyz)
-    rotation = rotation.inverse if inverse else rotation
     if len(shape) == 2:
         transformed = jax.vmap(rotation.apply)(coords)
     elif len(shape) == 4:
@@ -283,7 +209,7 @@ def rotate_wxyz(
             "coords must either be shape (N, 3) or (N1, N2, N3, 3)"
         )
 
-    return transformed, rotation
+    return transformed
 
 
 def shift_phase(
@@ -327,7 +253,6 @@ def make_euler_rotation(
     psi: Union[float, Real_],
     convention: str = "zyz",
     intrinsic: bool = True,
-    inverse: bool = False,
     degrees: bool = False,
 ) -> SO3:
     """
@@ -345,4 +270,4 @@ def make_euler_rotation(
     R3 = rotations[2](psi)
     R = R1 @ R2 @ R3 if intrinsic else R3 @ R2 @ R1
 
-    return R.inverse() if inverse else R
+    return R

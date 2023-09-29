@@ -11,10 +11,12 @@ __all__ = [
     "ElectronGrid",
 ]
 
+import equinox as eqx
+
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Any, Type
 from jaxtyping import Array
-from dataclasses import fields, replace
+from dataclasses import fields
 
 from .scattering import ScatteringConfig
 from .pose import Pose
@@ -142,7 +144,7 @@ class Voxels(ElectronDensity):
 
     # Fields describing the density map.
     weights: Array = field(static=True, encode=False)
-    coordinates: Array = field(static=True, encode=False)
+    coordinates: Array = field(encode=False)
 
     def __init__(self, *, weights: Array, coordinates: Array, **kwargs):
         super().__init__(**kwargs)
@@ -193,7 +195,7 @@ class ElectronCloud(Voxels):
     """
 
     weights: RealCloud = field(static=True, encode=False)
-    coordinates: CloudCoords = field(static=True, encode=False)
+    coordinates: CloudCoords = field(encode=False)
 
     def view(self, pose: Pose) -> ElectronCloud:
         """
@@ -204,7 +206,7 @@ class ElectronCloud(Voxels):
         """
         coordinates = pose.rotate(self.coordinates, real=True)
 
-        return replace(self, coordinates=coordinates)
+        return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
 
     @classmethod
     def from_mrc(
@@ -235,7 +237,7 @@ class ElectronGrid(Voxels):
     """
 
     weights: ComplexVolume = field(static=True, encode=False)
-    coordinates: VolumeCoords = field(static=True, encode=False)
+    coordinates: VolumeCoords = field(encode=False)
 
     def view(self, pose: Pose) -> ElectronGrid:
         """
@@ -246,7 +248,7 @@ class ElectronGrid(Voxels):
         """
         coordinates = pose.rotate(self.coordinates, real=False)
 
-        return replace(self, coordinates=coordinates)
+        return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
 
     @classmethod
     def from_mrc(

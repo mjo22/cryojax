@@ -11,7 +11,6 @@ from jaxtyping import Array, Float, Int
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 import jax.tree_util as jtu
 import equinox as eqx
 
@@ -122,18 +121,21 @@ class Helix(Module):
         poses = list(
             map(
                 lambda r: eqx.tree_at(where, pose, tuple([*r])),
-                self.lattice + offset,
+                pose.rotate(self.lattice) + offset,
             )
         )
         # Compute all projection images
         scatter = lambda s, p: s.scatter(
-            scattering, pose=p, exposure=exposure, optics=optics, **kwargs
+            scattering, pose=p, exposure=None, optics=optics, **kwargs
         )
         images = jtu.tree_map(
             scatter, subunits, poses, is_leaf=lambda s: isinstance(s, Specimen)
         )
         # Sum them all together
         image = jtu.tree_reduce(lambda x, y: x + y, images)
+        # Apply the electron exposure model
+        if exposure is not None:
+            image = exposure.scale(image, real=False)
 
         return image
 
