@@ -104,7 +104,7 @@ import equinox as eqx
 def build_model(params: dict[str, jax.Array]) -> cs.GaussianImage:
     # Perform "model surgery" with equinox.tree_at
     p = eqx.tree_at(lambda p: p.view_phi, pose, params["view_phi"])
-    o = eqx.tree_at(lambda o: o.defocus_u, detector, params["defocus_u"])
+    o = eqx.tree_at(lambda o: o.defocus_u, optics, params["defocus_u"])
     d = eqx.tree_at(lambda d: d.pixel_size, detector, params["pixel_size"])
     # Build the PipelineState
     state = cs.PipelineState(pose=p, optics=o, detector=d)
