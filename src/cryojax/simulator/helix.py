@@ -116,12 +116,11 @@ class Helix(Module):
         # Draw the conformations of each subunit
         subunits = self.draw()
         # Compute the pose of each subunit
-        offset = jnp.asarray((pose.offset_x, pose.offset_y, pose.offset_z))
         where = lambda p: (p.offset_x, p.offset_y, p.offset_z)
         poses = list(
             map(
                 lambda r: eqx.tree_at(where, pose, tuple([*r])),
-                pose.rotate(self.lattice) + offset,
+                pose.rotate(self.lattice) + pose.offset,
             )
         )
         # Compute all projection images
