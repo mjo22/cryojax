@@ -13,7 +13,7 @@ __all__ = [
 
 import equinox as eqx
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Optional, Any, Type
 from jaxtyping import Array
 from dataclasses import fields
@@ -32,7 +32,7 @@ from ..types import (
 )
 
 
-class ElectronDensity(Module, metaclass=ABCMeta):
+class ElectronDensity(Module):
     """
     Abstraction of an electron density map.
 

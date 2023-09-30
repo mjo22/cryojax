@@ -7,7 +7,7 @@ from __future__ import annotations
 
 __all__ = ["Exposure", "NullExposure", "UniformExposure", "rescale_image"]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from functools import partial
 
 import jax
@@ -16,7 +16,7 @@ from ..core import field, Module
 from ..types import Image, Real_
 
 
-class Exposure(Module, metaclass=ABCMeta):
+class Exposure(Module):
     """
     Controls parameters related to variation in
     the image intensity.

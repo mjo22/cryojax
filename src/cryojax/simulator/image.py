@@ -11,7 +11,7 @@ __all__ = [
     "DetectorImage",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Union, Optional
 
 import jax.numpy as jnp
@@ -27,7 +27,7 @@ from ..core import field, Module
 from ..types import RealImage, ComplexImage, Image, Real_
 
 
-class ImagePipeline(Module, metaclass=ABCMeta):
+class ImagePipeline(Module):
     """
     Base class for an imaging model.
 

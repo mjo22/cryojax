@@ -4,14 +4,14 @@ Abstractions of protein conformations.
 
 __all__ = ["Conformation", "Discrete", "Continuous"]
 
-from abc import ABCMeta
 from typing import Any
+from equinox import AbstractVar
 
 from ..core import Module, field
 from ..types import Real_, Integer_
 
 
-class Conformation(Module, metaclass=ABCMeta):
+class Conformation(Module):
     """
     Base class for a protein conformation.
 
@@ -20,7 +20,7 @@ class Conformation(Module, metaclass=ABCMeta):
     coordinate : The conformation at which to evaluate the model.
     """
 
-    coordinate: Any = field()
+    coordinate: AbstractVar[Any]
 
 
 class Discrete(Conformation):

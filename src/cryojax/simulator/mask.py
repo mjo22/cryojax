@@ -10,7 +10,7 @@ __all__ = [
     "CircularMask",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 import jax.numpy as jnp
@@ -20,7 +20,7 @@ from ..core import field, Module
 from ..types import RealImage
 
 
-class Mask(Module, metaclass=ABCMeta):
+class Mask(Module):
     """
     Base class for computing and applying an image mask.
 

@@ -23,7 +23,7 @@ __all__ = [
     "Custom",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Any, Union, Callable, Concatenate, ParamSpec, Optional
 from jaxtyping import Array
 
@@ -35,7 +35,7 @@ from ..types import Real_, ImageCoords, RealImage, Image
 P = ParamSpec("P")
 
 
-class Kernel(Module, metaclass=ABCMeta):
+class Kernel(Module):
     """
     The base class for all kernels.
 

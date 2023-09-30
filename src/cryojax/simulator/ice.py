@@ -4,7 +4,7 @@ Abstraction of the ice in a cryo-EM image.
 
 __all__ = ["Ice", "NullIce", "GaussianIce"]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Any, Optional
 
 import jax.numpy as jnp
@@ -17,7 +17,7 @@ from ..core import field, Module
 from ..types import Real_, ComplexImage, Image, ImageCoords
 
 
-class Ice(Module, metaclass=ABCMeta):
+class Ice(Module):
     """
     Base class for an ice model.
     """

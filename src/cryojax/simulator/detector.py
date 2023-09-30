@@ -7,7 +7,7 @@ __all__ = ["Detector", "NullDetector", "GaussianDetector", "pixelize_image"]
 import jax
 import jax.numpy as jnp
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Optional, Any
 from functools import partial
 
@@ -18,7 +18,7 @@ from ..core import field, Module
 from ..types import Real_, RealImage, ImageCoords
 
 
-class Detector(Module, metaclass=ABCMeta):
+class Detector(Module):
     """
     Base class for an electron detector.
 

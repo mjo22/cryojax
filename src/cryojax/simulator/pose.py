@@ -5,7 +5,7 @@ Routines that compute coordinate rotations and translations.
 from __future__ import annotations
 
 __all__ = [
-    "rotate",
+    "rotate_coordinates",
     "shift_phase",
     "make_euler_rotation",
     "Pose",
@@ -13,8 +13,8 @@ __all__ = [
     "QuaternionPose",
 ]
 
-from abc import ABCMeta, abstractmethod
-from typing import Any, Union
+from abc import abstractmethod
+from typing import Union
 from jaxtyping import Float, Array
 
 import jax
@@ -31,7 +31,7 @@ from ..types import (
 )
 
 
-class Pose(Module, metaclass=ABCMeta):
+class Pose(Module):
     """
     Base class for the image pose.
 
@@ -68,7 +68,7 @@ class Pose(Module, metaclass=ABCMeta):
         real-space.
         """
         rotation = self.rotation.inverse() if real else self.rotation
-        return rotate(coordinates, rotation)
+        return rotate_coordinates(coordinates, rotation)
 
     def shift(
         self, density: ComplexImage, coordinates: ImageCoords
@@ -178,7 +178,7 @@ class QuaternionPose(Pose):
         return R.inverse() if self.inverse else R
 
 
-def rotate(
+def rotate_coordinates(
     coords: Union[VolumeCoords, CloudCoords],
     rotation: SO3,
 ) -> Union[VolumeCoords, CloudCoords]:

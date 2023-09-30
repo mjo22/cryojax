@@ -6,7 +6,6 @@ from __future__ import annotations
 
 __all__ = ["Specimen", "SpecimenMixture"]
 
-from dataclasses import KW_ONLY
 from typing import Any, Optional
 
 from .scattering import ScatteringConfig

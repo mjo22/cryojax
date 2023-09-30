@@ -11,7 +11,7 @@ __all__ = [
     "compute_ctf",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Any, Optional
 from functools import partial
 
@@ -25,7 +25,7 @@ from ..core import field, Module
 from ..types import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
-class Optics(Module, metaclass=ABCMeta):
+class Optics(Module):
     """
     Base class for an optics model. This
     is designed to compute an optics model in Fourier

@@ -4,7 +4,7 @@ Noise models for cryo-EM images.
 
 __all__ = ["Noise", "GaussianNoise"]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Union
 from jaxtyping import Array, PRNGKeyArray
 
@@ -16,7 +16,7 @@ from ..core import field, Module
 from ..types import ImageCoords, ComplexImage
 
 
-class Noise(Module, metaclass=ABCMeta):
+class Noise(Module):
     """
     Base class for a noise model.
 

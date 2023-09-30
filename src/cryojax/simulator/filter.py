@@ -12,7 +12,7 @@ __all__ = [
     "WhiteningFilter",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 import numpy as np
@@ -23,7 +23,7 @@ from ..core import field, Module
 from ..types import Image, RealImage, ComplexImage
 
 
-class Filter(Module, metaclass=ABCMeta):
+class Filter(Module):
     """
     Base class for computing and applying an image filter.
 
