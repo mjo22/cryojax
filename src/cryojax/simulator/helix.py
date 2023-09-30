@@ -61,8 +61,6 @@ class Helix(Module):
     degrees :
         Whether or not the helical twist is given in
         degrees. By default, ``True``.
-    lattice : `Lattice`
-        The 3D cartesian lattice coordinates for each subunit.
     """
 
     subunit: Specimen = field()
@@ -76,18 +74,6 @@ class Helix(Module):
     n_start: int = field(static=True, default=1)
     n_subunits: Optional[int] = field(static=True, default=None)
     degrees: bool = field(static=True, default=True)
-
-    lattice: Lattice = field(static=True, init=False)
-
-    def __post_init__(self):
-        self.lattice = compute_lattice(
-            self.rise,
-            self.twist,
-            radius=self.radius,
-            n_start=self.n_start,
-            n_subunits=self.n_subunits,
-            degrees=self.degrees,
-        )
 
     def scatter(
         self,
@@ -110,6 +96,8 @@ class Helix(Module):
             The scattering configuration for the subunit.
         pose :
             The center of mass imaging pose of the helix.
+        exposure :
+            The exposure model.
         optics :
             The instrument optics.
         """
@@ -143,6 +131,18 @@ class Helix(Module):
         """Hack to make this class act like a Specimen."""
         return self.subunit.resolution
 
+    @property
+    def lattice(self) -> Lattice:
+        """Get the helical lattice."""
+        return compute_lattice(
+            self.rise,
+            self.twist,
+            radius=self.radius,
+            n_start=self.n_start,
+            n_subunits=self.n_subunits,
+            degrees=self.degrees,
+        )
+
     def draw(self) -> list[Specimen]:
         """Draw a realization of all of the subunits"""
         if (
@@ -172,8 +172,8 @@ def compute_lattice(
     Compute the lattice points of a helix for a given
     rise, twist, radius, and start number.
 
-    Real_s
-    ----------
+    Arguments
+    ---------
     rise : `Real_` or `RealVector`, shape `(n_subunits,)`
         The helical rise.
     twist : `Real_` or `RealVector`, shape `(n_subunits,)`
@@ -188,7 +188,7 @@ def compute_lattice(
         is really equal to ``n_start * n_subunits``.
         By default, ``2 * jnp.pi / twist``.
     degrees :
-        Whether or not the angular Real_s
+        Whether or not the angular parameters
         are given in degrees or radians.
 
     Returns
