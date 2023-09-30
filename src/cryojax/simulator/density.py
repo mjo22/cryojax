@@ -16,7 +16,6 @@ import equinox as eqx
 from abc import abstractmethod
 from typing import Optional, Any, Type
 from jaxtyping import Array
-from dataclasses import fields
 
 from .scattering import ScatteringConfig
 from .pose import Pose
@@ -35,27 +34,7 @@ from ..types import (
 class ElectronDensity(Module):
     """
     Abstraction of an electron density map.
-
-    Attributes
-    ----------
-    filename : `str`, optional
-        The path to where the electron density is saved.
-        This is required for deserialization and
-        is used in ``ElectronDensity.from_file``.
-    config : `dict`, optional
-        The deserialization settings for
-        ``ElectronDensity.from_file``.
     """
-
-    # Fields configuring the file loader.
-    filename: Optional[str] = field(static=True)
-    config: dict = field(static=True)
-
-    def __init__(
-        self, *, filename: Optional[str] = None, config: Optional[dict] = None
-    ):
-        self.filename = filename
-        self.config = config or dict()
 
     @abstractmethod
     def view(self, pose: Pose) -> ElectronDensity:
@@ -64,7 +43,7 @@ class ElectronDensity(Module):
 
         Arguments
         ---------
-        pose : `cryojax.simulator.Pose`
+        pose :
             The imaging pose.
         """
         raise NotImplementedError
@@ -103,31 +82,6 @@ class ElectronDensity(Module):
         """
         raise NotImplementedError
 
-    @classmethod
-    def from_dict(
-        cls: Type[ElectronDensity], kvs: dict, *, infer_missing: bool = False
-    ) -> ElectronDensity:
-        """
-        Load a ``ElectronDensity`` from a dictionary. This function overwrites
-        ``cryojax.core.Serializable.from_dict`` in order to
-        avoid saving the large arrays typically stored in ``ElectronDensity``.
-        """
-        # Get the fields that we want to decode
-        fs = fields(cls)
-        encoded = [
-            f.name
-            for f in fs
-            if (
-                not "encode" in f.metadata or f.metadata["encode"] is not False
-            )
-            and f.name not in ["filename", "config"]
-        ]
-        updates = {k: kvs[k] for k in encoded}
-        # Get filename and configuration for I/O
-        filename = kvs["filename"]
-        config = kvs["config"]
-        return cls.from_file(filename, config=config, **updates)
-
 
 class Voxels(ElectronDensity):
     """
@@ -142,14 +96,8 @@ class Voxels(ElectronDensity):
         The coordinate system.
     """
 
-    # Fields describing the density map.
-    weights: Array = field(static=True, encode=False)
-    coordinates: Array = field(encode=False)
-
-    def __init__(self, *, weights: Array, coordinates: Array, **kwargs):
-        super().__init__(**kwargs)
-        self.weights = weights
-        self.coordinates = coordinates
+    weights: Array = field()
+    coordinates: Array = field()
 
     def scatter(
         self, scattering: ScatteringConfig, resolution: Real_
@@ -188,14 +136,14 @@ class ElectronCloud(Voxels):
 
     Attributes
     ----------
-    weights : `RealCloud`
+    weights :
         3D electron density cloud.
-    coordinates : `CloudCoords`
+    coordinates :
         Cartesian coordinate system for density cloud.
     """
 
-    weights: RealCloud = field(static=True, encode=False)
-    coordinates: CloudCoords = field(encode=False)
+    weights: RealCloud = field()
+    coordinates: CloudCoords = field()
 
     def view(self, pose: Pose) -> ElectronCloud:
         """
@@ -230,14 +178,14 @@ class ElectronGrid(Voxels):
 
     Attributes
     ----------
-    weights : `ComplexVolume`, shape `(N1, N2, N3)`
+    weights :
         3D electron density grid in Fourier space.
-    coordinates : `VolumeCoords`, shape `(N1, N2, 1, 3)`
+    coordinates : shape `(N1, N2, 1, 3)`
         Central slice of cartesian coordinate system.
     """
 
-    weights: ComplexVolume = field(static=True, encode=False)
-    coordinates: VolumeCoords = field(encode=False)
+    weights: ComplexVolume = field()
+    coordinates: VolumeCoords = field()
 
     def view(self, pose: Pose) -> ElectronGrid:
         """

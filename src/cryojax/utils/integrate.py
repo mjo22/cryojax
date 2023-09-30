@@ -5,6 +5,7 @@ Integration routines.
 __all__ = ["nufft", "integrate_gaussians"]
 
 from typing import Any, Union
+from jaxtyping import Array, Float
 
 import jax
 import jax.numpy as jnp
@@ -17,9 +18,9 @@ from ..types import Cloud, CloudCoords, Real_, RealVector, ComplexImage, Image
 
 
 def nufft(
-    density: Cloud,
-    coords: CloudCoords,
-    box_size: Union[Real_, RealVector],
+    density: Float[Array, "N"],
+    coords: Float[Array, "N 2"],
+    box_size: Union[Float[Array, ""], Float[Array, "2"]],
     shape: tuple[int, int],
     eps: float = 1e-6,
     **kwargs: Any

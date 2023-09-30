@@ -80,5 +80,5 @@ ComplexCloud = Complex[Array, "N"]
 Cloud = Union[RealCloud, ComplexCloud]
 """Type hint for a point cloud."""
 
-CloudCoords = Float[Array, "N 2"]
+CloudCoords = Float[Array, "N 3"]
 """Type hint for a point cloud coordinate system."""
