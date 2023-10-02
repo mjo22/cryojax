@@ -8,6 +8,7 @@ __all__ = ["Helix", "compute_lattice"]
 
 from typing import Any, Union, Optional, Callable
 from jaxtyping import Array, Float, Int
+from functools import cached_property
 
 import jax
 import jax.numpy as jnp
@@ -102,14 +103,12 @@ class Helix(Module):
             The instrument optics.
         """
         # Draw the conformations of each subunit
-        subunits = self.draw()
+        subunits = self.subunits
         # Compute the pose of each subunit
         where = lambda p: (p.offset_x, p.offset_y, p.offset_z)
-        poses = list(
-            map(
-                lambda r: eqx.tree_at(where, pose, tuple([*r])),
-                pose.rotate(self.lattice) + pose.offset,
-            )
+        poses = jax.lax.map(
+            lambda r: eqx.tree_at(where, pose, tuple([*r])),
+            pose.rotate(self.lattice) + pose.offset,
         )
         # Compute all projection images
         scatter = lambda s, p: s.scatter(
@@ -122,7 +121,7 @@ class Helix(Module):
         image = jtu.tree_reduce(lambda x, y: x + y, images)
         # Apply the electron exposure model
         if exposure is not None:
-            image = exposure.scale(image, real=False)
+            image = exposure.rescale(image, real=False)
 
         return image
 
@@ -131,9 +130,10 @@ class Helix(Module):
         """Hack to make this class act like a Specimen."""
         return self.subunit.resolution
 
-    @property
+    @cached_property
     def lattice(self) -> Lattice:
         """Get the helical lattice."""
+        print("Computing lattice")
         return compute_lattice(
             self.rise,
             self.twist,
@@ -143,7 +143,8 @@ class Helix(Module):
             degrees=self.degrees,
         )
 
-    def draw(self) -> list[Specimen]:
+    @cached_property
+    def subunits(self) -> list[Specimen]:
         """Draw a realization of all of the subunits"""
         if (
             not hasattr(self.subunit, "conformation")
@@ -156,7 +157,9 @@ class Helix(Module):
             else:
                 cs = self.conformations
             where = lambda s: s.conformation.coordinate
-            return list(map(lambda c: eqx.tree_at(where, self.subunit, c), cs))
+            return jax.lax.map(
+                lambda c: eqx.tree_at(where, self.subunit, c), cs
+            )
 
 
 def compute_lattice(

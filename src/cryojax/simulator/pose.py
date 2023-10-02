@@ -16,6 +16,7 @@ __all__ = [
 from abc import abstractmethod
 from typing import Union
 from jaxtyping import Float, Array
+from functools import cached_property
 
 import jax
 import jax.numpy as jnp
@@ -86,12 +87,12 @@ class Pose(Module):
         )
         return shifted_density
 
-    @property
+    @cached_property
     def offset(self) -> Float[Array, "3"]:
         """The translation vector."""
         return jnp.asarray((self.offset_x, self.offset_y, self.offset_z))
 
-    @property
+    @cached_property
     @abstractmethod
     def rotation(self) -> SO3:
         """Generate a rotation."""
@@ -135,7 +136,7 @@ class EulerPose(Pose):
     view_theta: Real_ = field(default=0.0)
     view_psi: Real_ = field(default=0.0)
 
-    @property
+    @cached_property
     def rotation(self) -> SO3:
         """Generate a rotation from a set of Euler angles."""
         R = make_euler_rotation(
@@ -168,7 +169,7 @@ class QuaternionPose(Pose):
     view_qy: Real_ = field(default=0.0)
     view_qz: Real_ = field(default=0.0)
 
-    @property
+    @cached_property
     def rotation(self) -> SO3:
         """Generate rotation from a unit quaternion."""
         wxyz = jnp.array(

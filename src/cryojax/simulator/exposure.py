@@ -26,9 +26,9 @@ class Exposure(Module):
     """
 
     @abstractmethod
-    def scale(self, image: Image, real: bool = False) -> Image:
+    def rescale(self, image: Image, real: bool = False) -> Image:
         """
-        Return the scaled image.
+        Deliver a dose of electrons to the image.
         """
         raise NotImplementedError
 
@@ -39,14 +39,14 @@ class NullExposure(Exposure):
     image when it is passsed through the pipeline.
     """
 
-    def scale(self, image: Image, real: bool = False) -> Image:
-        """Return the image unchanged"""
+    def rescale(self, image: Image, real: bool = False) -> Image:
+        """Return the image unchanged."""
         return image
 
 
 class UniformExposure(Exposure):
     """
-    Scale the signal intensity uniformly.
+    Rescale the signal intensity uniformly.
 
     Attributes
     ----------
@@ -57,10 +57,8 @@ class UniformExposure(Exposure):
     N: Real_ = field(default=1e5)
     mu: Real_ = field(default=0.0)
 
-    def scale(self, image: Image, real: bool = False) -> Image:
-        """
-        Return the scaled image.
-        """
+    def rescale(self, image: Image, real: bool = False) -> Image:
+        """Return an image, multiplied by a scale factor."""
         return rescale_image(image, self.N, self.mu, real=real)
 
 

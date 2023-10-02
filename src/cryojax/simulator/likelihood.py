@@ -7,6 +7,7 @@ from __future__ import annotations
 __all__ = ["GaussianImage"]
 
 from typing import Union
+from functools import cached_property
 
 import jax.numpy as jnp
 
@@ -26,7 +27,7 @@ class GaussianImage(DetectorImage):
     which allows one to model an arbitrary noise power spectrum.
     """
 
-    def __post_init__(self):
+    def __check_init__(self):
         if not isinstance(self.state.ice, (NullIce, GaussianIce)):
             raise ValueError("A GaussianIce model is required.")
         if not isinstance(
@@ -34,7 +35,7 @@ class GaussianImage(DetectorImage):
         ):
             raise ValueError("A GaussianDetector model is required.")
 
-    def log_likelihood(self) -> Real_:
+    def log_probability(self) -> Real_:
         """Evaluate the log-likelihood of the data given a parameter set."""
         # Get variance
         variance = self.variance
@@ -51,19 +52,18 @@ class GaussianImage(DetectorImage):
 
         return loss
 
-    @property
+    @cached_property
     def variance(self) -> Union[Real_, RealImage]:
         # Gather image configuration
-        freqs, resolution = self.scattering.freqs, self.specimen.resolution
+        pixel_size = self.state.detector.pixel_size or self.specimen.resolution
+        freqs = self.scattering.freqs / pixel_size
         # Variance from detector
-        if not isinstance(self.state.ice, NullDetector):
-            pixel_size = self.state.detector.pixel_size
-            variance = self.state.detector.variance(freqs / pixel_size)
+        if not isinstance(self.state.detector, NullDetector):
+            variance = self.state.detector.variance(freqs)
         else:
-            pixel_size = resolution
             variance = 0.0
         # Variance from ice
         if not isinstance(self.state.ice, NullIce):
-            ctf = self.state.optics(freqs / pixel_size, pose=self.state.pose)
-            variance += ctf**2 * self.state.ice.variance(freqs / pixel_size)
+            ctf = self.state.optics(freqs, pose=self.state.pose)
+            variance += ctf**2 * self.state.ice.variance(freqs)
         return variance

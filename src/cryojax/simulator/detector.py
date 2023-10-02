@@ -40,15 +40,16 @@ class Detector(Module):
         Pixelize an image at a given resolution to
         the detector pixel size.
         """
-        pixel_size = resolution if self.pixel_size is None else self.pixel_size
-        pixelized = pixelize_image(
-            image,
-            resolution,
-            pixel_size,
-            method=self.method,
-            antialias=False,
-        )
-        return pixelized
+        if self.pixel_size is None:
+            return image
+        else:
+            return pixelize_image(
+                image,
+                resolution,
+                self.pixel_size,
+                method=self.method,
+                antialias=False,
+            )
 
     @abstractmethod
     def sample(

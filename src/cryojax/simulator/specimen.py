@@ -38,7 +38,17 @@ class Specimen(Module):
 
     density: ElectronDensity = field()
     resolution: Real_ = field()
-    conformation: Any = field(default=None)
+    conformation: Any = field()
+
+    def __init__(
+        self,
+        density: ElectronDensity,
+        resolution: Real_,
+        conformation: Optional[Any] = None,
+    ):
+        self.density = density
+        self.resolution = resolution
+        self.conformation = None
 
     def scatter(
         self,
@@ -65,7 +75,7 @@ class Specimen(Module):
         """
         freqs = scattering.padded_freqs / self.resolution
         # Draw the electron density at a particular conformation
-        density = self.draw()
+        density = self.sample()
         # View the electron density map at a given pose
         density = density.view(pose, **kwargs)
         # Compute the scattering image
@@ -78,25 +88,35 @@ class Specimen(Module):
             image = optics.apply(ctf, image)
         # Apply the electron exposure model
         if exposure is not None:
-            image = exposure.scale(image, real=False)
+            image = exposure.rescale(image, real=False)
 
         return image
 
-    def draw(self) -> ElectronDensity:
+    def sample(self) -> ElectronDensity:
         """Get the electron density."""
         return self.density
 
 
-class SpecimenMixture(Module):
+class SpecimenMixture(Specimen):
     """
     A biological specimen at a mixture of conformations.
     """
 
     density: list[ElectronDensity] = field()
-    conformation: Discrete = field(default_factory=Discrete)
+    conformation: Discrete = field()
 
-    def draw(self) -> ElectronDensity:
-        """Draw the electron density at the configured conformation."""
+    def __init__(
+        self,
+        density: ElectronDensity,
+        resolution: Real_,
+        conformation: Optional[Discrete] = None,
+    ):
+        self.density = density
+        self.resolution = resolution
+        self.conformation = conformation or Discrete()
+
+    def sample(self) -> ElectronDensity:
+        """Sample the electron density at the configured conformation."""
         coordinate = self.conformation.coordinate
         if not (-len(coordinate) <= coordinate < len(coordinate)):
             raise ValueError("The conformational coordinate is out-of-bounds.")
