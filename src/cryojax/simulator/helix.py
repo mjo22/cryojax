@@ -133,7 +133,6 @@ class Helix(Module):
     @cached_property
     def lattice(self) -> Lattice:
         """Get the helical lattice."""
-        print("Computing lattice")
         return compute_lattice(
             self.rise,
             self.twist,
