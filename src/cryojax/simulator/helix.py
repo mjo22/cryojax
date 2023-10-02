@@ -106,11 +106,10 @@ class Helix(Module):
         subunits = self.subunits
         # Compute the pose of each subunit
         where = lambda p: (p.offset_x, p.offset_y, p.offset_z)
-        poses = list(
-            map(
-                lambda r: eqx.tree_at(where, pose, tuple([*r])),
-                pose.rotate(self.lattice) + pose.offset,
-            )
+        transformed_lattice = pose.rotate(self.lattice) + pose.offset
+        poses = jtu.tree_map(
+            lambda r: eqx.tree_at(where, pose, (r[0, 0], r[0, 1], r[0, 2])),
+            jnp.split(transformed_lattice, len(subunits), axis=0),
         )
         # Compute all projection images
         scatter = lambda s, p: s.scatter(
@@ -158,7 +157,9 @@ class Helix(Module):
             else:
                 cs = self.conformations
             where = lambda s: s.conformation.coordinate
-            return list(map(lambda c: eqx.tree_at(where, self.subunit, c), cs))
+            return jax.lax.map(
+                lambda c: eqx.tree_at(where, self.subunit, c), cs
+            )
 
 
 def compute_lattice(
