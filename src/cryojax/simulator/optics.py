@@ -19,13 +19,13 @@ import jax
 import jax.numpy as jnp
 
 from .pose import Pose
-from .kernel import Kernel, Gaussian
+from .kernel import Gaussian, Kernel
 from ..utils import cartesian_to_polar
-from ..core import field
+from ..core import field, Module
 from ..types import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
-class Optics(Kernel):
+class Optics(Module):
     """
     Base class for an optics model. This
     is designed to compute an optics model in Fourier
