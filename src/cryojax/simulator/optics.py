@@ -21,11 +21,11 @@ import jax.numpy as jnp
 from .pose import Pose
 from .kernel import Kernel, Gaussian
 from ..utils import cartesian_to_polar
-from ..core import field, Module
+from ..core import field
 from ..types import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
-class Optics(Module):
+class Optics(Kernel):
     """
     Base class for an optics model. This
     is designed to compute an optics model in Fourier
@@ -34,7 +34,7 @@ class Optics(Module):
 
     When writing subclasses,
 
-        1) Overwrite the ``Optics.compute`` method.
+        1) Overwrite the ``Optics.evaluate`` method.
         2) Overwrite the ``Optics.apply`` method.
 
     Attributes
@@ -47,7 +47,7 @@ class Optics(Module):
     envelope: Optional[Kernel] = field(default_factory=Gaussian)
 
     @abstractmethod
-    def compute(
+    def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
     ) -> Image:
         """Compute the optics model."""
@@ -60,15 +60,16 @@ class Optics(Module):
         """Apply the optics model."""
         raise NotImplementedError
 
-    def __call__(self, freqs: ImageCoords, **kwargs: Any) -> ComplexImage:
+    def __call__(
+        self, freqs: ImageCoords, normalize: bool = True, **kwargs: Any
+    ) -> ComplexImage:
         """Compute the optics model with an envelope."""
         if self.envelope is None:
-            ctf = self.compute(freqs, **kwargs)
-            return ctf
+            return self.evaluate(freqs, **kwargs)
         else:
-            ctf = self.compute(freqs, normalize=True, **kwargs)
-            envelope = self.envelope(freqs)
-            return envelope * ctf
+            return self.envelope(freqs) * self.evaluate(
+                freqs, normalize=normalize, **kwargs
+            )
 
 
 class NullOptics(Optics):
@@ -78,7 +79,7 @@ class NullOptics(Optics):
 
     envelope: Optional[Kernel] = field(default=None)
 
-    def compute(
+    def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
     ) -> ComplexImage:
         return jnp.array(1.0)
@@ -121,7 +122,7 @@ class CTFOptics(Optics):
     ) -> ComplexImage:
         return ctf * image
 
-    def compute(
+    def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
     ) -> RealImage:
         defocus_offset = 0.0 if pose is None else pose.offset_z
