@@ -6,7 +6,7 @@ from __future__ import annotations
 
 __all__ = [
     "rotate_coordinates",
-    "shift_phase",
+    "compute_shifts",
     "make_euler_rotation",
     "Pose",
     "EulerPose",
@@ -71,21 +71,13 @@ class Pose(Module):
         rotation = self.rotation.inverse() if real else self.rotation
         return rotate_coordinates(coordinates, rotation)
 
-    def shift(
-        self, density: ComplexImage, coordinates: ImageCoords
-    ) -> ComplexImage:
+    def shifts(self, freqs: ImageCoords) -> ComplexImage:
         """
-        Translate a 2D electron density in real space by
-        applying phase shifts in fourier space.
+        Compute the phase shifts from the in-plane translation,
+        given a wave vector coordinate system.
         """
-        tx, ty = self.offset_x, self.offset_y
-        shifted_density = shift_phase(
-            density,
-            coordinates,
-            tx,
-            ty,
-        )
-        return shifted_density
+        xy = self.offset[0:2]
+        return compute_shifts(freqs, xy)
 
     @cached_property
     def offset(self) -> Float[Array, "3"]:
@@ -213,39 +205,24 @@ def rotate_coordinates(
     return transformed
 
 
-def shift_phase(
-    density: ComplexImage,
-    coords: ImageCoords,
-    tx: Real_,
-    ty: Real_,
-) -> ComplexImage:
+def compute_shifts(coords: ImageCoords, xy: Float[Array, "2"]) -> ComplexImage:
     r"""
     Compute the phase shifted density field from
     an in-plane real space translation.
 
     Arguments
     ---------
-    density :
-        In-plane electron density in fourier
-        space.
     coords :
         Coordinate system.
-    tx :
-        In-plane translation in x direction.
-    ty :
-        In-plane translation in y direction.
+    xy :
+        In-plane translation.
 
     Returns
     -------
-    shifted : `Array`, shape `(N1, N2)`
-        Shifted electron density.
+    shifts :
+        The phase shifts
     """
-    coords, density = jnp.asarray(coords), jnp.asarray(density)
-    xy = jnp.array([tx, ty])
-    shift = jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(coords, xy)))
-    shifted = density * shift
-
-    return shifted
+    return jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(coords, xy)))
 
 
 def make_euler_rotation(

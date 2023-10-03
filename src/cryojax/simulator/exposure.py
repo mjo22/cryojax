@@ -5,15 +5,15 @@ due to electron exposure.
 
 from __future__ import annotations
 
-__all__ = ["Exposure", "NullExposure", "UniformExposure", "rescale_image"]
+__all__ = ["Exposure", "NullExposure", "UniformExposure"]
 
 from abc import abstractmethod
-from functools import partial
+from typing import Any, Union
 
-import jax
+import jax.numpy as jnp
 
 from ..core import field, Module
-from ..types import Image, Real_
+from ..types import RealImage, ImageCoords, Real_
 
 
 class Exposure(Module):
@@ -26,11 +26,30 @@ class Exposure(Module):
     """
 
     @abstractmethod
-    def rescale(self, image: Image, real: bool = False) -> Image:
+    def scaling(
+        self, freqs: ImageCoords, **kwargs: Any
+    ) -> Union[RealImage, Real_]:
         """
-        Deliver a dose of electrons to the image.
+        Evaluate the intensity scaling.
+
+        Arguments
+        ----------
+        freqs : The fourier space cartesian coordinates.
         """
-        raise NotImplementedError
+        pass
+
+    @abstractmethod
+    def offset(
+        self, freqs: ImageCoords, **kwargs: Any
+    ) -> Union[RealImage, Real_]:
+        """
+        Evaluate the intensity offset.
+
+        Arguments
+        ----------
+        freqs : The fourier space cartesian coordinates.
+        """
+        pass
 
 
 class NullExposure(Exposure):
@@ -39,9 +58,11 @@ class NullExposure(Exposure):
     image when it is passsed through the pipeline.
     """
 
-    def rescale(self, image: Image, real: bool = False) -> Image:
-        """Return the image unchanged."""
-        return image
+    def scaling(self, freqs: ImageCoords, **kwargs: Any) -> Real_:
+        return jnp.asarray(1.0)
+
+    def offset(self, freqs: ImageCoords, **kwargs: Any) -> Real_:
+        return jnp.asarray(0.0)
 
 
 class UniformExposure(Exposure):
@@ -51,48 +72,15 @@ class UniformExposure(Exposure):
     Attributes
     ----------
     N : Intensity scaling.
-    mu : Intensity offset.
+    mu: Intensity offset.
     """
 
     N: Real_ = field(default=1e5)
     mu: Real_ = field(default=0.0)
 
-    def rescale(self, image: Image, real: bool = False) -> Image:
-        """Return an image, multiplied by a scale factor."""
-        return rescale_image(image, self.N, self.mu, real=real)
+    def scaling(self, freqs: ImageCoords, **kwargs: Any) -> Real_:
+        return self.N
 
-
-@partial(jax.jit, static_argnames=["real"])
-def rescale_image(
-    image: Image, N: float, mu: float, *, real: bool = False
-) -> Image:
-    """
-    Normalize so that the image is mean mu
-    and standard deviation N in real space.
-
-    Parameters
-    ----------
-    image :
-        The image in either real or Fourier space.
-        If in Fourier space, the zero frequency
-        component should be in the center of the image.
-    N : Intensity scale factor.
-    mu : Intensity offset.
-    real :
-        If ``True``, the given ``image`` is in real
-        space. If ``False``, it is in Fourier space.
-
-    Returns
-    -------
-    rescaled_image :
-        Image rescaled by an offset ``mu`` and scale factor ``N``.
-    """
-    N1, N2 = image.shape
-    if real:
-        rescaled_image = N * image + mu
-    else:
-        rescaled_image = N * image
-        rescaled_image = rescaled_image.at[0, 0].set(
-            rescaled_image[0, 0] + (mu * N1 * N2)
-        )
-    return rescaled_image
+    def offset(self, freqs: ImageCoords, **kwargs: Any) -> RealImage:
+        N1, N2 = freqs.shape[0:-1]
+        return jnp.zeros((N1, N2)).at[0, 0].set(N1 * N2 * self.mu)

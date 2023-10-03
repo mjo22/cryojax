@@ -55,7 +55,10 @@ class GaussianImage(DetectorImage):
     @cached_property
     def variance(self) -> Union[Real_, RealImage]:
         # Gather image configuration
-        pixel_size = self.state.detector.pixel_size or self.specimen.resolution
+        if self.state.detector.pixel_size is None:
+            pixel_size = self.specimen.resolution
+        else:
+            pixel_size = self.state.detector.pixel_size
         freqs = self.scattering.freqs / pixel_size
         # Variance from detector
         if not isinstance(self.state.detector, NullDetector):

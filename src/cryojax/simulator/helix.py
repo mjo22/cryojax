@@ -122,7 +122,9 @@ class Helix(Module):
         image = jtu.tree_reduce(lambda x, y: x + y, images)
         # Apply the electron exposure model
         if exposure is not None:
-            image = exposure.rescale(image, real=False)
+            freqs = scattering.padded_freqs / self.resolution
+            scaling, offset = exposure.scaling(freqs), exposure.offset(freqs)
+            image = scaling * image + offset
 
         return image
 

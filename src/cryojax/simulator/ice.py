@@ -14,7 +14,7 @@ from .kernel import Kernel, Exp
 from .optics import Optics
 from .noise import GaussianNoise
 from ..core import field, Module
-from ..types import Real_, ComplexImage, Image, ImageCoords
+from ..types import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
 class Ice(Module):
@@ -23,7 +23,9 @@ class Ice(Module):
     """
 
     @abstractmethod
-    def sample(self, *args: Any, **kwargs: Any) -> Image:
+    def sample(
+        self, freqs: ImageCoords, image: Optional[Image] = None
+    ) -> Image:
         """Sample a realization from the ice model."""
         raise NotImplementedError
 
@@ -55,7 +57,9 @@ class NullIce(Ice):
     A 'null' ice model.
     """
 
-    def sample(self, freqs: ImageCoords) -> Image:
+    def sample(
+        self, freqs: ImageCoords, image: Optional[ComplexImage] = None
+    ) -> RealImage:
         return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
     def scatter(
@@ -82,6 +86,11 @@ class GaussianIce(GaussianNoise, Ice):
     """
 
     variance: Kernel = field(default_factory=Exp)
+
+    def sample(
+        self, freqs: ImageCoords, image: Optional[ComplexImage] = None
+    ) -> ComplexImage:
+        return super().sample(freqs)
 
     def scatter(
         self,

@@ -56,7 +56,6 @@ class Specimen(Module):
         pose: Pose,
         exposure: Optional[Exposure] = None,
         optics: Optional[Optics] = None,
-        **kwargs: Any,
     ) -> ComplexImage:
         """
         Compute the scattered wave of the specimen in the
@@ -77,18 +76,19 @@ class Specimen(Module):
         # Draw the electron density at a particular conformation
         density = self.sample()
         # View the electron density map at a given pose
-        density = density.view(pose, **kwargs)
+        density = density.view(pose)
         # Compute the scattering image
-        image = density.scatter(scattering, self.resolution, **kwargs)
+        image = density.scatter(scattering, self.resolution)
         # Apply translation
-        image = pose.shift(image, freqs)
+        image *= pose.shifts(freqs)
         # Compute and apply CTF
         if optics is not None:
             ctf = optics(freqs, pose=pose)
             image = optics.apply(ctf, image)
         # Apply the electron exposure model
         if exposure is not None:
-            image = exposure.rescale(image, real=False)
+            scaling, offset = exposure.scaling(freqs), exposure.offset(freqs)
+            image = scaling * image + offset
 
         return image
 

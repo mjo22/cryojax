@@ -124,6 +124,23 @@ class Constant(Kernel):
         return self.value
 
 
+class ZeroMode(Kernel):
+    """
+    This kernel returns a constant in the zero mode.
+
+    Attributes
+    ----------
+    value :
+        The value of the zero mode.
+    """
+
+    value: Real_ = field(default=1.0)
+
+    def evaluate(self, freqs: ImageCoords) -> RealImage:
+        N1, N2 = freqs.shape[0:-1]
+        return jnp.zeros((N1, N2)).at[0, 0].set(N1 * N2 * self.value)
+
+
 class Exp(Kernel):
     r"""
     This kernel, in real space, represents a covariance
