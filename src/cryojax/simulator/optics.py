@@ -11,7 +11,7 @@ __all__ = [
     "compute_ctf",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Any, Optional
 from functools import partial
 
@@ -19,23 +19,23 @@ import jax
 import jax.numpy as jnp
 
 from .pose import Pose
-from .kernel import Kernel, Gaussian
+from .kernel import Gaussian, Kernel
 from ..utils import cartesian_to_polar
 from ..core import field, Module
-from ..core import Real_, RealImage, ComplexImage, Image, ImageCoords
+from ..types import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
-class Optics(Module, metaclass=ABCMeta):
+class Optics(Module):
     """
-    Base PyTree container for an optics model. This
+    Base class for an optics model. This
     is designed to compute an optics model in Fourier
-    Space given some frequencies and Real_s, and
-    also store model Real_s as a PyTree node.
+    space given some frequencies, and apply the model
+    to an image.
 
     When writing subclasses,
 
-        1) Overwrite the ``OpticsModel.compute`` method.
-        2) Use the ``cryojax.core.dataclass`` decorator.
+        1) Overwrite the ``Optics.evaluate`` method.
+        2) Overwrite the ``Optics.apply`` method.
 
     Attributes
     ----------
@@ -47,7 +47,7 @@ class Optics(Module, metaclass=ABCMeta):
     envelope: Optional[Kernel] = field(default_factory=Gaussian)
 
     @abstractmethod
-    def compute(
+    def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
     ) -> Image:
         """Compute the optics model."""
@@ -60,25 +60,26 @@ class Optics(Module, metaclass=ABCMeta):
         """Apply the optics model."""
         raise NotImplementedError
 
-    def __call__(self, freqs: ImageCoords, **kwargs: Any) -> ComplexImage:
-        """Compute the optics model."""
+    def __call__(
+        self, freqs: ImageCoords, normalize: bool = True, **kwargs: Any
+    ) -> ComplexImage:
+        """Compute the optics model with an envelope."""
         if self.envelope is None:
-            ctf = self.compute(freqs, **kwargs)
-            return ctf
+            return self.evaluate(freqs, **kwargs)
         else:
-            ctf = self.compute(freqs, normalize=True, **kwargs)
-            envelope = self.envelope(freqs)
-            return envelope * ctf
+            return self.envelope(freqs) * self.evaluate(
+                freqs, normalize=normalize, **kwargs
+            )
 
 
 class NullOptics(Optics):
     """
-    This class can be used as a null optics model.
+    A null optics model.
     """
 
     envelope: Optional[Kernel] = field(default=None)
 
-    def compute(
+    def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
     ) -> ComplexImage:
         return jnp.array(1.0)
@@ -91,7 +92,6 @@ class CTFOptics(Optics):
     """
     Compute a Contrast Transfer Function (CTF).
 
-    Also acts as a PyTree container for the CTF Real_s.
     See ``cryojax.simulator.compute_ctf`` for more
     information.
 
@@ -122,7 +122,7 @@ class CTFOptics(Optics):
     ) -> ComplexImage:
         return ctf * image
 
-    def compute(
+    def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
     ) -> RealImage:
         defocus_offset = 0.0 if pose is None else pose.offset_z
@@ -155,10 +155,10 @@ def compute_ctf(
     degrees: bool = True,
 ) -> RealImage:
     """
-    Computes CTF with given Real_s.
+    Computes a real-valued CTF.
 
-    Real_s
-    ----------
+    Arguments
+    ---------
     freqs :
         The wave vectors in the imaging plane, in units
         of 1/A.

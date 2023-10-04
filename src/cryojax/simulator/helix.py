@@ -8,17 +8,21 @@ __all__ = ["Helix", "compute_lattice"]
 
 from typing import Any, Union, Optional, Callable
 from jaxtyping import Array, Float, Int
+from functools import cached_property
 
 import jax
 import jax.numpy as jnp
+import jax.tree_util as jtu
+import equinox as eqx
 
 from .specimen import Specimen
+from .exposure import Exposure
 from .pose import Pose
 from .optics import Optics
 from .scattering import ScatteringConfig
 
 from ..core import field, Module
-from ..core import Real_, RealVector, ComplexImage
+from ..types import Real_, RealVector, ComplexImage
 
 Lattice = Float[Array, "N 3"]
 """Type hint for array where each element is a lattice coordinate."""
@@ -58,14 +62,11 @@ class Helix(Module):
     degrees :
         Whether or not the helical twist is given in
         degrees. By default, ``True``.
-    lattice : `Lattice`
-        The 3D cartesian lattice coordinates for each subunit.
     """
 
     subunit: Specimen = field()
     rise: Union[Real_, RealVector] = field()
     twist: Union[Real_, RealVector] = field()
-    lattice: Lattice = field(static=True, init=False)
     radius: Union[Real_, RealVector] = field(default=1)
     conformations: Optional[
         Union[Conformations, Callable[[Lattice], Conformations]]
@@ -75,20 +76,11 @@ class Helix(Module):
     n_subunits: Optional[int] = field(static=True, default=None)
     degrees: bool = field(static=True, default=True)
 
-    def __post_init__(self):
-        self.lattice = compute_lattice(
-            self.rise,
-            self.twist,
-            radius=self.radius,
-            n_start=self.n_start,
-            n_subunits=self.n_subunits,
-            degrees=self.degrees,
-        )
-
     def scatter(
         self,
         scattering: ScatteringConfig,
         pose: Pose,
+        exposure: Optional[Exposure] = None,
         optics: Optional[Optics] = None,
         **kwargs: Any,
     ) -> ComplexImage:
@@ -105,10 +97,34 @@ class Helix(Module):
             The scattering configuration for the subunit.
         pose :
             The center of mass imaging pose of the helix.
+        exposure :
+            The exposure model.
         optics :
             The instrument optics.
         """
-        image = self.subunit.scatter(scattering, pose, optics=optics, **kwargs)
+        # Draw the conformations of each subunit
+        subunits = self.subunits
+        # Compute the pose of each subunit
+        where = lambda p: (p.offset_x, p.offset_y, p.offset_z)
+        transformed_lattice = pose.rotate(self.lattice) + pose.offset
+        poses = jtu.tree_map(
+            lambda r: eqx.tree_at(where, pose, (r[0, 0], r[0, 1], r[0, 2])),
+            jnp.split(transformed_lattice, len(subunits), axis=0),
+        )
+        # Compute all projection images
+        scatter = lambda s, p: s.scatter(
+            scattering, pose=p, exposure=None, optics=optics, **kwargs
+        )
+        images = jtu.tree_map(
+            scatter, subunits, poses, is_leaf=lambda s: isinstance(s, Specimen)
+        )
+        # Sum them all together
+        image = jtu.tree_reduce(lambda x, y: x + y, images)
+        # Apply the electron exposure model
+        if exposure is not None:
+            freqs = scattering.padded_freqs / self.resolution
+            scaling, offset = exposure.scaling(freqs), exposure.offset(freqs)
+            image = scaling * image + offset
 
         return image
 
@@ -117,20 +133,41 @@ class Helix(Module):
         """Hack to make this class act like a Specimen."""
         return self.subunit.resolution
 
-    @property
-    def draw(self) -> Conformations:
-        """Return an array where each element updates a
-        Conformation."""
-        if isinstance(self.conformations, Callable):
-            return self.conformations(self.lattice)
+    @cached_property
+    def lattice(self) -> Lattice:
+        """Get the helical lattice."""
+        return compute_lattice(
+            self.rise,
+            self.twist,
+            radius=self.radius,
+            n_start=self.n_start,
+            n_subunits=self.n_subunits,
+            degrees=self.degrees,
+        )
+
+    @cached_property
+    def subunits(self) -> list[Specimen]:
+        """Draw a realization of all of the subunits"""
+        if (
+            not hasattr(self.subunit, "conformation")
+            or self.conformations is None
+        ):
+            return self.n_subunits * self.n_start * [self.subunit]
         else:
-            return self.conformations
+            if isinstance(self.conformations, Callable):
+                cs = self.conformations(self.lattice)
+            else:
+                cs = self.conformations
+            where = lambda s: s.conformation.coordinate
+            return jax.lax.map(
+                lambda c: eqx.tree_at(where, self.subunit, c), cs
+            )
 
 
 def compute_lattice(
-    rise: Real_,
-    twist: Real_,
-    radius: Real_ = 1.0,
+    rise: Union[Real_, RealVector],
+    twist: Union[Real_, RealVector],
+    radius: Union[Real_, RealVector] = 1.0,
     n_start: int = 1,
     n_subunits: Optional[int] = None,
     *,
@@ -140,28 +177,28 @@ def compute_lattice(
     Compute the lattice points of a helix for a given
     rise, twist, radius, and start number.
 
-    Real_s
-    ----------
+    Arguments
+    ---------
     rise : `Real_` or `RealVector`, shape `(n_subunits,)`
         The helical rise.
     twist : `Real_` or `RealVector`, shape `(n_subunits,)`
         The helical twist.
     radius : `Real_` or `RealVector`, shape `(n_subunits,)`
         The radius of the helix.
-    n_start : `int`
+    n_start :
         The start number of the helix.
-    n_subunits : `int`, optional
+    n_subunits :
         The number of subunits in the assembly for
         a single helix. The total number of subunits
         is really equal to ``n_start * n_subunits``.
         By default, ``2 * jnp.pi / twist``.
-    degrees : `bool`
-        Whether or not the angular Real_s
+    degrees :
+        Whether or not the angular parameters
         are given in degrees or radians.
 
     Returns
     -------
-    lattice : shape (n_start*n_subunits, 3)
+    lattice : shape `(n_start*n_subunits, 3)`
         The helical lattice.
     """
     # Convert to radians

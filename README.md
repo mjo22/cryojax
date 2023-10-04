@@ -15,7 +15,7 @@ Installing `cryojax` is simple. To start, I recommend creating a new virtual env
 conda create -n cryojax -c conda-forge python=3.10
 ```
 
-First, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support.
+Note that `python>=3.10` is required due to recent features in `dataclasses`. Now, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support.
 
 Next, [install jax-finufft](https://github.com/dfm/jax-finufft). Non-uniform FFTs are provided as an option for computing image projections. Note that this package does not yet provide GPU support, but there are plans to do so.
 
@@ -99,16 +99,15 @@ For these more advanced examples, see the tutorials section of the repository. I
 In `jax`, we ultimately want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must build the model.
 
 ```python
-from dataclasses import replace
+import equinox as eqx
 
 def build_model(params: dict[str, jax.Array]) -> cs.GaussianImage:
+    # Perform "model surgery" with equinox.tree_at
+    p = eqx.tree_at(lambda p: p.view_phi, pose, params["view_phi"])
+    o = eqx.tree_at(lambda o: o.defocus_u, optics, params["defocus_u"])
+    d = eqx.tree_at(lambda d: d.pixel_size, detector, params["pixel_size"])
     # Build the PipelineState
-    pose_update = replace(pose, view_phi=params["view_phi"])
-    optics_update = replace(optics, defocus_u=params["defocus_u"])
-    detector_update = replace(detector, pixel_size=params["pixel_size"])
-    state = cs.PipelineState(
-        pose=pose_update, optics=optics_update, detector=detector_update
-    )
+    state = cs.PipelineState(pose=p, optics=o, detector=d)
     # Build the model
     model = cs.GaussianImage(
         scattering=scattering, specimen=specimen, state=state, observed=observed
@@ -126,9 +125,10 @@ def loss(params: dict[str, jax.Array]) -> jax.Array:
     return model()
 ```
 
-Finally, we can evaluate the log_likelihood.
+Finally, we can evaluate the log_likelihood at an updated set of parameters.
 
 ```python
+params = dict(view_phi=jnp.asarray(jnp.pi), defocus_u=jnp.asarray(9000.0), pixel_size=jnp.asarray(1.30))
 log_likelihood = loss(params)
 ```
 

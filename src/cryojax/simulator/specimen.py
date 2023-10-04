@@ -14,7 +14,8 @@ from .exposure import Exposure
 from .pose import Pose
 from .optics import Optics
 from .conformation import Discrete
-from ..core import Real_, field, Module, ComplexImage
+from ..core import field, Module
+from ..types import Real_, ComplexImage
 
 
 class Specimen(Module):
@@ -29,10 +30,25 @@ class Specimen(Module):
     resolution :
         Rasterization resolution. This is in
         dimensions of length.
+    conformation :
+        The conformational variable at which to evaulate
+        the electron density. This should be overwritten
+        in subclasses.
     """
 
     density: ElectronDensity = field()
     resolution: Real_ = field()
+    conformation: Any = field()
+
+    def __init__(
+        self,
+        density: ElectronDensity,
+        resolution: Real_,
+        conformation: Optional[Any] = None,
+    ):
+        self.density = density
+        self.resolution = resolution
+        self.conformation = None
 
     def scatter(
         self,
@@ -40,7 +56,6 @@ class Specimen(Module):
         pose: Pose,
         exposure: Optional[Exposure] = None,
         optics: Optional[Optics] = None,
-        **kwargs: Any,
     ) -> ComplexImage:
         """
         Compute the scattered wave of the specimen in the
@@ -58,48 +73,50 @@ class Specimen(Module):
             The instrument optics.
         """
         freqs = scattering.padded_freqs / self.resolution
+        # Draw the electron density at a particular conformation
+        density = self.sample()
         # View the electron density map at a given pose
-        density = self.density.view(pose, **kwargs)
+        density = density.view(pose)
         # Compute the scattering image
-        image = density.scatter(scattering, self.resolution, **kwargs)
+        image = density.scatter(scattering, self.resolution)
         # Apply translation
-        image = pose.shift(image, freqs)
+        image *= pose.shifts(freqs)
         # Compute and apply CTF
         if optics is not None:
             ctf = optics(freqs, pose=pose)
             image = optics.apply(ctf, image)
         # Apply the electron exposure model
         if exposure is not None:
-            image = exposure.scale(image, real=False)
+            scaling, offset = exposure.scaling(freqs), exposure.offset(freqs)
+            image = scaling * image + offset
 
         return image
 
-    @property
-    def draw(self) -> ElectronDensity:
+    def sample(self) -> ElectronDensity:
         """Get the electron density."""
         return self.density
 
 
-class SpecimenMixture(Module):
+class SpecimenMixture(Specimen):
     """
     A biological specimen at a mixture of conformations.
-
-    Attributes
-    ----------
-    density : `list[cryojax.simulator.ElectronDensity]`
-        The electron density representation of the
-        specimen.
-    conformation : `cryojax.simulator.Discrete`
-        The conformational variable at which to evaulate
-        the electron density.
     """
 
     density: list[ElectronDensity] = field()
-    conformation: Discrete = field(default_factory=Discrete)
+    conformation: Discrete = field()
 
-    @property
-    def draw(self) -> ElectronDensity:
-        """Draw the electron density at the configured conformation."""
+    def __init__(
+        self,
+        density: ElectronDensity,
+        resolution: Real_,
+        conformation: Optional[Discrete] = None,
+    ):
+        self.density = density
+        self.resolution = resolution
+        self.conformation = conformation or Discrete()
+
+    def sample(self) -> ElectronDensity:
+        """Sample the electron density at the configured conformation."""
         coordinate = self.conformation.coordinate
         if not (-len(coordinate) <= coordinate < len(coordinate)):
             raise ValueError("The conformational coordinate is out-of-bounds.")

@@ -8,7 +8,7 @@ from typing import Any, Union
 
 import jax.numpy as jnp
 
-from ..core import Image, Volume
+from ..types import Image, Volume
 
 
 def irfftn(ft: Union[Image, Volume], **kwargs: Any) -> Union[Image, Volume]:

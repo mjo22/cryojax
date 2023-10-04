@@ -9,7 +9,7 @@ from typing import Optional, Union
 import jax.numpy as jnp
 
 from .average import radial_average
-from ..core import RealVector, RealImage, ComplexImage, ImageCoords
+from ..types import RealVector, RealImage, ComplexImage, ImageCoords
 
 
 def powerspectrum(

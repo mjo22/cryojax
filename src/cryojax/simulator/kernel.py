@@ -1,11 +1,6 @@
 """
-Implementation of a Kernel. Put simply, these are fourier-space 
-functions commonly applied to images. The word "kernel" is
-borrowed from the theory of gaussian processes, where a kernel
-is jargon for a covariance function. These functions are
-technically the fourier-space version of any stationary
-covariance kernel, but in ``cryojax`` the term kernel is used
-in a broader sense.
+Implementation of a Kernel. Put simply, these are
+functions commonly applied to images, usually in fourier space.
 
 These classes are modified from the library ``tinygp``.
 """
@@ -23,19 +18,19 @@ __all__ = [
     "Custom",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Any, Union, Callable, Concatenate, ParamSpec, Optional
 from jaxtyping import Array
 
 import jax.numpy as jnp
 
 from ..core import field, Module
-from ..core import Real_, ImageCoords, RealImage, Image
+from ..types import Real_, ImageCoords, RealImage, Image
 
 P = ParamSpec("P")
 
 
-class Kernel(Module, metaclass=ABCMeta):
+class Kernel(Module):
     """
     The base class for all kernels.
 
@@ -50,21 +45,22 @@ class Kernel(Module, metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def evaluate(self, freqs: ImageCoords, **kwargs: Any) -> Array:
+    def evaluate(self, coords: ImageCoords, **kwargs: Any) -> Array:
         """
-        Evaluate the kernel at a set of frequencies.
+        Evaluate the kernel at a set of coordinates.
 
         Arguments
         ----------
-        freqs :
-            The wave vectors in the imaging plane, in
-            cartesain coordinates.
+        coords :
+            The real or fourier space cartesian coordinates.
         """
         pass
 
-    def __call__(self, freqs: ImageCoords, *args: Any, **kwargs: Any) -> Array:
-        freqs = jnp.asarray(freqs)
-        return self.evaluate(freqs, *args, **kwargs)
+    def __call__(
+        self, coords: ImageCoords, *args: Any, **kwargs: Any
+    ) -> Array:
+        coords = jnp.asarray(coords)
+        return self.evaluate(coords, *args, **kwargs)
 
     def __add__(self, other: Union[Kernel, float]) -> Kernel:
         if isinstance(other, Kernel):
@@ -96,8 +92,8 @@ class Sum(Kernel):
     kernel1: Kernel = field()
     kernel2: Kernel = field()
 
-    def evaluate(self, freqs: ImageCoords) -> Array:
-        return self.kernel1.evaluate(freqs) + self.kernel2.evaluate(freqs)
+    def evaluate(self, coords: ImageCoords) -> Array:
+        return self.kernel1(coords) + self.kernel2(coords)
 
 
 class Product(Kernel):
@@ -106,8 +102,8 @@ class Product(Kernel):
     kernel1: Kernel = field()
     kernel2: Kernel = field()
 
-    def evaluate(self, freqs: ImageCoords) -> Array:
-        return self.kernel1.evaluate(freqs) * self.kernel2.evaluate(freqs)
+    def evaluate(self, coords: ImageCoords) -> Array:
+        return self.kernel1(coords) * self.kernel2(coords)
 
 
 class Constant(Kernel):
@@ -122,10 +118,27 @@ class Constant(Kernel):
 
     value: Real_ = field(default=1.0)
 
-    def evaluate(self, freqs: Optional[ImageCoords] = None) -> Real_:
+    def evaluate(self, coords: Optional[ImageCoords] = None) -> Real_:
         if jnp.ndim(self.value) != 0:
             raise ValueError("The value of a constant kernel must be a scalar")
         return self.value
+
+
+class ZeroMode(Kernel):
+    """
+    This kernel returns a constant in the zero mode.
+
+    Attributes
+    ----------
+    value :
+        The value of the zero mode.
+    """
+
+    value: Real_ = field(default=1.0)
+
+    def evaluate(self, freqs: ImageCoords) -> RealImage:
+        N1, N2 = freqs.shape[0:-1]
+        return jnp.zeros((N1, N2)).at[0, 0].set(N1 * N2 * self.value)
 
 
 class Exp(Kernel):
@@ -165,12 +178,9 @@ class Exp(Kernel):
     offset: Real_ = field(default=0.0)
 
     def evaluate(self, freqs: ImageCoords) -> RealImage:
-        if self.scale != 0.0:
-            k_sqr = jnp.sum(freqs**2, axis=-1)
-            scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
-            scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
-        else:
-            scaling = 0.0
+        k_sqr = jnp.sum(freqs**2, axis=-1)
+        scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
+        scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
         return scaling + self.offset
 
 
@@ -234,7 +244,7 @@ class Empirical(Kernel):
     amplitude: Real_ = field(default=1.0)
     offset: Real_ = field(default=0.0)
 
-    def evaluate(self, freqs: Optional[ImageCoords] = None) -> Image:
+    def evaluate(self, coords: Optional[ImageCoords] = None) -> Image:
         """Return the scaled and offset measurement."""
         return self.amplitude * self.measurement + self.offset
 
@@ -253,6 +263,6 @@ class Custom(Kernel):
     function: Callable[Concatenate[ImageCoords, P], Array] = field(static=True)
 
     def evaluate(
-        self, freqs: ImageCoords, *args: P.args, **kwargs: P.kwargs
+        self, coords: ImageCoords, *args: P.args, **kwargs: P.kwargs
     ) -> Array:
-        return self.function(freqs, *args, **kwargs)
+        return self.function(coords, *args, **kwargs)

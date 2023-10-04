@@ -12,17 +12,18 @@ __all__ = [
     "WhiteningFilter",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 import numpy as np
 import jax.numpy as jnp
 
 from ..utils import powerspectrum, make_frequencies
-from ..core import field, Module, Image, RealImage, ComplexImage
+from ..core import field, Module
+from ..types import Image, RealImage, ComplexImage
 
 
-class Filter(Module, metaclass=ABCMeta):
+class Filter(Module):
     """
     Base class for computing and applying an image filter.
 
@@ -39,10 +40,10 @@ class Filter(Module, metaclass=ABCMeta):
     filter: Image = field(static=True, init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
-        self.filter = self.compute(*args, **kwargs)
+        self.filter = self.evaluate(*args, **kwargs)
 
     @abstractmethod
-    def compute(self, *args: Any, **kwargs: Any) -> Image:
+    def evaluate(self, *args: Any, **kwargs: Any) -> Image:
         """Compute the filter."""
         raise NotImplementedError
 
@@ -71,7 +72,7 @@ class LowpassFilter(Filter):
     cutoff: float = field(static=True, default=0.95)
     rolloff: float = field(static=True, default=0.05)
 
-    def compute(self, **kwargs) -> RealImage:
+    def evaluate(self, **kwargs) -> RealImage:
         return compute_lowpass_filter(
             self.shape, self.cutoff, self.rolloff, **kwargs
         )
@@ -88,7 +89,7 @@ class WhiteningFilter(Filter):
 
     micrograph: ComplexImage = field(static=True)
 
-    def compute(self, **kwargs: Any) -> RealImage:
+    def evaluate(self, **kwargs: Any) -> RealImage:
         return compute_whitening_filter(self.shape, self.micrograph, **kwargs)
 
 

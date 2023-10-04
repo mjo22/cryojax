@@ -39,7 +39,6 @@ def test_euler_matrix(phi, theta, psi):
         psi,
         convention="zyz",
         intrinsic=True,
-        inverse=False,
         degrees=False,
     )
     np.testing.assert_allclose(rotation.as_matrix(), matrix, atol=1e-16)

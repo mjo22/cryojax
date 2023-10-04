@@ -1,4 +1,4 @@
-__all__ = ["Module", "field", "io", "simulator", "utils"]
+__all__ = ["Module", "field", "types", "io", "simulator", "utils"]
 
 import importlib
 from cryojax.cryojax_version import __version__

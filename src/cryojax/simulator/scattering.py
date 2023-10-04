@@ -14,15 +14,14 @@ __all__ = [
     "FourierSliceScattering",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 import jax.numpy as jnp
 import numpy as np
 
-from ..core import (
-    field,
-    Module,
+from ..core import field, Module
+from ..types import (
     RealImage,
     ComplexImage,
     ImageCoords,
@@ -113,7 +112,7 @@ class ImageConfig(Module):
         return resize(image, self.padded_shape, method=method, **kwargs)
 
 
-class ScatteringConfig(ImageConfig, metaclass=ABCMeta):
+class ScatteringConfig(ImageConfig):
     """
     Configuration for an image with a particular
     scattering method.

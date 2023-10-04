@@ -10,7 +10,7 @@ from jaxtyping import Array, Float
 import jax
 import jax.numpy as jnp
 
-from ..core import Cloud, CloudCoords, Image, Volume
+from ..types import Cloud, CloudCoords, Image, Volume
 
 
 @jax.jit

@@ -10,16 +10,17 @@ __all__ = [
     "CircularMask",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 import jax.numpy as jnp
 
 from ..utils import make_coordinates
-from ..core import field, Module, RealImage
+from ..core import field, Module
+from ..types import RealImage
 
 
-class Mask(Module, metaclass=ABCMeta):
+class Mask(Module):
     """
     Base class for computing and applying an image mask.
 
@@ -36,10 +37,10 @@ class Mask(Module, metaclass=ABCMeta):
     mask: RealImage = field(static=True, init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
-        self.mask = self.compute(*args, **kwargs)
+        self.mask = self.evaluate(*args, **kwargs)
 
     @abstractmethod
-    def compute(self, *args: Any, **kwargs: Any) -> RealImage:
+    def evaluate(self, *args: Any, **kwargs: Any) -> RealImage:
         """Compute the mask."""
         raise NotImplementedError
 
@@ -67,7 +68,7 @@ class CircularMask(Mask):
     radius: float = field(static=True, default=0.95)
     rolloff: float = field(static=True, default=0.05)
 
-    def compute(self, **kwargs: Any) -> RealImage:
+    def evaluate(self, **kwargs: Any) -> RealImage:
         return compute_circular_mask(
             self.shape, self.radius, self.rolloff, **kwargs
         )

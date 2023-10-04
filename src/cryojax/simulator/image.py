@@ -11,8 +11,9 @@ __all__ = [
     "DetectorImage",
 ]
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import Union, Optional
+from functools import cached_property
 
 import jax.numpy as jnp
 
@@ -23,15 +24,16 @@ from .helix import Helix
 from .scattering import ScatteringConfig
 from .state import PipelineState
 from ..utils import fftn, irfftn
-from ..core import field, Module, RealImage, ComplexImage, Image, Real_
+from ..core import field, Module
+from ..types import RealImage, ComplexImage, Image, Real_
 
 
-class ImagePipeline(Module, metaclass=ABCMeta):
+class ImagePipeline(Module):
     """
     Base class for an imaging model.
 
     Call an ``Image`` or its ``render``, ``sample``,
-    or ``log_likelihood`` routines to evaluate the model.
+    or ``log_probability`` routines to evaluate the model.
 
     Attributes
     ----------
@@ -62,7 +64,7 @@ class ImagePipeline(Module, metaclass=ABCMeta):
     observed: Optional[RealImage] = field(default=None)
 
     @abstractmethod
-    def render(self, view: bool = True) -> RealImage:
+    def render(self, view: bool = True) -> Image:
         """
         Render an image given a parameter set.
 
@@ -77,7 +79,7 @@ class ImagePipeline(Module, metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def sample(self, view: bool = True) -> RealImage:
+    def sample(self, view: bool = True) -> Image:
         """
         Sample the an image from a realization of the noise.
 
@@ -91,11 +93,11 @@ class ImagePipeline(Module, metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def log_likelihood(self) -> Real_:
-        """Evaluate the log-likelihood of the data given a parameter set."""
+    def log_probability(self) -> Real_:
+        """Evaluate the log-probability of the data given a parameter set."""
         raise NotImplementedError
 
-    def __call__(self, view: bool = True) -> Union[RealImage, Real_]:
+    def __call__(self, view: bool = True) -> Union[Image, Real_]:
         """
         Evaluate the model at a parameter set.
 
@@ -105,7 +107,7 @@ class ImagePipeline(Module, metaclass=ABCMeta):
         if self.observed is None:
             return self.sample(view=view)
         else:
-            return self.log_likelihood()
+            return self.log_probability()
 
     def view(self, image: Image, real: bool = False) -> RealImage:
         """
@@ -134,7 +136,7 @@ class ImagePipeline(Module, metaclass=ABCMeta):
             image = mask(image)
         return image
 
-    @property
+    @cached_property
     def residuals(self) -> RealImage:
         """Return the residuals between the model and observed data."""
         simulated = self.render()
@@ -148,7 +150,7 @@ class ScatteringImage(ImagePipeline):
     with a given image formation model at a given pose.
     """
 
-    def render(self, view: bool = True) -> RealImage:
+    def render(self, view: bool = True) -> Image:
         """Render the scattered wave in the exit plane."""
         # Compute the image at the exit plane at the given pose
         scattering_image = self.specimen.scatter(
@@ -159,7 +161,7 @@ class ScatteringImage(ImagePipeline):
 
         return scattering_image
 
-    def sample(self, view: bool = True) -> RealImage:
+    def sample(self, view: bool = True) -> Image:
         """Sample the scattered wave in the exit plane."""
         # Compute the image at the exit plane
         scattering_image = self.render(view=False)
@@ -174,7 +176,7 @@ class ScatteringImage(ImagePipeline):
 
         return scattering_image
 
-    def log_likelihood(self) -> Real_:
+    def log_probability(self) -> Real_:
         return jnp.asarray(0.0)
 
 
@@ -184,7 +186,7 @@ class OpticsImage(ScatteringImage):
     moduated by a CTF.
     """
 
-    def render(self, view: bool = True) -> RealImage:
+    def render(self, view: bool = True) -> Image:
         """Render the image in the detector plane."""
         # Compute image in detector plane
         optics_image = self.specimen.scatter(
@@ -198,7 +200,7 @@ class OpticsImage(ScatteringImage):
 
         return optics_image
 
-    def sample(self, view: bool = True) -> RealImage:
+    def sample(self, view: bool = True) -> Image:
         """Sample the image in the detector plane."""
         # Compute the image at the detector plane
         optics_image = self.render(view=False)
