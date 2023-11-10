@@ -28,6 +28,7 @@ from ..types import (
     ComplexVolume,
     VolumeCoords,
     RealCloud,
+    IntCloud,
     CloudCoords,
 )
 from ..utils import (
@@ -184,6 +185,50 @@ class NufftScattering(ScatteringConfig):
             self.padded_shape,
             eps=self.eps,
         )
+
+
+class IndependentAtomScattering(NufftScattering):
+    """
+    Projects a pointcloud of atoms onto the imaging plane.
+    In contrast to the work in project_with_nufft, here each atom is
+
+    TODO: Typehints for atom_density_kernel
+    """
+
+    def scatter(
+        self,
+        density: RealCloud,
+        coordinates: CloudCoords,
+        resolution: float,
+        identity: IntCloud,
+        atom_density_kernel,  # WHAT SHOULD THE TYPE BE HERE?
+    ) -> ComplexImage:
+        """
+        Projects a pointcloud of atoms onto the imaging plane.
+        In contrast to the work in project_with_nufft, here each atom is
+
+        TODO: Typehints for atom_density_kernel
+        """
+        atom_types = jnp.unique(identity)
+
+        img = jnp.zeros(self.padded_shape, dtype=jnp.complex64)
+        for atom_type_i in atom_types:
+            # Select the properties specific to that type of atom
+            coords_i = coordinates[identity == atom_type_i]
+            density_i = density[identity == atom_type_i]
+            kernel_i = atom_density_kernel[atom_type_i]
+
+            # Build an
+            atom_i_image = project_with_nufft(
+                density_i,
+                coords_i,
+                resolution,
+                self.padded_shape,
+                atom_density_kernel[atom_type_i],
+            )
+
+            img += atom_i_image * kernel_i
+        return img
 
 
 def extract_slice(
