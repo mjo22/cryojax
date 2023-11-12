@@ -186,8 +186,73 @@ class NufftScattering(ScatteringConfig):
             eps=self.eps,
         )
 
+class IndependentAtomScattering(ScatteringConfig):
+    """
+    Projects a pointcloud of atoms onto the imaging plane.
+    In contrast to the work in project_with_nufft, here each atom is
 
-class IndependentAtomScattering(NufftScattering):
+    TODO: Typehints for atom_density_kernel
+    """
+
+
+
+    def scatter(
+        self,
+        density: RealCloud,
+        coordinates: CloudCoords,
+        resolution: float,
+        identity: IntCloud,
+        variances: IntCloud,  # WHAT SHOULD THE TYPE BE HERE?
+    
+    ) -> ComplexImage:
+        """
+        Projects a pointcloud of atoms onto the imaging plane.
+        In contrast to the work in project_with_nufft, here each atom is
+
+        TODO: Typehints for atom_density_kernel
+        """
+        sq_distance = _evaluate_coord_to_grid_sq_distances(x, self.pixel_grid)
+
+        atom_variances = variances[identity]
+        weights = density[identity]
+        gaussian_kernel = eval_Gaussian_kernel(sq_distance, atom_variances) * weights
+        simulated_imgs = jnp.sum(gaussian_kernel, dim=-1)  # Sum over atoms
+        if self.return_Fourier:
+            simulated_imgs = torch.fft.fft2(simulated_imgs)
+        return simulated_imgs
+
+def _evaluate_coord_to_grid_sq_distances(
+    x: CloudCoords, xgrid: ImageCoords
+) -> Image_Coords:
+    x_coords = jnp.expand_dims(x[:, :, 0], axis=1)  # N_struct x 1 x  N_atoms
+    y_coords = jnp.expand_dims(x[:, :, 1], axis=1)
+    x_sq_displacement = jnp.expand_dims((xgrid - x_coords) ** 2, axis=1)
+    y_sq_displacement = jnp.expand_dims((xgrid - y_coords) ** 2, axis=2)
+    # Todo: check that this is the image convention we want, and it shouldn't be 2, 1
+    return x_sq_displacement + y_sq_displacement
+
+
+def _build_pixel_grid(
+    npixels_per_side: int, pixel_size: float
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """
+    Calculates the coordinates of each pixel in the image.  The center of the image  is taken to be (0, 0).
+
+    Args:
+        npixels_per_side (float): Number of pixels on each side of the square miage
+        pixel_size (int): Size of each pixel.
+
+    Returns:
+        tuple: two arrays containing the x, y coordinates of each pixel, respectively.
+    """
+    grid_1d = jnp.linspace(
+        -npixels_per_side / 2, npixels_per_side / 2, npixels_per_side + 1
+    )[:-1]
+    grid_1d *= pixel_size
+    return grid_1d.unsqueeze(0).unsqueeze(-1)
+            
+
+class IndependentAtomScatteringNufft(NufftScattering):
     """
     Projects a pointcloud of atoms onto the imaging plane.
     In contrast to the work in project_with_nufft, here each atom is
@@ -224,10 +289,11 @@ class IndependentAtomScattering(NufftScattering):
                 coords_i,
                 resolution,
                 self.padded_shape,
-                atom_density_kernel[atom_type_i],
+                # atom_density_kernel[atom_type_i],
             )
 
-            img += atom_i_image * kernel_i
+            # img += atom_i_image * kernel_i
+            img += atom_i_image 
         return img
 
 
