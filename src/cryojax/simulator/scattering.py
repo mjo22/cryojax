@@ -193,9 +193,6 @@ class IndependentAtomScattering(ScatteringConfig):
 
     TODO: Typehints for atom_density_kernel
     """
-
-
-
     def scatter(
         self,
         density: RealCloud,
@@ -203,7 +200,7 @@ class IndependentAtomScattering(ScatteringConfig):
         resolution: float,
         identity: IntCloud,
         variances: IntCloud,  # WHAT SHOULD THE TYPE BE HERE?
-    
+        return_Fourier: bool = True,
     ) -> ComplexImage:
         """
         Projects a pointcloud of atoms onto the imaging plane.
@@ -211,25 +208,36 @@ class IndependentAtomScattering(ScatteringConfig):
 
         TODO: Typehints for atom_density_kernel
         """
-        sq_distance = _evaluate_coord_to_grid_sq_distances(x, self.pixel_grid)
+        assert(self.padded_shape[0] == self.padded_shape[1])
+        pixel_grid = _build_pixel_grid(self.padded_shape[0], resolution)
+        sq_distance = _evaluate_coord_to_grid_sq_distances(coordinates, pixel_grid)
 
         atom_variances = variances[identity]
         weights = density[identity]
-        gaussian_kernel = eval_Gaussian_kernel(sq_distance, atom_variances) * weights
-        simulated_imgs = jnp.sum(gaussian_kernel, dim=-1)  # Sum over atoms
-        if self.return_Fourier:
-            simulated_imgs = torch.fft.fft2(simulated_imgs)
+        gaussian_kernel = _eval_Gaussian_kernel(sq_distance, atom_variances) * weights
+        print("after  egk")
+        simulated_imgs = jnp.sum(gaussian_kernel, axis=-1)  # Sum over atoms
+        if return_Fourier:
+            simulated_imgs = jnp.fft.fft2(simulated_imgs)
         return simulated_imgs
+
 
 def _evaluate_coord_to_grid_sq_distances(
     x: CloudCoords, xgrid: ImageCoords
 ) -> Image_Coords:
+    print(x.shape)
     x_coords = jnp.expand_dims(x[:, :, 0], axis=1)  # N_struct x 1 x  N_atoms
     y_coords = jnp.expand_dims(x[:, :, 1], axis=1)
     x_sq_displacement = jnp.expand_dims((xgrid - x_coords) ** 2, axis=1)
     y_sq_displacement = jnp.expand_dims((xgrid - y_coords) ** 2, axis=2)
     # Todo: check that this is the image convention we want, and it shouldn't be 2, 1
     return x_sq_displacement + y_sq_displacement
+
+def _eval_Gaussian_kernel(sq_distances, atom_variances):
+    print("inside egk")
+    print(sq_distances.shape)
+    print(atom_variances.shape)
+    return jnp.exp(-sq_distances / (2 * atom_variances))
 
 
 def _build_pixel_grid(
@@ -249,7 +257,7 @@ def _build_pixel_grid(
         -npixels_per_side / 2, npixels_per_side / 2, npixels_per_side + 1
     )[:-1]
     grid_1d *= pixel_size
-    return grid_1d.unsqueeze(0).unsqueeze(-1)
+    return jnp.expand_dims(grid_1d, axis=(0, -1))
             
 
 class IndependentAtomScatteringNufft(NufftScattering):
