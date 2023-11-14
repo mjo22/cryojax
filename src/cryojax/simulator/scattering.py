@@ -224,8 +224,7 @@ class IndependentAtomScattering(ScatteringConfig):
 
 def _evaluate_coord_to_grid_sq_distances(
     x: CloudCoords, xgrid: ImageCoords
-) -> Image_Coords:
-    print(x.shape)
+) -> ImageCoords:
     x_coords = jnp.expand_dims(x[:, :, 0], axis=1)  # N_struct x 1 x  N_atoms
     y_coords = jnp.expand_dims(x[:, :, 1], axis=1)
     x_sq_displacement = jnp.expand_dims((xgrid - x_coords) ** 2, axis=1)
@@ -233,7 +232,7 @@ def _evaluate_coord_to_grid_sq_distances(
     # Todo: check that this is the image convention we want, and it shouldn't be 2, 1
     return x_sq_displacement + y_sq_displacement
 
-def _eval_Gaussian_kernel(sq_distances, atom_variances):
+def _eval_Gaussian_kernel(sq_distances, atom_variances) -> ImageCoords:
     print("inside egk")
     print(sq_distances.shape)
     print(atom_variances.shape)
