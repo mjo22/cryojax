@@ -4,7 +4,7 @@ Abstractions of helical filaments.
 
 from __future__ import annotations
 
-__all__ = ["Helix", "compute_lattice"]
+__all__ = ["Helix", "compute_lattice_positions", "compute_lattice_rotations"]
 
 from typing import Any, Union, Optional, Callable
 from jaxtyping import Array, Float, Int
@@ -24,8 +24,11 @@ from .scattering import ScatteringConfig
 from ..core import field, Module
 from ..types import Real_, RealVector, ComplexImage
 
-Lattice = Float[Array, "N 3"]
+Positions = Float[Array, "N 3"]
 """Type hint for array where each element is a lattice coordinate."""
+
+Rotations = Float[Array, "N 3 3"]
+"""Type hint for array where each element is a rotation matrix."""
 
 Conformations = Union[Float[Array, "N"], Int[Array, "N"]]
 """Type hint for array where each element updates a Conformation."""
@@ -38,6 +41,9 @@ class Helix(Module):
     This class acts just like a ``Specimen``, however
     it assembles a helix from a subunit.
 
+    The screw axis is taken to be in the center of the
+    image, pointing out-of-plane (i.e. along the z direction).
+
     Attributes
     ----------
     subunit :
@@ -48,8 +54,10 @@ class Helix(Module):
     twist :
         The helical twist, given in degrees if
         ``degrees = True`` and radians otherwise.
-    radius :
-        The radius of the helix.
+    initial_pose :
+        The initial pose of the initial subunit, in the
+        center of mass frame of the helix with the screw axis
+        pointing in the z-direction.
     conformations :
         The conformation of `subunit` at each lattice site.
         This can either be a fixed set of conformations or a function
@@ -67,9 +75,9 @@ class Helix(Module):
     subunit: Specimen = field()
     rise: Union[Real_, RealVector] = field()
     twist: Union[Real_, RealVector] = field()
-    radius: Union[Real_, RealVector] = field(default=1)
+    initial_pose: Pose = field()
     conformations: Optional[
-        Union[Conformations, Callable[[Lattice], Conformations]]
+        Union[Conformations, Callable[[Positions], Conformations]]
     ] = field(default=None)
 
     n_start: int = field(static=True, default=1)
@@ -86,7 +94,8 @@ class Helix(Module):
     ) -> ComplexImage:
         """
         Compute the scattered wave of the specimen in the
-        exit plane.
+        exit plane. Optionally, propagate this to the
+        detector plane.
 
         The input and output of this method should identically
         match that of ``Specimen.scatter``.
@@ -105,11 +114,20 @@ class Helix(Module):
         # Draw the conformations of each subunit
         subunits = self.subunits
         # Compute the pose of each subunit
-        where = lambda p: (p.offset_x, p.offset_y, p.offset_z)
-        transformed_lattice = pose.rotate(self.lattice) + pose.offset
+        where = lambda p: (p.offset_x, p.offset_y, p.offset_z, p.matrix)
+        # ... transform the lattice positions by pose of the helix
+        transformed_positions = pose.rotate(self.positions) + pose.offset
+        # ... transform the lattice rotations by the pose of the helix
+        transformed_rotations = jnp.einsum(
+            "ij,njk->nik", pose.rotation.as_matrix(), self.rotations
+        )
+        # ... generate a list of poses at each lattice site
         poses = jtu.tree_map(
-            lambda r: eqx.tree_at(where, pose, (r[0, 0], r[0, 1], r[0, 2])),
-            jnp.split(transformed_lattice, len(subunits), axis=0),
+            lambda r, T: eqx.tree_at(
+                where, pose.as_matrix_pose(), (r[0, 0], r[0, 1], r[0, 2], T[0])
+            ),
+            jnp.split(transformed_positions, len(subunits), axis=0),
+            jnp.split(transformed_rotations, len(subunits), axis=0),
         )
         # Compute all projection images
         scatter = lambda s, p: s.scatter(
@@ -134,12 +152,27 @@ class Helix(Module):
         return self.subunit.resolution
 
     @cached_property
-    def lattice(self) -> Lattice:
-        """Get the helical lattice."""
-        return compute_lattice(
+    def positions(self) -> Positions:
+        """Get the helical lattice positions in the center of mass frame."""
+        return compute_lattice_positions(
             self.rise,
             self.twist,
-            radius=self.radius,
+            self.initial_pose.offset,
+            n_start=self.n_start,
+            n_subunits=self.n_subunits,
+            degrees=self.degrees,
+        )
+
+    @cached_property
+    def rotations(self) -> Rotations:
+        """
+        Get the helical lattice rotations in the center of mass frame.
+
+        These are rotations of the initial subunit.
+        """
+        return compute_lattice_rotations(
+            self.twist,
+            self.initial_pose.rotation.as_matrix(),
             n_start=self.n_start,
             n_subunits=self.n_subunits,
             degrees=self.degrees,
@@ -155,7 +188,7 @@ class Helix(Module):
             return self.n_subunits * self.n_start * [self.subunit]
         else:
             if isinstance(self.conformations, Callable):
-                cs = self.conformations(self.lattice)
+                cs = self.conformations(self.positions)
             else:
                 cs = self.conformations
             where = lambda s: s.conformation.coordinate
@@ -164,15 +197,15 @@ class Helix(Module):
             )
 
 
-def compute_lattice(
+def compute_lattice_positions(
     rise: Union[Real_, RealVector],
     twist: Union[Real_, RealVector],
-    radius: Union[Real_, RealVector] = 1.0,
+    initial_position: Float[Array, "3"],
     n_start: int = 1,
     n_subunits: Optional[int] = None,
     *,
     degrees: bool = True,
-) -> Lattice:
+) -> Positions:
     """
     Compute the lattice points of a helix for a given
     rise, twist, radius, and start number.
@@ -183,8 +216,10 @@ def compute_lattice(
         The helical rise.
     twist : `Real_` or `RealVector`, shape `(n_subunits,)`
         The helical twist.
-    radius : `Real_` or `RealVector`, shape `(n_subunits,)`
-        The radius of the helix.
+    initial_position : `Array`, shape `(3,)`
+        The initial position vector of the first subunit.
+        The xy values are an in-plane displacement from
+        the screw axis, and the z value is a defocus value.
     n_start :
         The start number of the helix.
     n_subunits :
@@ -212,21 +247,77 @@ def compute_lattice(
         [2 * jnp.pi * n / n_start for n in range(n_start)]
     )
 
-    def compute_helical_coordinates(symmetry_angle):
+    def compute_helix_coordinates(symmetry_angle):
         """
-        Get the coordinates for a given
-        helix, where the x and y coordinates
-        are rotated by an angle.
+        Get  coordinates for a given helix, where
+        the x and y coordinates are rotated by an angle.
         """
-        theta = jnp.arange(n_subunits, dtype=float) * twist
-        x_0 = radius * jnp.cos(theta)
-        y_0 = radius * jnp.sin(theta)
-        c, s = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
-        R = jnp.array(((c, s), (-s, c)), dtype=float)
-        x, y = R @ jnp.stack((x_0, y_0))
-        z = rise * jnp.arange(-n_subunits / 2, n_subunits / 2, 1, dtype=float)
-        return jnp.stack((x, y, z), axis=-1)
+        r_0 = initial_position
+        # Define rotation about the screw axis
+        c, s = jnp.cos(twist), jnp.sin(twist)
+        R = jnp.array(((c, s, 0), (-s, c, 0), (0, 0, 1)), dtype=float)
+
+        # Coordinate transformation between subunits
+        def f(carry, x):
+            y = R @ carry + jnp.asarray((0, 0, rise), dtype=float)
+            return y, y
+
+        _, r = jax.lax.scan(f, r_0, None, length=n_subunits - 1)
+        r = jnp.insert(r, 0, r_0, axis=0)
+        # Transformation between helical strands from start-number
+        c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
+        R_n = jnp.array(
+            ((c_n, s_n, 0), (-s_n, c_n, 0), (0, 0, 1)), dtype=float
+        )
+        return (R_n @ r.T).T
 
     # The helical coordinates for all sub-helices
-    lattice = jax.vmap(compute_helical_coordinates)(symmetry_angles)
-    return lattice.reshape((n_start * n_subunits, 3))
+    positions = jax.vmap(compute_helix_coordinates)(symmetry_angles)
+    return positions.reshape((n_start * n_subunits, 3))
+
+
+def compute_lattice_rotations(
+    twist: Union[Real_, RealVector],
+    initial_rotation: Float[Array, "3 3"],
+    n_start: int = 1,
+    n_subunits: Optional[int] = None,
+    *,
+    degrees: bool = True,
+) -> Rotations:
+    # Convert to radians
+    if degrees:
+        twist = jnp.deg2rad(twist)
+    # If the number of subunits is not given, compute for one helix
+    if n_subunits is None:
+        n_subunits = int(2 * jnp.pi / twist)
+    # Rotational symmetry between helices due to the start number
+    symmetry_angles = jnp.array(
+        [2 * jnp.pi * n / n_start for n in range(n_start)]
+    )
+
+    def compute_helix_rotations(symmetry_angle):
+        """
+        Get  coordinates for a given helix, where
+        the x and y coordinates are rotated by an angle.
+        """
+        T_0 = initial_rotation
+        # Define rotation about the screw axis
+        c, s = jnp.cos(twist), jnp.sin(twist)
+        R = jnp.array(((c, s, 0), (-s, c, 0), (0, 0, 1)), dtype=float)
+
+        # Coordinate transformation between subunits
+        def f(carry, x):
+            y = R @ carry
+            return y, y
+
+        _, T = jax.lax.scan(f, T_0, None, length=n_subunits - 1)
+        T = jnp.insert(T, 0, T_0, axis=0)
+        # Transformation between helical strands from start-number
+        c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
+        R_n = jnp.array(
+            ((c_n, s_n, 0), (-s_n, c_n, 0), (0, 0, 1)), dtype=float
+        )
+        return jnp.einsum("ij,njk->nik", R_n, T)
+
+    rotations = jax.vmap(compute_helix_rotations)(symmetry_angles)
+    return rotations.reshape((n_start * n_subunits, 3, 3))
