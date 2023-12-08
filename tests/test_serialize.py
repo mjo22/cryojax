@@ -63,7 +63,7 @@ def test_deserialize_filters_and_masks(filters_or_masks, request):
     for idx, f in enumerate(filters_or_masks):
         test = types[idx].from_json(f.to_json())
         assert test.to_json() == f.to_json()
-        np.testing.assert_allclose(test.compute(), f.compute(), rtol=1e-6)
+        np.testing.assert_allclose(test.evaluate(), f.evaluate(), rtol=1e-6)
 
 
 @pytest.mark.parametrize(
