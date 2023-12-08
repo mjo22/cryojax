@@ -170,6 +170,52 @@ class ElectronCloud(Voxels):
         return cls(**load_grid_as_cloud(filename, **config), **kwargs)
 
 
+class AtomCloud(ElectronDensity):
+    """
+    Abstraction of a point cloud of atoms.
+    """
+
+    density: Array = field()
+    coordinates: Array = field()
+    variances: Array = field()
+    identity: Array = field()
+
+    def scatter(
+        self, scattering: ScatteringConfig, resolution: Real_
+    ) -> ComplexImage:
+        """
+        Compute the 2D rendering of the point cloud in the
+        object plane.
+        """
+
+        return scattering.scatter(
+            self.density,
+            self.coordinates,
+            resolution,
+            self.identity,
+            self.variances,
+        )
+
+    def view(self, pose: Pose) -> AtomCloud:
+        coordinates = pose.rotate(self.coordinates, real=True)
+        return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
+
+    @classmethod
+    def from_file(
+        cls: Type[Voxels],
+        filename: str,
+        config: dict = {},
+        **kwargs: Any,
+    ) -> Voxels:
+        """
+        Load an Atom Cloud
+
+        TODO: What is the file format appropriate here? Q. for Michael...
+        """
+        raise NotImplementedError
+        # return cls.from_mrc(filename, config=config, **kwargs)
+
+
 class ElectronGrid(Voxels):
     """
     Abstraction of a 3D electron density voxel grid.

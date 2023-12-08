@@ -28,6 +28,7 @@ from ..types import (
     ComplexVolume,
     VolumeCoords,
     RealCloud,
+    IntCloud,
     CloudCoords,
 )
 from ..utils import (
@@ -184,6 +185,130 @@ class NufftScattering(ScatteringConfig):
             self.padded_shape,
             eps=self.eps,
         )
+
+
+class IndependentAtomScattering(ScatteringConfig):
+    """
+    Projects a pointcloud of atoms onto the imaging plane.
+    In contrast to the work in project_with_nufft, here each atom is
+
+    TODO: Typehints for atom_density_kernel
+    """
+
+    def scatter(
+        self,
+        density: RealCloud,
+        coordinates: CloudCoords,
+        resolution: float,
+        identity: IntCloud,
+        variances: IntCloud,  # WHAT SHOULD THE TYPE BE HERE?
+        return_Fourier: bool = True,
+    ) -> ComplexImage:
+        """
+        Projects a pointcloud of atoms onto the imaging plane.
+        In contrast to the work in project_with_nufft, here each atom is
+
+        TODO: Typehints for atom_density_kernel
+        """
+        assert self.padded_shape[0] == self.padded_shape[1]
+        pixel_grid = _build_pixel_grid(self.padded_shape[0], resolution)
+        sq_distance = _evaluate_coord_to_grid_sq_distances(
+            coordinates, pixel_grid
+        )
+
+        atom_variances = variances[identity]
+        weights = density[identity]
+        gaussian_kernel = (
+            _eval_Gaussian_kernel(sq_distance, atom_variances) * weights
+        )
+        print("after  egk")
+        simulated_imgs = jnp.sum(gaussian_kernel, axis=-1)  # Sum over atoms
+        if return_Fourier:
+            simulated_imgs = jnp.fft.fft2(simulated_imgs)
+        return simulated_imgs
+
+
+def _evaluate_coord_to_grid_sq_distances(
+    x: CloudCoords, xgrid: ImageCoords
+) -> ImageCoords:
+    x_coords = jnp.expand_dims(x[:, :, 0], axis=1)  # N_struct x 1 x  N_atoms
+    y_coords = jnp.expand_dims(x[:, :, 1], axis=1)
+    x_sq_displacement = jnp.expand_dims((xgrid - x_coords) ** 2, axis=1)
+    y_sq_displacement = jnp.expand_dims((xgrid - y_coords) ** 2, axis=2)
+    # Todo: check that this is the image convention we want, and it shouldn't be 2, 1
+    return x_sq_displacement + y_sq_displacement
+
+
+def _eval_Gaussian_kernel(sq_distances, atom_variances) -> ImageCoords:
+    print("inside egk")
+    print(sq_distances.shape)
+    print(atom_variances.shape)
+    return jnp.exp(-sq_distances / (2 * atom_variances))
+
+
+def _build_pixel_grid(
+    npixels_per_side: int, pixel_size: float
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """
+    Calculates the coordinates of each pixel in the image.  The center of the image  is taken to be (0, 0).
+
+    Args:
+        npixels_per_side (float): Number of pixels on each side of the square miage
+        pixel_size (int): Size of each pixel.
+
+    Returns:
+        tuple: two arrays containing the x, y coordinates of each pixel, respectively.
+    """
+    grid_1d = jnp.linspace(
+        -npixels_per_side / 2, npixels_per_side / 2, npixels_per_side + 1
+    )[:-1]
+    grid_1d *= pixel_size
+    return jnp.expand_dims(grid_1d, axis=(0, -1))
+
+
+class IndependentAtomScatteringNufft(NufftScattering):
+    """
+    Projects a pointcloud of atoms onto the imaging plane.
+    In contrast to the work in project_with_nufft, here each atom is
+
+    TODO: Typehints for atom_density_kernel
+    """
+
+    def scatter(
+        self,
+        density: RealCloud,
+        coordinates: CloudCoords,
+        resolution: float,
+        identity: IntCloud,
+        atom_density_kernel,  # WHAT SHOULD THE TYPE BE HERE?
+    ) -> ComplexImage:
+        """
+        Projects a pointcloud of atoms onto the imaging plane.
+        In contrast to the work in project_with_nufft, here each atom is
+
+        TODO: Typehints for atom_density_kernel
+        """
+        atom_types = jnp.unique(identity)
+
+        img = jnp.zeros(self.padded_shape, dtype=jnp.complex64)
+        for atom_type_i in atom_types:
+            # Select the properties specific to that type of atom
+            coords_i = coordinates[identity == atom_type_i]
+            density_i = density[identity == atom_type_i]
+            kernel_i = atom_density_kernel[atom_type_i]
+
+            # Build an
+            atom_i_image = project_with_nufft(
+                density_i,
+                coords_i,
+                resolution,
+                self.padded_shape,
+                # atom_density_kernel[atom_type_i],
+            )
+
+            # img += atom_i_image * kernel_i
+            img += atom_i_image
+        return img
 
 
 def extract_slice(
