@@ -15,7 +15,7 @@ from .ice import NullIce, GaussianIce
 from .detector import NullDetector, GaussianDetector
 from .image import DetectorImage
 from ..utils import fftn
-from ..types import Real_, RealImage, Image
+from ..types import Real_, RealImage
 
 
 class GaussianImage(DetectorImage):
@@ -45,7 +45,7 @@ class GaussianImage(DetectorImage):
         _, N2 = self.scattering.shape
         z = N2 // 2 + 1
         residuals = residuals[:, :z]
-        if isinstance(variance, Image):
+        if not isinstance(variance, Real_):
             variance = variance[:, :z]
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
         loss = (loss.real / residuals.size) / residuals.size
