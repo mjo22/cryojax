@@ -115,11 +115,11 @@ class Helix(Module):
         subunits = self.subunits
         # Compute the pose of each subunit
         where = lambda p: (p.offset_x, p.offset_y, p.offset_z, p.matrix)
-        # ... transform the lattice positions by pose of the helix
+        # ... transform the subunit positions by pose of the helix
         transformed_positions = pose.rotate(self.positions) + pose.offset
-        # ... transform the lattice rotations by the pose of the helix
+        # ... transform the subunit rotations by the pose of the helix
         transformed_rotations = jnp.einsum(
-            "ij,njk->nik", pose.rotation.as_matrix(), self.rotations
+            "nij,jk->nik", self.rotations, pose.rotation.as_matrix()
         )
         # ... generate a list of poses at each lattice site
         poses = jtu.tree_map(
@@ -200,7 +200,7 @@ class Helix(Module):
 def compute_lattice_positions(
     rise: Union[Real_, RealVector],
     twist: Union[Real_, RealVector],
-    initial_position: Float[Array, "3"],
+    initial_displacement: Float[Array, "3"],
     n_start: int = 1,
     n_subunits: Optional[int] = None,
     *,
@@ -216,10 +216,12 @@ def compute_lattice_positions(
         The helical rise.
     twist : `Real_` or `RealVector`, shape `(n_subunits,)`
         The helical twist.
-    initial_position : `Array`, shape `(3,)`
-        The initial position vector of the first subunit.
+    initial_displacement : `Array`, shape `(3,)`
+        The initial position vector of the first subunit, in
+        the center of mass frame of the helix.
         The xy values are an in-plane displacement from
-        the screw axis, and the z value is a defocus value.
+        the screw axis, and the z value is an offset from the
+        first subunit's position.
     n_start :
         The start number of the helix.
     n_subunits :
@@ -252,7 +254,7 @@ def compute_lattice_positions(
         Get  coordinates for a given helix, where
         the x and y coordinates are rotated by an angle.
         """
-        r_0 = initial_position
+        r_0 = initial_displacement
         # Define rotation about the screw axis
         c, s = jnp.cos(twist), jnp.sin(twist)
         R = jnp.array(((c, s, 0), (-s, c, 0), (0, 0, 1)), dtype=float)
@@ -264,6 +266,8 @@ def compute_lattice_positions(
 
         _, r = jax.lax.scan(f, r_0, None, length=n_subunits - 1)
         r = jnp.insert(r, 0, r_0, axis=0)
+        # Shift helix center of mass to the origin
+        r -= jnp.asarray([0.0, 0.0, rise * n_subunits / 2], dtype=float)
         # Transformation between helical strands from start-number
         c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
         R_n = jnp.array(
@@ -307,7 +311,7 @@ def compute_lattice_rotations(
 
         # Coordinate transformation between subunits
         def f(carry, x):
-            y = R @ carry
+            y = R.T @ carry
             return y, y
 
         _, T = jax.lax.scan(f, T_0, None, length=n_subunits - 1)
