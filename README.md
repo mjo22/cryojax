@@ -1,4 +1,7 @@
 # Cryo-EM image simulation and analysis powered by JAX.
+
+![Tests](https://github.com/mjo22/cryojax/actions/workflows/testing.yaml/badge.svg)
+
 This library is a modular framework for simulating forward models of cryo electron microscopy images. It is designed with 2D template matching analysis in mind, but it can be used generally. `cryojax` is, of course, built on [jax](https://github.com/google/jax). It also uses [equinox](https://github.com/patrick-kidger/equinox/) for modeling building, so `equinox` functionality is supported in `cryojax`.
 
 ## Summary
