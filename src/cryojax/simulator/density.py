@@ -168,16 +168,17 @@ class ElectronCloud(Voxels):
         documentation.
         """
         return cls(**load_grid_as_cloud(filename, **config), **kwargs)
-    
+
+
 class AtomCloud(ElectronDensity):
     """
-    Abstraction of a point cloud of atoms. 
+    Abstraction of a point cloud of atoms.
     """
 
     density: Array = field()
     coordinates: Array = field()
     variances: Array = field()
-    identity: Array = field() 
+    identity: Array = field()
 
     def scatter(
         self, scattering: ScatteringConfig, resolution: Real_
@@ -187,12 +188,18 @@ class AtomCloud(ElectronDensity):
         object plane.
         """
 
-        return scattering.scatter(self.density, self.coordinates, resolution, self.identity, self.variances)
-    
+        return scattering.scatter(
+            self.density,
+            self.coordinates,
+            resolution,
+            self.identity,
+            self.variances,
+        )
+
     def view(self, pose: Pose) -> AtomCloud:
         coordinates = pose.rotate(self.coordinates, real=True)
         return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
-    
+
     @classmethod
     def from_file(
         cls: Type[Voxels],

@@ -186,6 +186,7 @@ class NufftScattering(ScatteringConfig):
             eps=self.eps,
         )
 
+
 class IndependentAtomScattering(ScatteringConfig):
     """
     Projects a pointcloud of atoms onto the imaging plane.
@@ -193,6 +194,7 @@ class IndependentAtomScattering(ScatteringConfig):
 
     TODO: Typehints for atom_density_kernel
     """
+
     def scatter(
         self,
         density: RealCloud,
@@ -208,13 +210,17 @@ class IndependentAtomScattering(ScatteringConfig):
 
         TODO: Typehints for atom_density_kernel
         """
-        assert(self.padded_shape[0] == self.padded_shape[1])
+        assert self.padded_shape[0] == self.padded_shape[1]
         pixel_grid = _build_pixel_grid(self.padded_shape[0], resolution)
-        sq_distance = _evaluate_coord_to_grid_sq_distances(coordinates, pixel_grid)
+        sq_distance = _evaluate_coord_to_grid_sq_distances(
+            coordinates, pixel_grid
+        )
 
         atom_variances = variances[identity]
         weights = density[identity]
-        gaussian_kernel = _eval_Gaussian_kernel(sq_distance, atom_variances) * weights
+        gaussian_kernel = (
+            _eval_Gaussian_kernel(sq_distance, atom_variances) * weights
+        )
         print("after  egk")
         simulated_imgs = jnp.sum(gaussian_kernel, axis=-1)  # Sum over atoms
         if return_Fourier:
@@ -231,6 +237,7 @@ def _evaluate_coord_to_grid_sq_distances(
     y_sq_displacement = jnp.expand_dims((xgrid - y_coords) ** 2, axis=2)
     # Todo: check that this is the image convention we want, and it shouldn't be 2, 1
     return x_sq_displacement + y_sq_displacement
+
 
 def _eval_Gaussian_kernel(sq_distances, atom_variances) -> ImageCoords:
     print("inside egk")
@@ -257,7 +264,7 @@ def _build_pixel_grid(
     )[:-1]
     grid_1d *= pixel_size
     return jnp.expand_dims(grid_1d, axis=(0, -1))
-            
+
 
 class IndependentAtomScatteringNufft(NufftScattering):
     """
@@ -300,7 +307,7 @@ class IndependentAtomScatteringNufft(NufftScattering):
             )
 
             # img += atom_i_image * kernel_i
-            img += atom_i_image 
+            img += atom_i_image
         return img
 
 
