@@ -21,8 +21,6 @@ conda create -n cryojax -c conda-forge python=3.10
 
 Note that `python>=3.10` is required due to recent features in `dataclasses`. Now, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support.
 
-Next, [install jax-finufft](https://github.com/dfm/jax-finufft). Non-uniform FFTs are provided as an option for computing image projections.
-
 Finally, install `cryojax`. For now, only a source build is supported.
 
 ```bash
@@ -32,6 +30,8 @@ python -m pip install .
 ```
 
 This will install the remaining dependencies, such as [equinox](https://github.com/patrick-kidger/equinox/) for jax-friendly dataclasses, [jaxlie](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, [mrcfile](https://github.com/ccpem/mrcfile) for I/O, and [dataclasses-json](https://github.com/lidatong/dataclasses-json) for serialization.
+
+The [jax-finufft](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
 
 ## Building a model
 
@@ -100,32 +100,34 @@ For these more advanced examples, see the tutorials section of the repository. I
 
 ## Creating a loss function
 
-In `jax`, we ultimately want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must build the model.
+In `jax`, we ultimately want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must update the model.
 
 ```python
 import equinox as eqx
 
-def build_model(params: dict[str, jax.Array]) -> cs.GaussianImage:
-    # Perform "model surgery" with equinox.tree_at
-    p = eqx.tree_at(lambda p: p.view_phi, pose, params["view_phi"])
-    o = eqx.tree_at(lambda o: o.defocus_u, optics, params["defocus_u"])
-    d = eqx.tree_at(lambda d: d.pixel_size, detector, params["pixel_size"])
-    # Build the PipelineState
-    state = cs.PipelineState(pose=p, optics=o, detector=d)
-    # Build the model
-    model = cs.GaussianImage(
-        scattering=scattering, specimen=specimen, state=state, observed=observed
-    )
-    return model
+@eqx.filter_jit
+def update_model(model: cs.GaussianImage, params: dict[str, jax.Array]) -> cs.GaussianImage:
+    """
+    Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
+
+    The equinox.filter_jit decorator is necessary because the `model` specifies which fields are
+    as static (similar to using the `static_argnums` keyword in `jax.jit`). Let's say
+    `model` is not treated as input to this function and instead is a global variable.
+    Then `update_model` will have very long compilation times because the electron density
+    is treated as static!
+    """
+    where = lambda model: (model.state.pose.view_phi, model.state.optics.defocus_u, model.state.detector.pixel_size)
+    updated = eqx.tree_at(where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"]))
+    return updated
 ```
 
-Note that the `PipelineState` contains all of the model parameters in this example. `Specimen` can also contain model parameters. The `ElectronDensity`, `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization that should not be included in the loss function evaluation. We can now create the loss!
+Note that the `PipelineState` contains all of the model parameters in this example. In general, any `cryojax` `Module` may contain model parameters. One gotcha is just that the `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. We can now create the loss!
 
 ```python
 @jax.jit
 @jax.value_and_grad
 def loss(params: dict[str, jax.Array]) -> jax.Array:
-    model = build_model(params)
+    model = update_model(model, params)
     return model()
 ```
 
