@@ -1,9 +1,12 @@
 import pytest
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 import equinox as eqx
 import cryojax.simulator as cs
+
+from functools import partial
 
 
 def test_jit(
@@ -69,14 +72,16 @@ def test_equinox_jit(likelihood_model):
 
 
 def test_equinox_value_and_grad(likelihood_model):
-    @eqx.filter_jit
-    def build_model(model, offset_z):
+    def build_model(model, params):
         where = lambda m: m.state.pose.offset_z
-        return eqx.tree_at(where, model, offset_z)
+        return eqx.tree_at(where, model, params["offset_z"])
 
-    @eqx.filter_value_and_grad
-    def compute_loss(offset_z):
-        model = build_model(likelihood_model, offset_z)
+    @jax.jit
+    @partial(jax.value_and_grad, argnums=1)
+    def compute_loss(model, params):
+        model = build_model(model, params)
         return model()
 
-    compute_loss(100.0)
+    value, grad = compute_loss(
+        likelihood_model, dict(offset_z=jnp.asarray(100.0))
+    )
