@@ -7,8 +7,8 @@ from __future__ import annotations
 __all__ = [
     "ElectronDensity",
     "Voxels",
-    "ElectronCloud",
-    "ElectronGrid",
+    "VoxelCloud",
+    "VoxelGrid",
 ]
 
 import equinox as eqx
@@ -130,7 +130,7 @@ class Voxels(ElectronDensity):
         raise NotImplementedError
 
 
-class ElectronCloud(Voxels):
+class VoxelCloud(Voxels):
     """
     Abstraction of a 3D electron density voxel point cloud.
 
@@ -145,7 +145,7 @@ class ElectronCloud(Voxels):
     weights: RealCloud = field()
     coordinates: CloudCoords = field()
 
-    def view(self, pose: Pose) -> ElectronCloud:
+    def view(self, pose: Pose) -> VoxelCloud:
         """
         Compute rotations of a point cloud by an imaging pose.
 
@@ -158,11 +158,11 @@ class ElectronCloud(Voxels):
 
     @classmethod
     def from_mrc(
-        cls: Type[ElectronCloud],
+        cls: Type[VoxelCloud],
         filename: str,
         config: dict = {},
         **kwargs: Any,
-    ) -> ElectronCloud:
+    ) -> VoxelCloud:
         """
         See ``cryojax.io.voxel.load_grid_as_cloud`` for
         documentation.
@@ -216,7 +216,7 @@ class AtomCloud(ElectronDensity):
         # return cls.from_mrc(filename, config=config, **kwargs)
 
 
-class ElectronGrid(Voxels):
+class VoxelGrid(Voxels):
     """
     Abstraction of a 3D electron density voxel grid.
 
@@ -233,7 +233,7 @@ class ElectronGrid(Voxels):
     weights: ComplexVolume = field()
     coordinates: VolumeCoords = field()
 
-    def view(self, pose: Pose) -> ElectronGrid:
+    def view(self, pose: Pose) -> VoxelGrid:
         """
         Compute rotations of a central slice in fourier space
         by an imaging pose.
@@ -246,11 +246,11 @@ class ElectronGrid(Voxels):
 
     @classmethod
     def from_mrc(
-        cls: Type[ElectronGrid],
+        cls: Type[VoxelGrid],
         filename: str,
         config: dict = {},
         **kwargs: Any,
-    ) -> ElectronGrid:
+    ) -> VoxelGrid:
         """
         See ``cryojax.io.voxel.load_fourier_grid`` for
         documentation.

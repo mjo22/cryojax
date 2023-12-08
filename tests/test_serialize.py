@@ -47,7 +47,7 @@ def test_deserialize_state(state):
 def test_deserialize_density(density):
     """Test specimen deserialization."""
     assert (
-        cs.ElectronGrid.from_json(density.to_json()).to_json()
+        cs.VoxelGrid.from_json(density.to_json()).to_json()
         == density.to_json()
     )
     # assert (
