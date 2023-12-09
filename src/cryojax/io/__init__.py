@@ -1,7 +1,6 @@
-from . import voxel
+from . import load_voxels, load_atoms
 
-from .voxel import *
+from .load_voxels import *
+from .load_atoms import *
 
-__all__ = voxel.__all__
-
-__all__.extend([voxel])
+__all__ = load_voxels.__all__ + load_atoms.__all__

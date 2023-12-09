@@ -1,8 +1,10 @@
 import pytest
 import jax
 from jax import numpy as jnp
-from cryojax.simulator.scattering import _evaluate_coord_to_grid_sq_distances
-from cryojax.simulator.scattering import (
+from cryojax.simulator.scattering.gaussian_mixture import (
+    _evaluate_coord_to_grid_sq_distances,
+)
+from cryojax.simulator.scattering.gaussian_mixture import (
     _build_pixel_grid,
     IndependentAtomScattering,
 )
@@ -55,14 +57,13 @@ class TestIndependentAtomScattering:
         # IAS = IndependentAtomScattering((100, 100))
         IAS = IndependentAtomScattering((50, 50))
 
-        image = IAS.scatter(
+        ac = AtomCloud(
             weights,
             coordinates,
-            pixel_size,
-            jnp.array([0, 1, 2]),
-            variances,
-            False,
+            variances=variances,
+            identity=jnp.array([0, 1, 2]),
         )
+        image = IAS.scatter(ac, pixel_size, return_Fourier=False)
 
         # Render the atom
         image_sum = jnp.sum(image) * pixel_size**2
@@ -75,6 +76,10 @@ class TestIndependentAtomScattering:
         assert jnp.allclose(image_sum, correct_norm)
 
 
+# Michael: I removed the scattering method from the ElectronDensity
+# representations. This is much cleaner, makes more sense, and has
+# allowed for better type checking! Commenting out this test
+"""
 class TestAtomCloud:
     @pytest.mark.parametrize("stdev_val", [1.0, 0.50])
     def test_can_scatter(self, stdev_val):
@@ -105,3 +110,4 @@ class TestAtomCloud:
         assert jnp.allclose(img, ref_image_fft)
 
         # Three random atoms in the center, each of the same variance
+"""

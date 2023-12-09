@@ -13,7 +13,7 @@ from jax.scipy import special
 
 from .coordinates import fftfreqs1d
 
-from ..types import Cloud, CloudCoords, Real_, RealVector, ComplexImage, Image
+from ..types import Cloud, CloudCoords, ComplexImage, Image
 
 
 def nufft(

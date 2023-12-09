@@ -4,7 +4,7 @@ Abstractions of biological specimen.
 
 from __future__ import annotations
 
-__all__ = ["Specimen", "SpecimenMixture"]
+__all__ = ["Specimen", "Ensemble"]
 
 from typing import Any, Optional
 
@@ -78,7 +78,7 @@ class Specimen(Module):
         # View the electron density map at a given pose
         density = density.view(pose)
         # Compute the scattering image
-        image = density.scatter(scattering, self.resolution)
+        image = scattering.scatter(density, self.resolution)
         # Apply translation
         image *= pose.shifts(freqs)
         # Compute and apply CTF
@@ -97,9 +97,9 @@ class Specimen(Module):
         return self.density
 
 
-class SpecimenMixture(Specimen):
+class Ensemble(Specimen):
     """
-    A biological specimen at a mixture of conformations.
+    A biological specimen at a discrete mixture of conformations.
     """
 
     density: list[ElectronDensity] = field()
