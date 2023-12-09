@@ -77,7 +77,7 @@ class VoxelGrid(Voxels):
     weights: ComplexVolume = field()
     coordinates: VolumeCoords = field()
 
-    real: bool = field(default=False)
+    real: bool = field(default=False, static=True)
 
     def __check_init__(self):
         if self.real is True:
@@ -127,7 +127,7 @@ class VoxelCloud(Voxels):
     weights: RealCloud = field()
     coordinates: CloudCoords = field()
 
-    real: bool = field(default=True)
+    real: bool = field(default=True, static=True)
 
     def __check_init__(self):
         if self.real is False:
