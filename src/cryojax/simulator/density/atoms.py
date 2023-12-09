@@ -26,7 +26,7 @@ class AtomCloud(ElectronDensity):
     variances: Array = field()
     identity: Array = field()
 
-    real: bool = field(default=True)
+    real: bool = field(default=True, static=True)
 
     def __check_init__(self):
         if self.real is False:
