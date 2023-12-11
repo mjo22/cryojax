@@ -1,4 +1,8 @@
 # Cryo-EM image simulation and analysis powered by JAX.
+
+![Tests](https://github.com/mjo22/cryojax/actions/workflows/testing.yml/badge.svg)
+![Lint](https://github.com/mjo22/cryojax/actions/workflows/black.yml/badge.svg)
+
 This library is a modular framework for simulating forward models of cryo electron microscopy images. It is designed with 2D template matching analysis in mind, but it can be used generally. `cryojax` is, of course, built on [jax](https://github.com/google/jax). It also uses [equinox](https://github.com/patrick-kidger/equinox/) for modeling building, so `equinox` functionality is supported in `cryojax`.
 
 ## Summary
@@ -17,8 +21,6 @@ conda create -n cryojax -c conda-forge python=3.10
 
 Note that `python>=3.10` is required due to recent features in `dataclasses`. Now, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support.
 
-Next, [install jax-finufft](https://github.com/dfm/jax-finufft). Non-uniform FFTs are provided as an option for computing image projections.
-
 Finally, install `cryojax`. For now, only a source build is supported.
 
 ```bash
@@ -28,6 +30,8 @@ python -m pip install .
 ```
 
 This will install the remaining dependencies, such as [equinox](https://github.com/patrick-kidger/equinox/) for jax-friendly dataclasses, [jaxlie](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, [mrcfile](https://github.com/ccpem/mrcfile) for I/O, and [dataclasses-json](https://github.com/lidatong/dataclasses-json) for serialization.
+
+The [jax-finufft](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
 
 ## Building a model
 
@@ -71,6 +75,12 @@ model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state)
 image = model()
 ```
 
+This computes an image using the noise model of the detector (under the hood `model.sample()` is called). One can also compute an image without the stochastic part of the model.
+
+```python
+image = model.render()
+```
+
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
@@ -81,14 +91,14 @@ model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, 
 image = model()
 ```
 
-If a `GaussianImage` is initialized with the field `observed`, the model will instead compute a Gaussian log-likelihood in Fourier space with a diagonal covariance tensor (or power spectrum).
+If a `GaussianImage` is initialized with the field `observed`, the model will instead compute the log likelihood.
 
 ```python
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=observed)
 log_likelihood = model()
 ```
 
-Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
+Under the hood, this calls `model.log_probability()`. Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
 
 Additional components can be plugged into the `ImagePipeline` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` multiplies the image by a scale factor. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
 
@@ -96,45 +106,42 @@ For these more advanced examples, see the tutorials section of the repository. I
 
 ## Creating a loss function
 
-In `jax`, we ultimately want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must build the model.
+In `jax`, we ultimately want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must update the model.
 
 ```python
-import equinox as eqx
 
-def build_model(params: dict[str, jax.Array]) -> cs.GaussianImage:
-    # Perform "model surgery" with equinox.tree_at
-    p = eqx.tree_at(lambda p: p.view_phi, pose, params["view_phi"])
-    o = eqx.tree_at(lambda o: o.defocus_u, optics, params["defocus_u"])
-    d = eqx.tree_at(lambda d: d.pixel_size, detector, params["pixel_size"])
-    # Build the PipelineState
-    state = cs.PipelineState(pose=p, optics=o, detector=d)
-    # Build the model
-    model = cs.GaussianImage(
-        scattering=scattering, specimen=specimen, state=state, observed=observed
-    )
-    return model
-```
-
-Note that the `PipelineState` contains all of the model parameters in this example. `Specimen` can also contain model parameters. The `ElectronDensity`, `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization that should not be included in the loss function evaluation. We can now create the loss!
-
-```python
 @jax.jit
-@jax.value_and_grad
-def loss(params: dict[str, jax.Array]) -> jax.Array:
-    model = build_model(params)
-    return model()
+def update_model(model: cs.GaussianImage, params: dict[str, jax.Array]) -> cs.GaussianImage:
+    """
+    Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
+    """
+    where = lambda model: (model.state.pose.view_phi, model.state.optics.defocus_u, model.state.detector.pixel_size)
+    updated_model = eqx.tree_at(where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"]))
+    return updated_model
 ```
 
-Finally, we can evaluate the log_likelihood at an updated set of parameters.
+We can now create the loss and differentiate it with respect to the parameters.
+
+```python
+from functools import partial
+
+@jax.jit
+@partial(jax.value_and_grad, argnums=1)
+def loss(model: cs.GaussianImage, params: dict[str, jax.Array]) -> jax.Array:
+    model = update_model(model, params)
+    return model.log_probability()
+```
+
+Finally, we can evaluate an updated set of parameters.
 
 ```python
 params = dict(view_phi=jnp.asarray(jnp.pi), defocus_u=jnp.asarray(9000.0), pixel_size=jnp.asarray(1.30))
-log_likelihood = loss(params)
+log_likelihood, grad = loss(model, params)
 ```
 
-To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. In general, there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more complex use cases.
+To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. Note that the `PipelineState` contains all of the model parameters in this example. In general, any `cryojax` `Module` may contain model parameters. One gotcha is just that the `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. This may result in slight speedups.
 
-Note that one could also write a custom log likelihood function simply by instantiating a model without the observed data.
+In general, there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
 
 ## Features
 

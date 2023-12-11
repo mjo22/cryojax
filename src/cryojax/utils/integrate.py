@@ -9,7 +9,6 @@ from jaxtyping import Array, Float
 
 import jax
 import jax.numpy as jnp
-from jax_finufft import nufft1
 from jax.scipy import special
 
 from .coordinates import fftfreqs1d
@@ -55,6 +54,8 @@ def nufft(
     ------
     ft : Fourier transform.
     """
+    from jax_finufft import nufft1
+
     coords = jnp.asarray(coords)
     complex_density = jnp.asarray(density.astype(complex))
     periodic_coords = 2 * jnp.pi * coords / box_size
