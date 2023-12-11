@@ -177,7 +177,7 @@ class ScatteringImage(ImagePipeline):
         return scattering_image
 
     def log_probability(self) -> Real_:
-        return jnp.asarray(0.0)
+        raise NotImplementedError
 
 
 class OpticsImage(ScatteringImage):
