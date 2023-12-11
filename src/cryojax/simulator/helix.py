@@ -192,8 +192,9 @@ class Helix(Module):
             else:
                 cs = self.conformations
             where = lambda s: s.conformation.coordinate
-            return jax.lax.map(
-                lambda c: eqx.tree_at(where, self.subunit, c), cs
+            return jtu.tree_map(
+                lambda c: eqx.tree_at(where, self.subunit, c[0]),
+                jnp.split(cs, len(cs), axis=0),
             )
 
 

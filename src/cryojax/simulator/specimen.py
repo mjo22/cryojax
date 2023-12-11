@@ -115,9 +115,11 @@ class SpecimenMixture(Specimen):
         self.resolution = resolution
         self.conformation = conformation or Discrete()
 
+    def __check_init__(self):
+        coordinate = self.conformation.coordinate
+        if not (-len(self.density) <= coordinate < len(self.density)):
+            raise ValueError("The conformational coordinate is out-of-bounds.")
+
     def sample(self) -> ElectronDensity:
         """Sample the electron density at the configured conformation."""
-        coordinate = self.conformation.coordinate
-        if not (-len(coordinate) <= coordinate < len(coordinate)):
-            raise ValueError("The conformational coordinate is out-of-bounds.")
-        return self.density[coordinate]
+        return self.density[self.conformation.coordinate]
