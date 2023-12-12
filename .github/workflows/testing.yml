@@ -4,7 +4,7 @@
 # https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 # Please check the link for more detailed instructions
 
-name: Run tests
+name: Tests
 
 on: [push]
 

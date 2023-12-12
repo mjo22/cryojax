@@ -90,6 +90,15 @@ class Pose(Module):
         """Generate a rotation."""
         raise NotImplementedError
 
+    def as_matrix_pose(self) -> MatrixPose:
+        """Convert the pose to a rotation matrix representation"""
+        return MatrixPose(
+            offset_x=self.offset_x,
+            offset_y=self.offset_y,
+            offset_z=self.offset_z,
+            matrix=self.rotation.as_matrix(),
+        )
+
 
 class EulerPose(Pose):
     """
@@ -169,6 +178,24 @@ class QuaternionPose(Pose):
         )
         R = SO3(wxyz=wxyz)
         return R.inverse() if self.inverse else R
+
+
+class MatrixPose(Pose):
+    """
+    An image pose represented by a rotation matrix.
+
+    Attributes
+    ----------
+    matrix :
+        The rotation matrix.
+    """
+
+    matrix: Float[Array, "3 3"] = field(default_factory=jnp.eye)
+
+    @cached_property
+    def rotation(self) -> SO3:
+        """Generate rotation from a rotation matrix."""
+        return SO3.from_matrix(self.matrix)
 
 
 def rotate_coordinates(

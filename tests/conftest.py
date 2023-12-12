@@ -5,13 +5,13 @@ from jax import random
 from jax import config
 
 import cryojax.simulator as cs
+from cryojax.io import load_fourier_grid
 
 config.update("jax_enable_x64", True)
 
 
 @pytest.fixture
 def scattering():
-    # return cs.NufftScattering(shape=(81, 81), eps=1e-4)
     return cs.FourierSliceScattering(shape=(81, 81))
 
 
@@ -20,8 +20,20 @@ def density():
     filename = os.path.join(
         os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
     )
-    # return cs.ElectronCloud.from_file(filename, resolution=5.32)
     return cs.VoxelGrid.from_file(filename)
+
+
+@pytest.fixture
+def weights_and_coordinates():
+    filename = os.path.join(
+        os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
+    )
+    return load_fourier_grid(filename)
+
+
+@pytest.fixture
+def resolution():
+    return 5.32
 
 
 @pytest.fixture
@@ -36,21 +48,21 @@ def masks(scattering):
 
 
 @pytest.fixture
-def state():
+def state(resolution):
     return cs.PipelineState(
         pose=cs.EulerPose(degrees=False),
         ice=cs.GaussianIce(key=random.PRNGKey(seed=1)),
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1e5, mu=1.0),
         detector=cs.GaussianDetector(
-            pixel_size=5.32, key=random.PRNGKey(seed=0)
+            pixel_size=resolution, key=random.PRNGKey(seed=0)
         ),
     )
 
 
 @pytest.fixture
-def specimen(density):
-    return cs.Specimen(density=density, resolution=5.32)
+def specimen(density, resolution):
+    return cs.Specimen(density=density, resolution=resolution)
 
 
 @pytest.fixture
@@ -93,4 +105,21 @@ def maskless_model(scattering, specimen, state, filters):
         specimen=specimen,
         state=state,
         filters=filters,
+    )
+
+
+@pytest.fixture
+def test_image(noisy_model):
+    return noisy_model()
+
+
+@pytest.fixture
+def likelihood_model(scattering, specimen, state, filters, masks, test_image):
+    return cs.GaussianImage(
+        scattering=scattering,
+        specimen=specimen,
+        state=state,
+        filters=filters,
+        masks=masks,
+        observed=test_image,
     )
