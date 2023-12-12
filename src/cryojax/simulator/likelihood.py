@@ -28,10 +28,10 @@ class GaussianImage(DetectorImage):
     """
 
     def __check_init__(self):
-        if not isinstance(self.state.ice, (NullIce, GaussianIce)):
+        if not isinstance(self.instrument.ice, (NullIce, GaussianIce)):
             raise ValueError("A GaussianIce model is required.")
         if not isinstance(
-            self.state.detector, (NullDetector, GaussianDetector)
+            self.instrument.detector, (NullDetector, GaussianDetector)
         ):
             raise ValueError("A GaussianDetector model is required.")
 
@@ -55,18 +55,18 @@ class GaussianImage(DetectorImage):
     @cached_property
     def variance(self) -> Union[Real_, RealImage]:
         # Gather image configuration
-        if self.state.detector.pixel_size is None:
+        if self.instrument.detector.pixel_size is None:
             pixel_size = self.specimen.resolution
         else:
-            pixel_size = self.state.detector.pixel_size
+            pixel_size = self.instrument.detector.pixel_size
         freqs = self.scattering.freqs / pixel_size
         # Variance from detector
-        if not isinstance(self.state.detector, NullDetector):
-            variance = self.state.detector.variance(freqs)
+        if not isinstance(self.instrument.detector, NullDetector):
+            variance = self.instrument.detector.variance(freqs)
         else:
             variance = 0.0
         # Variance from ice
-        if not isinstance(self.state.ice, NullIce):
-            ctf = self.state.optics(freqs, pose=self.state.pose)
-            variance += ctf**2 * self.state.ice.variance(freqs)
+        if not isinstance(self.instrument.ice, NullIce):
+            ctf = self.instrument.optics(freqs, pose=self.instrument.pose)
+            variance += ctf**2 * self.instrument.ice.variance(freqs)
         return variance

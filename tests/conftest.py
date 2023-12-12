@@ -48,8 +48,8 @@ def masks(scattering):
 
 
 @pytest.fixture
-def state(resolution):
-    return cs.PipelineState(
+def instrument(resolution):
+    return cs.Instrument(
         pose=cs.EulerPose(degrees=False),
         ice=cs.GaussianIce(key=random.PRNGKey(seed=1)),
         optics=cs.CTFOptics(),
@@ -66,44 +66,44 @@ def specimen(density, resolution):
 
 
 @pytest.fixture
-def scattering_model(scattering, specimen, state, filters, masks):
+def scattering_model(scattering, specimen, instrument, filters, masks):
     return cs.ScatteringImage(
         scattering=scattering,
         specimen=specimen,
-        state=state,
+        instrument=instrument,
         masks=masks,
         filters=filters,
     )
 
 
 @pytest.fixture
-def optics_model(scattering, specimen, state, filters, masks):
+def optics_model(scattering, specimen, instrument, filters, masks):
     return cs.OpticsImage(
         scattering=scattering,
         specimen=specimen,
-        state=state,
+        instrument=instrument,
         filters=filters,
         masks=masks,
     )
 
 
 @pytest.fixture
-def noisy_model(scattering, specimen, state, filters, masks):
+def noisy_model(scattering, specimen, instrument, filters, masks):
     return cs.GaussianImage(
         scattering=scattering,
         specimen=specimen,
-        state=state,
+        instrument=instrument,
         filters=filters,
         masks=masks,
     )
 
 
 @pytest.fixture
-def maskless_model(scattering, specimen, state, filters):
+def maskless_model(scattering, specimen, instrument, filters):
     return cs.OpticsImage(
         scattering=scattering,
         specimen=specimen,
-        state=state,
+        instrument=instrument,
         filters=filters,
     )
 
@@ -114,11 +114,13 @@ def test_image(noisy_model):
 
 
 @pytest.fixture
-def likelihood_model(scattering, specimen, state, filters, masks, test_image):
+def likelihood_model(
+    scattering, specimen, instrument, filters, masks, test_image
+):
     return cs.GaussianImage(
         scattering=scattering,
         specimen=specimen,
-        state=state,
+        instrument=instrument,
         filters=filters,
         masks=masks,
         observed=test_image,

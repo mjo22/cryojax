@@ -4,7 +4,7 @@ Containers for storing parameters.
 
 from __future__ import annotations
 
-__all__ = ["PipelineState"]
+__all__ = ["Instrument"]
 
 from ..core import Module, field
 
@@ -15,9 +15,9 @@ from .exposure import Exposure, NullExposure
 from .detector import Detector, NullDetector
 
 
-class PipelineState(Module):
+class Instrument(Module):
     """
-    A container for the state of the imaging pipeline.
+    An abstraction of an electron microscope.
 
     Attributes
     ----------

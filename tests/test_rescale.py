@@ -14,11 +14,11 @@ config.update("jax_enable_x64", True)
 )
 def test_rescale(rescaled_model, request):
     rescaled_model = request.getfixturevalue(rescaled_model)
-    exposure = rescaled_model.state.exposure
+    exposure = rescaled_model.instrument.exposure
     mu, N = exposure.mu, exposure.N
     # Create null model
-    state = replace(rescaled_model.state, exposure=NullExposure())
-    null_model = replace(rescaled_model, state=state)
+    instrument = replace(rescaled_model.instrument, exposure=NullExposure())
+    null_model = replace(rescaled_model, instrument=instrument)
     # Compute images
     null_image = irfftn(null_model.render(view=False))
     rescaled_image = irfftn(rescaled_model.render(view=False))

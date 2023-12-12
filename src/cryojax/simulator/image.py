@@ -22,7 +22,7 @@ from .mask import Mask
 from .specimen import Specimen
 from .helix import Helix
 from .scattering import ScatteringConfig
-from .state import PipelineState
+from .instrument import Instrument
 from ..utils import fftn, irfftn
 from ..core import field, Module
 from ..types import RealImage, ComplexImage, Image, Real_
@@ -39,10 +39,10 @@ class ImagePipeline(Module):
     ----------
     specimen :
         The specimen from which to render images.
-    state :
-        The state of the model pipeline.
     scattering :
         The image and scattering model configuration.
+    instrument :
+        The abstraction of the electron microscope.
     filters :
         A list of filters to apply to the image.
     masks :
@@ -55,9 +55,9 @@ class ImagePipeline(Module):
         ``masks``.
     """
 
-    state: PipelineState = field()
     specimen: Union[Specimen, Helix] = field()
     scattering: ScatteringConfig = field()
+    instrument: Instrument = field(default_factory=Instrument)
 
     filters: list[Filter] = field(default_factory=list)
     masks: list[Mask] = field(default_factory=list)
@@ -154,7 +154,9 @@ class ScatteringImage(ImagePipeline):
         """Render the scattered wave in the exit plane."""
         # Compute the image at the exit plane at the given pose
         scattering_image = self.specimen.scatter(
-            self.scattering, self.state.pose, exposure=self.state.exposure
+            self.scattering,
+            self.instrument.pose,
+            exposure=self.instrument.exposure,
         )
         if view:
             scattering_image = self.view(scattering_image)
@@ -166,7 +168,7 @@ class ScatteringImage(ImagePipeline):
         # Compute the image at the exit plane
         scattering_image = self.render(view=False)
         # Sample a realization of the ice
-        ice_image = self.state.ice.scatter(
+        ice_image = self.instrument.ice.scatter(
             self.scattering, resolution=self.specimen.resolution
         )
         # Add the ice to the image
@@ -191,9 +193,9 @@ class OpticsImage(ScatteringImage):
         # Compute image in detector plane
         optics_image = self.specimen.scatter(
             self.scattering,
-            self.state.pose,
-            exposure=self.state.exposure,
-            optics=self.state.optics,
+            self.instrument.pose,
+            exposure=self.instrument.exposure,
+            optics=self.instrument.optics,
         )
         if view:
             optics_image = self.view(optics_image)
@@ -205,10 +207,10 @@ class OpticsImage(ScatteringImage):
         # Compute the image at the detector plane
         optics_image = self.render(view=False)
         # Sample a realization of the ice
-        ice_image = self.state.ice.scatter(
+        ice_image = self.instrument.ice.scatter(
             self.scattering,
             resolution=self.specimen.resolution,
-            optics=self.state.optics,
+            optics=self.instrument.optics,
         )
         # Add the ice to the image
         optics_image += ice_image
@@ -228,7 +230,7 @@ class DetectorImage(OpticsImage):
         # Compute image at detector plane
         optics_image = super().render(view=False)
         # Compute image at detector pixel size
-        pixelized_image = self.state.detector.pixelize(
+        pixelized_image = self.instrument.detector.pixelize(
             irfftn(optics_image), resolution=self.specimen.resolution
         )
         if view:
@@ -239,8 +241,8 @@ class DetectorImage(OpticsImage):
     def sample(self, view: bool = True) -> RealImage:
         """Sample an image from the detector readout."""
         # Determine pixel size
-        if self.state.detector.pixel_size is not None:
-            pixel_size = self.state.detector.pixel_size
+        if self.instrument.detector.pixel_size is not None:
+            pixel_size = self.instrument.detector.pixel_size
         else:
             pixel_size = self.specimen.resolution
         # Frequencies
@@ -248,15 +250,15 @@ class DetectorImage(OpticsImage):
         # The specimen image at the detector pixel size
         pixelized_image = self.render(view=False)
         # The ice image at the detector pixel size
-        ice_image = self.state.ice.scatter(
+        ice_image = self.instrument.ice.scatter(
             self.scattering,
             resolution=pixel_size,
-            optics=self.state.optics,
+            optics=self.instrument.optics,
         )
         ice_image = irfftn(ice_image)
         # Measure the detector readout
         image = pixelized_image + ice_image
-        noise = self.state.detector.sample(freqs, image=image)
+        noise = self.instrument.detector.sample(freqs, image=image)
         detector_readout = image + noise
         if view:
             detector_readout = self.view(detector_readout, real=True)

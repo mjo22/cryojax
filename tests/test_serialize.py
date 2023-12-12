@@ -2,45 +2,25 @@ import pytest
 
 import numpy as np
 from jax import config
-from dataclasses import replace
 
 import cryojax.simulator as cs
-from cryojax.utils import fftn
 
 config.update("jax_enable_x64", True)
 
 
-def test_deserialize_state_components(noisy_model):
-    """Test deserialization on each component of the state."""
-    state = noisy_model.state
-    pose = cs.EulerPose.from_json(noisy_model.state.pose.to_json())
-    ice = cs.GaussianIce.from_json(noisy_model.state.ice.to_json())
-    detector = cs.GaussianDetector.from_json(
-        noisy_model.state.detector.to_json()
-    )
-    optics = cs.CTFOptics.from_json(noisy_model.state.optics.to_json())
-    exposure = cs.UniformExposure.from_json(
-        noisy_model.state.exposure.to_json()
-    )
-    model = replace(
-        noisy_model,
-        state=replace(
-            state,
-            pose=pose,
-            detector=detector,
-            ice=ice,
-            optics=optics,
-            exposure=exposure,
-        ),
-    )
-    np.testing.assert_allclose(fftn(noisy_model()), fftn(model()))
-
-
-def test_deserialize_state(state):
-    """Test PipelineState deserialization"""
+def test_deserialize_instrument(instrument):
+    """Test Instrument deserialization"""
     assert (
-        cs.PipelineState.from_json(state.to_json()).to_json()
-        == state.to_json()
+        cs.Instrument.from_json(instrument.to_json()).to_json()
+        == instrument.to_json()
+    )
+
+
+def test_deserialize_specimen(specimen):
+    """Test Specimen deserialization"""
+    assert (
+        cs.Specimen.from_json(specimen.to_json()).to_json()
+        == specimen.to_json()
     )
 
 
