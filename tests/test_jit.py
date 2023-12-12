@@ -21,7 +21,7 @@ def test_jit(
     """
 
     def build_specimen(voxels):
-        density = cs.ElectronGrid(
+        density = cs.VoxelGrid(
             weights=voxels["weights"], coordinates=voxels["coordinates"]
         )
         return cs.Specimen(density=density, resolution=resolution)

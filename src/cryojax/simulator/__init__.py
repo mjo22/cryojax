@@ -1,11 +1,11 @@
 from . import (
     kernel,
     pose,
-    scattering,
     conformation,
     specimen,
     helix,
     density,
+    scattering,
     filter,
     mask,
     ice,
@@ -19,11 +19,11 @@ from . import (
 
 from .kernel import *
 from .pose import *
-from .scattering import *
 from .conformation import *
 from .specimen import *
 from .helix import *
 from .density import *
+from .scattering import *
 from .filter import *
 from .mask import *
 from .ice import *
@@ -38,11 +38,11 @@ from .likelihood import *
 __all__ = (
     kernel.__all__
     + pose.__all__
-    + scattering.__all__
     + conformation.__all__
     + specimen.__all__
     + helix.__all__
     + density.__all__
+    + scattering.__all__
     + filter.__all__
     + mask.__all__
     + ice.__all__
@@ -58,11 +58,11 @@ __all__.extend(
     [
         kernel,
         pose,
-        scattering,
         conformation,
         specimen,
         helix,
         density,
+        scattering,
         filter,
         mask,
         ice,

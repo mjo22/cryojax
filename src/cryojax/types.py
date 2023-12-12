@@ -74,6 +74,9 @@ VolumeCoords = Float[Array, "N1 N2 N3 3"]
 RealCloud = Float[Array, "N"]
 """Type hint for a real-valued point cloud."""
 
+IntCloud = Int[Array, "N"]
+"""Type hint for an integer-valued point cloud."""
+
 ComplexCloud = Complex[Array, "N"]
 """Type hint for a complex-valued point cloud."""
 

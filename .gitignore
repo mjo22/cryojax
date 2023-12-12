@@ -6,6 +6,15 @@ __pycache__/
 # C extensions
 *.so
 
+# VS Code
+.vscode/setings.json
+
+# Save history
+*.swp
+
+# Versioning
+cryojax_version.py
+
 # Distribution / packaging
 .Python
 build/
