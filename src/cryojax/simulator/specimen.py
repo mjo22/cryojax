@@ -38,8 +38,6 @@ class Specimen(Module):
         in subclasses.
     pose :
         The pose of the specimen.
-    ice :
-        The model of the solvent around the specimen.
     """
 
     density: ElectronDensity = field()
@@ -47,7 +45,6 @@ class Specimen(Module):
     conformation: Any = field(default=None)
 
     pose: Pose = field(default_factory=EulerPose)
-    ice: Ice = field(default_factory=NullIce)
 
     def scatter(
         self,

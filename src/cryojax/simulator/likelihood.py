@@ -28,7 +28,7 @@ class GaussianImage(DetectorImage):
     """
 
     def __check_init__(self):
-        if not isinstance(self.specimen.ice, (NullIce, GaussianIce)):
+        if not isinstance(self.solvent, (NullIce, GaussianIce)):
             raise ValueError("A GaussianIce model is required.")
         if not isinstance(
             self.instrument.detector, (NullDetector, GaussianDetector)
@@ -66,7 +66,7 @@ class GaussianImage(DetectorImage):
         else:
             variance = 0.0
         # Variance from ice
-        if not isinstance(self.specimen.ice, NullIce):
+        if not isinstance(self.solvent, NullIce):
             ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
-            variance += ctf**2 * self.specimen.ice.variance(freqs)
+            variance += ctf**2 * self.solvent.variance(freqs)
         return variance

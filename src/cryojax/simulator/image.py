@@ -21,6 +21,7 @@ from .specimen import Specimen
 from .helix import Helix
 from .scattering import ScatteringConfig
 from .instrument import Instrument
+from .ice import Ice, NullIce
 from ..utils import fftn, irfftn
 from ..core import field, Module
 from ..types import RealImage, ComplexImage, Image, Real_
@@ -41,8 +42,8 @@ class ImagePipeline(Module):
         The image and scattering model configuration.
     instrument :
         The abstraction of the electron microscope.
-    ice :
-        The model of the solvent around the specimen.
+    solvent :
+        The solvent around the specimen.
     filters :
         A list of filters to apply to the image.
     masks :
@@ -58,6 +59,7 @@ class ImagePipeline(Module):
     specimen: Union[Specimen, Helix] = field()
     scattering: ScatteringConfig = field()
     instrument: Instrument = field(default_factory=Instrument)
+    solvent: Ice = field(default_factory=NullIce)
 
     filters: list[Filter] = field(default_factory=list)
     masks: list[Mask] = field(default_factory=list)
@@ -167,7 +169,7 @@ class ScatteringImage(ImagePipeline):
         # Compute the image at the exit plane
         scattering_image = self.render(view=False)
         # Sample a realization of the ice
-        ice_image = self.specimen.ice.scatter(
+        ice_image = self.solvent.scatter(
             self.scattering, resolution=self.specimen.resolution
         )
         # Add the ice to the image
@@ -205,7 +207,7 @@ class OpticsImage(ScatteringImage):
         # Compute the image at the detector plane
         optics_image = self.render(view=False)
         # Sample a realization of the ice
-        ice_image = self.specimen.ice.scatter(
+        ice_image = self.solvent.scatter(
             self.scattering,
             resolution=self.specimen.resolution,
             optics=self.instrument.optics,
@@ -248,7 +250,7 @@ class DetectorImage(OpticsImage):
         # The specimen image at the detector pixel size
         pixelized_image = self.render(view=False)
         # The ice image at the detector pixel size
-        ice_image = self.specimen.ice.scatter(
+        ice_image = self.solvent.scatter(
             self.scattering,
             resolution=pixel_size,
             optics=self.instrument.optics,

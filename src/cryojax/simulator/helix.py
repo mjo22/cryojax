@@ -78,7 +78,6 @@ class Helix(Module):
     twist: Union[Real_, RealVector] = field()
 
     pose: Pose = field(default_factory=EulerPose)
-    ice: Ice = field(default_factory=NullIce)
 
     conformations: Optional[
         Union[Conformations, Callable[[Positions], Conformations]]
