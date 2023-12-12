@@ -73,34 +73,8 @@ def solvent():
 
 
 @pytest.fixture
-def scattering_model(
-    scattering, specimen, instrument, solvent, filters, masks
-):
-    return cs.ScatteringImage(
-        scattering=scattering,
-        specimen=specimen,
-        instrument=instrument,
-        solvent=solvent,
-        masks=masks,
-        filters=filters,
-    )
-
-
-@pytest.fixture
-def optics_model(scattering, specimen, instrument, solvent, filters, masks):
-    return cs.OpticsImage(
-        scattering=scattering,
-        specimen=specimen,
-        instrument=instrument,
-        solvent=solvent,
-        filters=filters,
-        masks=masks,
-    )
-
-
-@pytest.fixture
 def noisy_model(scattering, specimen, instrument, solvent, filters, masks):
-    return cs.GaussianImage(
+    return cs.ImagePipeline(
         scattering=scattering,
         specimen=specimen,
         instrument=instrument,
@@ -112,7 +86,7 @@ def noisy_model(scattering, specimen, instrument, solvent, filters, masks):
 
 @pytest.fixture
 def maskless_model(scattering, specimen, instrument, solvent, filters):
-    return cs.OpticsImage(
+    return cs.ImagePipeline(
         scattering=scattering,
         specimen=specimen,
         instrument=instrument,

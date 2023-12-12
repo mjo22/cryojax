@@ -4,14 +4,8 @@ Image formation models.
 
 from __future__ import annotations
 
-__all__ = [
-    "ImagePipeline",
-    "ScatteringImage",
-    "OpticsImage",
-    "DetectorImage",
-]
+__all__ = ["ImagePipeline"]
 
-from abc import abstractmethod
 from typing import Union, Optional
 from functools import cached_property
 
@@ -65,8 +59,7 @@ class ImagePipeline(Module):
     masks: list[Mask] = field(default_factory=list)
     observed: Optional[RealImage] = field(default=None)
 
-    @abstractmethod
-    def render(self, view: bool = True) -> Image:
+    def render(self, view: bool = True) -> RealImage:
         """
         Render an image given a parameter set.
 
@@ -78,10 +71,22 @@ class ImagePipeline(Module):
             space. If ``False``, return the image
             at this place in the pipeline.
         """
-        raise NotImplementedError
+        # Compute image in detector plane
+        optics_image = self.specimen.scatter(
+            self.scattering,
+            exposure=self.instrument.exposure,
+            optics=self.instrument.optics,
+        )
+        # Compute image at detector pixel size
+        pixelized_image = self.instrument.detector.pixelize(
+            irfftn(optics_image), resolution=self.specimen.resolution
+        )
+        if view:
+            pixelized_image = self.view(pixelized_image, real=True)
 
-    @abstractmethod
-    def sample(self, view: bool = True) -> Image:
+        return pixelized_image
+
+    def sample(self, view: bool = True) -> RealImage:
         """
         Sample the an image from a realization of the noise.
 
@@ -92,9 +97,31 @@ class ImagePipeline(Module):
             onto the noise. If ``False``, just return
             the noise given at this place in the pipeline.
         """
-        raise NotImplementedError
+        # Determine pixel size
+        if self.instrument.detector.pixel_size is not None:
+            pixel_size = self.instrument.detector.pixel_size
+        else:
+            pixel_size = self.specimen.resolution
+        # Frequencies
+        freqs = self.scattering.padded_freqs / pixel_size
+        # The specimen image at the detector pixel size
+        pixelized_image = self.render(view=False)
+        # The ice image at the detector pixel size
+        ice_image = self.solvent.scatter(
+            self.scattering,
+            resolution=pixel_size,
+            optics=self.instrument.optics,
+        )
+        ice_image = irfftn(ice_image)
+        # Measure the detector readout
+        image = pixelized_image + ice_image
+        noise = self.instrument.detector.sample(freqs, image=image)
+        detector_readout = image + noise
+        if view:
+            detector_readout = self.view(detector_readout, real=True)
 
-    @abstractmethod
+        return detector_readout
+
     def log_probability(self) -> Real_:
         """Evaluate the log-probability of the data given a parameter set."""
         raise NotImplementedError
@@ -144,123 +171,3 @@ class ImagePipeline(Module):
         simulated = self.render()
         residuals = self.observed - simulated
         return residuals
-
-
-class ScatteringImage(ImagePipeline):
-    """
-    Compute the scattering pattern in the exit plane,
-    with a given image formation model at a given pose.
-    """
-
-    def render(self, view: bool = True) -> Image:
-        """Render the scattered wave in the exit plane."""
-        # Compute the image at the exit plane at the given pose
-        scattering_image = self.specimen.scatter(
-            self.scattering,
-            exposure=self.instrument.exposure,
-        )
-        if view:
-            scattering_image = self.view(scattering_image)
-
-        return scattering_image
-
-    def sample(self, view: bool = True) -> Image:
-        """Sample the scattered wave in the exit plane."""
-        # Compute the image at the exit plane
-        scattering_image = self.render(view=False)
-        # Sample a realization of the ice
-        ice_image = self.solvent.scatter(
-            self.scattering, resolution=self.specimen.resolution
-        )
-        # Add the ice to the image
-        scattering_image += ice_image
-        if view:
-            scattering_image = self.view(scattering_image)
-
-        return scattering_image
-
-    def log_probability(self) -> Real_:
-        raise NotImplementedError
-
-
-class OpticsImage(ScatteringImage):
-    """
-    Compute the image at the detector plane,
-    moduated by a CTF.
-    """
-
-    def render(self, view: bool = True) -> Image:
-        """Render the image in the detector plane."""
-        # Compute image in detector plane
-        optics_image = self.specimen.scatter(
-            self.scattering,
-            exposure=self.instrument.exposure,
-            optics=self.instrument.optics,
-        )
-        if view:
-            optics_image = self.view(optics_image)
-
-        return optics_image
-
-    def sample(self, view: bool = True) -> Image:
-        """Sample the image in the detector plane."""
-        # Compute the image at the detector plane
-        optics_image = self.render(view=False)
-        # Sample a realization of the ice
-        ice_image = self.solvent.scatter(
-            self.scattering,
-            resolution=self.specimen.resolution,
-            optics=self.instrument.optics,
-        )
-        # Add the ice to the image
-        optics_image += ice_image
-        if view:
-            optics_image = self.view(optics_image)
-
-        return optics_image
-
-
-class DetectorImage(OpticsImage):
-    """
-    Compute the detector readout of the image,
-    at a given pixel size.
-    """
-
-    def render(self, view: bool = True) -> RealImage:
-        # Compute image at detector plane
-        optics_image = super().render(view=False)
-        # Compute image at detector pixel size
-        pixelized_image = self.instrument.detector.pixelize(
-            irfftn(optics_image), resolution=self.specimen.resolution
-        )
-        if view:
-            pixelized_image = self.view(pixelized_image, real=True)
-
-        return pixelized_image
-
-    def sample(self, view: bool = True) -> RealImage:
-        """Sample an image from the detector readout."""
-        # Determine pixel size
-        if self.instrument.detector.pixel_size is not None:
-            pixel_size = self.instrument.detector.pixel_size
-        else:
-            pixel_size = self.specimen.resolution
-        # Frequencies
-        freqs = self.scattering.padded_freqs / pixel_size
-        # The specimen image at the detector pixel size
-        pixelized_image = self.render(view=False)
-        # The ice image at the detector pixel size
-        ice_image = self.solvent.scatter(
-            self.scattering,
-            resolution=pixel_size,
-            optics=self.instrument.optics,
-        )
-        ice_image = irfftn(ice_image)
-        # Measure the detector readout
-        image = pixelized_image + ice_image
-        noise = self.instrument.detector.sample(freqs, image=image)
-        detector_readout = image + noise
-        if view:
-            detector_readout = self.view(detector_readout, real=True)
-
-        return detector_readout

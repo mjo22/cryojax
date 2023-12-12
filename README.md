@@ -68,7 +68,7 @@ detector = cs.GaussianDetector(key=key, pixel_size=1.1, variance=cs.Constant(1.0
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
-Then, an `ImagePipeline` model is chosen. Here, we choose `GaussianImage`.
+Then, the `ImagePipeline` model is chosen. Here, we choose `GaussianImage`.
 
 ```python
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument)
@@ -100,7 +100,7 @@ log_likelihood = model()
 
 Under the hood, this calls `model.log_probability()`. Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
 
-Additional components can be plugged into the `ImagePipeline` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` multiplies the image by a scale factor. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
+Additional components can be plugged into the `ImagePipeline` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` multiplies the image by a scale factor.
 
 For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
 

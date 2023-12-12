@@ -13,12 +13,12 @@ import jax.numpy as jnp
 
 from .ice import NullIce, GaussianIce
 from .detector import NullDetector, GaussianDetector
-from .image import DetectorImage
+from .image import ImagePipeline
 from ..utils import fftn
 from ..types import Real_, RealImage
 
 
-class GaussianImage(DetectorImage):
+class GaussianImage(ImagePipeline):
     """
     Sample an image from a gaussian noise model, or compute
     the log-likelihood.

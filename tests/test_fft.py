@@ -6,11 +6,11 @@ from cryojax.utils import fftn, irfftn
 
 
 @pytest.mark.parametrize(
-    "model", ["scattering_model", "optics_model", "noisy_model"]
+    "model", ["noisy_model", "maskless_model", "likelihood_model"]
 )
 def test_fft(model, request):
     model = request.getfixturevalue(model)
-    image = fftn(model())
+    image = fftn(model.render())
     random = jnp.asarray(np.random.randn(*image.shape))
     # Set tolerance based on tests with jnp.fft + random data
     rkwargs = dict(zip(["atol", "rtol"], [1e-6, 5e-4]))

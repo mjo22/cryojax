@@ -47,7 +47,7 @@ def test_deserialize_filters_and_masks(filters_or_masks, request):
 
 
 @pytest.mark.parametrize(
-    "model", ["scattering_model", "optics_model", "noisy_model"]
+    "model", ["noisy_model", "maskless_model", "likelihood_model"]
 )
 def test_deserialize_model(model, request):
     """Test model deserialization."""
