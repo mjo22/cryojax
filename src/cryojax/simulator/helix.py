@@ -17,7 +17,8 @@ import equinox as eqx
 
 from .specimen import Specimen
 from .exposure import Exposure
-from .pose import Pose
+from .pose import Pose, EulerPose
+from .ice import Ice, NullIce
 from .optics import Optics
 from .scattering import ScatteringConfig
 
@@ -47,17 +48,17 @@ class Helix(Module):
     Attributes
     ----------
     subunit :
-        The helical subunit.
+        The helical subunit. It is important to set the the initial pose
+        of the initial subunit here. This is in the center of mass frame
+        of the helix with the screw axis pointing in the z-direction.
     rise :
         The helical rise. This has dimensions
         of length.
     twist :
         The helical twist, given in degrees if
         ``degrees = True`` and radians otherwise.
-    initial_pose :
-        The initial pose of the initial subunit, in the
-        center of mass frame of the helix with the screw axis
-        pointing in the z-direction.
+    pose :
+        The center of mass pose of the helix.
     conformations :
         The conformation of `subunit` at each lattice site.
         This can either be a fixed set of conformations or a function
@@ -75,7 +76,10 @@ class Helix(Module):
     subunit: Specimen = field()
     rise: Union[Real_, RealVector] = field()
     twist: Union[Real_, RealVector] = field()
-    initial_pose: Pose = field()
+
+    pose: Pose = field(default_factory=EulerPose)
+    ice: Ice = field(default_factory=NullIce)
+
     conformations: Optional[
         Union[Conformations, Callable[[Positions], Conformations]]
     ] = field(default=None)
@@ -87,7 +91,7 @@ class Helix(Module):
     def scatter(
         self,
         scattering: ScatteringConfig,
-        pose: Pose,
+        pose: Optional[Pose] = None,
         exposure: Optional[Exposure] = None,
         optics: Optional[Optics] = None,
         **kwargs: Any,
@@ -111,6 +115,7 @@ class Helix(Module):
         optics :
             The instrument optics.
         """
+        pose = pose or self.pose
         # Draw the conformations of each subunit
         subunits = self.subunits
         # Compute the pose of each subunit
@@ -157,7 +162,7 @@ class Helix(Module):
         return compute_lattice_positions(
             self.rise,
             self.twist,
-            self.initial_pose.offset,
+            self.subunit.pose.offset,
             n_start=self.n_start,
             n_subunits=self.n_subunits,
             degrees=self.degrees,
@@ -172,7 +177,7 @@ class Helix(Module):
         """
         return compute_lattice_rotations(
             self.twist,
-            self.initial_pose.rotation.as_matrix(),
+            self.subunit.pose.rotation.as_matrix(),
             n_start=self.n_start,
             n_subunits=self.n_subunits,
             degrees=self.degrees,

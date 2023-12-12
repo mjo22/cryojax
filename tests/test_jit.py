@@ -73,7 +73,7 @@ def test_equinox_jit(likelihood_model):
 
 def test_equinox_value_and_grad(likelihood_model):
     def build_model(model, params):
-        where = lambda m: m.instrument.pose.offset_z
+        where = lambda m: m.specimen.pose.offset_z
         return eqx.tree_at(where, model, params["offset_z"])
 
     @jax.jit

@@ -50,8 +50,6 @@ def masks(scattering):
 @pytest.fixture
 def instrument(resolution):
     return cs.Instrument(
-        pose=cs.EulerPose(degrees=False),
-        ice=cs.GaussianIce(key=random.PRNGKey(seed=1)),
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1e5, mu=1.0),
         detector=cs.GaussianDetector(
@@ -62,7 +60,12 @@ def instrument(resolution):
 
 @pytest.fixture
 def specimen(density, resolution):
-    return cs.Specimen(density=density, resolution=resolution)
+    return cs.Specimen(
+        density=density,
+        resolution=resolution,
+        pose=cs.EulerPose(degrees=False),
+        ice=cs.GaussianIce(key=random.PRNGKey(seed=1)),
+    )
 
 
 @pytest.fixture

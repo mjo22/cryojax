@@ -11,7 +11,8 @@ from typing import Any, Optional
 from .scattering import ScatteringConfig
 from .density import ElectronDensity
 from .exposure import Exposure
-from .pose import Pose
+from .pose import Pose, EulerPose
+from .ice import Ice, NullIce
 from .optics import Optics
 from .conformation import Discrete
 from ..core import field, Module
@@ -32,28 +33,26 @@ class Specimen(Module):
         dimensions of length.
     conformation :
         The conformational variable at which to evaulate
-        the electron density. This should be overwritten
+        the electron density. This does not do anything in
+        the specimen base class and should be overwritten
         in subclasses.
+    pose :
+        The pose of the specimen.
+    ice :
+        The model of the solvent around the specimen.
     """
 
     density: ElectronDensity = field()
     resolution: Real_ = field()
-    conformation: Any = field()
+    conformation: Any = field(default=None)
 
-    def __init__(
-        self,
-        density: ElectronDensity,
-        resolution: Real_,
-        conformation: Optional[Any] = None,
-    ):
-        self.density = density
-        self.resolution = resolution
-        self.conformation = None
+    pose: Pose = field(default_factory=EulerPose)
+    ice: Ice = field(default_factory=NullIce)
 
     def scatter(
         self,
         scattering: ScatteringConfig,
-        pose: Pose,
+        pose: Optional[Pose] = None,
         exposure: Optional[Exposure] = None,
         optics: Optional[Optics] = None,
     ) -> ComplexImage:
@@ -72,6 +71,7 @@ class Specimen(Module):
         optics :
             The instrument optics.
         """
+        pose = pose or self.pose
         freqs = scattering.padded_freqs / self.resolution
         # Draw the electron density at a particular conformation
         density = self.sample()
@@ -103,17 +103,7 @@ class Ensemble(Specimen):
     """
 
     density: list[ElectronDensity] = field()
-    conformation: Discrete = field()
-
-    def __init__(
-        self,
-        density: ElectronDensity,
-        resolution: Real_,
-        conformation: Optional[Discrete] = None,
-    ):
-        self.density = density
-        self.resolution = resolution
-        self.conformation = conformation or Discrete()
+    conformation: Discrete = field(default_factory=Discrete)
 
     def __check_init__(self):
         coordinate = self.conformation.coordinate
