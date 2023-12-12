@@ -100,7 +100,7 @@ log_likelihood = model()
 
 Under the hood, this calls `model.log_probability()`. Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
 
-Additional components can be plugged into the `ImagePipeline` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` multiplies the image by a scale factor.
+Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `Ice` model. Models for exposure to the electron beam are supported through the `Instrument`'s `Exposure` model.
 
 For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
 
@@ -126,8 +126,8 @@ We can now create the loss and differentiate it with respect to the parameters.
 from functools import partial
 
 @jax.jit
-@partial(jax.value_and_grad, argnums=1)
-def loss(model: cs.GaussianImage, params: dict[str, jax.Array]) -> jax.Array:
+@jax.value_and_grad
+def loss(params: dict[str, jax.Array], model: cs.GaussianImage) -> jax.Array:
     model = update_model(model, params)
     return model.log_probability()
 ```
@@ -136,10 +136,10 @@ Finally, we can evaluate an updated set of parameters.
 
 ```python
 params = dict(view_phi=jnp.asarray(jnp.pi), defocus_u=jnp.asarray(9000.0), pixel_size=jnp.asarray(1.30))
-log_likelihood, grad = loss(model, params)
+log_likelihood, grad = loss(params, model)
 ```
 
-To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. Note that the `PipelineState` contains all of the model parameters in this example. In general, any `cryojax` `Module` may contain model parameters. One gotcha is just that the `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. This may result in slight speedups.
+To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. In general, any `cryojax` `Module` may contain model parameters. One gotcha is just that the `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. However, this may result in slight speedups.
 
 In general, there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
 

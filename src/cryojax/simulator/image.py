@@ -9,6 +9,9 @@ __all__ = ["ImagePipeline"]
 from typing import Union, Optional
 from functools import cached_property
 
+import equinox as eqx
+import jax.tree_util as jtu
+
 from .filter import Filter
 from .mask import Mask
 from .specimen import Specimen
@@ -25,8 +28,8 @@ class ImagePipeline(Module):
     """
     Base class for an imaging model.
 
-    Call an ``Image`` or its ``render``, ``sample``,
-    or ``log_probability`` routines to evaluate the model.
+    Call an ``ImagePipeline`` or its ``render``, ``sample``,
+    or ``log_probability`` routines.
 
     Attributes
     ----------
@@ -61,30 +64,27 @@ class ImagePipeline(Module):
 
     def render(self, view: bool = True) -> RealImage:
         """
-        Render an image given a parameter set.
+        Render an image of a Specimen.
 
         Parameters
         ----------
-        view : `bool`
-            If ``True``, view the cropped,
-            masked, and rescaled image in real
-            space. If ``False``, return the image
-            at this place in the pipeline.
+        view : `bool`, optional
+            If ``True``, view the cropped, masked,
+            and filtered image.
         """
-        # Compute image in detector plane
-        optics_image = self.specimen.scatter(
-            self.scattering,
-            exposure=self.instrument.exposure,
-            optics=self.instrument.optics,
-        )
-        # Compute image at detector pixel size
-        pixelized_image = self.instrument.detector.pixelize(
-            irfftn(optics_image), resolution=self.specimen.resolution
-        )
-        if view:
-            pixelized_image = self.view(pixelized_image, real=True)
+        if isinstance(self.specimen, Specimen):
+            image = self._render_specimen()
+        elif isinstance(self.specimen, Helix):
+            image = self._render_helix()
+        else:
+            raise ValueError(
+                "The specimen must be either a Specimen or Helix."
+            )
 
-        return pixelized_image
+        if view:
+            image = self.view(image)
+
+        return image
 
     def sample(self, view: bool = True) -> RealImage:
         """
@@ -93,9 +93,8 @@ class ImagePipeline(Module):
         Parameters
         ----------
         view : `bool`, optional
-            If ``True``, view the protein signal overlayed
-            onto the noise. If ``False``, just return
-            the noise given at this place in the pipeline.
+            If ``True``, view the cropped, masked,
+            and filtered image.
         """
         # Determine pixel size
         if self.instrument.detector.pixel_size is not None:
@@ -104,27 +103,33 @@ class ImagePipeline(Module):
             pixel_size = self.specimen.resolution
         # Frequencies
         freqs = self.scattering.padded_freqs / pixel_size
-        # The specimen image at the detector pixel size
-        pixelized_image = self.render(view=False)
-        # The ice image at the detector pixel size
-        ice_image = self.solvent.scatter(
-            self.scattering,
-            resolution=pixel_size,
-            optics=self.instrument.optics,
+        # The image of the specimen
+        specimen_image = self.render(view=False)
+        # The image of the solvent
+        ice_image = irfftn(
+            self.instrument.optics.apply(
+                self.instrument.optics(freqs), self.solvent.sample(freqs)
+            )
         )
-        ice_image = irfftn(ice_image)
         # Measure the detector readout
-        image = pixelized_image + ice_image
+        image = specimen_image + ice_image
         noise = self.instrument.detector.sample(freqs, image=image)
         detector_readout = image + noise
         if view:
-            detector_readout = self.view(detector_readout, real=True)
+            detector_readout = self.view(detector_readout)
 
         return detector_readout
 
     def log_probability(self) -> Real_:
         """Evaluate the log-probability of the data given a parameter set."""
         raise NotImplementedError
+
+    @cached_property
+    def residuals(self) -> RealImage:
+        """Return the residuals between the model and observed data."""
+        simulated = self.render()
+        residuals = self.observed - simulated
+        return residuals
 
     def __call__(self, view: bool = True) -> Union[Image, Real_]:
         """
@@ -138,18 +143,18 @@ class ImagePipeline(Module):
         else:
             return self.log_probability()
 
-    def view(self, image: Image, real: bool = False) -> RealImage:
+    def view(self, image: Image, real: bool = True) -> RealImage:
         """
         View the image. This function applies
         filters, crops the image, then applies masks.
         """
-        # Apply filters
+        # Apply filters to the image
         if real:
             if len(self.filters) > 0:
                 image = irfftn(self.filter(fftn(image)))
         else:
             image = irfftn(self.filter(image))
-        # View
+        # Crop and mask the image
         image = self.mask(self.scattering.crop(image))
         return image
 
@@ -165,9 +170,43 @@ class ImagePipeline(Module):
             image = mask(image)
         return image
 
-    @cached_property
-    def residuals(self) -> RealImage:
-        """Return the residuals between the model and observed data."""
-        simulated = self.render()
-        residuals = self.observed - simulated
-        return residuals
+    def _render_specimen(self) -> RealImage:
+        """Render an image of a Specimen."""
+        resolution = self.specimen.resolution
+        freqs = self.scattering.padded_freqs / resolution
+        # Draw the electron density at a particular conformation and pose
+        density = self.specimen.realization
+        # Compute the scattering image
+        image = self.scattering.scatter(density, resolution=resolution)
+        # Apply translation
+        image *= self.specimen.pose.shifts(freqs)
+        # Compute and apply CTF
+        ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
+        image = self.instrument.optics.apply(ctf, image)
+        # Apply the electron exposure model
+        scaling, offset = self.instrument.exposure.scaling(
+            freqs
+        ), self.instrument.exposure.offset(freqs)
+        image = scaling * image + offset
+        # Measure at the detector pixel size
+        image = self.instrument.detector.pixelize(
+            irfftn(image), resolution=resolution
+        )
+
+        return image
+
+    def _render_helix(self) -> RealImage:
+        """Render an image of a Helix from its subunits."""
+        # Draw the helical subunits
+        subunits = self.specimen.subunits
+        # Compute all of the subunit images
+        render = lambda subunit: eqx.tree_at(
+            lambda m: m.specimen, self, subunit
+        )._render_specimen()
+        images = jtu.tree_map(
+            render, subunits, is_leaf=lambda s: isinstance(s, Specimen)
+        )
+        # Sum the subunit images together
+        image = jtu.tree_reduce(lambda x, y: x + y, images)
+
+        return image

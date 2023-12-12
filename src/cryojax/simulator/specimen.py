@@ -6,17 +6,13 @@ from __future__ import annotations
 
 __all__ = ["Specimen", "Ensemble"]
 
-from typing import Any, Optional
+from typing import Any
 
-from .scattering import ScatteringConfig
 from .density import ElectronDensity
-from .exposure import Exposure
 from .pose import Pose, EulerPose
-from .ice import Ice, NullIce
-from .optics import Optics
 from .conformation import Discrete
 from ..core import field, Module
-from ..types import Real_, ComplexImage
+from ..types import Real_
 
 
 class Specimen(Module):
@@ -46,57 +42,19 @@ class Specimen(Module):
 
     pose: Pose = field(default_factory=EulerPose)
 
-    def scatter(
-        self,
-        scattering: ScatteringConfig,
-        pose: Optional[Pose] = None,
-        exposure: Optional[Exposure] = None,
-        optics: Optional[Optics] = None,
-    ) -> ComplexImage:
-        """
-        Compute the scattered wave of the specimen in the
-        exit plane.
-
-        Arguments
-        ---------
-        scattering :
-            The scattering configuration.
-        pose :
-            The imaging pose.
-        exposure :
-            The exposure model.
-        optics :
-            The instrument optics.
-        """
-        pose = pose or self.pose
-        freqs = scattering.padded_freqs / self.resolution
-        # Draw the electron density at a particular conformation
-        density = self.sample()
-        # View the electron density map at a given pose
-        density = density.view(pose)
-        # Compute the scattering image
-        image = scattering.scatter(density, self.resolution)
-        # Apply translation
-        image *= pose.shifts(freqs)
-        # Compute and apply CTF
-        if optics is not None:
-            ctf = optics(freqs, pose=pose)
-            image = optics.apply(ctf, image)
-        # Apply the electron exposure model
-        if exposure is not None:
-            scaling, offset = exposure.scaling(freqs), exposure.offset(freqs)
-            image = scaling * image + offset
-
-        return image
-
-    def sample(self) -> ElectronDensity:
-        """Get the electron density."""
-        return self.density
+    @property
+    def realization(self) -> ElectronDensity:
+        """View the electron density at the pose."""
+        return self.density.view(self.pose)
 
 
 class Ensemble(Specimen):
     """
     A biological specimen at a discrete mixture of conformations.
+
+    conformation :
+        The discrete conformational variable at which to evaulate
+        the electron density.
     """
 
     density: list[ElectronDensity] = field()
@@ -107,6 +65,7 @@ class Ensemble(Specimen):
         if not (-len(self.density) <= coordinate < len(self.density)):
             raise ValueError("The conformational coordinate is out-of-bounds.")
 
-    def sample(self) -> ElectronDensity:
+    @property
+    def realization(self) -> ElectronDensity:
         """Sample the electron density at the configured conformation."""
-        return self.density[self.conformation.coordinate]
+        return self.density[self.conformation.coordinate].view(self.pose)
