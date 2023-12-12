@@ -58,7 +58,7 @@ class FourierSliceScattering(ScatteringConfig):
 
 
 def extract_slice(
-    density: ComplexVolume,
+    weights: ComplexVolume,
     coordinates: VolumeCoords,
     resolution: float,
     shape: tuple[int, int],
@@ -70,7 +70,7 @@ def extract_slice(
 
     Arguments
     ---------
-    density : shape `(N1, N2, N3)`
+    weights : shape `(N1, N2, N3)`
         Density grid in fourier space.
     coordinates : shape `(N1, N2, 1, 3)`
         Frequency central slice coordinate system.
@@ -88,8 +88,8 @@ def extract_slice(
     projection :
         The output image in fourier space.
     """
-    density, coordinates = jnp.asarray(density), jnp.asarray(coordinates)
-    N1, N2, N3 = density.shape
+    weights, coordinates = jnp.asarray(weights), jnp.asarray(coordinates)
+    N1, N2, N3 = weights.shape
     if not all([Ni == N1 for Ni in [N1, N2, N3]]):
         raise ValueError("Only cubic boxes are supported for fourier slice.")
     dx = resolution
@@ -99,7 +99,7 @@ def extract_slice(
     coordinates *= box_size
     # Interpolate on the upper half plane get the slice
     z = N2 // 2 + 1
-    projection = map_coordinates(density, coordinates[:, :z], **kwargs)[..., 0]
+    projection = map_coordinates(weights, coordinates[:, :z], **kwargs)[..., 0]
     # Set zero frequency component to zero
     projection = projection.at[0, 0].set(0.0 + 0.0j)
     # Transform back to real space
@@ -112,6 +112,6 @@ def extract_slice(
         projection = pad(projection, shape, mode="edge")
     else:
         raise NotImplementedError(
-            "density.shape must be larger or smaller than shape in all dimensions"
+            "Voxel density shape must be larger or smaller than shape in all dimensions"
         )
     return fftn(projection) / jnp.sqrt(M1 * M2)
