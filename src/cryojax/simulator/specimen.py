@@ -7,6 +7,7 @@ from __future__ import annotations
 __all__ = ["Specimen", "Ensemble"]
 
 from typing import Any
+from functools import cached_property
 
 from .density import ElectronDensity
 from .pose import Pose, EulerPose
@@ -42,7 +43,7 @@ class Specimen(Module):
 
     pose: Pose = field(default_factory=EulerPose)
 
-    @property
+    @cached_property
     def realization(self) -> ElectronDensity:
         """View the electron density at the pose."""
         return self.density.view(self.pose)
@@ -65,7 +66,7 @@ class Ensemble(Specimen):
         if not (-len(self.density) <= coordinate < len(self.density)):
             raise ValueError("The conformational coordinate is out-of-bounds.")
 
-    @property
+    @cached_property
     def realization(self) -> ElectronDensity:
         """Sample the electron density at the configured conformation."""
         return self.density[self.conformation.coordinate].view(self.pose)

@@ -107,9 +107,7 @@ class ImagePipeline(Module):
         specimen_image = self.render(view=False)
         # The image of the solvent
         ice_image = irfftn(
-            self.instrument.optics.apply(
-                self.instrument.optics(freqs), self.solvent.sample(freqs)
-            )
+            self.instrument.optics(freqs) * self.solvent.sample(freqs)
         )
         # Measure the detector readout
         image = specimen_image + ice_image
@@ -182,7 +180,7 @@ class ImagePipeline(Module):
         image *= self.specimen.pose.shifts(freqs)
         # Compute and apply CTF
         ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
-        image = self.instrument.optics.apply(ctf, image)
+        image = ctf * image
         # Apply the electron exposure model
         scaling, offset = self.instrument.exposure.scaling(
             freqs
