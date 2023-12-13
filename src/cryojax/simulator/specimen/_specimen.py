@@ -42,6 +42,10 @@ class Specimen(Module):
 
     pose: Pose = field(default_factory=EulerPose)
 
+    @property
+    def n_conformations(self) -> int:
+        return 1
+
     @cached_property
     def realization(self) -> ElectronDensity:
         """View the electron density at the pose."""
