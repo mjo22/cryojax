@@ -12,7 +12,7 @@ from .density import ElectronDensity
 from .pose import Pose, EulerPose
 from .conformation import Discrete
 from ..core import field, Module
-from ..types import Real_
+from ..typing import Real_
 
 
 class Specimen(Module):

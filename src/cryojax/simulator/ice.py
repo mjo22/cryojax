@@ -12,7 +12,7 @@ import jax.numpy as jnp
 from .kernel import Kernel, Exp
 from .noise import GaussianNoise
 from ..core import field, Module
-from ..types import RealImage, ComplexImage, Image, ImageCoords
+from ..typing import RealImage, ComplexImage, Image, ImageCoords
 
 
 class Ice(Module):

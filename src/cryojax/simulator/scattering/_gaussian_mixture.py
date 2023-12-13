@@ -8,14 +8,12 @@ __all__ = ["IndependentAtomScattering"]
 
 import jax.numpy as jnp
 
-from .base import ScatteringConfig
+from ._base import ScatteringConfig
 from ..density import AtomCloud
-from ...types import (
+from ...typing import (
     ComplexImage,
     ImageCoords,
-    RealCloud,
-    IntCloud,
-    CloudCoords,
+    CloudCoords2D,
 )
 
 
@@ -74,7 +72,7 @@ class IndependentAtomScattering(ScatteringConfig):
 # Maybe this should go in cryojax.utils.coordinates.py? Or somewhere else, haven't
 # read in too much depth.
 def _evaluate_coord_to_grid_sq_distances(
-    x: CloudCoords, xgrid: ImageCoords
+    x: CloudCoords2D, xgrid: ImageCoords
 ) -> ImageCoords:
     x_coords = jnp.expand_dims(x[:, :, 0], axis=1)  # N_struct x 1 x  N_atoms
     y_coords = jnp.expand_dims(x[:, :, 1], axis=1)

@@ -16,13 +16,9 @@ import jax.numpy as jnp
 import numpy as np
 
 from ..density import VoxelCloud, AtomCloud
-from .base import ScatteringConfig
+from ._base import ScatteringConfig
 from ...core import field
-from ...types import (
-    ComplexImage,
-    RealCloud,
-    CloudCoords,
-)
+from ...typing import ComplexImage, RealCloud, CloudCoords2D, CloudCoords3D
 from ...utils import nufft
 
 
@@ -96,7 +92,7 @@ def project_atoms_with_nufft(
 
 def project_with_nufft(
     weights: RealCloud,
-    coordinates: CloudCoords,
+    coordinates: Union[CloudCoords2D, CloudCoords3D],
     resolution: float,
     shape: tuple[int, int],
     **kwargs: Any,

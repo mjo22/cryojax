@@ -10,10 +10,10 @@ from typing import Any
 
 import jax.numpy as jnp
 
-from .base import ScatteringConfig
+from ._base import ScatteringConfig
 from ..density import VoxelGrid
 from ...core import field
-from ...types import (
+from ...typing import (
     ComplexImage,
     ComplexVolume,
     VolumeCoords,

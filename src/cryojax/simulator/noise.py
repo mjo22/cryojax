@@ -13,7 +13,7 @@ from jax import random
 from .kernel import Kernel, Constant
 from ..utils import fftn
 from ..core import field, Module
-from ..types import ImageCoords, ComplexImage
+from ..typing import ImageCoords, ComplexImage
 
 
 class Noise(Module):

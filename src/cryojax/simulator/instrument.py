@@ -1,5 +1,6 @@
 """
-Containers for storing parameters.
+Abstraction of the electron microscope. This includes models
+for the optics, detector, and beam.
 """
 
 from __future__ import annotations

@@ -21,7 +21,7 @@ from .instrument import Instrument
 from .ice import Ice, NullIce
 from ..utils import fftn, irfftn
 from ..core import field, Module
-from ..types import RealImage, ComplexImage, Image, Real_
+from ..typing import RealImage, ComplexImage, Image, Real_
 
 
 class ImagePipeline(Module):

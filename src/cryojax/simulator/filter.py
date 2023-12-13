@@ -20,7 +20,7 @@ import jax.numpy as jnp
 
 from ..utils import powerspectrum, make_frequencies
 from ..core import field, Module
-from ..types import Image, RealImage, ComplexImage
+from ..typing import Image, RealImage, ComplexImage
 
 
 class Filter(Module):

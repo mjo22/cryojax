@@ -19,7 +19,7 @@ from .specimen import Specimen
 from .pose import Pose, EulerPose
 
 from ..core import field, Module
-from ..types import Real_, RealVector
+from ..typing import Real_, RealVector
 
 Positions = Float[Array, "N 3"]
 """Type hint for array where each element is a lattice coordinate."""

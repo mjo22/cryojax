@@ -15,7 +15,7 @@ from .noise import GaussianNoise
 from .kernel import Kernel, Constant
 from ..utils import scale, irfftn
 from ..core import field, Module
-from ..types import Real_, RealImage, ImageCoords
+from ..typing import Real_, RealImage, ImageCoords
 
 
 class Detector(Module):
