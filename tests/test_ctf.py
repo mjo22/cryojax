@@ -3,7 +3,7 @@ import numpy as np
 from pycistem.core import CTF
 
 from cryojax.simulator import CTFOptics
-from cryojax.utils import fftfreqs, cartesian_to_polar, powerspectrum
+from cryojax.utils import make_frequencies, cartesian_to_polar, powerspectrum
 
 
 @pytest.mark.parametrize(
@@ -27,7 +27,7 @@ def test_ctf_with_cistem(
 
     Modified from https://github.com/jojoelfe/contrasttransferfunction"""
     shape = (512, 512)
-    freqs = fftfreqs(shape, pixel_size=pixel_size)
+    freqs = make_frequencies(shape, pixel_size=pixel_size)
     k_sqr, theta = cartesian_to_polar(freqs, square=True)
     # Compute cryojax CTF
     optics = CTFOptics(

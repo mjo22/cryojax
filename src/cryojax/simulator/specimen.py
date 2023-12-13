@@ -6,16 +6,14 @@ from __future__ import annotations
 
 __all__ = ["Specimen", "Ensemble"]
 
-from typing import Any, Optional
+from typing import Any
+from functools import cached_property
 
-from .scattering import ScatteringConfig
 from .density import ElectronDensity
-from .exposure import Exposure
-from .pose import Pose
-from .optics import Optics
+from .pose import Pose, EulerPose
 from .conformation import Discrete
 from ..core import field, Module
-from ..types import Real_, ComplexImage
+from ..typing import Real_
 
 
 class Specimen(Module):
@@ -32,94 +30,43 @@ class Specimen(Module):
         dimensions of length.
     conformation :
         The conformational variable at which to evaulate
-        the electron density. This should be overwritten
+        the electron density. This does not do anything in
+        the specimen base class and should be overwritten
         in subclasses.
+    pose :
+        The pose of the specimen.
     """
 
     density: ElectronDensity = field()
     resolution: Real_ = field()
-    conformation: Any = field()
+    conformation: Any = field(default=None)
 
-    def __init__(
-        self,
-        density: ElectronDensity,
-        resolution: Real_,
-        conformation: Optional[Any] = None,
-    ):
-        self.density = density
-        self.resolution = resolution
-        self.conformation = None
+    pose: Pose = field(default_factory=EulerPose)
 
-    def scatter(
-        self,
-        scattering: ScatteringConfig,
-        pose: Pose,
-        exposure: Optional[Exposure] = None,
-        optics: Optional[Optics] = None,
-    ) -> ComplexImage:
-        """
-        Compute the scattered wave of the specimen in the
-        exit plane.
-
-        Arguments
-        ---------
-        scattering :
-            The scattering configuration.
-        pose :
-            The imaging pose.
-        exposure :
-            The exposure model.
-        optics :
-            The instrument optics.
-        """
-        freqs = scattering.padded_freqs / self.resolution
-        # Draw the electron density at a particular conformation
-        density = self.sample()
-        # View the electron density map at a given pose
-        density = density.view(pose)
-        # Compute the scattering image
-        image = scattering.scatter(density, self.resolution)
-        # Apply translation
-        image *= pose.shifts(freqs)
-        # Compute and apply CTF
-        if optics is not None:
-            ctf = optics(freqs, pose=pose)
-            image = optics.apply(ctf, image)
-        # Apply the electron exposure model
-        if exposure is not None:
-            scaling, offset = exposure.scaling(freqs), exposure.offset(freqs)
-            image = scaling * image + offset
-
-        return image
-
-    def sample(self) -> ElectronDensity:
-        """Get the electron density."""
-        return self.density
+    @cached_property
+    def realization(self) -> ElectronDensity:
+        """View the electron density at the pose."""
+        return self.density.view(self.pose)
 
 
 class Ensemble(Specimen):
     """
     A biological specimen at a discrete mixture of conformations.
+
+    conformation :
+        The discrete conformational variable at which to evaulate
+        the electron density.
     """
 
     density: list[ElectronDensity] = field()
-    conformation: Discrete = field()
-
-    def __init__(
-        self,
-        density: ElectronDensity,
-        resolution: Real_,
-        conformation: Optional[Discrete] = None,
-    ):
-        self.density = density
-        self.resolution = resolution
-        self.conformation = conformation or Discrete()
+    conformation: Discrete = field(default_factory=Discrete)
 
     def __check_init__(self):
         coordinate = self.conformation.coordinate
         if not (-len(self.density) <= coordinate < len(self.density)):
             raise ValueError("The conformational coordinate is out-of-bounds.")
 
-    def sample(self) -> ElectronDensity:
+    @cached_property
+    def realization(self) -> ElectronDensity:
         """Sample the electron density at the configured conformation."""
-        return self.density[self.conformation.coordinate]
+        return self.density[self.conformation.coordinate].view(self.pose)

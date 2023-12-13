@@ -22,7 +22,7 @@ from .pose import Pose
 from .kernel import Gaussian, Kernel
 from ..utils import cartesian_to_polar
 from ..core import field, Module
-from ..types import Real_, RealImage, ComplexImage, Image, ImageCoords
+from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
 class Optics(Module):
@@ -35,7 +35,6 @@ class Optics(Module):
     When writing subclasses,
 
         1) Overwrite the ``Optics.evaluate`` method.
-        2) Overwrite the ``Optics.apply`` method.
 
     Attributes
     ----------
@@ -51,13 +50,6 @@ class Optics(Module):
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
     ) -> Image:
         """Compute the optics model."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def apply(
-        self, ctf: Image, image: ComplexImage, **kwargs: Any
-    ) -> ComplexImage:
-        """Apply the optics model."""
         raise NotImplementedError
 
     def __call__(
@@ -83,9 +75,6 @@ class NullOptics(Optics):
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
     ) -> ComplexImage:
         return jnp.array(1.0)
-
-    def apply(self, ctf: RealImage, image: ComplexImage, **kwargs: Any):
-        return image
 
 
 class CTFOptics(Optics):
@@ -116,11 +105,6 @@ class CTFOptics(Optics):
     spherical_aberration: Real_ = field(default=2.7)
     amplitude_contrast: Real_ = field(default=0.1)
     phase_shift: Real_ = field(default=0.0)
-
-    def apply(
-        self, ctf: RealImage, image: ComplexImage, **kwargs: Any
-    ) -> ComplexImage:
-        return ctf * image
 
     def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any

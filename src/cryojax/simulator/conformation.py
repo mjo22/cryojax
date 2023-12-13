@@ -8,7 +8,7 @@ from typing import Any
 from equinox import AbstractVar
 
 from ..core import Module, field
-from ..types import Real_, Integer_
+from ..typing import Real_, Integer_
 
 
 class Conformation(Module):

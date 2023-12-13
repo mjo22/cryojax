@@ -8,19 +8,20 @@ import equinox as eqx
 
 from abc import abstractmethod
 from typing import Any, Type
-from jaxtyping import Array
+from jaxtyping import Float, Array
 from equinox import AbstractVar
 
-from .base import ElectronDensity
+from ._base import ElectronDensity
 from ..pose import Pose
-from ...io import load_grid_as_cloud, load_fourier_grid
+from ...io import load_voxel_cloud, load_fourier_grid
 from ...core import field
-from ...types import (
+from ...typing import (
     ComplexVolume,
-    VolumeCoords,
     RealCloud,
-    CloudCoords,
+    CloudCoords3D,
 )
+
+_VolumeSliceCoords = Float[Array, "N1 N2 1 3"]
 
 
 class Voxels(ElectronDensity):
@@ -75,7 +76,7 @@ class VoxelGrid(Voxels):
     """
 
     weights: ComplexVolume = field()
-    coordinates: VolumeCoords = field()
+    coordinates: _VolumeSliceCoords = field()
 
     real: bool = field(default=False, static=True)
 
@@ -125,7 +126,7 @@ class VoxelCloud(Voxels):
     """
 
     weights: RealCloud = field()
-    coordinates: CloudCoords = field()
+    coordinates: CloudCoords3D = field()
 
     real: bool = field(default=True, static=True)
 
@@ -157,4 +158,4 @@ class VoxelCloud(Voxels):
         See ``cryojax.io.voxel.load_grid_as_cloud`` for
         documentation.
         """
-        return cls(**load_grid_as_cloud(filename, **config), **kwargs)
+        return cls(**load_voxel_cloud(filename, **config), **kwargs)

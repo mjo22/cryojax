@@ -6,7 +6,7 @@ from __future__ import annotations
 
 __all__ = ["Helix", "compute_lattice_positions", "compute_lattice_rotations"]
 
-from typing import Any, Union, Optional, Callable
+from typing import Union, Optional, Callable
 from jaxtyping import Array, Float, Int
 from functools import cached_property
 
@@ -16,13 +16,10 @@ import jax.tree_util as jtu
 import equinox as eqx
 
 from .specimen import Specimen
-from .exposure import Exposure
-from .pose import Pose
-from .optics import Optics
-from .scattering import ScatteringConfig
+from .pose import Pose, EulerPose
 
 from ..core import field, Module
-from ..types import Real_, RealVector, ComplexImage
+from ..typing import Real_, RealVector
 
 Positions = Float[Array, "N 3"]
 """Type hint for array where each element is a lattice coordinate."""
@@ -47,17 +44,17 @@ class Helix(Module):
     Attributes
     ----------
     subunit :
-        The helical subunit.
+        The helical subunit. It is important to set the the initial pose
+        of the initial subunit here. This is in the center of mass frame
+        of the helix with the screw axis pointing in the z-direction.
     rise :
         The helical rise. This has dimensions
         of length.
     twist :
         The helical twist, given in degrees if
         ``degrees = True`` and radians otherwise.
-    initial_pose :
-        The initial pose of the initial subunit, in the
-        center of mass frame of the helix with the screw axis
-        pointing in the z-direction.
+    pose :
+        The center of mass pose of the helix.
     conformations :
         The conformation of `subunit` at each lattice site.
         This can either be a fixed set of conformations or a function
@@ -75,7 +72,9 @@ class Helix(Module):
     subunit: Specimen = field()
     rise: Union[Real_, RealVector] = field()
     twist: Union[Real_, RealVector] = field()
-    initial_pose: Pose = field()
+
+    pose: Pose = field(default_factory=EulerPose)
+
     conformations: Optional[
         Union[Conformations, Callable[[Positions], Conformations]]
     ] = field(default=None)
@@ -83,68 +82,6 @@ class Helix(Module):
     n_start: int = field(static=True, default=1)
     n_subunits: Optional[int] = field(static=True, default=None)
     degrees: bool = field(static=True, default=True)
-
-    def scatter(
-        self,
-        scattering: ScatteringConfig,
-        pose: Pose,
-        exposure: Optional[Exposure] = None,
-        optics: Optional[Optics] = None,
-        **kwargs: Any,
-    ) -> ComplexImage:
-        """
-        Compute the scattered wave of the specimen in the
-        exit plane. Optionally, propagate this to the
-        detector plane.
-
-        The input and output of this method should identically
-        match that of ``Specimen.scatter``.
-
-        Arguments
-        ---------
-        scattering :
-            The scattering configuration for the subunit.
-        pose :
-            The center of mass imaging pose of the helix.
-        exposure :
-            The exposure model.
-        optics :
-            The instrument optics.
-        """
-        # Draw the conformations of each subunit
-        subunits = self.subunits
-        # Compute the pose of each subunit
-        where = lambda p: (p.offset_x, p.offset_y, p.offset_z, p.matrix)
-        # ... transform the subunit positions by pose of the helix
-        transformed_positions = pose.rotate(self.positions) + pose.offset
-        # ... transform the subunit rotations by the pose of the helix
-        transformed_rotations = jnp.einsum(
-            "nij,jk->nik", self.rotations, pose.rotation.as_matrix()
-        )
-        # ... generate a list of poses at each lattice site
-        poses = jtu.tree_map(
-            lambda r, T: eqx.tree_at(
-                where, pose.as_matrix_pose(), (r[0, 0], r[0, 1], r[0, 2], T[0])
-            ),
-            jnp.split(transformed_positions, len(subunits), axis=0),
-            jnp.split(transformed_rotations, len(subunits), axis=0),
-        )
-        # Compute all projection images
-        scatter = lambda s, p: s.scatter(
-            scattering, pose=p, exposure=None, optics=optics, **kwargs
-        )
-        images = jtu.tree_map(
-            scatter, subunits, poses, is_leaf=lambda s: isinstance(s, Specimen)
-        )
-        # Sum them all together
-        image = jtu.tree_reduce(lambda x, y: x + y, images)
-        # Apply the electron exposure model
-        if exposure is not None:
-            freqs = scattering.padded_freqs / self.resolution
-            scaling, offset = exposure.scaling(freqs), exposure.offset(freqs)
-            image = scaling * image + offset
-
-        return image
 
     @property
     def resolution(self) -> Real_:
@@ -157,7 +94,7 @@ class Helix(Module):
         return compute_lattice_positions(
             self.rise,
             self.twist,
-            self.initial_pose.offset,
+            self.subunit.pose.offset,
             n_start=self.n_start,
             n_subunits=self.n_subunits,
             degrees=self.degrees,
@@ -172,30 +109,68 @@ class Helix(Module):
         """
         return compute_lattice_rotations(
             self.twist,
-            self.initial_pose.rotation.as_matrix(),
+            self.subunit.pose.rotation.as_matrix(),
             n_start=self.n_start,
             n_subunits=self.n_subunits,
             degrees=self.degrees,
         )
 
     @cached_property
+    def poses(self) -> list[Pose]:
+        """Draw the poses of the subunits in the lab frame."""
+        # Transform the subunit positions by pose of the helix
+        transformed_positions = (
+            self.pose.rotate(self.positions) + self.pose.offset
+        )
+        # Transform the subunit rotations by the pose of the helix
+        transformed_rotations = jnp.einsum(
+            "nij,jk->nik", self.rotations, self.pose.rotation.as_matrix()
+        )
+        # Generate a list of poses at each lattice site
+        get_pose = lambda r, T: eqx.tree_at(
+            lambda p: (p.offset_x, p.offset_y, p.offset_z, p.matrix),
+            self.pose.as_matrix_pose(),
+            (r[0, 0], r[0, 1], r[0, 2], T[0]),
+        )
+        poses = jtu.tree_map(
+            get_pose,
+            jnp.split(
+                transformed_positions, self.n_start * self.n_subunits, axis=0
+            ),
+            jnp.split(
+                transformed_rotations, self.n_start * self.n_subunits, axis=0
+            ),
+        )
+        return poses
+
+    @cached_property
     def subunits(self) -> list[Specimen]:
-        """Draw a realization of all of the subunits"""
-        if (
-            not hasattr(self.subunit, "conformation")
-            or self.conformations is None
-        ):
-            return self.n_subunits * self.n_start * [self.subunit]
+        """Draw a realization of all of the subunits in the lab frame."""
+        # Compute a list of subunits, configured at the correct conformations
+        if self.conformations is None:
+            subunits = self.n_subunits * self.n_start * [self.subunit]
         else:
             if isinstance(self.conformations, Callable):
                 cs = self.conformations(self.positions)
             else:
                 cs = self.conformations
             where = lambda s: s.conformation.coordinate
-            return jtu.tree_map(
+            subunits = jtu.tree_map(
                 lambda c: eqx.tree_at(where, self.subunit, c[0]),
                 jnp.split(cs, len(cs), axis=0),
             )
+        # Assign a pose to each subunit
+        get_subunit = lambda subunit, pose: eqx.tree_at(
+            lambda s: s.pose, subunit, pose
+        )
+        subunits = jtu.tree_map(
+            get_subunit,
+            subunits,
+            self.poses,
+            is_leaf=lambda s: isinstance(s, Specimen),
+        )
+
+        return subunits
 
 
 def compute_lattice_positions(

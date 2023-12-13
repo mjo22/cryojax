@@ -10,7 +10,7 @@ from functools import partial
 
 
 def test_jit(
-    state, scattering, weights_and_coordinates, resolution, test_image
+    instrument, scattering, weights_and_coordinates, resolution, test_image
 ):
     """
     Test the jit pipeline, without equinox. This requires building
@@ -31,7 +31,7 @@ def test_jit(
         return cs.GaussianImage(
             specimen=specimen,
             scattering=scattering,
-            state=state,
+            instrument=instrument,
             observed=test_image,
         )
 
@@ -73,7 +73,7 @@ def test_equinox_jit(likelihood_model):
 
 def test_equinox_value_and_grad(likelihood_model):
     def build_model(model, params):
-        where = lambda m: m.state.pose.offset_z
+        where = lambda m: m.specimen.pose.offset_z
         return eqx.tree_at(where, model, params["offset_z"])
 
     @jax.jit

@@ -12,7 +12,7 @@ from . import (
     optics,
     exposure,
     detector,
-    state,
+    instrument,
     image,
     likelihood,
 )
@@ -30,7 +30,7 @@ from .ice import *
 from .optics import *
 from .exposure import *
 from .detector import *
-from .state import *
+from .instrument import *
 from .image import *
 from .likelihood import *
 
@@ -49,7 +49,7 @@ __all__ = (
     + optics.__all__
     + exposure.__all__
     + detector.__all__
-    + state.__all__
+    + instrument.__all__
     + image.__all__
     + likelihood.__all__
 )
@@ -69,7 +69,7 @@ __all__.extend(
         optics,
         exposure,
         detector,
-        state,
+        instrument,
         image,
         likelihood,
     ]

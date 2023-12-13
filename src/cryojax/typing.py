@@ -1,5 +1,6 @@
 """
-Type hints.
+A type hint utility module using jaxtyping. If these public type hints
+are not sufficient, add private type hints to the top of the file.
 """
 
 __all__ = [
@@ -17,8 +18,10 @@ __all__ = [
     "Volume",
     "RealCloud",
     "ComplexCloud",
+    "IntCloud",
     "Cloud",
-    "CloudCoords",
+    "CloudCoords2D",
+    "CloudCoords3D",
 ]
 
 from typing import Union
@@ -70,7 +73,7 @@ Volume = Union[RealVolume, ComplexVolume]
 VolumeCoords = Float[Array, "N1 N2 N3 3"]
 """Type hint for a volume coordinate system."""
 
-# 3D Point cloud type hints (non-uniformly spaced points).
+# Point cloud type hints (non-uniformly spaced points).
 RealCloud = Float[Array, "N"]
 """Type hint for a real-valued point cloud."""
 
@@ -83,5 +86,8 @@ ComplexCloud = Complex[Array, "N"]
 Cloud = Union[RealCloud, ComplexCloud]
 """Type hint for a point cloud."""
 
-CloudCoords = Float[Array, "N 3"]
-"""Type hint for a point cloud coordinate system."""
+CloudCoords3D = Float[Array, "N 3"]
+"""Type hint for a 3D point cloud coordinate system."""
+
+CloudCoords2D = Float[Array, "N 2"]
+"""Type hint for a 2D point cloud coordinate system."""

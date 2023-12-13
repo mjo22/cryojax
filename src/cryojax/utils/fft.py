@@ -8,10 +8,12 @@ from typing import Any, Union
 
 import jax.numpy as jnp
 
-from ..types import Image, Volume
+from ..typing import RealImage, RealVolume, Image, Volume
 
 
-def irfftn(ft: Union[Image, Volume], **kwargs: Any) -> Union[Image, Volume]:
+def irfftn(
+    ft: Union[Image, Volume], **kwargs: Any
+) -> Union[RealImage, RealVolume]:
     """
     Convenience wrapper for ``cryojax.utils.fft.ifftn``
     for ``real = True``.

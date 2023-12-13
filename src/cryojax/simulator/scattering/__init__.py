@@ -1,13 +1,13 @@
-from . import base, gaussian_mixture, fourier_slice, nufft
+from . import _base, _gaussian_mixture, _fourier_slice, _nufft
 
-from .base import *
-from .fourier_slice import *
-from .nufft import *
-from .gaussian_mixture import *
+from ._base import *
+from ._fourier_slice import *
+from ._nufft import *
+from ._gaussian_mixture import *
 
 __all__ = (
-    base.__all__
-    + fourier_slice.__all__
-    + nufft.__all__
-    + gaussian_mixture.__all__
+    _base.__all__
+    + _fourier_slice.__all__
+    + _nufft.__all__
+    + _gaussian_mixture.__all__
 )

@@ -13,7 +13,7 @@ from typing import Any
 from ..density import ElectronDensity
 
 from ...core import field, Module
-from ...types import (
+from ...typing import (
     Real_,
     RealImage,
     ComplexImage,

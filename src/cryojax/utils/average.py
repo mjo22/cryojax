@@ -9,7 +9,7 @@ from typing import Optional, Union
 import jax
 import jax.numpy as jnp
 
-from ..types import RealVector, Vector, Image, ImageCoords
+from ..typing import RealVector, Vector, Image, ImageCoords
 
 
 @jax.jit

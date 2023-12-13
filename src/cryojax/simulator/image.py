@@ -4,45 +4,43 @@ Image formation models.
 
 from __future__ import annotations
 
-__all__ = [
-    "ImagePipeline",
-    "ScatteringImage",
-    "OpticsImage",
-    "DetectorImage",
-]
+__all__ = ["ImagePipeline"]
 
-from abc import abstractmethod
 from typing import Union, Optional
 from functools import cached_property
 
-import jax.numpy as jnp
+import equinox as eqx
+import jax.tree_util as jtu
 
 from .filter import Filter
 from .mask import Mask
 from .specimen import Specimen
 from .helix import Helix
 from .scattering import ScatteringConfig
-from .state import PipelineState
+from .instrument import Instrument
+from .ice import Ice, NullIce
 from ..utils import fftn, irfftn
 from ..core import field, Module
-from ..types import RealImage, ComplexImage, Image, Real_
+from ..typing import RealImage, ComplexImage, Image, Real_
 
 
 class ImagePipeline(Module):
     """
     Base class for an imaging model.
 
-    Call an ``Image`` or its ``render``, ``sample``,
-    or ``log_probability`` routines to evaluate the model.
+    Call an ``ImagePipeline`` or its ``render``, ``sample``,
+    or ``log_probability`` routines.
 
     Attributes
     ----------
     specimen :
         The specimen from which to render images.
-    state :
-        The state of the model pipeline.
     scattering :
         The image and scattering model configuration.
+    instrument :
+        The abstraction of the electron microscope.
+    solvent :
+        The solvent around the specimen.
     filters :
         A list of filters to apply to the image.
     masks :
@@ -55,47 +53,81 @@ class ImagePipeline(Module):
         ``masks``.
     """
 
-    state: PipelineState = field()
     specimen: Union[Specimen, Helix] = field()
     scattering: ScatteringConfig = field()
+    instrument: Instrument = field(default_factory=Instrument)
+    solvent: Ice = field(default_factory=NullIce)
 
     filters: list[Filter] = field(default_factory=list)
     masks: list[Mask] = field(default_factory=list)
     observed: Optional[RealImage] = field(default=None)
 
-    @abstractmethod
-    def render(self, view: bool = True) -> Image:
+    def render(self, view: bool = True) -> RealImage:
         """
-        Render an image given a parameter set.
+        Render an image of a Specimen.
 
         Parameters
         ----------
-        view : `bool`
-            If ``True``, view the cropped,
-            masked, and rescaled image in real
-            space. If ``False``, return the image
-            at this place in the pipeline.
+        view : `bool`, optional
+            If ``True``, view the cropped, masked,
+            and filtered image.
         """
-        raise NotImplementedError
+        if isinstance(self.specimen, Specimen):
+            image = self._render_specimen()
+        elif isinstance(self.specimen, Helix):
+            image = self._render_helix()
+        else:
+            raise ValueError(
+                "The specimen must be either a Specimen or Helix."
+            )
 
-    @abstractmethod
-    def sample(self, view: bool = True) -> Image:
+        if view:
+            image = self.view(image)
+
+        return image
+
+    def sample(self, view: bool = True) -> RealImage:
         """
         Sample the an image from a realization of the noise.
 
         Parameters
         ----------
         view : `bool`, optional
-            If ``True``, view the protein signal overlayed
-            onto the noise. If ``False``, just return
-            the noise given at this place in the pipeline.
+            If ``True``, view the cropped, masked,
+            and filtered image.
         """
-        raise NotImplementedError
+        # Determine pixel size
+        if self.instrument.detector.pixel_size is not None:
+            pixel_size = self.instrument.detector.pixel_size
+        else:
+            pixel_size = self.specimen.resolution
+        # Frequencies
+        freqs = self.scattering.padded_freqs / pixel_size
+        # The image of the specimen
+        specimen_image = self.render(view=False)
+        # The image of the solvent
+        ice_image = irfftn(
+            self.instrument.optics(freqs) * self.solvent.sample(freqs)
+        )
+        # Measure the detector readout
+        image = specimen_image + ice_image
+        noise = self.instrument.detector.sample(freqs, image=image)
+        detector_readout = image + noise
+        if view:
+            detector_readout = self.view(detector_readout)
 
-    @abstractmethod
+        return detector_readout
+
     def log_probability(self) -> Real_:
         """Evaluate the log-probability of the data given a parameter set."""
         raise NotImplementedError
+
+    @cached_property
+    def residuals(self) -> RealImage:
+        """Return the residuals between the model and observed data."""
+        simulated = self.render()
+        residuals = self.observed - simulated
+        return residuals
 
     def __call__(self, view: bool = True) -> Union[Image, Real_]:
         """
@@ -109,18 +141,18 @@ class ImagePipeline(Module):
         else:
             return self.log_probability()
 
-    def view(self, image: Image, real: bool = False) -> RealImage:
+    def view(self, image: Image, real: bool = True) -> RealImage:
         """
         View the image. This function applies
         filters, crops the image, then applies masks.
         """
-        # Apply filters
+        # Apply filters to the image
         if real:
             if len(self.filters) > 0:
                 image = irfftn(self.filter(fftn(image)))
         else:
             image = irfftn(self.filter(image))
-        # View
+        # Crop and mask the image
         image = self.mask(self.scattering.crop(image))
         return image
 
@@ -136,129 +168,43 @@ class ImagePipeline(Module):
             image = mask(image)
         return image
 
-    @cached_property
-    def residuals(self) -> RealImage:
-        """Return the residuals between the model and observed data."""
-        simulated = self.render()
-        residuals = self.observed - simulated
-        return residuals
-
-
-class ScatteringImage(ImagePipeline):
-    """
-    Compute the scattering pattern in the exit plane,
-    with a given image formation model at a given pose.
-    """
-
-    def render(self, view: bool = True) -> Image:
-        """Render the scattered wave in the exit plane."""
-        # Compute the image at the exit plane at the given pose
-        scattering_image = self.specimen.scatter(
-            self.scattering, self.state.pose, exposure=self.state.exposure
+    def _render_specimen(self) -> RealImage:
+        """Render an image of a Specimen."""
+        resolution = self.specimen.resolution
+        freqs = self.scattering.padded_freqs / resolution
+        # Draw the electron density at a particular conformation and pose
+        density = self.specimen.realization
+        # Compute the scattering image
+        image = self.scattering.scatter(density, resolution=resolution)
+        # Apply translation
+        image *= self.specimen.pose.shifts(freqs)
+        # Compute and apply CTF
+        ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
+        image = ctf * image
+        # Apply the electron exposure model
+        scaling, offset = self.instrument.exposure.scaling(
+            freqs
+        ), self.instrument.exposure.offset(freqs)
+        image = scaling * image + offset
+        # Measure at the detector pixel size
+        image = self.instrument.detector.pixelize(
+            irfftn(image), resolution=resolution
         )
-        if view:
-            scattering_image = self.view(scattering_image)
 
-        return scattering_image
+        return image
 
-    def sample(self, view: bool = True) -> Image:
-        """Sample the scattered wave in the exit plane."""
-        # Compute the image at the exit plane
-        scattering_image = self.render(view=False)
-        # Sample a realization of the ice
-        ice_image = self.state.ice.scatter(
-            self.scattering, resolution=self.specimen.resolution
+    def _render_helix(self) -> RealImage:
+        """Render an image of a Helix from its subunits."""
+        # Draw the helical subunits
+        subunits = self.specimen.subunits
+        # Compute all of the subunit images
+        render = lambda subunit: eqx.tree_at(
+            lambda m: m.specimen, self, subunit
+        )._render_specimen()
+        images = jtu.tree_map(
+            render, subunits, is_leaf=lambda s: isinstance(s, Specimen)
         )
-        # Add the ice to the image
-        scattering_image += ice_image
-        if view:
-            scattering_image = self.view(scattering_image)
+        # Sum the subunit images together
+        image = jtu.tree_reduce(lambda x, y: x + y, images)
 
-        return scattering_image
-
-    def log_probability(self) -> Real_:
-        raise NotImplementedError
-
-
-class OpticsImage(ScatteringImage):
-    """
-    Compute the image at the detector plane,
-    moduated by a CTF.
-    """
-
-    def render(self, view: bool = True) -> Image:
-        """Render the image in the detector plane."""
-        # Compute image in detector plane
-        optics_image = self.specimen.scatter(
-            self.scattering,
-            self.state.pose,
-            exposure=self.state.exposure,
-            optics=self.state.optics,
-        )
-        if view:
-            optics_image = self.view(optics_image)
-
-        return optics_image
-
-    def sample(self, view: bool = True) -> Image:
-        """Sample the image in the detector plane."""
-        # Compute the image at the detector plane
-        optics_image = self.render(view=False)
-        # Sample a realization of the ice
-        ice_image = self.state.ice.scatter(
-            self.scattering,
-            resolution=self.specimen.resolution,
-            optics=self.state.optics,
-        )
-        # Add the ice to the image
-        optics_image += ice_image
-        if view:
-            optics_image = self.view(optics_image)
-
-        return optics_image
-
-
-class DetectorImage(OpticsImage):
-    """
-    Compute the detector readout of the image,
-    at a given pixel size.
-    """
-
-    def render(self, view: bool = True) -> RealImage:
-        # Compute image at detector plane
-        optics_image = super().render(view=False)
-        # Compute image at detector pixel size
-        pixelized_image = self.state.detector.pixelize(
-            irfftn(optics_image), resolution=self.specimen.resolution
-        )
-        if view:
-            pixelized_image = self.view(pixelized_image, real=True)
-
-        return pixelized_image
-
-    def sample(self, view: bool = True) -> RealImage:
-        """Sample an image from the detector readout."""
-        # Determine pixel size
-        if self.state.detector.pixel_size is not None:
-            pixel_size = self.state.detector.pixel_size
-        else:
-            pixel_size = self.specimen.resolution
-        # Frequencies
-        freqs = self.scattering.padded_freqs / pixel_size
-        # The specimen image at the detector pixel size
-        pixelized_image = self.render(view=False)
-        # The ice image at the detector pixel size
-        ice_image = self.state.ice.scatter(
-            self.scattering,
-            resolution=pixel_size,
-            optics=self.state.optics,
-        )
-        ice_image = irfftn(ice_image)
-        # Measure the detector readout
-        image = pixelized_image + ice_image
-        noise = self.state.detector.sample(freqs, image=image)
-        detector_readout = image + noise
-        if view:
-            detector_readout = self.view(detector_readout, real=True)
-
-        return detector_readout
+        return image
