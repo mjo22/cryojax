@@ -10,7 +10,7 @@ from typing import Any
 
 import jax.numpy as jnp
 
-from ._base import ScatteringConfig
+from ._scattering import ScatteringConfig
 from ..density import VoxelGrid
 from ...core import field
 from ...typing import (

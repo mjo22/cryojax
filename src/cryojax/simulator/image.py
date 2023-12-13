@@ -15,7 +15,7 @@ import jax.tree_util as jtu
 from .filter import Filter
 from .mask import Mask
 from .specimen import Specimen
-from .helix import Helix
+from .assembly import Assembly
 from .scattering import ScatteringConfig
 from .instrument import Instrument
 from .ice import Ice, NullIce
@@ -53,7 +53,7 @@ class ImagePipeline(Module):
         ``masks``.
     """
 
-    specimen: Union[Specimen, Helix] = field()
+    specimen: Union[Specimen, Assembly] = field()
     scattering: ScatteringConfig = field()
     instrument: Instrument = field(default_factory=Instrument)
     solvent: Ice = field(default_factory=NullIce)
@@ -74,11 +74,11 @@ class ImagePipeline(Module):
         """
         if isinstance(self.specimen, Specimen):
             image = self._render_specimen()
-        elif isinstance(self.specimen, Helix):
-            image = self._render_helix()
+        elif isinstance(self.specimen, Assembly):
+            image = self._render_assembly()
         else:
             raise ValueError(
-                "The specimen must be either a Specimen or Helix."
+                "The specimen must be either a Specimen or an Assembly."
             )
 
         if view:
@@ -193,9 +193,9 @@ class ImagePipeline(Module):
 
         return image
 
-    def _render_helix(self) -> RealImage:
-        """Render an image of a Helix from its subunits."""
-        # Draw the helical subunits
+    def _render_assembly(self) -> RealImage:
+        """Render an image of an Assembly from its subunits."""
+        # Draw the subunits
         subunits = self.specimen.subunits
         # Compute all of the subunit images
         render = lambda subunit: eqx.tree_at(

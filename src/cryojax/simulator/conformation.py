@@ -8,7 +8,7 @@ from typing import Any
 from equinox import AbstractVar
 
 from ..core import Module, field
-from ..typing import Real_, Integer_
+from ..typing import Real_, Int_
 
 
 class Conformation(Module):
@@ -17,7 +17,8 @@ class Conformation(Module):
 
     Attributes
     ----------
-    coordinate : The conformation at which to evaluate the model.
+    coordinate :
+        The conformation at which to evaluate the model.
     """
 
     coordinate: AbstractVar[Any]
@@ -28,7 +29,7 @@ class Discrete(Conformation):
     A discrete-valued conformational coordinate.
     """
 
-    coordinate: Integer_ = field(default=0)
+    coordinate: Int_ = field(default=0)
 
 
 class Continuous(Conformation):

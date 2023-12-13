@@ -16,7 +16,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from ..density import VoxelCloud, AtomCloud
-from ._base import ScatteringConfig
+from ._scattering import ScatteringConfig
 from ...core import field
 from ...typing import ComplexImage, RealCloud, CloudCoords2D, CloudCoords3D
 from ...utils import nufft

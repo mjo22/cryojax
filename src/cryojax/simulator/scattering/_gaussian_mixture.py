@@ -8,7 +8,7 @@ __all__ = ["IndependentAtomScattering"]
 
 import jax.numpy as jnp
 
-from ._base import ScatteringConfig
+from ._scattering import ScatteringConfig
 from ..density import AtomCloud
 from ...typing import (
     ComplexImage,
