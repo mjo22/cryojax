@@ -6,7 +6,7 @@ are not sufficient, add private type hints to the top of the file.
 __all__ = [
     "Real_",
     "Complex_",
-    "Integer_",
+    "Int_",
     "RealVector",
     "ComplexVector",
     "Vector",
@@ -34,7 +34,7 @@ Real_ = Float[Array, ""]
 Complex_ = Complex[Array, ""]
 """Type hint for an integer."""
 
-Integer_ = Int[Array, ""]
+Int_ = Int[Array, ""]
 """Type hint for an integer."""
 
 # 1-d array type hints

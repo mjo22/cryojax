@@ -31,7 +31,7 @@ from ..typing import (
     VolumeCoords,
 )
 
-_RotationMatrix = Float[Array, "3 3"]
+_RotationMatrix3D = Float[Array, "3 3"]
 _Vector3D = Float[Array, "2"]
 _Vector2D = Float[Array, "2"]
 
@@ -194,7 +194,7 @@ class MatrixPose(Pose):
         The rotation matrix.
     """
 
-    matrix: _RotationMatrix = field(default_factory=jnp.eye)
+    matrix: _RotationMatrix3D = field(default_factory=jnp.eye)
 
     @cached_property
     def rotation(self) -> SO3:

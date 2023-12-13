@@ -3,7 +3,7 @@ from . import (
     pose,
     conformation,
     specimen,
-    helix,
+    assembly,
     density,
     scattering,
     filter,
@@ -21,7 +21,7 @@ from .kernel import *
 from .pose import *
 from .conformation import *
 from .specimen import *
-from .helix import *
+from .assembly import *
 from .density import *
 from .scattering import *
 from .filter import *
@@ -40,7 +40,7 @@ __all__ = (
     + pose.__all__
     + conformation.__all__
     + specimen.__all__
-    + helix.__all__
+    + assembly.__all__
     + density.__all__
     + scattering.__all__
     + filter.__all__
@@ -60,7 +60,7 @@ __all__.extend(
         pose,
         conformation,
         specimen,
-        helix,
+        assembly,
         density,
         scattering,
         filter,
