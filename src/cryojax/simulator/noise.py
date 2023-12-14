@@ -41,11 +41,10 @@ class Noise(Module):
 
 class GaussianNoise(Noise):
     """
-    Base PyTree container for a gaussian noise model.
+    A gaussian noise model in fourier space.
 
-    When writing subclasses,
-
-        1) Overwrite ``GaussianNoise.variance``.
+    To specify the variance of the noise, pass a ``Kernel`` to
+    ``GaussianNoise.variance``.
     """
 
     variance: Kernel = field(default_factory=Constant)
