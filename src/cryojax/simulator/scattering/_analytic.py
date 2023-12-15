@@ -10,7 +10,7 @@ from typing import Union
 class ShapeProjection(ScatteringConfig):
 
     def scatter(self,
-                density: Union[Ellipsoid], # add more shapes later
+                density: Ellipsoid, # add more shapes later with Union
                 pose: Pose,
                 ):
         # TODO: Implement this method
