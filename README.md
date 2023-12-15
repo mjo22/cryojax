@@ -84,6 +84,7 @@ image = model.render()
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
+micrograph = ...  # A micrograph used for whitening
 filters = [cs.LowpassFilter(scattering.padded_shape, cutoff=1.0),  # Cutoff modes above Nyquist frequency
            cs.WhiteningFilter(scattering.padded_shape, micrograph=micrograph)]
 masks = [cs.CircularMask(scattering.shape, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
