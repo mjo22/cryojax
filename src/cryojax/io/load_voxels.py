@@ -6,12 +6,13 @@ from __future__ import annotations
 
 __all__ = ["load_mrc", "load_voxel_cloud", "load_fourier_grid"]
 
-import mrcfile, os
+import os
 import numpy as np
 import jax.numpy as jnp
 from jaxtyping import Array
 from typing import Any
 from ..utils import fftn, pad, make_frequencies, flatten_and_coordinatize
+from ._mrc import load_mrc
 
 
 def load_voxel_cloud(filename: str, **kwargs: Any) -> dict[str, Array]:
@@ -89,47 +90,3 @@ def load_fourier_grid(filename: str, pad_scale: float = 1.0) -> dict[str, Any]:
     voxels = dict(weights=density, coordinates=coordinates)
 
     return voxels
-
-
-def load_mrc(filename: str) -> tuple[np.ndarray, float]:
-    """
-    Read MRC data to ``numpy`` array.
-
-    Parameters
-    ----------
-    filename : `str`
-        Path to data.
-
-    Returns
-    -------
-    data : `ArrayLike`, shape `(N1, N2, N3)` or `(N1, N2)`
-        Model in cartesian coordinates.
-    voxel_size : `ArrayLike`, shape `(3,)` or `(2,)`
-        The voxel_size in each dimension, stored
-        in the MRC file.
-    """
-    # Read MRC
-    with mrcfile.open(filename) as mrc:
-        data = np.asarray(mrc.data, dtype=float)
-        if data.ndim == 2:
-            voxel_size = np.asarray(
-                [mrc.voxel_size.x, mrc.voxel_size.y], dtype=float
-            )
-        elif data.ndim == 3:
-            voxel_size = np.asarray(
-                [mrc.voxel_size.x, mrc.voxel_size.y, mrc.voxel_size.z],
-                dtype=float,
-            )
-        else:
-            raise NotImplementedError(
-                "MRC files with 2D and 3D data are supported."
-            )
-
-    assert all(
-        voxel_size != np.zeros(data.ndim)
-    ), "MRC file must set the voxel size."
-    assert all(
-        voxel_size == voxel_size[0]
-    ), "Voxel size must be same in all dimensions."
-
-    return data, voxel_size[0]

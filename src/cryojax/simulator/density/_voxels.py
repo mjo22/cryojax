@@ -161,6 +161,22 @@ class VoxelCloud(Voxels):
         return cls(**load_voxel_cloud(filename, **config), **kwargs)
 
     @classmethod
+    def from_pdb(
+        cls: Type["VoxelCloud"],
+        filename: str,
+        config: dict = {},
+        **kwargs: Any,
+    ) -> "VoxelCloud":
+        """
+        Loads a PDB file as a VoxelCloud.  Uses the Gemmi library.
+        Heavily based on a code from Frederic Poitevin, located at
+
+        https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
+        """
+        raise NotImplementedError
+        return cls(**load_voxel_cloud(filename, **config), **kwargs)
+
+    @classmethod
     def from_atom_cloud(
         cls: Type["VoxelCloud"],
         atom_cloud: "AtomCloud",
@@ -177,3 +193,4 @@ class VoxelCloud(Voxels):
         resolution :
             The resolution of the voxel grid.
         """
+        import gemmi
