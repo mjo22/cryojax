@@ -27,6 +27,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install .
           pip install pytest
+          pip install pycistem
       - name: Test with pytest
         run: |
           pytest tests/
