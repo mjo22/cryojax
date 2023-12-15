@@ -16,4 +16,5 @@ class ShapeProjection(ScatteringConfig):
         # TODO: Implement this method
         n_pix = 1
         density.axis_1, density.axis_2, density.axis_3
+        pose.rotation.as_matrix()
         return jnp.zeros((n_pix,n_pix))
