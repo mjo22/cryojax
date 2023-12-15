@@ -12,6 +12,7 @@ import jax.numpy as jnp
 
 from ._scattering import ScatteringConfig
 from ..density import VoxelGrid
+from ..pose import Pose
 from ...core import field
 from ...typing import (
     ComplexImage,
@@ -39,6 +40,7 @@ class FourierSliceScattering(ScatteringConfig):
     def scatter(
         self,
         density: VoxelGrid,
+        pose: Pose,
         resolution: float,
     ) -> ComplexImage:
         """
@@ -46,6 +48,7 @@ class FourierSliceScattering(ScatteringConfig):
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
+        density = density.view(pose)
         return extract_slice(
             density.weights,
             density.coordinates,

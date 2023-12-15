@@ -172,7 +172,7 @@ class ImagePipeline(Module):
         # Draw the electron density at a particular conformation and pose
         density = self.specimen.realization
         # Compute the scattering image
-        image = self.scattering.scatter(density, resolution=resolution, pose=self.specimen.pose)
+        image = self.scattering.scatter(density, pose=self.specimen.pose, resolution=resolution)
         # Apply translation
         image *= self.specimen.pose.shifts(freqs)
         # Compute and apply CTF

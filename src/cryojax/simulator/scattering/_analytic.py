@@ -5,6 +5,7 @@ from ..pose import Pose
 import jax.numpy as jnp
 from typing import Union
 
+__all__ = ["ShapeProjection"]
 
 
 class ShapeProjection(ScatteringConfig):
