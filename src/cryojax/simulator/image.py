@@ -127,7 +127,7 @@ class ImagePipeline(Module):
         raise NotImplementedError
 
     def __call__(
-        self, observed: Optional[RealImage] = None, view: bool = True
+        self, observed: Optional[RealImage] = None, *, view: bool = True
     ) -> Union[Image, Real_]:
         """
         If ``observed = None``, sample an image from
