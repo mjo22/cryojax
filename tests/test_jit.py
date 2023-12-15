@@ -67,7 +67,8 @@ def test_equinox_jit(likelihood_model, test_image):
         compute_image(likelihood_model), likelihood_model.sample()
     )
     np.testing.assert_allclose(
-        compute_loss(likelihood_model, test_image), likelihood_model(test_image)
+        compute_loss(likelihood_model, test_image),
+        likelihood_model(test_image),
     )
 
 
