@@ -11,6 +11,17 @@ class Ellipsoid(ElectronDensity):
     axis_b: Real_ = field()
     axis_c: Real_ = field()
 
+    real: bool = field(default=True, static=True)
+
+    def __check_init__(self):
+        if self.real is False:
+            raise NotImplementedError(
+                "Fourier Ellipsoid densities not supported."
+            )
+
     def view(self, pose: Pose) -> "Ellipsoid":
         return self # TODO: revisit this choice... impicit equation for platonic shapes?
+    
+    def from_file(self):
+        raise NotImplementedError
 
