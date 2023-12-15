@@ -91,14 +91,14 @@ model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=in
 image = model()
 ```
 
-If a `GaussianImage` is initialized with the field `observed`, the model will instead compute the log likelihood.
+If a `GaussianImage` is passed `observed`, the model will instead compute the log likelihood.
 
 ```python
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument, observed=observed)
-log_likelihood = model()
+model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument)
+log_likelihood = model(observed=observed)
 ```
 
-Under the hood, this calls `model.log_probability()`. Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
+Under the hood, this calls `model.log_probability(observed)`. Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
 
 Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `Ice` model. Models for exposure to the electron beam are supported through the `Instrument`'s `Exposure` model.
 
@@ -111,7 +111,7 @@ In `jax`, we ultimately want to build a loss function and apply functional trans
 ```python
 
 @jax.jit
-def update_model(model: cs.GaussianImage, params: dict[str, jax.Array]) -> cs.GaussianImage:
+def update_model(model, params):
     """
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
@@ -123,20 +123,18 @@ def update_model(model: cs.GaussianImage, params: dict[str, jax.Array]) -> cs.Ga
 We can now create the loss and differentiate it with respect to the parameters.
 
 ```python
-from functools import partial
-
 @jax.jit
 @jax.value_and_grad
-def loss(params: dict[str, jax.Array], model: cs.GaussianImage) -> jax.Array:
+def loss(params, model, observed):
     model = update_model(model, params)
-    return model.log_probability()
+    return model.log_probability(observed)
 ```
 
 Finally, we can evaluate an updated set of parameters.
 
 ```python
 params = dict(view_phi=jnp.asarray(jnp.pi), defocus_u=jnp.asarray(9000.0), pixel_size=jnp.asarray(1.30))
-log_likelihood, grad = loss(params, model)
+log_likelihood, grad = loss(params, model, observed)
 ```
 
 To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. In general, any `cryojax` `Module` may contain model parameters. One gotcha is just that the `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. However, this may result in slight speedups.

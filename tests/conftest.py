@@ -102,7 +102,7 @@ def test_image(noisy_model):
 
 @pytest.fixture
 def likelihood_model(
-    scattering, specimen, instrument, solvent, filters, masks, test_image
+    scattering, specimen, instrument, solvent, filters, masks
 ):
     return cs.GaussianImage(
         scattering=scattering,
@@ -111,5 +111,4 @@ def likelihood_model(
         solvent=solvent,
         filters=filters,
         masks=masks,
-        observed=test_image,
     )

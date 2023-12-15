@@ -32,7 +32,6 @@ def test_jit(
             specimen=specimen,
             scattering=scattering,
             instrument=instrument,
-            observed=test_image,
         )
 
     @jax.jit
@@ -41,47 +40,48 @@ def test_jit(
         return model.sample()
 
     @jax.jit
-    def compute_loss(voxels):
+    def compute_loss(voxels, test_image):
         model = build_model(voxels)
-        return model.log_probability()
+        return model.log_probability(test_image)
 
     unjitted_model = build_model(weights_and_coordinates)
     np.testing.assert_allclose(
         compute_image(weights_and_coordinates), unjitted_model.sample()
     )
     np.testing.assert_allclose(
-        compute_loss(weights_and_coordinates), unjitted_model.log_probability()
+        compute_loss(weights_and_coordinates, test_image),
+        unjitted_model.log_probability(test_image),
     )
 
 
-def test_equinox_jit(likelihood_model):
+def test_equinox_jit(likelihood_model, test_image):
     @eqx.filter_jit
     def compute_image(model):
         return model.sample()
 
     @eqx.filter_jit
-    def compute_loss(model):
-        return model()
+    def compute_loss(model, test_image):
+        return model(test_image)
 
     np.testing.assert_allclose(
         compute_image(likelihood_model), likelihood_model.sample()
     )
     np.testing.assert_allclose(
-        compute_loss(likelihood_model), likelihood_model()
+        compute_loss(likelihood_model, test_image), likelihood_model(test_image)
     )
 
 
-def test_equinox_value_and_grad(likelihood_model):
+def test_equinox_value_and_grad(likelihood_model, test_image):
     def build_model(model, params):
         where = lambda m: m.specimen.pose.offset_z
         return eqx.tree_at(where, model, params["offset_z"])
 
     @jax.jit
     @partial(jax.value_and_grad, argnums=1)
-    def compute_loss(model, params):
+    def compute_loss(model, params, test_image):
         model = build_model(model, params)
-        return model()
+        return model(test_image)
 
     value, grad = compute_loss(
-        likelihood_model, dict(offset_z=jnp.asarray(100.0))
+        likelihood_model, dict(offset_z=jnp.asarray(100.0)), test_image
     )
