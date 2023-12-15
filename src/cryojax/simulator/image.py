@@ -45,12 +45,6 @@ class ImagePipeline(Module):
         A list of filters to apply to the image.
     masks :
         A list of masks to apply to the image.
-    observed :
-        The observed data in real space. This must be the same
-        shape as ``scattering.shape``. Note that the user
-        should preprocess the observed data before passing it
-        to the image, such as applying the ``filters`` and
-        ``masks``.
     """
 
     specimen: Union[Specimen, Assembly] = field()
@@ -60,7 +54,6 @@ class ImagePipeline(Module):
 
     filters: list[Filter] = field(default_factory=list)
     masks: list[Mask] = field(default_factory=list)
-    observed: Optional[RealImage] = field(default=None)
 
     def render(self, view: bool = True) -> RealImage:
         """
@@ -118,28 +111,32 @@ class ImagePipeline(Module):
 
         return detector_readout
 
-    def log_probability(self) -> Real_:
-        """Evaluate the log-probability of the data given a parameter set."""
+    def log_probability(self, observed: RealImage) -> Real_:
+        """
+        Evaluate the log-probability.
+
+        Attributes
+        ----------
+        observed :
+            The observed data in real space. This must be the same
+            shape as ``scattering.shape``. Note that the user
+            should preprocess the observed data before passing it
+            to the image, such as applying the ``filters`` and
+            ``masks``.
+        """
         raise NotImplementedError
 
-    @cached_property
-    def residuals(self) -> RealImage:
-        """Return the residuals between the model and observed data."""
-        simulated = self.render()
-        residuals = self.observed - simulated
-        return residuals
-
-    def __call__(self, view: bool = True) -> Union[Image, Real_]:
+    def __call__(
+        self, observed: Optional[RealImage] = None, *, view: bool = True
+    ) -> Union[Image, Real_]:
         """
-        Evaluate the model at a parameter set.
-
-        If ``Image.observed = None``, sample an image from
+        If ``observed = None``, sample an image from
         a noise model. Otherwise, compute the log likelihood.
         """
-        if self.observed is None:
+        if observed is None:
             return self.sample(view=view)
         else:
-            return self.log_probability()
+            return self.log_probability(observed)
 
     def view(self, image: Image, real: bool = True) -> RealImage:
         """

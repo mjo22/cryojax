@@ -9,7 +9,7 @@ from __future__ import annotations
 __all__ = ["Assembly"]
 
 from abc import abstractmethod
-from typing import Union, Optional, Callable
+from typing import Optional, Callable
 from jaxtyping import Array, Float, Int
 from functools import cached_property
 
@@ -21,7 +21,7 @@ from ..specimen import Specimen
 from ..pose import Pose, EulerPose
 
 from ...core import field, Module
-from ...typing import Real_, Int_
+from ...typing import Real_
 
 _Positions = Float[Array, "N 3"]
 """Type hint for array where each element is a subunit coordinate."""
@@ -56,30 +56,37 @@ class Assembly(Module):
         The center of mass pose of the helix.
     conformations :
         The conformation of each `subunit`.
-        This can either be a fixed set of conformations or a function
-        that computes conformations based on the subunit positions.
-        In either case, the `Array` should be shape `(n_start*n_subunits,)`.
+    conformation_fn :
+        A function that computes conformations based on the subunit positions.
     """
 
     subunit: Specimen = field()
-    pose: Pose = field(default_factory=EulerPose)
-
-    conformations: Optional[
-        Union[_Conformations, Callable[[_Positions], _Conformations]]
-    ] = field(default=None)
+    pose: Pose = field()
+    conformations: Optional[_Conformations] = field()
+    conformation_fn: Optional[Callable[[_Positions], _Conformations]] = field(
+        static=True
+    )
 
     def __init__(
         self,
         subunit: Specimen,
         *,
         pose: Optional[Pose] = None,
-        conformations: Optional[
-            Union[_Conformations, Callable[[_Positions], _Conformations]]
+        conformations: Optional[_Conformations] = None,
+        conformation_fn: Optional[
+            Callable[[_Positions], _Conformations]
         ] = None,
     ):
         self.subunit = subunit
         self.pose = pose or EulerPose()
         self.conformations = conformations
+        self.conformation_fn = conformation_fn
+
+    def __check_init__(self):
+        if self.conformations is not None and self.conformation_fn is not None:
+            raise ValueError(
+                "Only one of Assembly.conformations or Assembly.conformation_fn should be set."
+            )
 
     @property
     def resolution(self) -> Real_:
@@ -101,9 +108,7 @@ class Assembly(Module):
     @cached_property
     @abstractmethod
     def rotations(self) -> _Rotations:
-        """
-        The relative rotations between subunits
-        """
+        """The relative rotations between subunits."""
         raise NotImplementedError
 
     @cached_property
@@ -134,11 +139,11 @@ class Assembly(Module):
     def subunits(self) -> list[Specimen]:
         """Draw a realization of all of the subunits in the lab frame."""
         # Compute a list of subunits, configured at the correct conformations
-        if self.conformations is None:
+        if [self.conformations, self.conformation_fn] == [None, None]:
             subunits = [self.subunit for _ in range(self.n_subunits)]
         else:
-            if isinstance(self.conformations, Callable):
-                cs = self.conformations(self.positions)
+            if self.conformation_fn is not None:
+                cs = self.conformation_fn(self.positions)
             else:
                 cs = self.conformations
             where = lambda s: s.conformation.coordinate

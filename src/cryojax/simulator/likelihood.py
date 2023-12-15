@@ -35,12 +35,12 @@ class GaussianImage(ImagePipeline):
         ):
             raise ValueError("A GaussianDetector model is required.")
 
-    def log_probability(self) -> Real_:
+    def log_probability(self, observed: RealImage) -> Real_:
         """Evaluate the log-likelihood of the data given a parameter set."""
         # Get variance
         variance = self.variance
         # Get residuals
-        residuals = fftn(self.residuals)
+        residuals = fftn(self.render() - observed)
         # Crop redundant frequencies
         _, N2 = self.scattering.shape
         z = N2 // 2 + 1

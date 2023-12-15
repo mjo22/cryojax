@@ -17,9 +17,10 @@ from ._assembly import Assembly, _Positions, _Rotations
 from ..specimen import Specimen
 
 from ...core import field
-from ...typing import Int_, Real_, RealVector
+from ...typing import Real_, RealVector
 
 _RotationMatrix3D = Float[Array, "3 3"]
+
 _Vector3D = Float[Array, "3"]
 
 
