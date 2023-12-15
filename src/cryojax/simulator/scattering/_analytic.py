@@ -3,12 +3,14 @@ from ..density import Ellipsoid
 from ._scattering import ScatteringConfig
 from ..pose import Pose
 import jax.numpy as jnp
+from typing import Union
 
 
-class ProjectEllipsoid(ScatteringConfig):
+
+class ShapeProjection(ScatteringConfig):
 
     def scatter(self,
-                density: Ellipsoid,
+                density: Union[Ellipsoid], # add more shapes later
                 pose: Pose,
                 ):
         # TODO: Implement this method
