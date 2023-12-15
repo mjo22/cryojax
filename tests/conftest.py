@@ -107,6 +107,7 @@ def maskless_model(scattering, specimen, state, filters):
         filters=filters,
     )
 
+
 @pytest.fixture
 def test_image(noisy_model):
     return noisy_model()
@@ -120,5 +121,5 @@ def likelihood_model(scattering, specimen, state, filters, masks, test_image):
         state=state,
         filters=filters,
         masks=masks,
-        observed=test_image
+        observed=test_image,
     )
