@@ -25,7 +25,7 @@ class Noise(Module):
         1) Overwrite ``Noise.sample``.
     """
 
-    key: Union[Array, PRNGKeyArray] = field(static=True, kw_only=True)
+    key: Union[Array, PRNGKeyArray] = field(static=True, default_factory=random.PRNGKey)
 
     @abstractmethod
     def sample(self, freqs: ImageCoords) -> ComplexImage:
