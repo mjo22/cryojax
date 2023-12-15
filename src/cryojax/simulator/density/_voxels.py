@@ -159,3 +159,21 @@ class VoxelCloud(Voxels):
         documentation.
         """
         return cls(**load_voxel_cloud(filename, **config), **kwargs)
+
+    @classmethod
+    def from_atom_cloud(
+        cls: Type["VoxelCloud"],
+        atom_cloud: "AtomCloud",
+        resolution: float,
+        **kwargs: Any,
+    ) -> "VoxelCloud":
+        """
+        Convert an AtomCloud to a VoxelCloud.
+
+        Parameters
+        ----------
+        atom_cloud :
+            The atom cloud to convert.
+        resolution :
+            The resolution of the voxel grid.
+        """

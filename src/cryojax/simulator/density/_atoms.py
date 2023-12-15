@@ -50,5 +50,7 @@ class AtomCloud(ElectronDensity):
 
         TODO: What is the file format appropriate here? Q. for Michael...
         """
+        import gemmi
+
         raise NotImplementedError
         # return cls.from_mrc(filename, config=config, **kwargs)
