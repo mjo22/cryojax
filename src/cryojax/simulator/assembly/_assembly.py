@@ -61,26 +61,11 @@ class Assembly(Module):
     """
 
     subunit: Specimen = field()
-    pose: Pose = field()
-    conformations: Optional[_Conformations] = field()
+    pose: Pose = field(default_factory=EulerPose)
+    conformations: Optional[_Conformations] = field(default=None)
     conformation_fn: Optional[Callable[[_Positions], _Conformations]] = field(
-        static=True
+        static=True, default=None
     )
-
-    def __init__(
-        self,
-        subunit: Specimen,
-        *,
-        pose: Optional[Pose] = None,
-        conformations: Optional[_Conformations] = None,
-        conformation_fn: Optional[
-            Callable[[_Positions], _Conformations]
-        ] = None,
-    ):
-        self.subunit = subunit
-        self.pose = pose or EulerPose()
-        self.conformations = conformations
-        self.conformation_fn = conformation_fn
 
     def __check_init__(self):
         if self.conformations is not None and self.conformation_fn is not None:
