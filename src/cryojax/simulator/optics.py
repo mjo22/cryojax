@@ -19,7 +19,7 @@ import jax
 import jax.numpy as jnp
 
 from .pose import Pose
-from .kernel import Gaussian, Kernel
+from .kernel import Kernel
 from ..utils import cartesian_to_polar
 from ..core import field, Module
 from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
@@ -43,7 +43,7 @@ class Optics(Module):
         the optics model. By default, ``Gaussian()``.
     """
 
-    envelope: Optional[Kernel] = field(default_factory=Gaussian)
+    envelope: Optional[Kernel] = field(default=None)
 
     @abstractmethod
     def evaluate(

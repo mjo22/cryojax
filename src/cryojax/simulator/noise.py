@@ -25,9 +25,7 @@ class Noise(Module):
         1) Overwrite ``Noise.sample``.
     """
 
-    key: Union[Array, PRNGKeyArray] = field(
-        static=True, default_factory=random.PRNGKey
-    )
+    key: Union[Array, PRNGKeyArray] = field(static=True, kw_only=True)
 
     @abstractmethod
     def sample(self, freqs: ImageCoords) -> ComplexImage:
@@ -49,7 +47,7 @@ class GaussianNoise(Noise):
     ``GaussianNoise.variance``.
     """
 
-    variance: Kernel = field(default_factory=Constant)
+    variance: Kernel = field(default_factory=Constant, kw_only=True)
 
     def sample(self, freqs: ImageCoords) -> ComplexImage:
         spectrum = self.variance(freqs)
