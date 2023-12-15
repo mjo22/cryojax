@@ -25,7 +25,6 @@ INSTALL_REQUIRES = [
     "jaxlie",
     "mrcfile",
     "dataclasses-json",
-    "pycistem",
 ]
 EXTRA_REQUIRE = {
     "test": ["pytest>=3.6", "pycistem"],
