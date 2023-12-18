@@ -55,7 +55,7 @@ def test_deserialize_model(model, request):
     cls = getattr(cs, model.__class__.__name__)
     test_model = cls.from_json(model.to_json())
     assert model.to_json() == test_model.to_json()
-    np.testing.assert_allclose(test_model(), model(), rtol=1e-6)
+    np.testing.assert_allclose(test_model.render(), model.render(), rtol=1e-6)
 
 
 def test_serialize_function():

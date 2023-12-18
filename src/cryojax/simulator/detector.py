@@ -4,12 +4,14 @@ Abstraction of electron detectors in a cryo-EM image.
 
 __all__ = ["Detector", "NullDetector", "GaussianDetector", "pixelize_image"]
 
-import jax
-import jax.numpy as jnp
-
 from abc import abstractmethod
 from typing import Optional, Any
+from typing_extensions import override
 from functools import partial
+
+import jax
+import jax.numpy as jnp
+from jaxtyping import PRNGKeyArray
 
 from .noise import GaussianNoise
 from .kernel import Kernel, Constant
@@ -27,13 +29,13 @@ class Detector(Module):
     pixel_size :
         The pixel size measured by the detector.
         This is in dimensions of physical length.
-    method :
+    interpolation_method :
         The interpolation method used for measuring
         the image at the ``pixel_size``.
     """
 
     pixel_size: Optional[Real_] = field(default=None)
-    method: str = field(static=True, default="bicubic")
+    interpolation_method: str = field(static=True, default="bicubic")
 
     def pixelize(self, image: RealImage, resolution: Real_) -> RealImage:
         """
@@ -47,13 +49,14 @@ class Detector(Module):
                 image,
                 resolution,
                 self.pixel_size,
-                method=self.method,
+                method=self.interpolation_method,
                 antialias=False,
             )
 
     @abstractmethod
     def sample(
         self,
+        key: PRNGKeyArray,
         freqs: ImageCoords,
         image: Optional[RealImage] = None,
     ) -> RealImage:
@@ -66,8 +69,10 @@ class NullDetector(Detector):
     A 'null' detector.
     """
 
+    @override
     def sample(
         self,
+        key: PRNGKeyArray,
         freqs: ImageCoords,
         image: Optional[RealImage] = None,
     ) -> RealImage:
@@ -89,12 +94,14 @@ class GaussianDetector(GaussianNoise, Detector):
 
     variance: Kernel = field(default_factory=Constant)
 
+    @override
     def sample(
         self,
+        key: PRNGKeyArray,
         freqs: ImageCoords,
         image: Optional[RealImage] = None,
     ) -> RealImage:
-        return irfftn(super().sample(freqs))
+        return irfftn(super().sample(key, freqs))
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])

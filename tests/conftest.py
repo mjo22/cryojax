@@ -57,9 +57,7 @@ def instrument(resolution):
     return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1e5, mu=1.0),
-        detector=cs.GaussianDetector(
-            pixel_size=resolution, key=random.PRNGKey(seed=0)
-        ),
+        detector=cs.GaussianDetector(pixel_size=resolution),
     )
 
 
@@ -74,7 +72,7 @@ def specimen(density, resolution):
 
 @pytest.fixture
 def solvent():
-    return cs.GaussianIce(key=random.PRNGKey(seed=0))
+    return cs.GaussianIce()
 
 
 @pytest.fixture

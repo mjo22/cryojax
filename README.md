@@ -63,17 +63,17 @@ This is a container for the parameters and metadata stored in the electron densi
 Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
 ```python
-key = jax.random.PRNGKey(seed=0)
 optics = cs.CTFOptics(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
-detector = cs.GaussianDetector(key=key, pixel_size=1.1, variance=cs.Constant(1.0))
+detector = cs.GaussianDetector(pixel_size=1.1, variance=cs.Constant(1.0))
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
 Then, the `ImagePipeline` model is chosen. Here, we choose `GaussianImage`.
 
 ```python
+key = jax.random.PRNGKey(seed=0)
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument)
-image = model.sample()
+image = model.sample(key)
 ```
 
 This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model.
@@ -90,7 +90,7 @@ filters = [cs.LowpassFilter(manager, cutoff=1.0),  # Cutoff modes above Nyquist 
            cs.WhiteningFilter(manager, micrograph=micrograph)]
 masks = [cs.CircularMask(manager, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument, filters=filters, masks=masks)
-image = model.sample()
+image = model.sample(key)
 ```
 
 If a `GaussianImage` is passed `observed`, the model will instead compute the log likelihood.

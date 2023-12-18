@@ -85,7 +85,7 @@ class GaussianImage(Distribution):
         if not isinstance(variance, Real_):
             variance = variance[:, :z]
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
-        loss = (loss.real / residuals.size) / residuals.size
+        loss = loss.real / residuals.size
 
         return loss
 

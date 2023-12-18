@@ -6,10 +6,12 @@ from __future__ import annotations
 
 __all__ = ["ImagePipeline"]
 
-from typing import Union
+from typing import Union, Optional
 
 import equinox as eqx
 import jax.tree_util as jtu
+import jax.random as jr
+from jaxtyping import PRNGKeyArray
 
 from .filter import Filter
 from .mask import Mask
@@ -81,11 +83,11 @@ class ImagePipeline(Module):
             )
 
         if view:
-            image = self.view(image)
+            image = self._view(image)
 
         return image
 
-    def sample(self, view: bool = True) -> RealImage:
+    def sample(self, key: PRNGKeyArray, view: bool = True) -> RealImage:
         """
         Sample the an image from a realization of the noise.
 
@@ -95,6 +97,8 @@ class ImagePipeline(Module):
             If ``True``, view the cropped, masked,
             and filtered image.
         """
+        # Split RNG keys
+        key_s, key_d = jr.split(key)
         # Determine pixel size
         if self.instrument.detector.pixel_size is not None:
             pixel_size = self.instrument.detector.pixel_size
@@ -106,24 +110,45 @@ class ImagePipeline(Module):
         specimen_image = self.render(view=False)
         # The image of the solvent
         ice_image = irfftn(
-            self.instrument.optics(freqs) * self.solvent.sample(freqs)
+            self.instrument.optics(freqs) * self.solvent.sample(key_s, freqs)
         )
         # Measure the detector readout
         image = specimen_image + ice_image
-        noise = self.instrument.detector.sample(freqs, image=image)
+        noise = self.instrument.detector.sample(key_d, freqs, image=image)
         detector_readout = image + noise
         if view:
-            detector_readout = self.view(detector_readout)
+            detector_readout = self._view(detector_readout)
 
         return detector_readout
 
-    def __call__(self, *, view: bool = True) -> Image:
+    def __call__(
+        self, *, key: Optional[PRNGKeyArray] = None, view: bool = True
+    ) -> Image:
         """
         Sample or render an image.
         """
-        return self.sample(view=view)
+        if key is None:
+            return self.render(view=view)
+        else:
+            return self.sample(key=key, view=view)
 
-    def view(self, image: Image, real: bool = True) -> RealImage:
+    @property
+    def manager(self) -> ImageManager:
+        return self.scattering.manager
+
+    def mask(self, image: RealImage) -> RealImage:
+        """Apply masks to image."""
+        for mask in self.masks:
+            image = mask(image)
+        return image
+
+    def filter(self, image: ComplexImage) -> ComplexImage:
+        """Apply filters to image."""
+        for filter in self.filters:
+            image = filter(image)
+        return image
+
+    def _view(self, image: Image, real: bool = True) -> RealImage:
         """
         View the image. This function applies
         filters, crops the image, then applies masks.
@@ -136,22 +161,6 @@ class ImagePipeline(Module):
             image = irfftn(self.filter(image))
         # Crop and mask the image
         image = self.mask(self.manager.crop(image))
-        return image
-
-    @property
-    def manager(self) -> ImageManager:
-        return self.scattering.manager
-
-    def filter(self, image: ComplexImage) -> ComplexImage:
-        """Apply filters to image."""
-        for filter in self.filters:
-            image = filter(image)
-        return image
-
-    def mask(self, image: RealImage) -> RealImage:
-        """Apply masks to image."""
-        for mask in self.masks:
-            image = mask(image)
         return image
 
     def _render_specimen(self) -> RealImage:
