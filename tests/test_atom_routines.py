@@ -1,6 +1,7 @@
 import pytest
 import jax
 from jax import numpy as jnp
+from cryojax.simulator import ImageManager
 from cryojax.simulator.scattering._gaussian_mixture import (
     _evaluate_coord_to_grid_sq_distances,
 )
@@ -55,7 +56,7 @@ class TestIndependentAtomScattering:
         coordinates *= 5
 
         # IAS = IndependentAtomScattering((100, 100))
-        IAS = IndependentAtomScattering((50, 50))
+        IAS = IndependentAtomScattering(ImageManager((50, 50)))
 
         ac = AtomCloud(
             weights,

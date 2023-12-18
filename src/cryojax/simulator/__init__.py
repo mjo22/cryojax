@@ -1,4 +1,5 @@
 from . import (
+    manager,
     kernel,
     pose,
     conformation,
@@ -17,6 +18,7 @@ from . import (
     likelihood,
 )
 
+from .manager import *
 from .kernel import *
 from .pose import *
 from .conformation import *
@@ -36,7 +38,8 @@ from .likelihood import *
 
 
 __all__ = (
-    kernel.__all__
+    manager.__all__
+    + kernel.__all__
     + pose.__all__
     + conformation.__all__
     + specimen.__all__
@@ -56,6 +59,7 @@ __all__ = (
 
 __all__.extend(
     [
+        manager,
         kernel,
         pose,
         conformation,

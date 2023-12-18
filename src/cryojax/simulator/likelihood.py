@@ -1,12 +1,14 @@
 """
-Image formation models, equipped with log-likelihood functions.
+Image formation models, equipped with probabilistic models.
 """
 
 from __future__ import annotations
 
-__all__ = ["GaussianImage"]
+__all__ = ["Distribution", "GaussianImage"]
 
-from typing import Union
+from abc import abstractmethod
+from typing import Union, Optional
+from typing_extensions import override
 from functools import cached_property
 
 import jax.numpy as jnp
@@ -15,10 +17,45 @@ from .ice import NullIce, GaussianIce
 from .detector import NullDetector, GaussianDetector
 from .image import ImagePipeline
 from ..utils import fftn
-from ..typing import Real_, RealImage
+from ..typing import Real_, Image, RealImage
 
 
-class GaussianImage(ImagePipeline):
+class Distribution(ImagePipeline):
+    """
+    An imaging pipeline equipped with a probabilistic model.
+    """
+
+    @abstractmethod
+    def log_probability(self, observed: RealImage) -> Real_:
+        """
+        Evaluate the log-probability.
+
+        Attributes
+        ----------
+        observed :
+            The observed data in real space. This must be the same
+            shape as ``scattering.shape``. Note that the user
+            should preprocess the observed data before passing it
+            to the image, such as applying the ``filters`` and
+            ``masks``.
+        """
+        raise NotImplementedError
+
+    @override
+    def __call__(
+        self, *, observed: Optional[RealImage] = None, view: bool = True
+    ) -> Union[Image, Real_]:
+        """
+        If ``observed = None``, sample an image from
+        a noise model. Otherwise, compute the log likelihood.
+        """
+        if observed is None:
+            return self.sample(view=view)
+        else:
+            return self.log_probability(observed)
+
+
+class GaussianImage(Distribution):
     """
     Sample an image from a gaussian noise model, or compute
     the log-likelihood.
@@ -28,12 +65,12 @@ class GaussianImage(ImagePipeline):
     """
 
     def __check_init__(self):
-        if not isinstance(self.solvent, (NullIce, GaussianIce)):
-            raise ValueError("A GaussianIce model is required.")
-        if not isinstance(
-            self.instrument.detector, (NullDetector, GaussianDetector)
+        if not isinstance(self.solvent, GaussianIce) and not isinstance(
+            self.instrument.detector, GaussianDetector
         ):
-            raise ValueError("A GaussianDetector model is required.")
+            raise ValueError(
+                "Either GaussianIce or GaussianDetector are required."
+            )
 
     def log_probability(self, observed: RealImage) -> Real_:
         """Evaluate the log-likelihood of the data given a parameter set."""
@@ -42,7 +79,7 @@ class GaussianImage(ImagePipeline):
         # Get residuals
         residuals = fftn(self.render() - observed)
         # Crop redundant frequencies
-        _, N2 = self.scattering.shape
+        _, N2 = self.manager.shape
         z = N2 // 2 + 1
         residuals = residuals[:, :z]
         if not isinstance(variance, Real_):
@@ -59,7 +96,7 @@ class GaussianImage(ImagePipeline):
             pixel_size = self.specimen.resolution
         else:
             pixel_size = self.instrument.detector.pixel_size
-        freqs = self.scattering.freqs / pixel_size
+        freqs = self.manager.freqs / pixel_size
         # Variance from detector
         if not isinstance(self.instrument.detector, NullDetector):
             variance = self.instrument.detector.variance(freqs)

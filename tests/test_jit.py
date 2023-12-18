@@ -61,14 +61,14 @@ def test_equinox_jit(likelihood_model, test_image):
 
     @eqx.filter_jit
     def compute_loss(model, test_image):
-        return model(test_image)
+        return model.log_probability(test_image)
 
     np.testing.assert_allclose(
         compute_image(likelihood_model), likelihood_model.sample()
     )
     np.testing.assert_allclose(
         compute_loss(likelihood_model, test_image),
-        likelihood_model(test_image),
+        likelihood_model.log_probability(test_image),
     )
 
 
@@ -81,7 +81,7 @@ def test_equinox_value_and_grad(likelihood_model, test_image):
     @partial(jax.value_and_grad, argnums=1)
     def compute_loss(model, params, test_image):
         model = build_model(model, params)
-        return model(test_image)
+        return model.log_probability(test_image)
 
     value, grad = compute_loss(
         likelihood_model, dict(offset_z=jnp.asarray(100.0)), test_image

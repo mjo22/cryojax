@@ -19,11 +19,11 @@ import numpy as np
 import jax.numpy as jnp
 
 from ..utils import powerspectrum, make_frequencies
-from ..core import field, Module
+from ..core import field, Buffer
 from ..typing import Image, RealImage, ComplexImage
 
 
-class Filter(Module):
+class Filter(Buffer):
     """
     Base class for computing and applying an image filter.
 
@@ -37,7 +37,7 @@ class Filter(Module):
     """
 
     shape: tuple[int, int] = field(static=True)
-    filter: Image = field(static=True, init=False)
+    filter: Image = field(init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
         self.filter = self.evaluate(*args, **kwargs)

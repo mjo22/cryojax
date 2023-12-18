@@ -11,7 +11,7 @@ from typing import Type, Any
 import equinox as eqx
 from jaxtyping import Array
 
-from ._density import ElectronDensity
+from ._electron_density import ElectronDensity
 from ..pose import Pose
 from ...core import field
 

@@ -6,8 +6,7 @@ from __future__ import annotations
 
 __all__ = ["ImagePipeline"]
 
-from typing import Union, Optional
-from functools import cached_property
+from typing import Union
 
 import equinox as eqx
 import jax.tree_util as jtu
@@ -16,12 +15,13 @@ from .filter import Filter
 from .mask import Mask
 from .specimen import Specimen
 from .assembly import Assembly
-from .scattering import ScatteringConfig
+from .scattering import ScatteringModel
+from .manager import ImageManager
 from .instrument import Instrument
 from .ice import Ice, NullIce
 from ..utils import fftn, irfftn
 from ..core import field, Module
-from ..typing import RealImage, ComplexImage, Image, Real_
+from ..typing import RealImage, ComplexImage, Image
 
 
 class ImagePipeline(Module):
@@ -36,7 +36,7 @@ class ImagePipeline(Module):
     specimen :
         The specimen from which to render images.
     scattering :
-        The image and scattering model configuration.
+        The scattering model.
     instrument :
         The abstraction of the electron microscope.
     solvent :
@@ -45,10 +45,16 @@ class ImagePipeline(Module):
         A list of filters to apply to the image.
     masks :
         A list of masks to apply to the image.
+
+    Properties
+    ----------
+    manager :
+        Exposes the API of the scattering model's image
+        manager.
     """
 
     specimen: Union[Specimen, Assembly] = field()
-    scattering: ScatteringConfig = field()
+    scattering: ScatteringModel = field()
     instrument: Instrument = field(default_factory=Instrument)
     solvent: Ice = field(default_factory=NullIce)
 
@@ -95,7 +101,7 @@ class ImagePipeline(Module):
         else:
             pixel_size = self.specimen.resolution
         # Frequencies
-        freqs = self.scattering.padded_freqs / pixel_size
+        freqs = self.manager.padded_freqs / pixel_size
         # The image of the specimen
         specimen_image = self.render(view=False)
         # The image of the solvent
@@ -111,32 +117,11 @@ class ImagePipeline(Module):
 
         return detector_readout
 
-    def log_probability(self, observed: RealImage) -> Real_:
+    def __call__(self, *, view: bool = True) -> Image:
         """
-        Evaluate the log-probability.
-
-        Attributes
-        ----------
-        observed :
-            The observed data in real space. This must be the same
-            shape as ``scattering.shape``. Note that the user
-            should preprocess the observed data before passing it
-            to the image, such as applying the ``filters`` and
-            ``masks``.
+        Sample or render an image.
         """
-        raise NotImplementedError
-
-    def __call__(
-        self, observed: Optional[RealImage] = None, *, view: bool = True
-    ) -> Union[Image, Real_]:
-        """
-        If ``observed = None``, sample an image from
-        a noise model. Otherwise, compute the log likelihood.
-        """
-        if observed is None:
-            return self.sample(view=view)
-        else:
-            return self.log_probability(observed)
+        return self.sample(view=view)
 
     def view(self, image: Image, real: bool = True) -> RealImage:
         """
@@ -150,8 +135,12 @@ class ImagePipeline(Module):
         else:
             image = irfftn(self.filter(image))
         # Crop and mask the image
-        image = self.mask(self.scattering.crop(image))
+        image = self.mask(self.manager.crop(image))
         return image
+
+    @property
+    def manager(self) -> ImageManager:
+        return self.scattering.manager
 
     def filter(self, image: ComplexImage) -> ComplexImage:
         """Apply filters to image."""
@@ -168,7 +157,7 @@ class ImagePipeline(Module):
     def _render_specimen(self) -> RealImage:
         """Render an image of a Specimen."""
         resolution = self.specimen.resolution
-        freqs = self.scattering.padded_freqs / resolution
+        freqs = self.manager.padded_freqs / resolution
         # Draw the electron density at a particular conformation and pose
         density = self.specimen.realization
         # Compute the scattering image

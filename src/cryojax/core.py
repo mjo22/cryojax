@@ -4,12 +4,13 @@ Core functionality in cryojax, i.e. base classes and serialization.
 
 from __future__ import annotations
 
-__all__ = ["field", "Module"]
+__all__ = ["field", "Module", "Buffer"]
 
 from types import FunctionType
 from typing import Any, Union
 from jaxtyping import Array, ArrayLike
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 
@@ -123,6 +124,19 @@ class Module(eqx.Module, _Serializable):
     """
     Base class for ``cryojax`` objects.
     """
+
+
+class Buffer(Module):
+    """
+    A Module composed of buffers (do not take gradients).
+    """
+
+    def __getattribute__(self, __name: str) -> Any:
+        value = super().__getattribute__(__name)
+        if isinstance(value, Array):
+            return jax.lax.stop_gradient(value)
+        else:
+            return value
 
 
 #
