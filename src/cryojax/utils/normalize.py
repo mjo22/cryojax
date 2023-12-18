@@ -8,7 +8,7 @@ from typing import Any
 
 import jax.numpy as jnp
 
-from ..types import Image
+from ..typing import Image
 
 
 def normalize_image(image: Image, **kwargs: Any) -> Image:

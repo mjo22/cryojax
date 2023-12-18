@@ -13,7 +13,7 @@ from jax import random
 from .kernel import Kernel, Constant
 from ..utils import fftn
 from ..core import field, Module
-from ..types import ImageCoords, ComplexImage
+from ..typing import ImageCoords, ComplexImage
 
 
 class Noise(Module):
@@ -41,14 +41,13 @@ class Noise(Module):
 
 class GaussianNoise(Noise):
     """
-    Base PyTree container for a gaussian noise model.
+    A gaussian noise model in fourier space.
 
-    When writing subclasses,
-
-        1) Overwrite ``GaussianNoise.variance``.
+    To specify the variance of the noise, pass a ``Kernel`` to
+    ``GaussianNoise.variance``.
     """
 
-    variance: Kernel = field(default_factory=Constant)
+    variance: Kernel = field(default_factory=Constant, kw_only=True)
 
     def sample(self, freqs: ImageCoords) -> ComplexImage:
         spectrum = self.variance(freqs)

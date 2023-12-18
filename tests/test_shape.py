@@ -1,9 +1,7 @@
 import pytest
 
 
-@pytest.mark.parametrize(
-    "model", ["scattering_model", "optics_model", "noisy_model"]
-)
+@pytest.mark.parametrize("model", ["noisy_model", "maskless_model"])
 def test_shape(model, request):
     """Make sure shapes are as expected"""
     model = request.getfixturevalue(model)

@@ -23,13 +23,17 @@ import jax.numpy as jnp
 from jaxlie import SO3
 
 from ..core import field, Module
-from ..types import (
+from ..typing import (
     Real_,
     ComplexImage,
     ImageCoords,
-    CloudCoords,
+    CloudCoords3D,
     VolumeCoords,
 )
+
+_RotationMatrix3D = Float[Array, "3 3"]
+_Vector3D = Float[Array, "2"]
+_Vector2D = Float[Array, "2"]
 
 
 class Pose(Module):
@@ -59,9 +63,9 @@ class Pose(Module):
 
     def rotate(
         self,
-        coordinates: Union[VolumeCoords, CloudCoords],
+        coordinates: Union[VolumeCoords, CloudCoords3D],
         real: bool = True,
-    ) -> Union[VolumeCoords, CloudCoords]:
+    ) -> Union[VolumeCoords, CloudCoords3D]:
         """
         Rotate coordinates from a particular convention.
 
@@ -80,7 +84,7 @@ class Pose(Module):
         return compute_shifts(freqs, xy)
 
     @cached_property
-    def offset(self) -> Float[Array, "3"]:
+    def offset(self) -> _Vector3D:
         """The translation vector."""
         return jnp.asarray((self.offset_x, self.offset_y, self.offset_z))
 
@@ -89,6 +93,15 @@ class Pose(Module):
     def rotation(self) -> SO3:
         """Generate a rotation."""
         raise NotImplementedError
+
+    def as_matrix_pose(self) -> MatrixPose:
+        """Convert the pose to a rotation matrix representation"""
+        return MatrixPose(
+            offset_x=self.offset_x,
+            offset_y=self.offset_y,
+            offset_z=self.offset_z,
+            matrix=self.rotation.as_matrix(),
+        )
 
 
 class EulerPose(Pose):
@@ -171,10 +184,28 @@ class QuaternionPose(Pose):
         return R.inverse() if self.inverse else R
 
 
+class MatrixPose(Pose):
+    """
+    An image pose represented by a rotation matrix.
+
+    Attributes
+    ----------
+    matrix :
+        The rotation matrix.
+    """
+
+    matrix: _RotationMatrix3D = field(default_factory=jnp.eye)
+
+    @cached_property
+    def rotation(self) -> SO3:
+        """Generate rotation from a rotation matrix."""
+        return SO3.from_matrix(self.matrix)
+
+
 def rotate_coordinates(
-    coords: Union[VolumeCoords, CloudCoords],
+    coords: Union[VolumeCoords, CloudCoords3D],
     rotation: SO3,
-) -> Union[VolumeCoords, CloudCoords]:
+) -> Union[VolumeCoords, CloudCoords3D]:
     r"""
     Compute a coordinate rotation.
 
@@ -205,7 +236,7 @@ def rotate_coordinates(
     return transformed
 
 
-def compute_shifts(coords: ImageCoords, xy: Float[Array, "2"]) -> ComplexImage:
+def compute_shifts(coords: ImageCoords, xy: _Vector2D) -> ComplexImage:
     r"""
     Compute the phase shifted density field from
     an in-plane real space translation.

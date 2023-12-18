@@ -1,5 +1,5 @@
 """
-Core functionality, such as type hints and base classes.
+Core functionality in cryojax, i.e. base classes and serialization.
 """
 
 from __future__ import annotations
@@ -82,6 +82,11 @@ class _Serializable(DataClassJsonMixin):
     objects. This subclasses DataClassJsonMixin from dataclasses-json
     and provides custom encoding/decoding for Arrays and cryojax
     objects.
+
+    See dataclasses-json for more information. The ``load``, ``loads``,
+    ``dump``, and ``dumps`` methods are just for convenience and mimic
+    their ``from_json`` and ``to_json`` methods. The dataclasses-json API
+    is not stable, so hopefully these methods can add some stability.
     """
 
     @classmethod

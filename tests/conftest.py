@@ -20,7 +20,7 @@ def density():
     filename = os.path.join(
         os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
     )
-    return cs.ElectronGrid.from_file(filename)
+    return cs.VoxelGrid.from_file(filename)
 
 
 @pytest.fixture
@@ -48,10 +48,8 @@ def masks(scattering):
 
 
 @pytest.fixture
-def state(resolution):
-    return cs.PipelineState(
-        pose=cs.EulerPose(degrees=False),
-        ice=cs.GaussianIce(key=random.PRNGKey(seed=1)),
+def instrument(resolution):
+    return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1e5, mu=1.0),
         detector=cs.GaussianDetector(
@@ -62,48 +60,37 @@ def state(resolution):
 
 @pytest.fixture
 def specimen(density, resolution):
-    return cs.Specimen(density=density, resolution=resolution)
-
-
-@pytest.fixture
-def scattering_model(scattering, specimen, state, filters, masks):
-    return cs.ScatteringImage(
-        scattering=scattering,
-        specimen=specimen,
-        state=state,
-        masks=masks,
-        filters=filters,
+    return cs.Specimen(
+        density=density,
+        resolution=resolution,
+        pose=cs.EulerPose(degrees=False),
     )
 
 
 @pytest.fixture
-def optics_model(scattering, specimen, state, filters, masks):
-    return cs.OpticsImage(
-        scattering=scattering,
-        specimen=specimen,
-        state=state,
-        filters=filters,
-        masks=masks,
-    )
+def solvent():
+    return cs.GaussianIce(key=random.PRNGKey(seed=0))
 
 
 @pytest.fixture
-def noisy_model(scattering, specimen, state, filters, masks):
-    return cs.GaussianImage(
+def noisy_model(scattering, specimen, instrument, solvent, filters, masks):
+    return cs.ImagePipeline(
         scattering=scattering,
         specimen=specimen,
-        state=state,
+        instrument=instrument,
+        solvent=solvent,
         filters=filters,
         masks=masks,
     )
 
 
 @pytest.fixture
-def maskless_model(scattering, specimen, state, filters):
-    return cs.OpticsImage(
+def maskless_model(scattering, specimen, instrument, solvent, filters):
+    return cs.ImagePipeline(
         scattering=scattering,
         specimen=specimen,
-        state=state,
+        instrument=instrument,
+        solvent=solvent,
         filters=filters,
     )
 
@@ -114,12 +101,14 @@ def test_image(noisy_model):
 
 
 @pytest.fixture
-def likelihood_model(scattering, specimen, state, filters, masks, test_image):
+def likelihood_model(
+    scattering, specimen, instrument, solvent, filters, masks
+):
     return cs.GaussianImage(
         scattering=scattering,
         specimen=specimen,
-        state=state,
+        instrument=instrument,
+        solvent=solvent,
         filters=filters,
         masks=masks,
-        observed=test_image,
     )

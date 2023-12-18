@@ -13,7 +13,7 @@ from typing import Any, Union
 import jax.numpy as jnp
 
 from ..core import field, Module
-from ..types import RealImage, ImageCoords, Real_
+from ..typing import RealImage, ImageCoords, Real_
 
 
 class Exposure(Module):

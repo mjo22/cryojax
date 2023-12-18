@@ -17,7 +17,7 @@ import jax.numpy as jnp
 
 from ..utils import make_coordinates
 from ..core import field, Module
-from ..types import RealImage
+from ..typing import RealImage
 
 
 class Mask(Module):

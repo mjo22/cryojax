@@ -10,12 +10,12 @@ from jaxtyping import Array, Float
 import jax
 import jax.numpy as jnp
 
-from ..types import Cloud, CloudCoords, Image, Volume
+from ..typing import Cloud, CloudCoords2D, Image, Volume
 
 
 @jax.jit
 def bound(
-    density: Cloud, coords: CloudCoords, box_size: Float[Array, "2"]
+    density: Cloud, coords: CloudCoords2D, box_size: Float[Array, "2"]
 ) -> Cloud:
     """
     Use a boolean mask to set density values out of

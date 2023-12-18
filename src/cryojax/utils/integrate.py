@@ -11,14 +11,20 @@ import jax
 import jax.numpy as jnp
 from jax.scipy import special
 
-from .coordinates import fftfreqs1d
+from .coordinates import _fftfreqs1d
 
-from ..types import Cloud, CloudCoords, Real_, RealVector, ComplexImage, Image
+from ..typing import (
+    RealVector,
+    RealCloud,
+    CloudCoords2D,
+    ComplexImage,
+    RealImage,
+)
 
 
 def nufft(
-    density: Float[Array, "N"],
-    coords: Float[Array, "N 2"],
+    density: RealCloud,
+    coords: CloudCoords2D,
     box_size: Union[Float[Array, ""], Float[Array, "2"]],
     shape: tuple[int, int],
     eps: float = 1e-6,
@@ -67,12 +73,12 @@ def nufft(
 
 
 def integrate_gaussians(
-    weights: Cloud,
-    centers: CloudCoords,
-    scales: Cloud,
+    weights: RealCloud,
+    centers: CloudCoords2D,
+    variances: RealCloud,
     shape: tuple[int, int],
     pixel_size: float,
-) -> Image:
+) -> RealImage:
     """
     Integrate a sum of Gaussians over a grid given by the given shape.
 
@@ -82,37 +88,37 @@ def integrate_gaussians(
 
     Parameters
     ----------
+    weights :
+        Weights of Gaussian densities.
+    centers :
+        Centers of Gaussian densities.
+    variances :
+        Variances of Gaussian densities.
     shape :
         Shape of grid to integrate over.
         The number of dimensions is inferred from the length of this sequence.
     pixel_size :
         Pixel size.
-    weights :
-        Weights of Gaussian densities.
-    centers :
-        Centers of Gaussian densities.
-    scales :
-        Scales of Gaussian densities.
 
     Returns
     -------
     image : `Array`, shape `shape`
         Integrals of Gaussian densities over grid.
     """
-    x, y = [fftfreqs1d(s + 1, pixel_size, real=True) for s in shape]
-    image = _integrate_gaussians(x, y, weights, centers, scales)
+    x, y = [_fftfreqs1d(s + 1, pixel_size, real=True) for s in shape]
+    image = _integrate_gaussians(x, y, weights, centers, variances)
 
     return image
 
 
 @jax.jit
 def _integrate_gaussians(
-    x: Cloud,
-    y: Cloud,
-    weights: Cloud,
-    centers: Cloud,
-    scales: Cloud,
-) -> Image:
+    x: RealVector,
+    y: RealVector,
+    weights: RealCloud,
+    centers: RealCloud,
+    scales: RealCloud,
+) -> RealImage:
     """
     Integrate a Gaussian density over a set of intervals given by boundaries.
 
