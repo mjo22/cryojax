@@ -16,11 +16,11 @@ from typing import Any
 import jax.numpy as jnp
 
 from ..utils import make_coordinates
-from ..core import field, Module
+from ..core import field, Buffer
 from ..typing import RealImage
 
 
-class Mask(Module):
+class Mask(Buffer):
     """
     Base class for computing and applying an image mask.
 
@@ -34,7 +34,7 @@ class Mask(Module):
     """
 
     shape: tuple[int, int] = field()
-    mask: RealImage = field(static=True, init=False)
+    mask: RealImage = field(init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
         self.mask = self.evaluate(*args, **kwargs)

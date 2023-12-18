@@ -1,25 +1,19 @@
 """
-Routines to model image formation from 3D electron density
-fields.
+The image configuration and utility manager.
 """
 
 from __future__ import annotations
 
-__all__ = ["ScatteringConfig"]
+__all__ = ["ImageManager"]
 
-from abc import abstractmethod
 from typing import Any
 
-from ..density import ElectronDensity
-
-from ...core import field, Module
-from ...typing import (
-    Real_,
-    RealImage,
-    ComplexImage,
+from ..core import field, Buffer
+from ..typing import (
+    Image,
     ImageCoords,
 )
-from ...utils import (
+from ..utils import (
     make_frequencies,
     make_coordinates,
     crop,
@@ -28,13 +22,9 @@ from ...utils import (
 )
 
 
-class ScatteringConfig(Module):
+class ImageManager(Buffer):
     """
-    Configuration for an electron microscopy image with a
-    particular scattering method.
-
-    In subclasses, overwrite the ``ScatteringConfig.scatter``
-    routine.
+    Configuration and utilities for an electron microscopy image.
 
     Attributes
     ----------
@@ -64,10 +54,10 @@ class ScatteringConfig(Module):
 
     padded_shape: tuple[int, int] = field(static=True, init=False)
 
-    freqs: ImageCoords = field(static=True, init=False)
-    padded_freqs: ImageCoords = field(static=True, init=False)
-    coords: ImageCoords = field(static=True, init=False)
-    padded_coords: ImageCoords = field(static=True, init=False)
+    freqs: ImageCoords = field(init=False)
+    padded_freqs: ImageCoords = field(init=False)
+    coords: ImageCoords = field(init=False)
+    padded_coords: ImageCoords = field(init=False)
 
     def __post_init__(self):
         # Set shape after padding
@@ -79,41 +69,18 @@ class ScatteringConfig(Module):
         self.coords = make_coordinates(self.shape)
         self.padded_coords = make_coordinates(self.padded_shape)
 
-    @abstractmethod
-    def scatter(
-        self, density: ElectronDensity, resolution: Real_
-    ) -> ComplexImage:
-        """
-        Compute the scattered wave of the electron
-        density in the exit plane.
-
-        Arguments
-        ---------
-        density :
-            The electron density representation.
-        resolution :
-            The rasterization resolution.
-        """
-        raise NotImplementedError
-
-    def crop(self, image: RealImage) -> RealImage:
+    def crop(self, image: Image) -> Image:
         """Crop an image."""
         return crop(image, self.shape)
 
-    def pad(self, image: RealImage, **kwargs: Any) -> RealImage:
+    def pad(self, image: Image, **kwargs: Any) -> Image:
         """Pad an image."""
         return pad(image, self.padded_shape, **kwargs)
 
     def downsample(
-        self, image: ComplexImage, method="lanczos5", **kwargs: Any
-    ) -> ComplexImage:
+        self, image: Image, method="lanczos5", **kwargs: Any
+    ) -> Image:
         """Downsample an image."""
         return resize(
             image, self.shape, antialias=False, method=method, **kwargs
         )
-
-    def upsample(
-        self, image: ComplexImage, method="bicubic", **kwargs: Any
-    ) -> ComplexImage:
-        """Upsample an image."""
-        return resize(image, self.padded_shape, method=method, **kwargs)

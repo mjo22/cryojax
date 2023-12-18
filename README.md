@@ -46,7 +46,8 @@ import jax.numpy as jnp
 import cryojax.simulator as cs
 
 template = "example.mrc"
-scattering = cs.FourierSliceScattering(shape=(320, 320))
+utils = cs.ImageManager(shape=(320, 320))
+scattering = cs.FourierSliceScattering(utils)
 density = cs.VoxelGrid.from_file(template)
 ```
 
@@ -72,10 +73,10 @@ Then, the `ImagePipeline` model is chosen. Here, we choose `GaussianImage`.
 
 ```python
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument)
-image = model()
+image = model.sample()
 ```
 
-This computes an image using the noise model of the detector (under the hood `model.sample()` is called). One can also compute an image without the stochastic part of the model.
+This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model.
 
 ```python
 image = model.render()
@@ -89,17 +90,17 @@ filters = [cs.LowpassFilter(scattering.padded_shape, cutoff=1.0),  # Cutoff mode
            cs.WhiteningFilter(scattering.padded_shape, micrograph=micrograph)]
 masks = [cs.CircularMask(scattering.shape, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument, filters=filters, masks=masks)
-image = model()
+image = model.sample()
 ```
 
 If a `GaussianImage` is passed `observed`, the model will instead compute the log likelihood.
 
 ```python
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument)
-log_likelihood = model(observed=observed)
+log_likelihood = model.log_probability(observed)
 ```
 
-Under the hood, this calls `model.log_probability(observed)`. Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
+Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
 
 Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `Ice` model. Models for exposure to the electron beam are supported through the `Instrument`'s `Exposure` model.
 
