@@ -43,13 +43,13 @@ def resolution():
 
 @pytest.fixture
 def filters(manager):
-    return [cs.LowpassFilter(manager.padded_shape)]
+    return [cs.LowpassFilter(manager)]
     # return []
 
 
 @pytest.fixture
 def masks(manager):
-    return [cs.CircularMask(manager.shape)]
+    return [cs.CircularMask(manager)]
 
 
 @pytest.fixture

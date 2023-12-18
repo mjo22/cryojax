@@ -15,9 +15,10 @@ from typing import Any
 
 import jax.numpy as jnp
 
-from ..utils import make_coordinates
+from .manager import ImageManager
+
 from ..core import field, Buffer
-from ..typing import RealImage
+from ..typing import RealImage, ImageCoords
 
 
 class Mask(Buffer):
@@ -33,7 +34,7 @@ class Mask(Buffer):
         computed upon instantiation.
     """
 
-    shape: tuple[int, int] = field()
+    manager: ImageManager = field()
     mask: RealImage = field(init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
@@ -70,12 +71,12 @@ class CircularMask(Mask):
 
     def evaluate(self, **kwargs: Any) -> RealImage:
         return compute_circular_mask(
-            self.shape, self.radius, self.rolloff, **kwargs
+            self.manager.coords, self.radius, self.rolloff, **kwargs
         )
 
 
 def compute_circular_mask(
-    shape: tuple[int, int],
+    coords: ImageCoords,
     cutoff: float = 0.95,
     rolloff: float = 0.05,
     **kwargs: Any,
@@ -86,8 +87,7 @@ def compute_circular_mask(
     Parameters
     ----------
     shape :
-        The shape of the mask. This is used to compute the image
-        coordinates.
+        The image coordinates.
     cutoff :
         The cutoff radius as a fraction of half
         the smallest box dimension. By default, ``0.95``.
@@ -102,7 +102,6 @@ def compute_circular_mask(
     mask : `Array`, shape `shape`
         An array representing the circular mask.
     """
-    coords = make_coordinates(shape, **kwargs)
 
     r_max = min(coords.shape[0:2]) // 2
     r_cut = cutoff * r_max

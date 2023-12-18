@@ -86,9 +86,9 @@ Imaging models also accept a series of `Filter`s and `Mask`s. For example, one c
 
 ```python
 micrograph = ...  # A micrograph used for whitening
-filters = [cs.LowpassFilter(scattering.padded_shape, cutoff=1.0),  # Cutoff modes above Nyquist frequency
-           cs.WhiteningFilter(scattering.padded_shape, micrograph=micrograph)]
-masks = [cs.CircularMask(scattering.shape, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
+filters = [cs.LowpassFilter(manager, cutoff=1.0),  # Cutoff modes above Nyquist frequency
+           cs.WhiteningFilter(manager, micrograph=micrograph)]
+masks = [cs.CircularMask(manager, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument, filters=filters, masks=masks)
 image = model.sample()
 ```
