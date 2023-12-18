@@ -49,4 +49,4 @@ class Specimen(Module):
     @cached_property
     def realization(self) -> ElectronDensity:
         """View the electron density at the pose."""
-        return self.density.view(self.pose)
+        return self.density.rotate_to(self.pose)

@@ -86,7 +86,7 @@ class VoxelGrid(Voxels):
                 "Real voxel grid densities are not supported."
             )
 
-    def view(self, pose: Pose) -> "VoxelGrid":
+    def rotate_to(self, pose: Pose) -> "VoxelGrid":
         """
         Compute rotations of a central slice in fourier space
         by an imaging pose.
@@ -136,7 +136,7 @@ class VoxelCloud(Voxels):
                 "Fourier voxel cloud densities are not supported."
             )
 
-    def view(self, pose: Pose) -> "VoxelCloud":
+    def rotate_to(self, pose: Pose) -> "VoxelCloud":
         """
         Compute rotations of a point cloud by an imaging pose.
 

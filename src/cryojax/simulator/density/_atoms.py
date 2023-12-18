@@ -34,7 +34,7 @@ class AtomCloud(ElectronDensity):
                 "Fourier atomic densities are not supported."
             )
 
-    def view(self, pose: Pose) -> AtomCloud:
+    def rotate_to(self, pose: Pose) -> AtomCloud:
         coordinates = pose.rotate(self.coordinates, real=self.real)
         return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
 
