@@ -10,9 +10,14 @@ from cryojax.io import load_fourier_grid
 config.update("jax_enable_x64", True)
 
 
+@pytest.fixture()
+def manager():
+    return cs.ImageManager(shape=(81, 82))
+
+
 @pytest.fixture
-def scattering():
-    return cs.FourierSliceScattering(shape=(81, 81))
+def scattering(manager):
+    return cs.FourierSliceExtract(manager)
 
 
 @pytest.fixture
@@ -37,14 +42,14 @@ def resolution():
 
 
 @pytest.fixture
-def filters(scattering):
-    return [cs.LowpassFilter(scattering.padded_shape)]
+def filters(manager):
+    return [cs.LowpassFilter(manager.padded_shape)]
     # return []
 
 
 @pytest.fixture
-def masks(scattering):
-    return [cs.CircularMask(scattering.shape)]
+def masks(manager):
+    return [cs.CircularMask(manager.shape)]
 
 
 @pytest.fixture
