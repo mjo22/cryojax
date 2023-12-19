@@ -2,11 +2,15 @@ import pytest
 
 import jax
 import jax.numpy as jnp
+import jax.random as jr
 import numpy as np
 import equinox as eqx
 import cryojax.simulator as cs
+from jax import config
 
 from functools import partial
+
+config.update("jax_enable_x64", True)
 
 
 def test_jit(
@@ -19,6 +23,8 @@ def test_jit(
 
     To avoid this awkward step, use equinox.
     """
+
+    key = jr.split(jr.PRNGKey(0))
 
     def build_specimen(voxels):
         density = cs.VoxelGrid(
@@ -37,7 +43,7 @@ def test_jit(
     @jax.jit
     def compute_image(voxels):
         model = build_model(voxels)
-        return model.sample()
+        return model.sample(key)
 
     @jax.jit
     def compute_loss(voxels, test_image):
@@ -46,7 +52,7 @@ def test_jit(
 
     unjitted_model = build_model(weights_and_coordinates)
     np.testing.assert_allclose(
-        compute_image(weights_and_coordinates), unjitted_model.sample()
+        compute_image(weights_and_coordinates), unjitted_model.sample(key)
     )
     np.testing.assert_allclose(
         compute_loss(weights_and_coordinates, test_image),
@@ -55,20 +61,22 @@ def test_jit(
 
 
 def test_equinox_jit(likelihood_model, test_image):
+    key = jr.split(jr.PRNGKey(0))
+
     @eqx.filter_jit
     def compute_image(model):
-        return model.sample()
+        return model.sample(key)
 
     @eqx.filter_jit
     def compute_loss(model, test_image):
         return model.log_probability(test_image)
 
     np.testing.assert_allclose(
-        compute_image(likelihood_model), likelihood_model.sample()
+        compute_image(likelihood_model), likelihood_model.sample(key)
     )
     np.testing.assert_allclose(
-        compute_loss(likelihood_model, test_image),
         likelihood_model.log_probability(test_image),
+        compute_loss(likelihood_model, test_image),
     )
 
 

@@ -7,11 +7,13 @@ from __future__ import annotations
 __all__ = [
     "compute_circular_mask",
     "Mask",
+    "ProductMask",
     "CircularMask",
 ]
 
 from abc import abstractmethod
 from typing import Any
+from typing_extensions import override
 
 import jax.numpy as jnp
 
@@ -27,14 +29,11 @@ class Mask(Buffer):
 
     Attributes
     ----------
-    shape :
-        The image shape.
     mask :
         The mask. Note that this is automatically
         computed upon instantiation.
     """
 
-    manager: ImageManager = field()
     mask: RealImage = field(init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
@@ -48,6 +47,22 @@ class Mask(Buffer):
     def __call__(self, image: RealImage) -> RealImage:
         """Apply the mask to an image."""
         return self.mask * image
+
+    def __mul__(self, other: Mask) -> Mask:
+        return ProductMask(self, other)
+
+    def __rmul__(self, other: Mask) -> Mask:
+        return ProductMask(other, self)
+
+
+class ProductMask(Mask):
+    """A helper to represent the product of two masks."""
+
+    mask1: Mask = field()
+    mask2: Mask = field()
+
+    def evaluate(self) -> RealImage:
+        return self.mask1.mask * self.mask2.mask
 
 
 class CircularMask(Mask):
@@ -66,9 +81,12 @@ class CircularMask(Mask):
         By default, ``0.05``.
     """
 
+    manager: ImageManager = field()
+
     radius: float = field(static=True, default=0.95)
     rolloff: float = field(static=True, default=0.05)
 
+    @override
     def evaluate(self, **kwargs: Any) -> RealImage:
         return compute_circular_mask(
             self.manager.coords, self.radius, self.rolloff, **kwargs

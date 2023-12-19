@@ -112,6 +112,6 @@ def extract_slice(
         projection = pad(projection, shape, mode="edge")
     else:
         raise NotImplementedError(
-            "Voxel density shape must be larger or smaller than shape in all dimensions"
+            "Voxel density shape must be larger or smaller than image shape in all dimensions"
         )
     return fftn(projection) / jnp.sqrt(M1 * M2)

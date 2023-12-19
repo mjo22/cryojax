@@ -15,7 +15,7 @@ from . import (
     detector,
     instrument,
     image,
-    likelihood,
+    distribution,
 )
 
 from .manager import *
@@ -34,7 +34,7 @@ from .exposure import *
 from .detector import *
 from .instrument import *
 from .image import *
-from .likelihood import *
+from .distribution import *
 
 
 __all__ = (
@@ -54,7 +54,7 @@ __all__ = (
     + detector.__all__
     + instrument.__all__
     + image.__all__
-    + likelihood.__all__
+    + distribution.__all__
 )
 
 __all__.extend(
@@ -75,6 +75,6 @@ __all__.extend(
         detector,
         instrument,
         image,
-        likelihood,
+        distribution,
     ]
 )
