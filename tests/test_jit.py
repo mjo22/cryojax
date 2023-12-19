@@ -24,7 +24,7 @@ def test_jit(
     To avoid this awkward step, use equinox.
     """
 
-    key = jr.PRNGKey(0)
+    key = jr.split(jr.PRNGKey(0))
 
     def build_specimen(voxels):
         density = cs.VoxelGrid(
@@ -61,7 +61,7 @@ def test_jit(
 
 
 def test_equinox_jit(likelihood_model, test_image):
-    key = jr.PRNGKey(0)
+    key = jr.split(jr.PRNGKey(0))
 
     @eqx.filter_jit
     def compute_image(model):

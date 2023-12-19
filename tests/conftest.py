@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from jax import random
+import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
@@ -100,7 +100,7 @@ def maskless_model(scattering, specimen, instrument, solvent, filters):
 
 @pytest.fixture
 def test_image(noisy_model):
-    return noisy_model()
+    return noisy_model.sample(jr.split(jr.PRNGKey(1234), num=2))
 
 
 @pytest.fixture

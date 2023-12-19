@@ -6,12 +6,12 @@ from __future__ import annotations
 
 __all__ = ["ImagePipeline"]
 
-from typing import Union, Optional
+from typing import Union, get_args, Optional
 
 import equinox as eqx
 import jax.tree_util as jtu
-import jax.random as jr
-from jaxtyping import PRNGKeyArray
+import jax.numpy as jnp
+from jaxtyping import PRNGKeyArray, Shaped
 
 from .filter import Filter
 from .mask import Mask
@@ -20,10 +20,14 @@ from .assembly import Assembly
 from .scattering import ScatteringModel
 from .manager import ImageManager
 from .instrument import Instrument
+from .detector import NullDetector
 from .ice import Ice, NullIce
 from ..utils import fftn, irfftn
 from ..core import field, Module
-from ..typing import RealImage, ComplexImage, Image
+from ..typing import RealImage, ComplexImage, Image, Real_
+
+
+_PRNGKeyArrayLike = Shaped[PRNGKeyArray, "M"]
 
 
 class ImagePipeline(Module):
@@ -63,6 +67,19 @@ class ImagePipeline(Module):
     filters: list[Filter] = field(default_factory=list)
     masks: list[Mask] = field(default_factory=list)
 
+    @property
+    def manager(self) -> ImageManager:
+        """The ImageManager"""
+        return self.scattering.manager
+
+    @property
+    def pixel_size(self) -> Real_:
+        """The image pixel size."""
+        if self.instrument.detector.pixel_size is not None:
+            return self.instrument.detector.pixel_size
+        else:
+            return self.specimen.resolution
+
     def render(self, view: bool = True) -> RealImage:
         """
         Render an image of a Specimen.
@@ -79,7 +96,7 @@ class ImagePipeline(Module):
             image = self._render_assembly()
         else:
             raise ValueError(
-                "The specimen must be either a Specimen or an Assembly."
+                "The specimen must an instance of a Specimen or an Assembly."
             )
 
         if view:
@@ -87,42 +104,56 @@ class ImagePipeline(Module):
 
         return image
 
-    def sample(self, key: PRNGKeyArray, view: bool = True) -> RealImage:
+    def sample(
+        self, key: Union[PRNGKeyArray, _PRNGKeyArrayLike], view: bool = True
+    ) -> RealImage:
         """
         Sample the an image from a realization of the noise.
 
         Parameters
         ----------
+        key :
+            The random number generator key(s). If
+            the ``ImagePipeline`` is configured with
+            more than one stochastic model (e.g. a detector
+            and solvent model), then this parameter could be
+            ``jax.random.split(jax.random.PRNGKey(seed), 2)``.
         view : `bool`, optional
             If ``True``, view the cropped, masked,
             and filtered image.
         """
-        # Split RNG keys
-        key_s, key_d = jr.split(key)
-        # Determine pixel size
-        if self.instrument.detector.pixel_size is not None:
-            pixel_size = self.instrument.detector.pixel_size
-        else:
-            pixel_size = self.specimen.resolution
+        # Check PRNGKey
+        idx = 0  # Keep track of number of stochastic models
+        if isinstance(key, get_args(PRNGKeyArray)):
+            key = jnp.expand_dims(key, axis=0)
         # Frequencies
-        freqs = self.manager.padded_freqs / pixel_size
+        freqs = self.manager.padded_freqs / self.pixel_size
         # The image of the specimen
-        specimen_image = self.render(view=False)
-        # The image of the solvent
-        ice_image = irfftn(
-            self.instrument.optics(freqs) * self.solvent.sample(key_s, freqs)
-        )
-        # Measure the detector readout
-        image = specimen_image + ice_image
-        noise = self.instrument.detector.sample(key_d, freqs, image=image)
-        detector_readout = image + noise
+        image = self.render(view=False)
+        if not isinstance(self.solvent, NullIce):
+            # The image of the solvent
+            ice_image = irfftn(
+                self.instrument.optics(freqs)
+                * self.solvent.sample(key[idx], freqs)
+            )
+            image = image + ice_image
+            idx += 1
+        if not isinstance(self.instrument.detector, NullDetector):
+            # Measure the detector readout
+            noise = self.instrument.detector.sample(
+                key[idx], freqs, image=image
+            )
+            image = image + noise
+            idx += 1
         if view:
-            detector_readout = self._view(detector_readout)
+            image = self._view(image)
 
-        return detector_readout
+        return image
 
     def __call__(
-        self, *, key: Optional[PRNGKeyArray] = None, view: bool = True
+        self,
+        key: Optional[Union[PRNGKeyArray, _PRNGKeyArrayLike]] = None,
+        view: bool = True,
     ) -> Image:
         """
         Sample or render an image.
@@ -130,11 +161,7 @@ class ImagePipeline(Module):
         if key is None:
             return self.render(view=view)
         else:
-            return self.sample(key=key, view=view)
-
-    @property
-    def manager(self) -> ImageManager:
-        return self.scattering.manager
+            return self.sample(key, view=view)
 
     def mask(self, image: RealImage) -> RealImage:
         """Apply masks to image."""

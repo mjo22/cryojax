@@ -12,10 +12,11 @@ from typing_extensions import override
 from functools import cached_property
 
 import jax.numpy as jnp
+from jaxtyping import PRNGKeyArray
 
 from .ice import NullIce, GaussianIce
 from .detector import NullDetector, GaussianDetector
-from .image import ImagePipeline
+from .image import ImagePipeline, _PRNGKeyArrayLike
 from ..utils import fftn
 from ..typing import Real_, Image, RealImage
 
@@ -43,16 +44,22 @@ class Distribution(ImagePipeline):
 
     @override
     def __call__(
-        self, *, observed: Optional[RealImage] = None, view: bool = True
+        self,
+        *,
+        key: Optional[Union[PRNGKeyArray, _PRNGKeyArrayLike]] = None,
+        observed: Optional[RealImage] = None,
+        view: bool = True,
     ) -> Union[Image, Real_]:
         """
         If ``observed = None``, sample an image from
         a noise model. Otherwise, compute the log likelihood.
         """
-        if observed is None:
-            return self.sample(view=view)
-        else:
+        if key is not None:
+            return self.sample(key, view=view)
+        elif observed is not None:
             return self.log_probability(observed)
+        else:
+            return self.render(view=view)
 
 
 class GaussianImage(Distribution):
@@ -72,6 +79,7 @@ class GaussianImage(Distribution):
                 "Either GaussianIce or GaussianDetector are required."
             )
 
+    @override
     def log_probability(self, observed: RealImage) -> Real_:
         """Evaluate the log-likelihood of the data given a parameter set."""
         # Get variance
