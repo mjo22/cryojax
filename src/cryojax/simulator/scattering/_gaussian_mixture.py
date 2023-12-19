@@ -8,7 +8,7 @@ __all__ = ["IndependentAtomScattering"]
 
 import jax.numpy as jnp
 
-from ._scattering import ScatteringConfig
+from ._scattering_model import ScatteringModel
 from ..density import AtomCloud
 from ...typing import (
     ComplexImage,
@@ -17,7 +17,7 @@ from ...typing import (
 )
 
 
-class IndependentAtomScattering(ScatteringConfig):
+class IndependentAtomScattering(ScatteringModel):
     """
     Projects a pointcloud of atoms onto the imaging plane.
     In contrast to the work in project_with_nufft, here each atom is
@@ -46,8 +46,10 @@ class IndependentAtomScattering(ScatteringConfig):
         # for something similar, but it's a pain right now. Exception handling
         # will work though because padded_shape is statically typed at compile
         # time.
-        assert self.padded_shape[0] == self.padded_shape[1]
-        pixel_grid = _build_pixel_grid(self.padded_shape[0], resolution)
+        assert self.manager.padded_shape[0] == self.manager.padded_shape[1]
+        pixel_grid = _build_pixel_grid(
+            self.manager.padded_shape[0], resolution
+        )
         sq_distance = _evaluate_coord_to_grid_sq_distances(
             density.coordinates, pixel_grid
         )

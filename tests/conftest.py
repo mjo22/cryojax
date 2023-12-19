@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from jax import random
+import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
@@ -10,9 +10,14 @@ from cryojax.io import load_fourier_grid
 config.update("jax_enable_x64", True)
 
 
+@pytest.fixture()
+def manager():
+    return cs.ImageManager(shape=(81, 82))
+
+
 @pytest.fixture
-def scattering():
-    return cs.FourierSliceScattering(shape=(81, 81))
+def scattering(manager):
+    return cs.FourierSliceExtract(manager)
 
 
 @pytest.fixture
@@ -37,14 +42,14 @@ def resolution():
 
 
 @pytest.fixture
-def filters(scattering):
-    return [cs.LowpassFilter(scattering.padded_shape)]
-    # return []
+def filters(manager):
+    return cs.LowpassFilter(manager)
+    # return None
 
 
 @pytest.fixture
-def masks(scattering):
-    return [cs.CircularMask(scattering.shape)]
+def masks(manager):
+    return cs.CircularMask(manager)
 
 
 @pytest.fixture
@@ -52,9 +57,7 @@ def instrument(resolution):
     return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1e5, mu=1.0),
-        detector=cs.GaussianDetector(
-            pixel_size=resolution, key=random.PRNGKey(seed=0)
-        ),
+        detector=cs.GaussianDetector(pixel_size=resolution),
     )
 
 
@@ -69,7 +72,7 @@ def specimen(density, resolution):
 
 @pytest.fixture
 def solvent():
-    return cs.GaussianIce(key=random.PRNGKey(seed=0))
+    return cs.GaussianIce()
 
 
 @pytest.fixture
@@ -79,8 +82,8 @@ def noisy_model(scattering, specimen, instrument, solvent, filters, masks):
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
-        filters=filters,
-        masks=masks,
+        filter=filters,
+        mask=masks,
     )
 
 
@@ -91,13 +94,13 @@ def maskless_model(scattering, specimen, instrument, solvent, filters):
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
-        filters=filters,
+        filter=filters,
     )
 
 
 @pytest.fixture
 def test_image(noisy_model):
-    return noisy_model()
+    return noisy_model.sample(jr.split(jr.PRNGKey(1234), num=2))
 
 
 @pytest.fixture
@@ -109,6 +112,6 @@ def likelihood_model(
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
-        filters=filters,
-        masks=masks,
+        filter=filters,
+        mask=masks,
     )

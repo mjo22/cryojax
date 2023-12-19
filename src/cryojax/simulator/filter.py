@@ -8,36 +8,37 @@ __all__ = [
     "compute_lowpass_filter",
     "compute_whitening_filter",
     "Filter",
+    "ProductFilter",
     "LowpassFilter",
     "WhiteningFilter",
 ]
 
 from abc import abstractmethod
 from typing import Any
+from typing_extensions import override
 
 import numpy as np
 import jax.numpy as jnp
 
+from .manager import ImageManager
+
 from ..utils import powerspectrum, make_frequencies
-from ..core import field, Module
-from ..typing import Image, RealImage, ComplexImage
+from ..core import field, Buffer
+from ..typing import Image, ImageCoords, Real_, RealImage, ComplexImage
 
 
-class Filter(Module):
+class Filter(Buffer):
     """
     Base class for computing and applying an image filter.
 
     Attributes
     ----------
-    shape :
-        The image shape.
     filter :
         The filter. Note that this is automatically
         computed upon instantiation.
     """
 
-    shape: tuple[int, int] = field(static=True)
-    filter: Image = field(static=True, init=False)
+    filter: Image = field(init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
         self.filter = self.evaluate(*args, **kwargs)
@@ -47,9 +48,25 @@ class Filter(Module):
         """Compute the filter."""
         raise NotImplementedError
 
-    def __call__(self, image: ComplexImage) -> ComplexImage:
+    def __call__(self, image: Image) -> Image:
         """Apply the filter to an image."""
         return self.filter * image
+
+    def __mul__(self, other: Filter) -> Filter:
+        return ProductFilter(self, other)
+
+    def __rmul__(self, other: Filter) -> Filter:
+        return ProductFilter(other, self)
+
+
+class ProductFilter(Filter):
+    """A helper to represent the product of two filters."""
+
+    filter1: Filter = field()
+    filter2: Filter = field()
+
+    def evaluate(self) -> Image:
+        return self.filter1.filter * self.filter2.filter
 
 
 class LowpassFilter(Filter):
@@ -69,12 +86,15 @@ class LowpassFilter(Filter):
         By default, ``0.05``.
     """
 
+    manager: ImageManager = field()
+
     cutoff: float = field(static=True, default=0.95)
     rolloff: float = field(static=True, default=0.05)
 
+    @override
     def evaluate(self, **kwargs) -> RealImage:
         return compute_lowpass_filter(
-            self.shape, self.cutoff, self.rolloff, **kwargs
+            self.manager.padded_freqs, self.cutoff, self.rolloff, **kwargs
         )
 
 
@@ -87,14 +107,19 @@ class WhiteningFilter(Filter):
     for more information.
     """
 
-    micrograph: ComplexImage = field(static=True)
+    manager: ImageManager = field()
 
+    micrograph: ComplexImage = field()
+
+    @override
     def evaluate(self, **kwargs: Any) -> RealImage:
-        return compute_whitening_filter(self.shape, self.micrograph, **kwargs)
+        return compute_whitening_filter(
+            self.manager.padded_freqs, self.micrograph, **kwargs
+        )
 
 
 def compute_lowpass_filter(
-    shape: tuple[int, int],
+    freqs: ImageCoords,
     cutoff: float = 0.667,
     rolloff: float = 0.05,
     **kwargs: Any,
@@ -104,9 +129,8 @@ def compute_lowpass_filter(
 
     Parameters
     ----------
-    shape :
-        The shape of the filter. This is used to compute the image
-        coordinates.
+    freqs :
+        The image coordinates.
     cutoff :
         The cutoff frequency as a fraction of the Nyquist frequency,
         By default, ``0.667``.
@@ -121,7 +145,6 @@ def compute_lowpass_filter(
     mask : `Array`, shape `shape`
         An array representing the anti-aliasing filter.
     """
-    freqs = make_frequencies(shape, **kwargs)
 
     k_max = 1.0 / 2.0
     k_cut = cutoff * k_max
@@ -145,7 +168,7 @@ def compute_lowpass_filter(
 
 
 def compute_whitening_filter(
-    shape: tuple[int, int], micrograph: ComplexImage, **kwargs: Any
+    freqs: ImageCoords, micrograph: ComplexImage, **kwargs: Any
 ) -> RealImage:
     """
     Compute a whitening filter from a micrograph. This is taken
@@ -154,9 +177,8 @@ def compute_whitening_filter(
 
     Parameters
     ----------
-    shape :
-        The shape of the filter. This is used to compute the image
-        coordinates.
+    freqs :
+        The image coordinates.
     micrograph :
         The micrograph in fourier space.
 
@@ -168,7 +190,6 @@ def compute_whitening_filter(
     """
     micrograph = jnp.asarray(micrograph)
     # Make coordinates
-    freqs = make_frequencies(shape, **kwargs)
     micrograph_freqs = make_frequencies(micrograph.shape, *kwargs)
     # Compute power spectrum
     micrograph /= jnp.sqrt(np.prod(micrograph.shape))

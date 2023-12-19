@@ -1,4 +1,5 @@
 from . import (
+    manager,
     kernel,
     pose,
     conformation,
@@ -14,9 +15,10 @@ from . import (
     detector,
     instrument,
     image,
-    likelihood,
+    distribution,
 )
 
+from .manager import *
 from .kernel import *
 from .pose import *
 from .conformation import *
@@ -32,11 +34,12 @@ from .exposure import *
 from .detector import *
 from .instrument import *
 from .image import *
-from .likelihood import *
+from .distribution import *
 
 
 __all__ = (
-    kernel.__all__
+    manager.__all__
+    + kernel.__all__
     + pose.__all__
     + conformation.__all__
     + specimen.__all__
@@ -51,11 +54,12 @@ __all__ = (
     + detector.__all__
     + instrument.__all__
     + image.__all__
-    + likelihood.__all__
+    + distribution.__all__
 )
 
 __all__.extend(
     [
+        manager,
         kernel,
         pose,
         conformation,
@@ -71,6 +75,6 @@ __all__.extend(
         detector,
         instrument,
         image,
-        likelihood,
+        distribution,
     ]
 )

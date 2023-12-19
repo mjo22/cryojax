@@ -5,10 +5,10 @@ Noise models for cryo-EM images.
 __all__ = ["Noise", "GaussianNoise"]
 
 from abc import abstractmethod
-from typing import Union
-from jaxtyping import Array, PRNGKeyArray
+from typing_extensions import override
 
-from jax import random
+import jax.random as jr
+from jaxtyping import PRNGKeyArray
 
 from .kernel import Kernel, Constant
 from ..utils import fftn
@@ -25,10 +25,8 @@ class Noise(Module):
         1) Overwrite ``Noise.sample``.
     """
 
-    key: Union[Array, PRNGKeyArray] = field(static=True, kw_only=True)
-
     @abstractmethod
-    def sample(self, freqs: ImageCoords) -> ComplexImage:
+    def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:
         """
         Sample a realization of the noise.
 
@@ -41,16 +39,16 @@ class Noise(Module):
 
 class GaussianNoise(Noise):
     """
-    Base PyTree container for a gaussian noise model.
+    A gaussian noise model in fourier space.
 
-    When writing subclasses,
-
-        1) Overwrite ``GaussianNoise.variance``.
+    To specify the variance of the noise, pass a ``Kernel`` to
+    ``GaussianNoise.variance``.
     """
 
     variance: Kernel = field(default_factory=Constant)
 
-    def sample(self, freqs: ImageCoords) -> ComplexImage:
+    @override
+    def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:
         spectrum = self.variance(freqs)
-        white_noise = fftn(random.normal(self.key, shape=freqs.shape[0:-1]))
+        white_noise = fftn(jr.normal(key, shape=freqs.shape[0:-1]))
         return spectrum * white_noise

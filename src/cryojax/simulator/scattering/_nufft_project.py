@@ -7,7 +7,7 @@ from __future__ import annotations
 __all__ = [
     "project_with_nufft",
     "project_atoms_with_nufft",
-    "NufftScattering",
+    "NufftProject",
 ]
 
 from typing import Any, Union
@@ -16,13 +16,13 @@ import jax.numpy as jnp
 import numpy as np
 
 from ..density import VoxelCloud, AtomCloud
-from ._scattering import ScatteringConfig
+from ._scattering_model import ScatteringModel
 from ...core import field
 from ...typing import ComplexImage, RealCloud, CloudCoords2D, CloudCoords3D
 from ...utils import nufft
 
 
-class NufftScattering(ScatteringConfig):
+class NufftProject(ScatteringModel):
     """
     Scatter points to image plane using a
     non-uniform FFT.
@@ -45,7 +45,7 @@ class NufftScattering(ScatteringConfig):
                 density.weights,
                 density.coordinates,
                 resolution,
-                self.padded_shape,
+                self.manager.padded_shape,
                 eps=self.eps,
             )
         elif isinstance(density, AtomCloud):
@@ -55,7 +55,7 @@ class NufftScattering(ScatteringConfig):
                 density.variances,
                 density.identity,
                 resolution,
-                self.padded_shape,
+                self.manager.padded_shape,
                 eps=self.eps,
             )
         else:

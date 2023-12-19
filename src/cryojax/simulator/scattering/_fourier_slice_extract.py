@@ -4,13 +4,13 @@ Scattering methods for the fourier slice theorem.
 
 from __future__ import annotations
 
-__all__ = ["extract_slice", "FourierSliceScattering"]
+__all__ = ["extract_slice", "FourierSliceExtract"]
 
 from typing import Any
 
 import jax.numpy as jnp
 
-from ._scattering import ScatteringConfig
+from ._scattering_model import ScatteringModel
 from ..density import VoxelGrid
 from ...core import field
 from ...typing import (
@@ -26,7 +26,7 @@ from ...utils import (
 )
 
 
-class FourierSliceScattering(ScatteringConfig):
+class FourierSliceExtract(ScatteringModel):
     """
     Scatter points to the image plane using the
     Fourier-projection slice theorem.
@@ -50,7 +50,7 @@ class FourierSliceScattering(ScatteringConfig):
             density.weights,
             density.coordinates,
             resolution,
-            self.padded_shape,
+            self.manager.padded_shape,
             order=self.order,
             mode=self.mode,
             cval=self.cval,
@@ -112,6 +112,6 @@ def extract_slice(
         projection = pad(projection, shape, mode="edge")
     else:
         raise NotImplementedError(
-            "Voxel density shape must be larger or smaller than shape in all dimensions"
+            "Voxel density shape must be larger or smaller than image shape in all dimensions"
         )
     return fftn(projection) / jnp.sqrt(M1 * M2)

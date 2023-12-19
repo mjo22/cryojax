@@ -27,7 +27,7 @@ class ElectronDensity(Module):
     real: AbstractVar[bool]
 
     @abstractmethod
-    def view(self, pose: Pose) -> "ElectronDensity":
+    def rotate_to(self, pose: Pose) -> "ElectronDensity":
         """
         View the electron density at a given pose.
 

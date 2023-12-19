@@ -6,22 +6,28 @@ from __future__ import annotations
 
 __all__ = ["ImagePipeline"]
 
-from typing import Union, Optional
-from functools import cached_property
+from typing import Union, get_args, Optional
 
 import equinox as eqx
 import jax.tree_util as jtu
+import jax.numpy as jnp
+from jaxtyping import PRNGKeyArray, Shaped
 
 from .filter import Filter
 from .mask import Mask
 from .specimen import Specimen
 from .assembly import Assembly
-from .scattering import ScatteringConfig
+from .scattering import ScatteringModel
+from .manager import ImageManager
 from .instrument import Instrument
+from .detector import NullDetector
 from .ice import Ice, NullIce
 from ..utils import fftn, irfftn
 from ..core import field, Module
-from ..typing import RealImage, ComplexImage, Image, Real_
+from ..typing import RealImage, Image, Real_
+
+
+_PRNGKeyArrayLike = Shaped[PRNGKeyArray, "M"]
 
 
 class ImagePipeline(Module):
@@ -36,24 +42,45 @@ class ImagePipeline(Module):
     specimen :
         The specimen from which to render images.
     scattering :
-        The image and scattering model configuration.
+        The scattering model.
     instrument :
         The abstraction of the electron microscope.
     solvent :
         The solvent around the specimen.
-    filters :
-        A list of filters to apply to the image.
-    masks :
-        A list of masks to apply to the image.
+    filter :
+        A filter to apply to the image.
+    mask :
+        A mask to apply to the image.
+
+    Properties
+    ----------
+    manager :
+        Exposes the API of the scattering model's image
+        manager.
+    pixel_size :
+        The pixel size of the image.
     """
 
     specimen: Union[Specimen, Assembly] = field()
-    scattering: ScatteringConfig = field()
+    scattering: ScatteringModel = field()
     instrument: Instrument = field(default_factory=Instrument)
     solvent: Ice = field(default_factory=NullIce)
 
-    filters: list[Filter] = field(default_factory=list)
-    masks: list[Mask] = field(default_factory=list)
+    filter: Optional[Filter] = field(default=None)
+    mask: Optional[Mask] = field(default=None)
+
+    @property
+    def manager(self) -> ImageManager:
+        """The ImageManager"""
+        return self.scattering.manager
+
+    @property
+    def pixel_size(self) -> Real_:
+        """The image pixel size."""
+        if self.instrument.detector.pixel_size is not None:
+            return self.instrument.detector.pixel_size
+        else:
+            return self.specimen.resolution
 
     def render(self, view: bool = True) -> RealImage:
         """
@@ -71,104 +98,94 @@ class ImagePipeline(Module):
             image = self._render_assembly()
         else:
             raise ValueError(
-                "The specimen must be either a Specimen or an Assembly."
+                "The specimen must an instance of a Specimen or an Assembly."
             )
 
         if view:
-            image = self.view(image)
+            image = self._view(image)
 
         return image
 
-    def sample(self, view: bool = True) -> RealImage:
+    def sample(
+        self, key: Union[PRNGKeyArray, _PRNGKeyArrayLike], view: bool = True
+    ) -> RealImage:
         """
         Sample the an image from a realization of the noise.
 
         Parameters
         ----------
+        key :
+            The random number generator key(s). If
+            the ``ImagePipeline`` is configured with
+            more than one stochastic model (e.g. a detector
+            and solvent model), then this parameter could be
+            ``jax.random.split(jax.random.PRNGKey(seed), 2)``.
         view : `bool`, optional
             If ``True``, view the cropped, masked,
             and filtered image.
         """
-        # Determine pixel size
-        if self.instrument.detector.pixel_size is not None:
-            pixel_size = self.instrument.detector.pixel_size
-        else:
-            pixel_size = self.specimen.resolution
+        # Check PRNGKey
+        idx = 0  # Keep track of number of stochastic models
+        if isinstance(key, get_args(PRNGKeyArray)):
+            key = jnp.expand_dims(key, axis=0)
         # Frequencies
-        freqs = self.scattering.padded_freqs / pixel_size
+        freqs = self.manager.padded_freqs / self.pixel_size
         # The image of the specimen
-        specimen_image = self.render(view=False)
-        # The image of the solvent
-        ice_image = irfftn(
-            self.instrument.optics(freqs) * self.solvent.sample(freqs)
-        )
-        # Measure the detector readout
-        image = specimen_image + ice_image
-        noise = self.instrument.detector.sample(freqs, image=image)
-        detector_readout = image + noise
+        image = self.render(view=False)
+        if not isinstance(self.solvent, NullIce):
+            # The image of the solvent
+            ice_image = irfftn(
+                self.instrument.optics(freqs)
+                * self.solvent.sample(key[idx], freqs)
+            )
+            image = image + ice_image
+            idx += 1
+        if not isinstance(self.instrument.detector, NullDetector):
+            # Measure the detector readout
+            noise = self.instrument.detector.sample(
+                key[idx], freqs, image=image
+            )
+            image = image + noise
+            idx += 1
         if view:
-            detector_readout = self.view(detector_readout)
+            image = self._view(image)
 
-        return detector_readout
-
-    def log_probability(self, observed: RealImage) -> Real_:
-        """
-        Evaluate the log-probability.
-
-        Attributes
-        ----------
-        observed :
-            The observed data in real space. This must be the same
-            shape as ``scattering.shape``. Note that the user
-            should preprocess the observed data before passing it
-            to the image, such as applying the ``filters`` and
-            ``masks``.
-        """
-        raise NotImplementedError
+        return image
 
     def __call__(
-        self, observed: Optional[RealImage] = None, *, view: bool = True
-    ) -> Union[Image, Real_]:
+        self,
+        key: Optional[Union[PRNGKeyArray, _PRNGKeyArrayLike]] = None,
+        view: bool = True,
+    ) -> Image:
         """
-        If ``observed = None``, sample an image from
-        a noise model. Otherwise, compute the log likelihood.
+        Sample or render an image.
         """
-        if observed is None:
-            return self.sample(view=view)
+        if key is None:
+            return self.render(view=view)
         else:
-            return self.log_probability(observed)
+            return self.sample(key, view=view)
 
-    def view(self, image: Image, real: bool = True) -> RealImage:
+    def _view(self, image: Image, is_real: bool = True) -> RealImage:
         """
         View the image. This function applies
         filters, crops the image, then applies masks.
         """
         # Apply filters to the image
-        if real:
-            if len(self.filters) > 0:
-                image = irfftn(self.filter(fftn(image)))
-        else:
+        if self.filter is not None:
+            if is_real:
+                image = fftn(image)
             image = irfftn(self.filter(image))
-        # Crop and mask the image
-        image = self.mask(self.scattering.crop(image))
-        return image
-
-    def filter(self, image: ComplexImage) -> ComplexImage:
-        """Apply filters to image."""
-        for filter in self.filters:
-            image = filter(image)
-        return image
-
-    def mask(self, image: RealImage) -> RealImage:
-        """Apply masks to image."""
-        for mask in self.masks:
-            image = mask(image)
+        # Crop the image
+        image = self.manager.crop(image)
+        # Mask the image
+        if self.mask is not None:
+            image = self.mask(image)
         return image
 
     def _render_specimen(self) -> RealImage:
         """Render an image of a Specimen."""
         resolution = self.specimen.resolution
-        freqs = self.scattering.padded_freqs / resolution
+        freqs = self.manager.padded_freqs / resolution
         # Draw the electron density at a particular conformation and pose
         density = self.specimen.realization
         # Compute the scattering image

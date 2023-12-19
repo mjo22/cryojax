@@ -8,6 +8,7 @@ from abc import abstractmethod
 from typing import Optional
 
 import jax.numpy as jnp
+from jaxtyping import PRNGKeyArray
 
 from .kernel import Kernel, Exp
 from .noise import GaussianNoise
@@ -22,7 +23,10 @@ class Ice(Module):
 
     @abstractmethod
     def sample(
-        self, freqs: ImageCoords, image: Optional[Image] = None
+        self,
+        key: PRNGKeyArray,
+        freqs: ImageCoords,
+        image: Optional[Image] = None,
     ) -> Image:
         """Sample a realization from the ice model."""
         raise NotImplementedError
@@ -34,7 +38,10 @@ class NullIce(Ice):
     """
 
     def sample(
-        self, freqs: ImageCoords, image: Optional[ComplexImage] = None
+        self,
+        key: PRNGKeyArray,
+        freqs: ImageCoords,
+        image: Optional[ComplexImage] = None,
     ) -> RealImage:
         return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
@@ -54,6 +61,9 @@ class GaussianIce(GaussianNoise, Ice):
     variance: Kernel = field(default_factory=Exp)
 
     def sample(
-        self, freqs: ImageCoords, image: Optional[ComplexImage] = None
+        self,
+        key: PRNGKeyArray,
+        freqs: ImageCoords,
+        image: Optional[ComplexImage] = None,
     ) -> ComplexImage:
-        return super().sample(freqs)
+        return super().sample(key, freqs)

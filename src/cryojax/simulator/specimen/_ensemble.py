@@ -44,4 +44,4 @@ class Ensemble(Specimen):
             lambda i=i: self.density[i] for i in range(self.n_conformations)
         ]
         density = jax.lax.switch(self.conformation.coordinate, funcs)
-        return density.view(self.pose)
+        return density.rotate_to(self.pose)
