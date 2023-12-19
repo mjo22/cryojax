@@ -46,8 +46,8 @@ import jax.numpy as jnp
 import cryojax.simulator as cs
 
 template = "example.mrc"
-utils = cs.ImageManager(shape=(320, 320))
-scattering = cs.FourierSliceExtract(utils)
+manager = cs.ImageManager(shape=(320, 320))
+scattering = cs.FourierSliceExtract(manager)
 density = cs.VoxelGrid.from_file(template)
 ```
 
