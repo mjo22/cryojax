@@ -37,7 +37,7 @@ The [jax-finufft](https://github.com/dfm/jax-finufft) package is an optional dep
 
 Please note that this library is currently experimental and the API is subject to change! The following is a basic workflow to generate an image with a gaussian white noise model.
 
-First, instantiate the image formation method ("scattering") and its respective representation
+First, instantiate the scattering model ("scattering") and its respective representation
 of an electron density ("specimen").
 
 ```python
@@ -47,7 +47,7 @@ import cryojax.simulator as cs
 
 template = "example.mrc"
 utils = cs.ImageManager(shape=(320, 320))
-scattering = cs.FourierSliceScattering(utils)
+scattering = cs.FourierSliceExtract(utils)
 density = cs.VoxelGrid.from_file(template)
 ```
 
@@ -68,11 +68,11 @@ detector = cs.GaussianDetector(pixel_size=1.1, variance=cs.Constant(1.0))
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
-Then, the `ImagePipeline` model is chosen. Here, we choose `GaussianImage`.
+Then, the `ImagePipeline` is instantiated.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument)
+model = cs.ImagePipeline(scattering=scattering, specimen=specimen, instrument=instrument)
 image = model.sample(key)
 ```
 
@@ -89,13 +89,13 @@ micrograph = ...  # A micrograph used for whitening
 filters = cs.LowpassFilter(manager, cutoff=1.0)  # Cutoff modes above Nyquist frequency
           * cs.WhiteningFilter(manager, micrograph=micrograph)
 masks = cs.CircularMask(manager, radius=1.0)     # Cutoff pixels above radius equal to (half) image size
-model = cs.GaussianImage(
+model = cs.ImagePipeline(
     scattering=scattering, specimen=specimen, instrument=instrument, filter=filter, mask=mask
     )
 image = model.sample(key)
 ```
 
-If a `GaussianImage` is passed `observed`, the model will instead compute the log likelihood.
+`cryojax` also defines a library of `Distribution`s, which inherit from the `ImagePipeline`. If a `GaussianImage` is instantiated, it is equipped with a the log likelihood function.
 
 ```python
 model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument)
@@ -141,15 +141,15 @@ params = dict(view_phi=jnp.asarray(jnp.pi), defocus_u=jnp.asarray(9000.0), pixel
 log_likelihood, grad = loss(params, model, observed)
 ```
 
-To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. In general, any `cryojax` `Module` may contain model parameters. One gotcha is just that the `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. However, this may result in slight speedups.
+To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. In general, any `cryojax` `Module` may contain model parameters. The exception to this is in the `ImageManager`, `Filter`, and `Mask`. These classes do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. However, this may result in slight speedups.
 
 In general, there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
 
 ## Features
 
 - Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration.
-- `cryojax.Module`s, including `ImagePipeline` models, are JSON serializable thanks to the package `dataclasses-json`. The method `Module.dumps` serializes the object as a JSON string, and `Module.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.GaussianImage.load("model.json")`.
-- A `cryojax.Module` is just an `equinox.Module` with added serialization functionality. Therefore, the entire `equinox` ecosystem is available for usage!
+- `cryojax.Module`s, including `ImagePipeline` models, are JSON serializable thanks to the package `dataclasses-json`. The method `Module.dumps` serializes the object as a JSON string, and `Module.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.ImagePipeline.load("model.json")`.
+- A `cryojax.Module` is just an `equinox.Module` with added serialization functionality. Therefore, the `equinox` ecosystem is available for usage!
 
 ## Similar libraries
 
