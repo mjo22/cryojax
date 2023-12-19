@@ -30,20 +30,18 @@ def test_deserialize_density(density):
         cs.VoxelGrid.from_json(density.to_json()).to_json()
         == density.to_json()
     )
-    # assert (
-    #    ElectronCloud.from_json(cloud.to_json()).to_json() == cloud.to_json()
-    # )
 
 
 @pytest.mark.parametrize("filters_or_masks", ["filters", "masks"])
 def test_deserialize_filters_and_masks(filters_or_masks, request):
-    """Test model deserialization."""
-    filters_or_masks = request.getfixturevalue(filters_or_masks)
-    types = [getattr(cs, f.__class__.__name__) for f in filters_or_masks]
-    for idx, f in enumerate(filters_or_masks):
-        test = types[idx].from_json(f.to_json())
-        assert test.to_json() == f.to_json()
-        np.testing.assert_allclose(test.evaluate(), f.evaluate(), rtol=1e-6)
+    """Test filter and mask deserialization."""
+    filter_or_mask = request.getfixturevalue(filters_or_masks)
+    type = getattr(cs, filter_or_mask.__class__.__name__)
+    test = type.from_json(filter_or_mask.to_json())
+    assert test.to_json() == filter_or_mask.to_json()
+    np.testing.assert_allclose(
+        test.evaluate(), filter_or_mask.evaluate(), rtol=1e-6
+    )
 
 
 @pytest.mark.parametrize(
