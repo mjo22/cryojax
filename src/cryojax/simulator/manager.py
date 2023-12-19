@@ -6,7 +6,7 @@ from __future__ import annotations
 
 __all__ = ["ImageManager"]
 
-from typing import Any
+from typing import Any, Union, Callable
 
 from ..core import field, Buffer
 from ..typing import (
@@ -18,6 +18,7 @@ from ..utils import (
     make_coordinates,
     crop,
     pad,
+    crop_or_pad,
     resize,
 )
 
@@ -37,6 +38,9 @@ class ImageManager(Buffer):
         when computing it in the object plane. This
         should be a floating point number greater than
         or equal to 1. By default, it is 1 (no padding).
+    pad_mode :
+        The method of image padding. By default, ``"edge"``.
+        For all options, see ``jax.numpy.pad``.
     freqs :
         The fourier wavevectors in the imaging plane.
     padded_freqs :
@@ -51,6 +55,7 @@ class ImageManager(Buffer):
 
     shape: tuple[int, int] = field(static=True)
     pad_scale: float = field(static=True, default=1.0)
+    pad_mode: Union[str, Callable] = field(static=True, default="edge")
 
     padded_shape: tuple[int, int] = field(static=True, init=False)
 
@@ -75,7 +80,13 @@ class ImageManager(Buffer):
 
     def pad(self, image: Image, **kwargs: Any) -> Image:
         """Pad an image."""
-        return pad(image, self.padded_shape, **kwargs)
+        return pad(image, self.padded_shape, mode=self.pad_mode, **kwargs)
+
+    def crop_or_pad(self, image: Image, **kwargs: Any) -> Image:
+        """Reshape an image using cropping or padding."""
+        return crop_or_pad(
+            image, self.padded_shape, mode=self.pad_mode, **kwargs
+        )
 
     def downsample(
         self, image: Image, method="lanczos5", **kwargs: Any
@@ -84,3 +95,7 @@ class ImageManager(Buffer):
         return resize(
             image, self.shape, antialias=False, method=method, **kwargs
         )
+
+    def upsample(self, image: Image, method="bicubic", **kwargs: Any) -> Image:
+        """Upsample an image."""
+        return resize(image, self.padded_shape, method=method, **kwargs)

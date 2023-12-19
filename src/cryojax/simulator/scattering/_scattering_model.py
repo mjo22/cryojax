@@ -9,6 +9,8 @@ __all__ = ["ScatteringModel"]
 
 from abc import abstractmethod
 
+import jax.numpy as jnp
+
 from ..density import ElectronDensity
 from ..manager import ImageManager
 
@@ -53,3 +55,11 @@ class ScatteringModel(Module):
             The rasterization resolution.
         """
         raise NotImplementedError
+
+    def _normalize(self, image: ComplexImage) -> ComplexImage:
+        """Normalize images on the exit plane according to cisTEM conventions"""
+        M1, M2 = image.shape
+        # Set zero frequency component to zero
+        image = image.at[0, 0].set(0.0 + 0.0j)
+        # cisTEM normalization convention for projections
+        return image / jnp.sqrt(M1 * M2)
