@@ -43,13 +43,13 @@ def resolution():
 
 @pytest.fixture
 def filters(manager):
-    return [cs.LowpassFilter(manager)]
-    # return []
+    return cs.LowpassFilter(manager)
+    # return None
 
 
 @pytest.fixture
 def masks(manager):
-    return [cs.CircularMask(manager)]
+    return cs.CircularMask(manager)
 
 
 @pytest.fixture
@@ -82,8 +82,8 @@ def noisy_model(scattering, specimen, instrument, solvent, filters, masks):
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
-        filters=filters,
-        masks=masks,
+        filter=filters,
+        mask=masks,
     )
 
 
@@ -94,7 +94,7 @@ def maskless_model(scattering, specimen, instrument, solvent, filters):
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
-        filters=filters,
+        filter=filters,
     )
 
 
@@ -112,6 +112,6 @@ def likelihood_model(
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
-        filters=filters,
-        masks=masks,
+        filter=filters,
+        mask=masks,
     )

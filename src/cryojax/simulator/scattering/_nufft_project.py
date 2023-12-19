@@ -55,7 +55,7 @@ class NufftProject(ScatteringModel):
                 density.variances,
                 density.identity,
                 resolution,
-                self.utils.padded_shape,
+                self.manager.padded_shape,
                 eps=self.eps,
             )
         else:

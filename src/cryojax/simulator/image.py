@@ -24,7 +24,7 @@ from .detector import NullDetector
 from .ice import Ice, NullIce
 from ..utils import fftn, irfftn
 from ..core import field, Module
-from ..typing import RealImage, ComplexImage, Image, Real_
+from ..typing import RealImage, Image, Real_
 
 
 _PRNGKeyArrayLike = Shaped[PRNGKeyArray, "M"]
@@ -47,16 +47,18 @@ class ImagePipeline(Module):
         The abstraction of the electron microscope.
     solvent :
         The solvent around the specimen.
-    filters :
-        A list of filters to apply to the image.
-    masks :
-        A list of masks to apply to the image.
+    filter :
+        A filter to apply to the image.
+    mask :
+        A mask to apply to the image.
 
     Properties
     ----------
     manager :
         Exposes the API of the scattering model's image
         manager.
+    pixel_size :
+        The pixel size of the image.
     """
 
     specimen: Union[Specimen, Assembly] = field()
@@ -64,8 +66,8 @@ class ImagePipeline(Module):
     instrument: Instrument = field(default_factory=Instrument)
     solvent: Ice = field(default_factory=NullIce)
 
-    filters: list[Filter] = field(default_factory=list)
-    masks: list[Mask] = field(default_factory=list)
+    filter: Optional[Filter] = field(default=None)
+    mask: Optional[Mask] = field(default=None)
 
     @property
     def manager(self) -> ImageManager:
@@ -163,31 +165,21 @@ class ImagePipeline(Module):
         else:
             return self.sample(key, view=view)
 
-    def mask(self, image: RealImage) -> RealImage:
-        """Apply masks to image."""
-        for mask in self.masks:
-            image = mask(image)
-        return image
-
-    def filter(self, image: ComplexImage) -> ComplexImage:
-        """Apply filters to image."""
-        for filter in self.filters:
-            image = filter(image)
-        return image
-
-    def _view(self, image: Image, real: bool = True) -> RealImage:
+    def _view(self, image: Image, is_real: bool = True) -> RealImage:
         """
         View the image. This function applies
         filters, crops the image, then applies masks.
         """
         # Apply filters to the image
-        if real:
-            if len(self.filters) > 0:
-                image = irfftn(self.filter(fftn(image)))
-        else:
+        if self.filter is not None:
+            if is_real:
+                image = fftn(image)
             image = irfftn(self.filter(image))
-        # Crop and mask the image
-        image = self.mask(self.manager.crop(image))
+        # Crop the image
+        image = self.manager.crop(image)
+        # Mask the image
+        if self.mask is not None:
+            image = self.mask(image)
         return image
 
     def _render_specimen(self) -> RealImage:

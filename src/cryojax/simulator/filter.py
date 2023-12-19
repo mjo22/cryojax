@@ -8,12 +8,14 @@ __all__ = [
     "compute_lowpass_filter",
     "compute_whitening_filter",
     "Filter",
+    "ProductFilter",
     "LowpassFilter",
     "WhiteningFilter",
 ]
 
 from abc import abstractmethod
 from typing import Any
+from typing_extensions import override
 
 import numpy as np
 import jax.numpy as jnp
@@ -22,7 +24,7 @@ from .manager import ImageManager
 
 from ..utils import powerspectrum, make_frequencies
 from ..core import field, Buffer
-from ..typing import Image, ImageCoords, RealImage, ComplexImage
+from ..typing import Image, ImageCoords, Real_, RealImage, ComplexImage
 
 
 class Filter(Buffer):
@@ -31,14 +33,11 @@ class Filter(Buffer):
 
     Attributes
     ----------
-    shape :
-        The image shape.
     filter :
         The filter. Note that this is automatically
         computed upon instantiation.
     """
 
-    manager: ImageManager = field()
     filter: Image = field(init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
@@ -49,9 +48,25 @@ class Filter(Buffer):
         """Compute the filter."""
         raise NotImplementedError
 
-    def __call__(self, image: ComplexImage) -> ComplexImage:
+    def __call__(self, image: Image) -> Image:
         """Apply the filter to an image."""
         return self.filter * image
+
+    def __mul__(self, other: Filter) -> Filter:
+        return ProductFilter(self, other)
+
+    def __rmul__(self, other: Filter) -> Filter:
+        return ProductFilter(other, self)
+
+
+class ProductFilter(Filter):
+    """A helper to represent the product of two filters."""
+
+    filter1: Filter = field()
+    filter2: Filter = field()
+
+    def evaluate(self) -> Image:
+        return self.filter1.filter * self.filter2.filter
 
 
 class LowpassFilter(Filter):
@@ -71,9 +86,12 @@ class LowpassFilter(Filter):
         By default, ``0.05``.
     """
 
+    manager: ImageManager = field()
+
     cutoff: float = field(static=True, default=0.95)
     rolloff: float = field(static=True, default=0.05)
 
+    @override
     def evaluate(self, **kwargs) -> RealImage:
         return compute_lowpass_filter(
             self.manager.padded_freqs, self.cutoff, self.rolloff, **kwargs
@@ -89,8 +107,11 @@ class WhiteningFilter(Filter):
     for more information.
     """
 
-    micrograph: ComplexImage = field(static=True)
+    manager: ImageManager = field()
 
+    micrograph: ComplexImage = field()
+
+    @override
     def evaluate(self, **kwargs: Any) -> RealImage:
         return compute_whitening_filter(
             self.manager.padded_freqs, self.micrograph, **kwargs
