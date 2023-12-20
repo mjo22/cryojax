@@ -20,17 +20,21 @@ class Ensemble(Specimen):
     """
     A biological specimen at a discrete mixture of conformations.
 
+    Attributes
+    ----------
+    density :
+        A voxel-based electron density whose leading axis indexes different
+        conformations.
     conformation :
         The discrete conformational variable at which to evaulate
         the electron density.
     """
 
-    density: list[ElectronDensity] = field()
     conformation: Discrete = field(default_factory=Discrete)
 
     def __check_init__(self):
         coordinate = self.conformation.coordinate
-        if not (-len(self.density) <= coordinate < len(self.density)):
+        if not (-self.n_conformations <= coordinate < self.n_conformations):
             raise ValueError("The conformational coordinate is out-of-bounds.")
 
     @property

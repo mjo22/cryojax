@@ -17,6 +17,7 @@ import jax.numpy as jnp
 import equinox as eqx
 
 from ..specimen import Specimen
+from ..conformation import Conformation
 from ..pose import Pose, EulerPose, MatrixPose
 
 from ...core import field, Module
@@ -53,39 +54,24 @@ class Assembly(Module):
         the lab frame, it is in the center of mass frame of the assembly.
     pose :
         The center of mass pose of the helix.
-    conformations :
+    conformation :
         The conformation of each `subunit`.
-    conformation_fn :
-        A function that computes conformations based on the subunit positions.
     """
 
     subunit: Specimen = field()
     pose: Pose = field()
-    conformations: Optional[_Conformations] = field()
-    conformation_fn: Optional[Callable[[_Positions], _Conformations]] = field(
-        static=True
-    )
+    conformation: Optional[Conformation] = field()
 
     def __init__(
         self,
         subunit: Specimen,
         *,
         pose: Optional[Pose] = None,
-        conformations: Optional[_Conformations] = None,
-        conformation_fn: Optional[
-            Callable[[_Positions], _Conformations]
-        ] = None,
+        conformation: Optional[Conformation] = None,
     ):
         self.subunit = subunit
         self.pose = pose or EulerPose()
-        self.conformations = conformations
-        self.conformation_fn = conformation_fn
-
-    def __check_init__(self):
-        if self.conformations is not None and self.conformation_fn is not None:
-            raise ValueError(
-                "Only one of Assembly.conformations or Assembly.conformation_fn should be set."
-            )
+        self.conformation = conformation
 
     @property
     def resolution(self) -> Real_:
@@ -135,13 +121,11 @@ class Assembly(Module):
     def subunits(self) -> Specimen:
         """Draw a realization of all of the subunits in the lab frame."""
         # Compute a list of subunits, configured at the correct conformations
-        if [self.conformations, self.conformation_fn] == [None, None]:
+        if self.conformation is None:
             where = lambda s: s.pose
             return eqx.tree_at(where, self.subunit, self.poses)
         else:
-            if self.conformation_fn is not None:
-                cs = self.conformation_fn(self.positions)
-            else:
-                cs = self.conformations
             where = lambda s: (s.conformation.coordinate, s.pose)
-            return eqx.tree_at(where, self.subunit, (cs, self.poses))
+            return eqx.tree_at(
+                where, self.subunit, (self.conformation, self.poses)
+            )
