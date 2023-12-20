@@ -62,7 +62,7 @@ class NufftProject(ScatteringModel):
             raise NotImplementedError(
                 "Supported density representations are VoxelCloud and AtomCloud"
             )
-        return self._normalize(fourier_projection)
+        return fourier_projection
 
 
 def project_atoms_with_nufft(

@@ -8,6 +8,8 @@ __all__ = ["ImageManager"]
 
 from typing import Any, Union, Callable
 
+import jax.numpy as jnp
+
 from ..core import field, Buffer
 from ..typing import (
     Image,
@@ -91,11 +93,26 @@ class ImageManager(Buffer):
     def downsample(
         self, image: Image, method="lanczos5", **kwargs: Any
     ) -> Image:
-        """Downsample an image."""
+        """Downsample an image using interpolation."""
         return resize(
             image, self.shape, antialias=False, method=method, **kwargs
         )
 
     def upsample(self, image: Image, method="bicubic", **kwargs: Any) -> Image:
-        """Upsample an image."""
+        """Upsample an image using interpolation."""
         return resize(image, self.padded_shape, method=method, **kwargs)
+
+    def normalize_to_cistem(
+        self, image: Image, is_real: bool = False
+    ) -> Image:
+        """Normalize images on the exit plane according to cisTEM conventions."""
+        M1, M2 = image.shape
+        if is_real:
+            raise NotImplementedError(
+                "Normalization to cisTEM conventions not supported for real input."
+            )
+        else:
+            # Set zero frequency component to zero
+            image = image.at[0, 0].set(0.0 + 0.0j)
+            # cisTEM normalization convention for projections
+            return image / jnp.sqrt(M1 * M2)

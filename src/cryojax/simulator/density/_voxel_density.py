@@ -15,13 +15,10 @@ from ._electron_density import ElectronDensity
 from ..pose import Pose
 from ...io import load_voxel_cloud, load_fourier_grid
 from ...core import field
-from ...typing import (
-    ComplexVolume,
-    RealCloud,
-    CloudCoords3D,
-)
+from ...typing import RealCloud, CloudCoords3D
 
-_VolumeSliceCoords = Float[Array, "N1 N2 1 3"]
+_CubicVolume = Float[Array, "N N N"]
+_VolumeSliceCoords = Float[Array, "N N 1 3"]
 
 
 class Voxels(ElectronDensity):
@@ -71,11 +68,11 @@ class VoxelGrid(Voxels):
     ----------
     weights :
         3D electron density grid in Fourier space.
-    coordinates : shape `(N1, N2, 1, 3)`
+    coordinates : shape `(N, N, 1, 3)`
         Central slice of cartesian coordinate system.
     """
 
-    weights: ComplexVolume = field()
+    weights: _CubicVolume = field()
     coordinates: _VolumeSliceCoords = field()
 
     real: bool = field(default=False, static=True)
@@ -85,6 +82,8 @@ class VoxelGrid(Voxels):
             raise NotImplementedError(
                 "Real voxel grid densities are not supported."
             )
+        if self.weights.shape != tuple(3 * [self.weights.shape[0]]):
+            raise ValueError("Only cubic voxel grids are supported.")
 
     def rotate_to(self, pose: Pose) -> "VoxelGrid":
         """

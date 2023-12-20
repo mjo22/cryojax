@@ -58,7 +58,7 @@ class FourierSliceExtract(ScatteringModel):
                 self.manager.crop_or_pad(ifftn(fourier_projection).real)
             )
 
-        return self._normalize(fourier_projection)
+        return fourier_projection
 
 
 def extract_slice(

@@ -190,6 +190,8 @@ class ImagePipeline(Module):
         density = self.specimen.realization
         # Compute the scattering image in fourier space
         image = self.scattering.scatter(density, resolution=resolution)
+        # Normalize to cisTEM conventions
+        image = self.manager.normalize_to_cistem(image, is_real=False)
         # Apply translation
         image *= self.specimen.pose.shifts(freqs)
         # Compute and apply CTF
