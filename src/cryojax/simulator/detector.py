@@ -15,7 +15,7 @@ from jaxtyping import PRNGKeyArray
 
 from .noise import GaussianNoise
 from .kernel import Kernel, Constant
-from ..utils import scale, irfftn
+from ..utils import scale, ifftn
 from ..core import field, Module
 from ..typing import Real_, RealImage, ImageCoords
 
@@ -101,7 +101,7 @@ class GaussianDetector(GaussianNoise, Detector):
         freqs: ImageCoords,
         image: Optional[RealImage] = None,
     ) -> RealImage:
-        return irfftn(super().sample(key, freqs))
+        return ifftn(super().sample(key, freqs)).real
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])

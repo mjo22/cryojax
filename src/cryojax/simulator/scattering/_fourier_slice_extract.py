@@ -19,9 +19,8 @@ from ...typing import (
     VolumeCoords,
 )
 from ...utils import (
+    ifftn,
     fftn,
-    crop,
-    pad,
     map_coordinates,
 )
 
@@ -46,22 +45,26 @@ class FourierSliceExtract(ScatteringModel):
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
-        return extract_slice(
+        fourier_projection = extract_slice(
             density.weights,
             density.coordinates,
             resolution,
-            self.manager.padded_shape,
             order=self.order,
             mode=self.mode,
             cval=self.cval,
         )
+        if self.manager.padded_shape != fourier_projection.shape:
+            fourier_projection = fftn(
+                self.manager.crop_or_pad(ifftn(fourier_projection).real)
+            )
+
+        return fourier_projection
 
 
 def extract_slice(
     weights: ComplexVolume,
     coordinates: VolumeCoords,
     resolution: float,
-    shape: tuple[int, int],
     **kwargs: Any,
 ) -> ComplexImage:
     """
@@ -76,10 +79,6 @@ def extract_slice(
         Frequency central slice coordinate system.
     resolution :
         The rasterization resolution.
-    shape :
-        Shape of the imaging plane in pixels.
-        ``width, height = shape[0], shape[1]``
-        is the size of the desired imaging plane.
     kwargs:
         Passed to ``cryojax.utils.interpolate.map_coordinates``.
 
@@ -98,20 +97,12 @@ def extract_slice(
     # Make coordinates dimensionless
     coordinates *= box_size
     # Interpolate on the upper half plane get the slice
-    z = N2 // 2 + 1
-    projection = map_coordinates(weights, coordinates[:, :z], **kwargs)[..., 0]
-    # Set zero frequency component to zero
-    projection = projection.at[0, 0].set(0.0 + 0.0j)
+    # z = N2 // 2 + 1
+    # fourier_projection = map_coordinates(
+    #    weights, coordinates[:, :z], **kwargs
+    # )[..., 0]
     # Transform back to real space
-    projection = jnp.fft.fftshift(jnp.fft.irfftn(projection, s=(N1, N2)))
-    # Crop or pad to desired image size
-    M1, M2 = shape
-    if N1 >= M1 and N2 >= M2:
-        projection = crop(projection, shape)
-    elif N1 <= M1 and N2 <= M2:
-        projection = pad(projection, shape, mode="edge")
-    else:
-        raise NotImplementedError(
-            "Voxel density shape must be larger or smaller than image shape in all dimensions"
-        )
-    return fftn(projection) / jnp.sqrt(M1 * M2)
+    # fourier_projection = irfftn(fourier_projection, s=(N1, N2))
+    #
+
+    return map_coordinates(weights, coordinates, **kwargs)[..., 0]

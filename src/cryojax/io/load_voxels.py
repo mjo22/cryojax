@@ -19,7 +19,7 @@ def load_voxel_cloud(filename: str, **kwargs: Any) -> dict[str, Array]:
     Read a 3D template on a cartesian grid
     to a point cloud.
 
-    This is used to instantiate ``cryojax.simulator.ElectronCloud``.
+    This is used to instantiate ``cryojax.simulator.VoxelCloud``.
 
     Parameters
     ----------
@@ -59,7 +59,7 @@ def load_fourier_grid(filename: str, pad_scale: float = 1.0) -> dict[str, Any]:
     """
     Read a 3D template in Fourier space on a cartesian grid.
 
-    This is used to instantiate ``cryojax.simulator.ElectronGrid``.
+    This is used to instantiate ``cryojax.simulator.VoxelGrid``.
 
     Parameters
     ----------

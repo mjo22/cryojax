@@ -6,7 +6,7 @@ from __future__ import annotations
 
 __all__ = ["Helix", "compute_lattice_positions", "compute_lattice_rotations"]
 
-from typing import Union, Optional, Any
+from typing import Union, Optional
 from jaxtyping import Array, Float
 from functools import cached_property
 
@@ -14,7 +14,6 @@ import jax
 import jax.numpy as jnp
 
 from ._assembly import Assembly, _Positions, _Rotations
-from ..specimen import Specimen
 
 from ...core import field
 from ...typing import Real_, RealVector
@@ -180,7 +179,7 @@ def compute_lattice_positions(
         R_n = jnp.array(
             ((c_n, s_n, 0), (-s_n, c_n, 0), (0, 0, 1)), dtype=float
         )
-        return (R_n @ r.T).T
+        return (R_n.T @ r.T).T
 
     # The helical coordinates for all sub-helices
     positions = jax.vmap(compute_helix_coordinates)(symmetry_angles)

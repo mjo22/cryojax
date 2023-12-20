@@ -41,7 +41,7 @@ class NufftProject(ScatteringModel):
     ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(density, VoxelCloud):
-            return project_with_nufft(
+            fourier_projection = project_with_nufft(
                 density.weights,
                 density.coordinates,
                 resolution,
@@ -49,7 +49,7 @@ class NufftProject(ScatteringModel):
                 eps=self.eps,
             )
         elif isinstance(density, AtomCloud):
-            return project_atoms_with_nufft(
+            fourier_projection = project_atoms_with_nufft(
                 density.weights,
                 density.coordinates,
                 density.variances,
@@ -62,6 +62,7 @@ class NufftProject(ScatteringModel):
             raise NotImplementedError(
                 "Supported density representations are VoxelCloud and AtomCloud"
             )
+        return fourier_projection
 
 
 def project_atoms_with_nufft(
@@ -127,11 +128,11 @@ def project_with_nufft(
     M1, M2 = shape
     image_size = jnp.array(np.array([M1, M2]) * resolution)
     coordinates = jnp.flip(coordinates[:, :2], axis=-1)
-    projection = nufft(weights, coordinates, image_size, shape, **kwargs)
-    # Set zero frequency component to zero
-    projection = projection.at[0, 0].set(0.0 + 0.0j)
+    fourier_projection = nufft(
+        weights, coordinates, image_size, shape, **kwargs
+    )
 
-    return projection / jnp.sqrt(M1 * M2)
+    return fourier_projection
 
 
 """

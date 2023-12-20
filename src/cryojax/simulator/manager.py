@@ -6,7 +6,9 @@ from __future__ import annotations
 
 __all__ = ["ImageManager"]
 
-from typing import Any
+from typing import Any, Union, Callable
+
+import jax.numpy as jnp
 
 from ..core import field, Buffer
 from ..typing import (
@@ -18,6 +20,7 @@ from ..utils import (
     make_coordinates,
     crop,
     pad,
+    crop_or_pad,
     resize,
 )
 
@@ -37,6 +40,9 @@ class ImageManager(Buffer):
         when computing it in the object plane. This
         should be a floating point number greater than
         or equal to 1. By default, it is 1 (no padding).
+    pad_mode :
+        The method of image padding. By default, ``"edge"``.
+        For all options, see ``jax.numpy.pad``.
     freqs :
         The fourier wavevectors in the imaging plane.
     padded_freqs :
@@ -51,6 +57,7 @@ class ImageManager(Buffer):
 
     shape: tuple[int, int] = field(static=True)
     pad_scale: float = field(static=True, default=1.0)
+    pad_mode: Union[str, Callable] = field(static=True, default="edge")
 
     padded_shape: tuple[int, int] = field(static=True, init=False)
 
@@ -75,12 +82,37 @@ class ImageManager(Buffer):
 
     def pad(self, image: Image, **kwargs: Any) -> Image:
         """Pad an image."""
-        return pad(image, self.padded_shape, **kwargs)
+        return pad(image, self.padded_shape, mode=self.pad_mode, **kwargs)
+
+    def crop_or_pad(self, image: Image, **kwargs: Any) -> Image:
+        """Reshape an image using cropping or padding."""
+        return crop_or_pad(
+            image, self.padded_shape, mode=self.pad_mode, **kwargs
+        )
 
     def downsample(
         self, image: Image, method="lanczos5", **kwargs: Any
     ) -> Image:
-        """Downsample an image."""
+        """Downsample an image using interpolation."""
         return resize(
             image, self.shape, antialias=False, method=method, **kwargs
         )
+
+    def upsample(self, image: Image, method="bicubic", **kwargs: Any) -> Image:
+        """Upsample an image using interpolation."""
+        return resize(image, self.padded_shape, method=method, **kwargs)
+
+    def normalize_to_cistem(
+        self, image: Image, is_real: bool = False
+    ) -> Image:
+        """Normalize images on the exit plane according to cisTEM conventions."""
+        M1, M2 = image.shape
+        if is_real:
+            raise NotImplementedError(
+                "Normalization to cisTEM conventions not supported for real input."
+            )
+        else:
+            # Set zero frequency component to zero
+            image = image.at[0, 0].set(0.0 + 0.0j)
+            # cisTEM normalization convention for projections
+            return image / jnp.sqrt(M1 * M2)

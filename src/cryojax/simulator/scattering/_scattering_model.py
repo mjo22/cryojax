@@ -9,6 +9,8 @@ __all__ = ["ScatteringModel"]
 
 from abc import abstractmethod
 
+import jax.numpy as jnp
+
 from ..density import ElectronDensity
 from ..manager import ImageManager
 
