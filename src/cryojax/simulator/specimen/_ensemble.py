@@ -34,6 +34,8 @@ class Ensemble(Specimen):
 
     def __check_init__(self):
         coordinate = self.conformation.coordinate
+        if not self.density.is_stacked:
+            raise ValueError("Ensemble requires a stacked electron density")
         if not (-self.n_conformations <= coordinate < self.n_conformations):
             raise ValueError("The conformational coordinate is out-of-bounds.")
 
