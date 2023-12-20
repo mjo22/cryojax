@@ -40,9 +40,9 @@ class TestDistanceEvaluation:
 class TestIndependentAtomScattering:
     @pytest.mark.parametrize("stdev_val", [1.0, 0.50])
     def test_single_atom_normalization(self, stdev_val):
-        """
+        '''
         Tests that the renderer correctly normalizes the image of a single atom.
-        """
+        '''
         # Set up a renderer with a single atom
         pixel_size = 0.4
         weights = jnp.array([1.0, 0.4, 0.6])

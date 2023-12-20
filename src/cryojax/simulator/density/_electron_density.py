@@ -25,7 +25,7 @@ class ElectronDensity(Module):
     """
 
     is_real: AbstractVar[bool]
-    is_stacked: bool = field(static=True)
+    is_stacked: bool = field(static=True, default=False, kw_only=True)
 
     @abstractmethod
     def rotate_to(self, pose: Pose) -> "ElectronDensity":
