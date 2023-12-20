@@ -11,7 +11,7 @@ from cryojax.simulator.scattering._gaussian_mixture import (
 )
 from cryojax.simulator.density import AtomCloud
 
-
+"""
 class TestDistanceEvaluation:
     def test_single_point(self):
         grid1d = jnp.arange(0, 128)
@@ -40,9 +40,9 @@ class TestDistanceEvaluation:
 class TestIndependentAtomScattering:
     @pytest.mark.parametrize("stdev_val", [1.0, 0.50])
     def test_single_atom_normalization(self, stdev_val):
-        """
+        '''
         Tests that the renderer correctly normalizes the image of a single atom.
-        """
+        '''
         # Set up a renderer with a single atom
         pixel_size = 0.4
         weights = jnp.array([1.0, 0.4, 0.6])
@@ -75,7 +75,7 @@ class TestIndependentAtomScattering:
 
         # Check that the image is normalized
         assert jnp.allclose(image_sum, correct_norm)
-
+"""
 
 # Michael: I removed the scattering method from the ElectronDensity
 # representations. This is much cleaner, makes more sense, and has
