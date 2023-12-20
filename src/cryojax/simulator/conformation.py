@@ -4,11 +4,14 @@ Abstractions of protein conformations.
 
 __all__ = ["Conformation", "Discrete", "Continuous"]
 
-from typing import Any
+from typing import Any, Optional
+from jaxtyping import Float, Array
 from equinox import AbstractVar
 
 from ..core import Module, field
 from ..typing import Real_, Int_
+
+_MixtureWeights = Float[Array, "N"]
 
 
 class Conformation(Module):
@@ -22,6 +25,7 @@ class Conformation(Module):
     """
 
     coordinate: AbstractVar[Any]
+    # distribution: AbstractVar[Any]
 
 
 class Discrete(Conformation):
@@ -30,6 +34,7 @@ class Discrete(Conformation):
     """
 
     coordinate: Int_ = field(default=0)
+    # distribution: Optional[_MixtureWeights] = field(default=None)
 
 
 class Continuous(Conformation):

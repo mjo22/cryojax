@@ -10,7 +10,7 @@ from typing import Optional, Type
 from equinox import AbstractVar
 
 from ..pose import Pose
-from ...core import Module
+from ...core import Module, field
 
 
 class ElectronDensity(Module):
@@ -25,6 +25,7 @@ class ElectronDensity(Module):
     """
 
     is_real: AbstractVar[bool]
+    is_stacked: bool = field(static=True)
 
     @abstractmethod
     def rotate_to(self, pose: Pose) -> "ElectronDensity":
@@ -47,8 +48,26 @@ class ElectronDensity(Module):
     ) -> "ElectronDensity":
         """
         Load an ElectronDensity from a file.
-
-        This method should be used to instantiate and
-        deserialize ElectronDensity.
         """
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def from_stack(
+        cls: Type["ElectronDensity"], stack: list["ElectronDensity"]
+    ) -> "ElectronDensity":
+        """
+        Stack a list of electron densities along the leading
+        axis of a single electron density.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def __getitem__(self, idx: int) -> "ElectronDensity":
+        """Get a particular electron density in the stack."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def __len__(self) -> int:
+        """Get the number of electron densities in the stack."""
         raise NotImplementedError
