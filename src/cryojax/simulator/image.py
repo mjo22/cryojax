@@ -22,7 +22,7 @@ from .manager import ImageManager
 from .instrument import Instrument
 from .detector import NullDetector
 from .ice import Ice, NullIce
-from ..utils import fftn, irfftn
+from ..utils import fftn, ifftn
 from ..core import field, Module
 from ..typing import RealImage, Image, Real_
 
@@ -134,10 +134,10 @@ class ImagePipeline(Module):
         image = self.render(view=False)
         if not isinstance(self.solvent, NullIce):
             # The image of the solvent
-            ice_image = irfftn(
+            ice_image = ifftn(
                 self.instrument.optics(freqs)
                 * self.solvent.sample(key[idx], freqs)
-            )
+            ).real
             image = image + ice_image
             idx += 1
         if not isinstance(self.instrument.detector, NullDetector):
@@ -174,7 +174,7 @@ class ImagePipeline(Module):
         if self.filter is not None:
             if is_real:
                 image = fftn(image)
-            image = irfftn(self.filter(image))
+            image = ifftn(self.filter(image)).real
         # Crop the image
         image = self.manager.crop(image)
         # Mask the image
@@ -188,7 +188,7 @@ class ImagePipeline(Module):
         freqs = self.manager.padded_freqs / resolution
         # Draw the electron density at a particular conformation and pose
         density = self.specimen.realization
-        # Compute the scattering image
+        # Compute the scattering image in fourier space
         image = self.scattering.scatter(density, resolution=resolution)
         # Apply translation
         image *= self.specimen.pose.shifts(freqs)
@@ -202,7 +202,7 @@ class ImagePipeline(Module):
         image = scaling * image + offset
         # Measure at the detector pixel size
         image = self.instrument.detector.pixelize(
-            irfftn(image), resolution=resolution
+            ifftn(image).real, resolution=resolution
         )
 
         return image

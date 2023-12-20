@@ -2,7 +2,7 @@ import pytest
 
 import jax.numpy as jnp
 import numpy as np
-from cryojax.utils import fftn, irfftn
+from cryojax.utils import fftn, ifftn
 
 
 @pytest.mark.parametrize(
@@ -26,16 +26,16 @@ def test_fft(model, request):
     )
     # Run tests with cryojax.utils and random data
     np.testing.assert_allclose(
-        irfftn(fftn(random)),
+        ifftn(fftn(random)).real,
         jnp.fft.ifftn(jnp.fft.fftn(random)).real,
         **rkwargs
     )
-    np.testing.assert_allclose(random, irfftn(fftn(random)), **rkwargs)
+    np.testing.assert_allclose(random, ifftn(fftn(random)).real, **rkwargs)
     np.testing.assert_allclose(
-        fftn(random), fftn(irfftn(fftn(random))), **fkwargs
+        fftn(random), fftn(ifftn(fftn(random))), **fkwargs
     )
     # Run tests with an image
     np.testing.assert_allclose(
-        irfftn(image), irfftn(fftn(irfftn(image))), **rkwargs
+        ifftn(image).real, ifftn(fftn(ifftn(image))).real, **rkwargs
     )
-    np.testing.assert_allclose(image, fftn(irfftn(image)), **fkwargs)
+    np.testing.assert_allclose(image, fftn(ifftn(image).real), **fkwargs)

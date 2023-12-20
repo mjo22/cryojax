@@ -19,7 +19,7 @@ from ...typing import (
     VolumeCoords,
 )
 from ...utils import (
-    irfftn,
+    ifftn,
     fftn,
     map_coordinates,
 )
@@ -55,7 +55,7 @@ class FourierSliceExtract(ScatteringModel):
         )
         if self.manager.padded_shape != fourier_projection.shape:
             fourier_projection = fftn(
-                self.manager.crop_or_pad(irfftn(fourier_projection))
+                self.manager.crop_or_pad(ifftn(fourier_projection).real)
             )
 
         return self._normalize(fourier_projection)
@@ -102,8 +102,7 @@ def extract_slice(
     #    weights, coordinates[:, :z], **kwargs
     # )[..., 0]
     # Transform back to real space
-    # fourier_projection = jnp.fft.fftshift(
-    #    jnp.fft.irfftn(fourier_projection, s=(N1, N2))
-    # )
+    # fourier_projection = irfftn(fourier_projection, s=(N1, N2))
+    #
 
     return map_coordinates(weights, coordinates, **kwargs)[..., 0]
