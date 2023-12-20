@@ -19,12 +19,12 @@ class ElectronDensity(Module):
 
     Attributes
     ----------
-    real :
+    is_real :
         Whether or not the representation is
         real or fourier space.
     """
 
-    real: AbstractVar[bool]
+    is_real: AbstractVar[bool]
 
     @abstractmethod
     def rotate_to(self, pose: Pose) -> "ElectronDensity":

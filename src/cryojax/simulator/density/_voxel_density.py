@@ -75,10 +75,10 @@ class VoxelGrid(Voxels):
     weights: _CubicVolume = field()
     coordinates: _VolumeSliceCoords = field()
 
-    real: bool = field(default=False, static=True)
+    is_real: bool = field(default=False, static=True)
 
     def __check_init__(self):
-        if self.real is True:
+        if self.is_real is True:
             raise NotImplementedError(
                 "Real voxel grid densities are not supported."
             )
@@ -92,7 +92,7 @@ class VoxelGrid(Voxels):
 
         This rotation is the inverse rotation as in real space.
         """
-        coordinates = pose.rotate(self.coordinates, real=self.real)
+        coordinates = pose.rotate(self.coordinates, is_real=self.is_real)
 
         return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
 
@@ -127,10 +127,10 @@ class VoxelCloud(Voxels):
     weights: RealCloud = field()
     coordinates: CloudCoords3D = field()
 
-    real: bool = field(default=True, static=True)
+    is_real: bool = field(default=True, static=True)
 
     def __check_init__(self):
-        if self.real is False:
+        if self.is_real is False:
             raise NotImplementedError(
                 "Fourier voxel cloud densities are not supported."
             )
@@ -142,7 +142,7 @@ class VoxelCloud(Voxels):
         This transformation will return a new density cloud
         with rotated coordinates.
         """
-        coordinates = pose.rotate(self.coordinates, real=self.real)
+        coordinates = pose.rotate(self.coordinates, is_real=self.is_real)
 
         return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
 

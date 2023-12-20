@@ -26,16 +26,16 @@ class AtomCloud(ElectronDensity):
     variances: Array = field()
     identity: Array = field()
 
-    real: bool = field(default=True, static=True)
+    is_real: bool = field(default=True, static=True)
 
     def __check_init__(self):
-        if self.real is False:
+        if self.is_real is False:
             raise NotImplementedError(
                 "Fourier atomic densities are not supported."
             )
 
     def rotate_to(self, pose: Pose) -> AtomCloud:
-        coordinates = pose.rotate(self.coordinates, real=self.real)
+        coordinates = pose.rotate(self.coordinates, is_real=self.is_real)
         return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
 
     @classmethod

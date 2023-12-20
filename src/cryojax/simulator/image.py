@@ -9,18 +9,21 @@ __all__ = ["ImagePipeline"]
 from typing import Union, get_args, Optional
 
 import equinox as eqx
-import jax.tree_util as jtu
+import jax
 import jax.numpy as jnp
+import jax.tree_util as jtu
 from jaxtyping import PRNGKeyArray, Shaped
 
 from .filter import Filter
 from .mask import Mask
-from .specimen import Specimen
+from .specimen import Specimen, Ensemble
 from .assembly import Assembly
 from .scattering import ScatteringModel
 from .manager import ImageManager
 from .instrument import Instrument
+from .exposure import NullExposure
 from .detector import NullDetector
+from .optics import NullOptics
 from .ice import Ice, NullIce
 from ..utils import fftn, ifftn
 from ..core import field, Module
@@ -194,6 +197,67 @@ class ImagePipeline(Module):
         image = self.manager.normalize_to_cistem(image, is_real=False)
         # Apply translation
         image *= self.specimen.pose.shifts(freqs)
+        # Measure the image with the instrument
+        image = self._measure_with_instrument(image)
+
+        return image
+
+    def _render_assembly(self) -> RealImage:
+        """Render an image of an Assembly from its subunits."""
+        # Get the subunits
+        subunits = self.specimen.subunits
+        # Split up computation with two different instruments
+        optics_instrument = eqx.tree_at(
+            lambda ins: (ins.exposure, ins.detector),
+            self.instrument,
+            (NullExposure(), NullDetector()),
+        )
+        no_optics_instrument = eqx.tree_at(
+            lambda ins: ins.optics, self.instrument, NullOptics()
+        )
+        # Create an ImagePipeline for the subunits
+        subunit_pipeline = eqx.tree_at(
+            lambda m: (m.specimen, m.instrument),
+            self,
+            (subunits, optics_instrument),
+        )
+        # Setup vmap over poses and conformations
+        if self.specimen.conformations is None:
+            where_vmap = lambda m: (m.specimen.pose,)
+            n_vmap = 1
+        else:
+            where_vmap = lambda m: (m.specimen.pose, m.specimen.conformation)
+            n_vmap = 2
+        to_vmap = eqx.tree_at(
+            where_vmap,
+            jtu.tree_map(lambda _: False, subunit_pipeline),
+            tuple(n_vmap * [True]),
+        )
+        vmap, novmap = eqx.partition(subunit_pipeline, to_vmap)
+        # Compute all subunit images and sum
+        compute_stack = jax.vmap(
+            lambda vmap, novmap: eqx.combine(vmap, novmap)._render_specimen(),
+            in_axes=(0, None),
+        )
+        compute_stack_and_sum = jax.jit(
+            lambda vmap, novmap: jnp.sum(
+                compute_stack(vmap, novmap),
+                axis=0,
+            )
+        )
+        image = fftn(compute_stack_and_sum(vmap, novmap))
+        # Finally, measure the image without applying the CTF
+        no_optics_pipeline = eqx.tree_at(
+            lambda m: m.instrument, self, no_optics_instrument
+        )
+        image = no_optics_pipeline._measure_with_instrument(image)
+
+        return image
+
+    def _measure_with_instrument(self, image: ComplexImage) -> RealImage:
+        """Measure an image with the instrument"""
+        resolution = self.specimen.resolution
+        freqs = self.manager.padded_freqs / resolution
         # Compute and apply CTF
         ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
         image = ctf * image
@@ -206,21 +270,5 @@ class ImagePipeline(Module):
         image = self.instrument.detector.pixelize(
             ifftn(image).real, resolution=resolution
         )
-
-        return image
-
-    def _render_assembly(self) -> RealImage:
-        """Render an image of an Assembly from its subunits."""
-        # Draw the subunits
-        subunits = self.specimen.subunits
-        # Compute all of the subunit images
-        render = lambda subunit: eqx.tree_at(
-            lambda m: m.specimen, self, subunit
-        )._render_specimen()
-        images = jtu.tree_map(
-            render, subunits, is_leaf=lambda s: isinstance(s, Specimen)
-        )
-        # Sum the subunit images together
-        image = jtu.tree_reduce(lambda x, y: x + y, images)
 
         return image
