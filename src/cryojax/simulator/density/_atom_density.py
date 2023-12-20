@@ -52,3 +52,17 @@ class AtomCloud(ElectronDensity):
         """
         raise NotImplementedError
         # return cls.from_mrc(filename, config=config, **kwargs)
+
+    @classmethod
+    def from_stack(
+        cls: Type["AtomCloud"], stack: list["AtomCloud"]
+    ) -> "AtomCloud":
+        """
+        Stack a list of electron densities along the leading
+        axis of a single electron density.
+        """
+        raise NotImplementedError
+
+    def __getitem__(self, key: int):
+        """Get a particular electron density in the electron density stack."""
+        raise NotImplementedError
