@@ -61,12 +61,30 @@ class Helix(Assembly):
         degrees. By default, ``True``.
     """
 
-    rise: Union[Real_, RealVector] = field(kw_only=True)
-    twist: Union[Real_, RealVector] = field(kw_only=True)
+    rise: Union[Real_, RealVector] = field()
+    twist: Union[Real_, RealVector] = field()
 
-    n_start: int = field(static=True, default=1)
-    n_subunits_per_start: int = field(static=True, default=1)
-    degrees: bool = field(static=True, default=True)
+    n_start: int = field(static=True)
+    n_subunits_per_start: int = field(static=True)
+    degrees: bool = field(static=True)
+
+    def __init__(
+        self,
+        subunit: Specimen,
+        rise: Union[Real_, RealVector],
+        twist: Union[Real_, RealVector],
+        *,
+        n_start: int = 1,
+        n_subunits_per_start: int = 1,
+        degrees: bool = True,
+        **kwargs: Any,
+    ):
+        super().__init__(subunit, **kwargs)
+        self.rise = rise
+        self.twist = twist
+        self.n_start = n_start
+        self.n_subunits_per_start = n_subunits_per_start
+        self.degrees = degrees
 
     @cached_property
     def n_subunits(self) -> int:
