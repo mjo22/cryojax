@@ -2,7 +2,13 @@
 Abstraction of electron detectors in a cryo-EM image.
 """
 
-__all__ = ["Detector", "NullDetector", "GaussianDetector", "pixelize_image"]
+__all__ = [
+    "Detector",
+    "NullDetector",
+    "NoiselessDetector",
+    "GaussianDetector",
+    "pixelize_image",
+]
 
 from abc import abstractmethod
 from typing import Optional, Any
@@ -67,6 +73,21 @@ class Detector(Module):
 class NullDetector(Detector):
     """
     A 'null' detector.
+    """
+
+    @override
+    def sample(
+        self,
+        key: PRNGKeyArray,
+        freqs: ImageCoords,
+        image: Optional[RealImage] = None,
+    ) -> RealImage:
+        return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
+
+
+class NoiselessDetector(Detector):
+    """
+    A detector with no noise model.
     """
 
     @override

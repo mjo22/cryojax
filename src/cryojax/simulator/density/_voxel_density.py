@@ -94,7 +94,7 @@ class Voxels(ElectronDensity):
                 coordinates=self.coordinates[idx],
                 is_real=self.is_real,
                 is_stacked=False,
-        )
+            )
         else:
             return self
 
