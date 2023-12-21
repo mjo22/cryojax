@@ -26,16 +26,16 @@ class AtomCloud(ElectronDensity):
     variances: Array = field()
     identity: Array = field()
 
-    real: bool = field(default=True, static=True)
+    is_real: bool = field(default=True, static=True)
 
     def __check_init__(self):
-        if self.real is False:
+        if self.is_real is False:
             raise NotImplementedError(
                 "Fourier atomic densities are not supported."
             )
 
     def rotate_to(self, pose: Pose) -> AtomCloud:
-        coordinates = pose.rotate(self.coordinates, real=self.real)
+        coordinates = pose.rotate(self.coordinates, is_real=self.is_real)
         return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
 
     @classmethod
@@ -52,3 +52,17 @@ class AtomCloud(ElectronDensity):
         """
         raise NotImplementedError
         # return cls.from_mrc(filename, config=config, **kwargs)
+
+    @classmethod
+    def from_stack(
+        cls: Type["AtomCloud"], stack: list["AtomCloud"]
+    ) -> "AtomCloud":
+        """
+        Stack a list of electron densities along the leading
+        axis of a single electron density.
+        """
+        raise NotImplementedError
+
+    def __getitem__(self, key: int) -> "AtomCloud":
+        """Get a particular electron density in the electron density stack."""
+        raise NotImplementedError
