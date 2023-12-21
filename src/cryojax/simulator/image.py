@@ -16,7 +16,7 @@ from jaxtyping import PRNGKeyArray, Shaped
 
 from .filter import Filter
 from .mask import Mask
-from .specimen import Specimen, Ensemble
+from .specimen import Specimen
 from .assembly import Assembly
 from .scattering import ScatteringModel
 from .manager import ImageManager
@@ -27,7 +27,7 @@ from .optics import NullOptics
 from .ice import Ice, NullIce
 from ..utils import fftn, ifftn
 from ..core import field, Module
-from ..typing import RealImage, Image, Real_
+from ..typing import RealImage, ComplexImage, Image, Real_
 
 
 _PRNGKeyArrayLike = Shaped[PRNGKeyArray, "M"]
@@ -190,7 +190,7 @@ class ImagePipeline(Module):
         resolution = self.specimen.resolution
         freqs = self.manager.padded_freqs / resolution
         # Draw the electron density at a particular conformation and pose
-        density = self.specimen.realization
+        density = self.specimen.get_density()
         # Compute the scattering image in fourier space
         image = self.scattering.scatter(density, resolution=resolution)
         # Normalize to cisTEM conventions
@@ -222,7 +222,7 @@ class ImagePipeline(Module):
             (subunits, optics_instrument),
         )
         # Setup vmap over poses and conformations
-        if self.specimen.conformations is None:
+        if self.specimen.conformation is None:
             where_vmap = lambda m: (m.specimen.pose,)
             n_vmap = 1
         else:

@@ -2,7 +2,6 @@ from . import (
     manager,
     kernel,
     pose,
-    conformation,
     specimen,
     assembly,
     density,
@@ -21,7 +20,6 @@ from . import (
 from .manager import *
 from .kernel import *
 from .pose import *
-from .conformation import *
 from .specimen import *
 from .assembly import *
 from .density import *
@@ -41,7 +39,6 @@ __all__ = (
     manager.__all__
     + kernel.__all__
     + pose.__all__
-    + conformation.__all__
     + specimen.__all__
     + assembly.__all__
     + density.__all__
@@ -62,7 +59,6 @@ __all__.extend(
         manager,
         kernel,
         pose,
-        conformation,
         specimen,
         assembly,
         density,

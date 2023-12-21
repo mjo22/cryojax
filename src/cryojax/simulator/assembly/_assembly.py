@@ -9,7 +9,7 @@ from __future__ import annotations
 __all__ = ["Assembly"]
 
 from abc import abstractmethod
-from typing import Optional, Callable
+from typing import Optional
 from jaxtyping import Array, Float, Int
 from functools import cached_property
 
@@ -17,7 +17,6 @@ import jax.numpy as jnp
 import equinox as eqx
 
 from ..specimen import Specimen
-from ..conformation import Conformation
 from ..pose import Pose, EulerPose, MatrixPose
 
 from ...core import field, Module
@@ -60,14 +59,14 @@ class Assembly(Module):
 
     subunit: Specimen = field()
     pose: Pose = field()
-    conformation: Optional[Conformation] = field()
+    conformation: Optional[_Conformations] = field(default=None)
 
     def __init__(
         self,
         subunit: Specimen,
         *,
         pose: Optional[Pose] = None,
-        conformation: Optional[Conformation] = None,
+        conformation: Optional[_Conformations] = None,
     ):
         self.subunit = subunit
         self.pose = pose or EulerPose()
@@ -125,7 +124,7 @@ class Assembly(Module):
             where = lambda s: s.pose
             return eqx.tree_at(where, self.subunit, self.poses)
         else:
-            where = lambda s: (s.conformation.coordinate, s.pose)
+            where = lambda s: (s.conformation, s.pose)
             return eqx.tree_at(
                 where, self.subunit, (self.conformation, self.poses)
             )

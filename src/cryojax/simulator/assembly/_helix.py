@@ -6,13 +6,14 @@ from __future__ import annotations
 
 __all__ = ["Helix", "compute_lattice_positions", "compute_lattice_rotations"]
 
-from typing import Union, Optional
+from typing import Union, Optional, Any
 from jaxtyping import Array, Float
 from functools import cached_property
 
 import jax
 import jax.numpy as jnp
 
+from ..specimen import Specimen
 from ._assembly import Assembly, _Positions, _Rotations
 
 from ...core import field
