@@ -16,11 +16,11 @@ def test_deserialize_instrument(instrument):
     )
 
 
-def test_deserialize_specimen(specimen):
+def test_deserialize_specimen(ensemble):
     """Test Specimen deserialization"""
     assert (
-        cs.Specimen.from_json(specimen.to_json()).to_json()
-        == specimen.to_json()
+        cs.Ensemble.from_json(ensemble.to_json()).to_json()
+        == ensemble.to_json()
     )
 
 

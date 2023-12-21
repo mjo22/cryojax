@@ -17,7 +17,7 @@ from ._electron_density import ElectronDensity
 from ..pose import Pose
 from ...io import load_voxel_cloud, load_fourier_grid
 from ...core import field
-from ...typing import RealCloud, CloudCoords3D
+from ...typing import Real_, RealCloud, CloudCoords3D
 
 _CubicVolume = Float[Array, "N N N"]
 _VolumeSliceCoords = Float[Array, "N N 1 3"]
@@ -37,6 +37,7 @@ class Voxels(ElectronDensity):
 
     weights: AbstractVar[Array]
     coordinates: AbstractVar[Array]
+    voxel_size: Real_ = field()
 
     @classmethod
     def from_file(
@@ -79,9 +80,13 @@ class Voxels(ElectronDensity):
         coordinates = jnp.stack(
             [density.coordinates for density in stack], axis=0
         )
+        voxel_size = jnp.stack(
+            [density.voxel_size for density in stack], axis=0
+        )
         return cls(
             weights=weights,
             coordinates=coordinates,
+            voxel_size=voxel_size,
             is_real=stack[0].is_real,
             is_stacked=True,
         )
@@ -92,6 +97,7 @@ class Voxels(ElectronDensity):
             return cls(
                 weights=self.weights[idx],
                 coordinates=self.coordinates[idx],
+                voxel_size=self.voxel_size[idx],
                 is_real=self.is_real,
                 is_stacked=False,
             )

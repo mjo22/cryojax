@@ -16,7 +16,7 @@ from jaxtyping import PRNGKeyArray, Shaped
 
 from .filter import Filter
 from .mask import Mask
-from .specimen import Specimen
+from .ensemble import Ensemble
 from .assembly import Assembly
 from .scattering import ScatteringModel
 from .manager import ImageManager
@@ -42,8 +42,8 @@ class ImagePipeline(Module):
 
     Attributes
     ----------
-    specimen :
-        The specimen from which to render images.
+    ensemble :
+        The ensemble from which to render images.
     scattering :
         The scattering model.
     instrument :
@@ -64,7 +64,7 @@ class ImagePipeline(Module):
         The pixel size of the image.
     """
 
-    specimen: Union[Specimen, Assembly] = field()
+    ensemble: Union[Ensemble, Assembly] = field()
     scattering: ScatteringModel = field()
     instrument: Instrument = field(default_factory=Instrument)
     solvent: Ice = field(default_factory=NullIce)
@@ -95,13 +95,13 @@ class ImagePipeline(Module):
             If ``True``, view the cropped, masked,
             and filtered image.
         """
-        if isinstance(self.specimen, Specimen):
-            image = self._render_specimen()
-        elif isinstance(self.specimen, Assembly):
+        if isinstance(self.ensemble, Ensemble):
+            image = self._render_ensemble()
+        elif isinstance(self.ensemble, Assembly):
             image = self._render_assembly()
         else:
             raise ValueError(
-                "The specimen must an instance of a Specimen or an Assembly."
+                "The ensemble must an instance of an Ensemble or an Assembly."
             )
 
         if view:
@@ -133,7 +133,7 @@ class ImagePipeline(Module):
             key = jnp.expand_dims(key, axis=0)
         # Frequencies
         freqs = self.manager.padded_freqs / self.pixel_size
-        # The image of the specimen
+        # The image of the specimen drawn from the ensemble
         image = self.render(view=False)
         if not isinstance(self.solvent, NullIce):
             # The image of the solvent
@@ -185,18 +185,18 @@ class ImagePipeline(Module):
             image = self.mask(image)
         return image
 
-    def _render_specimen(self, get_real: bool = True) -> Image:
+    def _render_ensemble(self, get_real: bool = True) -> Image:
         """Render an image of a Specimen."""
         resolution = self.scattering.resolution
         freqs = self.manager.padded_freqs / resolution
         # Draw the electron density at a particular conformation and pose
-        density = self.specimen.density_from_ensemble
+        density = self.ensemble.realization
         # Compute the scattering image in fourier space
         image = self.scattering.scatter(density)
         # Normalize to cisTEM conventions
         image = self.manager.normalize_to_cistem(image, is_real=False)
         # Apply translation
-        image *= self.specimen.pose.shifts(freqs)
+        image *= self.ensemble.pose.shifts(freqs)
         # Measure the image with the instrument
         image = self._measure_with_instrument(image, get_real=get_real)
 
@@ -205,7 +205,7 @@ class ImagePipeline(Module):
     def _render_assembly(self, get_real: bool = True) -> Image:
         """Render an image of an Assembly from its subunits."""
         # Get the subunits
-        subunits = self.specimen.subunits
+        subunits = self.ensemble.subunits
         # Split up computation with two different instruments
         optics_instrument = eqx.tree_at(
             lambda ins: (ins.exposure, ins.detector),
@@ -217,16 +217,16 @@ class ImagePipeline(Module):
         )
         # Create an ImagePipeline for the subunits
         subunit_pipeline = eqx.tree_at(
-            lambda m: (m.specimen, m.instrument),
+            lambda m: (m.ensemble, m.instrument),
             self,
             (subunits, optics_instrument),
         )
         # Setup vmap over poses and conformations
-        if self.specimen.conformation is None:
-            where_vmap = lambda m: (m.specimen.pose,)
+        if self.ensemble.conformation is None:
+            where_vmap = lambda m: (m.ensemble.pose,)
             n_vmap = 1
         else:
-            where_vmap = lambda m: (m.specimen.pose, m.specimen.conformation)
+            where_vmap = lambda m: (m.ensemble.pose, m.ensemble.conformation)
             n_vmap = 2
         to_vmap = eqx.tree_at(
             where_vmap,
@@ -236,7 +236,7 @@ class ImagePipeline(Module):
         vmap, novmap = eqx.partition(subunit_pipeline, to_vmap)
         # Compute all subunit images and sum
         compute_stack = jax.vmap(
-            lambda vmap, novmap: eqx.combine(vmap, novmap)._render_specimen(
+            lambda vmap, novmap: eqx.combine(vmap, novmap)._render_ensemble(
                 get_real=False
             ),
             in_axes=(0, None),
@@ -265,7 +265,7 @@ class ImagePipeline(Module):
         resolution = self.scattering.resolution
         freqs = self.manager.padded_freqs / resolution
         # Compute and apply CTF
-        ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
+        ctf = self.instrument.optics(freqs, pose=self.ensemble.pose)
         image = ctf * image
         # Apply the electron exposure model
         scaling, offset = self.instrument.exposure.scaling(

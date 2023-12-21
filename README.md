@@ -46,19 +46,19 @@ import jax.numpy as jnp
 import cryojax.simulator as cs
 
 template = "example.mrc"
-manager = cs.ImageManager(shape=(320, 320))
-scattering = cs.FourierSliceExtract(manager, resolution=1.1)
 density = cs.VoxelGrid.from_file(template)
+manager = cs.ImageManager(shape=(320, 320))
+scattering = cs.FourierSliceExtract(manager, resolution=density.voxel_size)
 ```
 
-Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. We can now intstantiate the biological `Specimen`.
+Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. We can now intstantiate the `Ensemble` of biological specimen.
 
 ```python
 pose = cs.EulerPose(view_phi=0.0, view_theta=0.0, view_psi=0.0)
-specimen = cs.Specimen(density=density, pose=pose)
+ensemble = cs.Ensemble(density=density, pose=pose)
 ```
 
-This is a container for the parameters and metadata stored in the electron density, the model for the `Pose`, and additional parameters such as the rasterization `resolution`.
+This is a container for the parameters and metadata stored in the electron density and the model for the `Pose`.
 
 Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
@@ -72,7 +72,7 @@ Then, the `ImagePipeline` is instantiated.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
-model = cs.ImagePipeline(scattering=scattering, specimen=specimen, instrument=instrument)
+model = cs.ImagePipeline(scattering=scattering, ensemble=ensemble, instrument=instrument)
 image = model.sample(key)
 ```
 
@@ -90,7 +90,7 @@ filters = cs.LowpassFilter(manager, cutoff=1.0)  # Cutoff modes above Nyquist fr
           * cs.WhiteningFilter(manager, micrograph=micrograph)
 masks = cs.CircularMask(manager, radius=1.0)     # Cutoff pixels above radius equal to (half) image size
 model = cs.ImagePipeline(
-    scattering=scattering, specimen=specimen, instrument=instrument, filter=filter, mask=mask
+    scattering=scattering, ensemble=ensemble, instrument=instrument, filter=filter, mask=mask
     )
 image = model.sample(key)
 ```
@@ -98,7 +98,7 @@ image = model.sample(key)
 `cryojax` also defines a library of `Distribution`s, which inherit from the `ImagePipeline`. If a `GaussianImage` is instantiated, it is equipped with a the log likelihood function.
 
 ```python
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, instrument=instrument)
+model = cs.GaussianImage(scattering=scattering, ensemble=ensemble, instrument=instrument)
 log_likelihood = model.log_probability(observed)
 ```
 
@@ -119,7 +119,7 @@ def update_model(model, params):
     """
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
-    where = lambda model: (model.specimen.pose.view_phi, model.instrument.optics.defocus_u, model.instrument.detector.pixel_size)
+    where = lambda model: (model.ensemble.pose.view_phi, model.instrument.optics.defocus_u, model.instrument.detector.pixel_size)
     updated_model = eqx.tree_at(where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"]))
     return updated_model
 ```
