@@ -86,9 +86,9 @@ Imaging models also accept a series of `Filter`s and `Mask`s. For example, one c
 
 ```python
 micrograph = ...  # A micrograph used for whitening
-filters = cs.LowpassFilter(manager, cutoff=1.0)  # Cutoff modes above Nyquist frequency
+filter = cs.LowpassFilter(manager, cutoff=1.0)  # Cutoff modes above Nyquist frequency
           * cs.WhiteningFilter(manager, micrograph=micrograph)
-masks = cs.CircularMask(manager, radius=1.0)     # Cutoff pixels above radius equal to (half) image size
+mask = cs.CircularMask(manager, radius=1.0)     # Cutoff pixels above radius equal to (half) image size
 model = cs.ImagePipeline(
     scattering=scattering, ensemble=ensemble, instrument=instrument, filter=filter, mask=mask
     )
@@ -98,6 +98,7 @@ image = model.sample(key)
 `cryojax` also defines a library of `Distribution`s, which inherit from the `ImagePipeline`. If a `GaussianImage` is instantiated, it is equipped with a the log likelihood function.
 
 ```python
+observed = ...
 model = cs.GaussianImage(scattering=scattering, ensemble=ensemble, instrument=instrument)
 log_likelihood = model.log_probability(observed)
 ```
