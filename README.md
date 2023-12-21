@@ -38,7 +38,7 @@ The [jax-finufft](https://github.com/dfm/jax-finufft) package is an optional dep
 Please note that this library is currently experimental and the API is subject to change! The following is a basic workflow to generate an image with a gaussian white noise model.
 
 First, instantiate the scattering model ("scattering") and its respective representation
-of an electron density ("specimen").
+of an electron density ("density").
 
 ```python
 import jax
