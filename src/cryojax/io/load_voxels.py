@@ -9,12 +9,11 @@ __all__ = ["load_mrc", "load_voxel_cloud", "load_fourier_grid"]
 import mrcfile, os
 import numpy as np
 import jax.numpy as jnp
-from jaxtyping import Array
 from typing import Any
 from ..utils import fftn, pad, make_frequencies, flatten_and_coordinatize
 
 
-def load_voxel_cloud(filename: str, **kwargs: Any) -> dict[str, Array]:
+def load_voxel_cloud(filename: str, **kwargs: Any) -> dict[str, Any]:
     """
     Read a 3D template on a cartesian grid
     to a point cloud.
@@ -50,7 +49,9 @@ def load_voxel_cloud(filename: str, **kwargs: Any) -> dict[str, Array]:
         template, voxel_size, **kwargs
     )
     # Gather fields to instantiate an ElectronCloud
-    cloud = dict(weights=density, coordinates=coordinates)
+    cloud = dict(
+        weights=density, coordinates=coordinates, voxel_size=voxel_size
+    )
 
     return cloud
 
@@ -86,7 +87,9 @@ def load_fourier_grid(filename: str, pad_scale: float = 1.0) -> dict[str, Any]:
     # Get central z slice
     coordinates = jnp.expand_dims(coordinates[:, :, 0, :], axis=2)
     # Gather fields to instantiate an ElectronGrid
-    voxels = dict(weights=density, coordinates=coordinates)
+    voxels = dict(
+        weights=density, coordinates=coordinates, voxel_size=voxel_size
+    )
 
     return voxels
 
@@ -132,4 +135,4 @@ def load_mrc(filename: str) -> tuple[np.ndarray, float]:
         voxel_size == voxel_size[0]
     ), "Voxel size must be same in all dimensions."
 
-    return data, voxel_size[0]
+    return data, float(voxel_size[0])
