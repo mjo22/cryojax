@@ -16,7 +16,7 @@ from functools import cached_property
 import jax.numpy as jnp
 import equinox as eqx
 
-from ..specimen import Specimen
+from ..ensemble import Ensemble
 from ..pose import Pose, EulerPose, MatrixPose
 
 from ...core import field, Module
@@ -57,13 +57,13 @@ class Assembly(Module):
         The conformation of each `subunit`.
     """
 
-    subunit: Specimen = field()
+    subunit: Ensemble = field()
     pose: Pose = field()
     conformation: Optional[_Conformations] = field(default=None)
 
     def __init__(
         self,
-        subunit: Specimen,
+        subunit: Ensemble,
         *,
         pose: Optional[Pose] = None,
         conformation: Optional[_Conformations] = None,
@@ -117,7 +117,7 @@ class Assembly(Module):
         )
 
     @cached_property
-    def subunits(self) -> Specimen:
+    def subunits(self) -> Ensemble:
         """Draw a realization of all of the subunits in the lab frame."""
         # Compute a list of subunits, configured at the correct conformations
         if self.conformation is None:

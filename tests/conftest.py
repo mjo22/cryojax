@@ -62,8 +62,8 @@ def instrument(resolution):
 
 
 @pytest.fixture
-def specimen(density, resolution):
-    return cs.Specimen(
+def ensemble(density):
+    return cs.Ensemble(
         density=density,
         pose=cs.EulerPose(degrees=False),
     )
@@ -75,10 +75,10 @@ def solvent():
 
 
 @pytest.fixture
-def noisy_model(scattering, specimen, instrument, solvent, filters, masks):
+def noisy_model(scattering, ensemble, instrument, solvent, filters, masks):
     return cs.ImagePipeline(
         scattering=scattering,
-        specimen=specimen,
+        ensemble=ensemble,
         instrument=instrument,
         solvent=solvent,
         filter=filters,
@@ -87,10 +87,10 @@ def noisy_model(scattering, specimen, instrument, solvent, filters, masks):
 
 
 @pytest.fixture
-def maskless_model(scattering, specimen, instrument, solvent, filters):
+def maskless_model(scattering, ensemble, instrument, solvent, filters):
     return cs.ImagePipeline(
         scattering=scattering,
-        specimen=specimen,
+        ensemble=ensemble,
         instrument=instrument,
         solvent=solvent,
         filter=filters,
@@ -104,11 +104,11 @@ def test_image(noisy_model):
 
 @pytest.fixture
 def likelihood_model(
-    scattering, specimen, instrument, solvent, filters, masks
+    scattering, ensemble, instrument, solvent, filters, masks
 ):
     return cs.GaussianImage(
         scattering=scattering,
-        specimen=specimen,
+        ensemble=ensemble,
         instrument=instrument,
         solvent=solvent,
         filter=filters,

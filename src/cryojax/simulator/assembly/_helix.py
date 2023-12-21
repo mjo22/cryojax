@@ -13,7 +13,7 @@ from functools import cached_property
 import jax
 import jax.numpy as jnp
 
-from ..specimen import Specimen
+from ..ensemble import Ensemble
 from ._assembly import Assembly, _Positions, _Rotations
 
 from ...core import field
@@ -71,7 +71,7 @@ class Helix(Assembly):
 
     def __init__(
         self,
-        subunit: Specimen,
+        subunit: Ensemble,
         rise: Union[Real_, RealVector],
         twist: Union[Real_, RealVector],
         *,

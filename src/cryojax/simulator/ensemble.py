@@ -4,7 +4,7 @@ Abstractions of a biological specimen.
 
 from __future__ import annotations
 
-__all__ = ["Specimen"]
+__all__ = ["Ensemble"]
 
 from typing import Optional
 from functools import cached_property
@@ -17,9 +17,9 @@ from ..core import field, Module
 from ..typing import Int_
 
 
-class Specimen(Module):
+class Ensemble(Module):
     """
-    Abstraction of a biological specimen.
+    Abstraction of an ensemble of biological specimen.
 
     Attributes
     ----------
@@ -40,7 +40,7 @@ class Specimen(Module):
     conformation: Optional[Int_] = field(default=None)
 
     @cached_property
-    def density_from_ensemble(self) -> ElectronDensity:
+    def realization(self) -> ElectronDensity:
         """Get the electron density at the configured pose and conformation."""
         if self.conformation is None:
             density = self.density

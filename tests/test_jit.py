@@ -24,17 +24,17 @@ def test_jit(instrument, scattering, weights_and_coordinates, test_image):
 
     key = jr.split(jr.PRNGKey(0))
 
-    def build_specimen(voxels):
+    def build_ensemble(voxels):
         density = cs.VoxelGrid(
             weights=voxels["weights"],
             coordinates=voxels["coordinates"],
         )
-        return cs.Specimen(density=density)
+        return cs.Ensemble(density=density)
 
     def build_model(voxels):
-        specimen = build_specimen(voxels)
+        ensemble = build_ensemble(voxels)
         return cs.GaussianImage(
-            specimen=specimen,
+            ensemble=ensemble,
             scattering=scattering,
             instrument=instrument,
         )
@@ -81,7 +81,7 @@ def test_equinox_jit(likelihood_model, test_image):
 
 def test_equinox_value_and_grad(likelihood_model, test_image):
     def build_model(model, params):
-        where = lambda m: m.specimen.pose.offset_z
+        where = lambda m: m.ensemble.pose.offset_z
         return eqx.tree_at(where, model, params["offset_z"])
 
     @jax.jit

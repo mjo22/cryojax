@@ -108,6 +108,6 @@ class GaussianImage(Distribution):
             variance = 0.0
         # Variance from ice
         if not isinstance(self.solvent, NullIce):
-            ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
+            ctf = self.instrument.optics(freqs, pose=self.ensemble.pose)
             variance += ctf**2 * self.solvent.variance(freqs)
         return variance
