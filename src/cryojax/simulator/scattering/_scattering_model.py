@@ -9,8 +9,6 @@ __all__ = ["ScatteringModel"]
 
 from abc import abstractmethod
 
-import jax.numpy as jnp
-
 from ..density import ElectronDensity
 from ..manager import ImageManager
 
@@ -30,6 +28,9 @@ class ScatteringModel(Module):
     manager:
         Handles image configuration and
         utility routines.
+    resolution :
+        Rasterization resolution. This is in
+        dimensions of length.
 
     Methods
     -------
@@ -38,11 +39,10 @@ class ScatteringModel(Module):
     """
 
     manager: ImageManager = field()
+    resolution: Real_ = field()
 
     @abstractmethod
-    def scatter(
-        self, density: ElectronDensity, resolution: Real_
-    ) -> ComplexImage:
+    def scatter(self, density: ElectronDensity) -> ComplexImage:
         """
         Compute the scattered wave of the electron
         density in the exit plane.
@@ -51,7 +51,5 @@ class ScatteringModel(Module):
         ---------
         density :
             The electron density representation.
-        resolution :
-            The rasterization resolution.
         """
         raise NotImplementedError

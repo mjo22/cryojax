@@ -16,8 +16,13 @@ def manager():
 
 
 @pytest.fixture
-def scattering(manager):
-    return cs.FourierSliceExtract(manager)
+def resolution():
+    return 5.32
+
+
+@pytest.fixture
+def scattering(manager, resolution):
+    return cs.FourierSliceExtract(manager, resolution=resolution)
 
 
 @pytest.fixture
@@ -34,11 +39,6 @@ def weights_and_coordinates():
         os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
     )
     return load_fourier_grid(filename)
-
-
-@pytest.fixture
-def resolution():
-    return 5.32
 
 
 @pytest.fixture
@@ -65,7 +65,6 @@ def instrument(resolution):
 def specimen(density, resolution):
     return cs.Specimen(
         density=density,
-        resolution=resolution,
         pose=cs.EulerPose(degrees=False),
     )
 

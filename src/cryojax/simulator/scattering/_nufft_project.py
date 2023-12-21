@@ -18,7 +18,13 @@ import numpy as np
 from ..density import VoxelCloud, AtomCloud
 from ._scattering_model import ScatteringModel
 from ...core import field
-from ...typing import ComplexImage, RealCloud, CloudCoords2D, CloudCoords3D
+from ...typing import (
+    Real_,
+    ComplexImage,
+    RealCloud,
+    CloudCoords2D,
+    CloudCoords3D,
+)
 from ...utils import nufft
 
 
@@ -36,15 +42,13 @@ class NufftProject(ScatteringModel):
 
     eps: float = field(static=True, default=1e-6)
 
-    def scatter(
-        self, density: Union[VoxelCloud, AtomCloud], resolution: float
-    ) -> ComplexImage:
+    def scatter(self, density: Union[VoxelCloud, AtomCloud]) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(density, VoxelCloud):
             fourier_projection = project_with_nufft(
                 density.weights,
                 density.coordinates,
-                resolution,
+                self.resolution,
                 self.manager.padded_shape,
                 eps=self.eps,
             )
@@ -54,7 +58,7 @@ class NufftProject(ScatteringModel):
                 density.coordinates,
                 density.variances,
                 density.identity,
-                resolution,
+                self.resolution,
                 self.manager.padded_shape,
                 eps=self.eps,
             )
@@ -70,7 +74,7 @@ def project_atoms_with_nufft(
     coordinates,
     variances,
     identity,
-    resolution: float,
+    resolution: Real_,
     shape: tuple[int, int],
     **kwargs: Any,
 ) -> ComplexImage:
@@ -94,7 +98,7 @@ def project_atoms_with_nufft(
 def project_with_nufft(
     weights: RealCloud,
     coordinates: Union[CloudCoords2D, CloudCoords3D],
-    resolution: float,
+    resolution: Real_,
     shape: tuple[int, int],
     **kwargs: Any,
 ) -> ComplexImage:

@@ -13,9 +13,7 @@ from functools import partial
 config.update("jax_enable_x64", True)
 
 
-def test_jit(
-    instrument, scattering, weights_and_coordinates, resolution, test_image
-):
+def test_jit(instrument, scattering, weights_and_coordinates, test_image):
     """
     Test the jit pipeline, without equinox. This requires building
     the ElectronDensity with the voxel density as input. Otherwise,
@@ -31,7 +29,7 @@ def test_jit(
             weights=voxels["weights"],
             coordinates=voxels["coordinates"],
         )
-        return cs.Specimen(density=density, resolution=resolution)
+        return cs.Specimen(density=density)
 
     def build_model(voxels):
         specimen = build_specimen(voxels)

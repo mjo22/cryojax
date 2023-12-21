@@ -48,7 +48,7 @@ def scale_and_translate(
     image = jnp.asarray(image)
     spatial_dims = (0, 1)
     N1, N2 = image.shape
-    translation += (1 - scale) * jnp.array([N2 // 2, N1 // 2], dtype=float)
+    translation += (1 - scale) * jnp.array([N1 // 2, N2 // 2], dtype=float)
     return _scale_and_translate(
         image, shape, spatial_dims, scale, translation, method, **kwargs
     )
