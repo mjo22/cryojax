@@ -67,7 +67,7 @@ class Voxels(ElectronDensity):
         Stack a list of electron densities along the leading
         axis of a single electron density.
         """
-        if not all([type(stack[0]) == type(density) for density in stack]):
+        if not all([cls == type(density) for density in stack]):
             raise TypeError(
                 "Electron density stack should all be of the same type."
             )
@@ -87,20 +87,22 @@ class Voxels(ElectronDensity):
         )
 
     def __getitem__(self, idx: int) -> "Voxels":
-        cls = type(self)
-        return cls(
-            weights=self.weights[idx],
-            coordinates=self.coordinates[idx],
-            is_real=self.is_real,
-            is_stacked=False,
+        if self.is_stacked:
+            cls = type(self)
+            return cls(
+                weights=self.weights[idx],
+                coordinates=self.coordinates[idx],
+                is_real=self.is_real,
+                is_stacked=False,
         )
+        else:
+            return self
 
     def __len__(self) -> int:
-        if not self.is_stacked:
-            raise ValueError(
-                "Attempted to get the length of a non-stacked electron density."
-            )
-        return self.weights.shape[0]
+        if self.is_stacked:
+            return self.weights.shape[0]
+        else:
+            return 1
 
 
 class VoxelGrid(Voxels):
@@ -120,7 +122,7 @@ class VoxelGrid(Voxels):
     weights: _CubicVolume = field()
     coordinates: _VolumeSliceCoords = field()
 
-    is_real: bool = field(default=False, static=True)
+    is_real: bool = field(default=False, static=True, kw_only=True)
 
     def __check_init__(self):
         if self.is_real is True:
@@ -170,7 +172,7 @@ class VoxelCloud(Voxels):
     weights: RealCloud = field()
     coordinates: CloudCoords3D = field()
 
-    is_real: bool = field(default=True, static=True)
+    is_real: bool = field(default=True, static=True, kw_only=True)
 
     def __check_init__(self):
         if self.is_real is False:
