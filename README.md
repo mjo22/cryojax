@@ -47,7 +47,7 @@ import cryojax.simulator as cs
 
 template = "example.mrc"
 manager = cs.ImageManager(shape=(320, 320))
-scattering = cs.FourierSliceExtract(manager)
+scattering = cs.FourierSliceExtract(manager, resolution=1.1)
 density = cs.VoxelGrid.from_file(template)
 ```
 
@@ -55,7 +55,7 @@ Here, `template` is a 3D electron density map in MRC format. This could be taken
 
 ```python
 pose = cs.EulerPose(view_phi=0.0, view_theta=0.0, view_psi=0.0)
-specimen = cs.Specimen(density=density, pose=pose, resolution=1.1)
+specimen = cs.Specimen(density=density, pose=pose)
 ```
 
 This is a container for the parameters and metadata stored in the electron density, the model for the `Pose`, and additional parameters such as the rasterization `resolution`.

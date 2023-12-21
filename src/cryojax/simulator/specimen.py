@@ -7,13 +7,14 @@ from __future__ import annotations
 __all__ = ["Specimen"]
 
 from typing import Optional
+from functools import cached_property
 
 import jax
 
 from .density import ElectronDensity
 from .pose import Pose, EulerPose
 from ..core import field, Module
-from ..typing import Real_, Int_
+from ..typing import Int_
 
 
 class Specimen(Module):
@@ -25,9 +26,6 @@ class Specimen(Module):
     density :
         The electron density representation of the
         specimen.
-    resolution :
-        Rasterization resolution. This is in
-        dimensions of length.
     conformation :
         The conformational variable at which to evaulate
         the electron density. Use this variable when
@@ -38,11 +36,11 @@ class Specimen(Module):
     """
 
     density: ElectronDensity = field()
-    resolution: Real_ = field()
     pose: Pose = field(default_factory=EulerPose)
     conformation: Optional[Int_] = field(default=None)
 
-    def get_density(self) -> ElectronDensity:
+    @cached_property
+    def density_from_ensemble(self) -> ElectronDensity:
         """Get the electron density at the configured pose and conformation."""
         if self.conformation is None:
             density = self.density

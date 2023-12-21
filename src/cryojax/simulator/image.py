@@ -83,7 +83,7 @@ class ImagePipeline(Module):
         if self.instrument.detector.pixel_size is not None:
             return self.instrument.detector.pixel_size
         else:
-            return self.specimen.resolution
+            return self.scattering.resolution
 
     def render(self, view: bool = True) -> RealImage:
         """
@@ -185,24 +185,24 @@ class ImagePipeline(Module):
             image = self.mask(image)
         return image
 
-    def _render_specimen(self) -> RealImage:
+    def _render_specimen(self, get_real: bool = True) -> Image:
         """Render an image of a Specimen."""
-        resolution = self.specimen.resolution
+        resolution = self.scattering.resolution
         freqs = self.manager.padded_freqs / resolution
         # Draw the electron density at a particular conformation and pose
-        density = self.specimen.get_density()
+        density = self.specimen.density_from_ensemble
         # Compute the scattering image in fourier space
-        image = self.scattering.scatter(density, resolution=resolution)
+        image = self.scattering.scatter(density)
         # Normalize to cisTEM conventions
         image = self.manager.normalize_to_cistem(image, is_real=False)
         # Apply translation
         image *= self.specimen.pose.shifts(freqs)
         # Measure the image with the instrument
-        image = self._measure_with_instrument(image)
+        image = self._measure_with_instrument(image, get_real=get_real)
 
         return image
 
-    def _render_assembly(self) -> RealImage:
+    def _render_assembly(self, get_real: bool = True) -> Image:
         """Render an image of an Assembly from its subunits."""
         # Get the subunits
         subunits = self.specimen.subunits
@@ -236,7 +236,9 @@ class ImagePipeline(Module):
         vmap, novmap = eqx.partition(subunit_pipeline, to_vmap)
         # Compute all subunit images and sum
         compute_stack = jax.vmap(
-            lambda vmap, novmap: eqx.combine(vmap, novmap)._render_specimen(),
+            lambda vmap, novmap: eqx.combine(vmap, novmap)._render_specimen(
+                get_real=False
+            ),
             in_axes=(0, None),
         )
         compute_stack_and_sum = jax.jit(
@@ -245,18 +247,22 @@ class ImagePipeline(Module):
                 axis=0,
             )
         )
-        image = fftn(compute_stack_and_sum(vmap, novmap))
+        image = compute_stack_and_sum(vmap, novmap)
         # Finally, measure the image without applying the CTF
         no_optics_pipeline = eqx.tree_at(
             lambda m: m.instrument, self, no_optics_instrument
         )
-        image = no_optics_pipeline._measure_with_instrument(image)
+        image = no_optics_pipeline._measure_with_instrument(
+            image, get_real=get_real
+        )
 
         return image
 
-    def _measure_with_instrument(self, image: ComplexImage) -> RealImage:
+    def _measure_with_instrument(
+        self, image: ComplexImage, get_real: bool = True
+    ) -> Image:
         """Measure an image with the instrument"""
-        resolution = self.specimen.resolution
+        resolution = self.scattering.resolution
         freqs = self.manager.padded_freqs / resolution
         # Compute and apply CTF
         ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
@@ -266,9 +272,16 @@ class ImagePipeline(Module):
             freqs
         ), self.instrument.exposure.offset(freqs)
         image = scaling * image + offset
-        # Measure at the detector pixel size
-        image = self.instrument.detector.pixelize(
-            ifftn(image).real, resolution=resolution
-        )
+        # Add some detector logic to avoid unecessary FFTs
+        if not isinstance(self.instrument.detector, NullDetector):
+            # Measure at the detector pixel size
+            image = self.instrument.detector.pixelize(
+                ifftn(image).real, resolution=resolution
+            )
+            if not get_real:
+                image = fftn(image)
+        else:
+            if get_real:
+                image = ifftn(image).real
 
         return image

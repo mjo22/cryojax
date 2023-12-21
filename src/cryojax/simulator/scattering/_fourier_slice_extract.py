@@ -14,6 +14,7 @@ from ._scattering_model import ScatteringModel
 from ..density import VoxelGrid
 from ...core import field
 from ...typing import (
+    Real_,
     ComplexImage,
     ComplexVolume,
     VolumeCoords,
@@ -38,7 +39,6 @@ class FourierSliceExtract(ScatteringModel):
     def scatter(
         self,
         density: VoxelGrid,
-        resolution: float,
     ) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
@@ -48,7 +48,7 @@ class FourierSliceExtract(ScatteringModel):
         fourier_projection = extract_slice(
             density.weights,
             density.coordinates,
-            resolution,
+            self.resolution,
             order=self.order,
             mode=self.mode,
             cval=self.cval,
@@ -64,7 +64,7 @@ class FourierSliceExtract(ScatteringModel):
 def extract_slice(
     weights: ComplexVolume,
     coordinates: VolumeCoords,
-    resolution: float,
+    resolution: Real_,
     **kwargs: Any,
 ) -> ComplexImage:
     """

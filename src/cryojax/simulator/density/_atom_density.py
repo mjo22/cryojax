@@ -64,5 +64,7 @@ class AtomCloud(ElectronDensity):
         raise NotImplementedError
 
     def __getitem__(self, key: int) -> "AtomCloud":
-        """Get a particular electron density in the electron density stack."""
+        raise NotImplementedError
+
+    def __len__(self) -> int:
         raise NotImplementedError
