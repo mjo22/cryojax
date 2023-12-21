@@ -48,7 +48,7 @@ class IndependentAtomScattering(ScatteringModel):
         # time.
         assert self.manager.padded_shape[0] == self.manager.padded_shape[1]
         pixel_grid = _build_pixel_grid(
-            self.manager.padded_shape[0], self.resolution
+            self.manager.padded_shape[0], self.pixel_size
         )
         sq_distance = _evaluate_coord_to_grid_sq_distances(
             density.coordinates, pixel_grid

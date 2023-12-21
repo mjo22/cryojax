@@ -48,7 +48,7 @@ class NufftProject(ScatteringModel):
             fourier_projection = project_with_nufft(
                 density.weights,
                 density.coordinates,
-                self.resolution,
+                self.pixel_size,
                 self.manager.padded_shape,
                 eps=self.eps,
             )
@@ -58,7 +58,7 @@ class NufftProject(ScatteringModel):
                 density.coordinates,
                 density.variances,
                 density.identity,
-                self.resolution,
+                self.pixel_size,
                 self.manager.padded_shape,
                 eps=self.eps,
             )
@@ -74,7 +74,7 @@ def project_atoms_with_nufft(
     coordinates,
     variances,
     identity,
-    resolution: Real_,
+    pixel_size: Real_,
     shape: tuple[int, int],
     **kwargs: Any,
 ) -> ComplexImage:
@@ -88,7 +88,7 @@ def project_atoms_with_nufft(
 
         # Build an
         atom_i_image = project_with_nufft(
-            weights_i, coords_i, resolution, shape, **kwargs
+            weights_i, coords_i, pixel_size, shape, **kwargs
         )
 
         # img += atom_i_image * kernel_i
@@ -98,7 +98,7 @@ def project_atoms_with_nufft(
 def project_with_nufft(
     weights: RealCloud,
     coordinates: Union[CloudCoords2D, CloudCoords3D],
-    resolution: Real_,
+    pixel_size: Real_,
     shape: tuple[int, int],
     **kwargs: Any,
 ) -> ComplexImage:
@@ -114,8 +114,8 @@ def project_with_nufft(
         Density point cloud.
     coordinates : shape `(N, 3)`
         Coordinate system of point cloud.
-    resolution :
-        The rasterization resolution.
+    pixel_size :
+        The rasterization pixel_size.
     shape :
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
@@ -130,7 +130,7 @@ def project_with_nufft(
     """
     weights, coordinates = jnp.asarray(weights), jnp.asarray(coordinates)
     M1, M2 = shape
-    image_size = jnp.array(np.array([M1, M2]) * resolution)
+    image_size = jnp.array(np.array([M1, M2]) * pixel_size)
     coordinates = jnp.flip(coordinates[:, :2], axis=-1)
     fourier_projection = nufft(
         weights, coordinates, image_size, shape, **kwargs
@@ -152,7 +152,7 @@ class IndependentAtomScatteringNufft(NufftScattering):
         self,
         density: RealCloud,
         coordinates: CloudCoords,
-        resolution: float,
+        pixel_size: float,
         identity: IntCloud,
         atom_density_kernel,  # WHAT SHOULD THE TYPE BE HERE?
     ) -> ComplexImage:
@@ -175,7 +175,7 @@ class IndependentAtomScatteringNufft(NufftScattering):
             atom_i_image = project_with_nufft(
                 density_i,
                 coords_i,
-                resolution,
+                pixel_size,
                 self.padded_shape,
                 # atom_density_kernel[atom_type_i],
             )

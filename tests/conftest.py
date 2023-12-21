@@ -16,13 +16,13 @@ def manager():
 
 
 @pytest.fixture
-def resolution():
+def pixel_size():
     return 5.32
 
 
 @pytest.fixture
-def scattering(manager, resolution):
-    return cs.FourierSliceExtract(manager, resolution=resolution)
+def scattering(manager, pixel_size):
+    return cs.FourierSliceExtract(manager, pixel_size=pixel_size)
 
 
 @pytest.fixture
@@ -53,11 +53,11 @@ def masks(manager):
 
 
 @pytest.fixture
-def instrument(resolution):
+def instrument(pixel_size):
     return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1e5, mu=1.0),
-        detector=cs.GaussianDetector(pixel_size=resolution),
+        detector=cs.GaussianDetector(pixel_size=pixel_size),
     )
 
 

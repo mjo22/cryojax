@@ -83,7 +83,7 @@ class ImagePipeline(Module):
         if self.instrument.detector.pixel_size is not None:
             return self.instrument.detector.pixel_size
         else:
-            return self.scattering.resolution
+            return self.scattering.pixel_size
 
     def render(self, view: bool = True) -> RealImage:
         """
@@ -187,8 +187,8 @@ class ImagePipeline(Module):
 
     def _render_ensemble(self, get_real: bool = True) -> Image:
         """Render an image of a Specimen."""
-        resolution = self.scattering.resolution
-        freqs = self.manager.padded_freqs / resolution
+        pixel_size = self.scattering.pixel_size
+        freqs = self.manager.padded_freqs / pixel_size
         # Draw the electron density at a particular conformation and pose
         density = self.ensemble.realization
         # Compute the scattering image in fourier space
@@ -262,8 +262,8 @@ class ImagePipeline(Module):
         self, image: ComplexImage, get_real: bool = True
     ) -> Image:
         """Measure an image with the instrument"""
-        resolution = self.scattering.resolution
-        freqs = self.manager.padded_freqs / resolution
+        pixel_size = self.scattering.pixel_size
+        freqs = self.manager.padded_freqs / pixel_size
         # Compute and apply CTF
         ctf = self.instrument.optics(freqs, pose=self.ensemble.pose)
         image = ctf * image
@@ -276,7 +276,7 @@ class ImagePipeline(Module):
         if not isinstance(self.instrument.detector, NullDetector):
             # Measure at the detector pixel size
             image = self.instrument.detector.pixelize(
-                ifftn(image).real, resolution=resolution
+                ifftn(image).real, resolution=pixel_size
             )
             if not get_real:
                 image = fftn(image)

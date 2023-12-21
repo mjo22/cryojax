@@ -48,7 +48,7 @@ import cryojax.simulator as cs
 template = "example.mrc"
 density = cs.VoxelGrid.from_file(template)
 manager = cs.ImageManager(shape=(320, 320))
-scattering = cs.FourierSliceExtract(manager, resolution=density.voxel_size)
+scattering = cs.FourierSliceExtract(manager, pixel_size=density.voxel_size)
 ```
 
 Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. We can now intstantiate the `Ensemble` of biological specimen.

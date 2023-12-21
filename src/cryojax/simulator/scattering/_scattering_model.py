@@ -28,8 +28,8 @@ class ScatteringModel(Module):
     manager:
         Handles image configuration and
         utility routines.
-    resolution :
-        Rasterization resolution. This is in
+    pixel_size :
+        Rasterization pixel size. This is in
         dimensions of length.
 
     Methods
@@ -39,7 +39,7 @@ class ScatteringModel(Module):
     """
 
     manager: ImageManager = field()
-    resolution: Real_ = field()
+    pixel_size: Real_ = field()
 
     @abstractmethod
     def scatter(self, density: ElectronDensity) -> ComplexImage:
