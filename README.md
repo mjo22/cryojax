@@ -78,7 +78,8 @@ detector = cs.GaussianDetector(pixel_size=new_pixel_size, variance=cs.Constant(1
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
-Here, the `Detector` has an optional pixel size that interpolates the rasterized pixel size to a new one. This is meant to correct for small mismeasurements in experimentally reported pixel size due to microscope alignment imperfections. Finally, we can instantiate the `ImagePipeline`.
+Here, the `Detector` has an optional pixel size that interpolates the rasterized pixel size to a new one. This is meant to correct for small mismeasurements in experimentally reported pixel size due to microscope alignment imperfections. The `CTFOptics` has all parameters used in CTFFIND4, which take their default values if not
+explicitly configured here. Finally, we can instantiate the `ImagePipeline`.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
