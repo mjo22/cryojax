@@ -262,20 +262,21 @@ class ImagePipeline(Module):
         self, image: ComplexImage, get_real: bool = True
     ) -> Image:
         """Measure an image with the instrument"""
+        instrument = self.instrument
         current_pixel_size = self.scattering.pixel_size
         freqs = self.manager.padded_freqs / current_pixel_size
         # Compute and apply CTF
-        ctf = self.instrument.optics(freqs, pose=self.ensemble.pose)
+        ctf = instrument.optics(freqs, pose=self.ensemble.pose)
         image = ctf * image
         # Apply the electron exposure model
-        scaling, offset = self.instrument.exposure.scaling(
+        scaling, offset = instrument.exposure.scaling(
             freqs
-        ), self.instrument.exposure.offset(freqs)
+        ), instrument.exposure.offset(freqs)
         image = scaling * image + offset
         # Add some detector logic to avoid unecessary FFTs
-        if self.instrument.detector.pixel_size is not None:
+        if instrument.detector.pixel_size is not None:
             # Measure at the detector pixel size
-            image = self.instrument.detector.measure_at_pixel_size(
+            image = instrument.detector.measure_at_pixel_size(
                 ifftn(image).real, current_pixel_size
             )
             if not get_real:
