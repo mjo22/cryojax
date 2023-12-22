@@ -51,14 +51,22 @@ manager = cs.ImageManager(shape=(320, 320))
 scattering = cs.FourierSliceExtract(manager, pixel_size=density.voxel_size)
 ```
 
-Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. We can now intstantiate the `Ensemble` of biological specimen.
+Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now intstantiate the `Ensemble` of biological specimen.
 
 ```python
 pose = cs.EulerPose(view_phi=0.0, view_theta=0.0, view_psi=0.0)
 ensemble = cs.Ensemble(density=density, pose=pose)
 ```
 
-This is a container for the parameters and metadata stored in the electron density and the model for the `Pose`.
+Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead a stack of `ElectronDensity` is loaded, the `Ensemble` can be evaluated at a particular conformation.
+
+```python
+filenames = ...
+density = cs.VoxelGrid.from_stack([cs.VoxelGrid.from_file(filename) for filename in filenames])
+ensemble = cs.Ensemble(density=density, pose=pose, conformation=0)
+```
+
+The stack of electron densities is stored in a single `ElectronDensity`, whose parameters now have a leading batch dimension. This can either be evaluated at a particular conformation (as in this example) or can be used across `vmap` boundaries.
 
 Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
