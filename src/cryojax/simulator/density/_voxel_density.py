@@ -33,6 +33,8 @@ class Voxels(ElectronDensity):
         The electron density.
     coordinates :
         The coordinate system.
+    voxel_size
+        The voxel size of the electron density.
     """
 
     weights: AbstractVar[Array]
@@ -48,7 +50,7 @@ class Voxels(ElectronDensity):
     ) -> "Voxels":
         """Load a ElectronDensity."""
         return cls.from_mrc(
-            filename, config=config, is_stacked=False, **kwargs
+            filename, config=config, _is_stacked=False, **kwargs
         )
 
     @classmethod
@@ -88,24 +90,24 @@ class Voxels(ElectronDensity):
             coordinates=coordinates,
             voxel_size=voxel_size,
             is_real=stack[0].is_real,
-            is_stacked=True,
+            _is_stacked=True,
         )
 
     def __getitem__(self, idx: int) -> "Voxels":
-        if self.is_stacked:
+        if self._is_stacked:
             cls = type(self)
             return cls(
                 weights=self.weights[idx],
                 coordinates=self.coordinates[idx],
                 voxel_size=self.voxel_size[idx],
                 is_real=self.is_real,
-                is_stacked=False,
+                _is_stacked=False,
             )
         else:
             return self
 
     def __len__(self) -> int:
-        if self.is_stacked:
+        if self._is_stacked:
             return self.weights.shape[0]
         else:
             return 1
