@@ -262,8 +262,8 @@ class ImagePipeline(Module):
         self, image: ComplexImage, get_real: bool = True
     ) -> Image:
         """Measure an image with the instrument"""
-        pixel_size = self.scattering.pixel_size
-        freqs = self.manager.padded_freqs / pixel_size
+        current_pixel_size = self.scattering.pixel_size
+        freqs = self.manager.padded_freqs / current_pixel_size
         # Compute and apply CTF
         ctf = self.instrument.optics(freqs, pose=self.ensemble.pose)
         image = ctf * image
@@ -273,10 +273,10 @@ class ImagePipeline(Module):
         ), self.instrument.exposure.offset(freqs)
         image = scaling * image + offset
         # Add some detector logic to avoid unecessary FFTs
-        if not isinstance(self.instrument.detector, NullDetector):
+        if self.instrument.detector.pixel_size is not None:
             # Measure at the detector pixel size
-            image = self.instrument.detector.pixelize(
-                ifftn(image).real, resolution=pixel_size
+            image = self.instrument.detector.measure_at_pixel_size(
+                ifftn(image).real, current_pixel_size
             )
             if not get_real:
                 image = fftn(image)
