@@ -72,12 +72,13 @@ The stack of electron densities is stored in a single `ElectronDensity`, whose p
 Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
 ```python
+new_pixel_size = scattering.pixel_size+0.02
 optics = cs.CTFOptics(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
-detector = cs.GaussianDetector(pixel_size=1.1, variance=cs.Constant(1.0))
+detector = cs.GaussianDetector(pixel_size=new_pixel_size, variance=cs.Constant(1.0))
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
-Then, the `ImagePipeline` is instantiated.
+Here, the `Detector` has an optional pixel size that interpolates the rasterized pixel size to a new one. This is meant to correct for small mismeasurements in experimentally reported pixel size due to microscope alignment imperfections. Finally, we can instantiate the `ImagePipeline`.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
