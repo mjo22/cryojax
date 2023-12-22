@@ -46,7 +46,9 @@ class Detector(Module):
     pixel_size: Optional[Real_] = field(default=None)
     interpolation_method: str = field(static=True, default="bicubic")
 
-    def measure_at_pixel_size(self, image: RealImage, current_pixel_size: Real_) -> RealImage:
+    def measure_at_pixel_size(
+        self, image: RealImage, current_pixel_size: Real_
+    ) -> RealImage:
         """
         Measure an image at a given pixel size to
         the detector pixel size.
@@ -130,7 +132,10 @@ class GaussianDetector(GaussianNoise, Detector):
 
 @partial(jax.jit, static_argnames=["method", "antialias"])
 def rescale_pixel_size(
-    image: RealImage, current_pixel_size: Real_, new_pixel_size: Real_, **kwargs: Any
+    image: RealImage,
+    current_pixel_size: Real_,
+    new_pixel_size: Real_,
+    **kwargs: Any,
 ) -> RealImage:
     """
     Measure an image at a given pixel size using interpolation.
