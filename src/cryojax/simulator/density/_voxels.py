@@ -7,7 +7,9 @@ __all__ = ["Voxels", "VoxelCloud", "VoxelGrid"]
 import equinox as eqx
 
 from abc import abstractmethod
-from typing import Any, Type
+from typing import Any, Type, Tuple
+import jax
+import jax.numpy as jnp
 from jaxtyping import Float, Array
 from equinox import AbstractVar
 
@@ -15,10 +17,12 @@ from ._density import ElectronDensity
 from ..pose import Pose
 from ...io import load_voxel_cloud, load_fourier_grid
 from ...core import field
-from ...typing import (
+from cryojax.utils import make_frequencies, make_coordinates
+from cryojax.typing import (
     ComplexVolume,
     RealCloud,
     CloudCoords3D,
+    RealVolume,
 )
 
 _VolumeSliceCoords = Float[Array, "N1 N2 1 3"]
@@ -194,3 +198,78 @@ class VoxelCloud(Voxels):
             The resolution of the voxel grid.
         """
         import gemmi
+
+
+def _eval_atom_gaussian_in_3d(coordinates, pos, a: float, b: float) -> Array:
+    """
+    Evaluate a gaussian on a 3D grid.
+
+    Parameters
+    ----------
+    coordinates : `Array`, shape `(N1, N2, N3, 3)`
+        The coordinates of the grid.
+    pos : `Array`, shape `(3,)`
+        The center of the gaussian.
+    a : `float`
+        A scale factor.
+    b : `float`
+        The scale of the gaussian.
+
+    Returns
+    -------
+    density : `Array`, shape `(N1, N2, N3)`
+        The density of the gaussian on the grid.
+    """
+    invb = 4.0 * jnp.pi / b
+    sq_distances = jnp.sum(invb * (coordinates - pos) ** 2, axis=-1)
+    density = jnp.exp(-jnp.pi * sq_distances) * a * invb
+    return density
+
+
+def _eval_form_factor_in_3d(coordinates, pos, a: float, b: float) -> Array:
+    eval_fxn = jax.vmap(_eval_atom_gaussian_in_3d, in_axes=(None, None, 0, 0))
+    return jnp.sum(eval_fxn(coordinates, pos, a, b), axis=0)
+
+
+_eval_all_form_factors = jax.vmap(
+    _eval_form_factor_in_3d, in_axes=(None, 0, 0, 0)
+)
+
+
+def _build_voxels_from_atoms(
+    atom_coords: Array,
+    ff_a: Array,
+    ff_b: Array,
+    shape: Tuple[int, int, int],
+    voxel_size: float = 1.0,
+) -> dict[str, Any]:
+    """
+    Build a voxel representation of an atomic model.
+
+    Parameters
+    ----------
+    coords : `Array`, shape `(N, 3)`
+        The coordinates of the atoms.
+    ff_a : `Array`, shape `(N, 5)` or `(N, 5, 3)`
+        Intensity values for each Gaussian in the atom
+    ff_b : `Array`, shape `(N, 5)` or `(N, 5, 3)`
+        The inverse scale factors for each Gaussian in the atom
+
+    Returns
+    -------
+    voxels : `dict`
+        3D electron density in a 3D voxel grid representation.
+        Instantiates a ``cryojax.simulator.ElectronGrid``
+    """
+    # Load density and coordinates
+    coordinates_3d = make_coordinates(shape, voxel_size)
+
+    density = _eval_all_form_factors(
+        coordinates_3d, atom_coords, ff_a, ff_b
+    )  # shape (N1, N2, N3, N)
+
+    voxels = jnp.sum(density, axis=0)
+
+    # Get central z slice
+    coordinates = jnp.expand_dims(coordinates_3d[:, :, 0, :], axis=2)
+    return dict(weights=voxels, coordinates=coordinates)
