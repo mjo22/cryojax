@@ -6,22 +6,31 @@ from __future__ import annotations
 
 __all__ = ["ImagePipeline"]
 
-from typing import Union, Optional
-from functools import cached_property
+from typing import Union, get_args, Optional
 
 import equinox as eqx
+import jax
+import jax.numpy as jnp
 import jax.tree_util as jtu
+from jaxtyping import PRNGKeyArray, Shaped
 
 from .filter import Filter
 from .mask import Mask
-from .specimen import Specimen
+from .ensemble import Ensemble
 from .assembly import Assembly
-from .scattering import ScatteringConfig
+from .scattering import ScatteringModel
+from .manager import ImageManager
 from .instrument import Instrument
+from .exposure import NullExposure
+from .detector import NullDetector
+from .optics import NullOptics
 from .ice import Ice, NullIce
-from ..utils import fftn, irfftn
+from ..utils import fftn, ifftn
 from ..core import field, Module
 from ..typing import RealImage, ComplexImage, Image, Real_
+
+
+_PRNGKeyArrayLike = Shaped[PRNGKeyArray, "M"]
 
 
 class ImagePipeline(Module):
@@ -33,27 +42,48 @@ class ImagePipeline(Module):
 
     Attributes
     ----------
-    specimen :
-        The specimen from which to render images.
+    ensemble :
+        The ensemble from which to render images.
     scattering :
-        The image and scattering model configuration.
+        The scattering model.
     instrument :
         The abstraction of the electron microscope.
     solvent :
         The solvent around the specimen.
-    filters :
-        A list of filters to apply to the image.
-    masks :
-        A list of masks to apply to the image.
+    filter :
+        A filter to apply to the image.
+    mask :
+        A mask to apply to the image.
+
+    Properties
+    ----------
+    manager :
+        Exposes the API of the scattering model's image
+        manager.
+    pixel_size :
+        The pixel size of the image.
     """
 
-    specimen: Union[Specimen, Assembly] = field()
-    scattering: ScatteringConfig = field()
+    ensemble: Union[Ensemble, Assembly] = field()
+    scattering: ScatteringModel = field()
     instrument: Instrument = field(default_factory=Instrument)
     solvent: Ice = field(default_factory=NullIce)
 
-    filters: list[Filter] = field(default_factory=list)
-    masks: list[Mask] = field(default_factory=list)
+    filter: Optional[Filter] = field(default=None)
+    mask: Optional[Mask] = field(default=None)
+
+    @property
+    def manager(self) -> ImageManager:
+        """The ImageManager"""
+        return self.scattering.manager
+
+    @property
+    def pixel_size(self) -> Real_:
+        """The image pixel size."""
+        if self.instrument.detector.pixel_size is not None:
+            return self.instrument.detector.pixel_size
+        else:
+            return self.scattering.pixel_size
 
     def render(self, view: bool = True) -> RealImage:
         """
@@ -65,143 +95,194 @@ class ImagePipeline(Module):
             If ``True``, view the cropped, masked,
             and filtered image.
         """
-        if isinstance(self.specimen, Specimen):
-            image = self._render_specimen()
-        elif isinstance(self.specimen, Assembly):
+        if isinstance(self.ensemble, Ensemble):
+            image = self._render_ensemble()
+        elif isinstance(self.ensemble, Assembly):
             image = self._render_assembly()
         else:
             raise ValueError(
-                "The specimen must be either a Specimen or an Assembly."
+                "The ensemble must an instance of an Ensemble or an Assembly."
             )
 
         if view:
-            image = self.view(image)
+            image = self._view(image)
 
         return image
 
-    def sample(self, view: bool = True) -> RealImage:
+    def sample(
+        self, key: Union[PRNGKeyArray, _PRNGKeyArrayLike], view: bool = True
+    ) -> RealImage:
         """
         Sample the an image from a realization of the noise.
 
         Parameters
         ----------
+        key :
+            The random number generator key(s). If
+            the ``ImagePipeline`` is configured with
+            more than one stochastic model (e.g. a detector
+            and solvent model), then this parameter could be
+            ``jax.random.split(jax.random.PRNGKey(seed), 2)``.
         view : `bool`, optional
             If ``True``, view the cropped, masked,
             and filtered image.
         """
-        # Determine pixel size
-        if self.instrument.detector.pixel_size is not None:
-            pixel_size = self.instrument.detector.pixel_size
-        else:
-            pixel_size = self.specimen.resolution
+        # Check PRNGKey
+        idx = 0  # Keep track of number of stochastic models
+        if isinstance(key, get_args(PRNGKeyArray)):
+            key = jnp.expand_dims(key, axis=0)
         # Frequencies
-        freqs = self.scattering.padded_freqs / pixel_size
-        # The image of the specimen
-        specimen_image = self.render(view=False)
-        # The image of the solvent
-        ice_image = irfftn(
-            self.instrument.optics(freqs) * self.solvent.sample(freqs)
-        )
-        # Measure the detector readout
-        image = specimen_image + ice_image
-        noise = self.instrument.detector.sample(freqs, image=image)
-        detector_readout = image + noise
+        freqs = self.manager.padded_freqs / self.pixel_size
+        # The image of the specimen drawn from the ensemble
+        image = self.render(view=False)
+        if not isinstance(self.solvent, NullIce):
+            # The image of the solvent
+            ice_image = ifftn(
+                self.instrument.optics(freqs)
+                * self.solvent.sample(key[idx], freqs)
+            ).real
+            image = image + ice_image
+            idx += 1
+        if not isinstance(self.instrument.detector, NullDetector):
+            # Measure the detector readout
+            noise = self.instrument.detector.sample(
+                key[idx], freqs, image=image
+            )
+            image = image + noise
+            idx += 1
         if view:
-            detector_readout = self.view(detector_readout)
+            image = self._view(image)
 
-        return detector_readout
-
-    def log_probability(self, observed: RealImage) -> Real_:
-        """
-        Evaluate the log-probability.
-
-        Attributes
-        ----------
-        observed :
-            The observed data in real space. This must be the same
-            shape as ``scattering.shape``. Note that the user
-            should preprocess the observed data before passing it
-            to the image, such as applying the ``filters`` and
-            ``masks``.
-        """
-        raise NotImplementedError
+        return image
 
     def __call__(
-        self, observed: Optional[RealImage] = None, *, view: bool = True
-    ) -> Union[Image, Real_]:
+        self,
+        key: Optional[Union[PRNGKeyArray, _PRNGKeyArrayLike]] = None,
+        view: bool = True,
+    ) -> Image:
         """
-        If ``observed = None``, sample an image from
-        a noise model. Otherwise, compute the log likelihood.
+        Sample or render an image.
         """
-        if observed is None:
-            return self.sample(view=view)
+        if key is None:
+            return self.render(view=view)
         else:
-            return self.log_probability(observed)
+            return self.sample(key, view=view)
 
-    def view(self, image: Image, real: bool = True) -> RealImage:
+    def _view(self, image: Image, is_real: bool = True) -> RealImage:
         """
         View the image. This function applies
         filters, crops the image, then applies masks.
         """
         # Apply filters to the image
-        if real:
-            if len(self.filters) > 0:
-                image = irfftn(self.filter(fftn(image)))
-        else:
-            image = irfftn(self.filter(image))
-        # Crop and mask the image
-        image = self.mask(self.scattering.crop(image))
+        if self.filter is not None:
+            if is_real:
+                image = fftn(image)
+            image = ifftn(self.filter(image)).real
+        # Crop the image
+        image = self.manager.crop(image)
+        # Mask the image
+        if self.mask is not None:
+            image = self.mask(image)
         return image
 
-    def filter(self, image: ComplexImage) -> ComplexImage:
-        """Apply filters to image."""
-        for filter in self.filters:
-            image = filter(image)
-        return image
-
-    def mask(self, image: RealImage) -> RealImage:
-        """Apply masks to image."""
-        for mask in self.masks:
-            image = mask(image)
-        return image
-
-    def _render_specimen(self) -> RealImage:
+    def _render_ensemble(self, get_real: bool = True) -> Image:
         """Render an image of a Specimen."""
-        resolution = self.specimen.resolution
-        freqs = self.scattering.padded_freqs / resolution
+        pixel_size = self.scattering.pixel_size
+        freqs = self.manager.padded_freqs / pixel_size
         # Draw the electron density at a particular conformation and pose
-        density = self.specimen.realization
-        # Compute the scattering image
-        image = self.scattering.scatter(density, resolution=resolution)
+        density = self.ensemble.realization
+        # Compute the scattering image in fourier space
+        image = self.scattering.scatter(density)
+        # Normalize to cisTEM conventions
+        image = self.manager.normalize_to_cistem(image, is_real=False)
         # Apply translation
-        image *= self.specimen.pose.shifts(freqs)
+        image *= self.ensemble.pose.shifts(freqs)
+        # Measure the image with the instrument
+        image = self._measure_with_instrument(image, get_real=get_real)
+
+        return image
+
+    def _render_assembly(self, get_real: bool = True) -> Image:
+        """Render an image of an Assembly from its subunits."""
+        # Get the subunits
+        subunits = self.ensemble.subunits
+        # Split up computation with two different instruments
+        optics_instrument = eqx.tree_at(
+            lambda ins: (ins.exposure, ins.detector),
+            self.instrument,
+            (NullExposure(), NullDetector()),
+        )
+        no_optics_instrument = eqx.tree_at(
+            lambda ins: ins.optics, self.instrument, NullOptics()
+        )
+        # Create an ImagePipeline for the subunits
+        subunit_pipeline = eqx.tree_at(
+            lambda m: (m.ensemble, m.instrument),
+            self,
+            (subunits, optics_instrument),
+        )
+        # Setup vmap over poses and conformations
+        if self.ensemble.conformation is None:
+            where_vmap = lambda m: (m.ensemble.pose,)
+            n_vmap = 1
+        else:
+            where_vmap = lambda m: (m.ensemble.pose, m.ensemble.conformation)
+            n_vmap = 2
+        to_vmap = eqx.tree_at(
+            where_vmap,
+            jtu.tree_map(lambda _: False, subunit_pipeline),
+            tuple(n_vmap * [True]),
+        )
+        vmap, novmap = eqx.partition(subunit_pipeline, to_vmap)
+        # Compute all subunit images and sum
+        compute_stack = jax.vmap(
+            lambda vmap, novmap: eqx.combine(vmap, novmap)._render_ensemble(
+                get_real=False
+            ),
+            in_axes=(0, None),
+        )
+        compute_stack_and_sum = jax.jit(
+            lambda vmap, novmap: jnp.sum(
+                compute_stack(vmap, novmap),
+                axis=0,
+            )
+        )
+        image = compute_stack_and_sum(vmap, novmap)
+        # Finally, measure the image without applying the CTF
+        no_optics_pipeline = eqx.tree_at(
+            lambda m: m.instrument, self, no_optics_instrument
+        )
+        image = no_optics_pipeline._measure_with_instrument(
+            image, get_real=get_real
+        )
+
+        return image
+
+    def _measure_with_instrument(
+        self, image: ComplexImage, get_real: bool = True
+    ) -> Image:
+        """Measure an image with the instrument"""
+        instrument = self.instrument
+        current_pixel_size = self.scattering.pixel_size
+        freqs = self.manager.padded_freqs / current_pixel_size
         # Compute and apply CTF
-        ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
+        ctf = instrument.optics(freqs, pose=self.ensemble.pose)
         image = ctf * image
         # Apply the electron exposure model
-        scaling, offset = self.instrument.exposure.scaling(
+        scaling, offset = instrument.exposure.scaling(
             freqs
-        ), self.instrument.exposure.offset(freqs)
+        ), instrument.exposure.offset(freqs)
         image = scaling * image + offset
-        # Measure at the detector pixel size
-        image = self.instrument.detector.pixelize(
-            irfftn(image), resolution=resolution
-        )
-
-        return image
-
-    def _render_assembly(self) -> RealImage:
-        """Render an image of an Assembly from its subunits."""
-        # Draw the subunits
-        subunits = self.specimen.subunits
-        # Compute all of the subunit images
-        render = lambda subunit: eqx.tree_at(
-            lambda m: m.specimen, self, subunit
-        )._render_specimen()
-        images = jtu.tree_map(
-            render, subunits, is_leaf=lambda s: isinstance(s, Specimen)
-        )
-        # Sum the subunit images together
-        image = jtu.tree_reduce(lambda x, y: x + y, images)
+        # Add some detector logic to avoid unecessary FFTs
+        if instrument.detector.pixel_size is not None:
+            # Measure at the detector pixel size
+            image = instrument.detector.measure_at_pixel_size(
+                ifftn(image).real, current_pixel_size
+            )
+            if not get_real:
+                image = fftn(image)
+        else:
+            if get_real:
+                image = ifftn(image).real
 
         return image

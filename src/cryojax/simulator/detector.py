@@ -2,18 +2,26 @@
 Abstraction of electron detectors in a cryo-EM image.
 """
 
-__all__ = ["Detector", "NullDetector", "GaussianDetector", "pixelize_image"]
-
-import jax
-import jax.numpy as jnp
+__all__ = [
+    "Detector",
+    "NullDetector",
+    "NoiselessDetector",
+    "GaussianDetector",
+    "rescale_pixel_size",
+]
 
 from abc import abstractmethod
 from typing import Optional, Any
+from typing_extensions import override
 from functools import partial
+
+import jax
+import jax.numpy as jnp
+from jaxtyping import PRNGKeyArray
 
 from .noise import GaussianNoise
 from .kernel import Kernel, Constant
-from ..utils import scale, irfftn
+from ..utils import scale, ifftn
 from ..core import field, Module
 from ..typing import Real_, RealImage, ImageCoords
 
@@ -27,33 +35,39 @@ class Detector(Module):
     pixel_size :
         The pixel size measured by the detector.
         This is in dimensions of physical length.
-    method :
+        If this is given, the pixel size of the
+        image will be interpolated to this new pixel
+        size.
+    interpolation_method :
         The interpolation method used for measuring
-        the image at the ``pixel_size``.
+        the image at the new ``pixel_size``.
     """
 
     pixel_size: Optional[Real_] = field(default=None)
-    method: str = field(static=True, default="bicubic")
+    interpolation_method: str = field(static=True, default="bicubic")
 
-    def pixelize(self, image: RealImage, resolution: Real_) -> RealImage:
+    def measure_at_pixel_size(
+        self, image: RealImage, current_pixel_size: Real_
+    ) -> RealImage:
         """
-        Pixelize an image at a given resolution to
+        Measure an image at a given pixel size to
         the detector pixel size.
         """
         if self.pixel_size is None:
             return image
         else:
-            return pixelize_image(
+            return rescale_pixel_size(
                 image,
-                resolution,
-                self.pixel_size,
-                method=self.method,
+                current_pixel_size,
+                new_pixel_size=self.pixel_size,
+                method=self.interpolation_method,
                 antialias=False,
             )
 
     @abstractmethod
     def sample(
         self,
+        key: PRNGKeyArray,
         freqs: ImageCoords,
         image: Optional[RealImage] = None,
     ) -> RealImage:
@@ -66,8 +80,25 @@ class NullDetector(Detector):
     A 'null' detector.
     """
 
+    @override
     def sample(
         self,
+        key: PRNGKeyArray,
+        freqs: ImageCoords,
+        image: Optional[RealImage] = None,
+    ) -> RealImage:
+        return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
+
+
+class NoiselessDetector(Detector):
+    """
+    A detector with no noise model.
+    """
+
+    @override
+    def sample(
+        self,
+        key: PRNGKeyArray,
         freqs: ImageCoords,
         image: Optional[RealImage] = None,
     ) -> RealImage:
@@ -89,17 +120,22 @@ class GaussianDetector(GaussianNoise, Detector):
 
     variance: Kernel = field(default_factory=Constant)
 
+    @override
     def sample(
         self,
+        key: PRNGKeyArray,
         freqs: ImageCoords,
         image: Optional[RealImage] = None,
     ) -> RealImage:
-        return irfftn(super().sample(freqs))
+        return ifftn(super().sample(key, freqs)).real
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])
-def pixelize_image(
-    image: RealImage, resolution: Real_, pixel_size: Real_, **kwargs: Any
+def rescale_pixel_size(
+    image: RealImage,
+    current_pixel_size: Real_,
+    new_pixel_size: Real_,
+    **kwargs: Any,
 ) -> RealImage:
     """
     Measure an image at a given pixel size using interpolation.
@@ -110,12 +146,11 @@ def pixelize_image(
     ----------
     image :
         The image to be magnified.
-    resolution :
-        The resolution, in physical length, of
-        the image.
-    pixel_size :
-        The pixel size of the detector.
+    current_pixel_size :
+        The pixel size of the input image.
+    new_pixel_size :
+        The new pixel size after interpolation.
     """
-    scale_factor = resolution / pixel_size
+    scale_factor = current_pixel_size / new_pixel_size
     s = jnp.array([scale_factor, scale_factor])
     return scale(image, image.shape, s, **kwargs)

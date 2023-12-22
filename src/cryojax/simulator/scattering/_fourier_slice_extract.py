@@ -4,29 +4,29 @@ Scattering methods for the fourier slice theorem.
 
 from __future__ import annotations
 
-__all__ = ["extract_slice", "FourierSliceScattering"]
+__all__ = ["extract_slice", "FourierSliceExtract"]
 
 from typing import Any
 
 import jax.numpy as jnp
 
-from ._scattering import ScatteringConfig
+from ._scattering_model import ScatteringModel
 from ..density import VoxelGrid
 from ...core import field
 from ...typing import (
+    Real_,
     ComplexImage,
     ComplexVolume,
     VolumeCoords,
 )
 from ...utils import (
+    ifftn,
     fftn,
-    crop,
-    pad,
     map_coordinates,
 )
 
 
-class FourierSliceScattering(ScatteringConfig):
+class FourierSliceExtract(ScatteringModel):
     """
     Scatter points to the image plane using the
     Fourier-projection slice theorem.
@@ -39,29 +39,32 @@ class FourierSliceScattering(ScatteringConfig):
     def scatter(
         self,
         density: VoxelGrid,
-        resolution: float,
     ) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
-        return extract_slice(
+        fourier_projection = extract_slice(
             density.weights,
             density.coordinates,
-            resolution,
-            self.padded_shape,
+            self.pixel_size,
             order=self.order,
             mode=self.mode,
             cval=self.cval,
         )
+        if self.manager.padded_shape != fourier_projection.shape:
+            fourier_projection = fftn(
+                self.manager.crop_or_pad(ifftn(fourier_projection).real)
+            )
+
+        return fourier_projection
 
 
 def extract_slice(
     weights: ComplexVolume,
     coordinates: VolumeCoords,
-    resolution: float,
-    shape: tuple[int, int],
+    pixel_size: Real_,
     **kwargs: Any,
 ) -> ComplexImage:
     """
@@ -74,12 +77,8 @@ def extract_slice(
         Density grid in fourier space.
     coordinates : shape `(N1, N2, 1, 3)`
         Frequency central slice coordinate system.
-    resolution :
-        The rasterization resolution.
-    shape :
-        Shape of the imaging plane in pixels.
-        ``width, height = shape[0], shape[1]``
-        is the size of the desired imaging plane.
+    pixel_size :
+        The pixel_size of ``coordinates``.
     kwargs:
         Passed to ``cryojax.utils.interpolate.map_coordinates``.
 
@@ -92,26 +91,18 @@ def extract_slice(
     N1, N2, N3 = weights.shape
     if not all([Ni == N1 for Ni in [N1, N2, N3]]):
         raise ValueError("Only cubic boxes are supported for fourier slice.")
-    dx = resolution
+    dx = pixel_size
     box_size = jnp.array([N1 * dx, N2 * dx, N3 * dx])
     # Need to convert to "array index coordinates".
     # Make coordinates dimensionless
     coordinates *= box_size
     # Interpolate on the upper half plane get the slice
-    z = N2 // 2 + 1
-    projection = map_coordinates(weights, coordinates[:, :z], **kwargs)[..., 0]
-    # Set zero frequency component to zero
-    projection = projection.at[0, 0].set(0.0 + 0.0j)
+    # z = N2 // 2 + 1
+    # fourier_projection = map_coordinates(
+    #    weights, coordinates[:, :z], **kwargs
+    # )[..., 0]
     # Transform back to real space
-    projection = jnp.fft.fftshift(jnp.fft.irfftn(projection, s=(N1, N2)))
-    # Crop or pad to desired image size
-    M1, M2 = shape
-    if N1 >= M1 and N2 >= M2:
-        projection = crop(projection, shape)
-    elif N1 <= M1 and N2 <= M2:
-        projection = pad(projection, shape, mode="edge")
-    else:
-        raise NotImplementedError(
-            "Voxel density shape must be larger or smaller than shape in all dimensions"
-        )
-    return fftn(projection) / jnp.sqrt(M1 * M2)
+    # fourier_projection = irfftn(fourier_projection, s=(N1, N2))
+    #
+
+    return map_coordinates(weights, coordinates, **kwargs)[..., 0]

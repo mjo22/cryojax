@@ -7,34 +7,34 @@ from __future__ import annotations
 __all__ = [
     "compute_circular_mask",
     "Mask",
+    "ProductMask",
     "CircularMask",
 ]
 
 from abc import abstractmethod
 from typing import Any
+from typing_extensions import override
 
 import jax.numpy as jnp
 
-from ..utils import make_coordinates
-from ..core import field, Module
-from ..typing import RealImage
+from .manager import ImageManager
+
+from ..core import field, Buffer
+from ..typing import RealImage, ImageCoords
 
 
-class Mask(Module):
+class Mask(Buffer):
     """
     Base class for computing and applying an image mask.
 
     Attributes
     ----------
-    shape :
-        The image shape.
     mask :
         The mask. Note that this is automatically
         computed upon instantiation.
     """
 
-    shape: tuple[int, int] = field()
-    mask: RealImage = field(static=True, init=False)
+    mask: RealImage = field(init=False)
 
     def __post_init__(self, *args: Any, **kwargs: Any):
         self.mask = self.evaluate(*args, **kwargs)
@@ -47,6 +47,22 @@ class Mask(Module):
     def __call__(self, image: RealImage) -> RealImage:
         """Apply the mask to an image."""
         return self.mask * image
+
+    def __mul__(self, other: Mask) -> Mask:
+        return ProductMask(self, other)
+
+    def __rmul__(self, other: Mask) -> Mask:
+        return ProductMask(other, self)
+
+
+class ProductMask(Mask):
+    """A helper to represent the product of two masks."""
+
+    mask1: Mask = field()
+    mask2: Mask = field()
+
+    def evaluate(self) -> RealImage:
+        return self.mask1.mask * self.mask2.mask
 
 
 class CircularMask(Mask):
@@ -65,17 +81,20 @@ class CircularMask(Mask):
         By default, ``0.05``.
     """
 
+    manager: ImageManager = field()
+
     radius: float = field(static=True, default=0.95)
     rolloff: float = field(static=True, default=0.05)
 
+    @override
     def evaluate(self, **kwargs: Any) -> RealImage:
         return compute_circular_mask(
-            self.shape, self.radius, self.rolloff, **kwargs
+            self.manager.coords, self.radius, self.rolloff, **kwargs
         )
 
 
 def compute_circular_mask(
-    shape: tuple[int, int],
+    coords: ImageCoords,
     cutoff: float = 0.95,
     rolloff: float = 0.05,
     **kwargs: Any,
@@ -86,8 +105,7 @@ def compute_circular_mask(
     Parameters
     ----------
     shape :
-        The shape of the mask. This is used to compute the image
-        coordinates.
+        The image coordinates.
     cutoff :
         The cutoff radius as a fraction of half
         the smallest box dimension. By default, ``0.95``.
@@ -102,7 +120,6 @@ def compute_circular_mask(
     mask : `Array`, shape `shape`
         An array representing the circular mask.
     """
-    coords = make_coordinates(shape, **kwargs)
 
     r_max = min(coords.shape[0:2]) // 2
     r_cut = cutoff * r_max

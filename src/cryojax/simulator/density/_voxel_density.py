@@ -13,7 +13,9 @@ import jax.numpy as jnp
 from jaxtyping import Float, Array
 from equinox import AbstractVar
 
-from ._density import ElectronDensity
+import jax.numpy as jnp
+
+from ._electron_density import ElectronDensity
 from ..pose import Pose
 from ...io import load_voxel_cloud, load_fourier_grid
 from ...core import field
@@ -23,9 +25,11 @@ from cryojax.typing import (
     RealCloud,
     CloudCoords3D,
     RealVolume,
+    Real_,
 )
 
-_VolumeSliceCoords = Float[Array, "N1 N2 1 3"]
+_CubicVolume = Float[Array, "N N N"]
+_VolumeSliceCoords = Float[Array, "N N 1 3"]
 
 
 class Voxels(ElectronDensity):
@@ -42,6 +46,7 @@ class Voxels(ElectronDensity):
 
     weights: AbstractVar[Array]
     coordinates: AbstractVar[Array]
+    voxel_size: Real_ = field()
 
     @classmethod
     def from_file(
@@ -51,7 +56,9 @@ class Voxels(ElectronDensity):
         **kwargs: Any,
     ) -> "Voxels":
         """Load a ElectronDensity."""
-        return cls.from_mrc(filename, config=config, **kwargs)
+        return cls.from_mrc(
+            filename, config=config, is_stacked=False, **kwargs
+        )
 
     @classmethod
     @abstractmethod
@@ -64,6 +71,54 @@ class Voxels(ElectronDensity):
         """Load a ElectronDensity from MRC file format."""
         raise NotImplementedError
 
+    @classmethod
+    def from_stack(cls: Type["Voxels"], stack: list["Voxels"]) -> "Voxels":
+        """
+        Stack a list of electron densities along the leading
+        axis of a single electron density.
+        """
+        if not all([cls == type(density) for density in stack]):
+            raise TypeError(
+                "Electron density stack should all be of the same type."
+            )
+        if not all([stack[0].is_real == density.is_real for density in stack]):
+            raise TypeError(
+                "Electron density stack should all be in real or fourier space."
+            )
+        weights = jnp.stack([density.weights for density in stack], axis=0)
+        coordinates = jnp.stack(
+            [density.coordinates for density in stack], axis=0
+        )
+        voxel_size = jnp.stack(
+            [density.voxel_size for density in stack], axis=0
+        )
+        return cls(
+            weights=weights,
+            coordinates=coordinates,
+            voxel_size=voxel_size,
+            is_real=stack[0].is_real,
+            is_stacked=True,
+        )
+
+    def __getitem__(self, idx: int) -> "Voxels":
+        if self.is_stacked:
+            cls = type(self)
+            return cls(
+                weights=self.weights[idx],
+                coordinates=self.coordinates[idx],
+                voxel_size=self.voxel_size[idx],
+                is_real=self.is_real,
+                is_stacked=False,
+            )
+        else:
+            return self
+
+    def __len__(self) -> int:
+        if self.is_stacked:
+            return self.weights.shape[0]
+        else:
+            return 1
+
 
 class VoxelGrid(Voxels):
     """
@@ -75,29 +130,29 @@ class VoxelGrid(Voxels):
     ----------
     weights :
         3D electron density grid in Fourier space.
-    coordinates : shape `(N1, N2, 1, 3)`
+    coordinates :
         Central slice of cartesian coordinate system.
     """
 
-    weights: ComplexVolume = field()
+    weights: _CubicVolume = field()
     coordinates: _VolumeSliceCoords = field()
 
-    real: bool = field(default=False, static=True)
+    is_real: bool = field(default=False, static=True, kw_only=True)
 
     def __check_init__(self):
-        if self.real is True:
+        if self.is_real is True:
             raise NotImplementedError(
                 "Real voxel grid densities are not supported."
             )
 
-    def view(self, pose: Pose) -> "VoxelGrid":
+    def rotate_to(self, pose: Pose) -> "VoxelGrid":
         """
         Compute rotations of a central slice in fourier space
         by an imaging pose.
 
         This rotation is the inverse rotation as in real space.
         """
-        coordinates = pose.rotate(self.coordinates, real=self.real)
+        coordinates = pose.rotate(self.coordinates, is_real=self.is_real)
 
         return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
 
@@ -132,22 +187,22 @@ class VoxelCloud(Voxels):
     weights: RealCloud = field()
     coordinates: CloudCoords3D = field()
 
-    real: bool = field(default=True, static=True)
+    is_real: bool = field(default=True, static=True, kw_only=True)
 
     def __check_init__(self):
-        if self.real is False:
+        if self.is_real is False:
             raise NotImplementedError(
                 "Fourier voxel cloud densities are not supported."
             )
 
-    def view(self, pose: Pose) -> "VoxelCloud":
+    def rotate_to(self, pose: Pose) -> "VoxelCloud":
         """
         Compute rotations of a point cloud by an imaging pose.
 
         This transformation will return a new density cloud
         with rotated coordinates.
         """
-        coordinates = pose.rotate(self.coordinates, real=self.real)
+        coordinates = pose.rotate(self.coordinates, is_real=self.is_real)
 
         return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
 

@@ -7,11 +7,11 @@ from __future__ import annotations
 
 __all__ = ["Instrument"]
 
-from ..core import Module, field
-
 from .optics import Optics, NullOptics
 from .exposure import Exposure, NullExposure
 from .detector import Detector, NullDetector
+
+from ..core import Module, field
 
 
 class Instrument(Module):

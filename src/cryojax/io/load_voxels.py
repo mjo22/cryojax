@@ -7,23 +7,18 @@ from __future__ import annotations
 __all__ = ["load_mrc", "load_voxel_cloud", "load_fourier_grid"]
 
 import os
-import numpy as np
-import jax
 import jax.numpy as jnp
-from jax import grad, jit, vmap
-from jax.config import config
-from jaxtyping import Array
 from typing import Any
 from ..utils import fftn, pad, make_frequencies, flatten_and_coordinatize
 from ._mrc import load_mrc
 
 
-def load_voxel_cloud(filename: str, **kwargs: Any) -> dict[str, Array]:
+def load_voxel_cloud(filename: str, **kwargs: Any) -> dict[str, Any]:
     """
     Read a 3D template on a cartesian grid
     to a point cloud.
 
-    This is used to instantiate ``cryojax.simulator.ElectronCloud``.
+    This is used to instantiate ``cryojax.simulator.VoxelCloud``.
 
     Parameters
     ----------
@@ -54,7 +49,9 @@ def load_voxel_cloud(filename: str, **kwargs: Any) -> dict[str, Array]:
         template, voxel_size, **kwargs
     )
     # Gather fields to instantiate an ElectronCloud
-    cloud = dict(weights=density, coordinates=coordinates)
+    cloud = dict(
+        weights=density, coordinates=coordinates, voxel_size=voxel_size
+    )
 
     return cloud
 
@@ -63,7 +60,7 @@ def load_fourier_grid(filename: str, pad_scale: float = 1.0) -> dict[str, Any]:
     """
     Read a 3D template in Fourier space on a cartesian grid.
 
-    This is used to instantiate ``cryojax.simulator.ElectronGrid``.
+    This is used to instantiate ``cryojax.simulator.VoxelGrid``.
 
     Parameters
     ----------
@@ -90,6 +87,8 @@ def load_fourier_grid(filename: str, pad_scale: float = 1.0) -> dict[str, Any]:
     # Get central z slice
     coordinates = jnp.expand_dims(coordinates[:, :, 0, :], axis=2)
     # Gather fields to instantiate an ElectronGrid
-    voxels = dict(weights=density, coordinates=coordinates)
+    voxels = dict(
+        weights=density, coordinates=coordinates, voxel_size=voxel_size
+    )
 
     return voxels

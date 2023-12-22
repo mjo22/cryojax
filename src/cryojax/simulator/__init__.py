@@ -1,8 +1,8 @@
 from . import (
+    ensemble,
+    manager,
     kernel,
     pose,
-    conformation,
-    specimen,
     assembly,
     density,
     scattering,
@@ -14,13 +14,13 @@ from . import (
     detector,
     instrument,
     image,
-    likelihood,
+    distribution,
 )
 
+from .manager import *
 from .kernel import *
 from .pose import *
-from .conformation import *
-from .specimen import *
+from .ensemble import *
 from .assembly import *
 from .density import *
 from .scattering import *
@@ -32,14 +32,14 @@ from .exposure import *
 from .detector import *
 from .instrument import *
 from .image import *
-from .likelihood import *
+from .distribution import *
 
 
 __all__ = (
-    kernel.__all__
+    manager.__all__
+    + kernel.__all__
     + pose.__all__
-    + conformation.__all__
-    + specimen.__all__
+    + ensemble.__all__
     + assembly.__all__
     + density.__all__
     + scattering.__all__
@@ -51,15 +51,15 @@ __all__ = (
     + detector.__all__
     + instrument.__all__
     + image.__all__
-    + likelihood.__all__
+    + distribution.__all__
 )
 
 __all__.extend(
     [
+        manager,
         kernel,
         pose,
-        conformation,
-        specimen,
+        ensemble,
         assembly,
         density,
         scattering,
@@ -71,6 +71,6 @@ __all__.extend(
         detector,
         instrument,
         image,
-        likelihood,
+        distribution,
     ]
 )

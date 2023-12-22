@@ -8,16 +8,17 @@ __all__ = ["IndependentAtomScattering"]
 
 import jax.numpy as jnp
 
-from ._scattering import ScatteringConfig
+from ._scattering_model import ScatteringModel
 from ..density import AtomCloud
 from ...typing import (
+    Real_,
     ComplexImage,
     ImageCoords,
     CloudCoords2D,
 )
 
 
-class IndependentAtomScattering(ScatteringConfig):
+class IndependentAtomScattering(ScatteringModel):
     """
     Projects a pointcloud of atoms onto the imaging plane.
     In contrast to the work in project_with_nufft, here each atom is
@@ -30,7 +31,6 @@ class IndependentAtomScattering(ScatteringConfig):
         density: AtomCloud,
         # density: RealCloud,
         # coordinates: CloudCoords,
-        resolution: float,
         # identity: IntCloud,
         # variances: IntCloud,  # WHAT SHOULD THE TYPE BE HERE?
         return_Fourier: bool = True,  # Michael: Conventionally I've been using "real" for the fourier option (see Pose.rotate and ElectronDensity.real).
@@ -46,8 +46,10 @@ class IndependentAtomScattering(ScatteringConfig):
         # for something similar, but it's a pain right now. Exception handling
         # will work though because padded_shape is statically typed at compile
         # time.
-        assert self.padded_shape[0] == self.padded_shape[1]
-        pixel_grid = _build_pixel_grid(self.padded_shape[0], resolution)
+        assert self.manager.padded_shape[0] == self.manager.padded_shape[1]
+        pixel_grid = _build_pixel_grid(
+            self.manager.padded_shape[0], self.pixel_size
+        )
         sq_distance = _evaluate_coord_to_grid_sq_distances(
             density.coordinates, pixel_grid
         )
@@ -100,7 +102,7 @@ def _eval_Gaussian_kernel(sq_distances, atom_variances) -> ImageCoords:
 #          the same functions from cryojax.utils.coordinates.
 # 2) For 3D coordinates I also load from cryojax.utils.coordinates.
 def _build_pixel_grid(
-    npixels_per_side: int, pixel_size: float
+    npixels_per_side: int, pixel_size: Real_
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     """
     Calculates the coordinates of each pixel in the image.  The center of the image  is taken to be (0, 0).
