@@ -1,8 +1,13 @@
 """Read and write atomic models in various formats."""
 
+__all__ = [
+    "_read_atomic_model_from_pdb",
+    "extract_gemmi_atoms",
+    "extract_atomic_parameter",
+]
+
 import itertools
 import os
-
 import numpy as np
 
 
@@ -175,7 +180,7 @@ def extract_atomic_parameter(atoms, parameter_type, split_chains=False):
             for i in range(len(reshape) - 1)
         ]
 
-    return atomic_parameter
+    return np.array(atomic_parameter)
 
 
 def write_atomic_model(path, model=None):
