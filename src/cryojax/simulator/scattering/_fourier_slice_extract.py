@@ -6,11 +6,12 @@ from __future__ import annotations
 
 __all__ = ["extract_slice", "FourierSliceExtract"]
 
-from typing import Any
+from typing import Any, Optional
 
 import jax.numpy as jnp
 
 from ._scattering_model import ScatteringModel
+from ..pose import Pose
 from ..density import VoxelGrid
 from ...core import field
 from ...typing import (
@@ -19,11 +20,7 @@ from ...typing import (
     ComplexVolume,
     VolumeCoords,
 )
-from ...utils import (
-    ifftn,
-    fftn,
-    map_coordinates,
-)
+from ...utils import map_coordinates
 
 
 class FourierSliceExtract(ScatteringModel):
@@ -37,15 +34,14 @@ class FourierSliceExtract(ScatteringModel):
     cval: complex = field(static=True, default=0.0 + 0.0j)
 
     def scatter(
-        self,
-        density: VoxelGrid,
+        self, density: VoxelGrid, pose: Optional[Pose] = None
     ) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
-        fourier_projection = extract_slice(
+        return extract_slice(
             density.weights,
             density.coordinates,
             self.pixel_size,
@@ -53,12 +49,6 @@ class FourierSliceExtract(ScatteringModel):
             mode=self.mode,
             cval=self.cval,
         )
-        if self.manager.padded_shape != fourier_projection.shape:
-            fourier_projection = fftn(
-                self.manager.crop_or_pad(ifftn(fourier_projection).real)
-            )
-
-        return fourier_projection
 
 
 def extract_slice(

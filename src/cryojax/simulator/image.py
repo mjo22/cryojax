@@ -21,13 +21,11 @@ from .assembly import Assembly
 from .scattering import ScatteringModel
 from .manager import ImageManager
 from .instrument import Instrument
-from .exposure import NullExposure
 from .detector import NullDetector
-from .optics import NullOptics
 from .ice import Ice, NullIce
 from ..utils import fftn, ifftn
 from ..core import field, Module
-from ..typing import RealImage, ComplexImage, Image, Real_
+from ..typing import RealImage, ComplexImage, Image
 
 
 _PRNGKeyArrayLike = Shaped[PRNGKeyArray, "M"]
@@ -74,16 +72,8 @@ class ImagePipeline(Module):
 
     @property
     def manager(self) -> ImageManager:
-        """The ImageManager"""
+        """Expose the ImageManager API"""
         return self.scattering.manager
-
-    @property
-    def pixel_size(self) -> Real_:
-        """The image pixel size."""
-        if self.instrument.detector.pixel_size is not None:
-            return self.instrument.detector.pixel_size
-        else:
-            return self.scattering.pixel_size
 
     def render(self, view: bool = True) -> RealImage:
         """
@@ -132,7 +122,7 @@ class ImagePipeline(Module):
         if isinstance(key, get_args(PRNGKeyArray)):
             key = jnp.expand_dims(key, axis=0)
         # Frequencies
-        freqs = self.manager.padded_freqs / self.pixel_size
+        freqs = self.manager.padded_freqs / self.scattering.pixel_size
         # The image of the specimen drawn from the ensemble
         image = self.render(view=False)
         if not isinstance(self.solvent, NullIce):
@@ -192,9 +182,7 @@ class ImagePipeline(Module):
         # Draw the electron density at a particular conformation and pose
         density = self.ensemble.realization
         # Compute the scattering image in fourier space
-        image = self.scattering.scatter(density)
-        # Normalize to cisTEM conventions
-        image = self.manager.normalize_to_cistem(image, is_real=False)
+        image = self.scattering(density, pose=self.ensemble.pose)
         # Apply translation
         image *= self.ensemble.pose.shifts(freqs)
         # Measure the image with the instrument
@@ -206,20 +194,11 @@ class ImagePipeline(Module):
         """Render an image of an Assembly from its subunits."""
         # Get the subunits
         subunits = self.ensemble.subunits
-        # Split up computation with two different instruments
-        optics_instrument = eqx.tree_at(
-            lambda ins: (ins.exposure, ins.detector),
-            self.instrument,
-            (NullExposure(), NullDetector()),
-        )
-        no_optics_instrument = eqx.tree_at(
-            lambda ins: ins.optics, self.instrument, NullOptics()
-        )
         # Create an ImagePipeline for the subunits
         subunit_pipeline = eqx.tree_at(
-            lambda m: (m.ensemble, m.instrument),
+            lambda m: m.ensemble,
             self,
-            (subunits, optics_instrument),
+            subunits,
         )
         # Setup vmap over poses and conformations
         if self.ensemble.conformation is None:
@@ -248,13 +227,6 @@ class ImagePipeline(Module):
             )
         )
         image = compute_stack_and_sum(vmap, novmap)
-        # Finally, measure the image without applying the CTF
-        no_optics_pipeline = eqx.tree_at(
-            lambda m: m.instrument, self, no_optics_instrument
-        )
-        image = no_optics_pipeline._measure_with_instrument(
-            image, get_real=get_real
-        )
 
         return image
 
@@ -263,8 +235,7 @@ class ImagePipeline(Module):
     ) -> Image:
         """Measure an image with the instrument"""
         instrument = self.instrument
-        current_pixel_size = self.scattering.pixel_size
-        freqs = self.manager.padded_freqs / current_pixel_size
+        freqs = self.manager.padded_freqs / self.scattering.pixel_size
         # Compute and apply CTF
         ctf = instrument.optics(freqs, pose=self.ensemble.pose)
         image = ctf * image
@@ -273,16 +244,8 @@ class ImagePipeline(Module):
             freqs
         ), instrument.exposure.offset(freqs)
         image = scaling * image + offset
-        # Add some detector logic to avoid unecessary FFTs
-        if instrument.detector.pixel_size is not None:
-            # Measure at the detector pixel size
-            image = instrument.detector.measure_at_pixel_size(
-                ifftn(image).real, current_pixel_size
-            )
-            if not get_real:
-                image = fftn(image)
-        else:
-            if get_real:
-                image = ifftn(image).real
+
+        if get_real:
+            image = ifftn(image).real
 
         return image

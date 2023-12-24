@@ -10,11 +10,12 @@ __all__ = [
     "NufftProject",
 ]
 
-from typing import Any, Union
+from typing import Any, Union, Optional
 
 import jax.numpy as jnp
 import numpy as np
 
+from ..pose import Pose
 from ..density import VoxelCloud, AtomCloud
 from ._scattering_model import ScatteringModel
 from ...core import field
@@ -42,7 +43,11 @@ class NufftProject(ScatteringModel):
 
     eps: float = field(static=True, default=1e-6)
 
-    def scatter(self, density: Union[VoxelCloud, AtomCloud]) -> ComplexImage:
+    def scatter(
+        self,
+        density: Union[VoxelCloud, AtomCloud],
+        pose: Optional[Pose] = None,
+    ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(density, VoxelCloud):
             fourier_projection = project_with_nufft(
