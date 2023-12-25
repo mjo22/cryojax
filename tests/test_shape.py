@@ -7,5 +7,5 @@ def test_shape(model, request):
     model = request.getfixturevalue(model)
     image = model()
     padded_image = model(view=False)
-    assert image.shape == model.manager.shape
-    assert padded_image.shape == model.manager.padded_shape
+    assert image.shape == model.scattering.manager.shape
+    assert padded_image.shape == model.scattering.manager.padded_shape

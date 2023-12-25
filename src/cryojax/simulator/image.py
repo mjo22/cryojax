@@ -52,14 +52,6 @@ class ImagePipeline(Module):
         A filter to apply to the image.
     mask :
         A mask to apply to the image.
-
-    Properties
-    ----------
-    manager :
-        Exposes the API of the scattering model's image
-        manager.
-    pixel_size :
-        The pixel size of the image.
     """
 
     ensemble: Union[Ensemble, Assembly] = field()
@@ -69,11 +61,6 @@ class ImagePipeline(Module):
 
     filter: Optional[Filter] = field(default=None)
     mask: Optional[Mask] = field(default=None)
-
-    @property
-    def manager(self) -> ImageManager:
-        """Expose the ImageManager API"""
-        return self.scattering.manager
 
     def render(self, view: bool = True) -> RealImage:
         """
@@ -122,7 +109,7 @@ class ImagePipeline(Module):
         if isinstance(key, get_args(PRNGKeyArray)):
             key = jnp.expand_dims(key, axis=0)
         # Frequencies
-        freqs = self.manager.padded_freqs / self.scattering.pixel_size
+        freqs = self.scattering.padded_physical_freqs
         # The image of the specimen drawn from the ensemble
         image = self.render(view=False)
         if not isinstance(self.solvent, NullIce):
@@ -169,7 +156,7 @@ class ImagePipeline(Module):
                 image = fftn(image)
             image = ifftn(self.filter(image)).real
         # Crop the image
-        image = self.manager.crop(image)
+        image = self.scattering.manager.crop(image)
         # Mask the image
         if self.mask is not None:
             image = self.mask(image)
@@ -177,8 +164,7 @@ class ImagePipeline(Module):
 
     def _render_ensemble(self, get_real: bool = True) -> Image:
         """Render an image of a Specimen."""
-        pixel_size = self.scattering.pixel_size
-        freqs = self.manager.padded_freqs / pixel_size
+        freqs = self.scattering.padded_physical_freqs
         # Draw the electron density at a particular conformation and pose
         density = self.ensemble.realization
         # Compute the scattering image in fourier space
@@ -228,14 +214,14 @@ class ImagePipeline(Module):
         )
         image = compute_stack_and_sum(vmap, novmap)
 
-        return image
+        return ifftn(image).real if get_real else image
 
     def _measure_with_instrument(
         self, image: ComplexImage, get_real: bool = True
     ) -> Image:
         """Measure an image with the instrument"""
         instrument = self.instrument
-        freqs = self.manager.padded_freqs / self.scattering.pixel_size
+        freqs = self.scattering.padded_physical_freqs
         # Compute and apply CTF
         ctf = instrument.optics(freqs, pose=self.ensemble.pose)
         image = ctf * image

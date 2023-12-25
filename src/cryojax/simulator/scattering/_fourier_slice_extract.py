@@ -44,7 +44,7 @@ class FourierSliceExtract(ScatteringModel):
         return extract_slice(
             density.weights,
             density.coordinates,
-            self.pixel_size,
+            density.voxel_size,
             order=self.order,
             mode=self.mode,
             cval=self.cval,
@@ -54,7 +54,7 @@ class FourierSliceExtract(ScatteringModel):
 def extract_slice(
     weights: ComplexVolume,
     coordinates: VolumeCoords,
-    pixel_size: Real_,
+    voxel_size: Real_,
     **kwargs: Any,
 ) -> ComplexImage:
     """
@@ -67,8 +67,8 @@ def extract_slice(
         Density grid in fourier space.
     coordinates : shape `(N1, N2, 1, 3)`
         Frequency central slice coordinate system.
-    pixel_size :
-        The pixel_size of ``coordinates``.
+    voxel_size :
+        The voxel_size of ``coordinates``.
     kwargs:
         Passed to ``cryojax.utils.interpolate.map_coordinates``.
 
@@ -81,7 +81,7 @@ def extract_slice(
     N1, N2, N3 = weights.shape
     if not all([Ni == N1 for Ni in [N1, N2, N3]]):
         raise ValueError("Only cubic boxes are supported for fourier slice.")
-    dx = pixel_size
+    dx = voxel_size
     box_size = jnp.array([N1 * dx, N2 * dx, N3 * dx])
     # Need to convert to "array index coordinates".
     # Make coordinates dimensionless

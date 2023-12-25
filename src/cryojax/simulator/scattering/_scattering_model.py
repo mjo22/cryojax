@@ -8,7 +8,7 @@ from __future__ import annotations
 __all__ = ["ScatteringModel", "rescale_pixel_size"]
 
 from abc import abstractmethod
-from functools import partial
+from functools import partial, cached_property
 from typing import Any, Optional
 
 import jax
@@ -36,8 +36,10 @@ class ScatteringModel(Module):
         Handles image configuration and
         utility routines.
     pixel_size :
-        Rasterization pixel size. This is in
-        dimensions of length.
+        The pixel size of the image in Angstroms.
+        For voxel-based ``ElectronDensity`` representations,
+        if the pixel size is different than the voxel size,
+        images will be interpolated in real space.
     interpolation_method :
         The interpolation method used for measuring
         the image at the new ``pixel_size``.
@@ -77,18 +79,46 @@ class ScatteringModel(Module):
         """
         image = self.scatter(density, **kwargs)
         image = ifftn(image).real
+        # Resize the image to match the ImageManager config
         if self.manager.padded_shape != image.shape:
             image = self.manager.crop_or_pad(image)
+        # Rescale the pixel size if different from the voxel size
         if isinstance(density, Voxels):
-            image = rescale_pixel_size(
+            current_pixel_size = density.voxel_size
+            new_pixel_size = self.pixel_size
+            rescale_fn = lambda image: rescale_pixel_size(
                 image,
-                current_pixel_size=density.voxel_size,
-                new_pixel_size=self.pixel_size,
+                current_pixel_size,
+                new_pixel_size,
                 method=self.interpolation_method,
                 antialias=False,
             )
+            null_fn = lambda image: image
+            image = jax.lax.cond(
+                jnp.isclose(current_pixel_size, new_pixel_size),
+                null_fn,
+                rescale_fn,
+                image,
+            )
+        # Normalize the image to cisTEM conventions (revisit this choice)
         image = self.manager.normalize_to_cistem(fftn(image), is_real=False)
         return image
+
+    @cached_property
+    def physical_coords(self):
+        return self.pixel_size * self.manager.coords
+
+    @cached_property
+    def physical_freqs(self):
+        return self.manager.freqs / self.pixel_size
+
+    @cached_property
+    def padded_physical_coords(self):
+        return self.pixel_size * self.manager.padded_coords
+
+    @cached_property
+    def padded_physical_freqs(self):
+        return self.manager.padded_freqs / self.pixel_size
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])

@@ -7,11 +7,9 @@ __all__ = ["Voxels", "VoxelCloud", "VoxelGrid"]
 import equinox as eqx
 
 from abc import abstractmethod
-from typing import Any, Type
+from typing import Any, Type, ClassVar
 from jaxtyping import Float, Array
 from equinox import AbstractVar
-
-import jax.numpy as jnp
 
 from ._electron_density import ElectronDensity
 from ..pose import Pose
@@ -64,54 +62,6 @@ class Voxels(ElectronDensity):
         """Load a ElectronDensity from MRC file format."""
         raise NotImplementedError
 
-    @classmethod
-    def from_stack(cls: Type["Voxels"], stack: list["Voxels"]) -> "Voxels":
-        """
-        Stack a list of electron densities along the leading
-        axis of a single electron density.
-        """
-        if not all([cls == type(density) for density in stack]):
-            raise TypeError(
-                "Electron density stack should all be of the same type."
-            )
-        if not all([stack[0].is_real == density.is_real for density in stack]):
-            raise TypeError(
-                "Electron density stack should all be in real or fourier space."
-            )
-        weights = jnp.stack([density.weights for density in stack], axis=0)
-        coordinates = jnp.stack(
-            [density.coordinates for density in stack], axis=0
-        )
-        voxel_size = jnp.stack(
-            [density.voxel_size for density in stack], axis=0
-        )
-        return cls(
-            weights=weights,
-            coordinates=coordinates,
-            voxel_size=voxel_size,
-            is_real=stack[0].is_real,
-            _is_stacked=True,
-        )
-
-    def __getitem__(self, idx: int) -> "Voxels":
-        if self._is_stacked:
-            cls = type(self)
-            return cls(
-                weights=self.weights[idx],
-                coordinates=self.coordinates[idx],
-                voxel_size=self.voxel_size[idx],
-                is_real=self.is_real,
-                _is_stacked=False,
-            )
-        else:
-            return self
-
-    def __len__(self) -> int:
-        if self._is_stacked:
-            return self.weights.shape[0]
-        else:
-            return 1
-
 
 class VoxelGrid(Voxels):
     """
@@ -130,13 +80,7 @@ class VoxelGrid(Voxels):
     weights: _CubicVolume = field()
     coordinates: _VolumeSliceCoords = field()
 
-    is_real: bool = field(default=False, static=True, kw_only=True)
-
-    def __check_init__(self):
-        if self.is_real is True:
-            raise NotImplementedError(
-                "Real voxel grid densities are not supported."
-            )
+    is_real: ClassVar[bool] = False
 
     def rotate_to(self, pose: Pose) -> "VoxelGrid":
         """
@@ -180,13 +124,7 @@ class VoxelCloud(Voxels):
     weights: RealCloud = field()
     coordinates: CloudCoords3D = field()
 
-    is_real: bool = field(default=True, static=True, kw_only=True)
-
-    def __check_init__(self):
-        if self.is_real is False:
-            raise NotImplementedError(
-                "Fourier voxel cloud densities are not supported."
-            )
+    is_real: ClassVar[bool] = True
 
     def rotate_to(self, pose: Pose) -> "VoxelCloud":
         """
