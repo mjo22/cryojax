@@ -80,9 +80,7 @@ class ImageManager(Buffer):
         """Crop an image."""
         return crop(image, self.shape)
 
-    def pad_to_padded_shape(
-        self, image: Image, **kwargs: Any
-    ) -> Image:
+    def pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
         """Pad an image."""
         return pad(image, self.padded_shape, mode=self.pad_mode, **kwargs)
 
