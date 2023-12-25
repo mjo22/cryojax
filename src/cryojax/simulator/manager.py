@@ -76,21 +76,21 @@ class ImageManager(Buffer):
         self.coords = make_coordinates(self.shape)
         self.padded_coords = make_coordinates(self.padded_shape)
 
-    def crop(self, image: Image) -> Image:
+    def crop_to_shape(self, image: Image) -> Image:
         """Crop an image."""
         return crop(image, self.shape)
 
-    def pad(self, image: Image, **kwargs: Any) -> Image:
+    def pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
         """Pad an image."""
         return pad(image, self.padded_shape, mode=self.pad_mode, **kwargs)
 
-    def crop_or_pad(self, image: Image, **kwargs: Any) -> Image:
+    def crop_or_pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
         """Reshape an image using cropping or padding."""
         return crop_or_pad(
             image, self.padded_shape, mode=self.pad_mode, **kwargs
         )
 
-    def downsample(
+    def downsample_to_shape(
         self, image: Image, method="lanczos5", **kwargs: Any
     ) -> Image:
         """Downsample an image using interpolation."""
@@ -98,7 +98,7 @@ class ImageManager(Buffer):
             image, self.shape, antialias=False, method=method, **kwargs
         )
 
-    def upsample(self, image: Image, method="bicubic", **kwargs: Any) -> Image:
+    def upsample_to_padded_shape(self, image: Image, method="bicubic", **kwargs: Any) -> Image:
         """Upsample an image using interpolation."""
         return resize(image, self.padded_shape, method=method, **kwargs)
 
