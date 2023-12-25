@@ -65,10 +65,6 @@ class ElectronDensity(Module):
             raise TypeError(
                 "Electron density stack should all be of the same type."
             )
-        if not all([stack[0].is_real == density.is_real for density in stack]):
-            raise TypeError(
-                "Electron density stack should all be in real or fourier space."
-            )
         # Gather static and traced fields separately
         static, traced = {}, {}
         for field in dataclasses.fields(stack[0]):
