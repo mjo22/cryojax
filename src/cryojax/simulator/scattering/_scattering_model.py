@@ -81,7 +81,7 @@ class ScatteringModel(Module):
         image = ifftn(image).real
         # Resize the image to match the ImageManager config
         if self.manager.padded_shape != image.shape:
-            image = self.manager.crop_or_pad(image)
+            image = self.manager.crop_or_pad_to_padded_shape(image)
         # Rescale the pixel size if different from the voxel size
         if isinstance(density, Voxels):
             current_pixel_size = density.voxel_size
