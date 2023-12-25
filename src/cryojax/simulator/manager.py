@@ -80,11 +80,15 @@ class ImageManager(Buffer):
         """Crop an image."""
         return crop(image, self.shape)
 
-    def pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
+    def pad_to_padded_shape(
+        self, image: Image, **kwargs: Any
+    ) -> Image:
         """Pad an image."""
         return pad(image, self.padded_shape, mode=self.pad_mode, **kwargs)
 
-    def crop_or_pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
+    def crop_or_pad_to_padded_shape(
+        self, image: Image, **kwargs: Any
+    ) -> Image:
         """Reshape an image using cropping or padding."""
         return crop_or_pad(
             image, self.padded_shape, mode=self.pad_mode, **kwargs
@@ -98,7 +102,9 @@ class ImageManager(Buffer):
             image, self.shape, antialias=False, method=method, **kwargs
         )
 
-    def upsample_to_padded_shape(self, image: Image, method="bicubic", **kwargs: Any) -> Image:
+    def upsample_to_padded_shape(
+        self, image: Image, method="bicubic", **kwargs: Any
+    ) -> Image:
         """Upsample an image using interpolation."""
         return resize(image, self.padded_shape, method=method, **kwargs)
 
