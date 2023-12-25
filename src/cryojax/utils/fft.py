@@ -88,8 +88,9 @@ def irfftn(
     ift :
         Inverse fourier transform.
     """
+    dim = len(ft.shape)
     ift = jnp.fft.fftshift(
-        jnp.fft.irfftn(ft, s=s, **kwargs), axes=tuple(range(ift.dim - 1))
+        jnp.fft.irfftn(ft, s=s, **kwargs), axes=tuple(range(dim - 1))
     )
 
     return ift
@@ -110,8 +111,9 @@ def rfftn(ift: Union[Image, Volume], **kwargs: Any) -> Union[Image, Volume]:
     ft :
         Fourier transform of array.
     """
+    dim = len(ift.shape)
     ft = jnp.fft.rfftn(
-        jnp.fft.ifftshift(ift, axes=tuple(range(ift.dim - 1))), **kwargs
+        jnp.fft.ifftshift(ift, axes=tuple(range(dim - 1))), **kwargs
     )
 
     return ft

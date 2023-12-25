@@ -1,22 +1,18 @@
-"""
-Read and write atomic models in various formats.
-Large amounts of the code are adapted from the ioSPI package
-"""
-
-__all__ = [
-    "read_atomic_model_from_pdb",
-]
-
 from .load_atoms import clean_gemmi_structure
 
 
-def read_atomic_model_from_pdb(path, i_model=0, clean=True, assemble=True):
-    """Read Gemmi Model from PDB file.
+__all__ = [
+    "read_atomic_model_from_cif",
+]
+
+
+def read_atomic_model_from_cif(path, i_model=0, clean=True, assemble=True):
+    """Read Gemmi Model from CIF file.
 
     Parameters
     ----------
     path : string
-        Path to PDB file.
+        Path to mmCIF file.
     i_model : integer
         Optional, default: 0
         Index of the returned model in the Gemmi Structure.
@@ -31,15 +27,11 @@ def read_atomic_model_from_pdb(path, i_model=0, clean=True, assemble=True):
     -------
     model : Gemmi Class
         Gemmi model
-
-    Notes
-    -----
-    Currently Hydrogen atoms are not read in!
-    We should look into adding hydrogens, potentially.
     """
     import gemmi
 
-    structure = gemmi.read_structure(path)
+    cif_block = gemmi.cif.read(path)[0]
+    structure = gemmi.make_structure_from_block(cif_block)
     if clean:
         structure = clean_gemmi_structure(structure)
     model = structure[i_model]

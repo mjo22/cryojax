@@ -20,12 +20,17 @@ from ..pose import Pose
 from ...io import (
     load_voxel_cloud,
     load_fourier_grid,
-    _read_atomic_model_from_pdb,
-    extract_gemmi_atoms,
-    extract_atomic_parameter,
+    read_atomic_model_from_pdb,
+    read_atomic_model_from_cif,
+    get_scattering_info_from_gemmi_model,
 )
 from ...core import field
-from cryojax.utils import make_frequencies, make_coordinates
+from cryojax.utils import (
+    make_frequencies,
+    make_coordinates,
+    flatten_and_coordinatize,
+    rfftn,
+)
 from cryojax.typing import (
     ComplexVolume,
     RealCloud,
@@ -177,6 +182,87 @@ class VoxelGrid(Voxels):
         """
         return cls(**load_fourier_grid(filename, **config), **kwargs)
 
+    @classmethod
+    def from_pdb(
+        cls: Type["VoxelGrid"],
+        filename: str,
+        n_voxels_per_side: Tuple[int, int, int],
+        voxel_size: float = 1.0,
+        **kwargs: Any,
+    ) -> "VoxelGrid":
+        """
+        Loads a PDB file as a VoxelGrid.
+        """
+        model = read_atomic_model_from_pdb(filename)
+        return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
+
+    @classmethod
+    def from_cif(
+        cls: Type["VoxelGrid"],
+        filename: str,
+        n_voxels_per_side: Tuple[int, int, int],
+        voxel_size: float = 1.0,
+        **kwargs: Any,
+    ) -> "VoxelGrid":
+        """
+        Loads a PDB file as a VoxelGrid.
+        """
+        model = read_atomic_model_from_cif(filename)
+        return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
+
+    @classmethod
+    def from_gemmi(
+        cls: Type["VoxelGrid"],
+        model,
+        n_voxels_per_side: Tuple[int, int, int],
+        voxel_size: float = 1.0,
+        real: bool = False,
+        **kwargs: Any,
+    ) -> "VoxelCloud":
+        """
+        Loads a PDB file as a VoxelCloud.  Uses the Gemmi library.
+        Heavily based on a code from Frederic Poitevin, located at
+
+        https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
+        """
+        coords, a_vals, b_vals = get_scattering_info_from_gemmi_model(model)
+
+        coordinates_3d = make_coordinates(n_voxels_per_side, voxel_size)
+        density = _build_real_space_voxels_from_atoms(
+            coords, a_vals, b_vals, coordinates_3d
+        )
+
+        if real:
+            # Get the central z slice of the coordinate system
+            z_plane_coordinates = jnp.expand_dims(
+                coordinates_3d[:, :, n_voxels_per_side[-1] // 2, :], axis=2
+            )
+            vdict = {
+                "weights": density,
+                "coordinates": z_plane_coordinates,
+                "voxel_size": voxel_size,
+                "is_real": True,
+            }
+            return cls(**vdict, **kwargs)
+        else:
+            # Build the Fourier grid and take the central slice.
+            fourier_space_density = rfftn(density)
+            frequency_grid = make_frequencies(
+                fourier_space_density.shape, voxel_size
+            )
+
+            z_plane_frequencies = jnp.expand_dims(
+                frequency_grid[:, :, 0, :], axis=2
+            )
+
+            vdict = {
+                "weights": fourier_space_density,
+                "coordinates": z_plane_frequencies,
+                "voxel_size": voxel_size,
+                "is_real": False,
+            }
+            return cls(**vdict, **kwargs)
+
 
 class VoxelCloud(Voxels):
     """
@@ -233,44 +319,81 @@ class VoxelCloud(Voxels):
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: float = 1.0,
-        # config: dict = {},
+        mask: bool = True,
+        indexing: str = "xy",
         **kwargs: Any,
     ) -> "VoxelCloud":
         """
         Loads a PDB file as a VoxelCloud.  Uses the Gemmi library.
-        Heavily based on a code from Frederic Poitevin, located at
+        Adapted from code from Frederic Poitevin, located at
 
         https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
         """
-        model = _read_atomic_model_from_pdb(filename)
-        atoms = extract_gemmi_atoms(model)
-        coords = extract_atomic_parameter(atoms, "cartesian_coordinates")
-        a_vals = extract_atomic_parameter(atoms, "electron_form_factor_a")
-        b_vals = extract_atomic_parameter(atoms, "electron_form_factor_b")
-
-        print(
-            coords.shape,
-            a_vals.shape,
-            b_vals.shape,
-            n_voxels_per_side,
-            voxel_size,
+        model = read_atomic_model_from_pdb(filename)
+        return cls.from_gemmi(
+            model, n_voxels_per_side, voxel_size, mask, indexing, **kwargs
         )
+
+    @classmethod
+    def from_cif(
+        cls: Type["VoxelCloud"],
+        filename: str,
+        n_voxels_per_side: Tuple[int, int, int],
+        voxel_size: float = 1.0,
+        mask: bool = True,
+        indexing: str = "xy",
+        **kwargs: Any,
+    ) -> "VoxelCloud":
+        """
+        Loads a PDB file as a VoxelCloud.  Uses the Gemmi library.
+        Adapted from code from Frederic Poitevin, located at
+
+        https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
+        """
+        model = read_atomic_model_from_cif(filename)
+        return cls.from_gemmi(
+            model, n_voxels_per_side, voxel_size, mask, indexing, **kwargs
+        )
+
+    @classmethod
+    def from_gemmi(
+        cls: Type["VoxelCloud"],
+        model,
+        n_voxels_per_side: Tuple[int, int, int],
+        voxel_size: float = 1.0,
+        mask: bool = True,
+        indexing: str = "xy",
+        **kwargs: Any,
+    ):
+        coords, a_vals, b_vals = get_scattering_info_from_gemmi_model(model)
+
         coordinates_3d = make_coordinates(n_voxels_per_side, voxel_size)
-        density, coords_2d = _build_voxels_from_atoms(
+        density = _build_real_space_voxels_from_atoms(
             coords, a_vals, b_vals, coordinates_3d
         )
+
+        flat_density, flat_coordinates = flatten_and_coordinatize(
+            density, voxel_size, mask, indexing
+        )
+
         vdict = {
-            "weights": density,
-            "coordinates": coords_2d,
+            "weights": flat_density,
+            "coordinates": flat_coordinates,
             "voxel_size": voxel_size,
         }
 
         return cls(**vdict, **kwargs)
 
 
-def _eval_3d_gaussian(coordinate_system, pos, a: float, b: float) -> Array:
+def _eval_3d_real_space_gaussian(
+    coordinate_system: Float[Array, "N1 N2 N3 3"],
+    atom_position: Float[Array, "3"],
+    a: float,
+    b: float,
+) -> Float[Array, "N1 N2 N3"]:
     """
-    Evaluate a gaussian on a 3D grid.  The naming convention follows ``Robust
+    Evaluate a gaussian on a 3D grid.
+    The naming convention for parameters follows ``Robust
     Parameterization of Elastic and Absorptive Electron Atomic Scattering
     Factors'' by Peng et al.
 
@@ -291,42 +414,54 @@ def _eval_3d_gaussian(coordinate_system, pos, a: float, b: float) -> Array:
         The density of the gaussian on the grid.
     """
     b_inverse = 4.0 * jnp.pi / b
-    sq_distances = jnp.sum(b_inverse * (coordinate_system - pos) ** 2, axis=-1)
+    sq_distances = jnp.sum(
+        b_inverse * (coordinate_system - atom_position) ** 2, axis=-1
+    )
     density = jnp.exp(-jnp.pi * sq_distances) * a * b_inverse ** (3.0 / 2.0)
     return density
 
 
-def _eval_3d_form_factor(coordinate_system, pos, a: float, b: float) -> Array:
-    eval_fxn = jax.vmap(_eval_3d_gaussian, in_axes=(None, None, 0, 0))
-    return jnp.sum(eval_fxn(coordinate_system, pos, a, b), axis=0)
+def _eval_3d_atom_potential(
+    coordinate_system: Float[Array, "N1 N2 N3 3"],
+    atom_position: Float[Array, "3"],
+    atomic_as: Float[Array, "5"],
+    atomic_bs: Float[Array, "5"],
+) -> Float[Array, "N1 N2 N3"]:
+    """
+    Evaluates the electron potential of a single atom on a 3D grid.
 
+    Parameters
+    ----------
+    coordinate_system : `Array`, shape `(N1, N2, N3, 3)`
+        The coordinate_system of the grid.
+    atom_position : `Array`, shape `(3,)`
+        The location of the atom.
+    atomic_as : `Array`, shape `(5,)`
+        The intensity values for each gaussian in the atom.
+    atomic_bs : `Array`, shape `(5,)`
+        The inverse scale factors for each gaussian in the atom.
 
-def _eval_all_3d_form_factors(
-    coordinate_system, pos, a: float, b: float
-) -> Array:
-    # eval_fxn = jax.vmap(_eval_3d_gaussian, in_axes=(None, None, 0, 0))
-    density = jnp.zeros(coordinate_system.shape[:-1])
-    print(density.shape)
-
-    def add_gaussian_to_density(i, density):
-        density += _eval_3d_form_factor(coordinate_system, pos[i], a[i], b[i])
-        return density
-
-    density = jax.lax.fori_loop(
-        0, pos.shape[0], add_gaussian_to_density, density
+    Returns
+    -------
+    potential : `Array`, shape `(N1, N2, N3)`
+        The potential of the atom evaluate on the grid.
+    """
+    eval_fxn = jax.vmap(
+        _eval_3d_real_space_gaussian, in_axes=(None, None, 0, 0)
     )
-    return density
+    return jnp.sum(
+        eval_fxn(coordinate_system, atom_position, atomic_as, atomic_bs),
+        axis=0,
+    )
 
 
 @jax.jit
-def _build_voxels_from_atoms(
-    atom_coords: Array,
-    ff_a: Array,
-    ff_b: Array,
-    # shape: Tuple[int, int, int],
-    # voxel_size: float = 1.0,
-    coordinate_system: Array,
-) -> Tuple[Array, Array]:
+def _build_real_space_voxels_from_atoms(
+    atom_positions: Float[Array, "N 3"],
+    ff_a: Float[Array, "N 5"],
+    ff_b: Float[Array, "N 5"],
+    coordinate_system: Float[Array, "N1 N2 N3 3"],
+) -> Tuple[_CubicVolume, _VolumeSliceCoords]:
     """
     Build a voxel representation of an atomic model.
 
@@ -345,17 +480,19 @@ def _build_voxels_from_atoms(
     -------
     density :  `Array`, shape `(N1, N2, N3)`
         The voxel representation of the atomic model.
-    coordinates : `Array`, shape `(N1, N2, N3, 3)`
-        The coordinates of each voxel in the grid.
+    z_plane_coordinates : `Array`, shape `(N1, N2, 3)`
+        The coordinates of each voxel in the z=0 plane.
     """
-    # # Load density and coordinates
-    # coordinates_3d = make_coordinates(shape, voxel_size)
+    density = jnp.zeros(coordinate_system.shape[:-1])
 
-    density = _eval_all_3d_form_factors(
-        coordinate_system, atom_coords, ff_a, ff_b
-    )  # shape (N1, N2, N3, N)
-    print(density.shape)
+    def add_gaussian_to_density(i, density):
+        density += _eval_3d_atom_potential(
+            coordinate_system, atom_positions[i], ff_a[i], ff_b[i]
+        )
+        return density
 
-    # Get central z slice
-    coordinates = jnp.expand_dims(coordinate_system[:, :, 0, :], axis=2)
-    return density, coordinates
+    density = jax.lax.fori_loop(
+        0, atom_positions.shape[0], add_gaussian_to_density, density
+    )
+
+    return density
