@@ -52,7 +52,7 @@ manager = cs.ImageManager(shape=(320, 320))
 scattering = cs.FourierSliceExtract(manager, pixel_size=pixel_size)
 ```
 
-Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the `Ensemble` of biological specimen.
+Here, `filename` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the `Ensemble` of biological specimen.
 
 ```python
 # Translations in Angstroms, angles in degrees
