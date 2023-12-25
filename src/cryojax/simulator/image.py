@@ -156,7 +156,7 @@ class ImagePipeline(Module):
                 image = fftn(image)
             image = ifftn(self.filter(image)).real
         # Crop the image
-        image = self.scattering.manager.crop(image)
+        image = self.scattering.manager.crop_to_shape(image)
         # Mask the image
         if self.mask is not None:
             image = self.mask(image)
