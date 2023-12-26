@@ -82,7 +82,7 @@ class ImagePipeline(Module):
             )
 
         if view:
-            image = self._view(image)
+            image = self._filter_crop_mask(image)
 
         return image
 
@@ -128,7 +128,7 @@ class ImagePipeline(Module):
             image = image + noise
             idx += 1
         if view:
-            image = self._view(image)
+            image = self._filter_crop_mask(image)
 
         return image
 
@@ -145,7 +145,9 @@ class ImagePipeline(Module):
         else:
             return self.sample(key, view=view)
 
-    def _view(self, image: Image, is_real: bool = True) -> RealImage:
+    def _filter_crop_mask(
+        self, image: Image, is_real: bool = True
+    ) -> RealImage:
         """
         View the image. This function applies
         filters, crops the image, then applies masks.
