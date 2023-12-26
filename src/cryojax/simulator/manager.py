@@ -21,7 +21,6 @@ from ..utils import (
     crop,
     pad,
     crop_or_pad,
-    resize,
 )
 
 
@@ -91,20 +90,6 @@ class ImageManager(Buffer):
         return crop_or_pad(
             image, self.padded_shape, mode=self.pad_mode, **kwargs
         )
-
-    def downsample_to_shape(
-        self, image: Image, method="lanczos5", **kwargs: Any
-    ) -> Image:
-        """Downsample an image using interpolation."""
-        return resize(
-            image, self.shape, antialias=False, method=method, **kwargs
-        )
-
-    def upsample_to_padded_shape(
-        self, image: Image, method="bicubic", **kwargs: Any
-    ) -> Image:
-        """Upsample an image using interpolation."""
-        return resize(image, self.padded_shape, method=method, **kwargs)
 
     def normalize_to_cistem(
         self, image: Image, is_real: bool = False
