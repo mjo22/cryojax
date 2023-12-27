@@ -1,7 +1,9 @@
-from . import base, voxels, atoms
+from . import _electron_density, _voxel_density, _atom_density
 
-from .base import *
-from .voxels import *
-from .atoms import *
+from ._electron_density import *
+from ._voxel_density import *
+from ._atom_density import *
 
-__all__ = base.__all__ + voxels.__all__ + atoms.__all__
+__all__ = (
+    _electron_density.__all__ + _voxel_density.__all__ + _atom_density.__all__
+)

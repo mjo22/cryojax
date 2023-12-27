@@ -5,16 +5,15 @@ Abstraction of the ice in a cryo-EM image.
 __all__ = ["Ice", "NullIce", "GaussianIce"]
 
 from abc import abstractmethod
-from typing import Any, Optional
+from typing import Optional
 
 import jax.numpy as jnp
+from jaxtyping import PRNGKeyArray
 
-from .scattering import ScatteringConfig
 from .kernel import Kernel, Exp
-from .optics import Optics
 from .noise import GaussianNoise
 from ..core import field, Module
-from ..types import Real_, RealImage, ComplexImage, Image, ImageCoords
+from ..typing import RealImage, ComplexImage, Image, ImageCoords
 
 
 class Ice(Module):
@@ -24,31 +23,12 @@ class Ice(Module):
 
     @abstractmethod
     def sample(
-        self, freqs: ImageCoords, image: Optional[Image] = None
+        self,
+        key: PRNGKeyArray,
+        freqs: ImageCoords,
+        image: Optional[Image] = None,
     ) -> Image:
         """Sample a realization from the ice model."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def scatter(
-        self,
-        scattering: ScatteringConfig,
-        resolution: Real_,
-        optics: Optional[Optics] = None,
-        **kwargs: Any,
-    ) -> ComplexImage:
-        """
-        Scatter a realization of ice model onto the imaging plane.
-
-        Arguments
-        ---------
-        scattering :
-            The scattering configuration.
-        resolution :
-            The resolution of the image.
-        optics :
-            The instrument optics.
-        """
         raise NotImplementedError
 
 
@@ -58,19 +38,12 @@ class NullIce(Ice):
     """
 
     def sample(
-        self, freqs: ImageCoords, image: Optional[ComplexImage] = None
+        self,
+        key: PRNGKeyArray,
+        freqs: ImageCoords,
+        image: Optional[ComplexImage] = None,
     ) -> RealImage:
         return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
-
-    def scatter(
-        self,
-        scattering: ScatteringConfig,
-        resolution: Real_,
-        optics: Optional[Optics] = None,
-        **kwargs: Any,
-    ) -> ComplexImage:
-        freqs = scattering.padded_freqs / resolution
-        return self.sample(freqs, **kwargs)
 
 
 class GaussianIce(GaussianNoise, Ice):
@@ -88,23 +61,9 @@ class GaussianIce(GaussianNoise, Ice):
     variance: Kernel = field(default_factory=Exp)
 
     def sample(
-        self, freqs: ImageCoords, image: Optional[ComplexImage] = None
-    ) -> ComplexImage:
-        return super().sample(freqs)
-
-    def scatter(
         self,
-        scattering: ScatteringConfig,
-        resolution: Real_,
-        optics: Optional[Optics] = None,
-        **kwargs: Any,
+        key: PRNGKeyArray,
+        freqs: ImageCoords,
+        image: Optional[ComplexImage] = None,
     ) -> ComplexImage:
-        # Sample an ice realization
-        freqs = scattering.padded_freqs / resolution
-        ice = self.sample(freqs, **kwargs)
-        # Compute and apply CTF
-        if optics is not None:
-            ctf = optics(freqs)
-            ice = optics.apply(ctf, ice)
-
-        return ice
+        return super().sample(key, freqs)

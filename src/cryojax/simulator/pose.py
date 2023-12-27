@@ -15,6 +15,7 @@ __all__ = [
 
 from abc import abstractmethod
 from typing import Union
+from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
 
@@ -23,13 +24,17 @@ import jax.numpy as jnp
 from jaxlie import SO3
 
 from ..core import field, Module
-from ..types import (
+from ..typing import (
     Real_,
     ComplexImage,
     ImageCoords,
-    CloudCoords,
+    CloudCoords3D,
     VolumeCoords,
 )
+
+_RotationMatrix3D = Float[Array, "3 3"]
+_Vector3D = Float[Array, "3"]
+_Vector2D = Float[Array, "2"]
 
 
 class Pose(Module):
@@ -41,6 +46,7 @@ class Pose(Module):
 
         1) Define angular coordinates.
         2) Overwrite the ``Pose.rotation`` property.
+
     Attributes
     ----------`
     offset_x :
@@ -59,16 +65,16 @@ class Pose(Module):
 
     def rotate(
         self,
-        coordinates: Union[VolumeCoords, CloudCoords],
-        real: bool = True,
-    ) -> Union[VolumeCoords, CloudCoords]:
+        coordinates: Union[VolumeCoords, CloudCoords3D],
+        is_real: bool = True,
+    ) -> Union[VolumeCoords, CloudCoords3D]:
         """
         Rotate coordinates from a particular convention.
 
         By default, compute the inverse rotation if rotating in
         real-space.
         """
-        rotation = self.rotation.inverse() if real else self.rotation
+        rotation = self.rotation.inverse() if is_real else self.rotation
         return rotate_coordinates(coordinates, rotation)
 
     def shifts(self, freqs: ImageCoords) -> ComplexImage:
@@ -80,7 +86,7 @@ class Pose(Module):
         return compute_shifts(freqs, xy)
 
     @cached_property
-    def offset(self) -> Float[Array, "3"]:
+    def offset(self) -> _Vector3D:
         """The translation vector."""
         return jnp.asarray((self.offset_x, self.offset_y, self.offset_z))
 
@@ -89,15 +95,6 @@ class Pose(Module):
     def rotation(self) -> SO3:
         """Generate a rotation."""
         raise NotImplementedError
-
-    def as_matrix_pose(self) -> MatrixPose:
-        """Convert the pose to a rotation matrix representation"""
-        return MatrixPose(
-            offset_x=self.offset_x,
-            offset_y=self.offset_y,
-            offset_z=self.offset_z,
-            matrix=self.rotation.as_matrix(),
-        )
 
 
 class EulerPose(Pose):
@@ -138,6 +135,7 @@ class EulerPose(Pose):
     view_psi: Real_ = field(default=0.0)
 
     @cached_property
+    @override
     def rotation(self) -> SO3:
         """Generate a rotation from a set of Euler angles."""
         R = make_euler_rotation(
@@ -171,6 +169,7 @@ class QuaternionPose(Pose):
     view_qz: Real_ = field(default=0.0)
 
     @cached_property
+    @override
     def rotation(self) -> SO3:
         """Generate rotation from a unit quaternion."""
         wxyz = jnp.array(
@@ -190,18 +189,28 @@ class MatrixPose(Pose):
         The rotation matrix.
     """
 
-    matrix: Float[Array, "3 3"] = field(default_factory=jnp.eye)
+    matrix: _RotationMatrix3D = field()
+
+    def __init__(
+        self,
+        *args: Any,
+        matrix: Optional[_RotationMatrix3D] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(*args, **kwargs)
+        self.matrix = jnp.eye(3) if matrix is None else matrix
 
     @cached_property
+    @override
     def rotation(self) -> SO3:
         """Generate rotation from a rotation matrix."""
         return SO3.from_matrix(self.matrix)
 
 
 def rotate_coordinates(
-    coords: Union[VolumeCoords, CloudCoords],
+    coords: Union[VolumeCoords, CloudCoords3D],
     rotation: SO3,
-) -> Union[VolumeCoords, CloudCoords]:
+) -> Union[VolumeCoords, CloudCoords3D]:
     r"""
     Compute a coordinate rotation.
 
@@ -232,7 +241,7 @@ def rotate_coordinates(
     return transformed
 
 
-def compute_shifts(coords: ImageCoords, xy: Float[Array, "2"]) -> ComplexImage:
+def compute_shifts(coords: ImageCoords, xy: _Vector2D) -> ComplexImage:
     r"""
     Compute the phase shifted density field from
     an in-plane real space translation.

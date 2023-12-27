@@ -1,13 +1,18 @@
-from . import base, gaussian_mixture, fourier_slice, nufft
+from . import (
+    _scattering_model,
+    _gaussian_mixture,
+    _fourier_slice_extract,
+    _nufft_project,
+)
 
-from .base import *
-from .fourier_slice import *
-from .nufft import *
-from .gaussian_mixture import *
+from ._scattering_model import *
+from ._fourier_slice_extract import *
+from ._nufft_project import *
+from ._gaussian_mixture import *
 
 __all__ = (
-    base.__all__
-    + fourier_slice.__all__
-    + nufft.__all__
-    + gaussian_mixture.__all__
+    _scattering_model.__all__
+    + _fourier_slice_extract.__all__
+    + _nufft_project.__all__
+    + _gaussian_mixture.__all__
 )

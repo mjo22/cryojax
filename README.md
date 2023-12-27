@@ -37,8 +37,8 @@ The [jax-finufft](https://github.com/dfm/jax-finufft) package is an optional dep
 
 Please note that this library is currently experimental and the API is subject to change! The following is a basic workflow to generate an image with a gaussian white noise model.
 
-First, instantiate the image formation method ("scattering") and its respective representation
-of an electron density ("specimen").
+First, instantiate the scattering model ("scattering") and its respective representation
+of an electron density ("density").
 
 ```python
 import jax
@@ -46,36 +46,48 @@ import jax.numpy as jnp
 import cryojax.simulator as cs
 
 template = "example.mrc"
-scattering = cs.FourierSliceScattering(shape=(320, 320))
 density = cs.VoxelGrid.from_file(template)
+manager = cs.ImageManager(shape=(320, 320))
+scattering = cs.FourierSliceExtract(manager, pixel_size=density.voxel_size)
 ```
 
-Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. We can now intstantiate the biological `Specimen`.
+Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the `Ensemble` of biological specimen.
 
 ```python
-specimen = cs.Specimen(density, resolution=1.1)
+# Translations in Angstroms, angles in degrees
+pose = cs.EulerPose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0, view_psi=-10.0)
+ensemble = cs.Ensemble(density=density, pose=pose)
 ```
 
-This is a container for the parameters and metadata stored in the electron density, along with additional parameters such as the rasterization `resolution`.
+Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead a stack of `ElectronDensity` is loaded, the `Ensemble` can be evaluated at a particular conformation.
 
-Next, the model is configured for a given realization of the specimen. Here, `Pose`, `Optics`, and `Detector` models and their respective parameters are initialized. These are stored in the `PipelineState` container.
+```python
+filenames = ...
+density = cs.VoxelGrid.from_stack([cs.VoxelGrid.from_file(filename) for filename in filenames])
+ensemble = cs.Ensemble(density=density, pose=pose, conformation=0)
+```
+
+The stack of electron densities is stored in a single `ElectronDensity`, whose parameters now have a leading batch dimension. This can either be evaluated at a particular conformation (as in this example) or can be used across `vmap` boundaries.
+
+Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
+
+```python
+new_pixel_size = scattering.pixel_size+0.02
+optics = cs.CTFOptics(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
+detector = cs.GaussianDetector(pixel_size=new_pixel_size, variance=cs.Constant(1.0))
+instrument = cs.Instrument(optics=optics, detector=detector)
+```
+
+Here, the `Detector` has an optional pixel size that interpolates the rasterized pixel size to a new one. This is meant to correct for small mismeasurements in experimentally reported pixel size due to microscope alignment imperfections. The `CTFOptics` has all parameters used in CTFFIND4, which take their default values if not
+explicitly configured here. Finally, we can instantiate the `ImagePipeline`.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
-pose = cs.EulerPose(view_phi=0.0, view_theta=0.0, view_psi=0.0)
-optics = cs.CTFOptics(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
-detector = cs.GaussianDetector(key=key, pixel_size=1.1, variance=cs.Constant(1.0))
-state = cs.PipelineState(pose=pose, optics=optics, detector=detector)
+model = cs.ImagePipeline(scattering=scattering, ensemble=ensemble, instrument=instrument)
+image = model.sample(key)
 ```
 
-Then, an `ImagePipeline` model is chosen. Here, we choose `GaussianImage`.
-
-```python
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state)
-image = model()
-```
-
-This computes an image using the noise model of the detector (under the hood `model.sample()` is called). One can also compute an image without the stochastic part of the model.
+This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model.
 
 ```python
 image = model.render()
@@ -84,23 +96,27 @@ image = model.render()
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
-filters = [cs.LowpassFilter(scattering.padded_shape, cutoff=1.0),  # Cutoff modes above Nyquist frequency
-           cs.WhiteningFilter(scattering.padded_shape, micrograph=micrograph)]
-masks = [cs.CircularMask(scattering.shape, radius=1.0)]           # Cutoff pixels above radius equal to (half) image size
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, filters=filters, masks=masks)
-image = model()
+micrograph = ...  # A micrograph used for whitening
+filter = cs.LowpassFilter(manager, cutoff=1.0)  # Cutoff modes above Nyquist frequency
+          * cs.WhiteningFilter(manager, micrograph=micrograph)
+mask = cs.CircularMask(manager, radius=1.0)     # Cutoff pixels above radius equal to (half) image size
+model = cs.ImagePipeline(
+    scattering=scattering, ensemble=ensemble, instrument=instrument, filter=filter, mask=mask
+    )
+image = model.sample(key)
 ```
 
-If a `GaussianImage` is initialized with the field `observed`, the model will instead compute the log likelihood.
+`cryojax` also defines a library of `Distribution`s, which inherit from the `ImagePipeline`. If a `GaussianImage` is instantiated, it is equipped with a the log likelihood function.
 
 ```python
-model = cs.GaussianImage(scattering=scattering, specimen=specimen, state=state, observed=observed)
-log_likelihood = model()
+observed = ...
+model = cs.GaussianImage(scattering=scattering, ensemble=ensemble, instrument=instrument)
+log_likelihood = model.log_probability(observed)
 ```
 
-Under the hood, this calls `model.log_probability()`. Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
+Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
 
-Additional components can be plugged into the `ImagePipeline` model's `PipelineState`. For example, `Ice` and electron beam `Exposure` models are supported. For example, `GaussianIce` models the ice as gaussian noise, and `UniformExposure` multiplies the image by a scale factor. Imaging models from different stages of the pipeline are also implemented. `ScatteringImage` computes images solely with the scattering model, while `OpticsImage` uses a scattering and optics model. `DetectorImage` turns this into a detector readout, while `GaussianImage` adds the ability to evaluate a gaussian likelihood.
+Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `Ice` model. Models for exposure to the electron beam are supported through the `Instrument`'s `Exposure` model.
 
 For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
 
@@ -111,11 +127,11 @@ In `jax`, we ultimately want to build a loss function and apply functional trans
 ```python
 
 @jax.jit
-def update_model(model: cs.GaussianImage, params: dict[str, jax.Array]) -> cs.GaussianImage:
+def update_model(model, params):
     """
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
-    where = lambda model: (model.state.pose.view_phi, model.state.optics.defocus_u, model.state.detector.pixel_size)
+    where = lambda model: (model.ensemble.pose.view_phi, model.instrument.optics.defocus_u, model.instrument.detector.pixel_size)
     updated_model = eqx.tree_at(where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"]))
     return updated_model
 ```
@@ -123,31 +139,29 @@ def update_model(model: cs.GaussianImage, params: dict[str, jax.Array]) -> cs.Ga
 We can now create the loss and differentiate it with respect to the parameters.
 
 ```python
-from functools import partial
-
 @jax.jit
-@partial(jax.value_and_grad, argnums=1)
-def loss(model: cs.GaussianImage, params: dict[str, jax.Array]) -> jax.Array:
+@jax.value_and_grad
+def loss(params, model, observed):
     model = update_model(model, params)
-    return model.log_probability()
+    return model.log_probability(observed)
 ```
 
 Finally, we can evaluate an updated set of parameters.
 
 ```python
 params = dict(view_phi=jnp.asarray(jnp.pi), defocus_u=jnp.asarray(9000.0), pixel_size=jnp.asarray(1.30))
-log_likelihood, grad = loss(model, params)
+log_likelihood, grad = loss(params, model, observed)
 ```
 
-To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. Note that the `PipelineState` contains all of the model parameters in this example. In general, any `cryojax` `Module` may contain model parameters. One gotcha is just that the `ScatteringConfig`, `Filter`s, and `Mask`s all do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. This may result in slight speedups.
+To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. In general, any `cryojax` `Module` may contain model parameters. The exception to this is in the `ImageManager`, `Filter`, and `Mask`. These classes do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. However, this may result in slight speedups.
 
 In general, there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
 
 ## Features
 
 - Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration.
-- `cryojax.Module`s, including `ImagePipeline` models, are JSON serializable thanks to the package `dataclasses-json`. The method `Module.dumps` serializes the object as a JSON string, and `Module.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.GaussianImage.load("model.json")`.
-- A `cryojax.Module` is just an `equinox.Module` with added serialization functionality. Therefore, the entire `equinox` ecosystem is available for usage!
+- `cryojax.Module`s, including `ImagePipeline` models, are JSON serializable thanks to the package `dataclasses-json`. The method `Module.dumps` serializes the object as a JSON string, and `Module.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.ImagePipeline.load("model.json")`.
+- A `cryojax.Module` is just an `equinox.Module` with added serialization functionality. Therefore, the `equinox` ecosystem is available for usage!
 
 ## Similar libraries
 

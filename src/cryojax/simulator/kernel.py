@@ -9,8 +9,8 @@ from __future__ import annotations
 
 __all__ = [
     "Kernel",
-    "Product",
-    "Sum",
+    "ProductKernel",
+    "SumKernel",
     "Constant",
     "Exp",
     "Gaussian",
@@ -25,7 +25,7 @@ from jaxtyping import Array
 import jax.numpy as jnp
 
 from ..core import field, Module
-from ..types import Real_, ImageCoords, RealImage, Image
+from ..typing import Real_, ImageCoords, RealImage, Image
 
 P = ParamSpec("P")
 
@@ -64,29 +64,29 @@ class Kernel(Module):
 
     def __add__(self, other: Union[Kernel, float]) -> Kernel:
         if isinstance(other, Kernel):
-            return Sum(self, other)
-        return Sum(self, Constant(other))
+            return SumKernel(self, other)
+        return SumKernel(self, Constant(other))
 
     def __radd__(self, other: Any) -> Kernel:
         # We'll hit this first branch when using the `sum` function
         if other == 0:
             return self
         if isinstance(other, Kernel):
-            return Sum(other, self)
-        return Sum(Constant(other), self)
+            return SumKernel(other, self)
+        return SumKernel(Constant(other), self)
 
     def __mul__(self, other: Union[Kernel, float]) -> Kernel:
         if isinstance(other, Kernel):
-            return Product(self, other)
-        return Product(self, Constant(other))
+            return ProductKernel(self, other)
+        return ProductKernel(self, Constant(other))
 
     def __rmul__(self, other: Any) -> Kernel:
         if isinstance(other, Kernel):
-            return Product(other, self)
-        return Product(Constant(other), self)
+            return ProductKernel(other, self)
+        return ProductKernel(Constant(other), self)
 
 
-class Sum(Kernel):
+class SumKernel(Kernel):
     """A helper to represent the sum of two kernels"""
 
     kernel1: Kernel = field()
@@ -96,7 +96,7 @@ class Sum(Kernel):
         return self.kernel1(coords) + self.kernel2(coords)
 
 
-class Product(Kernel):
+class ProductKernel(Kernel):
     """A helper to represent the product of two kernels"""
 
     kernel1: Kernel = field()
