@@ -62,7 +62,7 @@ def instrument(pixel_size):
     return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1e5, mu=1.0),
-        detector=cs.GaussianDetector(pixel_size=pixel_size),
+        detector=cs.GaussianDetector(),
     )
 
 

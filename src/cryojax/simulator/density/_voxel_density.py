@@ -8,12 +8,11 @@ import equinox as eqx
 
 from abc import abstractmethod
 from typing import Any, Type, Tuple
+from typing import Any, Type, ClassVar
 import jax
 import jax.numpy as jnp
 from jaxtyping import Float, Array
 from equinox import AbstractVar
-
-import jax.numpy as jnp
 
 from ._electron_density import ElectronDensity
 from ..pose import Pose
@@ -84,54 +83,6 @@ class Voxels(ElectronDensity):
         """Load a ElectronDensity from MRC file format."""
         raise NotImplementedError
 
-    @classmethod
-    def from_stack(cls: Type["Voxels"], stack: list["Voxels"]) -> "Voxels":
-        """
-        Stack a list of electron densities along the leading
-        axis of a single electron density.
-        """
-        if not all([cls == type(density) for density in stack]):
-            raise TypeError(
-                "Electron density stack should all be of the same type."
-            )
-        if not all([stack[0].is_real == density.is_real for density in stack]):
-            raise TypeError(
-                "Electron density stack should all be in real or fourier space."
-            )
-        weights = jnp.stack([density.weights for density in stack], axis=0)
-        coordinates = jnp.stack(
-            [density.coordinates for density in stack], axis=0
-        )
-        voxel_size = jnp.stack(
-            [density.voxel_size for density in stack], axis=0
-        )
-        return cls(
-            weights=weights,
-            coordinates=coordinates,
-            voxel_size=voxel_size,
-            is_real=stack[0].is_real,
-            _is_stacked=True,
-        )
-
-    def __getitem__(self, idx: int) -> "Voxels":
-        if self._is_stacked:
-            cls = type(self)
-            return cls(
-                weights=self.weights[idx],
-                coordinates=self.coordinates[idx],
-                voxel_size=self.voxel_size[idx],
-                is_real=self.is_real,
-                _is_stacked=False,
-            )
-        else:
-            return self
-
-    def __len__(self) -> int:
-        if self._is_stacked:
-            return self.weights.shape[0]
-        else:
-            return 1
-
 
 class VoxelGrid(Voxels):
     """
@@ -150,13 +101,7 @@ class VoxelGrid(Voxels):
     weights: _CubicVolume = field()
     coordinates: _VolumeSliceCoords = field()
 
-    is_real: bool = field(default=False, static=True, kw_only=True)
-
-    def __check_init__(self):
-        if self.is_real is True:
-            raise NotImplementedError(
-                "Real voxel grid densities are not supported."
-            )
+    is_real: ClassVar[bool] = False
 
     def rotate_to(self, pose: Pose) -> "VoxelGrid":
         """
@@ -232,36 +177,21 @@ class VoxelGrid(Voxels):
             coords, a_vals, b_vals, coordinates_3d
         )
 
-        if real:
-            # Get the central z slice of the coordinate system
-            z_plane_coordinates = jnp.expand_dims(
-                coordinates_3d[:, :, n_voxels_per_side[-1] // 2, :], axis=2
-            )
-            vdict = {
-                "weights": density,
-                "coordinates": z_plane_coordinates,
-                "voxel_size": voxel_size,
-                "is_real": True,
-            }
-            return cls(**vdict, **kwargs)
-        else:
-            # Build the Fourier grid and take the central slice.
-            fourier_space_density = rfftn(density)
-            frequency_grid = make_frequencies(
-                fourier_space_density.shape, voxel_size
-            )
+        fourier_space_density = rfftn(density)
+        frequency_grid = make_frequencies(
+            fourier_space_density.shape, voxel_size
+        )
 
-            z_plane_frequencies = jnp.expand_dims(
-                frequency_grid[:, :, 0, :], axis=2
-            )
+        z_plane_frequencies = jnp.expand_dims(
+            frequency_grid[:, :, 0, :], axis=2
+        )
 
-            vdict = {
-                "weights": fourier_space_density,
-                "coordinates": z_plane_frequencies,
-                "voxel_size": voxel_size,
-                "is_real": False,
-            }
-            return cls(**vdict, **kwargs)
+        vdict = {
+            "weights": fourier_space_density,
+            "coordinates": z_plane_frequencies,
+            "voxel_size": voxel_size,
+        }
+        return cls(**vdict, **kwargs)
 
 
 class VoxelCloud(Voxels):
@@ -281,13 +211,7 @@ class VoxelCloud(Voxels):
     weights: RealCloud = field()
     coordinates: CloudCoords3D = field()
 
-    is_real: bool = field(default=True, static=True, kw_only=True)
-
-    def __check_init__(self):
-        if self.is_real is False:
-            raise NotImplementedError(
-                "Fourier voxel cloud densities are not supported."
-            )
+    is_real: ClassVar[bool] = True
 
     def rotate_to(self, pose: Pose) -> "VoxelCloud":
         """
