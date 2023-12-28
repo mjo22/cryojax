@@ -87,7 +87,7 @@ class GaussianImage(Distribution):
         # Get residuals
         residuals = fftn(self.render() - observed)
         # Crop redundant frequencies
-        _, N2 = self.manager.shape
+        _, N2 = self.scattering.manager.shape
         z = N2 // 2 + 1
         residuals = residuals[:, :z]
         if not isinstance(variance, Real_):
@@ -99,8 +99,8 @@ class GaussianImage(Distribution):
 
     @cached_property
     def variance(self) -> Union[Real_, RealImage]:
-        # Gather image configuration
-        freqs = self.manager.freqs / self.pixel_size
+        # Gather frequency coordinates
+        freqs = self.scattering.physical_freqs
         # Variance from detector
         if not isinstance(self.instrument.detector, NullDetector):
             variance = self.instrument.detector.variance(freqs)
