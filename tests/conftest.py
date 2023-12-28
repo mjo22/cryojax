@@ -42,6 +42,11 @@ def weights_and_coordinates():
 
 
 @pytest.fixture
+def sample_pdb_path():
+    return os.path.join(os.path.dirname(__file__), "data", "1uao.pdb")
+
+
+@pytest.fixture
 def filters(manager):
     return cs.LowpassFilter(manager)
     # return None
