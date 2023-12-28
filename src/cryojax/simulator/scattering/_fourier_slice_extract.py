@@ -6,11 +6,12 @@ from __future__ import annotations
 
 __all__ = ["extract_slice", "FourierSliceExtract"]
 
-from typing import Any
+from typing import Any, Optional
 
 import jax.numpy as jnp
 
 from ._scattering_model import ScatteringModel
+from ..pose import Pose
 from ..density import VoxelGrid
 from ...core import field
 from ...typing import (
@@ -19,11 +20,7 @@ from ...typing import (
     ComplexVolume,
     VolumeCoords,
 )
-from ...utils import (
-    ifftn,
-    fftn,
-    map_coordinates,
-)
+from ...utils import map_coordinates
 
 
 class FourierSliceExtract(ScatteringModel):
@@ -37,34 +34,27 @@ class FourierSliceExtract(ScatteringModel):
     cval: complex = field(static=True, default=0.0 + 0.0j)
 
     def scatter(
-        self,
-        density: VoxelGrid,
+        self, density: VoxelGrid, pose: Optional[Pose] = None
     ) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
-        fourier_projection = extract_slice(
+        return extract_slice(
             density.weights,
             density.coordinates,
-            self.pixel_size,
+            density.voxel_size,
             order=self.order,
             mode=self.mode,
             cval=self.cval,
         )
-        if self.manager.padded_shape != fourier_projection.shape:
-            fourier_projection = fftn(
-                self.manager.crop_or_pad(ifftn(fourier_projection).real)
-            )
-
-        return fourier_projection
 
 
 def extract_slice(
     weights: ComplexVolume,
     coordinates: VolumeCoords,
-    pixel_size: Real_,
+    voxel_size: Real_,
     **kwargs: Any,
 ) -> ComplexImage:
     """
@@ -77,8 +67,8 @@ def extract_slice(
         Density grid in fourier space.
     coordinates : shape `(N1, N2, 1, 3)`
         Frequency central slice coordinate system.
-    pixel_size :
-        The pixel_size of ``coordinates``.
+    voxel_size :
+        The voxel_size of ``coordinates``.
     kwargs:
         Passed to ``cryojax.utils.interpolate.map_coordinates``.
 
@@ -91,7 +81,7 @@ def extract_slice(
     N1, N2, N3 = weights.shape
     if not all([Ni == N1 for Ni in [N1, N2, N3]]):
         raise ValueError("Only cubic boxes are supported for fourier slice.")
-    dx = pixel_size
+    dx = voxel_size
     box_size = jnp.array([N1 * dx, N2 * dx, N3 * dx])
     # Need to convert to "array index coordinates".
     # Make coordinates dimensionless

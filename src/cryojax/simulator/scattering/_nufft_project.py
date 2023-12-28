@@ -10,11 +10,12 @@ __all__ = [
     "NufftProject",
 ]
 
-from typing import Any, Union
+from typing import Any, Union, Optional
 
 import jax.numpy as jnp
 import numpy as np
 
+from ..pose import Pose
 from ..density import VoxelCloud, AtomCloud
 from ._scattering_model import ScatteringModel
 from ...core import field
@@ -42,13 +43,17 @@ class NufftProject(ScatteringModel):
 
     eps: float = field(static=True, default=1e-6)
 
-    def scatter(self, density: Union[VoxelCloud, AtomCloud]) -> ComplexImage:
+    def scatter(
+        self,
+        density: Union[VoxelCloud, AtomCloud],
+        pose: Optional[Pose] = None,
+    ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(density, VoxelCloud):
             fourier_projection = project_with_nufft(
                 density.weights,
                 density.coordinates,
-                self.pixel_size,
+                density.voxel_size,
                 self.manager.padded_shape,
                 eps=self.eps,
             )
@@ -98,7 +103,7 @@ def project_atoms_with_nufft(
 def project_with_nufft(
     weights: RealCloud,
     coordinates: Union[CloudCoords2D, CloudCoords3D],
-    pixel_size: Real_,
+    voxel_size: Real_,
     shape: tuple[int, int],
     **kwargs: Any,
 ) -> ComplexImage:
@@ -114,8 +119,8 @@ def project_with_nufft(
         Density point cloud.
     coordinates : shape `(N, 3)`
         Coordinate system of point cloud.
-    pixel_size :
-        The rasterization pixel_size.
+    voxel_size :
+        The rasterization voxel size.
     shape :
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
@@ -130,7 +135,7 @@ def project_with_nufft(
     """
     weights, coordinates = jnp.asarray(weights), jnp.asarray(coordinates)
     M1, M2 = shape
-    image_size = jnp.array(np.array([M1, M2]) * pixel_size)
+    image_size = jnp.array(np.array([M1, M2]) * voxel_size)
     coordinates = jnp.flip(coordinates[:, :2], axis=-1)
     fourier_projection = nufft(
         weights, coordinates, image_size, shape, **kwargs

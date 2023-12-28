@@ -37,21 +37,22 @@ The [jax-finufft](https://github.com/dfm/jax-finufft) package is an optional dep
 
 Please note that this library is currently experimental and the API is subject to change! The following is a basic workflow to generate an image with a gaussian white noise model.
 
-First, instantiate the scattering model ("scattering") and its respective representation
-of an electron density ("density").
+First, instantiate the `ScatteringModel` and its respective representation
+of an `ElectronDensity`.
 
 ```python
 import jax
 import jax.numpy as jnp
 import cryojax.simulator as cs
 
-template = "example.mrc"
-density = cs.VoxelGrid.from_file(template)
+filename = "example.mrc"
+density = cs.VoxelGrid.from_file(filename)
+pixel_size = density.voxel_size
 manager = cs.ImageManager(shape=(320, 320))
-scattering = cs.FourierSliceExtract(manager, pixel_size=density.voxel_size)
+scattering = cs.FourierSliceExtract(manager, pixel_size=pixel_size)
 ```
 
-Here, `template` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the `Ensemble` of biological specimen.
+Here, `filename` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the `Ensemble` of biological specimen.
 
 ```python
 # Translations in Angstroms, angles in degrees
@@ -72,13 +73,12 @@ The stack of electron densities is stored in a single `ElectronDensity`, whose p
 Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
 ```python
-new_pixel_size = scattering.pixel_size+0.02
 optics = cs.CTFOptics(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
-detector = cs.GaussianDetector(pixel_size=new_pixel_size, variance=cs.Constant(1.0))
+detector = cs.GaussianDetector(variance=cs.Constant(1.0))
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
-Here, the `Detector` has an optional pixel size that interpolates the rasterized pixel size to a new one. This is meant to correct for small mismeasurements in experimentally reported pixel size due to microscope alignment imperfections. The `CTFOptics` has all parameters used in CTFFIND4, which take their default values if not
+Here, the `Detector` is simply modeled by gaussian white noise. The `CTFOptics` has all parameters used in CTFFIND4, which take their default values if not
 explicitly configured here. Finally, we can instantiate the `ImagePipeline`.
 
 ```python
@@ -122,7 +122,7 @@ For these more advanced examples, see the tutorials section of the repository. I
 
 ## Creating a loss function
 
-In `jax`, we ultimately want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must update the model.
+In `jax`, we may want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must update the model.
 
 ```python
 
@@ -131,7 +131,7 @@ def update_model(model, params):
     """
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
-    where = lambda model: (model.ensemble.pose.view_phi, model.instrument.optics.defocus_u, model.instrument.detector.pixel_size)
+    where = lambda model: (model.ensemble.pose.view_phi, model.instrument.optics.defocus_u, model.scattering.pixel_size)
     updated_model = eqx.tree_at(where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"]))
     return updated_model
 ```
@@ -149,11 +149,11 @@ def loss(params, model, observed):
 Finally, we can evaluate an updated set of parameters.
 
 ```python
-params = dict(view_phi=jnp.asarray(jnp.pi), defocus_u=jnp.asarray(9000.0), pixel_size=jnp.asarray(1.30))
+params = dict(view_phi=jnp.asarray(jnp.pi), defocus_u=jnp.asarray(9000.0), pixel_size=jnp.asarray(density.voxel_size+0.02))
 log_likelihood, grad = loss(params, model, observed)
 ```
 
-To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `Detector` parameters. In general, any `cryojax` `Module` may contain model parameters. The exception to this is in the `ImageManager`, `Filter`, and `Mask`. These classes do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. However, this may result in slight speedups.
+To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `ScatteringModel` parameters. In general, any `cryojax` `Module` may contain model parameters. The exception to this is in the `ImageManager`, `Filter`, and `Mask`. These classes do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. However, this may result in slight speedups.
 
 In general, there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
 
