@@ -8,28 +8,28 @@ from cryojax.simulator.density._voxel_density import (
 from cryojax.utils import irfftn, make_coordinates
 
 
-def test_VoxelGrid_VoxelCloud_agreement():
+def test_VoxelGrid_VoxelCloud_agreement(sample_pdb_path):
     """
     Integration test ensuring that the VoxelGrid and VoxelCloud classes
     produce comparable electron densities when loaded from PDB.
     """
-    pdb_path = "data/1uao.pdb"
-
     n_voxels_per_side = (128, 128, 128)
     voxel_size = 0.5
 
     # Load the PDB file into a VoxelGrid
     vg = VoxelGrid.from_pdb(
-        pdb_path, n_voxels_per_side=n_voxels_per_side, voxel_size=0.5
+        sample_pdb_path,
+        n_voxels_per_side=n_voxels_per_side,
+        voxel_size=voxel_size,
     )
     # Since Voxelgrid is in Frequency space by default, we have to first
     # transform back into real space.
     vg_density = irfftn(vg.weights).ravel()
 
     vc = VoxelCloud.from_pdb(
-        pdb_path,
+        sample_pdb_path,
         n_voxels_per_side=n_voxels_per_side,
-        voxel_size=0.5,
+        voxel_size=voxel_size,
         mask=False,
     )
 
