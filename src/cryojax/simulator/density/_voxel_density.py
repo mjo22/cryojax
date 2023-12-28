@@ -218,7 +218,7 @@ class VoxelGrid(Voxels):
         voxel_size: float = 1.0,
         real: bool = False,
         **kwargs: Any,
-    ) -> "VoxelCloud":
+    ) -> "VoxelGrid":
         """
         Loads a PDB file as a VoxelCloud.  Uses the Gemmi library.
         Heavily based on a code from Frederic Poitevin, located at
