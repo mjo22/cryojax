@@ -27,7 +27,7 @@ INSTALL_REQUIRES = [
     "dataclasses-json",
 ]
 EXTRA_REQUIRE = {
-    "test": ["pytest>=3.6", "pycistem"],
+    "test": ["pytest>=3.6", "pycistem", "gemmi"],
     "docs": [],
 }
 EXTRA_REQUIRE["coverage"] = EXTRA_REQUIRE["test"] + ["pytest-cov"]
