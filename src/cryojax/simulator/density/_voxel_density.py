@@ -258,8 +258,7 @@ class VoxelCloud(Voxels):
         **kwargs: Any,
     ) -> "VoxelCloud":
         """
-        See ``cryojax.io.voxel.load_grid_as_cloud`` for
-        documentation.
+        Load a ``VoxelCloud`` from MRC file format.
         """
         # Load template
         filename = os.path.abspath(filename)
