@@ -38,7 +38,7 @@ from cryojax.typing import (
     Real_,
 )
 
-_RealCubicVolume = Complex[Array, "N N N"]
+_RealCubicVolume = Float[Array, "N N N"]
 _ComplexCubicVolume = Complex[Array, "N N N"]
 _VolumeSliceCoords = Float[Array, "N N 1 3"]
 
