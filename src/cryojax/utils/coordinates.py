@@ -13,7 +13,6 @@ from typing import Union, Any
 from jaxtyping import Array, Float
 
 import jax.numpy as jnp
-import numpy as np
 
 from ..typing import RealImage, RealVolume, Image, ImageCoords
 
@@ -34,8 +33,8 @@ def make_frequencies(*args: Any, **kwargs: Any) -> Float[Array, "... D"]:
 
 def flatten_and_coordinatize(
     template: Union[RealVolume, RealImage],
-    resolution: float,
-    mask: bool = True,
+    voxel_size: float,
+    mask_zeros: bool = True,
     indexing="xy",
     **kwargs: Any,
 ) -> tuple[Float[Array, "N"], Float[Array, "N ndim"]]:
@@ -49,12 +48,12 @@ def flatten_and_coordinatize(
 
     Parameters
     ----------
-    template : `np.ndarray`, shape `(N1, N2, N3)` or `(N1, N2)`
+    template : `Array`, shape `(N1, N2, N3)` or `(N1, N2)`
         3D volume or 2D image on a cartesian grid.
-    resolution : float
-        Resolution of the template.
-    mask : `bool`
-        If ``True``, run template through ``numpy.isclose``
+    voxel_size : float
+        Pixel size or voxel size of the template.
+    mask_zeros : `bool`
+        If ``True``, run template through ``jax.numpy.isclose``
         to remove coordinates with zero electron density.
     kwargs
         Keyword arguments passed to ``numpy.isclose``.
@@ -72,8 +71,8 @@ def flatten_and_coordinatize(
     # Mask out points where the electron density is close
     # to zero.
     flat = template.ravel()
-    if mask:
-        nonzero = np.where(~np.isclose(flat, 0.0, **kwargs))
+    if mask_zeros:
+        nonzero = jnp.where(~jnp.isclose(flat, 0.0, **kwargs))
         density = flat[nonzero]
     else:
         nonzero = True
@@ -81,17 +80,17 @@ def flatten_and_coordinatize(
 
     # Create coordinate buffer
     N = density.size
-    coords = np.zeros((N, ndim))
+    coords = jnp.zeros((N, ndim))
 
     # Generate rectangular grid and fill coordinate array.
-    R = _fftfreqs(shape, resolution, real=True, indexing=indexing)
+    R = _fftfreqs(shape, voxel_size, real=True, indexing=indexing)
     for i in range(ndim):
-        if mask:
-            coords[..., i] = R[..., i].ravel()[nonzero]
+        if mask_zeros:
+            coords = coords.at[..., i].set(R[..., i].ravel()[nonzero])
         else:
-            coords[..., i] = R[..., i].ravel()
+            coords = coords.at[..., i].set(R[..., i].ravel())
 
-    return jnp.array(density), jnp.array(coords)
+    return density, coords
 
 
 def cartesian_to_polar(
@@ -120,7 +119,7 @@ def cartesian_to_polar(
 
 def _fftfreqs(
     shape: tuple[int, ...],
-    pixel_size: Union[float, np.ndarray] = 1.0,
+    grid_spacing: float = 1.0,
     real: bool = False,
     indexing: str = "xy",
 ) -> Float[Array, "... D"]:
@@ -129,10 +128,6 @@ def _fftfreqs(
     This can be used for real and fourier space.
     If used for fourier space, the
     zero-frequency component is in the beginning.
-
-    Note that the current implementations create coordinates in
-    ``numpy``, then transfer to ``jax``. Therefore, these should
-    not be run inside jit compilation.
 
     Arguments
     ---------
@@ -145,7 +140,6 @@ def _fftfreqs(
         Choose whether to create coordinate system
         in real or fourier space.
 
-
     Returns
     -------
     coords :
@@ -153,24 +147,19 @@ def _fftfreqs(
     """
     ndim = len(shape)
     shape = (*shape[:2][::-1], *shape[2:]) if indexing == "xy" else shape
-    if isinstance(pixel_size, (np.floating, float)):
-        pixel_size = ndim * [pixel_size]
-    else:
-        pixel_size = list(pixel_size)
-    assert len(pixel_size) == ndim
     coords1D = [
-        _fftfreqs1d(shape[idx], pixel_size[idx], real) for idx in range(ndim)
+        _fftfreqs1d(shape[idx], grid_spacing, real) for idx in range(ndim)
     ]
-    coords = np.stack(np.meshgrid(*coords1D, indexing=indexing), axis=-1)
+    coords = jnp.stack(jnp.meshgrid(*coords1D, indexing=indexing), axis=-1)
 
-    return jnp.asarray(coords)
+    return coords
 
 
-def _fftfreqs1d(s: int, pixel_size: float, real: bool = False) -> np.ndarray:
+def _fftfreqs1d(s: int, grid_spacing: float, real: bool = False) -> Array:
     """One-dimensional coordinates in real or fourier space"""
     fftfreq = (
-        lambda s: np.fft.fftshift(np.fft.fftfreq(s, 1 / pixel_size)) * s
+        lambda s: jnp.fft.fftshift(jnp.fft.fftfreq(s, 1 / grid_spacing)) * s
         if real
-        else np.fft.fftfreq(s, pixel_size)
+        else jnp.fft.fftfreq(s, grid_spacing)
     )
     return fftfreq(s)

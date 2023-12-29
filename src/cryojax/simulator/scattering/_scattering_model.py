@@ -9,13 +9,12 @@ __all__ = ["ScatteringModel", "rescale_pixel_size"]
 
 from abc import abstractmethod
 from functools import partial, cached_property
-from typing import Any, Optional
+from typing import Any
 
 import jax
 import jax.numpy as jnp
 
 from ..density import ElectronDensity, Voxels
-from ..pose import Pose
 from ..manager import ImageManager
 
 from ...utils import fftn, ifftn, scale
@@ -57,9 +56,7 @@ class ScatteringModel(Module):
     method: str = field(static=True, default="bicubic")
 
     @abstractmethod
-    def scatter(
-        self, density: ElectronDensity, pose: Optional[Pose] = None
-    ) -> ComplexImage:
+    def scatter(self, density: ElectronDensity) -> ComplexImage:
         """
         Compute the scattered wave of the electron
         density in the exit plane.

@@ -6,16 +6,14 @@ from __future__ import annotations
 
 __all__ = ["extract_slice", "FourierSliceExtract"]
 
-from typing import Any, Optional
+from typing import Any
 
 import jax.numpy as jnp
 
 from ._scattering_model import ScatteringModel
-from ..pose import Pose
 from ..density import VoxelGrid
 from ...core import field
 from ...typing import (
-    Real_,
     ComplexImage,
     ComplexVolume,
     VolumeCoords,
@@ -36,9 +34,7 @@ class FourierSliceExtract(ScatteringModel):
     mode: str = field(static=True, default="wrap")
     cval: complex = field(static=True, default=0.0 + 0.0j)
 
-    def scatter(
-        self, density: VoxelGrid, pose: Optional[Pose] = None
-    ) -> ComplexImage:
+    def scatter(self, density: VoxelGrid) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
@@ -46,8 +42,7 @@ class FourierSliceExtract(ScatteringModel):
         """
         return extract_slice(
             density.weights,
-            density.coordinates,
-            density.voxel_size,
+            density.frequency_slice,
             order=self.order,
             mode=self.mode,
             cval=self.cval,
@@ -56,8 +51,7 @@ class FourierSliceExtract(ScatteringModel):
 
 def extract_slice(
     weights: ComplexVolume,
-    coordinates: VolumeCoords,
-    voxel_size: Real_,
+    frequency_slice: VolumeCoords,
     **kwargs: Any,
 ) -> ComplexImage:
     """
@@ -68,10 +62,8 @@ def extract_slice(
     ---------
     weights : shape `(N1, N2, N3)`
         Density grid in fourier space.
-    coordinates : shape `(N1, N2, 1, 3)`
+    frequency_slice : shape `(N1, N2, 1, 3)`
         Frequency central slice coordinate system.
-    voxel_size :
-        The voxel_size of ``coordinates``.
     kwargs:
         Passed to ``cryojax.utils.interpolate.map_coordinates``.
 
@@ -80,15 +72,12 @@ def extract_slice(
     projection :
         The output image in fourier space.
     """
-    weights, coordinates = jnp.asarray(weights), jnp.asarray(coordinates)
+    weights, frequency_slice = jnp.asarray(weights), jnp.asarray(
+        frequency_slice
+    )
     N1, N2, N3 = weights.shape
     if not all([Ni == N1 for Ni in [N1, N2, N3]]):
         raise ValueError("Only cubic boxes are supported for fourier slice.")
-    dx = voxel_size
-    box_size = jnp.array([N1 * dx, N2 * dx, N3 * dx])
-    # Need to convert to "array index coordinates".
-    # Make coordinates dimensionless
-    coordinates *= box_size
     # Interpolate on the upper half plane get the slice
     # z = N2 // 2 + 1
     # fourier_projection = map_coordinates(
@@ -98,4 +87,4 @@ def extract_slice(
     # fourier_projection = irfftn(fourier_projection, s=(N1, N2))
     #
 
-    return map_coordinates(weights, coordinates, **kwargs)[..., 0]
+    return map_coordinates(weights, frequency_slice, **kwargs)[..., 0]

@@ -22,21 +22,23 @@ class AtomCloud(ElectronDensity):
     """
 
     weights: Array = field()
-    coordinates: Array = field()
+    coordinate_list: Array = field()
     variances: Array = field()
     identity: Array = field()
 
     is_real: ClassVar[bool] = True
 
     def rotate_to(self, pose: Pose) -> AtomCloud:
-        coordinates = pose.rotate(self.coordinates, is_real=self.is_real)
-        return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
+        return eqx.tree_at(
+            lambda d: d.coordinate_list,
+            self,
+            pose.rotate(self.coordinate_list, is_real=self.is_real),
+        )
 
     @classmethod
     def from_file(
         cls: Type[AtomCloud],
         filename: str,
-        config: dict = {},
         **kwargs: Any,
     ) -> AtomCloud:
         """

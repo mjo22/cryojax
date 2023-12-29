@@ -170,7 +170,7 @@ class ImagePipeline(Module):
         # Draw the electron density at a particular conformation and pose
         density = self.ensemble.realization
         # Compute the scattering image in fourier space
-        image = self.scattering(density, pose=self.ensemble.pose)
+        image = self.scattering(density)
         # Apply translation
         image *= self.ensemble.pose.shifts(freqs)
         # Measure the image with the instrument
