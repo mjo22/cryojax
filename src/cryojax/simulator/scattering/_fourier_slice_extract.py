@@ -27,6 +27,9 @@ class FourierSliceExtract(ScatteringModel):
     """
     Scatter points to the image plane using the
     Fourier-projection slice theorem.
+
+    Attributes ``order``, ``mode``, and ``cval``
+    are passed to ``jax.scipy.map_coordinates``.
     """
 
     order: int = field(static=True, default=1)
