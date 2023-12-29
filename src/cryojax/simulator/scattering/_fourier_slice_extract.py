@@ -78,6 +78,10 @@ def extract_slice(
     N1, N2, N3 = weights.shape
     if not all([Ni == N1 for Ni in [N1, N2, N3]]):
         raise ValueError("Only cubic boxes are supported for fourier slice.")
+    box_size = jnp.array([N1, N2, N3])
+    # Need to convert to "array index coordinates".
+    # Make coordinates dimensionless
+    frequency_slice *= box_size
     # Interpolate on the upper half plane get the slice
     # z = N2 // 2 + 1
     # fourier_projection = map_coordinates(
