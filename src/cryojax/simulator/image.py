@@ -34,8 +34,8 @@ class ImagePipeline(Module):
     """
     Base class for an imaging model.
 
-    Call an ``ImagePipeline`` or its ``render``, ``sample``,
-    or ``log_probability`` routines.
+    Call an ``ImagePipeline``'s ``render`` and ``sample``,
+    routines.
 
     Attributes
     ----------
@@ -225,7 +225,7 @@ class SuperpositionPipeline(ImagePipeline):
         image = compute_stack_and_sum(vmap, novmap)
 
         if view:
-            image = self._filter_crop_mask(image, is_real=False)
+            image = self._filter_crop_mask(image)
         elif get_real:
             image = ifftn(image).real
 
