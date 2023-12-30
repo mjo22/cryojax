@@ -124,15 +124,15 @@ class ImagePipeline(Module):
         # Frequencies
         freqs = self.scattering.padded_frequency_grid_in_angstroms
         # The image of the specimen drawn from the ensemble
-        image = self.render(view=False)
+        image = self.render(view=False, get_real=False)
         if not isinstance(self.solvent, NullIce):
             # The image of the solvent
-            ice_image = ifftn(
-                self.instrument.optics(freqs)
-                * self.solvent.sample(key[idx], freqs)
-            ).real
+            ice_image = self.instrument.optics(freqs) * self.solvent.sample(
+                key[idx], freqs
+            )
             image = image + ice_image
             idx += 1
+        image = ifftn(image).real
         if not isinstance(self.instrument.detector, NullDetector):
             # Measure the detector readout
             noise = self.instrument.detector.sample(
@@ -141,7 +141,7 @@ class ImagePipeline(Module):
             image = image + noise
             idx += 1
         if view:
-            image = self._filter_crop_mask(image)
+            image = self._filter_crop_mask(image, is_real=True)
 
         return image
 
@@ -159,7 +159,7 @@ class ImagePipeline(Module):
             return self.sample(key, view=view)
 
     def _filter_crop_mask(
-        self, image: Image, is_real: bool = True
+        self, image: Image, is_real: bool = False
     ) -> RealImage:
         """
         View the image. This function applies
@@ -169,7 +169,9 @@ class ImagePipeline(Module):
         if self.filter is not None:
             if is_real:
                 image = fftn(image)
-            image = ifftn(self.filter(image)).real
+            image = self.filter(image)
+        if not is_real:
+            image = ifftn(image).real
         # Crop the image
         image = self.scattering.manager.crop_to_shape(image)
         # Mask the image

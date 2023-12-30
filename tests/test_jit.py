@@ -13,7 +13,9 @@ from functools import partial
 config.update("jax_enable_x64", True)
 
 
-def test_jit(likelihood_model, test_image):
+@pytest.mark.parametrize("model", ["likelihood_model"])
+def test_jit(model, test_image, request):
+    likelihood_model = request.getfixturevalue(model)
     key = jr.split(jr.PRNGKey(0))
 
     @jax.jit

@@ -131,7 +131,9 @@ def update_model(model, params):
     """
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
-    where = lambda model: (model.pipeline.ensemble.pose.view_phi, model.pipeline.instrument.optics.defocus_u, model.pipeline.scattering.pixel_size)
+    where = lambda model: (
+        model.pipeline.ensemble.pose.view_phi, model.pipeline.instrument.optics.defocus_u, model.pipeline.scattering.pixel_size
+    )
     updated_model = eqx.tree_at(where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"]))
     return updated_model
 ```

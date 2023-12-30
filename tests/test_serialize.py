@@ -44,7 +44,7 @@ def test_deserialize_filters_and_masks(filters_or_masks, request):
     )
 
 
-@pytest.mark.parametrize("model", ["noisy_model", "maskless_model"])
+@pytest.mark.parametrize("model", ["noisy_model", "filtered_and_masked_model"])
 def test_deserialize_model(model, request):
     """Test model deserialization."""
     model = request.getfixturevalue(model)
@@ -54,7 +54,9 @@ def test_deserialize_model(model, request):
     np.testing.assert_allclose(test_model.render(), model.render(), rtol=1e-6)
 
 
-@pytest.mark.parametrize("model", ["likelihood_model"])
+@pytest.mark.parametrize(
+    "model", ["likelihood_model", "likelihood_model_with_custom_variance"]
+)
 def test_deserialize_distribution(model, request):
     """Test model deserialization."""
     model = request.getfixturevalue(model)

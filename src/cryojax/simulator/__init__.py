@@ -8,6 +8,7 @@ from . import (
     scattering,
     filter,
     mask,
+    noise,
     ice,
     optics,
     exposure,
@@ -26,6 +27,7 @@ from .density import *
 from .scattering import *
 from .filter import *
 from .mask import *
+from .noise import *
 from .ice import *
 from .optics import *
 from .exposure import *
@@ -45,6 +47,7 @@ __all__ = (
     + scattering.__all__
     + filter.__all__
     + mask.__all__
+    + noise.__all__
     + ice.__all__
     + optics.__all__
     + exposure.__all__
@@ -65,6 +68,7 @@ __all__.extend(
         scattering,
         filter,
         mask,
+        noise,
         ice,
         optics,
         exposure,

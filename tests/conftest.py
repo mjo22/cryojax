@@ -1,6 +1,7 @@
 import os
 import pytest
 
+import equinox as eqx
 import jax.random as jr
 from jax import config
 
@@ -53,7 +54,7 @@ def instrument(pixel_size):
     return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1e5, mu=1.0),
-        detector=cs.GaussianDetector(),
+        detector=cs.GaussianDetector(cs.Constant(1.0)),
     )
 
 
@@ -71,7 +72,40 @@ def solvent():
 
 
 @pytest.fixture
-def noisy_model(scattering, ensemble, instrument, solvent, filters, masks):
+def noiseless_model(scattering, ensemble, instrument):
+    instrument = eqx.tree_at(
+        lambda ins: ins.detector, instrument, cs.NullDetector()
+    )
+    return cs.ImagePipeline(
+        scattering=scattering, ensemble=ensemble, instrument=instrument
+    )
+
+
+@pytest.fixture
+def noisy_model(scattering, ensemble, instrument, solvent):
+    return cs.ImagePipeline(
+        scattering=scattering,
+        ensemble=ensemble,
+        instrument=instrument,
+        solvent=solvent,
+    )
+
+
+@pytest.fixture
+def filtered_model(scattering, ensemble, instrument, solvent, filters):
+    return cs.ImagePipeline(
+        scattering=scattering,
+        ensemble=ensemble,
+        instrument=instrument,
+        solvent=solvent,
+        filter=filters,
+    )
+
+
+@pytest.fixture
+def filtered_and_masked_model(
+    scattering, ensemble, instrument, solvent, filters, masks
+):
     return cs.ImagePipeline(
         scattering=scattering,
         ensemble=ensemble,
@@ -83,17 +117,6 @@ def noisy_model(scattering, ensemble, instrument, solvent, filters, masks):
 
 
 @pytest.fixture
-def maskless_model(scattering, ensemble, instrument, solvent, filters):
-    return cs.ImagePipeline(
-        scattering=scattering,
-        ensemble=ensemble,
-        instrument=instrument,
-        solvent=solvent,
-        filter=filters,
-    )
-
-
-@pytest.fixture
 def test_image(noisy_model):
     return noisy_model.sample(jr.split(jr.PRNGKey(1234), num=2))
 
@@ -101,3 +124,10 @@ def test_image(noisy_model):
 @pytest.fixture
 def likelihood_model(noisy_model):
     return cs.IndependentFourierGaussian(noisy_model)
+
+
+@pytest.fixture
+def likelihood_model_with_custom_variance(noiseless_model):
+    return cs.IndependentFourierGaussian(
+        noiseless_model, noise=cs.GaussianNoise(variance=cs.Constant(1.0))
+    )
