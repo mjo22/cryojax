@@ -104,7 +104,7 @@ class ElectronDensity(Module):
                     indexed[name] = getattr(self, name)[idx]
             return cls(**indexed, **other, _is_stacked=False)
         else:
-            raise SyntaxError("Cannot index an unstacked ElectronDensity.")
+            raise IndexError("Cannot index an non-stacked ElectronDensity.")
 
     def __len__(self) -> int:
         if self._is_stacked:
@@ -121,6 +121,6 @@ class ElectronDensity(Module):
                 "Could not get the length of the ElectronDensity stack."
             )
         else:
-            raise SyntaxError(
-                "Cannot get the length of an unstacked ElectronDensity."
+            raise TypeError(
+                "Cannot get length of non-stacked ElectronDensity."
             )
