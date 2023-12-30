@@ -7,7 +7,7 @@ from __future__ import annotations
 __all__ = ["Distribution", "IndependentFourierGaussian"]
 
 from abc import abstractmethod
-from typing import Union, Optional
+from typing import Union, Optional, Any
 from typing_extensions import override
 from functools import cached_property
 
@@ -17,8 +17,7 @@ from jaxtyping import PRNGKeyArray
 from .noise import GaussianNoise
 from .ice import NullIce, GaussianIce
 from .detector import NullDetector, GaussianDetector
-from .image import ImagePipeline, _PRNGKeyArrayLike
-from ..utils import ifftn, fftn
+from .pipeline import ImagePipeline, _PRNGKeyArrayLike
 from ..typing import Real_, RealImage, ComplexImage, Image
 from ..core import Module, field
 
@@ -42,7 +41,9 @@ class Distribution(Module):
         """
         raise NotImplementedError
 
-    def sample(self, key: Union[PRNGKeyArray, _PRNGKeyArrayLike]) -> RealImage:
+    def sample(
+        self, key: Union[PRNGKeyArray, _PRNGKeyArrayLike], **kwargs: Any
+    ) -> RealImage:
         """
         Sample from the distribution.
 
@@ -52,7 +53,7 @@ class Distribution(Module):
             The RNG key or key(s). See ``ImagePipeline.sample`` for
             documentation.
         """
-        return self.pipeline.sample(key)
+        return self.pipeline.sample(key, **kwargs)
 
 
 class IndependentFourierGaussian(Distribution):
@@ -91,15 +92,17 @@ class IndependentFourierGaussian(Distribution):
             )
 
     @override
-    def sample(self, key: Union[PRNGKeyArray, _PRNGKeyArrayLike]) -> RealImage:
+    def sample(
+        self, key: Union[PRNGKeyArray, _PRNGKeyArrayLike], **kwargs: Any
+    ) -> RealImage:
         """Sample from the Gaussian noise model."""
         if self.noise is None:
-            return super().sample(key)
+            return super().sample(key, **kwargs)
         else:
             freqs = self.pipeline.scattering.padded_frequency_grid_in_angstroms
             noise = self.noise.sample(key, freqs)
             image = self.pipeline.render(view=False, get_real=False)
-            return self.pipeline._filter_crop_mask(image + noise)
+            return self.pipeline._postprocess_image(image + noise, **kwargs)
 
     @override
     def log_probability(self, observed: ComplexImage) -> Real_:
@@ -107,8 +110,8 @@ class IndependentFourierGaussian(Distribution):
         Evaluate the log-likelihood of the gaussian noise model.
 
         This evaluates the log probability in the super sampled
-        coordinate system. Therefore, the observed data must
-        match the ImageManager.padded_shape shape.
+        coordinate system. Therefore, ``observed.shape`` must
+        match ``ImageManager.padded_shape``.
 
         Parameters
         ----------
@@ -124,7 +127,9 @@ class IndependentFourierGaussian(Distribution):
         # Get residuals
         residuals = pipeline.render(view=False, get_real=False) - observed
         # Apply filters, crop, and mask
-        residuals = fftn(pipeline._filter_crop_mask(residuals))
+        residuals = pipeline._postprocess_image(
+            residuals, view=True, get_real=False
+        )
         # Compute loss
         loss = jnp.sum(
             (residuals * jnp.conjugate(residuals)) / (2 * self.variance)

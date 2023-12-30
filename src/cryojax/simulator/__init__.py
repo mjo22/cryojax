@@ -14,7 +14,7 @@ from . import (
     exposure,
     detector,
     instrument,
-    image,
+    pipeline,
     distribution,
 )
 
@@ -33,7 +33,7 @@ from .optics import *
 from .exposure import *
 from .detector import *
 from .instrument import *
-from .image import *
+from .pipeline import *
 from .distribution import *
 
 
@@ -53,7 +53,7 @@ __all__ = (
     + exposure.__all__
     + detector.__all__
     + instrument.__all__
-    + image.__all__
+    + pipeline.__all__
     + distribution.__all__
 )
 
@@ -74,7 +74,7 @@ __all__.extend(
         exposure,
         detector,
         instrument,
-        image,
+        pipeline,
         distribution,
     ]
 )

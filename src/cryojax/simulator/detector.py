@@ -9,7 +9,6 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Optional, Any
 from typing_extensions import override
 
 import jax.numpy as jnp
@@ -17,7 +16,6 @@ from jaxtyping import PRNGKeyArray
 
 from .noise import GaussianNoise
 from .kernel import Kernel, Constant
-from ..utils import ifftn
 from ..core import field, Module
 from ..typing import ComplexImage, ImageCoords
 
@@ -28,12 +26,7 @@ class Detector(Module):
     """
 
     @abstractmethod
-    def sample(
-        self,
-        key: PRNGKeyArray,
-        freqs: ImageCoords,
-        image: Optional[ComplexImage] = None,
-    ) -> ComplexImage:
+    def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:
         """Sample a realization from the detector noise model."""
         raise NotImplementedError
 
@@ -44,13 +37,8 @@ class NullDetector(Detector):
     """
 
     @override
-    def sample(
-        self,
-        key: PRNGKeyArray,
-        freqs: ImageCoords,
-        image: Optional[ComplexImage] = None,
-    ) -> ComplexImage:
-        return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
+    def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:
+        return jnp.zeros(jnp.asarray(freqs).shape[0:-1], dtype=complex)
 
 
 class GaussianDetector(GaussianNoise, Detector):
@@ -69,10 +57,5 @@ class GaussianDetector(GaussianNoise, Detector):
     variance: Kernel = field(default_factory=Constant)
 
     @override
-    def sample(
-        self,
-        key: PRNGKeyArray,
-        freqs: ImageCoords,
-        image: Optional[ComplexImage] = None,
-    ) -> ComplexImage:
+    def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:
         return super().sample(key, freqs)

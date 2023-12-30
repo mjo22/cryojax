@@ -72,8 +72,6 @@ class ImagePipeline(Module):
             and filtered image.
         get_real : `bool`, optional
             If ``True``, return the image in real space.
-            This argument does nothing if ``view = True``.
-
         """
         freqs = self.scattering.padded_frequency_grid_in_angstroms
         # Draw the electron density at a particular conformation and pose
@@ -92,15 +90,13 @@ class ImagePipeline(Module):
         ), self.instrument.exposure.offset(freqs)
         image = scaling * image + offset
 
-        if view:
-            image = self._filter_crop_mask(image)
-        elif get_real:
-            image = ifftn(image).real
-
-        return image
+        return self._postprocess_image(image, view=view, get_real=get_real)
 
     def sample(
-        self, key: Union[PRNGKeyArray, _PRNGKeyArrayLike], view: bool = True
+        self,
+        key: Union[PRNGKeyArray, _PRNGKeyArrayLike],
+        view: bool = True,
+        get_real: bool = True,
     ) -> RealImage:
         """
         Sample the an image from a realization of the noise.
@@ -116,6 +112,8 @@ class ImagePipeline(Module):
         view : `bool`, optional
             If ``True``, view the cropped, masked,
             and filtered image.
+        get_real : `bool`, optional
+            If ``True``, return the image in real space.
         """
         # Check PRNGKey
         idx = 0  # Keep track of number of stochastic models
@@ -137,41 +135,57 @@ class ImagePipeline(Module):
             noise = self.instrument.detector.sample(key[idx], freqs)
             image = image + noise
             idx += 1
-        if view:
-            image = self._filter_crop_mask(image)
-        else:
-            image = ifftn(image).real
 
-        return image
+        return self._postprocess_image(image, view=view, get_real=get_real)
 
     def __call__(
         self,
         key: Optional[Union[PRNGKeyArray, _PRNGKeyArrayLike]] = None,
         view: bool = True,
+        get_real: bool = True,
     ) -> Image:
         """
         Sample or render an image.
         """
         if key is None:
-            return self.render(view=view)
+            return self.render(view=view, get_real=get_real)
         else:
-            return self.sample(key, view=view)
+            return self.sample(key, view=view, get_real=get_real)
 
-    def _filter_crop_mask(self, image: ComplexImage) -> RealImage:
+    def _postprocess_image(
+        self, image: ComplexImage, view: bool = True, get_real: bool = True
+    ) -> Image:
+        """
+        Return an image postprocessed with filters, cropping, and masking
+        in either real or fourier space.
+        """
+        if view:
+            return self._filter_crop_mask(image, get_real=get_real)
+        else:
+            return ifftn(image).real if get_real else image
+
+    def _filter_crop_mask(
+        self, image: ComplexImage, get_real: bool = True
+    ) -> Image:
         """
         View the image. This function applies
         filters, crops the image, then applies masks.
         """
-        # Apply filters to the image
+        manager = self.scattering.manager
+        # Apply filter
         if self.filter is not None:
             image = self.filter(image)
-        # Crop the image
-        image = ifftn(image).real
-        image = self.scattering.manager.crop_to_shape(image)
-        # Mask the image
-        if self.mask is not None:
-            image = self.mask(image)
-        return image
+        # Crop and apply mask
+        if self.mask is None and manager.padded_shape == manager.shape:
+            # ... if there are no masks and we don't need to crop,
+            # minimize moving back and forth between real and fourier space
+            return ifftn(image).real if get_real else image
+        else:
+            # ... otherwise, inverse transform, crop, and mask
+            image = manager.crop_to_shape(ifftn(image).real)
+            if self.mask is not None:
+                image = self.mask(image)
+            return image if get_real else fftn(image)
 
 
 class SuperpositionPipeline(ImagePipeline):
@@ -224,9 +238,4 @@ class SuperpositionPipeline(ImagePipeline):
         # ... compute the superposition
         image = compute_stack_and_sum(vmap, novmap)
 
-        if view:
-            image = self._filter_crop_mask(image)
-        elif get_real:
-            image = ifftn(image).real
-
-        return image
+        return self._postprocess_image(image, view=view, get_real=get_real)
