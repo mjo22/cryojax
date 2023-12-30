@@ -119,9 +119,7 @@ def filtered_and_masked_model(
 
 @pytest.fixture
 def test_image(noisy_model):
-    image = noisy_model.sample(
-        jr.split(jr.PRNGKey(1234), num=2), view=False
-    )
+    image = noisy_model.sample(jr.split(jr.PRNGKey(1234), num=2), view=False)
     return fftn(image)
 
 
