@@ -24,7 +24,7 @@ from .detector import NullDetector
 from .ice import Ice, NullIce
 from ..utils import fftn, ifftn
 from ..core import field, Module
-from ..typing import RealImage, Image
+from ..typing import ComplexImage, RealImage, Image
 
 
 _PRNGKeyArrayLike = Shaped[PRNGKeyArray, "M"]
@@ -93,7 +93,7 @@ class ImagePipeline(Module):
         image = scaling * image + offset
 
         if view:
-            image = self._filter_crop_mask(image, is_real=False)
+            image = self._filter_crop_mask(image)
         elif get_real:
             image = ifftn(image).real
 
@@ -132,16 +132,15 @@ class ImagePipeline(Module):
             )
             image = image + ice_image
             idx += 1
-        image = ifftn(image).real
         if not isinstance(self.instrument.detector, NullDetector):
             # Measure the detector readout
-            noise = self.instrument.detector.sample(
-                key[idx], freqs, image=image
-            )
+            noise = self.instrument.detector.sample(key[idx], freqs)
             image = image + noise
             idx += 1
         if view:
-            image = self._filter_crop_mask(image, is_real=True)
+            image = self._filter_crop_mask(image)
+        else:
+            image = ifftn(image).real
 
         return image
 
@@ -158,21 +157,16 @@ class ImagePipeline(Module):
         else:
             return self.sample(key, view=view)
 
-    def _filter_crop_mask(
-        self, image: Image, is_real: bool = False
-    ) -> RealImage:
+    def _filter_crop_mask(self, image: ComplexImage) -> RealImage:
         """
         View the image. This function applies
         filters, crops the image, then applies masks.
         """
         # Apply filters to the image
         if self.filter is not None:
-            if is_real:
-                image = fftn(image)
             image = self.filter(image)
-        if not is_real:
-            image = ifftn(image).real
         # Crop the image
+        image = ifftn(image).real
         image = self.scattering.manager.crop_to_shape(image)
         # Mask the image
         if self.mask is not None:
