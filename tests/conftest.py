@@ -11,7 +11,7 @@ from cryojax.utils import fftn
 config.update("jax_enable_x64", True)
 
 
-@pytest.fixture()
+@pytest.fixture
 def manager():
     return cs.ImageManager(shape=(81, 82))
 
