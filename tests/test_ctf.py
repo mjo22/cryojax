@@ -27,7 +27,7 @@ def test_ctf_with_cistem(
 
     Modified from https://github.com/jojoelfe/contrasttransferfunction"""
     shape = (512, 512)
-    freqs = make_frequencies(shape, pixel_size=pixel_size)
+    freqs = make_frequencies(shape, pixel_size)
     k_sqr, theta = cartesian_to_polar(freqs, square=True)
     # Compute cryojax CTF
     optics = CTFOptics(

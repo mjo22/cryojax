@@ -5,7 +5,7 @@ from cryojax.simulator.density import VoxelGrid, VoxelCloud
 from cryojax.simulator.density._voxel_density import (
     _build_real_space_voxels_from_atoms,
 )
-from cryojax.utils import irfftn, make_coordinates
+from cryojax.utils import ifftn, make_coordinates
 
 
 def test_VoxelGrid_VoxelCloud_agreement(sample_pdb_path):
@@ -24,13 +24,13 @@ def test_VoxelGrid_VoxelCloud_agreement(sample_pdb_path):
     )
     # Since Voxelgrid is in Frequency space by default, we have to first
     # transform back into real space.
-    vg_density = irfftn(vg.weights).ravel()
+    vg_density = ifftn(vg.weights).real.ravel()
 
     vc = VoxelCloud.from_pdb(
         sample_pdb_path,
         n_voxels_per_side=n_voxels_per_side,
         voxel_size=voxel_size,
-        mask=False,
+        mask_zeros=False,
     )
 
     assert jnp.allclose(vg_density, vc.weights)

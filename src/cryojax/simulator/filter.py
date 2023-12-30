@@ -94,7 +94,10 @@ class LowpassFilter(Filter):
     @override
     def evaluate(self, **kwargs) -> RealImage:
         return compute_lowpass_filter(
-            self.manager.padded_freqs, self.cutoff, self.rolloff, **kwargs
+            self.manager.padded_frequency_grid,
+            self.cutoff,
+            self.rolloff,
+            **kwargs,
         )
 
 
@@ -114,7 +117,7 @@ class WhiteningFilter(Filter):
     @override
     def evaluate(self, **kwargs: Any) -> RealImage:
         return compute_whitening_filter(
-            self.manager.padded_freqs, self.micrograph, **kwargs
+            self.manager.padded_frequency_grid, self.micrograph, **kwargs
         )
 
 

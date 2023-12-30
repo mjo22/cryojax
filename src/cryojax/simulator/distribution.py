@@ -100,7 +100,7 @@ class GaussianImage(Distribution):
     @cached_property
     def variance(self) -> Union[Real_, RealImage]:
         # Gather frequency coordinates
-        freqs = self.scattering.physical_freqs
+        freqs = self.scattering.frequency_grid_in_angstroms
         # Variance from detector
         if not isinstance(self.instrument.detector, NullDetector):
             variance = self.instrument.detector.variance(freqs)

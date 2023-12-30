@@ -4,21 +4,22 @@ Voxel-based electron density representations.
 
 __all__ = ["Voxels", "VoxelCloud", "VoxelGrid"]
 
-import equinox as eqx
-
+import os
 from abc import abstractmethod
 from typing import Any, Type, Tuple
 from typing import Any, Type, ClassVar
+from jaxtyping import Complex, Float, Array
+from equinox import AbstractVar
+from functools import cached_property
+
+import equinox as eqx
 import jax
 import jax.numpy as jnp
-from jaxtyping import Float, Array
-from equinox import AbstractVar
 
 from ._electron_density import ElectronDensity
 from ..pose import Pose
 from ...io import (
-    load_voxel_cloud,
-    load_fourier_grid,
+    load_mrc,
     read_atomic_model_from_pdb,
     read_atomic_model_from_cif,
     get_scattering_info_from_gemmi_model,
@@ -28,17 +29,17 @@ from cryojax.utils import (
     make_frequencies,
     make_coordinates,
     flatten_and_coordinatize,
-    rfftn,
+    pad,
+    fftn,
 )
 from cryojax.typing import (
-    ComplexVolume,
     RealCloud,
     CloudCoords3D,
-    RealVolume,
     Real_,
 )
 
-_CubicVolume = Float[Array, "N N N"]
+_RealCubicVolume = Float[Array, "N N N"]
+_ComplexCubicVolume = Complex[Array, "N N N"]
 _VolumeSliceCoords = Float[Array, "N N 1 3"]
 
 
@@ -50,34 +51,27 @@ class Voxels(ElectronDensity):
     ----------
     weights :
         The electron density.
-    coordinates :
-        The coordinate system.
     voxel_size
         The voxel size of the electron density.
     """
 
     weights: AbstractVar[Array]
-    coordinates: AbstractVar[Array]
     voxel_size: Real_ = field()
 
     @classmethod
     def from_file(
         cls: Type["Voxels"],
         filename: str,
-        config: dict = {},
         **kwargs: Any,
     ) -> "Voxels":
         """Load a ElectronDensity."""
-        return cls.from_mrc(
-            filename, config=config, _is_stacked=False, **kwargs
-        )
+        return cls.from_mrc(filename, **kwargs)
 
     @classmethod
     @abstractmethod
     def from_mrc(
         cls: Type["Voxels"],
         filename: str,
-        config: dict = {},
         **kwargs: Any,
     ) -> "Voxels":
         """Load a ElectronDensity from MRC file format."""
@@ -88,44 +82,70 @@ class VoxelGrid(Voxels):
     """
     Abstraction of a 3D electron density voxel grid.
 
-    The voxel grid should be given in Fourier space.
+    The voxel grid should be given in fourier space.
 
     Attributes
     ----------
     weights :
-        3D electron density grid in Fourier space.
-    coordinates :
-        Central slice of cartesian coordinate system.
+        3D electron density grid in fourier space.
+    frequency_slice :
+        Central slice of cartesian coordinate system
+        in fourier space.
     """
 
-    weights: _CubicVolume = field()
-    coordinates: _VolumeSliceCoords = field()
+    weights: _ComplexCubicVolume = field()
+    frequency_slice: _VolumeSliceCoords = field()
 
     is_real: ClassVar[bool] = False
 
-    def rotate_to(self, pose: Pose) -> "VoxelGrid":
+    @cached_property
+    def frequency_slice_in_angstroms(self) -> _VolumeSliceCoords:
+        return self.frequency_slice / self.voxel_size
+
+    def rotate_to_pose(self, pose: Pose) -> "VoxelGrid":
         """
         Compute rotations of a central slice in fourier space
         by an imaging pose.
 
         This rotation is the inverse rotation as in real space.
         """
-        coordinates = pose.rotate(self.coordinates, is_real=self.is_real)
-
-        return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
+        return eqx.tree_at(
+            lambda d: d.frequency_slice,
+            self,
+            pose.rotate(self.frequency_slice, is_real=self.is_real),
+        )
 
     @classmethod
     def from_mrc(
         cls: Type["VoxelGrid"],
         filename: str,
-        config: dict = {},
+        pad_scale: float = 1.0,
         **kwargs: Any,
     ) -> "VoxelGrid":
         """
-        See ``cryojax.io.voxel.load_fourier_grid`` for
-        documentation.
+        Loads a ``VoxelGrid`` from MRC file format.
         """
-        return cls(**load_fourier_grid(filename, **config), **kwargs)
+        # Load template
+        filename = os.path.abspath(filename)
+        template, voxel_size = load_mrc(filename)
+        # Change how template sits in box to match cisTEM
+        template = jnp.transpose(template, axes=[2, 1, 0])
+        # Pad template
+        padded_shape = tuple([int(s * pad_scale) for s in template.shape])
+        template = pad(template, padded_shape)
+        # Load density and coordinates
+        density = fftn(template)
+        frequency_grid = make_frequencies(template.shape, 1.0)
+        # Get central z slice
+        frequency_slice = jnp.expand_dims(frequency_grid[:, :, 0, :], axis=2)
+        # Gather fields to instantiate a VoxelGrid
+        vdict = dict(
+            weights=density,
+            frequency_slice=frequency_slice,
+            voxel_size=voxel_size,
+        )
+
+        return cls(**vdict, **kwargs)
 
     @classmethod
     def from_pdb(
@@ -165,7 +185,7 @@ class VoxelGrid(Voxels):
         **kwargs: Any,
     ) -> "VoxelGrid":
         """
-        Loads a PDB file as a VoxelCloud.  Uses the Gemmi library.
+        Loads a PDB file as a VoxelGrid.  Uses the Gemmi library.
         Heavily based on a code from Frederic Poitevin, located at
 
         https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
@@ -177,10 +197,8 @@ class VoxelGrid(Voxels):
             coords, a_vals, b_vals, coordinates_3d
         )
 
-        fourier_space_density = rfftn(density)
-        frequency_grid = make_frequencies(
-            fourier_space_density.shape, voxel_size
-        )
+        fourier_space_density = fftn(density)
+        frequency_grid = make_frequencies(fourier_space_density.shape, 1.0)
 
         z_plane_frequencies = jnp.expand_dims(
             frequency_grid[:, :, 0, :], axis=2
@@ -188,7 +206,7 @@ class VoxelGrid(Voxels):
 
         vdict = {
             "weights": fourier_space_density,
-            "coordinates": z_plane_frequencies,
+            "frequency_slice": z_plane_frequencies,
             "voxel_size": voxel_size,
         }
         return cls(**vdict, **kwargs)
@@ -203,39 +221,66 @@ class VoxelCloud(Voxels):
     Attributes
     ----------
     weights :
-        3D electron density cloud.
-    coordinates :
-        Cartesian coordinate system for density cloud.
+        Flattened 3D electron density voxel grid into a
+        point cloud.
+    coordinate_list :
+        List of coordinates for the point cloud.
     """
 
     weights: RealCloud = field()
-    coordinates: CloudCoords3D = field()
+    coordinate_list: CloudCoords3D = field()
 
     is_real: ClassVar[bool] = True
 
-    def rotate_to(self, pose: Pose) -> "VoxelCloud":
+    @cached_property
+    def coordinate_list_in_angstroms(self) -> CloudCoords3D:
+        return self.voxel_size * self.coordinate_list
+
+    def rotate_to_pose(self, pose: Pose) -> "VoxelCloud":
         """
         Compute rotations of a point cloud by an imaging pose.
 
         This transformation will return a new density cloud
         with rotated coordinates.
         """
-        coordinates = pose.rotate(self.coordinates, is_real=self.is_real)
-
-        return eqx.tree_at(lambda d: d.coordinates, self, coordinates)
+        return eqx.tree_at(
+            lambda d: d.coordinate_list,
+            self,
+            pose.rotate(self.coordinate_list, is_real=self.is_real),
+        )
 
     @classmethod
     def from_mrc(
         cls: Type["VoxelCloud"],
         filename: str,
-        config: dict = {},
+        mask_zeros: bool = True,
+        indexing: str = "xy",
         **kwargs: Any,
     ) -> "VoxelCloud":
         """
-        See ``cryojax.io.voxel.load_grid_as_cloud`` for
-        documentation.
+        Load a ``VoxelCloud`` from MRC file format.
         """
-        return cls(**load_voxel_cloud(filename, **config), **kwargs)
+        # Load template
+        filename = os.path.abspath(filename)
+        template, voxel_size = load_mrc(filename)
+        # Change how template sits in the box.
+        # Ideally we would change this in the same way for all
+        # I/O methods. However, the algorithms used all
+        # have their own xyz conventions. The choice here is to
+        # make jax-finufft output match cisTEM.
+        template = jnp.transpose(template, axes=[1, 2, 0])
+        # Load flattened density and coordinates
+        flat_density, coordinate_list = flatten_and_coordinatize(
+            template, 1.0, mask_zeros, indexing
+        )
+        # Gather fields to instantiate an VoxelCloud
+        vdict = dict(
+            weights=flat_density,
+            coordinate_list=coordinate_list,
+            voxel_size=voxel_size,
+        )
+
+        return cls(**vdict, **kwargs)
 
     @classmethod
     def from_pdb(
@@ -243,7 +288,7 @@ class VoxelCloud(Voxels):
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: float = 1.0,
-        mask: bool = True,
+        mask_zeros: bool = True,
         indexing: str = "xy",
         **kwargs: Any,
     ) -> "VoxelCloud":
@@ -255,7 +300,12 @@ class VoxelCloud(Voxels):
         """
         model = read_atomic_model_from_pdb(filename)
         return cls.from_gemmi(
-            model, n_voxels_per_side, voxel_size, mask, indexing, **kwargs
+            model,
+            n_voxels_per_side,
+            voxel_size,
+            mask_zeros,
+            indexing,
+            **kwargs,
         )
 
     @classmethod
@@ -264,7 +314,7 @@ class VoxelCloud(Voxels):
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: float = 1.0,
-        mask: bool = True,
+        mask_zeros: bool = True,
         indexing: str = "xy",
         **kwargs: Any,
     ) -> "VoxelCloud":
@@ -276,7 +326,12 @@ class VoxelCloud(Voxels):
         """
         model = read_atomic_model_from_cif(filename)
         return cls.from_gemmi(
-            model, n_voxels_per_side, voxel_size, mask, indexing, **kwargs
+            model,
+            n_voxels_per_side,
+            voxel_size,
+            mask_zeros,
+            indexing,
+            **kwargs,
         )
 
     @classmethod
@@ -285,7 +340,7 @@ class VoxelCloud(Voxels):
         model,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: float = 1.0,
-        mask: bool = True,
+        mask_zeros: bool = True,
         indexing: str = "xy",
         **kwargs: Any,
     ):
@@ -297,12 +352,12 @@ class VoxelCloud(Voxels):
         )
 
         flat_density, flat_coordinates = flatten_and_coordinatize(
-            density, voxel_size, mask, indexing
+            density, 1.0, mask_zeros, indexing
         )
 
         vdict = {
             "weights": flat_density,
-            "coordinates": flat_coordinates,
+            "coordinate_list": flat_coordinates,
             "voxel_size": voxel_size,
         }
 
@@ -385,7 +440,7 @@ def _build_real_space_voxels_from_atoms(
     ff_a: Float[Array, "N 5"],
     ff_b: Float[Array, "N 5"],
     coordinate_system: Float[Array, "N1 N2 N3 3"],
-) -> Tuple[_CubicVolume, _VolumeSliceCoords]:
+) -> Tuple[_RealCubicVolume, _VolumeSliceCoords]:
     """
     Build a voxel representation of an atomic model.
 

@@ -6,7 +6,7 @@ __all__ = ["ElectronDensity"]
 
 import dataclasses
 from abc import abstractmethod
-from typing import Optional, Type
+from typing import Type, Any
 from equinox import AbstractClassVar
 
 import jax.numpy as jnp
@@ -30,7 +30,7 @@ class ElectronDensity(Module):
     _is_stacked: bool = field(static=True, default=False, kw_only=True)
 
     @abstractmethod
-    def rotate_to(self, pose: Pose) -> "ElectronDensity":
+    def rotate_to_pose(self, pose: Pose) -> "ElectronDensity":
         """
         View the electron density at a given pose.
 
@@ -46,7 +46,7 @@ class ElectronDensity(Module):
     def from_file(
         cls: Type["ElectronDensity"],
         filename: str,
-        config: Optional[dict] = None,
+        **kwargs: Any,
     ) -> "ElectronDensity":
         """
         Load an ElectronDensity from a file.

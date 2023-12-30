@@ -9,13 +9,12 @@ __all__ = ["ScatteringModel", "rescale_pixel_size"]
 
 from abc import abstractmethod
 from functools import partial, cached_property
-from typing import Any, Optional
+from typing import Any
 
 import jax
 import jax.numpy as jnp
 
 from ..density import ElectronDensity, Voxels
-from ..pose import Pose
 from ..manager import ImageManager
 
 from ...utils import fftn, ifftn, scale
@@ -40,9 +39,10 @@ class ScatteringModel(Module):
         For voxel-based ``ElectronDensity`` representations,
         if the pixel size is different than the voxel size,
         images will be interpolated in real space.
-    interpolation_method :
+    method :
         The interpolation method used for measuring
-        the image at the new ``pixel_size``.
+        the image at the new ``pixel_size``. Passed to
+        ``jax.image.scale_and_translate``.
 
     Methods
     -------
@@ -53,12 +53,10 @@ class ScatteringModel(Module):
     manager: ImageManager = field()
     pixel_size: Real_ = field()
 
-    interpolation_method: str = field(static=True, default="bicubic")
+    method: str = field(static=True, default="bicubic")
 
     @abstractmethod
-    def scatter(
-        self, density: ElectronDensity, pose: Optional[Pose] = None
-    ) -> ComplexImage:
+    def scatter(self, density: ElectronDensity) -> ComplexImage:
         """
         Compute the scattered wave of the electron
         density in the exit plane.
@@ -90,7 +88,7 @@ class ScatteringModel(Module):
                 image,
                 current_pixel_size,
                 new_pixel_size,
-                method=self.interpolation_method,
+                method=self.method,
                 antialias=False,
             )
             null_fn = lambda image: image
@@ -105,20 +103,20 @@ class ScatteringModel(Module):
         return image
 
     @cached_property
-    def physical_coords(self):
-        return self.pixel_size * self.manager.coords
+    def coordinate_grid_in_angstroms(self):
+        return self.pixel_size * self.manager.coordinate_grid
 
     @cached_property
-    def physical_freqs(self):
-        return self.manager.freqs / self.pixel_size
+    def frequency_grid_in_angstroms(self):
+        return self.manager.frequency_grid / self.pixel_size
 
     @cached_property
-    def padded_physical_coords(self):
-        return self.pixel_size * self.manager.padded_coords
+    def padded_coordinate_grid_in_angstroms(self):
+        return self.pixel_size * self.manager.padded_coordinate_grid
 
     @cached_property
-    def padded_physical_freqs(self):
-        return self.manager.padded_freqs / self.pixel_size
+    def padded_frequency_grid_in_angstroms(self):
+        return self.manager.padded_frequency_grid / self.pixel_size
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])

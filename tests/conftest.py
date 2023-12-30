@@ -5,7 +5,6 @@ import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
-from cryojax.io import load_fourier_grid
 
 config.update("jax_enable_x64", True)
 
@@ -31,14 +30,6 @@ def density():
         os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
     )
     return cs.VoxelGrid.from_file(filename)
-
-
-@pytest.fixture
-def weights_and_coordinates():
-    filename = os.path.join(
-        os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
-    )
-    return load_fourier_grid(filename)
 
 
 @pytest.fixture

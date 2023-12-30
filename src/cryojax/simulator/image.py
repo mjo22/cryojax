@@ -109,7 +109,7 @@ class ImagePipeline(Module):
         if isinstance(key, get_args(PRNGKeyArray)):
             key = jnp.expand_dims(key, axis=0)
         # Frequencies
-        freqs = self.scattering.padded_physical_freqs
+        freqs = self.scattering.padded_frequency_grid_in_angstroms
         # The image of the specimen drawn from the ensemble
         image = self.render(view=False)
         if not isinstance(self.solvent, NullIce):
@@ -166,11 +166,11 @@ class ImagePipeline(Module):
 
     def _render_ensemble(self, get_real: bool = True) -> Image:
         """Render an image of a Specimen."""
-        freqs = self.scattering.padded_physical_freqs
+        freqs = self.scattering.padded_frequency_grid_in_angstroms
         # Draw the electron density at a particular conformation and pose
         density = self.ensemble.realization
         # Compute the scattering image in fourier space
-        image = self.scattering(density, pose=self.ensemble.pose)
+        image = self.scattering(density)
         # Apply translation
         image *= self.ensemble.pose.shifts(freqs)
         # Measure the image with the instrument
@@ -223,7 +223,7 @@ class ImagePipeline(Module):
     ) -> Image:
         """Measure an image with the instrument"""
         instrument = self.instrument
-        freqs = self.scattering.padded_physical_freqs
+        freqs = self.scattering.padded_frequency_grid_in_angstroms
         # Compute and apply CTF
         ctf = instrument.optics(freqs, pose=self.ensemble.pose)
         image = ctf * image
