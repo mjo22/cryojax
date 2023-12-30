@@ -109,12 +109,18 @@ image = pipeline.sample(key)
 `cryojax` also defines a library of `Distribution`s, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
 
 ```python
+from cryojax.utils import fftn
+
+# Read observed data in real space
 observed = ...
+# Upsample observed data in fourier space
+observed = fftn(manager.pad_to_padded_shape(observed))
+# Instantiate distribution and compute
 model = cs.IndependentFourierGaussian(pipeline)
 log_likelihood = model.log_probability(observed)
 ```
 
-Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
+Note that in this example, the user must make sure `observed` is the expected shape and is in fourier space.
 
 Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `Ice` model. Models for exposure to the electron beam are supported through the `Instrument`'s `Exposure` model.
 
