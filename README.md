@@ -83,14 +83,14 @@ explicitly configured here. Finally, we can instantiate the `ImagePipeline`.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
-model = cs.ImagePipeline(scattering=scattering, ensemble=ensemble, instrument=instrument)
-image = model.sample(key)
+pipeline = cs.ImagePipeline(scattering=scattering, ensemble=ensemble, instrument=instrument)
+image = pipeline.sample(key)
 ```
 
 This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model.
 
 ```python
-image = model.render()
+image = pipeline.render()
 ```
 
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
@@ -100,17 +100,17 @@ micrograph = ...  # A micrograph used for whitening
 filter = cs.LowpassFilter(manager, cutoff=1.0)  # Cutoff modes above Nyquist frequency
           * cs.WhiteningFilter(manager, micrograph=micrograph)
 mask = cs.CircularMask(manager, radius=1.0)     # Cutoff pixels above radius equal to (half) image size
-model = cs.ImagePipeline(
+pipeline = cs.ImagePipeline(
     scattering=scattering, ensemble=ensemble, instrument=instrument, filter=filter, mask=mask
     )
-image = model.sample(key)
+image = pipeline.sample(key)
 ```
 
-`cryojax` also defines a library of `Distribution`s, which inherit from the `ImagePipeline`. If a `GaussianImage` is instantiated, it is equipped with a the log likelihood function.
+`cryojax` also defines a library of `Distribution`s, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
 
 ```python
 observed = ...
-model = cs.GaussianImage(scattering=scattering, ensemble=ensemble, instrument=instrument)
+model = cs.IndependentFourierGaussian(pipeline)
 log_likelihood = model.log_probability(observed)
 ```
 
@@ -131,7 +131,7 @@ def update_model(model, params):
     """
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
-    where = lambda model: (model.ensemble.pose.view_phi, model.instrument.optics.defocus_u, model.scattering.pixel_size)
+    where = lambda model: (model.pipeline.ensemble.pose.view_phi, model.pipeline.instrument.optics.defocus_u, model.pipeline.scattering.pixel_size)
     updated_model = eqx.tree_at(where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"]))
     return updated_model
 ```

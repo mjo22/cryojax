@@ -99,14 +99,5 @@ def test_image(noisy_model):
 
 
 @pytest.fixture
-def likelihood_model(
-    scattering, ensemble, instrument, solvent, filters, masks
-):
-    return cs.GaussianImage(
-        scattering=scattering,
-        ensemble=ensemble,
-        instrument=instrument,
-        solvent=solvent,
-        filter=filters,
-        mask=masks,
-    )
+def likelihood_model(noisy_model):
+    return cs.IndependentFourierGaussian(noisy_model)

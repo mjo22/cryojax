@@ -5,9 +5,7 @@ import numpy as np
 from cryojax.utils import fftn, ifftn
 
 
-@pytest.mark.parametrize(
-    "model", ["noisy_model", "maskless_model", "likelihood_model"]
-)
+@pytest.mark.parametrize("model", ["noisy_model", "maskless_model"])
 def test_fft(model, request):
     model = request.getfixturevalue(model)
     image = fftn(model.render())

@@ -35,7 +35,7 @@ def test_jit(likelihood_model, test_image):
 
 def test_value_and_grad(likelihood_model, test_image):
     def build_model(model, params):
-        where = lambda m: m.ensemble.pose.offset_z
+        where = lambda m: m.pipeline.ensemble.pose.offset_z
         return eqx.tree_at(where, model, params["offset_z"])
 
     @jax.jit

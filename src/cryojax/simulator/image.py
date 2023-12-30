@@ -4,9 +4,10 @@ Image formation models.
 
 from __future__ import annotations
 
-__all__ = ["ImagePipeline"]
+__all__ = ["ImagePipeline", "SuperpositionPipeline"]
 
 from typing import Union, get_args, Optional
+from typing_extensions import override
 
 import equinox as eqx
 import jax
@@ -17,15 +18,13 @@ from jaxtyping import PRNGKeyArray, Shaped
 from .filter import Filter
 from .mask import Mask
 from .ensemble import Ensemble
-from .assembly import Assembly
 from .scattering import ScatteringModel
-from .manager import ImageManager
 from .instrument import Instrument
 from .detector import NullDetector
 from .ice import Ice, NullIce
 from ..utils import fftn, ifftn
 from ..core import field, Module
-from ..typing import RealImage, ComplexImage, Image
+from ..typing import RealImage, Image
 
 
 _PRNGKeyArrayLike = Shaped[PRNGKeyArray, "M"]
@@ -54,7 +53,7 @@ class ImagePipeline(Module):
         A mask to apply to the image.
     """
 
-    ensemble: Union[Ensemble, Assembly] = field()
+    ensemble: Ensemble = field()
     scattering: ScatteringModel = field()
     instrument: Instrument = field(default_factory=Instrument)
     solvent: Ice = field(default_factory=NullIce)
@@ -62,7 +61,7 @@ class ImagePipeline(Module):
     filter: Optional[Filter] = field(default=None)
     mask: Optional[Mask] = field(default=None)
 
-    def render(self, view: bool = True) -> RealImage:
+    def render(self, view: bool = True, get_real: bool = True) -> Image:
         """
         Render an image of a Specimen.
 
@@ -71,18 +70,32 @@ class ImagePipeline(Module):
         view : `bool`, optional
             If ``True``, view the cropped, masked,
             and filtered image.
+        get_real : `bool`, optional
+            If ``True``, return the image in real space.
+            This argument does nothing if ``view = True``.
+
         """
-        if isinstance(self.ensemble, Ensemble):
-            image = self._render_ensemble()
-        elif isinstance(self.ensemble, Assembly):
-            image = self._render_assembly()
-        else:
-            raise ValueError(
-                "The ensemble must an instance of an Ensemble or an Assembly."
-            )
+        freqs = self.scattering.padded_frequency_grid_in_angstroms
+        # Draw the electron density at a particular conformation and pose
+        density = self.ensemble.realization
+        # Compute the scattering image in fourier space
+        image = self.scattering(density)
+        # Apply translation
+        image *= self.ensemble.pose.shifts(freqs)
+        # Measure the image with the instrument
+        # ... first compute and apply CTF
+        ctf = self.instrument.optics(freqs, pose=self.ensemble.pose)
+        image = ctf * image
+        # ... then apply the electron exposure model
+        scaling, offset = self.instrument.exposure.scaling(
+            freqs
+        ), self.instrument.exposure.offset(freqs)
+        image = scaling * image + offset
 
         if view:
-            image = self._filter_crop_mask(image)
+            image = self._filter_crop_mask(image, is_real=False)
+        elif get_real:
+            image = ifftn(image).real
 
         return image
 
@@ -164,76 +177,60 @@ class ImagePipeline(Module):
             image = self.mask(image)
         return image
 
-    def _render_ensemble(self, get_real: bool = True) -> Image:
-        """Render an image of a Specimen."""
-        freqs = self.scattering.padded_frequency_grid_in_angstroms
-        # Draw the electron density at a particular conformation and pose
-        density = self.ensemble.realization
-        # Compute the scattering image in fourier space
-        image = self.scattering(density)
-        # Apply translation
-        image *= self.ensemble.pose.shifts(freqs)
-        # Measure the image with the instrument
-        image = self._measure_with_instrument(image, get_real=get_real)
 
-        return image
+class SuperpositionPipeline(ImagePipeline):
+    """
+    Compute an image from a superposition of states in
+    ``Ensemble``. This assumes that either ``Ensemble.Pose``
+    and/or ``Ensemble.conformation`` has a batch dimension.
 
-    def _render_assembly(self, get_real: bool = True) -> Image:
-        """Render an image of an Assembly from its subunits."""
-        # Get the subunits
-        subunits = self.ensemble.subunits
-        # Create an ImagePipeline for the subunits
-        subunit_pipeline = eqx.tree_at(
-            lambda m: m.ensemble,
-            self,
-            subunits,
-        )
+    This class can be used to compute a micrograph, where there
+    are many specimen in the field of view. Or it can be used to
+    compute an image from ``Assembly.subunits``.
+    """
+
+    @override
+    def render(self, view: bool = True, get_real: bool = True):
+        """Render the superposition of states in the Ensemble."""
         # Setup vmap over poses and conformations
+        false_pytree = jtu.tree_map(lambda _: False, self)
         if self.ensemble.conformation is None:
-            where_vmap = lambda m: (m.ensemble.pose,)
-            n_vmap = 1
+            # ... only vmap over poses
+            to_vmap_args = (
+                lambda m: (m.ensemble.pose,),
+                false_pytree,
+                (True,),
+            )
         else:
-            where_vmap = lambda m: (m.ensemble.pose, m.ensemble.conformation)
-            n_vmap = 2
-        to_vmap = eqx.tree_at(
-            where_vmap,
-            jtu.tree_map(lambda _: False, subunit_pipeline),
-            tuple(n_vmap * [True]),
+            # ... vmap over poses and conformations
+            to_vmap_args = (
+                lambda m: (m.ensemble.pose, m.ensemble.conformation),
+                false_pytree,
+                (True, True),
+            )
+        vmap, novmap = eqx.partition(self, eqx.tree_at(*to_vmap_args))
+        # Compute all images and sum
+        compute_image = lambda model: super(type(model), model).render(
+            view=False, get_real=False
         )
-        vmap, novmap = eqx.partition(subunit_pipeline, to_vmap)
-        # Compute all subunit images and sum
+        # ... vmap to compute a stack of images to superimpose
         compute_stack = jax.vmap(
-            lambda vmap, novmap: eqx.combine(vmap, novmap)._render_ensemble(
-                get_real=False
-            ),
+            lambda vmap, novmap: compute_image(eqx.combine(vmap, novmap)),
             in_axes=(0, None),
         )
+        # ... sum over the stack of images and jit
         compute_stack_and_sum = jax.jit(
             lambda vmap, novmap: jnp.sum(
                 compute_stack(vmap, novmap),
                 axis=0,
             )
         )
+        # ... compute the superposition
         image = compute_stack_and_sum(vmap, novmap)
 
-        return ifftn(image).real if get_real else image
-
-    def _measure_with_instrument(
-        self, image: ComplexImage, get_real: bool = True
-    ) -> Image:
-        """Measure an image with the instrument"""
-        instrument = self.instrument
-        freqs = self.scattering.padded_frequency_grid_in_angstroms
-        # Compute and apply CTF
-        ctf = instrument.optics(freqs, pose=self.ensemble.pose)
-        image = ctf * image
-        # Apply the electron exposure model
-        scaling, offset = instrument.exposure.scaling(
-            freqs
-        ), instrument.exposure.offset(freqs)
-        image = scaling * image + offset
-
-        if get_real:
+        if view:
+            image = self._filter_crop_mask(image, is_real=False)
+        elif get_real:
             image = ifftn(image).real
 
         return image
