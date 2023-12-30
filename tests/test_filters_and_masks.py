@@ -3,11 +3,10 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
-import cryojax.simulator as cs
 
 
 @pytest.mark.parametrize("model", ["noisy_model"])
-def test_filters_and_masks(
+def test_compute_with_filters_and_masks(
     model, filtered_and_masked_model, request, filters, masks
 ):
     """Make sure that adding null filters and masks does not change output"""
