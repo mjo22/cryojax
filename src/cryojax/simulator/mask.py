@@ -89,7 +89,7 @@ class CircularMask(Mask):
     @override
     def evaluate(self, **kwargs: Any) -> RealImage:
         return compute_circular_mask(
-            self.manager.coords, self.radius, self.rolloff, **kwargs
+            self.manager.coordinate_grid, self.radius, self.rolloff, **kwargs
         )
 
 

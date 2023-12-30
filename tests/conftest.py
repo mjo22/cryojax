@@ -5,7 +5,6 @@ import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
-from cryojax.io import load_fourier_grid
 
 config.update("jax_enable_x64", True)
 
@@ -34,11 +33,8 @@ def density():
 
 
 @pytest.fixture
-def weights_and_coordinates():
-    filename = os.path.join(
-        os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
-    )
-    return load_fourier_grid(filename)
+def sample_pdb_path():
+    return os.path.join(os.path.dirname(__file__), "data", "1uao.pdb")
 
 
 @pytest.fixture
@@ -57,7 +53,7 @@ def instrument(pixel_size):
     return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1e5, mu=1.0),
-        detector=cs.GaussianDetector(pixel_size=pixel_size),
+        detector=cs.GaussianDetector(),
     )
 
 

@@ -21,7 +21,6 @@ from ..utils import (
     crop,
     pad,
     crop_or_pad,
-    resize,
 )
 
 
@@ -43,14 +42,14 @@ class ImageManager(Buffer):
     pad_mode :
         The method of image padding. By default, ``"edge"``.
         For all options, see ``jax.numpy.pad``.
-    freqs :
+    frequency_grid :
         The fourier wavevectors in the imaging plane.
-    padded_freqs :
+    padded_frequency_grid :
         The fourier wavevectors in the imaging plane
         in the padded coordinate system.
-    coords :
+    coordinate_grid :
         The coordinates in the imaging plane.
-    padded_coords :
+    padded_coordinate_grid :
         The coordinates in the imaging plane
         in the padded coordinate system.
     """
@@ -61,46 +60,36 @@ class ImageManager(Buffer):
 
     padded_shape: tuple[int, int] = field(static=True, init=False)
 
-    freqs: ImageCoords = field(init=False)
-    padded_freqs: ImageCoords = field(init=False)
-    coords: ImageCoords = field(init=False)
-    padded_coords: ImageCoords = field(init=False)
+    frequency_grid: ImageCoords = field(init=False)
+    padded_frequency_grid: ImageCoords = field(init=False)
+    coordinate_grid: ImageCoords = field(init=False)
+    padded_coordinate_grid: ImageCoords = field(init=False)
 
     def __post_init__(self):
         # Set shape after padding
         padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
         self.padded_shape = padded_shape
         # Set coordinates
-        self.freqs = make_frequencies(self.shape)
-        self.padded_freqs = make_frequencies(self.padded_shape)
-        self.coords = make_coordinates(self.shape)
-        self.padded_coords = make_coordinates(self.padded_shape)
+        self.frequency_grid = make_frequencies(self.shape)
+        self.padded_frequency_grid = make_frequencies(self.padded_shape)
+        self.coordinate_grid = make_coordinates(self.shape)
+        self.padded_coordinate_grid = make_coordinates(self.padded_shape)
 
-    def crop(self, image: Image) -> Image:
+    def crop_to_shape(self, image: Image) -> Image:
         """Crop an image."""
         return crop(image, self.shape)
 
-    def pad(self, image: Image, **kwargs: Any) -> Image:
+    def pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
         """Pad an image."""
         return pad(image, self.padded_shape, mode=self.pad_mode, **kwargs)
 
-    def crop_or_pad(self, image: Image, **kwargs: Any) -> Image:
+    def crop_or_pad_to_padded_shape(
+        self, image: Image, **kwargs: Any
+    ) -> Image:
         """Reshape an image using cropping or padding."""
         return crop_or_pad(
             image, self.padded_shape, mode=self.pad_mode, **kwargs
         )
-
-    def downsample(
-        self, image: Image, method="lanczos5", **kwargs: Any
-    ) -> Image:
-        """Downsample an image using interpolation."""
-        return resize(
-            image, self.shape, antialias=False, method=method, **kwargs
-        )
-
-    def upsample(self, image: Image, method="bicubic", **kwargs: Any) -> Image:
-        """Upsample an image using interpolation."""
-        return resize(image, self.padded_shape, method=method, **kwargs)
 
     def normalize_to_cistem(
         self, image: Image, is_real: bool = False
