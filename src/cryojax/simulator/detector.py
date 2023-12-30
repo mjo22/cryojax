@@ -19,7 +19,7 @@ from .noise import GaussianNoise
 from .kernel import Kernel, Constant
 from ..utils import ifftn
 from ..core import field, Module
-from ..typing import RealImage, ImageCoords
+from ..typing import ComplexImage, ImageCoords
 
 
 class Detector(Module):
@@ -32,8 +32,8 @@ class Detector(Module):
         self,
         key: PRNGKeyArray,
         freqs: ImageCoords,
-        image: Optional[RealImage] = None,
-    ) -> RealImage:
+        image: Optional[ComplexImage] = None,
+    ) -> ComplexImage:
         """Sample a realization from the detector noise model."""
         raise NotImplementedError
 
@@ -48,8 +48,8 @@ class NullDetector(Detector):
         self,
         key: PRNGKeyArray,
         freqs: ImageCoords,
-        image: Optional[RealImage] = None,
-    ) -> RealImage:
+        image: Optional[ComplexImage] = None,
+    ) -> ComplexImage:
         return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
 
@@ -73,6 +73,6 @@ class GaussianDetector(GaussianNoise, Detector):
         self,
         key: PRNGKeyArray,
         freqs: ImageCoords,
-        image: Optional[RealImage] = None,
-    ) -> RealImage:
-        return ifftn(super().sample(key, freqs)).real
+        image: Optional[ComplexImage] = None,
+    ) -> ComplexImage:
+        return super().sample(key, freqs)
