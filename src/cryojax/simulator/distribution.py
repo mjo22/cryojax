@@ -19,7 +19,7 @@ from .ice import NullIce, GaussianIce
 from .detector import NullDetector, GaussianDetector
 from .image import ImagePipeline, _PRNGKeyArrayLike
 from ..utils import ifftn, fftn
-from ..typing import Real_, RealImage
+from ..typing import Real_, RealImage, ComplexImage, Image
 from ..core import Module, field
 
 
@@ -31,18 +31,14 @@ class Distribution(Module):
     pipeline: ImagePipeline = field()
 
     @abstractmethod
-    def log_probability(self, observed: RealImage) -> Real_:
+    def log_probability(self, observed: Image) -> Real_:
         """
         Evaluate the log-probability.
 
         Parameters
         ----------
         observed :
-            The observed data in real space. This must be the same
-            shape as ``scattering.shape``. Note that the user
-            should preprocess the observed data before passing it
-            to the image, such as applying the ``filters`` and
-            ``masks``.
+            The observed data in real or fourier space.
         """
         raise NotImplementedError
 
@@ -106,10 +102,29 @@ class IndependentFourierGaussian(Distribution):
             return self.pipeline._filter_crop_mask(image + noise)
 
     @override
-    def log_probability(self, observed: RealImage) -> Real_:
-        """Evaluate the log-likelihood of the gaussian noise model."""
+    def log_probability(self, observed: ComplexImage) -> Real_:
+        """
+        Evaluate the log-likelihood of the gaussian noise model.
+
+        This evaluates the log probability in the super sampled
+        coordinate system. Therefore, the observed data must
+        match the ImageManager.padded_shape shape.
+
+        Parameters
+        ----------
+        observed :
+           The observed data in fourier space. This must match
+           the ImageManager.padded_shape shape.
+        """
+        pipeline = self.pipeline
+        if observed.shape != pipeline.scattering.manager.padded_shape:
+            raise ValueError(
+                "Shape of observed must match ImageManager.padded_shape"
+            )
         # Get residuals
-        residuals = fftn(self.pipeline.render() - observed)
+        residuals = pipeline.render(view=False, get_real=False) - observed
+        # Apply filters, crop, and mask
+        residuals = fftn(pipeline._filter_crop_mask(residuals))
         # Compute loss
         loss = jnp.sum(
             (residuals * jnp.conjugate(residuals)) / (2 * self.variance)
