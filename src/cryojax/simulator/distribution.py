@@ -103,9 +103,7 @@ class IndependentFourierGaussian(Distribution):
             freqs = self.pipeline.scattering.padded_frequency_grid_in_angstroms
             noise = self.noise.sample(key, freqs)
             image = self.pipeline.render(view=False, get_real=False)
-            return self.pipeline._filter_crop_mask(
-                image + noise, is_real=False
-            )
+            return self.pipeline._filter_crop_mask(image + noise)
 
     @override
     def log_probability(self, observed: RealImage) -> Real_:
