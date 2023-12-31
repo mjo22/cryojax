@@ -55,10 +55,8 @@ def test_ctf_with_cistem(
     )(k_sqr.ravel() * pixel_size**2, theta.ravel()).reshape(shape)
 
     # Compute cryojax and cisTEM power spectrum
-    spectrum1D, _ = powerspectrum(ctf, freqs, pixel_size=pixel_size)
-    cisTEM_spectrum1D, _ = powerspectrum(
-        cisTEM_ctf, freqs, pixel_size=pixel_size
-    )
+    spectrum1D, _ = powerspectrum(ctf, freqs)
+    cisTEM_spectrum1D, _ = powerspectrum(cisTEM_ctf, freqs)
 
     np.testing.assert_allclose(ctf, cisTEM_ctf, atol=5e-2)
     np.testing.assert_allclose(spectrum1D, cisTEM_spectrum1D, atol=5e-3)
