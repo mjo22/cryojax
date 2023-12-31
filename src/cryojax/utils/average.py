@@ -4,7 +4,7 @@ Routines to compute radial averages of images.
 
 __all__ = ["radial_average"]
 
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
 import jax
 import jax.numpy as jnp
@@ -18,6 +18,7 @@ def radial_average(
     norm: Image,
     bins: RealVector,
     grid: Optional[ImageCoords] = None,
+    **kwargs: Any,
 ) -> Union[Image, Vector]:
     """
     Radially average vectors r with a given magnitude
@@ -35,7 +36,7 @@ def radial_average(
     grid :
         If ``None``, evalulate the spectrum as a 1D
         profile. Otherwise, evaluate the spectrum on this
-        2D grid of frequencies.
+        2D grid of frequencies using linear interpolation.
 
     Returns
     -------
@@ -53,7 +54,6 @@ def radial_average(
     _, profile = jax.lax.scan(average, None, bins)
 
     if grid is not None:
-        idxs = jnp.digitize(grid, bins).ravel()
-        return jax.vmap(lambda idx: profile[idx])(idxs).reshape(grid.shape)
+        return jnp.interp(grid.ravel(), bins, profile).reshape(grid.shape)
     else:
         return profile

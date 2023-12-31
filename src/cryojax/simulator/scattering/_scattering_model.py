@@ -98,9 +98,9 @@ class ScatteringModel(Module):
                 rescale_fn,
                 image,
             )
-        # Normalize the image to cisTEM conventions (revisit this choice)
-        image = self.manager.normalize_to_cistem(fftn(image), is_real=False)
-        return image
+        # Give the image zero mean
+        image = image - jnp.mean(image)
+        return fftn(image)
 
     @cached_property
     def coordinate_grid_in_angstroms(self):

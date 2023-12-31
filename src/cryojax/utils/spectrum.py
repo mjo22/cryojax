@@ -16,8 +16,6 @@ def powerspectrum(
     image: ComplexImage,
     freqs: ImageCoords,
     pixel_size: float = 1.0,
-    k_min: Optional[float] = None,
-    k_max: Optional[float] = None,
     grid: Optional[ImageCoords] = None,
 ) -> tuple[Union[RealImage, RealVector], RealVector]:
     """
