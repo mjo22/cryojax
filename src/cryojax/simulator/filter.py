@@ -194,9 +194,15 @@ def compute_whitening_filter(
     """
     micrograph = jnp.asarray(micrograph)
     # Make coordinates
-    micrograph_freqs = make_frequencies(micrograph.shape, *kwargs)
-    # Compute power spectrum
-    micrograph /= jnp.sqrt(np.prod(micrograph.shape))
-    spectrum, _ = powerspectrum(micrograph, micrograph_freqs, grid=freqs)
+    micrograph_frequency_grid = make_frequencies(micrograph.shape, *kwargs)
+    # Compute norms
+    radial_frequency_grid = jnp.linalg.norm(micrograph_frequency_grid, axis=-1)
+    interpolating_radial_frequency_grid = jnp.linalg.norm(freqs, axis=-1)
+    # Compute power spectrum, divided by the number of modes
+    N1, N2 = micrograph.shape
+    micrograph /= jnp.sqrt(N1 * N2)
+    spectrum, _ = powerspectrum(
+        micrograph, radial_frequency_grid, interpolating_radial_frequency_grid
+    )
 
     return jax.lax.rsqrt(spectrum)
