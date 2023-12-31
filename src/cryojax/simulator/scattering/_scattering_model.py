@@ -98,9 +98,9 @@ class ScatteringModel(Module):
                 rescale_fn,
                 image,
             )
-        # Give the image zero mean
-        image = image - jnp.mean(image)
-        return fftn(image)
+        # Transform back to fourier space and give zero mean
+        image = fftn(image).at[0, 0].set(0.0 + 0.0j)
+        return image
 
     @cached_property
     def coordinate_grid_in_angstroms(self):

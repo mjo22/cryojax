@@ -9,12 +9,13 @@ from typing import Optional, Union
 import jax.numpy as jnp
 
 from .average import radial_average
-from ..typing import RealVector, RealImage, ComplexImage
+from ..typing import Real_, RealVector, RealImage, ComplexImage
 
 
 def powerspectrum(
     fourier_image: ComplexImage,
     radial_frequency_grid: RealImage,
+    pixel_size: Real_ = 1.0,
     interpolating_radial_frequency_grid: Optional[RealImage] = None,
 ) -> tuple[Union[RealImage, RealVector], RealVector]:
     """
@@ -28,6 +29,8 @@ def powerspectrum(
         An image in Fourier space.
     radial_frequency_grid :
         The frequency range of the desired wavevectors.
+    pixel_size :
+        The pixel size of the radial frequency grid.
     interpolating_radial_frequency_grid :
         If ``None``, evalulate the spectrum as a 1D
         profile. Otherwise, evaluate the spectrum on this
@@ -41,8 +44,8 @@ def powerspectrum(
     """
     # Compute power
     power = (fourier_image * jnp.conjugate(fourier_image)).real
-    k_min = 1 / max(*power.shape)
-    k_max = 1.0 / 2.0
+    k_min = 1 / (pixel_size * max(*power.shape))
+    k_max = 1.0 / (pixel_size * 2.0)
     k_step = k_min
     bins = jnp.arange(k_min, k_max, k_step)  # Left edges of bins
     spectrum = radial_average(

@@ -1,4 +1,5 @@
 import pytest
+import jax.numpy as jnp
 import numpy as np
 from pycistem.core import CTF
 
@@ -55,8 +56,9 @@ def test_ctf_with_cistem(
     )(k_sqr.ravel() * pixel_size**2, theta.ravel()).reshape(shape)
 
     # Compute cryojax and cisTEM power spectrum
-    spectrum1D, _ = powerspectrum(ctf, freqs)
-    cisTEM_spectrum1D, _ = powerspectrum(cisTEM_ctf, freqs)
+    radial_freqs = jnp.linalg.norm(freqs, axis=-1)
+    spectrum1D, _ = powerspectrum(ctf, radial_freqs, pixel_size)
+    cisTEM_spectrum1D, _ = powerspectrum(cisTEM_ctf, radial_freqs, pixel_size)
 
     np.testing.assert_allclose(ctf, cisTEM_ctf, atol=5e-2)
     np.testing.assert_allclose(spectrum1D, cisTEM_spectrum1D, atol=5e-3)
