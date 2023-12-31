@@ -19,11 +19,11 @@ import jax.numpy as jnp
 
 from .manager import ImageManager
 
-from ..core import field, Buffer
+from ..core import field, BufferModule
 from ..typing import RealImage, ImageCoords
 
 
-class Mask(Buffer):
+class Mask(BufferModule):
     """
     Base class for computing and applying an image mask.
 

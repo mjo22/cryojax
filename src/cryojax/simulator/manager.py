@@ -10,7 +10,7 @@ from typing import Any, Union, Callable
 
 import jax.numpy as jnp
 
-from ..core import field, Buffer
+from ..core import field, BufferModule
 from ..typing import (
     Image,
     ImageCoords,
@@ -24,7 +24,7 @@ from ..utils import (
 )
 
 
-class ImageManager(Buffer):
+class ImageManager(BufferModule):
     """
     Configuration and utilities for an electron microscopy image.
 

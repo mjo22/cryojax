@@ -17,17 +17,18 @@ from abc import abstractmethod
 from typing import Any
 from typing_extensions import override
 
-import numpy as np
+import jax
 import jax.numpy as jnp
+import numpy as np
 
 from .manager import ImageManager
 
 from ..utils import powerspectrum, make_frequencies
-from ..core import field, Buffer
-from ..typing import Image, ImageCoords, Real_, RealImage, ComplexImage
+from ..core import field, BufferModule
+from ..typing import Image, ImageCoords, RealImage, ComplexImage
 
 
-class Filter(Buffer):
+class Filter(BufferModule):
     """
     Base class for computing and applying an image filter.
 
@@ -198,4 +199,4 @@ def compute_whitening_filter(
     micrograph /= jnp.sqrt(np.prod(micrograph.shape))
     spectrum, _ = powerspectrum(micrograph, micrograph_freqs, grid=freqs)
 
-    return 1 / jnp.sqrt(spectrum)
+    return jax.lax.rsqrt(spectrum)
