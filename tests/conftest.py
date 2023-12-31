@@ -54,7 +54,7 @@ def masks(manager):
 def instrument(pixel_size):
     return cs.Instrument(
         optics=cs.CTFOptics(),
-        exposure=cs.UniformExposure(N=1e5, mu=1.0),
+        exposure=cs.UniformExposure(N=1000, mu=0.0),
         detector=cs.GaussianDetector(cs.Constant(1.0)),
     )
 
