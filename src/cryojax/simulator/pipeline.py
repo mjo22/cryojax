@@ -61,7 +61,9 @@ class ImagePipeline(Module):
     filter: Optional[Filter] = field(default=None)
     mask: Optional[Mask] = field(default=None)
 
-    def render(self, view: bool = True, get_real: bool = True) -> Image:
+    def render(
+        self, view: bool = True, get_real: bool = True, normalize: bool = False
+    ) -> Image:
         """
         Render an image of a Specimen.
 
@@ -72,6 +74,9 @@ class ImagePipeline(Module):
             and filtered image.
         get_real : `bool`, optional
             If ``True``, return the image in real space.
+        normalize : `bool`, optional
+            If ``True``, normalize the image to mean zero
+            and standard deviation 1.
         """
         freqs = self.scattering.padded_frequency_grid_in_angstroms
         # Draw the electron density at a particular conformation and pose
@@ -90,13 +95,16 @@ class ImagePipeline(Module):
         ), self.instrument.exposure.offset(freqs)
         image = scaling * image + offset
 
-        return self._postprocess_image(image, view=view, get_real=get_real)
+        return self._postprocess_image(
+            image, view=view, get_real=get_real, normalize=normalize
+        )
 
     def sample(
         self,
         key: Union[PRNGKeyArray, _PRNGKeyArrayLike],
         view: bool = True,
         get_real: bool = True,
+        normalize: bool = False,
     ) -> RealImage:
         """
         Sample the an image from a realization of the noise.
@@ -114,6 +122,9 @@ class ImagePipeline(Module):
             and filtered image.
         get_real : `bool`, optional
             If ``True``, return the image in real space.
+        normalize : `bool`, optional
+            If ``True``, normalize the image to mean zero
+            and standard deviation 1.
         """
         # Check PRNGKey
         idx = 0  # Keep track of number of stochastic models
@@ -136,7 +147,9 @@ class ImagePipeline(Module):
             image = image + noise
             idx += 1
 
-        return self._postprocess_image(image, view=view, get_real=get_real)
+        return self._postprocess_image(
+            image, view=view, get_real=get_real, normalize=normalize
+        )
 
     def __call__(
         self,
@@ -153,19 +166,31 @@ class ImagePipeline(Module):
             return self.sample(key, view=view, get_real=get_real)
 
     def _postprocess_image(
-        self, image: ComplexImage, view: bool = True, get_real: bool = True
+        self,
+        image: ComplexImage,
+        view: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
     ) -> Image:
         """
         Return an image postprocessed with filters, cropping, and masking
         in either real or fourier space.
         """
+        manager = self.scattering.manager
         if view:
-            return self._filter_crop_mask(image, get_real=get_real)
+            return self._filter_crop_mask(
+                image, get_real=get_real, normalize=normalize
+            )
         else:
+            if normalize:
+                image = manager.normalize_image(image, is_real=False)
             return ifftn(image).real if get_real else image
 
     def _filter_crop_mask(
-        self, image: ComplexImage, get_real: bool = True
+        self,
+        image: ComplexImage,
+        get_real: bool = True,
+        normalize: bool = False,
     ) -> Image:
         """
         View the image. This function applies
@@ -179,12 +204,16 @@ class ImagePipeline(Module):
         if self.mask is None and manager.padded_shape == manager.shape:
             # ... if there are no masks and we don't need to crop,
             # minimize moving back and forth between real and fourier space
+            if normalize:
+                image = manager.normalize_image(image, is_real=False)
             return ifftn(image).real if get_real else image
         else:
-            # ... otherwise, inverse transform, crop, and mask
+            # ... otherwise, inverse transform, crop, mask, and normalize
             image = manager.crop_to_shape(ifftn(image).real)
             if self.mask is not None:
                 image = self.mask(image)
+            if normalize:
+                image = manager.normalize_image(image, is_real=True)
             return image if get_real else fftn(image)
 
 

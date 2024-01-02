@@ -21,6 +21,7 @@ from ..utils import (
     crop,
     pad,
     crop_or_pad,
+    normalize_image,
 )
 
 
@@ -90,3 +91,7 @@ class ImageManager(BufferModule):
         return crop_or_pad(
             image, self.padded_shape, mode=self.pad_mode, **kwargs
         )
+
+    def normalize_image(self, image: Image, is_real: bool = True) -> Image:
+        """Normalize an image so that it is mean zero and standard deviation 1."""
+        return normalize_image(image, is_real=is_real)

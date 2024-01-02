@@ -20,7 +20,7 @@ def normalize_image(image: Image, **kwargs: Any) -> Image:
 
 
 def rescale_image(
-    image: Image, N: float, mu: float, *, real: bool = True
+    image: Image, std: float, mean: float, *, is_real: bool = True
 ) -> Image:
     """
     Normalize so that the image is mean mu
@@ -28,32 +28,32 @@ def rescale_image(
 
     Parameters
     ----------
-    image : `jax.Array`, shape `(N1, N2)`
+    image : `Array`, shape `(N1, N2)`
         The image in either real or Fourier space.
         If in Fourier space, the zero frequency
         component should be in the center of the image.
-    N : `float`
-        Intensity scale factor.
-    mu : `float`
+    std : `float`
+        Intensity standard deviation.
+    mean : `float`
         Intensity offset.
-    real : `bool`
+    is_real : `bool`
         If ``True``, the given ``image`` is in real
         space. If ``False``, it is in Fourier space.
 
     Returns
     -------
-    rescaled_image : `jax.Array`, shape `(N1, N2)`
+    rescaled_image : `Array`, shape `(N1, N2)`
         Image rescaled to have mean ``mu`` and standard
         deviation ``N``.
     """
     image = jnp.asarray(image)
     N1, N2 = image.shape
     # First normalize image to zero mean and unit standard deviation
-    if real:
+    if is_real:
         normalized_image = (image - image.mean()) / image.std()
-        rescaled_image = N * normalized_image + mu
+        rescaled_image = std * normalized_image + mean
     else:
         normalized_image = image.at[0, 0].set(0.0)
         normalized_image /= jnp.linalg.norm(normalized_image) / (N1 * N2)
-        rescaled_image = (normalized_image * N).at[0, 0].set(mu * N1 * N2)
+        rescaled_image = (normalized_image * std).at[0, 0].set(mean * N1 * N2)
     return rescaled_image
