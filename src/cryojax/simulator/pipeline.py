@@ -286,4 +286,6 @@ class SuperpositionPipeline(ImagePipeline):
         # ... compute the superposition
         image = compute_stack_and_sum(vmap, novmap)
 
-        return self._postprocess_image(image, view=view, get_real=get_real)
+        return self._postprocess_image(
+            image, view=view, get_real=get_real, normalize=normalize
+        )
