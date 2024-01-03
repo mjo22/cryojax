@@ -242,11 +242,12 @@ class SuperpositionPipeline(ImagePipeline):
     """
 
     @override
-    def render(self,
-               *,
-               view: bool = True,
-               get_real: bool = True,
-               normalize: bool = False,
+    def render(
+        self,
+        *,
+        view: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
     ) -> Image:
         """Render the superposition of states in the Ensemble."""
         # Setup vmap over poses and conformations
