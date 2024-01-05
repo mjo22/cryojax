@@ -11,6 +11,7 @@ from abc import abstractmethod
 from typing import Any
 
 from ..density import ElectronDensity
+from ..pose import Pose
 
 from ...core import field, Module
 from ...typing import (
@@ -81,7 +82,7 @@ class ScatteringConfig(Module):
 
     @abstractmethod
     def scatter(
-        self, density: ElectronDensity, resolution: Real_
+        self, density: ElectronDensity, pose: Pose, resolution: Real_, 
     ) -> ComplexImage:
         """
         Compute the scattered wave of the electron
@@ -91,6 +92,8 @@ class ScatteringConfig(Module):
         ---------
         density :
             The electron density representation.
+        pose :
+            The imaging pose.
         resolution :
             The rasterization resolution.
         """
