@@ -34,10 +34,10 @@ def powerspectrum(
         The frequency range of the desired wavevectors.
     pixel_size :
         The pixel size of the radial frequency grid.
-    k_min : 
+    k_min :
         Minimum wavenumber bin. By default, ``0.0``.
     k_max :
-        Maximum wavenumber bin. By default, ``jnp.sqrt(2) / (2 * pixel_size)``.
+        Maximum wavenumber bin. By default, ``1 / (2 * pixel_size)``.
     interpolating_radial_frequency_grid :
         If ``None``, evalulate the spectrum as a 1D
         profile. Otherwise, evaluate the spectrum on this
@@ -53,8 +53,8 @@ def powerspectrum(
     power = (fourier_image * jnp.conjugate(fourier_image)).real
     # Compute bins
     k_min = 0.0 if k_min is None else k_min
-    k_max = jnp.sqrt(2) / (pixel_size * 2.0) if k_max is None else k_max
-    k_step = 1 / (pixel_size * max(*power.shape))
+    k_max = 1.0 / (pixel_size * 2.0) if k_max is None else k_max
+    k_step = 1.0 / (pixel_size * max(*power.shape))
     bins = jnp.arange(k_min, k_max, k_step)  # Left edges of bins
     # Compute radially averaged power spectrum as a 1D profile or
     # interpolated onto a 2D grid

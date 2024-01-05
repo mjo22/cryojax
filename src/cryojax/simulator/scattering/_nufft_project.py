@@ -24,7 +24,6 @@ from ...typing import (
     CloudCoords2D,
     CloudCoords3D,
 )
-from ...utils import nufft
 
 
 class NufftProject(ScatteringModel):
@@ -113,24 +112,25 @@ def project_with_nufft(
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
-    kwargs:
-        Passed to ``cryojax.utils.integration.nufft``.
 
     Returns
     -------
     projection :
         The output image in fourier space.
     """
-    weights, coordinates = jnp.asarray(weights), jnp.asarray(coordinates)
+    from jax_finufft import nufft1
+    weights, coordinates = jnp.asarray(weights).astype(complex), jnp.asarray(coordinates)
+    # Flip and negate x and y to convert to cryojax conventions
+    coordinates = -jnp.flip(coordinates[:, :2], axis=-1)
+    # Normalize coordinates betweeen -pi and pi
     M1, M2 = shape
-    image_size = jnp.array(np.array([M1, M2]))
-    coordinates = jnp.flip(coordinates[:, :2], axis=-1)
-    fourier_projection = nufft(
-        weights, coordinates, image_size, shape, **kwargs
-    )
+    image_size = jnp.asarray((M1, M2), dtype=float)
+    periodic_coords = 2 * jnp.pi * coordinates / image_size
+    # Compute and shift origin to cryojax conventions
+    x, y = periodic_coords.T
+    fourier_projection = jnp.fft.ifftshift(nufft1(shape, weights, x, y, **kwargs))
 
     return fourier_projection
-
 
 """
 class IndependentAtomScatteringNufft(NufftScattering):

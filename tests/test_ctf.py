@@ -38,9 +38,8 @@ def test_ctf_with_cistem(
         voltage=kV,
         spherical_aberration=cs,
         amplitude_contrast=ac,
-        envelope=None,
     )
-    ctf = np.array(optics(freqs, normalize=False))
+    ctf = np.array(optics(freqs))
     # Compute cisTEM CTF
     cisTEM_optics = CTF(
         kV=kV,

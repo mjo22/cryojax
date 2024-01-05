@@ -192,7 +192,7 @@ def compute_whitening_filter(
     Returns
     -------
     filter :
-        The whitening filter. 
+        The whitening filter.
     """
     micrograph = jnp.asarray(micrograph)
     # Make coordinates
@@ -202,11 +202,17 @@ def compute_whitening_filter(
     interpolating_radial_frequency_grid = jnp.linalg.norm(freqs, axis=-1)
     # Compute power spectrum
     spectrum, _ = powerspectrum(
-        micrograph, radial_frequency_grid, interpolating_radial_frequency_grid=interpolating_radial_frequency_grid
+        micrograph,
+        radial_frequency_grid,
+        k_max=jnp.sqrt(2.0) / 2.0,
+        interpolating_radial_frequency_grid=interpolating_radial_frequency_grid,
     )
     # Compute inverse square root
     filter = jax.lax.rsqrt(spectrum)
-    # Throw away zero mode
-    filter = filter.at[0, 0].set(0.0)
+    # Divide filter by maximum, excluding zero mode
+    filter /= jnp.max(filter[1:, 1:])
+    # Set zero mode manually to 1 (this diverges from the cisTEM
+    # algorithm).
+    filter = filter.at[0, 0].set(1.0)
 
-    return filter / jnp.max(filter)
+    return filter

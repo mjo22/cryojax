@@ -13,11 +13,12 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from jax.image import scale_and_translate
 
 from ..density import ElectronDensity, Voxels
 from ..manager import ImageManager
 
-from ...utils import fftn, ifftn, scale
+from ...utils import fftn, ifftn
 from ...core import field, Module
 from ...typing import Real_, RealImage, ComplexImage
 
@@ -89,7 +90,6 @@ class ScatteringModel(Module):
                 current_pixel_size,
                 new_pixel_size,
                 method=self.method,
-                antialias=False,
             )
             null_fn = lambda image: image
             image = jax.lax.cond(
@@ -124,6 +124,8 @@ def rescale_pixel_size(
     image: RealImage,
     current_pixel_size: Real_,
     new_pixel_size: Real_,
+    method: str = "bicubic",
+    antialias: bool = False,
     **kwargs: Any,
 ) -> RealImage:
     """
@@ -139,7 +141,29 @@ def rescale_pixel_size(
         The pixel size of the input image.
     new_pixel_size :
         The new pixel size after interpolation.
+    method : 
+        Interpolation method. See ``jax.image.scale_and_translate``
+        for documentation.
+    kwargs : 
+        Keyword arguments passed to ``jax.image.scale_and_translate``.
+
+    Returns
+    -------
+    rescaled_image :
+        An image with pixels whose size are rescaled by
+        ``current_pixel_size / new_pixel_size``.
     """
+    # Compute scale factor for pixel size rescaling
     scale_factor = current_pixel_size / new_pixel_size
-    s = jnp.array([scale_factor, scale_factor])
-    return scale(image, image.shape, s, **kwargs)
+    # Scaling in both dimensions is the same
+    scaling = jnp.asarray([scale_factor, scale_factor])
+    # Compute the translation in the jax.image convention that leaves
+    # cryojax images untranslated
+    N1, N2 = image.shape
+    translation = (1 - scaling) * jnp.array([N1 // 2, N2 // 2], dtype=float)
+    # Rescale pixel sizes
+    rescaled_image = scale_and_translate(
+        image, image.shape, (0, 1), scaling, translation, method, antialias=antialias, **kwargs
+    )
+
+    return rescaled_image
