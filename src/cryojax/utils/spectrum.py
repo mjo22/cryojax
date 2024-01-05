@@ -4,7 +4,7 @@ Helper routines to compute power spectra.
 
 __all__ = ["powerspectrum"]
 
-from typing import Optional, Union
+from typing import Optional, Union, overload
 
 import jax.numpy as jnp
 
@@ -16,6 +16,9 @@ def powerspectrum(
     fourier_image: ComplexImage,
     radial_frequency_grid: RealImage,
     pixel_size: Real_ = 1.0,
+    *,
+    k_min: Optional[Real_] = None,
+    k_max: Optional[Real_] = None,
     interpolating_radial_frequency_grid: Optional[RealImage] = None,
 ) -> tuple[Union[RealImage, RealVector], RealVector]:
     """
@@ -31,6 +34,10 @@ def powerspectrum(
         The frequency range of the desired wavevectors.
     pixel_size :
         The pixel size of the radial frequency grid.
+    k_min : 
+        Minimum wavenumber bin. By default, ``0.0``.
+    k_max :
+        Maximum wavenumber bin. By default, ``jnp.sqrt(2) / (2 * pixel_size)``.
     interpolating_radial_frequency_grid :
         If ``None``, evalulate the spectrum as a 1D
         profile. Otherwise, evaluate the spectrum on this
@@ -44,10 +51,13 @@ def powerspectrum(
     """
     # Compute power
     power = (fourier_image * jnp.conjugate(fourier_image)).real
-    k_min = 1 / (pixel_size * max(*power.shape))
-    k_max = 1.0 / (pixel_size * 2.0)
-    k_step = k_min
+    # Compute bins
+    k_min = 0.0 if k_min is None else k_min
+    k_max = jnp.sqrt(2) / (pixel_size * 2.0) if k_max is None else k_max
+    k_step = 1 / (pixel_size * max(*power.shape))
     bins = jnp.arange(k_min, k_max, k_step)  # Left edges of bins
+    # Compute radially averaged power spectrum as a 1D profile or
+    # interpolated onto a 2D grid
     spectrum = radial_average(
         power, radial_frequency_grid, bins, interpolating_radial_frequency_grid
     )

@@ -179,6 +179,9 @@ def compute_whitening_filter(
     to be the inverse square root of the 2D radially averaged
     power spectrum.
 
+    This implementation follows the cisTEM whitening filter
+    algorithm.
+
     Parameters
     ----------
     freqs :
@@ -188,9 +191,8 @@ def compute_whitening_filter(
 
     Returns
     -------
-    spectrum :
-        The power spectrum isotropically averaged onto a coordinate
-        system whose shape is set by ``shape``.
+    filter :
+        The whitening filter. 
     """
     micrograph = jnp.asarray(micrograph)
     # Make coordinates
@@ -198,11 +200,13 @@ def compute_whitening_filter(
     # Compute norms
     radial_frequency_grid = jnp.linalg.norm(micrograph_frequency_grid, axis=-1)
     interpolating_radial_frequency_grid = jnp.linalg.norm(freqs, axis=-1)
-    # Compute power spectrum, divided by the number of modes
-    N1, N2 = micrograph.shape
-    micrograph /= jnp.sqrt(N1 * N2)
+    # Compute power spectrum
     spectrum, _ = powerspectrum(
-        micrograph, radial_frequency_grid, interpolating_radial_frequency_grid
+        micrograph, radial_frequency_grid, interpolating_radial_frequency_grid=interpolating_radial_frequency_grid
     )
+    # Compute inverse square root
+    filter = jax.lax.rsqrt(spectrum)
+    # Throw away zero mode
+    filter = filter.at[0, 0].set(0.0)
 
-    return jax.lax.rsqrt(spectrum)
+    return filter / jnp.max(filter)
