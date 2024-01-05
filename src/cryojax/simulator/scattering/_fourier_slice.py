@@ -13,6 +13,7 @@ import jax.numpy as jnp
 from ._scattering import ScatteringConfig
 from ..density import VoxelGrid
 from ...core import field
+from ..pose import Pose, EulerPose
 from ...typing import (
     ComplexImage,
     ComplexVolume,
@@ -20,9 +21,11 @@ from ...typing import (
 )
 from ...utils import (
     fftn,
+    irfftn,
     crop,
     pad,
     map_coordinates,
+    make_coordinates,
 )
 
 
@@ -115,3 +118,52 @@ def extract_slice(
             "Voxel density shape must be larger or smaller than shape in all dimensions"
         )
     return fftn(projection) / jnp.sqrt(M1 * M2)
+
+
+def insert_slice_and_interpolate(slice_real, xyz_rotated_single, n_pix):
+    from cryojax.utils import interpolate
+    r0, r1, dd = interpolate.diff(xyz_rotated_single)
+    map_3d_interp_slice, count_3d_interp_slice = interpolate.interp_vec(
+        slice_real, r0, r1, dd, n_pix
+    )
+    inserted_slice_3d = map_3d_interp_slice.reshape((n_pix, n_pix, n_pix))
+    count_3d = count_3d_interp_slice.reshape((n_pix, n_pix, n_pix))
+    return inserted_slice_3d, count_3d
+
+
+def insert_slice(
+        slice_f: ComplexImage,
+        pose: Pose = field(default_factory=EulerPose),
+        to_real: bool = False,
+) -> ComplexVolume:
+    """
+    Insert a slice into a 3D volume using the fourier slice theorem.
+
+    Arguments
+    ---------
+    slice : shape `(M1, M2)`
+        The slice to insert into the volume.
+
+    Returns
+    -------
+    volume : shape `(N,N,N)`
+        The volume (in Fourier space) with the slice inserted.
+    """
+    M1, M2 = slice_f.shape
+    assert M1 == M2, "Slice must be square"
+    N = M1
+    
+    xyz = jnp.zeros((3,N**2))
+    rotation = pose.rotation.as_matrix()
+    xyz_central_slice = xyz.at[:2].set(make_coordinates((N,N)).reshape(-1,2).T)
+    xyz_rotated_central_slice = rotation @ xyz_central_slice
+
+    inserted_slice_3d_real, count_3d_real = insert_slice_and_interpolate(slice_f.real, xyz_rotated_central_slice, N)
+    inserted_slice_3d_imag, count_3d_imag = insert_slice_and_interpolate(slice_f.imag, xyz_rotated_central_slice, N)
+
+    volume = inserted_slice_3d_real*count_3d_real + 1j*inserted_slice_3d_imag*count_3d_imag
+
+    if to_real:
+        volume = irfftn(jnp.fft.ifftshift(volume))
+
+    return volume
