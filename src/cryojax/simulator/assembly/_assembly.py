@@ -1,6 +1,6 @@
 """
 Abstraction of a biological assembly. This assembles a structure
-by adding together a collection of subunits, parameterized by
+by computing an Ensemble of subunits, parameterized by
 some geometry.
 """
 
@@ -71,11 +71,6 @@ class Assembly(Module):
         self.subunit = subunit
         self.pose = pose or EulerPose()
         self.conformation = conformation
-
-    @property
-    def resolution(self) -> Real_:
-        """Hack to make this class act like a Specimen."""
-        return self.subunit.resolution
 
     @cached_property
     @abstractmethod

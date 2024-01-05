@@ -4,7 +4,7 @@ Core functionality in cryojax, i.e. base classes and serialization.
 
 from __future__ import annotations
 
-__all__ = ["field", "Module", "Buffer"]
+__all__ = ["field", "Module", "BufferModule"]
 
 from types import FunctionType
 from typing import Any, Union
@@ -126,7 +126,7 @@ class Module(eqx.Module, _Serializable):
     """
 
 
-class Buffer(Module):
+class BufferModule(Module):
     """
     A Module composed of buffers (do not take gradients).
     """

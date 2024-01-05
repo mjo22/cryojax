@@ -9,6 +9,7 @@ __all__ = ["extract_slice", "FourierSliceExtract"]
 from typing import Any
 
 import jax.numpy as jnp
+from jax.scipy.ndimage import map_coordinates
 
 from ._scattering_model import ScatteringModel
 from ..density import VoxelGrid
@@ -18,7 +19,6 @@ from ...typing import (
     ComplexVolume,
     VolumeCoords,
 )
-from ...utils import map_coordinates
 
 
 class FourierSliceExtract(ScatteringModel):
@@ -52,6 +52,7 @@ class FourierSliceExtract(ScatteringModel):
 def extract_slice(
     weights: ComplexVolume,
     frequency_slice: VolumeCoords,
+    order: int = 1,
     **kwargs: Any,
 ) -> ComplexImage:
     """
@@ -64,8 +65,10 @@ def extract_slice(
         Density grid in fourier space.
     frequency_slice : shape `(N1, N2, 1, 3)`
         Frequency central slice coordinate system.
-    kwargs:
-        Passed to ``cryojax.utils.interpolate.map_coordinates``.
+    order : int
+        Spline order of interpolation. By default, ``1``.
+    kwargs
+        Keyword arguments passed to ``jax.scipy.ndimage.map_coordinates``.
 
     Returns
     -------
@@ -78,17 +81,15 @@ def extract_slice(
     N1, N2, N3 = weights.shape
     if not all([Ni == N1 for Ni in [N1, N2, N3]]):
         raise ValueError("Only cubic boxes are supported for fourier slice.")
-    box_size = jnp.array([N1, N2, N3])
-    # Need to convert to "array index coordinates".
-    # Make coordinates dimensionless
+    # Need to convert to "array index coordinates", so make coordinates dimensionless
+    box_size = jnp.array([N1, N2, N3], dtype=float)
     frequency_slice *= box_size
-    # Interpolate on the upper half plane get the slice
-    # z = N2 // 2 + 1
-    # fourier_projection = map_coordinates(
-    #    weights, coordinates[:, :z], **kwargs
-    # )[..., 0]
-    # Transform back to real space
-    # fourier_projection = irfftn(fourier_projection, s=(N1, N2))
-    #
-
-    return map_coordinates(weights, frequency_slice, **kwargs)[..., 0]
+    # Transpose frequencies to map_coordinates convention
+    frequency_slice = jnp.transpose(frequency_slice, axes=[3, 0, 1, 2])
+    # Flip negative valued frequencies to get the logical coordinates.
+    frequency_slice = jnp.where(
+        frequency_slice < 0,
+        box_size[:, None, None, None] + frequency_slice,
+        frequency_slice,
+    )
+    return map_coordinates(weights, frequency_slice, order, **kwargs)[..., 0]

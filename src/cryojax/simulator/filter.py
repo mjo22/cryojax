@@ -17,17 +17,18 @@ from abc import abstractmethod
 from typing import Any
 from typing_extensions import override
 
-import numpy as np
+import jax
 import jax.numpy as jnp
+import numpy as np
 
 from .manager import ImageManager
 
 from ..utils import powerspectrum, make_frequencies
-from ..core import field, Buffer
-from ..typing import Image, ImageCoords, Real_, RealImage, ComplexImage
+from ..core import field, BufferModule
+from ..typing import Image, ImageCoords, RealImage, ComplexImage
 
 
-class Filter(Buffer):
+class Filter(BufferModule):
     """
     Base class for computing and applying an image filter.
 
@@ -178,6 +179,9 @@ def compute_whitening_filter(
     to be the inverse square root of the 2D radially averaged
     power spectrum.
 
+    This implementation follows the cisTEM whitening filter
+    algorithm.
+
     Parameters
     ----------
     freqs :
@@ -187,15 +191,28 @@ def compute_whitening_filter(
 
     Returns
     -------
-    spectrum :
-        The power spectrum isotropically averaged onto a coordinate
-        system whose shape is set by ``shape``.
+    filter :
+        The whitening filter.
     """
     micrograph = jnp.asarray(micrograph)
     # Make coordinates
-    micrograph_freqs = make_frequencies(micrograph.shape, *kwargs)
+    micrograph_frequency_grid = make_frequencies(micrograph.shape, *kwargs)
+    # Compute norms
+    radial_frequency_grid = jnp.linalg.norm(micrograph_frequency_grid, axis=-1)
+    interpolating_radial_frequency_grid = jnp.linalg.norm(freqs, axis=-1)
     # Compute power spectrum
-    micrograph /= jnp.sqrt(np.prod(micrograph.shape))
-    spectrum, _ = powerspectrum(micrograph, micrograph_freqs, grid=freqs)
+    spectrum, _ = powerspectrum(
+        micrograph,
+        radial_frequency_grid,
+        k_max=jnp.sqrt(2.0) / 2.0,
+        interpolating_radial_frequency_grid=interpolating_radial_frequency_grid,
+    )
+    # Compute inverse square root
+    filter = jax.lax.rsqrt(spectrum)
+    # Divide filter by maximum, excluding zero mode
+    filter /= jnp.max(filter[1:, 1:])
+    # Set zero mode manually to 1 (this diverges from the cisTEM
+    # algorithm).
+    filter = filter.at[0, 0].set(1.0)
 
-    return 1 / jnp.sqrt(spectrum)
+    return filter

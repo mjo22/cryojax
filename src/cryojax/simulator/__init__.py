@@ -8,12 +8,13 @@ from . import (
     scattering,
     filter,
     mask,
+    noise,
     ice,
     optics,
     exposure,
     detector,
     instrument,
-    image,
+    pipeline,
     distribution,
 )
 
@@ -26,12 +27,13 @@ from .density import *
 from .scattering import *
 from .filter import *
 from .mask import *
+from .noise import *
 from .ice import *
 from .optics import *
 from .exposure import *
 from .detector import *
 from .instrument import *
-from .image import *
+from .pipeline import *
 from .distribution import *
 
 
@@ -45,12 +47,13 @@ __all__ = (
     + scattering.__all__
     + filter.__all__
     + mask.__all__
+    + noise.__all__
     + ice.__all__
     + optics.__all__
     + exposure.__all__
     + detector.__all__
     + instrument.__all__
-    + image.__all__
+    + pipeline.__all__
     + distribution.__all__
 )
 
@@ -65,12 +68,13 @@ __all__.extend(
         scattering,
         filter,
         mask,
+        noise,
         ice,
         optics,
         exposure,
         detector,
         instrument,
-        image,
+        pipeline,
         distribution,
     ]
 )

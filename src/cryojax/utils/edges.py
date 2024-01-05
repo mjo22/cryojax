@@ -2,7 +2,7 @@
 Routines for dealing with image edges.
 """
 
-__all__ = ["bound", "crop", "pad", "crop_or_pad"]
+__all__ = ["crop", "pad", "crop_or_pad"]
 
 from typing import Union
 from jaxtyping import Array, Float
@@ -11,26 +11,6 @@ import jax
 import jax.numpy as jnp
 
 from ..typing import Cloud, CloudCoords2D, Image, Volume
-
-
-@jax.jit
-def bound(
-    density: Cloud, coords: CloudCoords2D, box_size: Float[Array, "2"]
-) -> Cloud:
-    """
-    Use a boolean mask to set density values out of
-    bounds to zero. The mask is ``True`` for
-    all points outside of the box_size, and False otherwise.
-    """
-    coords, box_size = jnp.asarray(coords), jnp.asarray(box_size)
-    x, y = coords.T
-    Lx, Ly = box_size[0], box_size[1]
-    x_mask = jnp.logical_or(x < -Lx / 2, x >= Lx / 2)
-    y_mask = jnp.logical_or(y < -Ly / 2, y >= Ly / 2)
-    mask = jnp.logical_or(x_mask, y_mask)
-    masked_density = jnp.where(mask, complex(0.0), density)
-
-    return masked_density
 
 
 def crop(image: Image, shape: tuple[int, int]) -> Image:
