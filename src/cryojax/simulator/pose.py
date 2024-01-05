@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Union
+from typing import Union, Optional, Any
 from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
@@ -172,10 +172,11 @@ class QuaternionPose(Pose):
     @override
     def rotation(self) -> SO3:
         """Generate rotation from a unit quaternion."""
-        wxyz = jnp.array(
+        q = jnp.asarray(
             [self.view_qw, self.view_qx, self.view_qy, self.view_qz]
         )
-        R = SO3(wxyz=wxyz)
+        q_norm = jnp.sqrt(self.view_qx**2 + self.view_qx**2 + self.view_qy**2 + self.view_qz**2)
+        R = SO3(wxyz=q / q_norm)
         return R.inverse() if self.inverse else R
 
 
