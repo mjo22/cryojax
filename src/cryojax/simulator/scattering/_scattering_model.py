@@ -141,10 +141,10 @@ def rescale_pixel_size(
         The pixel size of the input image.
     new_pixel_size :
         The new pixel size after interpolation.
-    method : 
+    method :
         Interpolation method. See ``jax.image.scale_and_translate``
         for documentation.
-    kwargs : 
+    kwargs :
         Keyword arguments passed to ``jax.image.scale_and_translate``.
 
     Returns
@@ -163,7 +163,14 @@ def rescale_pixel_size(
     translation = (1 - scaling) * jnp.array([N1 // 2, N2 // 2], dtype=float)
     # Rescale pixel sizes
     rescaled_image = scale_and_translate(
-        image, image.shape, (0, 1), scaling, translation, method, antialias=antialias, **kwargs
+        image,
+        image.shape,
+        (0, 1),
+        scaling,
+        translation,
+        method,
+        antialias=antialias,
+        **kwargs,
     )
 
     return rescaled_image

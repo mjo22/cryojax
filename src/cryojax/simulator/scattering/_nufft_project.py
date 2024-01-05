@@ -119,7 +119,10 @@ def project_with_nufft(
         The output image in fourier space.
     """
     from jax_finufft import nufft1
-    weights, coordinates = jnp.asarray(weights).astype(complex), jnp.asarray(coordinates)
+
+    weights, coordinates = jnp.asarray(weights).astype(complex), jnp.asarray(
+        coordinates
+    )
     # Flip and negate x and y to convert to cryojax conventions
     coordinates = -jnp.flip(coordinates[:, :2], axis=-1)
     # Normalize coordinates betweeen -pi and pi
@@ -128,9 +131,12 @@ def project_with_nufft(
     periodic_coords = 2 * jnp.pi * coordinates / image_size
     # Compute and shift origin to cryojax conventions
     x, y = periodic_coords.T
-    fourier_projection = jnp.fft.ifftshift(nufft1(shape, weights, x, y, **kwargs))
+    fourier_projection = jnp.fft.ifftshift(
+        nufft1(shape, weights, x, y, **kwargs)
+    )
 
     return fourier_projection
+
 
 """
 class IndependentAtomScatteringNufft(NufftScattering):

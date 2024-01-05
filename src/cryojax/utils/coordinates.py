@@ -148,14 +148,17 @@ def _make_coordinates_or_frequencies(
     ndim = len(shape)
     shape = (*shape[:2][::-1], *shape[2:]) if indexing == "xy" else shape
     coords1D = [
-        _make_coordinates_or_frequencies_1d(shape[idx], grid_spacing, real) for idx in range(ndim)
+        _make_coordinates_or_frequencies_1d(shape[idx], grid_spacing, real)
+        for idx in range(ndim)
     ]
     coords = jnp.stack(jnp.meshgrid(*coords1D, indexing=indexing), axis=-1)
 
     return coords
 
 
-def _make_coordinates_or_frequencies_1d(size: int, grid_spacing: float, real: bool = False) -> Array:
+def _make_coordinates_or_frequencies_1d(
+    size: int, grid_spacing: float, real: bool = False
+) -> Array:
     """One-dimensional coordinates in real or fourier space"""
     coordinate_fn = (
         lambda size, dx: jnp.fft.fftshift(jnp.fft.fftfreq(size, 1 / dx)) * size

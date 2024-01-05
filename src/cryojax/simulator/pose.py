@@ -175,7 +175,12 @@ class QuaternionPose(Pose):
         q = jnp.asarray(
             [self.view_qw, self.view_qx, self.view_qy, self.view_qz]
         )
-        q_norm = jnp.sqrt(self.view_qx**2 + self.view_qx**2 + self.view_qy**2 + self.view_qz**2)
+        q_norm = jnp.sqrt(
+            self.view_qx**2
+            + self.view_qx**2
+            + self.view_qy**2
+            + self.view_qz**2
+        )
         R = SO3(wxyz=q / q_norm)
         return R.inverse() if self.inverse else R
 

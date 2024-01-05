@@ -88,6 +88,8 @@ def extract_slice(
     frequency_slice = jnp.transpose(frequency_slice, axes=[3, 0, 1, 2])
     # Flip negative valued frequencies to get the logical coordinates.
     frequency_slice = jnp.where(
-        frequency_slice < 0, box_size[:, None, None, None] + frequency_slice, frequency_slice
+        frequency_slice < 0,
+        box_size[:, None, None, None] + frequency_slice,
+        frequency_slice,
     )
     return map_coordinates(weights, frequency_slice, order, **kwargs)[..., 0]
