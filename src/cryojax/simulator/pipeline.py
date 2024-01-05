@@ -62,7 +62,11 @@ class ImagePipeline(Module):
     mask: Optional[Mask] = field(default=None)
 
     def render(
-        self, view: bool = True, get_real: bool = True, normalize: bool = False
+        self,
+        *,
+        view: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
     ) -> Image:
         """
         Render an image of a Specimen.
@@ -102,6 +106,7 @@ class ImagePipeline(Module):
     def sample(
         self,
         key: Union[PRNGKeyArray, _PRNGKeyArrayLike],
+        *,
         view: bool = True,
         get_real: bool = True,
         normalize: bool = False,
@@ -154,20 +159,27 @@ class ImagePipeline(Module):
     def __call__(
         self,
         key: Optional[Union[PRNGKeyArray, _PRNGKeyArrayLike]] = None,
+        *,
         view: bool = True,
         get_real: bool = True,
+        normalize: bool = False,
     ) -> Image:
         """
         Sample or render an image.
         """
         if key is None:
-            return self.render(view=view, get_real=get_real)
+            return self.render(
+                view=view, get_real=get_real, normalize=normalize
+            )
         else:
-            return self.sample(key, view=view, get_real=get_real)
+            return self.sample(
+                key, view=view, get_real=get_real, normalize=normalize
+            )
 
     def _postprocess_image(
         self,
         image: ComplexImage,
+        *,
         view: bool = True,
         get_real: bool = True,
         normalize: bool = False,
@@ -189,6 +201,7 @@ class ImagePipeline(Module):
     def _filter_crop_mask(
         self,
         image: ComplexImage,
+        *,
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
@@ -229,7 +242,13 @@ class SuperpositionPipeline(ImagePipeline):
     """
 
     @override
-    def render(self, view: bool = True, get_real: bool = True):
+    def render(
+        self,
+        *,
+        view: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
+    ) -> Image:
         """Render the superposition of states in the Ensemble."""
         # Setup vmap over poses and conformations
         false_pytree = jtu.tree_map(lambda _: False, self)
@@ -267,4 +286,6 @@ class SuperpositionPipeline(ImagePipeline):
         # ... compute the superposition
         image = compute_stack_and_sum(vmap, novmap)
 
-        return self._postprocess_image(image, view=view, get_real=get_real)
+        return self._postprocess_image(
+            image, view=view, get_real=get_real, normalize=normalize
+        )
