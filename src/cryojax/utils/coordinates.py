@@ -19,16 +19,16 @@ from ..typing import RealImage, RealVolume, Image, ImageCoords
 
 def make_coordinates(*args: Any, **kwargs: Any) -> Float[Array, "... D"]:
     """
-    Wraps ``_fftfreqs`` for ``real = True``.
+    Wraps ``_make_coordinates_or_frequencies`` for ``real = True``.
     """
-    return _fftfreqs(*args, real=True, **kwargs)
+    return _make_coordinates_or_frequencies(*args, real=True, **kwargs)
 
 
 def make_frequencies(*args: Any, **kwargs: Any) -> Float[Array, "... D"]:
     """
-    Wraps ``_fftfreqs`` for ``real = False``.
+    Wraps ``_make_coordinates_or_frequencies`` for ``real = False``.
     """
-    return _fftfreqs(*args, real=False, **kwargs)
+    return _make_coordinates_or_frequencies(*args, real=False, **kwargs)
 
 
 def flatten_and_coordinatize(
@@ -83,7 +83,7 @@ def flatten_and_coordinatize(
     coords = jnp.zeros((N, ndim))
 
     # Generate rectangular grid and fill coordinate array.
-    R = _fftfreqs(shape, voxel_size, real=True, indexing=indexing)
+    R = make_coordinates(shape, voxel_size, indexing=indexing)
     for i in range(ndim):
         if mask_zeros:
             coords = coords.at[..., i].set(R[..., i].ravel()[nonzero])
@@ -117,7 +117,7 @@ def cartesian_to_polar(
         return kr, theta
 
 
-def _fftfreqs(
+def _make_coordinates_or_frequencies(
     shape: tuple[int, ...],
     grid_spacing: float = 1.0,
     real: bool = False,
@@ -148,18 +148,18 @@ def _fftfreqs(
     ndim = len(shape)
     shape = (*shape[:2][::-1], *shape[2:]) if indexing == "xy" else shape
     coords1D = [
-        _fftfreqs1d(shape[idx], grid_spacing, real) for idx in range(ndim)
+        _make_coordinates_or_frequencies_1d(shape[idx], grid_spacing, real) for idx in range(ndim)
     ]
     coords = jnp.stack(jnp.meshgrid(*coords1D, indexing=indexing), axis=-1)
 
     return coords
 
 
-def _fftfreqs1d(s: int, grid_spacing: float, real: bool = False) -> Array:
+def _make_coordinates_or_frequencies_1d(size: int, grid_spacing: float, real: bool = False) -> Array:
     """One-dimensional coordinates in real or fourier space"""
-    fftfreq = (
-        lambda s: jnp.fft.fftshift(jnp.fft.fftfreq(s, 1 / grid_spacing)) * s
+    coordinate_fn = (
+        lambda size, dx: jnp.fft.fftshift(jnp.fft.fftfreq(size, 1 / dx)) * size
         if real
-        else jnp.fft.fftfreq(s, grid_spacing)
+        else jnp.fft.fftfreq(size, grid_spacing)
     )
-    return fftfreq(s)
+    return coordinate_fn(size, grid_spacing)
