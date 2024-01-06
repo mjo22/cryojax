@@ -33,16 +33,26 @@ def bound(
     return masked_density
 
 
-def crop(image: Image, shape: tuple[int, int]) -> Image:
+def crop(image: Image, shape: tuple[int, ...]) -> Image:
     """
     Crop an image to a new shape.
     """
-    M1, M2 = image.shape
-    xc, yc = M1 // 2, M2 // 2
-    w, h = shape
-    cropped = image[
-        xc - w // 2 : xc + w // 2 + w % 2, yc - h // 2 : yc + h // 2 + h % 2
-    ]
+    if image.ndim == 2:
+        M1, M2 = image.shape
+        xc, yc = M1 // 2, M2 // 2
+        w, h = shape
+        cropped = image[
+            xc - w // 2 : xc + w // 2 + w % 2, yc - h // 2 : yc + h // 2 + h % 2
+        ]
+    elif image.ndim == 3:
+        M1, M2, M3 = image.shape
+        xc, yc, zc = M1 // 2, M2 // 2, M3 // 2
+        w, h, d = shape
+        cropped = image[
+            xc - w // 2 : xc + w // 2 + w % 2,
+            yc - h // 2 : yc + h // 2 + h % 2,
+            zc - d // 2 : zc + d // 2 + d % 2,
+        ]
     return cropped
 
 

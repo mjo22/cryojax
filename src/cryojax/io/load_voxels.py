@@ -11,7 +11,7 @@ import numpy as np
 import jax.numpy as jnp
 from jaxtyping import Array
 from typing import Any
-from ..utils import fftn, pad, make_frequencies, flatten_and_coordinatize
+from ..utils import fftn, pad, crop, make_frequencies, flatten_and_coordinatize
 
 
 def load_voxel_cloud(filename: str, **kwargs: Any) -> dict[str, Array]:
@@ -55,7 +55,7 @@ def load_voxel_cloud(filename: str, **kwargs: Any) -> dict[str, Array]:
     return cloud
 
 
-def load_fourier_grid(filename: str, pad_scale: float = 1.0) -> dict[str, Any]:
+def load_fourier_grid(filename: str, pad_scale: float = 1.0, crop_scale: float = 1.0) -> dict[str, Any]:
     """
     Read a 3D template in Fourier space on a cartesian grid.
 
@@ -77,6 +77,8 @@ def load_fourier_grid(filename: str, pad_scale: float = 1.0) -> dict[str, Any]:
     template, voxel_size = load_mrc(filename)
     # Change how template sits in box to match cisTEM
     template = jnp.transpose(template, axes=[2, 1, 0])
+    cropped_shape = tuple([int(s * crop_scale) for s in template.shape])
+    template = crop(template, cropped_shape)
     # Pad template
     padded_shape = tuple([int(s * pad_scale) for s in template.shape])
     template = pad(template, padded_shape)
