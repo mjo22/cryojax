@@ -24,7 +24,6 @@ INSTALL_REQUIRES = [
     "jaxtyping",
     "jaxlie",
     "mrcfile",
-    "dataclasses-json",
 ]
 EXTRA_REQUIRE = {
     "test": ["pytest>=3.6", "pycistem", "gemmi"],
