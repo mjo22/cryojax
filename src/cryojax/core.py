@@ -7,7 +7,7 @@ from __future__ import annotations
 __all__ = ["field", "Module", "BufferModule"]
 
 from typing import Any
-from jaxtyping import Array
+from jaxtyping import Array, ArrayLike
 
 import jax
 import jax.numpy as jnp
@@ -17,7 +17,6 @@ import equinox as eqx
 
 def field(
     *,
-    encode: Any = Array,
     **kwargs: Any,
 ) -> Any:
     """
