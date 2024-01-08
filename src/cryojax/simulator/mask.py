@@ -7,12 +7,12 @@ from __future__ import annotations
 __all__ = [
     "compute_circular_mask",
     "Mask",
-    "ProductMask",
+    "MaskType",
     "CircularMask",
 ]
 
 from abc import abstractmethod
-from typing import Any
+from typing import Any, TypeVar
 from typing_extensions import override
 
 import jax.numpy as jnp
@@ -21,6 +21,10 @@ from .manager import ImageManager
 
 from ..core import field, BufferModule
 from ..typing import RealImage, ImageCoords
+
+
+MaskType = TypeVar("MaskType", bound="Mask")
+"""TypeVar for the Mask base class."""
 
 
 class Mask(BufferModule):
@@ -40,7 +44,7 @@ class Mask(BufferModule):
         self.mask = self.evaluate(*args, **kwargs)
 
     @abstractmethod
-    def evaluate(self, *args: Any, **kwargs: Any) -> RealImage:
+    def evaluate(self, **kwargs: Any) -> RealImage:
         """Compute the mask."""
         raise NotImplementedError
 
@@ -49,20 +53,24 @@ class Mask(BufferModule):
         return self.mask * image
 
     def __mul__(self, other: Mask) -> Mask:
-        return ProductMask(self, other)
+        return _ProductMask(mask1=self, mask2=other)
 
     def __rmul__(self, other: Mask) -> Mask:
-        return ProductMask(other, self)
+        return _ProductMask(mask1=other, mask2=self)
 
 
-class ProductMask(Mask):
-    """A helper to represent the product of two masks."""
+class _ProductMask(Mask):
+    """A helper to represent the product of two filters."""
 
-    mask1: Mask = field()
-    mask2: Mask = field()
+    mask1: MaskType = field()  # type: ignore
+    mask2: MaskType = field()  # type: ignore
 
-    def evaluate(self) -> RealImage:
+    @override
+    def evaluate(self, **kwargs: Any) -> RealImage:
         return self.mask1.mask * self.mask2.mask
+
+    def __repr__(self):
+        return f"{repr(self.mask1)} * {repr(self.mask2)}"
 
 
 class CircularMask(Mask):
@@ -89,7 +97,7 @@ class CircularMask(Mask):
     @override
     def evaluate(self, **kwargs: Any) -> RealImage:
         return compute_circular_mask(
-            self.manager.coordinate_grid, self.radius, self.rolloff, **kwargs
+            self.manager.coordinate_grid, self.radius, self.rolloff
         )
 
 

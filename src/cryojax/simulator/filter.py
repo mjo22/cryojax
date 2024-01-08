@@ -8,24 +8,26 @@ __all__ = [
     "compute_lowpass_filter",
     "compute_whitening_filter",
     "Filter",
-    "ProductFilter",
+    "FilterType",
     "LowpassFilter",
     "WhiteningFilter",
 ]
 
 from abc import abstractmethod
-from typing import Any
+from typing import Any, TypeVar
 from typing_extensions import override
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 from .manager import ImageManager
 
 from ..utils import powerspectrum, make_frequencies
 from ..core import field, BufferModule
 from ..typing import Image, ImageCoords, RealImage, ComplexImage
+
+FilterType = TypeVar("FilterType", bound="Filter")
+"""TypeVar for the Filter base class."""
 
 
 class Filter(BufferModule):
@@ -45,7 +47,7 @@ class Filter(BufferModule):
         self.filter = self.evaluate(*args, **kwargs)
 
     @abstractmethod
-    def evaluate(self, *args: Any, **kwargs: Any) -> Image:
+    def evaluate(self, **kwargs: Any) -> Image:
         """Compute the filter."""
         raise NotImplementedError
 
@@ -53,21 +55,25 @@ class Filter(BufferModule):
         """Apply the filter to an image."""
         return self.filter * image
 
-    def __mul__(self, other: Filter) -> Filter:
-        return ProductFilter(self, other)
+    def __mul__(self: FilterType, other: FilterType) -> _ProductFilter:
+        return _ProductFilter(filter1=self, filter2=other)
 
-    def __rmul__(self, other: Filter) -> Filter:
-        return ProductFilter(other, self)
+    def __rmul__(self: FilterType, other: FilterType) -> _ProductFilter:
+        return _ProductFilter(filter1=other, filter2=self)
 
 
-class ProductFilter(Filter):
+class _ProductFilter(Filter):
     """A helper to represent the product of two filters."""
 
-    filter1: Filter = field()
-    filter2: Filter = field()
+    filter1: FilterType = field()  # type: ignore
+    filter2: FilterType = field()  # type: ignore
 
-    def evaluate(self) -> Image:
+    @override
+    def evaluate(self, **kwargs: Any) -> Image:
         return self.filter1.filter * self.filter2.filter
+
+    def __repr__(self):
+        return f"{repr(self.filter1)} * {repr(self.filter2)}"
 
 
 class LowpassFilter(Filter):
@@ -93,7 +99,7 @@ class LowpassFilter(Filter):
     rolloff: float = field(static=True, default=0.05)
 
     @override
-    def evaluate(self, **kwargs) -> RealImage:
+    def evaluate(self, **kwargs: Any) -> RealImage:
         return compute_lowpass_filter(
             self.manager.padded_frequency_grid,
             self.cutoff,
