@@ -21,7 +21,7 @@ def field(
     **kwargs: Any,
 ) -> Any:
     """
-    Add default metadata to usual dataclass fields through python
+    Add default metadata to usual dataclass fields through dataclasses
     and equinox.
 
     Arguments
