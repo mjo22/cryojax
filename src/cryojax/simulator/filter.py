@@ -14,13 +14,12 @@ __all__ = [
 ]
 
 from abc import abstractmethod
+from dataclasses import InitVar
 from typing import Any, TypeVar, overload
 from typing_extensions import override
 
 import jax
 import jax.numpy as jnp
-
-from .manager import ImageManager
 
 from ..utils import powerspectrum, make_frequencies
 from ..core import field, BufferModule
@@ -58,7 +57,9 @@ class Filter(BufferModule):
         ...
 
     @abstractmethod
-    def evaluate(self, freqs: ImageCoords | None = None, **kwargs: Any) -> Image:
+    def evaluate(
+        self, freqs: ImageCoords | None = None, **kwargs: Any
+    ) -> Image:
         """Compute the filter."""
         raise NotImplementedError
 
@@ -80,7 +81,9 @@ class _ProductFilter(Filter):
     filter2: FilterType  # type: ignore
 
     @override
-    def evaluate(self, freqs: ImageCoords | None = None, **kwargs: Any) -> Image:
+    def evaluate(
+        self, freqs: ImageCoords | None = None, **kwargs: Any
+    ) -> Image:
         return self.filter1.filter * self.filter2.filter
 
     def __repr__(self):
@@ -131,8 +134,6 @@ class WhiteningFilter(Filter):
     for more information.
     """
 
-    manager: ImageManager = field()
-
     micrograph: ComplexImage = field()
 
     @override
@@ -142,9 +143,7 @@ class WhiteningFilter(Filter):
                 "The frequency grid must be given as an argument to the Filter."
             )
         else:
-            return compute_whitening_filter(
-                freqs, self.micrograph, **kwargs
-            )
+            return compute_whitening_filter(freqs, self.micrograph, **kwargs)
 
 
 def compute_lowpass_filter(

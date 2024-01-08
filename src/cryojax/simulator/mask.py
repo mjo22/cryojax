@@ -12,12 +12,11 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Any, TypeVar, InitVar
+from dataclasses import InitVar
+from typing import Any, TypeVar, overload
 from typing_extensions import override
 
 import jax.numpy as jnp
-
-from .manager import ImageManager
 
 from ..core import field, BufferModule
 from ..typing import RealImage, ImageCoords
@@ -41,7 +40,9 @@ class Mask(BufferModule):
     coordinate_grid: InitVar[ImageCoords | None] = None
     mask: RealImage = field(init=False)
 
-    def __post_init__(self, coordinate_grid: ImageCoords | None, **kwargs: Any):
+    def __post_init__(
+        self, coordinate_grid: ImageCoords | None, **kwargs: Any
+    ):
         self.mask = self.evaluate(coordinate_grid, **kwargs)
 
     @overload
@@ -55,7 +56,9 @@ class Mask(BufferModule):
         ...
 
     @abstractmethod
-    def evaluate(self, coords: ImageCoords | None = None, **kwargs: Any) -> RealImage:
+    def evaluate(
+        self, coords: ImageCoords | None = None, **kwargs: Any
+    ) -> RealImage:
         """Compute the filter."""
         raise NotImplementedError
 
@@ -77,7 +80,9 @@ class _ProductMask(Mask):
     mask2: MaskType = field()  # type: ignore
 
     @override
-    def evaluate(self, coords: ImageCoords | None = None, **kwargs: Any) -> RealImage:
+    def evaluate(
+        self, coords: ImageCoords | None = None, **kwargs: Any
+    ) -> RealImage:
         return self.mask1.mask * self.mask2.mask
 
     def __repr__(self):
@@ -106,7 +111,9 @@ class CircularMask(Mask):
     @override
     def evaluate(self, coords: ImageCoords | None, **kwargs: Any) -> RealImage:
         if coords is None:
-            raise ValueError("The coordinate grid must be given as an argument to the Mask.")
+            raise ValueError(
+                "The coordinate grid must be given as an argument to the Mask."
+            )
         else:
             return compute_circular_mask(coords, self.radius, self.rolloff)
 
