@@ -2,17 +2,21 @@
 Base electron density representation.
 """
 
-__all__ = ["ElectronDensity"]
+__all__ = ["ElectronDensity", "ElectronDensityType"]
 
 import dataclasses
 from abc import abstractmethod
-from typing import Type, Any
+from typing import Type, Any, TypeVar
+from typing_extensions import Self
 from equinox import AbstractClassVar
 
 import jax.numpy as jnp
 
 from ..pose import Pose
 from ...core import Module, field
+
+
+ElectronDensityType = TypeVar("ElectronDensityType", bound="ElectronDensity")
 
 
 class ElectronDensity(Module):
@@ -30,7 +34,7 @@ class ElectronDensity(Module):
     _is_stacked: bool = field(static=True, default=False, kw_only=True)
 
     @abstractmethod
-    def rotate_to_pose(self, pose: Pose) -> "ElectronDensity":
+    def rotate_to_pose(self, pose: Pose) -> Self:
         """
         View the electron density at a given pose.
 
@@ -44,10 +48,10 @@ class ElectronDensity(Module):
     @classmethod
     @abstractmethod
     def from_file(
-        cls: Type["ElectronDensity"],
+        cls: Type[ElectronDensityType],
         filename: str,
         **kwargs: Any,
-    ) -> "ElectronDensity":
+    ) -> ElectronDensityType:
         """
         Load an ElectronDensity from a file.
         """
@@ -55,8 +59,8 @@ class ElectronDensity(Module):
 
     @classmethod
     def from_stack(
-        cls: Type["ElectronDensity"], stack: list["ElectronDensity"]
-    ) -> "ElectronDensity":
+        cls: Type[ElectronDensityType], stack: list[ElectronDensityType]
+    ) -> ElectronDensityType:
         """
         Stack a list of electron densities along the leading
         axis of a single electron density.
@@ -83,11 +87,10 @@ class ElectronDensity(Module):
                 )
         return cls(**stacked, **other, _is_stacked=True)
 
-    def __getitem__(self, idx: int) -> "ElectronDensity":
+    def __getitem__(self, idx: int) -> Self:
         if self._is_stacked:
-            cls = type(self)
             # Gather static and traced fields separately
-            indexed, other = {}, {}
+            indexed = {}
             for field in dataclasses.fields(self):
                 name = field.name
                 if name == "_is_stacked":
@@ -97,12 +100,11 @@ class ElectronDensity(Module):
                 ) or (
                     "stack" in field.metadata and not field.metadata["stack"]
                 ):
-                    # Get static or unstacked fields
-                    other[name] = getattr(self, name)
+                    pass
                 else:
                     # Get stacked fields at particular index
                     indexed[name] = getattr(self, name)[idx]
-            return cls(**indexed, **other, _is_stacked=False)
+            return dataclasses.replace(self, **indexed, _is_stacked=False)
         else:
             raise IndexError("Cannot index an non-stacked ElectronDensity.")
 
