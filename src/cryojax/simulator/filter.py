@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Any, TypeVar
+from typing import Any, TypeVar, overload
 from typing_extensions import override
 
 import jax
@@ -41,13 +41,24 @@ class Filter(BufferModule):
         computed upon instantiation.
     """
 
+    frequency_grid: InitVar[ImageCoords | None] = None
     filter: Image = field(init=False)
 
-    def __post_init__(self, *args: Any, **kwargs: Any):
-        self.filter = self.evaluate(*args, **kwargs)
+    def __post_init__(self, frequency_grid: ImageCoords | None, **kwargs: Any):
+        self.filter = self.evaluate(frequency_grid, **kwargs)
+
+    @overload
+    @abstractmethod
+    def evaluate(self, freqs: None, **kwargs: Any) -> Image:
+        ...
+
+    @overload
+    @abstractmethod
+    def evaluate(self, freqs: ImageCoords, **kwargs: Any) -> Image:
+        ...
 
     @abstractmethod
-    def evaluate(self, **kwargs: Any) -> Image:
+    def evaluate(self, freqs: ImageCoords | None = None, **kwargs: Any) -> Image:
         """Compute the filter."""
         raise NotImplementedError
 
@@ -65,11 +76,11 @@ class Filter(BufferModule):
 class _ProductFilter(Filter):
     """A helper to represent the product of two filters."""
 
-    filter1: FilterType = field()  # type: ignore
-    filter2: FilterType = field()  # type: ignore
+    filter1: FilterType  # type: ignore
+    filter2: FilterType  # type: ignore
 
     @override
-    def evaluate(self, **kwargs: Any) -> Image:
+    def evaluate(self, freqs: ImageCoords | None = None, **kwargs: Any) -> Image:
         return self.filter1.filter * self.filter2.filter
 
     def __repr__(self):
@@ -93,19 +104,22 @@ class LowpassFilter(Filter):
         By default, ``0.05``.
     """
 
-    manager: ImageManager = field()
-
     cutoff: float = field(static=True, default=0.95)
     rolloff: float = field(static=True, default=0.05)
 
     @override
-    def evaluate(self, **kwargs: Any) -> RealImage:
-        return compute_lowpass_filter(
-            self.manager.padded_frequency_grid,
-            self.cutoff,
-            self.rolloff,
-            **kwargs,
-        )
+    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
+        if freqs is None:
+            raise ValueError(
+                "The frequency grid must be given as an argument to the Filter."
+            )
+        else:
+            return compute_lowpass_filter(
+                freqs,
+                self.cutoff,
+                self.rolloff,
+                **kwargs,
+            )
 
 
 class WhiteningFilter(Filter):
@@ -122,10 +136,15 @@ class WhiteningFilter(Filter):
     micrograph: ComplexImage = field()
 
     @override
-    def evaluate(self, **kwargs: Any) -> RealImage:
-        return compute_whitening_filter(
-            self.manager.padded_frequency_grid, self.micrograph, **kwargs
-        )
+    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
+        if freqs is None:
+            raise ValueError(
+                "The frequency grid must be given as an argument to the Filter."
+            )
+        else:
+            return compute_whitening_filter(
+                freqs, self.micrograph, **kwargs
+            )
 
 
 def compute_lowpass_filter(

@@ -41,7 +41,7 @@ def sample_pdb_path():
 
 @pytest.fixture
 def filters(manager):
-    return cs.LowpassFilter(manager)
+    return cs.LowpassFilter(manager.padded_frequency_grid)
     # return None
 
 

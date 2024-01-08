@@ -89,8 +89,6 @@ class CircularMask(Mask):
         By default, ``0.05``.
     """
 
-    manager: ImageManager = field()
-
     radius: float = field(static=True, default=0.95)
     rolloff: float = field(static=True, default=0.05)
 

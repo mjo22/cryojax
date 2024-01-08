@@ -97,9 +97,11 @@ Imaging models also accept a series of `Filter`s and `Mask`s. For example, one c
 
 ```python
 micrograph = ...  # A micrograph used for whitening
-filter = cs.LowpassFilter(manager, cutoff=1.0)  # Cutoff modes above Nyquist frequency
-         * cs.WhiteningFilter(manager, micrograph=micrograph)
-mask = cs.CircularMask(manager, radius=1.0)     # Cutoff pixels above radius equal to (half) image size
+freqs = manager.padded_frequency_grid  # Get the upsampled frequency grid
+coords = manager.coordinate_grid  # Get the coordinate grid
+filter = cs.LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequency
+         * cs.WhiteningFilter(freqs, micrograph=micrograph)
+mask = cs.CircularMask(coords, radius=1.0)     # Cutoff pixels above radius equal to (half) image size
 pipeline = cs.ImagePipeline(
     scattering=scattering, ensemble=ensemble, instrument=instrument, filter=filter, mask=mask
     )
