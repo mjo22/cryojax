@@ -14,7 +14,6 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from dataclasses import InitVar
 from typing import Any, TypeVar, overload
 from typing_extensions import override
 
@@ -40,26 +39,10 @@ class Filter(BufferModule):
         computed upon instantiation.
     """
 
-    frequency_grid: InitVar[ImageCoords | None] = None
     filter: Image = field(init=False)
 
-    def __post_init__(self, frequency_grid: ImageCoords | None, **kwargs: Any):
-        self.filter = self.evaluate(frequency_grid, **kwargs)
-
-    @overload
     @abstractmethod
-    def evaluate(self, freqs: None, **kwargs: Any) -> Image:
-        ...
-
-    @overload
-    @abstractmethod
-    def evaluate(self, freqs: ImageCoords, **kwargs: Any) -> Image:
-        ...
-
-    @abstractmethod
-    def evaluate(
-        self, freqs: ImageCoords | None = None, **kwargs: Any
-    ) -> Image:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Compute the filter."""
         raise NotImplementedError
 
@@ -81,10 +64,10 @@ class _ProductFilter(Filter):
     filter2: FilterType  # type: ignore
 
     @override
-    def evaluate(
-        self, freqs: ImageCoords | None = None, **kwargs: Any
-    ) -> Image:
-        return self.filter1.filter * self.filter2.filter
+    def __init__(self, filter1: FilterType, filter2: FilterType) -> None:
+        self.filter1 = filter1
+        self.filter2 = filter2
+        self.filter = filter1.filter * filter2.filter
 
     def __repr__(self):
         return f"{repr(self.filter1)} * {repr(self.filter2)}"
@@ -107,50 +90,39 @@ class LowpassFilter(Filter):
         By default, ``0.05``.
     """
 
-    cutoff: float = field(static=True, default=0.95)
-    rolloff: float = field(static=True, default=0.05)
+    cutoff: float = field(static=True)
+    rolloff: float = field(static=True)
 
-    @override
-    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
-        if freqs is None:
-            raise ValueError(
-                "The frequency grid must be given as an argument to the Filter."
-            )
-        else:
-            return compute_lowpass_filter(
-                freqs,
-                self.cutoff,
-                self.rolloff,
-                **kwargs,
-            )
+    def __init__(
+        self,
+        freqs: ImageCoords,
+        cutoff: float = 0.95,
+        rolloff: float = 0.05,
+    ) -> None:
+        self.cutoff = cutoff
+        self.rolloff = rolloff
+        self.filter = compute_lowpass_filter(freqs, self.cutoff, self.rolloff)
 
 
 class WhiteningFilter(Filter):
     """
-    Apply an whitening filter to an image.
-
-    See documentation for
-    ``cryojax.simulator.compute_whitening_filter``
-    for more information.
+    Apply a whitening filter to an image.
     """
 
-    micrograph: ComplexImage = field()
-
-    @override
-    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
-        if freqs is None:
-            raise ValueError(
-                "The frequency grid must be given as an argument to the Filter."
-            )
-        else:
-            return compute_whitening_filter(freqs, self.micrograph, **kwargs)
+    def __init__(
+        self,
+        frequency_grid: ImageCoords,
+        fourier_micrograph: ComplexImage,
+        *,
+        grid_spacing: float = 1.0,
+    ):
+        self.filter = compute_whitening_filter(
+            frequency_grid, fourier_micrograph, grid_spacing
+        )
 
 
 def compute_lowpass_filter(
-    freqs: ImageCoords,
-    cutoff: float = 0.667,
-    rolloff: float = 0.05,
-    **kwargs: Any,
+    freqs: ImageCoords, cutoff: float = 0.667, rolloff: float = 0.05
 ) -> RealImage:
     """
     Create a low-pass filter.
@@ -196,7 +168,9 @@ def compute_lowpass_filter(
 
 
 def compute_whitening_filter(
-    freqs: ImageCoords, micrograph: ComplexImage, **kwargs: Any
+    freqs: ImageCoords,
+    micrograph: ComplexImage,
+    grid_spacing: float = 1.0,
 ) -> RealImage:
     """
     Compute a whitening filter from a micrograph. This is taken
@@ -220,7 +194,9 @@ def compute_whitening_filter(
     """
     micrograph = jnp.asarray(micrograph)
     # Make coordinates
-    micrograph_frequency_grid = make_frequencies(micrograph.shape, *kwargs)
+    micrograph_frequency_grid = make_frequencies(
+        micrograph.shape, grid_spacing
+    )
     # Compute norms
     radial_frequency_grid = jnp.linalg.norm(micrograph_frequency_grid, axis=-1)
     interpolating_radial_frequency_grid = jnp.linalg.norm(freqs, axis=-1)

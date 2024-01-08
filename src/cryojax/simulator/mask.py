@@ -12,9 +12,7 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from dataclasses import InitVar
-from typing import Any, TypeVar, overload
-from typing_extensions import override
+from typing import Any, TypeVar
 
 import jax.numpy as jnp
 
@@ -37,53 +35,34 @@ class Mask(BufferModule):
         computed upon instantiation.
     """
 
-    coordinate_grid: InitVar[ImageCoords | None] = None
     mask: RealImage = field(init=False)
 
-    def __post_init__(
-        self, coordinate_grid: ImageCoords | None, **kwargs: Any
-    ):
-        self.mask = self.evaluate(coordinate_grid, **kwargs)
-
-    @overload
     @abstractmethod
-    def evaluate(self, coords: None, **kwargs: Any) -> RealImage:
-        ...
-
-    @overload
-    @abstractmethod
-    def evaluate(self, coords: ImageCoords, **kwargs: Any) -> RealImage:
-        ...
-
-    @abstractmethod
-    def evaluate(
-        self, coords: ImageCoords | None = None, **kwargs: Any
-    ) -> RealImage:
-        """Compute the filter."""
+    def __init__(self, *args: Any, **kwargs: Any):
+        """Compute the mask"""
         raise NotImplementedError
 
     def __call__(self, image: RealImage) -> RealImage:
         """Apply the mask to an image."""
         return self.mask * image
 
-    def __mul__(self, other: Mask) -> Mask:
+    def __mul__(self: MaskType, other: MaskType) -> _ProductMask:
         return _ProductMask(mask1=self, mask2=other)
 
-    def __rmul__(self, other: Mask) -> Mask:
+    def __rmul__(self: MaskType, other: MaskType) -> _ProductMask:
         return _ProductMask(mask1=other, mask2=self)
 
 
 class _ProductMask(Mask):
     """A helper to represent the product of two filters."""
 
-    mask1: MaskType = field()  # type: ignore
-    mask2: MaskType = field()  # type: ignore
+    mask1: MaskType  # type: ignore
+    mask2: MaskType  # type: ignore
 
-    @override
-    def evaluate(
-        self, coords: ImageCoords | None = None, **kwargs: Any
-    ) -> RealImage:
-        return self.mask1.mask * self.mask2.mask
+    def __init__(self, mask1: MaskType, mask2: MaskType):
+        self.mask1 = mask1
+        self.mask2 = mask2
+        self.mask = mask1.mask * mask2.mask
 
     def __repr__(self):
         return f"{repr(self.mask1)} * {repr(self.mask2)}"
@@ -105,24 +84,22 @@ class CircularMask(Mask):
         By default, ``0.05``.
     """
 
-    radius: float = field(static=True, default=0.95)
-    rolloff: float = field(static=True, default=0.05)
+    radius: float = field(static=True)
+    rolloff: float = field(static=True)
 
-    @override
-    def evaluate(self, coords: ImageCoords | None, **kwargs: Any) -> RealImage:
-        if coords is None:
-            raise ValueError(
-                "The coordinate grid must be given as an argument to the Mask."
-            )
-        else:
-            return compute_circular_mask(coords, self.radius, self.rolloff)
+    def __init__(
+        self,
+        freqs: ImageCoords,
+        radius: float = 0.95,
+        rolloff: float = 0.05,
+    ) -> None:
+        self.radius = radius
+        self.rolloff = rolloff
+        self.mask = compute_circular_mask(freqs, self.radius, self.rolloff)
 
 
 def compute_circular_mask(
-    coords: ImageCoords,
-    cutoff: float = 0.95,
-    rolloff: float = 0.05,
-    **kwargs: Any,
+    coords: ImageCoords, cutoff: float = 0.95, rolloff: float = 0.05
 ) -> RealImage:
     """
     Create a circular mask.
