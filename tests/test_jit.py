@@ -16,7 +16,7 @@ config.update("jax_enable_x64", True)
 @pytest.mark.parametrize("model", ["likelihood_model"])
 def test_jit(model, test_image, request):
     likelihood_model = request.getfixturevalue(model)
-    key = jr.split(jr.PRNGKey(0))
+    key = jr.PRNGKey(0)
 
     @jax.jit
     def compute_image(model, key):

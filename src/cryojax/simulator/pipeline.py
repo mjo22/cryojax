@@ -6,14 +6,14 @@ from __future__ import annotations
 
 __all__ = ["ImagePipeline", "SuperpositionPipeline"]
 
-from typing import Union, get_args, Optional
+from typing import Union, Optional
 from typing_extensions import override
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jaxtyping import PRNGKeyArray, Shaped
+from jaxtyping import PRNGKeyArray
 
 from .filter import Filter
 from .mask import Mask
@@ -25,9 +25,6 @@ from .ice import Ice, NullIce
 from ..utils import fftn, ifftn
 from ..core import field, Module
 from ..typing import ComplexImage, RealImage, Image
-
-
-_PRNGKeyArrayLike = Shaped[PRNGKeyArray, "M"]
 
 
 class ImagePipeline(Module):
@@ -105,7 +102,7 @@ class ImagePipeline(Module):
 
     def sample(
         self,
-        key: Union[PRNGKeyArray, _PRNGKeyArrayLike],
+        key: PRNGKeyArray,
         *,
         view: bool = True,
         get_real: bool = True,
@@ -117,11 +114,7 @@ class ImagePipeline(Module):
         Parameters
         ----------
         key :
-            The random number generator key(s). If
-            the ``ImagePipeline`` is configured with
-            more than one stochastic model (e.g. a detector
-            and solvent model), then this parameter could be
-            ``jax.random.split(jax.random.PRNGKey(seed), 2)``.
+            The random number generator key.
         view : `bool`, optional
             If ``True``, view the cropped, masked,
             and filtered image.
@@ -131,10 +124,13 @@ class ImagePipeline(Module):
             If ``True``, normalize the image to mean zero
             and standard deviation 1.
         """
-        # Check PRNGKey
         idx = 0  # Keep track of number of stochastic models
-        if isinstance(key, get_args(PRNGKeyArray)):
-            key = jnp.expand_dims(key, axis=0)
+        if not isinstance(self.solvent, NullIce) and not isinstance(
+            self.instrument.detector, NullDetector
+        ):
+            keys = jax.random.split(key)
+        else:
+            keys = jnp.expand_dims(key, axis=0)
         # Frequencies
         freqs = self.scattering.padded_frequency_grid_in_angstroms
         # The image of the specimen drawn from the ensemble
@@ -142,13 +138,13 @@ class ImagePipeline(Module):
         if not isinstance(self.solvent, NullIce):
             # The image of the solvent
             ice_image = self.instrument.optics(freqs) * self.solvent.sample(
-                key[idx], freqs
+                keys[idx], freqs
             )
             image = image + ice_image
             idx += 1
         if not isinstance(self.instrument.detector, NullDetector):
             # Measure the detector readout
-            noise = self.instrument.detector.sample(key[idx], freqs)
+            noise = self.instrument.detector.sample(keys[idx], freqs)
             image = image + noise
             idx += 1
 

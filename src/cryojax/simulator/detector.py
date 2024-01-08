@@ -15,7 +15,7 @@ import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 
 from .noise import GaussianNoise
-from .kernel import Kernel, Constant
+from .kernel import KernelType, Constant
 from ..core import field, Module
 from ..typing import ComplexImage, ImageCoords
 
@@ -54,7 +54,7 @@ class GaussianDetector(GaussianNoise, Detector):
         ``Constant()``.
     """
 
-    variance: Kernel = field(default_factory=Constant)
+    variance: KernelType = field(default_factory=Constant)  # type: ignore
 
     @override
     def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:

@@ -15,9 +15,9 @@ import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 
 from .noise import GaussianNoise
-from .ice import NullIce, GaussianIce
-from .detector import NullDetector, GaussianDetector
-from .pipeline import ImagePipeline, _PRNGKeyArrayLike
+from .ice import GaussianIce
+from .detector import GaussianDetector
+from .pipeline import ImagePipeline
 from ..typing import Real_, RealImage, ComplexImage, Image
 from ..core import Module, field
 
@@ -41,9 +41,7 @@ class Distribution(Module):
         """
         raise NotImplementedError
 
-    def sample(
-        self, key: Union[PRNGKeyArray, _PRNGKeyArrayLike], **kwargs: Any
-    ) -> RealImage:
+    def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
         """
         Sample from the distribution.
 
@@ -92,9 +90,7 @@ class IndependentFourierGaussian(Distribution):
             )
 
     @override
-    def sample(
-        self, key: Union[PRNGKeyArray, _PRNGKeyArrayLike], **kwargs: Any
-    ) -> RealImage:
+    def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
         """Sample from the Gaussian noise model."""
         if self.noise is None:
             return super().sample(key, **kwargs)
@@ -146,12 +142,12 @@ class IndependentFourierGaussian(Distribution):
         freqs = pipeline.scattering.frequency_grid_in_angstroms
         if self.noise is None:
             # Variance from detector
-            if not isinstance(pipeline.instrument.detector, NullDetector):
+            if isinstance(pipeline.instrument.detector, GaussianDetector):
                 variance = pipeline.instrument.detector.variance(freqs)
             else:
-                variance = 0.0
+                variance = jnp.asarray(0.0)
             # Variance from ice
-            if not isinstance(pipeline.solvent, NullIce):
+            if isinstance(pipeline.solvent, GaussianIce):
                 ctf = pipeline.instrument.optics(
                     freqs, pose=pipeline.ensemble.pose
                 )
