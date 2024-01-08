@@ -12,7 +12,7 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Any, TypeVar
+from typing import Any, TypeVar, InitVar
 from typing_extensions import override
 
 import jax.numpy as jnp
@@ -38,14 +38,25 @@ class Mask(BufferModule):
         computed upon instantiation.
     """
 
+    coordinate_grid: InitVar[ImageCoords | None] = None
     mask: RealImage = field(init=False)
 
-    def __post_init__(self, *args: Any, **kwargs: Any):
-        self.mask = self.evaluate(*args, **kwargs)
+    def __post_init__(self, coordinate_grid: ImageCoords | None, **kwargs: Any):
+        self.mask = self.evaluate(coordinate_grid, **kwargs)
+
+    @overload
+    @abstractmethod
+    def evaluate(self, coords: None, **kwargs: Any) -> RealImage:
+        ...
+
+    @overload
+    @abstractmethod
+    def evaluate(self, coords: ImageCoords, **kwargs: Any) -> RealImage:
+        ...
 
     @abstractmethod
-    def evaluate(self, **kwargs: Any) -> RealImage:
-        """Compute the mask."""
+    def evaluate(self, coords: ImageCoords | None = None, **kwargs: Any) -> RealImage:
+        """Compute the filter."""
         raise NotImplementedError
 
     def __call__(self, image: RealImage) -> RealImage:
@@ -66,7 +77,7 @@ class _ProductMask(Mask):
     mask2: MaskType = field()  # type: ignore
 
     @override
-    def evaluate(self, **kwargs: Any) -> RealImage:
+    def evaluate(self, coords: ImageCoords | None = None, **kwargs: Any) -> RealImage:
         return self.mask1.mask * self.mask2.mask
 
     def __repr__(self):
@@ -93,10 +104,11 @@ class CircularMask(Mask):
     rolloff: float = field(static=True, default=0.05)
 
     @override
-    def evaluate(self, **kwargs: Any) -> RealImage:
-        return compute_circular_mask(
-            self.manager.coordinate_grid, self.radius, self.rolloff
-        )
+    def evaluate(self, coords: ImageCoords | None, **kwargs: Any) -> RealImage:
+        if coords is None:
+            raise ValueError("The coordinate grid must be given as an argument to the Mask.")
+        else:
+            return compute_circular_mask(coords, self.radius, self.rolloff)
 
 
 def compute_circular_mask(

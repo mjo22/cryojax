@@ -6,7 +6,8 @@ __all__ = ["Voxels", "VoxelCloud", "VoxelGrid"]
 
 import os
 from abc import abstractmethod
-from typing import Any, Tuple, Type, ClassVar, Self
+from typing import Any, Tuple, Type, ClassVar
+from typing_extensions import Self
 from jaxtyping import Complex, Float, Array
 from equinox import AbstractVar
 from functools import cached_property

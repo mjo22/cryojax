@@ -47,7 +47,7 @@ def filters(manager):
 
 @pytest.fixture
 def masks(manager):
-    return cs.CircularMask(manager)
+    return cs.CircularMask(manager.coordinate_grid)
 
 
 @pytest.fixture
