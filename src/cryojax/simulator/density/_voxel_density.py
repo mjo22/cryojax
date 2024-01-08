@@ -6,8 +6,7 @@ __all__ = ["Voxels", "VoxelCloud", "VoxelGrid"]
 
 import os
 from abc import abstractmethod
-from typing import Any, Type, Tuple
-from typing import Any, Type, ClassVar
+from typing import Any, Tuple, Type, ClassVar, Self
 from jaxtyping import Complex, Float, Array
 from equinox import AbstractVar
 from functools import cached_property
@@ -56,7 +55,7 @@ class Voxels(ElectronDensity):
     """
 
     weights: AbstractVar[Array]
-    voxel_size: Real_ = field(metadata={"stack": False})
+    voxel_size: Real_ = field(stack=False)
 
     @classmethod
     def from_file(
@@ -94,7 +93,7 @@ class VoxelGrid(Voxels):
     """
 
     weights: _ComplexCubicVolume = field()
-    frequency_slice: _VolumeSliceCoords = field(metadata={"stack": False})
+    frequency_slice: _VolumeSliceCoords = field(stack=False)
 
     is_real: ClassVar[bool] = False
 
@@ -102,7 +101,7 @@ class VoxelGrid(Voxels):
     def frequency_slice_in_angstroms(self) -> _VolumeSliceCoords:
         return self.frequency_slice / self.voxel_size
 
-    def rotate_to_pose(self, pose: Pose) -> "VoxelGrid":
+    def rotate_to_pose(self, pose: Pose) -> Self:
         """
         Compute rotations of a central slice in fourier space
         by an imaging pose.
@@ -228,7 +227,7 @@ class VoxelCloud(Voxels):
     """
 
     weights: RealCloud = field()
-    coordinate_list: CloudCoords3D = field(metadata={"stack": False})
+    coordinate_list: CloudCoords3D = field(stack=False)
 
     is_real: ClassVar[bool] = True
 
@@ -236,7 +235,7 @@ class VoxelCloud(Voxels):
     def coordinate_list_in_angstroms(self) -> CloudCoords3D:
         return self.voxel_size * self.coordinate_list
 
-    def rotate_to_pose(self, pose: Pose) -> "VoxelCloud":
+    def rotate_to_pose(self, pose: Pose) -> Self:
         """
         Compute rotations of a point cloud by an imaging pose.
 

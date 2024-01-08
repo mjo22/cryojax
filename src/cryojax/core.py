@@ -17,7 +17,7 @@ import equinox as eqx
 
 def field(
     *,
-    stack: bool = False,
+    stack: bool = True,
     **kwargs: Any,
 ) -> Any:
     """
@@ -32,6 +32,11 @@ def field(
         is not currently supported in every cryojax Module, and is
         only for internal cryojax batch dimension functionality.
         In general, a user can add batch dimensions however they want.
+
+        As a rule of thumb, this should only be set to ``False`` if the
+        field in question is cumbersome and unecessary to store. See
+        ``cryojax.simulator.density.VoxelGrid`` for an example. This
+        argument is not used if ``static = True``.
     """
     # Equinox metadata
     static = kwargs.pop("static", False)
@@ -48,8 +53,9 @@ def field(
     converter = kwargs.pop("converter", _converter)
     # Cryojax metadata
     metadata = kwargs.pop("metadata", {})
-    # ... add the stack keyword
-    metadata["stack"] = stack
+    # ... add the stack keyword, if the field is traced
+    if not static:
+        metadata["stack"] = stack
 
     return eqx.field(
         converter=converter,
