@@ -162,7 +162,7 @@ class ZeroMode(Kernel):
     def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
         if freqs is None:
             raise ValueError(
-                "The frequency grid must be given as an argument to the Kernel."
+                "The frequency grid must be given as an argument to the Kernel call."
             )
         else:
             N1, N2 = freqs.shape[0:-1]
@@ -209,7 +209,7 @@ class Exp(Kernel):
     def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
         if freqs is None:
             raise ValueError(
-                "The frequency grid must be given as an argument to the Kernel."
+                "The frequency grid must be given as an argument to the Kernel call."
             )
         else:
             k_sqr = jnp.sum(freqs**2, axis=-1)
@@ -256,7 +256,7 @@ class Gaussian(Kernel):
     def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
         if freqs is None:
             raise ValueError(
-                "The frequency grid must be given as an argument to the Kernel."
+                "The frequency grid must be given as an argument to the Kernel call."
             )
         else:
             k_sqr = jnp.sum(freqs**2, axis=-1)

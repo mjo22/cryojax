@@ -13,11 +13,8 @@ __all__ = [
 
 from abc import abstractmethod
 from typing import Any, TypeVar
-from typing_extensions import override
 
 import jax.numpy as jnp
-
-from .manager import ImageManager
 
 from ..core import field, BufferModule
 from ..typing import RealImage, ImageCoords
@@ -40,34 +37,32 @@ class Mask(BufferModule):
 
     mask: RealImage = field(init=False)
 
-    def __post_init__(self, *args: Any, **kwargs: Any):
-        self.mask = self.evaluate(*args, **kwargs)
-
     @abstractmethod
-    def evaluate(self, **kwargs: Any) -> RealImage:
-        """Compute the mask."""
+    def __init__(self, *args: Any, **kwargs: Any):
+        """Compute the mask"""
         raise NotImplementedError
 
     def __call__(self, image: RealImage) -> RealImage:
         """Apply the mask to an image."""
         return self.mask * image
 
-    def __mul__(self, other: Mask) -> Mask:
+    def __mul__(self: MaskType, other: MaskType) -> _ProductMask:
         return _ProductMask(mask1=self, mask2=other)
 
-    def __rmul__(self, other: Mask) -> Mask:
+    def __rmul__(self: MaskType, other: MaskType) -> _ProductMask:
         return _ProductMask(mask1=other, mask2=self)
 
 
 class _ProductMask(Mask):
     """A helper to represent the product of two filters."""
 
-    mask1: MaskType = field()  # type: ignore
-    mask2: MaskType = field()  # type: ignore
+    mask1: MaskType  # type: ignore
+    mask2: MaskType  # type: ignore
 
-    @override
-    def evaluate(self, **kwargs: Any) -> RealImage:
-        return self.mask1.mask * self.mask2.mask
+    def __init__(self, mask1: MaskType, mask2: MaskType):
+        self.mask1 = mask1
+        self.mask2 = mask2
+        self.mask = mask1.mask * mask2.mask
 
     def __repr__(self):
         return f"{repr(self.mask1)} * {repr(self.mask2)}"
@@ -89,23 +84,22 @@ class CircularMask(Mask):
         By default, ``0.05``.
     """
 
-    manager: ImageManager = field()
+    radius: float = field(static=True)
+    rolloff: float = field(static=True)
 
-    radius: float = field(static=True, default=0.95)
-    rolloff: float = field(static=True, default=0.05)
-
-    @override
-    def evaluate(self, **kwargs: Any) -> RealImage:
-        return compute_circular_mask(
-            self.manager.coordinate_grid, self.radius, self.rolloff
-        )
+    def __init__(
+        self,
+        freqs: ImageCoords,
+        radius: float = 0.95,
+        rolloff: float = 0.05,
+    ) -> None:
+        self.radius = radius
+        self.rolloff = rolloff
+        self.mask = compute_circular_mask(freqs, self.radius, self.rolloff)
 
 
 def compute_circular_mask(
-    coords: ImageCoords,
-    cutoff: float = 0.95,
-    rolloff: float = 0.05,
-    **kwargs: Any,
+    coords: ImageCoords, cutoff: float = 0.95, rolloff: float = 0.05
 ) -> RealImage:
     """
     Create a circular mask.

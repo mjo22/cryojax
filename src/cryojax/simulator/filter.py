@@ -14,13 +14,11 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Any, TypeVar
+from typing import Any, TypeVar, overload
 from typing_extensions import override
 
 import jax
 import jax.numpy as jnp
-
-from .manager import ImageManager
 
 from ..utils import powerspectrum, make_frequencies
 from ..core import field, BufferModule
@@ -43,11 +41,8 @@ class Filter(BufferModule):
 
     filter: Image = field(init=False)
 
-    def __post_init__(self, *args: Any, **kwargs: Any):
-        self.filter = self.evaluate(*args, **kwargs)
-
     @abstractmethod
-    def evaluate(self, **kwargs: Any) -> Image:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Compute the filter."""
         raise NotImplementedError
 
@@ -65,12 +60,14 @@ class Filter(BufferModule):
 class _ProductFilter(Filter):
     """A helper to represent the product of two filters."""
 
-    filter1: FilterType = field()  # type: ignore
-    filter2: FilterType = field()  # type: ignore
+    filter1: FilterType  # type: ignore
+    filter2: FilterType  # type: ignore
 
     @override
-    def evaluate(self, **kwargs: Any) -> Image:
-        return self.filter1.filter * self.filter2.filter
+    def __init__(self, filter1: FilterType, filter2: FilterType) -> None:
+        self.filter1 = filter1
+        self.filter2 = filter2
+        self.filter = filter1.filter * filter2.filter
 
     def __repr__(self):
         return f"{repr(self.filter1)} * {repr(self.filter2)}"
@@ -93,46 +90,39 @@ class LowpassFilter(Filter):
         By default, ``0.05``.
     """
 
-    manager: ImageManager = field()
+    cutoff: float = field(static=True)
+    rolloff: float = field(static=True)
 
-    cutoff: float = field(static=True, default=0.95)
-    rolloff: float = field(static=True, default=0.05)
-
-    @override
-    def evaluate(self, **kwargs: Any) -> RealImage:
-        return compute_lowpass_filter(
-            self.manager.padded_frequency_grid,
-            self.cutoff,
-            self.rolloff,
-            **kwargs,
-        )
+    def __init__(
+        self,
+        freqs: ImageCoords,
+        cutoff: float = 0.95,
+        rolloff: float = 0.05,
+    ) -> None:
+        self.cutoff = cutoff
+        self.rolloff = rolloff
+        self.filter = compute_lowpass_filter(freqs, self.cutoff, self.rolloff)
 
 
 class WhiteningFilter(Filter):
     """
-    Apply an whitening filter to an image.
-
-    See documentation for
-    ``cryojax.simulator.compute_whitening_filter``
-    for more information.
+    Apply a whitening filter to an image.
     """
 
-    manager: ImageManager = field()
-
-    micrograph: ComplexImage = field()
-
-    @override
-    def evaluate(self, **kwargs: Any) -> RealImage:
-        return compute_whitening_filter(
-            self.manager.padded_frequency_grid, self.micrograph, **kwargs
+    def __init__(
+        self,
+        frequency_grid: ImageCoords,
+        fourier_micrograph: ComplexImage,
+        *,
+        grid_spacing: float = 1.0,
+    ):
+        self.filter = compute_whitening_filter(
+            frequency_grid, fourier_micrograph, grid_spacing
         )
 
 
 def compute_lowpass_filter(
-    freqs: ImageCoords,
-    cutoff: float = 0.667,
-    rolloff: float = 0.05,
-    **kwargs: Any,
+    freqs: ImageCoords, cutoff: float = 0.667, rolloff: float = 0.05
 ) -> RealImage:
     """
     Create a low-pass filter.
@@ -178,7 +168,9 @@ def compute_lowpass_filter(
 
 
 def compute_whitening_filter(
-    freqs: ImageCoords, micrograph: ComplexImage, **kwargs: Any
+    freqs: ImageCoords,
+    micrograph: ComplexImage,
+    grid_spacing: float = 1.0,
 ) -> RealImage:
     """
     Compute a whitening filter from a micrograph. This is taken
@@ -202,7 +194,9 @@ def compute_whitening_filter(
     """
     micrograph = jnp.asarray(micrograph)
     # Make coordinates
-    micrograph_frequency_grid = make_frequencies(micrograph.shape, *kwargs)
+    micrograph_frequency_grid = make_frequencies(
+        micrograph.shape, grid_spacing
+    )
     # Compute norms
     radial_frequency_grid = jnp.linalg.norm(micrograph_frequency_grid, axis=-1)
     interpolating_radial_frequency_grid = jnp.linalg.norm(freqs, axis=-1)
