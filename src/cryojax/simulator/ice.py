@@ -10,7 +10,7 @@ from typing import Optional
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 
-from .kernel import Kernel, Exp
+from .kernel import KernelType, Exp
 from .noise import GaussianNoise
 from ..core import field, Module
 from ..typing import RealImage, ComplexImage, Image, ImageCoords
@@ -58,7 +58,7 @@ class GaussianIce(GaussianNoise, Ice):
         ``Exp()``.
     """
 
-    variance: Kernel = field(default_factory=Exp)
+    variance: KernelType = field(default_factory=Exp)  # type: ignore
 
     def sample(
         self,

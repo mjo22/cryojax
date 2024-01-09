@@ -75,7 +75,7 @@ class UniformExposure(Exposure):
     mu: Intensity offset.
     """
 
-    N: Real_ = field(default=1e5)
+    N: Real_ = field(default=1.0)
     mu: Real_ = field(default=0.0)
 
     def scaling(self, freqs: ImageCoords, **kwargs: Any) -> Real_:

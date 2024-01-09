@@ -10,7 +10,7 @@ from typing import Any, Union, Callable
 
 import jax.numpy as jnp
 
-from ..core import field, Buffer
+from ..core import field, BufferModule
 from ..typing import (
     Image,
     ImageCoords,
@@ -21,10 +21,11 @@ from ..utils import (
     crop,
     pad,
     crop_or_pad,
+    normalize_image,
 )
 
 
-class ImageManager(Buffer):
+class ImageManager(BufferModule):
     """
     Configuration and utilities for an electron microscopy image.
 
@@ -91,17 +92,6 @@ class ImageManager(Buffer):
             image, self.padded_shape, mode=self.pad_mode, **kwargs
         )
 
-    def normalize_to_cistem(
-        self, image: Image, is_real: bool = False
-    ) -> Image:
-        """Normalize images on the exit plane according to cisTEM conventions."""
-        M1, M2 = image.shape
-        if is_real:
-            raise NotImplementedError(
-                "Normalization to cisTEM conventions not supported for real input."
-            )
-        else:
-            # Set zero frequency component to zero
-            image = image.at[0, 0].set(0.0 + 0.0j)
-            # cisTEM normalization convention for projections
-            return image / jnp.sqrt(M1 * M2)
+    def normalize_image(self, image: Image, is_real: bool = True) -> Image:
+        """Normalize an image so that it is mean zero and standard deviation 1."""
+        return normalize_image(image, is_real=is_real)

@@ -1,15 +1,17 @@
 import os
 import pytest
 
+import equinox as eqx
 import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
+from cryojax.utils import fftn
 
 config.update("jax_enable_x64", True)
 
 
-@pytest.fixture()
+@pytest.fixture
 def manager():
     return cs.ImageManager(shape=(81, 82))
 
@@ -39,21 +41,21 @@ def sample_pdb_path():
 
 @pytest.fixture
 def filters(manager):
-    return cs.LowpassFilter(manager)
+    return cs.LowpassFilter(manager.padded_frequency_grid)
     # return None
 
 
 @pytest.fixture
 def masks(manager):
-    return cs.CircularMask(manager)
+    return cs.CircularMask(manager.coordinate_grid)
 
 
 @pytest.fixture
 def instrument(pixel_size):
     return cs.Instrument(
         optics=cs.CTFOptics(),
-        exposure=cs.UniformExposure(N=1e5, mu=1.0),
-        detector=cs.GaussianDetector(),
+        exposure=cs.UniformExposure(N=1000, mu=0.0),
+        detector=cs.GaussianDetector(cs.Constant(1.0)),
     )
 
 
@@ -71,7 +73,40 @@ def solvent():
 
 
 @pytest.fixture
-def noisy_model(scattering, ensemble, instrument, solvent, filters, masks):
+def noiseless_model(scattering, ensemble, instrument):
+    instrument = eqx.tree_at(
+        lambda ins: ins.detector, instrument, cs.NullDetector()
+    )
+    return cs.ImagePipeline(
+        scattering=scattering, ensemble=ensemble, instrument=instrument
+    )
+
+
+@pytest.fixture
+def noisy_model(scattering, ensemble, instrument, solvent):
+    return cs.ImagePipeline(
+        scattering=scattering,
+        ensemble=ensemble,
+        instrument=instrument,
+        solvent=solvent,
+    )
+
+
+@pytest.fixture
+def filtered_model(scattering, ensemble, instrument, solvent, filters):
+    return cs.ImagePipeline(
+        scattering=scattering,
+        ensemble=ensemble,
+        instrument=instrument,
+        solvent=solvent,
+        filter=filters,
+    )
+
+
+@pytest.fixture
+def filtered_and_masked_model(
+    scattering, ensemble, instrument, solvent, filters, masks
+):
     return cs.ImagePipeline(
         scattering=scattering,
         ensemble=ensemble,
@@ -79,34 +114,22 @@ def noisy_model(scattering, ensemble, instrument, solvent, filters, masks):
         solvent=solvent,
         filter=filters,
         mask=masks,
-    )
-
-
-@pytest.fixture
-def maskless_model(scattering, ensemble, instrument, solvent, filters):
-    return cs.ImagePipeline(
-        scattering=scattering,
-        ensemble=ensemble,
-        instrument=instrument,
-        solvent=solvent,
-        filter=filters,
     )
 
 
 @pytest.fixture
 def test_image(noisy_model):
-    return noisy_model.sample(jr.split(jr.PRNGKey(1234), num=2))
+    image = noisy_model.sample(jr.PRNGKey(1234), view=False)
+    return fftn(image)
 
 
 @pytest.fixture
-def likelihood_model(
-    scattering, ensemble, instrument, solvent, filters, masks
-):
-    return cs.GaussianImage(
-        scattering=scattering,
-        ensemble=ensemble,
-        instrument=instrument,
-        solvent=solvent,
-        filter=filters,
-        mask=masks,
+def likelihood_model(noisy_model):
+    return cs.IndependentFourierGaussian(noisy_model)
+
+
+@pytest.fixture
+def likelihood_model_with_custom_variance(noiseless_model):
+    return cs.IndependentFourierGaussian(
+        noiseless_model, noise=cs.GaussianNoise(variance=cs.Constant(1.0))
     )
