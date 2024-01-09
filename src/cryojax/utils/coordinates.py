@@ -48,7 +48,7 @@ def make_coordinates(
 def make_frequencies(
     shape: tuple[int, ...],
     grid_spacing: float = 1.0,
-    half_space: bool = False,
+    half_space: bool = True,
     indexing: str = "xy",
 ) -> Float[Array, "*shape len(shape)"]:
     """
