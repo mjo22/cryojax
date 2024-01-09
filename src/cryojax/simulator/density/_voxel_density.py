@@ -56,7 +56,7 @@ class Voxels(ElectronDensity):
     """
 
     weights: AbstractVar[Array]
-    voxel_size: Real_ = field()
+    voxel_size: Real_ = field(metadata={"stack": False})
 
     @classmethod
     def from_file(
@@ -94,7 +94,7 @@ class VoxelGrid(Voxels):
     """
 
     weights: _ComplexCubicVolume = field()
-    frequency_slice: _VolumeSliceCoords = field()
+    frequency_slice: _VolumeSliceCoords = field(metadata={"stack": False})
 
     is_real: ClassVar[bool] = False
 
@@ -228,7 +228,7 @@ class VoxelCloud(Voxels):
     """
 
     weights: RealCloud = field()
-    coordinate_list: CloudCoords3D = field()
+    coordinate_list: CloudCoords3D = field(metadata={"stack": False})
 
     is_real: ClassVar[bool] = True
 
