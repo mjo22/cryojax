@@ -22,7 +22,7 @@ from .scattering import ScatteringModel
 from .instrument import Instrument
 from .detector import NullDetector
 from .ice import Ice, NullIce
-from ..utils import fftn, ifftn
+from ..utils import rfftn, irfftn
 from ..core import field, Module
 from ..typing import ComplexImage, RealImage, Image
 
@@ -191,8 +191,12 @@ class ImagePipeline(Module):
             )
         else:
             if normalize:
-                image = manager.normalize_image(image, is_real=False)
-            return ifftn(image).real if get_real else image
+                image = manager.normalize_image(
+                    image,
+                    is_real=False,
+                    shape_in_real_space=manager.padded_shape,
+                )
+            return irfftn(image, s=manager.padded_shape) if get_real else image
 
     def _filter_crop_mask(
         self,
@@ -214,16 +218,20 @@ class ImagePipeline(Module):
             # ... if there are no masks and we don't need to crop,
             # minimize moving back and forth between real and fourier space
             if normalize:
-                image = manager.normalize_image(image, is_real=False)
-            return ifftn(image).real if get_real else image
+                image = manager.normalize_image(
+                    image, is_real=False, shape_in_real_space=manager.shape
+                )
+            return irfftn(image, s=manager.shape) if get_real else image
         else:
             # ... otherwise, inverse transform, crop, mask, and normalize
-            image = manager.crop_to_shape(ifftn(image).real)
+            image = manager.crop_to_shape(
+                irfftn(image, s=manager.padded_shape)
+            )
             if self.mask is not None:
                 image = self.mask(image)
             if normalize:
                 image = manager.normalize_image(image, is_real=True)
-            return image if get_real else fftn(image)
+            return image if get_real else rfftn(image)
 
 
 class SuperpositionPipeline(ImagePipeline):

@@ -11,7 +11,7 @@ import jax.random as jr
 from jaxtyping import PRNGKeyArray
 
 from .kernel import Kernel, Constant
-from ..utils import fftn
+from ..utils import rfftn
 from ..core import field, Module
 from ..typing import ImageCoords, ComplexImage
 
@@ -50,5 +50,5 @@ class GaussianNoise(Noise):
     @override
     def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:
         spectrum = self.variance(freqs)
-        white_noise = fftn(jr.normal(key, shape=freqs.shape[0:-1]))
+        white_noise = jr.normal(key, shape=freqs.shape[0:-1])
         return spectrum * white_noise

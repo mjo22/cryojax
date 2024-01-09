@@ -6,14 +6,14 @@ import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
-from cryojax.utils import fftn
+from cryojax.utils import rfftn
 
 config.update("jax_enable_x64", True)
 
 
 @pytest.fixture
 def manager():
-    return cs.ImageManager(shape=(81, 82))
+    return cs.ImageManager(shape=(81, 82), pad_scale=1.1)
 
 
 @pytest.fixture
@@ -51,10 +51,10 @@ def masks(manager):
 
 
 @pytest.fixture
-def instrument(pixel_size):
+def instrument():
     return cs.Instrument(
         optics=cs.CTFOptics(),
-        exposure=cs.UniformExposure(N=1000, mu=0.0),
+        exposure=cs.UniformExposure(N=1000.0, mu=0.0),
         detector=cs.GaussianDetector(cs.Constant(1.0)),
     )
 
@@ -63,7 +63,13 @@ def instrument(pixel_size):
 def ensemble(density):
     return cs.Ensemble(
         density=density,
-        pose=cs.EulerPose(degrees=False),
+        pose=cs.EulerPose(
+            view_phi=30.0,
+            view_theta=100.0,
+            view_psi=-10.0,
+            offset_x=10.0,
+            offset_y=-5.0,
+        ),
     )
 
 
@@ -120,7 +126,7 @@ def filtered_and_masked_model(
 @pytest.fixture
 def test_image(noisy_model):
     image = noisy_model.sample(jr.PRNGKey(1234), view=False)
-    return fftn(image)
+    return rfftn(image)
 
 
 @pytest.fixture
