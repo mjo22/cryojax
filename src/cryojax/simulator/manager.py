@@ -6,9 +6,7 @@ from __future__ import annotations
 
 __all__ = ["ImageManager"]
 
-from typing import Any, Union, Callable
-
-import jax.numpy as jnp
+from typing import Any, Union, Callable, Optional
 
 from ..core import field, BufferModule
 from ..typing import (
@@ -92,6 +90,17 @@ class ImageManager(BufferModule):
             image, self.padded_shape, mode=self.pad_mode, **kwargs
         )
 
-    def normalize_image(self, image: Image, is_real: bool = True) -> Image:
-        """Normalize an image so that it is mean zero and standard deviation 1."""
-        return normalize_image(image, is_real=is_real)
+    def normalize_image(
+        self,
+        image: Image,
+        is_real: bool = True,
+        half_space: bool = True,
+        shape_in_real_space: Optional[tuple[int, int]] = None,
+    ) -> Image:
+        """Normalize an image so that it is mean 0 and standard deviation 1 in real space."""
+        return normalize_image(
+            image,
+            is_real=is_real,
+            half_space=half_space,
+            shape_in_real_space=shape_in_real_space,
+        )

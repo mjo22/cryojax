@@ -191,7 +191,11 @@ class ImagePipeline(Module):
             )
         else:
             if normalize:
-                image = manager.normalize_image(image, is_real=False)
+                image = manager.normalize_image(
+                    image,
+                    is_real=False,
+                    shape_in_real_space=manager.padded_shape,
+                )
             return irfftn(image, s=manager.padded_shape) if get_real else image
 
     def _filter_crop_mask(
@@ -214,7 +218,9 @@ class ImagePipeline(Module):
             # ... if there are no masks and we don't need to crop,
             # minimize moving back and forth between real and fourier space
             if normalize:
-                image = manager.normalize_image(image, is_real=False)
+                image = manager.normalize_image(
+                    image, is_real=False, shape_in_real_space=manager.shape
+                )
             return irfftn(image, s=manager.shape) if get_real else image
         else:
             # ... otherwise, inverse transform, crop, mask, and normalize

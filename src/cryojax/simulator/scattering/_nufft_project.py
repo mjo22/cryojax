@@ -135,7 +135,7 @@ def project_with_nufft(
         nufft1(shape, weights, x, y, **kwargs)
     )
 
-    return fourier_projection
+    return fourier_projection[:, : M2 // 2 + 1]
 
 
 """

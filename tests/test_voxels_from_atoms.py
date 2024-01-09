@@ -6,6 +6,9 @@ from cryojax.simulator.density._voxel_density import (
     _build_real_space_voxels_from_atoms,
 )
 from cryojax.utils import ifftn, make_coordinates
+from jax import config
+
+config.update("jax_enable_x64", True)
 
 
 def test_VoxelGrid_VoxelCloud_agreement(sample_pdb_path):
@@ -24,7 +27,13 @@ def test_VoxelGrid_VoxelCloud_agreement(sample_pdb_path):
     )
     # Since Voxelgrid is in Frequency space by default, we have to first
     # transform back into real space.
-    vg_density = ifftn(vg.weights).real.ravel()
+    vg_density = ifftn(vg.weights).real
+    # The constructors each transpose in a unique way in order for
+    # jax-finufft and the fourier slice theorem to match each other
+    # and cisTEM. This operation undos the difference between both transposes
+    vg_density = jnp.transpose(vg_density, axes=[1, 0, 2])
+    # Ravel the grid
+    vg_density = vg_density.ravel()
 
     vc = VoxelCloud.from_pdb(
         sample_pdb_path,
@@ -33,7 +42,7 @@ def test_VoxelGrid_VoxelCloud_agreement(sample_pdb_path):
         mask_zeros=False,
     )
 
-    assert jnp.allclose(vg_density, vc.weights)
+    np.testing.assert_allclose(vg_density, vc.weights, atol=1e-12)
 
 
 class TestBuildRealSpaceVoxelsFromAtoms:

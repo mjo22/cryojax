@@ -6,7 +6,6 @@ __all__ = [
     "make_coordinates",
     "make_frequencies",
     "cartesian_to_polar",
-    "flatten_and_coordinatize",
 ]
 
 from typing import Union, Any, Optional
@@ -83,70 +82,6 @@ def make_frequencies(
         indexing=indexing,
     )
     return frequency_grid
-
-
-def flatten_and_coordinatize(
-    template: Union[RealVolume, RealImage],
-    voxel_size: float,
-    mask_zeros: bool = True,
-    indexing="xy",
-    **kwargs: Any,
-) -> tuple[Float[Array, "N"], Float[Array, "N ndim"]]:
-    """
-    Returns 3D volume or 2D image and its coordinate system.
-    By default, coordinates are shape ``(N, ndim)``, where
-    ``ndim = template.ndim`` and ``N = N1*N2*N3 - M`` or
-    ``N = N2*N3 - M``, where ``M`` is a number of points
-    close to zero that are masked out. The coordinate system
-    is set with dimensions of length with zero in the center.
-
-    Parameters
-    ----------
-    template : `Array`, shape `(N1, N2, N3)` or `(N1, N2)`
-        3D volume or 2D image on a cartesian grid.
-    voxel_size : float
-        Pixel size or voxel size of the template.
-    mask_zeros : `bool`
-        If ``True``, run template through ``jax.numpy.isclose``
-        to remove coordinates with zero electron density.
-    kwargs
-        Keyword arguments passed to ``numpy.isclose``.
-        Disabled for ``mask_zeros = False``.
-
-    Returns
-    -------
-    flat_and_masked : `Array`, shape `(N, ndim)`
-        Flattened and masked volume or image.
-    coordinate_list : `Array`, shape `(N, ndim)`
-        Cartesian coordinate system.
-    """
-    template = jnp.asarray(template)
-    ndim, shape = template.ndim, template.shape
-    # Mask out points where the electron density is close
-    # to zero.
-    flat = template.ravel()
-    if mask_zeros:
-        nonzero = jnp.where(~jnp.isclose(flat, 0.0, **kwargs))
-        flat_and_masked = flat[nonzero]
-    else:
-        nonzero = True
-        flat_and_masked = flat
-
-    # Create coordinate buffer
-    N = flat_and_masked.size
-    coordinate_list = jnp.zeros((N, ndim))
-
-    # Generate rectangular grid and fill coordinate array.
-    R = make_coordinates(shape, voxel_size, indexing=indexing)
-    for i in range(ndim):
-        if mask_zeros:
-            coordinate_list = coordinate_list.at[..., i].set(
-                R[..., i].ravel()[nonzero]
-            )
-        else:
-            coordinate_list = coordinate_list.at[..., i].set(R[..., i].ravel())
-
-    return flat_and_masked, coordinate_list
 
 
 def cartesian_to_polar(
