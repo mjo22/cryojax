@@ -101,16 +101,17 @@ class Voxels(ElectronDensity):
     def from_file(
         cls: Type[VoxelType],
         filename: str,
+        *args: Any,
         **kwargs: Any,
     ) -> VoxelType:
         """Load a voxel-based electron density."""
         path = pathlib.Path(filename)
         if path.suffix == ".mrc":
-            return cls.from_mrc(filename, **kwargs)
+            return cls.from_mrc(filename, *args, **kwargs)
         elif path.suffix == ".pdb":
-            return cls.from_pdb(filename, **kwargs)
+            return cls.from_pdb(filename, *args, **kwargs)
         elif path.suffix == ".cif":
-            return cls.from_cif(filename, **kwargs)
+            return cls.from_cif(filename, *args, **kwargs)
         else:
             raise NotImplementedError(
                 f"File format {path.suffix} not supported."
