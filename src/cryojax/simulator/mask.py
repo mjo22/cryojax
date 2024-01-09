@@ -5,7 +5,6 @@ Masks to apply to images in real space.
 from __future__ import annotations
 
 __all__ = [
-    "compute_circular_mask",
     "Mask",
     "MaskType",
     "CircularMask",
@@ -95,10 +94,10 @@ class CircularMask(Mask):
     ) -> None:
         self.radius = radius
         self.rolloff = rolloff
-        self.mask = compute_circular_mask(freqs, self.radius, self.rolloff)
+        self.mask = _compute_circular_mask(freqs, self.radius, self.rolloff)
 
 
-def compute_circular_mask(
+def _compute_circular_mask(
     coords: ImageCoords, cutoff: float = 0.95, rolloff: float = 0.05
 ) -> RealImage:
     """

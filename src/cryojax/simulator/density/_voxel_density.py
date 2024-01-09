@@ -30,7 +30,7 @@ from cryojax.utils import (
     make_coordinates,
     flatten_and_coordinatize,
     pad,
-    fftn,
+    rfftn,
 )
 from cryojax.typing import (
     RealCloud,
@@ -39,7 +39,7 @@ from cryojax.typing import (
 )
 
 _RealCubicVolume = Float[Array, "N N N"]
-_ComplexCubicVolume = Complex[Array, "N N N"]
+_ComplexCubicVolume = Complex[Array, "N N N//2+1"]
 _VolumeSliceCoords = Float[Array, "N N 1 3"]
 
 
@@ -134,7 +134,7 @@ class VoxelGrid(Voxels):
         padded_shape = tuple([int(s * pad_scale) for s in template.shape])
         template = pad(template, padded_shape)
         # Load density and coordinates
-        density = fftn(template)
+        density = rfftn(template)
         frequency_grid = make_frequencies(template.shape, 1.0)
         # Get central z slice
         frequency_slice = jnp.expand_dims(frequency_grid[:, :, 0, :], axis=2)
@@ -197,7 +197,7 @@ class VoxelGrid(Voxels):
             coords, a_vals, b_vals, coordinates_3d
         )
 
-        fourier_space_density = fftn(density)
+        fourier_space_density = rfftn(density)
         frequency_grid = make_frequencies(fourier_space_density.shape, 1.0)
 
         z_plane_frequencies = jnp.expand_dims(

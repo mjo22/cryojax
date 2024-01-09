@@ -15,10 +15,10 @@ import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate
 
-from ..density import ElectronDensity, Voxels
+from ..density import ElectronDensity, Voxels, VoxelGrid
 from ..manager import ImageManager
 
-from ...utils import fftn, ifftn
+from ...utils import rfftn, irfftn
 from ...core import field, Module
 from ...typing import Real_, RealImage, ComplexImage
 
@@ -73,14 +73,18 @@ class ScatteringModel(Module):
         self, density: ElectronDensity, **kwargs: Any
     ) -> ComplexImage:
         """
-        Compute an image at the exit plane, measured at the
+        Compute an image at the exit plane, measured at the ScatteringModel
         pixel size and post-processed with the ImageManager utilities.
         """
         image = self.scatter(density, **kwargs)
-        image = ifftn(image).real
-        # Resize the image to match the ImageManager config
-        if self.manager.padded_shape != image.shape:
-            image = self.manager.crop_or_pad_to_padded_shape(image)
+        if isinstance(density, VoxelGrid):
+            # Resize the image to match the ImageManager.padded_shape
+            image = self.manager.crop_or_pad_to_padded_shape(
+                irfftn(image, s=density.weights.shape[0:2])
+            )
+        else:
+            # ... otherwise, assume the image is already at the padded_shape
+            image = irfftn(image, s=self.manager.padded_shape)
         # Rescale the pixel size if different from the voxel size
         if isinstance(density, Voxels):
             current_pixel_size = density.voxel_size
@@ -98,8 +102,8 @@ class ScatteringModel(Module):
                 rescale_fn,
                 image,
             )
-        # Transform back to fourier space and give zero mean
-        image = fftn(image).at[0, 0].set(0.0 + 0.0j)
+        # Transform back to fourier space and give the image zero mean
+        image = rfftn(image).at[0, 0].set(0.0 + 0.0j)
         return image
 
     @cached_property

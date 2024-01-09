@@ -116,7 +116,10 @@ class IndependentFourierGaussian(Distribution):
            the ImageManager.padded_shape shape.
         """
         pipeline = self.pipeline
-        if observed.shape != pipeline.scattering.manager.padded_shape:
+        if (
+            observed.shape
+            != pipeline.scattering.manager.padded_frequency_grid.shape[:-1]
+        ):
             raise ValueError(
                 "Shape of observed must match ImageManager.padded_shape"
             )

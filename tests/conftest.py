@@ -6,7 +6,7 @@ import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
-from cryojax.utils import fftn
+from cryojax.utils import rfftn
 
 config.update("jax_enable_x64", True)
 
@@ -120,7 +120,7 @@ def filtered_and_masked_model(
 @pytest.fixture
 def test_image(noisy_model):
     image = noisy_model.sample(jr.PRNGKey(1234), view=False)
-    return fftn(image)
+    return rfftn(image)
 
 
 @pytest.fixture

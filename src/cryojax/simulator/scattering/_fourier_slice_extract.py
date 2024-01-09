@@ -61,9 +61,9 @@ def extract_slice(
 
     Arguments
     ---------
-    weights : shape `(N1, N2, N3)`
+    weights : shape `(N, N, N//2+1)`
         Density grid in fourier space.
-    frequency_slice : shape `(N1, N2, 1, 3)`
+    frequency_slice : shape `(N, N//2+1, 1, 3)`
         Frequency central slice coordinate system.
     order : int
         Spline order of interpolation. By default, ``1``.
@@ -72,17 +72,17 @@ def extract_slice(
 
     Returns
     -------
-    projection :
+    projection : shape `(N, N//2+1)`
         The output image in fourier space.
     """
-    weights, frequency_slice = jnp.asarray(weights), jnp.asarray(
-        frequency_slice
-    )
     N1, N2, N3 = weights.shape
-    if not all([Ni == N1 for Ni in [N1, N2, N3]]):
+    N = N1
+    if (N1, N2, N3) != (N, N, N // 2 + 1):
         raise ValueError("Only cubic boxes are supported for fourier slice.")
+    # Take the frequency slice on the half space
+    frequency_slice = frequency_slice[:, : N // 2 + 1, :, :]
     # Need to convert to "array index coordinates", so make coordinates dimensionless
-    box_size = jnp.array([N1, N2, N3], dtype=float)
+    box_size = jnp.asarray([N1, N2, N3], dtype=float)
     frequency_slice *= box_size
     # Transpose frequencies to map_coordinates convention
     frequency_slice = jnp.transpose(frequency_slice, axes=[3, 0, 1, 2])

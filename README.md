@@ -111,14 +111,14 @@ image = pipeline.sample(key)
 `cryojax` also defines a library of `Distribution`s, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
 
 ```python
-from cryojax.utils import fftn
+from cryojax.utils import rfftn
 
 # Read observed data in real space
 observed = ...
 # Normalize to mean zero and standard deviation 1
 observed = manager.normalize_image(observed, is_real=True)
 # Upsample observed data in fourier space
-observed = fftn(manager.pad_to_padded_shape(observed))
+observed = rfftn(manager.pad_to_padded_shape(observed))
 # Instantiate distribution and compute
 model = cs.IndependentFourierGaussian(pipeline)
 log_likelihood = model.log_probability(observed)
@@ -142,8 +142,8 @@ def update_model(model, params):
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
     where = lambda model: (
-        model.pipeline.ensemble.pose.view_phi, 
-        model.pipeline.instrument.optics.defocus_u, 
+        model.pipeline.ensemble.pose.view_phi,
+        model.pipeline.instrument.optics.defocus_u,
         model.pipeline.scattering.pixel_size
     )
     updated_model = eqx.tree_at(

@@ -5,8 +5,6 @@ Filters to apply to images in Fourier space
 from __future__ import annotations
 
 __all__ = [
-    "compute_lowpass_filter",
-    "compute_whitening_filter",
     "Filter",
     "FilterType",
     "LowpassFilter",
@@ -14,15 +12,15 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Any, TypeVar, overload
+from typing import Any, TypeVar
 from typing_extensions import override
 
 import jax
 import jax.numpy as jnp
 
-from ..utils import powerspectrum, make_frequencies
+from ..utils import powerspectrum, make_frequencies, rfftn
 from ..core import field, BufferModule
-from ..typing import Image, ImageCoords, RealImage, ComplexImage
+from ..typing import Image, ImageCoords, RealImage
 
 FilterType = TypeVar("FilterType", bound="Filter")
 """TypeVar for the Filter base class."""
@@ -101,7 +99,7 @@ class LowpassFilter(Filter):
     ) -> None:
         self.cutoff = cutoff
         self.rolloff = rolloff
-        self.filter = compute_lowpass_filter(freqs, self.cutoff, self.rolloff)
+        self.filter = _compute_lowpass_filter(freqs, self.cutoff, self.rolloff)
 
 
 class WhiteningFilter(Filter):
@@ -112,16 +110,16 @@ class WhiteningFilter(Filter):
     def __init__(
         self,
         frequency_grid: ImageCoords,
-        fourier_micrograph: ComplexImage,
+        micrograph: RealImage,
         *,
         grid_spacing: float = 1.0,
     ):
-        self.filter = compute_whitening_filter(
-            frequency_grid, fourier_micrograph, grid_spacing
+        self.filter = _compute_whitening_filter(
+            frequency_grid, micrograph, grid_spacing
         )
 
 
-def compute_lowpass_filter(
+def _compute_lowpass_filter(
     freqs: ImageCoords, cutoff: float = 0.667, rolloff: float = 0.05
 ) -> RealImage:
     """
@@ -137,13 +135,11 @@ def compute_lowpass_filter(
     rolloff :
         The rolloff width as a fraction of the Nyquist frequency.
         By default, ``0.05``.
-    kwargs :
-        Keyword arguments passed to ``cryojax.utils.make_coordinates``.
 
     Returns
     -------
     mask : `Array`, shape `shape`
-        An array representing the anti-aliasing filter.
+        An array representing the low pass filter.
     """
 
     k_max = 1.0 / 2.0
@@ -167,9 +163,9 @@ def compute_lowpass_filter(
     return mask
 
 
-def compute_whitening_filter(
+def _compute_whitening_filter(
     freqs: ImageCoords,
-    micrograph: ComplexImage,
+    micrograph: RealImage,
     grid_spacing: float = 1.0,
 ) -> RealImage:
     """
@@ -185,24 +181,25 @@ def compute_whitening_filter(
     freqs :
         The image coordinates.
     micrograph :
-        The micrograph in fourier space.
+        The micrograph in real space.
 
     Returns
     -------
     filter :
         The whitening filter.
     """
-    micrograph = jnp.asarray(micrograph)
     # Make coordinates
     micrograph_frequency_grid = make_frequencies(
         micrograph.shape, grid_spacing
     )
+    # Transform to fourier space
+    fourier_micrograph = rfftn(micrograph)
     # Compute norms
     radial_frequency_grid = jnp.linalg.norm(micrograph_frequency_grid, axis=-1)
     interpolating_radial_frequency_grid = jnp.linalg.norm(freqs, axis=-1)
     # Compute power spectrum
     spectrum, _ = powerspectrum(
-        micrograph,
+        fourier_micrograph,
         radial_frequency_grid,
         k_max=jnp.sqrt(2.0) / 2.0,
         interpolating_radial_frequency_grid=interpolating_radial_frequency_grid,
@@ -210,7 +207,8 @@ def compute_whitening_filter(
     # Compute inverse square root
     filter = jax.lax.rsqrt(spectrum)
     # Divide filter by maximum, excluding zero mode
-    filter /= jnp.max(filter[1:, 1:])
+    maximum = jnp.max(jnp.delete(filter, jnp.asarray((0, 0), dtype=int)))
+    filter /= maximum
     # Set zero mode manually to 1 (this diverges from the cisTEM
     # algorithm).
     filter = filter.at[0, 0].set(1.0)

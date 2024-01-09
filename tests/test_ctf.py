@@ -52,7 +52,7 @@ def test_ctf_with_cistem(
     )
     cisTEM_ctf = np.vectorize(
         lambda k_sqr, theta: cisTEM_optics.Evaluate(k_sqr, theta)
-    )(k_sqr.ravel() * pixel_size**2, theta.ravel()).reshape(shape)
+    )(k_sqr.ravel() * pixel_size**2, theta.ravel()).reshape(freqs.shape[0:2])
 
     # Compute cryojax and cisTEM power spectrum
     radial_freqs = jnp.linalg.norm(freqs, axis=-1)
