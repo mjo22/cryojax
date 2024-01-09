@@ -281,50 +281,6 @@ class VoxelCloud(Voxels):
 
         return cls(**vdict, **kwargs)
 
-    @classmethod
-    def from_pdb(
-        cls: Type["VoxelCloud"],
-        filename: str,
-        n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
-        **kwargs: Any,
-    ) -> "VoxelCloud":
-        """
-        Loads a PDB file as a VoxelCloud.  Uses the Gemmi library.
-        Adapted from code from Frederic Poitevin, located at
-
-        https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
-        """
-        model = read_atomic_model_from_pdb(filename)
-        return cls.from_gemmi(
-            model,
-            n_voxels_per_side,
-            voxel_size,
-            **kwargs,
-        )
-
-    @classmethod
-    def from_cif(
-        cls: Type["VoxelCloud"],
-        filename: str,
-        n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
-        **kwargs: Any,
-    ) -> "VoxelCloud":
-        """
-        Loads a PDB file as a VoxelCloud.  Uses the Gemmi library.
-        Adapted from code from Frederic Poitevin, located at
-
-        https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
-        """
-        model = read_atomic_model_from_cif(filename)
-        return cls.from_gemmi(
-            model,
-            n_voxels_per_side,
-            voxel_size,
-            **kwargs,
-        )
-
 
 def _eval_3d_real_space_gaussian(
     coordinate_system: Float[Array, "N1 N2 N3 3"],
