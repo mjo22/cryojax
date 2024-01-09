@@ -4,9 +4,9 @@ Voxel-based electron density representations.
 
 __all__ = ["Voxels", "VoxelCloud", "VoxelGrid"]
 
-import os
+import pathlib
 from abc import abstractmethod
-from typing import Any, Tuple, Type, ClassVar
+from typing import Any, Tuple, Type, ClassVar, TypeVar
 from typing_extensions import Self
 from jaxtyping import Complex, Float, Array
 from equinox import AbstractVar
@@ -34,6 +34,7 @@ from cryojax.utils import (
 )
 from cryojax.typing import (
     RealCloud,
+    RealVolume,
     CloudCoords3D,
     Real_,
 )
@@ -41,6 +42,8 @@ from cryojax.typing import (
 _RealCubicVolume = Float[Array, "N N N"]
 _ComplexCubicVolume = Complex[Array, "N N N//2+1"]
 _VolumeSliceCoords = Float[Array, "N N 1 3"]
+
+VoxelType = TypeVar("VoxelType", bound="Voxels")
 
 
 class Voxels(ElectronDensity):
@@ -59,23 +62,93 @@ class Voxels(ElectronDensity):
     voxel_size: Real_ = field(stack=False)
 
     @classmethod
-    def from_file(
-        cls: Type["Voxels"],
-        filename: str,
+    @abstractmethod
+    def from_density_grid(
+        cls: Type[VoxelType],
+        density_grid: RealVolume,
+        voxel_size: float = 1.0,
         **kwargs: Any,
-    ) -> "Voxels":
-        """Load a ElectronDensity."""
-        return cls.from_mrc(filename, **kwargs)
+    ) -> VoxelType:
+        """
+        Load a Voxels object from real-valued 3D electron
+        density map.
+        """
+        raise NotImplementedError
 
     @classmethod
-    @abstractmethod
-    def from_mrc(
-        cls: Type["Voxels"],
+    def from_gemmi(
+        cls: Type[VoxelType],
+        model,
+        n_voxels_per_side: Tuple[int, int, int],
+        voxel_size: float = 1.0,
+    ) -> VoxelType:
+        """
+        Loads a PDB file as a Voxels subclass.  Uses the Gemmi library.
+        Heavily based on a code from Frederic Poitevin, located at
+
+        https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
+        """
+        coords, a_vals, b_vals = get_scattering_info_from_gemmi_model(model)
+
+        coordinates_3d = make_coordinates(n_voxels_per_side, voxel_size)
+        density = _build_real_space_voxels_from_atoms(
+            coords, a_vals, b_vals, coordinates_3d
+        )
+
+        return cls.from_density_grid(density, voxel_size)
+
+    @classmethod
+    def from_file(
+        cls: Type[VoxelType],
         filename: str,
         **kwargs: Any,
-    ) -> "Voxels":
-        """Load a ElectronDensity from MRC file format."""
-        raise NotImplementedError
+    ) -> VoxelType:
+        """Load a voxel-based electron density."""
+        path = pathlib.Path(filename)
+        if path.suffix == ".mrc":
+            return cls.from_mrc(filename, **kwargs)
+        elif path.suffix == ".pdb":
+            return cls.from_pdb(filename, **kwargs)
+        elif path.suffix == ".cif":
+            return cls.from_cif(filename, **kwargs)
+        else:
+            raise NotImplementedError(
+                f"File format {path.suffix} not supported."
+            )
+
+    @classmethod
+    def from_mrc(
+        cls: Type[VoxelType],
+        filename: str,
+        **kwargs: Any,
+    ) -> VoxelType:
+        """Load Voxels from MRC file format."""
+        density_grid, voxel_size = load_mrc(filename)
+        return cls.from_density_grid(density_grid, voxel_size, **kwargs)
+
+    @classmethod
+    def from_pdb(
+        cls: Type[VoxelType],
+        filename: str,
+        n_voxels_per_side: Tuple[int, int, int],
+        voxel_size: float = 1.0,
+        **kwargs: Any,
+    ) -> VoxelType:
+        """Load Voxels from PDB file format."""
+        model = read_atomic_model_from_pdb(filename)
+        return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
+
+    @classmethod
+    def from_cif(
+        cls: Type[VoxelType],
+        filename: str,
+        n_voxels_per_side: Tuple[int, int, int],
+        voxel_size: float = 1.0,
+        **kwargs: Any,
+    ) -> VoxelType:
+        """Load Voxels from CIF file format."""
+        model = read_atomic_model_from_cif(filename)
+        return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
 
 
 class VoxelGrid(Voxels):
@@ -116,26 +189,21 @@ class VoxelGrid(Voxels):
         )
 
     @classmethod
-    def from_mrc(
+    def from_density_grid(
         cls: Type["VoxelGrid"],
-        filename: str,
+        density_grid: RealVolume,
+        voxel_size: float = 1.0,
         pad_scale: float = 1.0,
         **kwargs: Any,
     ) -> "VoxelGrid":
-        """
-        Loads a ``VoxelGrid`` from MRC file format.
-        """
-        # Load template
-        filename = os.path.abspath(filename)
-        template, voxel_size = load_mrc(filename)
         # Change how template sits in box to match cisTEM
-        template = jnp.transpose(template, axes=[2, 1, 0])
+        template = jnp.transpose(density_grid, axes=[2, 1, 0])
         # Pad template
         padded_shape = tuple([int(s * pad_scale) for s in template.shape])
         template = pad(template, padded_shape)
         # Load density and coordinates
         density = rfftn(template)
-        frequency_grid = make_frequencies(template.shape, 1.0)
+        frequency_grid = make_frequencies(template.shape)
         # Get central z slice
         frequency_slice = jnp.expand_dims(frequency_grid[:, :, 0, :], axis=2)
         # Gather fields to instantiate a VoxelGrid
@@ -145,70 +213,6 @@ class VoxelGrid(Voxels):
             voxel_size=voxel_size,
         )
 
-        return cls(**vdict, **kwargs)
-
-    @classmethod
-    def from_pdb(
-        cls: Type["VoxelGrid"],
-        filename: str,
-        n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
-        **kwargs: Any,
-    ) -> "VoxelGrid":
-        """
-        Loads a PDB file as a VoxelGrid.
-        """
-        model = read_atomic_model_from_pdb(filename)
-        return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
-
-    @classmethod
-    def from_cif(
-        cls: Type["VoxelGrid"],
-        filename: str,
-        n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
-        **kwargs: Any,
-    ) -> "VoxelGrid":
-        """
-        Loads a PDB file as a VoxelGrid.
-        """
-        model = read_atomic_model_from_cif(filename)
-        return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
-
-    @classmethod
-    def from_gemmi(
-        cls: Type["VoxelGrid"],
-        model,
-        n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
-        real: bool = False,
-        **kwargs: Any,
-    ) -> "VoxelGrid":
-        """
-        Loads a PDB file as a VoxelGrid.  Uses the Gemmi library.
-        Heavily based on a code from Frederic Poitevin, located at
-
-        https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
-        """
-        coords, a_vals, b_vals = get_scattering_info_from_gemmi_model(model)
-
-        coordinates_3d = make_coordinates(n_voxels_per_side, voxel_size)
-        density = _build_real_space_voxels_from_atoms(
-            coords, a_vals, b_vals, coordinates_3d
-        )
-
-        fourier_space_density = rfftn(density)
-        frequency_grid = make_frequencies(fourier_space_density.shape, 1.0)
-
-        z_plane_frequencies = jnp.expand_dims(
-            frequency_grid[:, :, 0, :], axis=2
-        )
-
-        vdict = {
-            "weights": fourier_space_density,
-            "frequency_slice": z_plane_frequencies,
-            "voxel_size": voxel_size,
-        }
         return cls(**vdict, **kwargs)
 
 
@@ -250,28 +254,22 @@ class VoxelCloud(Voxels):
         )
 
     @classmethod
-    def from_mrc(
+    def from_density_grid(
         cls: Type["VoxelCloud"],
-        filename: str,
+        density_grid: RealVolume,
+        voxel_size: float = 1.0,
         mask_zeros: bool = True,
-        indexing: str = "xy",
         **kwargs: Any,
     ) -> "VoxelCloud":
-        """
-        Load a ``VoxelCloud`` from MRC file format.
-        """
-        # Load template
-        filename = os.path.abspath(filename)
-        template, voxel_size = load_mrc(filename)
         # Change how template sits in the box.
         # Ideally we would change this in the same way for all
         # I/O methods. However, the algorithms used all
         # have their own xyz conventions. The choice here is to
         # make jax-finufft output match cisTEM.
-        template = jnp.transpose(template, axes=[1, 2, 0])
+        template = jnp.transpose(density_grid, axes=[1, 2, 0])
         # Load flattened density and coordinates
         flat_density, coordinate_list = flatten_and_coordinatize(
-            template, 1.0, mask_zeros, indexing
+            template, 1.0, mask_zeros
         )
         # Gather fields to instantiate an VoxelCloud
         vdict = dict(
@@ -288,8 +286,6 @@ class VoxelCloud(Voxels):
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: float = 1.0,
-        mask_zeros: bool = True,
-        indexing: str = "xy",
         **kwargs: Any,
     ) -> "VoxelCloud":
         """
@@ -303,8 +299,6 @@ class VoxelCloud(Voxels):
             model,
             n_voxels_per_side,
             voxel_size,
-            mask_zeros,
-            indexing,
             **kwargs,
         )
 
@@ -314,8 +308,6 @@ class VoxelCloud(Voxels):
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: float = 1.0,
-        mask_zeros: bool = True,
-        indexing: str = "xy",
         **kwargs: Any,
     ) -> "VoxelCloud":
         """
@@ -329,39 +321,8 @@ class VoxelCloud(Voxels):
             model,
             n_voxels_per_side,
             voxel_size,
-            mask_zeros,
-            indexing,
             **kwargs,
         )
-
-    @classmethod
-    def from_gemmi(
-        cls: Type["VoxelCloud"],
-        model,
-        n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
-        mask_zeros: bool = True,
-        indexing: str = "xy",
-        **kwargs: Any,
-    ):
-        coords, a_vals, b_vals = get_scattering_info_from_gemmi_model(model)
-
-        coordinates_3d = make_coordinates(n_voxels_per_side, voxel_size)
-        density = _build_real_space_voxels_from_atoms(
-            coords, a_vals, b_vals, coordinates_3d
-        )
-
-        flat_density, flat_coordinates = flatten_and_coordinatize(
-            density, 1.0, mask_zeros, indexing
-        )
-
-        vdict = {
-            "weights": flat_density,
-            "coordinate_list": flat_coordinates,
-            "voxel_size": voxel_size,
-        }
-
-        return cls(**vdict, **kwargs)
 
 
 def _eval_3d_real_space_gaussian(
