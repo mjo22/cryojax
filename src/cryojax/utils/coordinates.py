@@ -9,7 +9,7 @@ __all__ = [
     "flatten_and_coordinatize",
 ]
 
-from typing import Union, Any
+from typing import Union, Any, Optional
 from jaxtyping import Array, Float
 
 import jax.numpy as jnp
@@ -17,18 +17,72 @@ import jax.numpy as jnp
 from ..typing import RealImage, RealVolume, Image, ImageCoords
 
 
-def make_coordinates(*args: Any, **kwargs: Any) -> Float[Array, "... D"]:
+def make_coordinates(
+    shape: tuple[int, ...], grid_spacing: float = 1.0, indexing: str = "xy"
+) -> Float[Array, "*shape len(shape)"]:
     """
-    Wraps ``_make_coordinates_or_frequencies`` for ``real = True``.
+    Create a real-space cartesian coordinate system on a grid.
+
+    Arguments
+    ---------
+    shape :
+        Shape of the voxel grid, with
+        ``ndim = len(shape)``.
+    grid_spacing :
+        The grid spacing, in units of length.
+    indexing :
+        Either ``"xy"`` or ``"ij"``, passed to
+        ``jax.numpy.meshgrid``.
+
+    Returns
+    -------
+    coordinate_grid :
+        Cartesian coordinate system in real space.
     """
-    return _make_coordinates_or_frequencies(*args, real=True, **kwargs)
+    coordinate_grid = _make_coordinates_or_frequencies(
+        shape, grid_spacing=grid_spacing, real_space=True, indexing=indexing
+    )
+    return coordinate_grid
 
 
-def make_frequencies(*args: Any, **kwargs: Any) -> Float[Array, "... D"]:
+def make_frequencies(
+    shape: tuple[int, ...],
+    grid_spacing: float = 1.0,
+    half_space: bool = False,
+    indexing: str = "xy",
+) -> Float[Array, "*shape len(shape)"]:
     """
-    Wraps ``_make_coordinates_or_frequencies`` for ``real = False``.
+    Create a fourier-space cartesian coordinate system on a grid.
+    The zero-frequency component is in the beginning.
+
+    Arguments
+    ---------
+    shape :
+        Shape of the voxel grid, with
+        ``ndim = len(shape)``.
+    grid_spacing :
+        The grid spacing, in units of length.
+    half_space :
+        Return a frequency grid on the half space.
+        ``shape[-1]`` is the axis on which the negative
+        frequencies are omitted.
+    indexing :
+        Either ``"xy"`` or ``"ij"``, passed to
+        ``jax.numpy.meshgrid``.
+
+    Returns
+    -------
+    frequency_grid :
+        Cartesian coordinate system in frequency space.
     """
-    return _make_coordinates_or_frequencies(*args, real=False, **kwargs)
+    frequency_grid = _make_coordinates_or_frequencies(
+        shape,
+        grid_spacing=grid_spacing,
+        real_space=False,
+        half_space=half_space,
+        indexing=indexing,
+    )
+    return frequency_grid
 
 
 def flatten_and_coordinatize(
@@ -57,13 +111,13 @@ def flatten_and_coordinatize(
         to remove coordinates with zero electron density.
     kwargs
         Keyword arguments passed to ``numpy.isclose``.
-        Disabled for ``mask = False``.
+        Disabled for ``mask_zeros = False``.
 
     Returns
     -------
-    density : `Array`, shape `(N, ndim)`
-        Volume or image.
-    coords : `Array`, shape `(N, ndim)`
+    flat_and_masked : `Array`, shape `(N, ndim)`
+        Flattened and masked volume or image.
+    coordinate_list : `Array`, shape `(N, ndim)`
         Cartesian coordinate system.
     """
     template = jnp.asarray(template)
@@ -73,24 +127,26 @@ def flatten_and_coordinatize(
     flat = template.ravel()
     if mask_zeros:
         nonzero = jnp.where(~jnp.isclose(flat, 0.0, **kwargs))
-        density = flat[nonzero]
+        flat_and_masked = flat[nonzero]
     else:
         nonzero = True
-        density = flat
+        flat_and_masked = flat
 
     # Create coordinate buffer
-    N = density.size
-    coords = jnp.zeros((N, ndim))
+    N = flat_and_masked.size
+    coordinate_list = jnp.zeros((N, ndim))
 
     # Generate rectangular grid and fill coordinate array.
     R = make_coordinates(shape, voxel_size, indexing=indexing)
     for i in range(ndim):
         if mask_zeros:
-            coords = coords.at[..., i].set(R[..., i].ravel()[nonzero])
+            coordinate_list = coordinate_list.at[..., i].set(
+                R[..., i].ravel()[nonzero]
+            )
         else:
-            coords = coords.at[..., i].set(R[..., i].ravel())
+            coordinate_list = coordinate_list.at[..., i].set(R[..., i].ravel())
 
-    return density, coords
+    return flat_and_masked, coordinate_list
 
 
 def cartesian_to_polar(
@@ -120,49 +176,54 @@ def cartesian_to_polar(
 def _make_coordinates_or_frequencies(
     shape: tuple[int, ...],
     grid_spacing: float = 1.0,
-    real: bool = False,
+    real_space: bool = False,
+    half_space: bool = True,
     indexing: str = "xy",
-) -> Float[Array, "... D"]:
-    """
-    Create a cartesian coordinate system on a grid.
-    This can be used for real and fourier space.
-    If used for fourier space, the
-    zero-frequency component is in the beginning.
-
-    Arguments
-    ---------
-    shape :
-        Shape of the voxel grid, with
-        ``ndim = len(shape)``.
-    pixel_size :
-        Image pixel size.
-    real :
-        Choose whether to create coordinate system
-        in real or fourier space.
-
-    Returns
-    -------
-    coords :
-        2D or 3D cartesian coordinate system.
-    """
+) -> Float[Array, "*shape len(shape)"]:
     ndim = len(shape)
     shape = (*shape[:2][::-1], *shape[2:]) if indexing == "xy" else shape
-    coords1D = [
-        _make_coordinates_or_frequencies_1d(shape[idx], grid_spacing, real)
-        for idx in range(ndim)
-    ]
+    coords1D = []
+    for idx in range(ndim):
+        if real_space:
+            c1D = _make_coordinates_or_frequencies_1d(
+                shape[idx], grid_spacing, real_space
+            )
+        else:
+            if not half_space:
+                rfftfreq = False
+            else:
+                if indexing == "xy" and ndim == 2:
+                    rfftfreq = True if idx == 0 else False
+                else:
+                    rfftfreq = False if idx < ndim - 1 else True
+            c1D = _make_coordinates_or_frequencies_1d(
+                shape[idx], grid_spacing, real_space, rfftfreq
+            )
+        coords1D.append(c1D)
     coords = jnp.stack(jnp.meshgrid(*coords1D, indexing=indexing), axis=-1)
 
     return coords
 
 
 def _make_coordinates_or_frequencies_1d(
-    size: int, grid_spacing: float, real: bool = False
-) -> Array:
+    size: int,
+    grid_spacing: float,
+    real_space: bool = False,
+    rfftfreq: Optional[bool] = None,
+) -> Float[Array, "size"]:
     """One-dimensional coordinates in real or fourier space"""
-    coordinate_fn = (
-        lambda size, dx: jnp.fft.fftshift(jnp.fft.fftfreq(size, 1 / dx)) * size
-        if real
-        else jnp.fft.fftfreq(size, grid_spacing)
-    )
-    return coordinate_fn(size, grid_spacing)
+    if real_space:
+        make_1d = (
+            lambda size, dx: jnp.fft.fftshift(jnp.fft.fftfreq(size, 1 / dx))
+            * size
+        )
+    else:
+        if rfftfreq is None:
+            raise ValueError(
+                "Argument rfftfreq cannot be None if real_space=False."
+            )
+        else:
+            fn = jnp.fft.rfftfreq if rfftfreq else jnp.fft.fftfreq
+            make_1d = lambda size, dx: fn(size, grid_spacing)
+
+    return make_1d(size, grid_spacing)
