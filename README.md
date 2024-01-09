@@ -29,7 +29,7 @@ cd cryojax
 python -m pip install .
 ```
 
-This will install the remaining dependencies, such as [equinox](https://github.com/patrick-kidger/equinox/) for jax-friendly dataclasses, [jaxlie](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, [mrcfile](https://github.com/ccpem/mrcfile) for I/O, and [dataclasses-json](https://github.com/lidatong/dataclasses-json) for serialization.
+This will install the remaining dependencies, such as [equinox](https://github.com/patrick-kidger/equinox/) for jax-friendly dataclasses, [jaxlie](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, and [mrcfile](https://github.com/ccpem/mrcfile) for I/O.
 
 The [jax-finufft](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
 
@@ -180,8 +180,7 @@ In general, there are many ways to write loss functions. See the [equinox](https
 ## Features
 
 - Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration.
-- `cryojax.Module`s, including `ImagePipeline` models, are JSON serializable thanks to the package `dataclasses-json`. The method `Module.dumps` serializes the object as a JSON string, and `Module.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.ImagePipeline.load("model.json")`.
-- A `cryojax.Module` is just an `equinox.Module` with added serialization functionality. Therefore, the `equinox` ecosystem is available for usage!
+- A `cryojax.Module` is just an `equinox.Module`. Therefore, the `equinox` ecosystem is available for usage!
 
 ## Similar libraries
 
