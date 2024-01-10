@@ -75,9 +75,13 @@ class Module(eqx.Module):
     Base class for ``cryojax`` objects.
     """
 
-    batch_axes: tuple[int, ...] = field(
-        static=True, default_factory=tuple, kw_only=True
-    )
+    n_batch_dims: int = field(static=True, default=0, kw_only=True)
+
+    def __check_init__(self):
+        if self.n_batch_dims < 0:
+            raise ValueError(
+                "Number of batching axes must be greater than zero."
+            )
 
     @classmethod
     def from_stack(cls: Type[_T], stack: list[_T]) -> _T:
@@ -93,7 +97,7 @@ class Module(eqx.Module):
         other, stacked = {}, {}
         for field in dataclasses.fields(stack[0]):
             name = field.name
-            if name == "batch_axes":
+            if name == "n_batch_dims":
                 pass
             elif ("static" in field.metadata and field.metadata["static"]) or (
                 "stack" in field.metadata and not field.metadata["stack"]
@@ -105,10 +109,10 @@ class Module(eqx.Module):
                 stacked[name] = jnp.stack(
                     [getattr(density, name) for density in stack], axis=0
                 )
-        return cls(**stacked, **other, batch_axes=(0,))
+        return cls(**stacked, **other, n_batch_dims=1)
 
     def __len__(self) -> int:
-        if self.batch_axes != ():
+        if self.n_batch_dims > 0:
             for field in dataclasses.fields(self):
                 if not (
                     ("static" in field.metadata and field.metadata["static"])
@@ -126,7 +130,7 @@ class Module(eqx.Module):
             return 1
 
     def __getitem__(self, idx: int) -> Self:
-        if self.batch_axes != ():
+        if self.n_batch_dims > 0:
             # Gather static and traced fields separately
             indexed = {}
             for field in dataclasses.fields(self):
@@ -140,7 +144,7 @@ class Module(eqx.Module):
                 ):
                     # Get stacked fields at particular index
                     indexed[name] = getattr(self, name)[idx]
-            return dataclasses.replace(self, **indexed, batch_axes=())
+            return dataclasses.replace(self, **indexed, n_batch_dims=0)
         else:
             return self
 
