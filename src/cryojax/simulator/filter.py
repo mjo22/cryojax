@@ -37,12 +37,12 @@ class Filter(BufferModule):
         computed upon instantiation.
     """
 
-    filter: Image = field(init=False)
+    filter: Image = field()
 
     @abstractmethod
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         """Compute the filter."""
-        raise NotImplementedError
+        super().__init__(**kwargs)
 
     def __call__(self, image: Image) -> Image:
         """Apply the filter to an image."""
@@ -62,7 +62,10 @@ class _ProductFilter(Filter):
     filter2: FilterType  # type: ignore
 
     @override
-    def __init__(self, filter1: FilterType, filter2: FilterType) -> None:
+    def __init__(
+        self, filter1: FilterType, filter2: FilterType, **kwargs: Any
+    ) -> None:
+        super().__init__(**kwargs)
         self.filter1 = filter1
         self.filter2 = filter2
         self.filter = filter1.filter * filter2.filter
@@ -96,7 +99,9 @@ class LowpassFilter(Filter):
         freqs: ImageCoords,
         cutoff: float = 0.95,
         rolloff: float = 0.05,
+        **kwargs: Any,
     ) -> None:
+        super().__init__(**kwargs)
         self.cutoff = cutoff
         self.rolloff = rolloff
         self.filter = _compute_lowpass_filter(freqs, self.cutoff, self.rolloff)
@@ -113,7 +118,9 @@ class WhiteningFilter(Filter):
         micrograph: RealImage,
         *,
         grid_spacing: float = 1.0,
+        **kwargs: Any,
     ):
+        super().__init__(**kwargs)
         self.filter = _compute_whitening_filter(
             frequency_grid, micrograph, grid_spacing
         )

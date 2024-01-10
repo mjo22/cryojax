@@ -34,12 +34,12 @@ class Mask(BufferModule):
         computed upon instantiation.
     """
 
-    mask: RealImage = field(init=False)
+    mask: RealImage = field()
 
     @abstractmethod
-    def __init__(self, *args: Any, **kwargs: Any):
-        """Compute the mask"""
-        raise NotImplementedError
+    def __init__(self, **kwargs: Any):
+        """Compute the mask. This must be overwritten in subclasses."""
+        super().__init__(**kwargs)
 
     def __call__(self, image: RealImage) -> RealImage:
         """Apply the mask to an image."""
@@ -59,6 +59,7 @@ class _ProductMask(Mask):
     mask2: MaskType  # type: ignore
 
     def __init__(self, mask1: MaskType, mask2: MaskType):
+        super().__init__(**kwargs)
         self.mask1 = mask1
         self.mask2 = mask2
         self.mask = mask1.mask * mask2.mask
@@ -91,7 +92,9 @@ class CircularMask(Mask):
         freqs: ImageCoords,
         radius: float = 0.95,
         rolloff: float = 0.05,
+        **kwargs: Any,
     ) -> None:
+        super().__init__(**kwargs)
         self.radius = radius
         self.rolloff = rolloff
         self.mask = _compute_circular_mask(freqs, self.radius, self.rolloff)

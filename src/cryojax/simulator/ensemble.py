@@ -37,12 +37,12 @@ class Ensemble(Module):
 
     density: ElectronDensity = field()
     pose: Pose = field(default_factory=EulerPose)
-    conformation: Optional[Int_] = field(default=None)
+    conformation: Int_ = field(default=0)
 
     @cached_property
     def realization(self) -> ElectronDensity:
         """Get the electron density at the configured pose and conformation."""
-        if self.conformation is None:
+        if self.density.batch_axes == ():
             density = self.density
         else:
             funcs = [
