@@ -28,7 +28,7 @@ class Ensemble(Module):
         specimen.
     conformation :
         The conformational variable at which to evaulate
-        the electron density. Use this variable when
+        the electron density. Use this variable when, for example,
         the specimen ``ElectronDensity`` is constructed
         with ``ElectronDensity.from_stack``.
     pose :
@@ -37,13 +37,13 @@ class Ensemble(Module):
 
     density: ElectronDensity = field()
     pose: Pose = field(default_factory=EulerPose)
-    conformation: Int_ = field(default=0)
+    conformation: Optional[Int_] = field(default=None)
 
     @cached_property
     def realization(self) -> ElectronDensity:
         """Get the electron density at the configured pose and conformation."""
-        if self.density.n_batch_dims == ():
-            density = self.density
+        if self.conformation is None:
+            density = self.density[0]
         else:
             funcs = [
                 lambda i=i: self.density[i] for i in range(len(self.density))
