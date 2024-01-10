@@ -2,7 +2,7 @@
 Voxel-based electron density representations.
 """
 
-__all__ = ["Voxels", "VoxelCloud", "VoxelGrid"]
+__all__ = ["Voxels", "VoxelType", "VoxelCloud", "VoxelGrid"]
 
 import pathlib
 from abc import abstractmethod
