@@ -8,7 +8,8 @@ __all__ = ["field", "Module", "BufferModule"]
 
 import math
 import dataclasses
-from typing import Any, Self, Type, TypeVar
+from typing import Any, Type, TypeVar
+from typing_extensions import Self
 from jaxtyping import Array, ArrayLike
 
 import jax
