@@ -6,11 +6,9 @@ from __future__ import annotations
 
 __all__ = ["ImageManager"]
 
-from typing import Any, Union, Callable
+from typing import Any, Union, Callable, Optional
 
-import jax.numpy as jnp
-
-from ..core import field, Buffer
+from ..core import field, BufferModule
 from ..typing import (
     Image,
     ImageCoords,
@@ -21,10 +19,11 @@ from ..utils import (
     crop,
     pad,
     crop_or_pad,
+    normalize_image,
 )
 
 
-class ImageManager(Buffer):
+class ImageManager(BufferModule):
     """
     Configuration and utilities for an electron microscopy image.
 
@@ -42,14 +41,14 @@ class ImageManager(Buffer):
     pad_mode :
         The method of image padding. By default, ``"edge"``.
         For all options, see ``jax.numpy.pad``.
-    freqs :
+    frequency_grid :
         The fourier wavevectors in the imaging plane.
-    padded_freqs :
+    padded_frequency_grid :
         The fourier wavevectors in the imaging plane
         in the padded coordinate system.
-    coords :
+    coordinate_grid :
         The coordinates in the imaging plane.
-    padded_coords :
+    padded_coordinate_grid :
         The coordinates in the imaging plane
         in the padded coordinate system.
     """
@@ -60,20 +59,20 @@ class ImageManager(Buffer):
 
     padded_shape: tuple[int, int] = field(static=True, init=False)
 
-    freqs: ImageCoords = field(init=False)
-    padded_freqs: ImageCoords = field(init=False)
-    coords: ImageCoords = field(init=False)
-    padded_coords: ImageCoords = field(init=False)
+    frequency_grid: ImageCoords = field(init=False)
+    padded_frequency_grid: ImageCoords = field(init=False)
+    coordinate_grid: ImageCoords = field(init=False)
+    padded_coordinate_grid: ImageCoords = field(init=False)
 
     def __post_init__(self):
         # Set shape after padding
         padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
         self.padded_shape = padded_shape
         # Set coordinates
-        self.freqs = make_frequencies(self.shape)
-        self.padded_freqs = make_frequencies(self.padded_shape)
-        self.coords = make_coordinates(self.shape)
-        self.padded_coords = make_coordinates(self.padded_shape)
+        self.frequency_grid = make_frequencies(self.shape)
+        self.padded_frequency_grid = make_frequencies(self.padded_shape)
+        self.coordinate_grid = make_coordinates(self.shape)
+        self.padded_coordinate_grid = make_coordinates(self.padded_shape)
 
     def crop_to_shape(self, image: Image) -> Image:
         """Crop an image."""
@@ -91,17 +90,17 @@ class ImageManager(Buffer):
             image, self.padded_shape, mode=self.pad_mode, **kwargs
         )
 
-    def normalize_to_cistem(
-        self, image: Image, is_real: bool = False
+    def normalize_image(
+        self,
+        image: Image,
+        is_real: bool = True,
+        half_space: bool = True,
+        shape_in_real_space: Optional[tuple[int, int]] = None,
     ) -> Image:
-        """Normalize images on the exit plane according to cisTEM conventions."""
-        M1, M2 = image.shape
-        if is_real:
-            raise NotImplementedError(
-                "Normalization to cisTEM conventions not supported for real input."
-            )
-        else:
-            # Set zero frequency component to zero
-            image = image.at[0, 0].set(0.0 + 0.0j)
-            # cisTEM normalization convention for projections
-            return image / jnp.sqrt(M1 * M2)
+        """Normalize an image so that it is mean 0 and standard deviation 1 in real space."""
+        return normalize_image(
+            image,
+            is_real=is_real,
+            half_space=half_space,
+            shape_in_real_space=shape_in_real_space,
+        )

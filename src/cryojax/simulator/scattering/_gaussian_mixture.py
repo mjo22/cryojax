@@ -101,6 +101,8 @@ def _eval_Gaussian_kernel(sq_distances, atom_variances) -> ImageCoords:
 #          but identical coordinate systems. To make sure no messiness happens, I use
 #          the same functions from cryojax.utils.coordinates.
 # 2) For 3D coordinates I also load from cryojax.utils.coordinates.
+# Erik: Happy to change this, I just didn't know abouc cryojax.utils.coordinates could do this:
+# The call to fftfreq mislead me into thinking it only did Fourier-space.
 def _build_pixel_grid(
     npixels_per_side: int, pixel_size: Real_
 ) -> tuple[jnp.ndarray, jnp.ndarray]:

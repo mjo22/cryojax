@@ -29,7 +29,7 @@ cd cryojax
 python -m pip install .
 ```
 
-This will install the remaining dependencies, such as [equinox](https://github.com/patrick-kidger/equinox/) for jax-friendly dataclasses, [jaxlie](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, [mrcfile](https://github.com/ccpem/mrcfile) for I/O, and [dataclasses-json](https://github.com/lidatong/dataclasses-json) for serialization.
+This will install the remaining dependencies, such as [equinox](https://github.com/patrick-kidger/equinox/) for jax-friendly dataclasses, [jaxlie](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, and [mrcfile](https://github.com/ccpem/mrcfile) for I/O.
 
 The [jax-finufft](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
 
@@ -83,38 +83,48 @@ explicitly configured here. Finally, we can instantiate the `ImagePipeline`.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
-model = cs.ImagePipeline(scattering=scattering, ensemble=ensemble, instrument=instrument)
-image = model.sample(key)
+pipeline = cs.ImagePipeline(scattering=scattering, ensemble=ensemble, instrument=instrument)
+image = pipeline.sample(key)
 ```
 
 This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model.
 
 ```python
-image = model.render()
+image = pipeline.render()
 ```
 
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
 micrograph = ...  # A micrograph used for whitening
-filter = cs.LowpassFilter(manager, cutoff=1.0)  # Cutoff modes above Nyquist frequency
-          * cs.WhiteningFilter(manager, micrograph=micrograph)
-mask = cs.CircularMask(manager, radius=1.0)     # Cutoff pixels above radius equal to (half) image size
-model = cs.ImagePipeline(
+freqs = manager.padded_frequency_grid  # Get the upsampled frequency grid
+coords = manager.coordinate_grid  # Get the coordinate grid
+filter = cs.LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequency
+         * cs.WhiteningFilter(freqs, micrograph=micrograph)
+mask = cs.CircularMask(coords, radius=1.0)    # Cutoff pixels above radius equal to (half) image size
+pipeline = cs.ImagePipeline(
     scattering=scattering, ensemble=ensemble, instrument=instrument, filter=filter, mask=mask
     )
-image = model.sample(key)
+image = pipeline.sample(key)
 ```
 
-`cryojax` also defines a library of `Distribution`s, which inherit from the `ImagePipeline`. If a `GaussianImage` is instantiated, it is equipped with a the log likelihood function.
+`cryojax` also defines a library of `Distribution`s, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
 
 ```python
+from cryojax.utils import rfftn
+
+# Read observed data in real space
 observed = ...
-model = cs.GaussianImage(scattering=scattering, ensemble=ensemble, instrument=instrument)
+# Normalize to mean zero and standard deviation 1
+observed = manager.normalize_image(observed, is_real=True)
+# Upsample observed data in fourier space
+observed = rfftn(manager.pad_to_padded_shape(observed))
+# Instantiate distribution and compute
+model = cs.IndependentFourierGaussian(pipeline)
 log_likelihood = model.log_probability(observed)
 ```
 
-Note that the user may need to do preprocessing of `observed`, such as applying the relevant `Filter`s and `Mask`s.
+Note that in this example, the user must make sure `observed` is the expected shape and is in fourier space.
 
 Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `Ice` model. Models for exposure to the electron beam are supported through the `Instrument`'s `Exposure` model.
 
@@ -131,8 +141,14 @@ def update_model(model, params):
     """
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
-    where = lambda model: (model.ensemble.pose.view_phi, model.instrument.optics.defocus_u, model.scattering.pixel_size)
-    updated_model = eqx.tree_at(where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"]))
+    where = lambda model: (
+        model.pipeline.ensemble.pose.view_phi,
+        model.pipeline.instrument.optics.defocus_u,
+        model.pipeline.scattering.pixel_size
+    )
+    updated_model = eqx.tree_at(
+        where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"])
+    )
     return updated_model
 ```
 
@@ -149,7 +165,11 @@ def loss(params, model, observed):
 Finally, we can evaluate an updated set of parameters.
 
 ```python
-params = dict(view_phi=jnp.asarray(jnp.pi), defocus_u=jnp.asarray(9000.0), pixel_size=jnp.asarray(density.voxel_size+0.02))
+params = dict(
+    view_phi=jnp.asarray(jnp.pi),
+    defocus_u=jnp.asarray(9000.0),
+    pixel_size=jnp.asarray(density.voxel_size+0.02),
+)
 log_likelihood, grad = loss(params, model, observed)
 ```
 
@@ -160,8 +180,7 @@ In general, there are many ways to write loss functions. See the [equinox](https
 ## Features
 
 - Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration.
-- `cryojax.Module`s, including `ImagePipeline` models, are JSON serializable thanks to the package `dataclasses-json`. The method `Module.dumps` serializes the object as a JSON string, and `Module.loads` instantiates it from the string. For example, write a model to disk with `model.dump("model.json")` and instantiate it with `cs.ImagePipeline.load("model.json")`.
-- A `cryojax.Module` is just an `equinox.Module` with added serialization functionality. Therefore, the `equinox` ecosystem is available for usage!
+- A `cryojax.Module` is just an `equinox.Module`. Therefore, the `equinox` ecosystem is available for usage!
 
 ## Similar libraries
 

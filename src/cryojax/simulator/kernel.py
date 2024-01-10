@@ -9,8 +9,7 @@ from __future__ import annotations
 
 __all__ = [
     "Kernel",
-    "ProductKernel",
-    "SumKernel",
+    "KernelType",
     "Constant",
     "Exp",
     "Gaussian",
@@ -19,7 +18,8 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Any, Union, Callable, Concatenate, ParamSpec, Optional
+from typing import overload, Any, Union, Callable, Concatenate, TypeVar
+from typing_extensions import override
 from jaxtyping import Array
 
 import jax.numpy as jnp
@@ -27,7 +27,8 @@ import jax.numpy as jnp
 from ..core import field, Module
 from ..typing import Real_, ImageCoords, RealImage, Image
 
-P = ParamSpec("P")
+KernelType = TypeVar("KernelType", bound="Kernel")
+"""TypeVar for the Kernel base class"""
 
 
 class Kernel(Module):
@@ -44,8 +45,18 @@ class Kernel(Module):
         2) Overrwrite :func:`Kernel.evaluate`.
     """
 
+    @overload
     @abstractmethod
-    def evaluate(self, coords: ImageCoords, **kwargs: Any) -> Array:
+    def evaluate(self, freqs: ImageCoords, **kwargs: Any) -> Array:
+        ...
+
+    @overload
+    @abstractmethod
+    def evaluate(self, freqs: None, **kwargs: Any) -> Array:
+        ...
+
+    @abstractmethod
+    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> Array:
         """
         Evaluate the kernel at a set of coordinates.
 
@@ -57,53 +68,61 @@ class Kernel(Module):
         pass
 
     def __call__(
-        self, coords: ImageCoords, *args: Any, **kwargs: Any
+        self, freqs: ImageCoords | None = None, **kwargs: Any
     ) -> Array:
-        coords = jnp.asarray(coords)
-        return self.evaluate(coords, *args, **kwargs)
+        return self.evaluate(freqs, **kwargs)
 
-    def __add__(self, other: Union[Kernel, float]) -> Kernel:
+    def __add__(self, other: Union[KernelType, Real_]) -> _SumKernel:
         if isinstance(other, Kernel):
-            return SumKernel(self, other)
-        return SumKernel(self, Constant(other))
+            return _SumKernel(self, other)
+        return _SumKernel(self, Constant(other))
 
-    def __radd__(self, other: Any) -> Kernel:
-        # We'll hit this first branch when using the `sum` function
-        if other == 0:
-            return self
+    def __radd__(self, other: Any) -> _SumKernel:
         if isinstance(other, Kernel):
-            return SumKernel(other, self)
-        return SumKernel(Constant(other), self)
+            return _SumKernel(other, self)
+        return _SumKernel(Constant(other), self)
 
-    def __mul__(self, other: Union[Kernel, float]) -> Kernel:
+    def __mul__(self, other: Union[Kernel, Real_]) -> _ProductKernel:
         if isinstance(other, Kernel):
-            return ProductKernel(self, other)
-        return ProductKernel(self, Constant(other))
+            return _ProductKernel(self, other)
+        return _ProductKernel(self, Constant(other))
 
-    def __rmul__(self, other: Any) -> Kernel:
+    def __rmul__(self, other: Any) -> _ProductKernel:
         if isinstance(other, Kernel):
-            return ProductKernel(other, self)
-        return ProductKernel(Constant(other), self)
+            return _ProductKernel(other, self)
+        return _ProductKernel(Constant(other), self)
 
 
-class SumKernel(Kernel):
+class _SumKernel(Kernel):
     """A helper to represent the sum of two kernels"""
 
-    kernel1: Kernel = field()
-    kernel2: Kernel = field()
+    kernel1: KernelType = field()  # type: ignore
+    kernel2: KernelType = field()  # type: ignore
 
-    def evaluate(self, coords: ImageCoords) -> Array:
-        return self.kernel1(coords) + self.kernel2(coords)
+    @override
+    def evaluate(
+        self, freqs: ImageCoords | None = None, **kwargs: Any
+    ) -> Array:
+        return self.kernel1(freqs) + self.kernel2(freqs)
+
+    def __repr__(self):
+        return f"{repr(self.kernel1)} + {repr(self.kernel2)}"
 
 
-class ProductKernel(Kernel):
+class _ProductKernel(Kernel):
     """A helper to represent the product of two kernels"""
 
-    kernel1: Kernel = field()
-    kernel2: Kernel = field()
+    kernel1: KernelType = field()  # type: ignore
+    kernel2: KernelType = field()  # type: ignore
 
-    def evaluate(self, coords: ImageCoords) -> Array:
-        return self.kernel1(coords) * self.kernel2(coords)
+    @override
+    def evaluate(
+        self, freqs: ImageCoords | None = None, **kwargs: Any
+    ) -> Array:
+        return self.kernel1(freqs) * self.kernel2(freqs)
+
+    def __repr__(self):
+        return f"{repr(self.kernel1)} * {repr(self.kernel2)}"
 
 
 class Constant(Kernel):
@@ -118,7 +137,10 @@ class Constant(Kernel):
 
     value: Real_ = field(default=1.0)
 
-    def evaluate(self, coords: Optional[ImageCoords] = None) -> Real_:
+    @override
+    def evaluate(
+        self, freqs: ImageCoords | None = None, **kwargs: Any
+    ) -> Real_:
         if jnp.ndim(self.value) != 0:
             raise ValueError("The value of a constant kernel must be a scalar")
         return self.value
@@ -136,9 +158,15 @@ class ZeroMode(Kernel):
 
     value: Real_ = field(default=1.0)
 
-    def evaluate(self, freqs: ImageCoords) -> RealImage:
-        N1, N2 = freqs.shape[0:-1]
-        return jnp.zeros((N1, N2)).at[0, 0].set(N1 * N2 * self.value)
+    @override
+    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
+        if freqs is None:
+            raise ValueError(
+                "The frequency grid must be given as an argument to the Kernel call."
+            )
+        else:
+            N1, N2 = freqs.shape[0:-1]
+            return jnp.zeros((N1, N2)).at[0, 0].set(N1 * N2 * self.value)
 
 
 class Exp(Kernel):
@@ -177,11 +205,17 @@ class Exp(Kernel):
     scale: Real_ = field(default=1.0)
     offset: Real_ = field(default=0.0)
 
-    def evaluate(self, freqs: ImageCoords) -> RealImage:
-        k_sqr = jnp.sum(freqs**2, axis=-1)
-        scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
-        scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
-        return scaling + self.offset
+    @override
+    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
+        if freqs is None:
+            raise ValueError(
+                "The frequency grid must be given as an argument to the Kernel call."
+            )
+        else:
+            k_sqr = jnp.sum(freqs**2, axis=-1)
+            scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
+            scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
+            return scaling + self.offset
 
 
 class Gaussian(Kernel):
@@ -218,10 +252,16 @@ class Gaussian(Kernel):
     b_factor: Real_ = field(default=1.0)
     offset: Real_ = field(default=0.0)
 
-    def evaluate(self, freqs: ImageCoords) -> RealImage:
-        k_sqr = jnp.sum(freqs**2, axis=-1)
-        scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
-        return scaling + self.offset
+    @override
+    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
+        if freqs is None:
+            raise ValueError(
+                "The frequency grid must be given as an argument to the Kernel call."
+            )
+        else:
+            k_sqr = jnp.sum(freqs**2, axis=-1)
+            scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
+            return scaling + self.offset
 
 
 class Empirical(Kernel):
@@ -244,7 +284,10 @@ class Empirical(Kernel):
     amplitude: Real_ = field(default=1.0)
     offset: Real_ = field(default=0.0)
 
-    def evaluate(self, coords: Optional[ImageCoords] = None) -> Image:
+    @override
+    def evaluate(
+        self, freqs: ImageCoords | None = None, **kwargs: Any
+    ) -> Image:
         """Return the scaled and offset measurement."""
         return self.amplitude * self.measurement + self.offset
 
@@ -260,9 +303,15 @@ class Custom(Kernel):
         :func:`Kernel.evaluate`.
     """
 
-    function: Callable[Concatenate[ImageCoords, P], Array] = field(static=True)
+    function: Callable[Concatenate[ImageCoords, ...], Array] = field(
+        static=True
+    )
 
+    @override
     def evaluate(
-        self, coords: ImageCoords, *args: P.args, **kwargs: P.kwargs
+        self, freqs: ImageCoords | None = None, *args: Any, **kwargs: Any
     ) -> Array:
-        return self.function(coords, *args, **kwargs)
+        if freqs is None:
+            return self.function(*args, **kwargs)
+        else:
+            return self.function(freqs, *args, **kwargs)
