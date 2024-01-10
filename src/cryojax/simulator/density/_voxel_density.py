@@ -44,6 +44,7 @@ _ComplexCubicVolume = Complex[Array, "N N N"]
 _VolumeSliceCoords = Float[Array, "N N//2+1 1 3"]
 
 VoxelType = TypeVar("VoxelType", bound="Voxels")
+"""Type hint for a voxel-based electron density."""
 
 
 class Voxels(ElectronDensity):
