@@ -111,7 +111,8 @@ class Module(eqx.Module):
                 )
         return cls(**stacked, **other, n_batch_dims=1)
 
-    def __len__(self) -> int:
+    @property
+    def batch_shape(self) -> tuple[int, ...]:
         if self.n_batch_dims > 0:
             for field in dataclasses.fields(self):
                 if not (
@@ -122,14 +123,17 @@ class Module(eqx.Module):
                     )
                 ):
                     value = getattr(self, field.name)
-                    return value.shape[0]
+                    return value.shape[0 : self.n_batch_dims]
             raise AttributeError(
-                f"Could not get the length of the {type(self)}."
+                f"Could not get the batch_shape of the {type(self)}."
             )
         else:
-            return 1
+            return ()
 
-    def __getitem__(self, idx: int) -> Self:
+    def __len__(self) -> int:
+        return math.prod(self.batch_shape)
+
+    def __getitem__(self, idx) -> Self:
         if self.n_batch_dims > 0:
             # Gather static and traced fields separately
             indexed = {}
@@ -146,7 +150,9 @@ class Module(eqx.Module):
                     indexed[name] = getattr(self, name)[idx]
             return dataclasses.replace(self, **indexed, n_batch_dims=0)
         else:
-            return self
+            raise IndexError(
+                f"Tried to index a {type(self)} with n_batch_dims = 0."
+            )
 
 
 class BufferModule(Module):
