@@ -43,7 +43,7 @@ class Ensemble(Module):
     def realization(self) -> ElectronDensity:
         """Get the electron density at the configured pose and conformation."""
         if self.conformation is None:
-            density = self.density[0]
+            density = self.density
         else:
             funcs = [
                 lambda i=i: self.density[i] for i in range(len(self.density))
