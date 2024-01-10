@@ -42,7 +42,7 @@ class Ensemble(Module):
     @cached_property
     def realization(self) -> ElectronDensity:
         """Get the electron density at the configured pose and conformation."""
-        if self.density.batch_axes == ():
+        if self.density.n_batch_dims == ():
             density = self.density
         else:
             funcs = [
