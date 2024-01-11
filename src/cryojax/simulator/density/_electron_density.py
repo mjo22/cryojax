@@ -13,13 +13,13 @@ from equinox import AbstractClassVar
 import jax.numpy as jnp
 
 from ..pose import Pose
-from ...core import Module, field
+from ...core import BatchedModule, field
 
 
 ElectronDensityType = TypeVar("ElectronDensityType", bound="ElectronDensity")
 
 
-class ElectronDensity(Module):
+class ElectronDensity(BatchedModule):
     """
     Abstraction of an electron density map.
 
