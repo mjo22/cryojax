@@ -4,7 +4,7 @@ Core functionality in cryojax, i.e. base classes and metadata.
 
 from __future__ import annotations
 
-__all__ = ["field", "Module", "BufferModule"]
+__all__ = ["field", "Module", "BatchedModule", "BufferModule"]
 
 import math
 import dataclasses
@@ -71,8 +71,17 @@ def field(
 
 
 class Module(eqx.Module):
+   """
+   Base class for ``cryojax`` objects.
+   """
+
+
+class BatchedModule(Module):
     """
-    Base class for ``cryojax`` objects.
+    A ``Module`` with batching utiltiies.
+
+    Note that a ``BatchedModule`` must directly
+    have jax arrays as its dataclass fields.
     """
 
     n_batch_dims: int = field(static=True, default=0, kw_only=True)
