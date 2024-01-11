@@ -21,6 +21,8 @@ import jax.numpy as jnp
 from ..utils import powerspectrum, make_frequencies, rfftn
 from ..core import field, BufferModule
 from ..typing import Image, ImageCoords, RealImage
+from .optics import Optics, NullOptics
+
 
 FilterType = TypeVar("FilterType", bound="Filter")
 """TypeVar for the Filter base class."""
@@ -214,3 +216,32 @@ def _compute_whitening_filter(
     filter = filter.at[0, 0].set(1.0)
 
     return filter
+
+def _compute_wiener_filter(
+        optics: Optics = field(default_factory=NullOptics),
+        freqs: ImageCoords,
+        noise_level: float = 0.0) -> RealImage:
+    """
+    Compute a wiener filter from a micrograph. This is taken
+    to be the inverse square root of the 2D radially averaged
+    power spectrum.
+
+    This implementation follows the cisTEM whitening filter
+    algorithm.
+
+    Parameters
+    ----------
+    freqs :
+        The image coordinates.
+    micrograph :
+        The micrograph in real space.
+
+    Returns
+    -------
+    filter :
+        The whitening filter.
+    """
+    # Make filter
+    ctf = optics.evaluate(freqs)
+    wiener_filter = ctf / (ctf*ctf + noise_level)
+    return wiener_filter
