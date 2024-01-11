@@ -46,7 +46,7 @@ class Ensemble(Module):
             )
         if self.density.n_stacked_dims != 1 and self.conformation is not None:
             raise ValueError(
-                "If the conformation is set, the number of stacked dimensions of the ElectronDensity must be 1."
+                "If the conformation is set, the number of stacked dimensions of the ElectronDensity must be one."
             )
 
     @cached_property
