@@ -13,23 +13,35 @@ import jax.numpy as jnp
 from ..typing import Cloud, CloudCoords2D, Image, Volume
 
 
-def crop(image: Image, shape: tuple[int, int]) -> Image:
+def crop(image: Image, shape: tuple[int, int] | tuple[int, int, int]) -> Image:
     """
     Crop an image to a new shape.
     """
-    M1, M2 = image.shape
-    xc, yc = M1 // 2, M2 // 2
-    w, h = shape
-    cropped = image[
-        xc - w // 2 : xc + w // 2 + w % 2,
-        yc - h // 2 : yc + h // 2 + h % 2,
-    ]
+    if len(shape) == 2:
+        M1, M2 = image.shape
+        xc, yc = M1 // 2, M2 // 2
+        w, h = shape
+        cropped = image[
+            xc - w // 2 : xc + w // 2 + w % 2,
+            yc - h // 2 : yc + h // 2 + h % 2,
+        ]
+    elif len(shape) == 3:
+        M1, M2, M3 = image.shape
+        xc, yc, zc = M1 // 2, M2 // 2, M3 // 2
+        w, h, d = shape
+        cropped = image[
+            xc - w // 2 : xc + w // 2 + w % 2,
+            yc - h // 2 : yc + h // 2 + h % 2,
+            zc - d // 2 : zc + d // 2 + d % 2,
+        ]
+    else:
+        raise NotImplementedError(f"Cannot crop arrays with ndim={len(shape)}")
     return cropped
 
 
 def pad(
     image: Union[Image, Volume],
-    shape: tuple[int, ...],
+    shape: tuple[int, int] | tuple[int, int, int],
     **kwargs,
 ) -> Union[Image, Volume]:
     """

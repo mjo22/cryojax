@@ -10,12 +10,12 @@ __all__ = [
     "NufftProject",
 ]
 
+import math
 from typing import Any, Union
 
 import jax.numpy as jnp
-import numpy as np
 
-from ..density import VoxelCloud, AtomCloud
+from ..density import VoxelCloud, RealVoxelGrid, AtomCloud
 from ._scattering_model import ScatteringModel
 from ...core import field
 from ...typing import (
@@ -34,15 +34,24 @@ class NufftProject(ScatteringModel):
     Attributes
     ----------
     eps : `float`
-        See ``cryojax.utils.integration.nufft``
-        for documentation.
+        See ``jax-finufft`` for documentation.
     """
 
     eps: float = field(static=True, default=1e-6)
 
-    def scatter(self, density: Union[VoxelCloud, AtomCloud]) -> ComplexImage:
+    def scatter(
+        self, density: RealVoxelGrid | VoxelCloud | AtomCloud
+    ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
-        if isinstance(density, VoxelCloud):
+        if isinstance(density, RealVoxelGrid):
+            shape = density.weights.shape
+            fourier_projection = project_with_nufft(
+                density.weights.ravel(),
+                density.coordinate_grid.reshape((math.prod(shape), 3)),
+                self.manager.padded_shape,
+                eps=self.eps,
+            )
+        elif isinstance(density, VoxelCloud):
             fourier_projection = project_with_nufft(
                 density.weights,
                 density.coordinate_list,
@@ -60,7 +69,7 @@ class NufftProject(ScatteringModel):
             )
         else:
             raise NotImplementedError(
-                "Supported density representations are VoxelCloud and AtomCloud"
+                "Supported density representations are RealVoxelGrid, VoxelCloud, and AtomCloud"
             )
         return fourier_projection
 
