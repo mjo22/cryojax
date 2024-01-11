@@ -234,31 +234,30 @@ def _compute_whitening_filter(
 
     return filter
 
-def _compute_wiener_filter(
-        freqs: ImageCoords,
-        optics: Optics = field(default_factory=CTFOptics),
-        noise_level: float = 0.0) -> RealImage:
-    """
-    Compute a wiener filter from a micrograph. This is taken
-    to be the inverse square root of the 2D radially averaged
-    power spectrum.
 
-    This implementation follows the cisTEM whitening filter
-    algorithm.
+def _compute_wiener_filter(
+    freqs: ImageCoords,
+    optics: Optics = field(default_factory=CTFOptics),
+    noise_level: float = 0.0,
+) -> RealImage:
+    """
+    Compute a wiener filter from the CTF in CTFOptics
 
     Parameters
     ----------
     freqs :
         The image coordinates.
-    micrograph :
-        The micrograph in real space.
+    optics :
+        The optics model.
+    noise_level :
+        The noise level.
 
     Returns
     -------
     filter :
-        The whitening filter.
+        The wiener filter.
     """
     # Make filter
     ctf = optics.evaluate(freqs)
-    wiener_filter = ctf / (ctf*ctf + noise_level)
+    wiener_filter = ctf / (ctf * ctf + noise_level)
     return wiener_filter
