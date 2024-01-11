@@ -22,7 +22,6 @@ from ..utils import powerspectrum, make_frequencies, rfftn
 from ..core import field, BufferModule
 from ..typing import Image, ImageCoords, RealImage
 
-
 FilterType = TypeVar("FilterType", bound="Filter")
 """TypeVar for the Filter base class."""
 
