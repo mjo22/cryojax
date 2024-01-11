@@ -16,9 +16,7 @@ from cryojax.utils import make_frequencies, cartesian_to_polar, fftn, ifftn
 def test_wiener_filter(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size):
     N = 512
     shape = (N, N)
-    freqs = make_frequencies(shape, pixel_size)
-    k_sqr, theta = cartesian_to_polar(freqs, square=True)
-    # Compute cryojax CTF
+    freqs = make_frequencies(shape, pixel_size, half_space=False)
     optics = CTFOptics(
         defocus_u=defocus1,
         defocus_v=defocus2,
@@ -47,4 +45,4 @@ def test_wiener_filter(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size):
 
     resid = image_deconvctf_bydivide_r - image_deconvctf_r
     test_close_every_pixel = resid / image
-    assert jnp.allclose(test_close_every_pixel, 0, atol=1e-3)
+    np.testing.assert_allclose(test_close_every_pixel, 0, atol=1e-3)
