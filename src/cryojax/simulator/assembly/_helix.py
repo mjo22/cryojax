@@ -166,7 +166,7 @@ def compute_lattice_positions(
         twist = jnp.deg2rad(twist)
     # If the number of subunits is not given, compute for one helix
     if n_subunits_per_start is None:
-        n_subunits_per_start = int(2 * jnp.pi / twist)
+        n_subunits_per_start = abs(int(2 * jnp.pi / twist))
     # Rotational symmetry between helices due to the start number
     symmetry_angles = jnp.array(
         [2 * jnp.pi * n / n_start for n in range(n_start)]
@@ -184,7 +184,7 @@ def compute_lattice_positions(
 
         # Coordinate transformation between subunits
         def f(carry, x):
-            y = R @ carry + jnp.asarray((0, 0, rise), dtype=float)
+            y = R.T @ carry + jnp.asarray((0, 0, rise), dtype=float)
             return y, y
 
         _, r = jax.lax.scan(f, r_0, None, length=n_subunits_per_start - 1)
@@ -269,7 +269,7 @@ def compute_lattice_rotations(
 
         # Coordinate transformation between subunits
         def f(carry, x):
-            y = R.T @ carry
+            y = R @ carry
             return y, y
 
         _, T = jax.lax.scan(f, T_0, None, length=n_subunits_per_start - 1)
