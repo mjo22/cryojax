@@ -5,7 +5,7 @@ Reconstruction methods for backprojection (the fourier slice theorem).
 
 from __future__ import annotations
 
-__all__ = ["WeinerFilter", "insert_slice", "insert_slice_and_interpolate"]
+__all__ = ["WeinerFilter", "insert_slice", "_insert_slice_and_interpolate"]
 
 from cryojax.simulator import Filter
 from cryojax.typing import RealImage
