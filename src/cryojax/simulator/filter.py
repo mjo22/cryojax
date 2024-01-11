@@ -121,6 +121,22 @@ class WhiteningFilter(Filter):
         )
 
 
+class WienerFilter(Filter):
+    """
+    Apply a wiener filter to an image.
+    """
+
+    def __init__(
+        self,
+        frequency_grid: ImageCoords,
+        optics: Optics = field(default_factory=NullOptics),
+        noise_level: float = 0.0,
+    ):
+        self.filter = _compute_wiener_filter(
+            optics, frequency_grid, noise_level
+        )
+
+
 def _compute_lowpass_filter(
     freqs: ImageCoords, cutoff: float = 0.667, rolloff: float = 0.05
 ) -> RealImage:
