@@ -4,120 +4,45 @@ Large amounts of the code are adapted from the ioSPI package
 """
 
 __all__ = [
-    "clean_gemmi_structure",
-    "extract_gemmi_atoms",
-    "extract_atomic_parameter",
-    "get_scattering_info_from_gemmi_model",
+    "atom_form_factor_params",
+    "get_form_factor_params",
 ]
 
-import itertools
 import numpy as np
+import numpy.typing as npt
+import os
+import jax.numpy as jnp
+import importlib.resources as pkg_resources
+import pickle
+from typing import Iterable, Dict
 
 
-def get_scattering_info_from_gemmi_model(model):
-    atoms = extract_gemmi_atoms(model)
-    coords = extract_atomic_parameter(atoms, "cartesian_coordinates")
-    a_vals = extract_atomic_parameter(atoms, "electron_form_factor_a")
-    b_vals = extract_atomic_parameter(atoms, "electron_form_factor_b")
-    return coords, a_vals, b_vals
-
-
-def clean_gemmi_structure(structure=None):
-    """Clean Gemmi Structure.
-
-    Parameters
-    ----------
-    structure : Gemmi Class
-        Gemmi Structure object
-
-    Returns
-    -------
-    structure : Gemmi Class
-        Same object, cleaned up of unnecessary atoms.
-
+def _load_element_form_factor_params():
     """
-    if structure is not None:
-        structure.remove_alternative_conformations()
-        structure.remove_hydrogens()
-        structure.remove_waters()
-        structure.remove_ligands_and_waters()
-        structure.remove_empty_chains()
-
-    return structure
-
-
-def extract_gemmi_atoms(model, chains=None, split_chains=False):
+    Internal function to load the atomic form factor parameters.
     """
-    Extract Gemmi atoms from the input Gemmi model, separated by chain.
+    with pkg_resources.path("cryojax", "parameters") as path:
+        with open(
+            os.path.join(path, "atom_form_factor_params.pkl"), "rb"
+        ) as f:
+            atom_form_factor_params = pickle.load(f)
 
-    Parameters
-    ----------
-    model : Gemmi Class
-        Gemmi model
-    chains : list of strings
-        chains to select, optional.
-        If not provided, retrieve atoms from all chains.
-    split_chains : bool
-        Optional, default: False
-        if True, keep the atoms from different chains in separate lists
+    return atom_form_factor_params
 
-    Returns
-    -------
-    atoms : list (or list of list(s)) of Gemmi atoms
-        Gemmi atom objects, either concatenated or separated by chain
+
+atom_form_factor_params = _load_element_form_factor_params()
+
+
+def get_form_factor_params(
+    atom_names: Iterable[str],
+    form_factor_params: Dict[
+        str, Dict[str, npt.NDArray[float]]
+    ] = atom_form_factor_params,
+):
     """
-    if chains is None:
-        chains = [ch.name for ch in model]
-
-    atoms = []
-    for ch in model:
-        if ch.name in chains:
-            atoms.append([at for res in ch for at in res])
-
-    if not split_chains:
-        atoms = list(itertools.chain.from_iterable(atoms))
-
-    return atoms
-
-
-def extract_atomic_parameter(atoms, parameter_type, split_chains=False):
+    Gets the parameters for the form factor for each atom in a list.
     """
-    Interpret Gemmi atoms and extract a single parameter type.
+    a_vals = np.array([form_factor_params[atom]["a"] for atom in atom_names])
 
-    Parameters
-    ----------
-    atoms : list (of list(s)) of Gemmi atoms
-        Gemmi atom objects associated with each chain
-    parameter_type : string
-        'cartesian_coordinates', 'form_factor_a', or 'form_factor_b'
-    split_chains : bool
-        Optional, default: False
-        if True, keep the atoms from different chains in separate lists
-
-    Returns
-    -------
-    atomic_parameter : list of floats, or list of lists of floats
-        atomic parameter associated with each atom, optionally split by chain
-    """
-    # if list of Gemmi atoms, convert into a list of list
-    if type(atoms[0]) != list:
-        atoms = [atoms]
-
-    if parameter_type == "cartesian_coordinates":
-        atomic_parameter = [at.pos.tolist() for ch in atoms for at in ch]
-    elif parameter_type == "electron_form_factor_a":
-        atomic_parameter = [at.element.c4322.a for ch in atoms for at in ch]
-    elif parameter_type == "electron_form_factor_b":
-        atomic_parameter = [at.element.c4322.b for ch in atoms for at in ch]
-    else:
-        raise ValueError("Atomic parameter type not recognized.")
-
-    # optionally preserve the list of lists (separated by chain) structure
-    if split_chains:
-        reshape = [0] + [len(ch) for ch in atoms]
-        atomic_parameter = [
-            atomic_parameter[reshape[i] : reshape[i] + reshape[i + 1]]
-            for i in range(len(reshape) - 1)
-        ]
-
-    return np.array(atomic_parameter)
+    b_vals = np.array([form_factor_params[atom]["b"] for atom in atom_names])
+    return a_vals, b_vals

@@ -7,7 +7,7 @@ __all__ = [
     "read_atomic_model_from_pdb",
 ]
 
-from .load_atoms import clean_gemmi_structure
+from ._gemmi import clean_gemmi_structure
 
 
 def read_atomic_model_from_pdb(path, i_model=0, clean=True, assemble=True):
