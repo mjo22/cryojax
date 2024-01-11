@@ -7,7 +7,7 @@ from __future__ import annotations
 __all__ = [
     "project_with_nufft",
     "project_atoms_with_nufft",
-    "NufftScattering",
+    "NufftProject",
 ]
 
 from typing import Any, Union
@@ -16,13 +16,17 @@ import jax.numpy as jnp
 import numpy as np
 
 from ..density import VoxelCloud, AtomCloud
-from ._scattering import ScatteringConfig
+from ._scattering_model import ScatteringModel
 from ...core import field
-from ...typing import ComplexImage, RealCloud, CloudCoords2D, CloudCoords3D
-from ...utils import nufft
+from ...typing import (
+    ComplexImage,
+    RealCloud,
+    CloudCoords2D,
+    CloudCoords3D,
+)
 
 
-class NufftScattering(ScatteringConfig):
+class NufftProject(ScatteringModel):
     """
     Scatter points to image plane using a
     non-uniform FFT.
@@ -36,32 +40,29 @@ class NufftScattering(ScatteringConfig):
 
     eps: float = field(static=True, default=1e-6)
 
-    def scatter(
-        self, density: Union[VoxelCloud, AtomCloud], resolution: float
-    ) -> ComplexImage:
+    def scatter(self, density: Union[VoxelCloud, AtomCloud]) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(density, VoxelCloud):
-            return project_with_nufft(
+            fourier_projection = project_with_nufft(
                 density.weights,
-                density.coordinates,
-                resolution,
-                self.padded_shape,
+                density.coordinate_list,
+                self.manager.padded_shape,
                 eps=self.eps,
             )
         elif isinstance(density, AtomCloud):
-            return project_atoms_with_nufft(
+            fourier_projection = project_atoms_with_nufft(
                 density.weights,
-                density.coordinates,
+                density.coordinate_list,
                 density.variances,
                 density.identity,
-                resolution,
-                self.padded_shape,
+                self.manager.padded_shape,
                 eps=self.eps,
             )
         else:
             raise NotImplementedError(
                 "Supported density representations are VoxelCloud and AtomCloud"
             )
+        return fourier_projection
 
 
 def project_atoms_with_nufft(
@@ -69,7 +70,6 @@ def project_atoms_with_nufft(
     coordinates,
     variances,
     identity,
-    resolution: float,
     shape: tuple[int, int],
     **kwargs: Any,
 ) -> ComplexImage:
@@ -82,18 +82,17 @@ def project_atoms_with_nufft(
         # kernel_i = atom_density_kernel[atom_type_i]
 
         # Build an
-        atom_i_image = project_with_nufft(
-            weights_i, coords_i, resolution, shape, **kwargs
-        )
+        atom_i_image = project_with_nufft(weights_i, coords_i, shape, **kwargs)
 
         # img += atom_i_image * kernel_i
         img += atom_i_image
+
+    return img
 
 
 def project_with_nufft(
     weights: RealCloud,
     coordinates: Union[CloudCoords2D, CloudCoords3D],
-    resolution: float,
     shape: tuple[int, int],
     **kwargs: Any,
 ) -> ComplexImage:
@@ -107,31 +106,36 @@ def project_with_nufft(
     ---------
     weights : shape `(N,)`
         Density point cloud.
-    coordinates : shape `(N, 3)`
+    coordinates : shape `(N, 2)` or shape `(N, 3)`
         Coordinate system of point cloud.
-    resolution :
-        The rasterization resolution.
     shape :
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
-    kwargs:
-        Passed to ``cryojax.utils.integration.nufft``.
 
     Returns
     -------
     projection :
         The output image in fourier space.
     """
-    weights, coordinates = jnp.asarray(weights), jnp.asarray(coordinates)
-    M1, M2 = shape
-    image_size = jnp.array(np.array([M1, M2]) * resolution)
-    coordinates = jnp.flip(coordinates[:, :2], axis=-1)
-    projection = nufft(weights, coordinates, image_size, shape, **kwargs)
-    # Set zero frequency component to zero
-    projection = projection.at[0, 0].set(0.0 + 0.0j)
+    from jax_finufft import nufft1
 
-    return projection / jnp.sqrt(M1 * M2)
+    weights, coordinates = jnp.asarray(weights).astype(complex), jnp.asarray(
+        coordinates
+    )
+    # Flip and negate x and y to convert to cryojax conventions
+    coordinates = -jnp.flip(coordinates[:, :2], axis=-1)
+    # Normalize coordinates betweeen -pi and pi
+    M1, M2 = shape
+    image_size = jnp.asarray((M1, M2), dtype=float)
+    periodic_coords = 2 * jnp.pi * coordinates / image_size
+    # Compute and shift origin to cryojax conventions
+    x, y = periodic_coords.T
+    fourier_projection = jnp.fft.ifftshift(
+        nufft1(shape, weights, x, y, **kwargs)
+    )
+
+    return fourier_projection[:, : M2 // 2 + 1]
 
 
 """
@@ -147,7 +151,7 @@ class IndependentAtomScatteringNufft(NufftScattering):
         self,
         density: RealCloud,
         coordinates: CloudCoords,
-        resolution: float,
+        pixel_size: float,
         identity: IntCloud,
         atom_density_kernel,  # WHAT SHOULD THE TYPE BE HERE?
     ) -> ComplexImage:
@@ -170,7 +174,7 @@ class IndependentAtomScatteringNufft(NufftScattering):
             atom_i_image = project_with_nufft(
                 density_i,
                 coords_i,
-                resolution,
+                pixel_size,
                 self.padded_shape,
                 # atom_density_kernel[atom_type_i],
             )

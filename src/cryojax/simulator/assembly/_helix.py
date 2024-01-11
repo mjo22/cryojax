@@ -13,8 +13,8 @@ from functools import cached_property
 import jax
 import jax.numpy as jnp
 
+from ..ensemble import Ensemble
 from ._assembly import Assembly, _Positions, _Rotations
-from ..specimen import Specimen
 
 from ...core import field
 from ...typing import Real_, RealVector
@@ -62,12 +62,30 @@ class Helix(Assembly):
         degrees. By default, ``True``.
     """
 
-    rise: Union[Real_, RealVector] = field(kw_only=True)
-    twist: Union[Real_, RealVector] = field(kw_only=True)
+    rise: Union[Real_, RealVector] = field()
+    twist: Union[Real_, RealVector] = field()
 
-    n_start: int = field(static=True, default=1)
-    n_subunits_per_start: int = field(static=True, default=1)
-    degrees: bool = field(static=True, default=True)
+    n_start: int = field(static=True)
+    n_subunits_per_start: int = field(static=True)
+    degrees: bool = field(static=True)
+
+    def __init__(
+        self,
+        subunit: Ensemble,
+        rise: Union[Real_, RealVector],
+        twist: Union[Real_, RealVector],
+        *,
+        n_start: int = 1,
+        n_subunits_per_start: int = 1,
+        degrees: bool = True,
+        **kwargs: Any,
+    ):
+        super().__init__(subunit, **kwargs)
+        self.rise = rise
+        self.twist = twist
+        self.n_start = n_start
+        self.n_subunits_per_start = n_subunits_per_start
+        self.degrees = degrees
 
     @cached_property
     def n_subunits(self) -> int:
@@ -172,15 +190,14 @@ def compute_lattice_positions(
         _, r = jax.lax.scan(f, r_0, None, length=n_subunits_per_start - 1)
         r = jnp.insert(r, 0, r_0, axis=0)
         # Shift helix center of mass to the origin
-        r -= jnp.asarray(
-            [0.0, 0.0, rise * n_subunits_per_start / 2], dtype=float
-        )
+        delta_z = rise * jnp.asarray(n_subunits_per_start - 1, dtype=float) / 2
+        r -= jnp.asarray((0.0, 0.0, delta_z), dtype=float)
         # Transformation between helical strands from start-number
         c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
         R_n = jnp.array(
             ((c_n, s_n, 0), (-s_n, c_n, 0), (0, 0, 1)), dtype=float
         )
-        return (R_n @ r.T).T
+        return (R_n.T @ r.T).T
 
     # The helical coordinates for all sub-helices
     positions = jax.vmap(compute_helix_coordinates)(symmetry_angles)

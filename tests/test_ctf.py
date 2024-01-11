@@ -1,4 +1,5 @@
 import pytest
+import jax.numpy as jnp
 import numpy as np
 from pycistem.core import CTF
 
@@ -27,7 +28,7 @@ def test_ctf_with_cistem(
 
     Modified from https://github.com/jojoelfe/contrasttransferfunction"""
     shape = (512, 512)
-    freqs = make_frequencies(shape, pixel_size=pixel_size)
+    freqs = make_frequencies(shape, pixel_size)
     k_sqr, theta = cartesian_to_polar(freqs, square=True)
     # Compute cryojax CTF
     optics = CTFOptics(
@@ -37,9 +38,8 @@ def test_ctf_with_cistem(
         voltage=kV,
         spherical_aberration=cs,
         amplitude_contrast=ac,
-        envelope=None,
     )
-    ctf = np.array(optics(freqs, normalize=False))
+    ctf = np.array(optics(freqs))
     # Compute cisTEM CTF
     cisTEM_optics = CTF(
         kV=kV,
@@ -52,13 +52,12 @@ def test_ctf_with_cistem(
     )
     cisTEM_ctf = np.vectorize(
         lambda k_sqr, theta: cisTEM_optics.Evaluate(k_sqr, theta)
-    )(k_sqr.ravel() * pixel_size**2, theta.ravel()).reshape(shape)
+    )(k_sqr.ravel() * pixel_size**2, theta.ravel()).reshape(freqs.shape[0:2])
 
     # Compute cryojax and cisTEM power spectrum
-    spectrum1D, _ = powerspectrum(ctf, freqs, pixel_size=pixel_size)
-    cisTEM_spectrum1D, _ = powerspectrum(
-        cisTEM_ctf, freqs, pixel_size=pixel_size
-    )
+    radial_freqs = jnp.linalg.norm(freqs, axis=-1)
+    spectrum1D, _ = powerspectrum(ctf, radial_freqs, pixel_size)
+    cisTEM_spectrum1D, _ = powerspectrum(cisTEM_ctf, radial_freqs, pixel_size)
 
     np.testing.assert_allclose(ctf, cisTEM_ctf, atol=5e-2)
     np.testing.assert_allclose(spectrum1D, cisTEM_spectrum1D, atol=5e-3)

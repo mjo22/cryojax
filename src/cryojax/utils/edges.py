@@ -2,7 +2,7 @@
 Routines for dealing with image edges.
 """
 
-__all__ = ["bound", "crop", "pad"]
+__all__ = ["crop", "pad", "crop_or_pad"]
 
 from typing import Union
 from jaxtyping import Array, Float
@@ -42,7 +42,8 @@ def crop(image: Image, shape: tuple[int, ...]) -> Image:
         xc, yc = M1 // 2, M2 // 2
         w, h = shape
         cropped = image[
-            xc - w // 2 : xc + w // 2 + w % 2, yc - h // 2 : yc + h // 2 + h % 2
+            xc - w // 2 : xc + w // 2 + w % 2,
+            yc - h // 2 : yc + h // 2 + h % 2,
         ]
     elif image.ndim == 3:
         M1, M2, M3 = image.shape
@@ -57,7 +58,9 @@ def crop(image: Image, shape: tuple[int, ...]) -> Image:
 
 
 def pad(
-    image: Union[Image, Volume], shape: tuple[int, ...], **kwargs
+    image: Union[Image, Volume],
+    shape: tuple[int, ...],
+    **kwargs,
 ) -> Union[Image, Volume]:
     """
     Pad an image or volume to a new shape.
@@ -81,3 +84,23 @@ def pad(
     else:
         raise NotImplementedError(f"Cannot pad arrays with ndim={len(shape)}")
     return jnp.pad(image, padding, **kwargs)
+
+
+def crop_or_pad(image: Image, shape: tuple[int, int], **kwargs) -> Image:
+    """
+    Resize an image to a new shape using padding and cropping
+    """
+    N1, N2 = image.shape
+    M1, M2 = shape
+    if N1 >= M1 and N2 >= M2:
+        image = crop(image, shape)
+    elif N1 <= M1 and N2 <= M2:
+        image = pad(image, shape, **kwargs)
+    elif N1 <= M1 and N2 >= M2:
+        image = crop(image, (N1, M2))
+        image = pad(image, (M1, M2), **kwargs)
+    else:
+        image = crop(image, (M1, N2))
+        image = pad(image, (M1, M2), **kwargs)
+
+    return image

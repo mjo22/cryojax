@@ -5,51 +5,70 @@ Filters to apply to images in Fourier space
 from __future__ import annotations
 
 __all__ = [
-    "compute_lowpass_filter",
-    "compute_whitening_filter",
     "Filter",
+    "FilterType",
     "LowpassFilter",
     "WhiteningFilter",
 ]
 
 from abc import abstractmethod
-from typing import Any
+from typing import Any, TypeVar
+from typing_extensions import override
 
-import numpy as np
+import jax
 import jax.numpy as jnp
 
-from ..utils import powerspectrum, make_frequencies
-from ..core import field, Module
-from ..typing import Image, RealImage, ComplexImage
+from ..utils import powerspectrum, make_frequencies, rfftn
+from ..core import field, BufferModule
+from ..typing import Image, ImageCoords, RealImage
+
+FilterType = TypeVar("FilterType", bound="Filter")
+"""TypeVar for the Filter base class."""
 
 
-class Filter(Module):
+class Filter(BufferModule):
     """
     Base class for computing and applying an image filter.
 
     Attributes
     ----------
-    shape :
-        The image shape.
     filter :
         The filter. Note that this is automatically
         computed upon instantiation.
     """
 
-    shape: tuple[int, int] = field(static=True)
-    filter: Image = field(static=True, init=False)
-
-    def __post_init__(self, *args: Any, **kwargs: Any):
-        self.filter = self.evaluate(*args, **kwargs)
+    filter: Image = field(init=False)
 
     @abstractmethod
-    def evaluate(self, *args: Any, **kwargs: Any) -> Image:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Compute the filter."""
         raise NotImplementedError
 
-    def __call__(self, image: ComplexImage) -> ComplexImage:
+    def __call__(self, image: Image) -> Image:
         """Apply the filter to an image."""
         return self.filter * image
+
+    def __mul__(self: FilterType, other: FilterType) -> _ProductFilter:
+        return _ProductFilter(filter1=self, filter2=other)
+
+    def __rmul__(self: FilterType, other: FilterType) -> _ProductFilter:
+        return _ProductFilter(filter1=other, filter2=self)
+
+
+class _ProductFilter(Filter):
+    """A helper to represent the product of two filters."""
+
+    filter1: FilterType  # type: ignore
+    filter2: FilterType  # type: ignore
+
+    @override
+    def __init__(self, filter1: FilterType, filter2: FilterType) -> None:
+        self.filter1 = filter1
+        self.filter2 = filter2
+        self.filter = filter1.filter * filter2.filter
+
+    def __repr__(self):
+        return f"{repr(self.filter1)} * {repr(self.filter2)}"
 
 
 class LowpassFilter(Filter):
@@ -69,59 +88,59 @@ class LowpassFilter(Filter):
         By default, ``0.05``.
     """
 
-    cutoff: float = field(static=True, default=0.95)
-    rolloff: float = field(static=True, default=0.05)
+    cutoff: float = field(static=True)
+    rolloff: float = field(static=True)
 
-    def evaluate(self, **kwargs) -> RealImage:
-        return compute_lowpass_filter(
-            self.shape, self.cutoff, self.rolloff, **kwargs
-        )
+    def __init__(
+        self,
+        freqs: ImageCoords,
+        cutoff: float = 0.95,
+        rolloff: float = 0.05,
+    ) -> None:
+        self.cutoff = cutoff
+        self.rolloff = rolloff
+        self.filter = _compute_lowpass_filter(freqs, self.cutoff, self.rolloff)
 
 
 class WhiteningFilter(Filter):
     """
-    Apply an whitening filter to an image.
-
-    See documentation for
-    ``cryojax.simulator.compute_whitening_filter``
-    for more information.
+    Apply a whitening filter to an image.
     """
 
-    micrograph: ComplexImage = field(static=True)
+    def __init__(
+        self,
+        frequency_grid: ImageCoords,
+        micrograph: RealImage,
+        *,
+        grid_spacing: float = 1.0,
+    ):
+        self.filter = _compute_whitening_filter(
+            frequency_grid, micrograph, grid_spacing
+        )
 
-    def evaluate(self, **kwargs: Any) -> RealImage:
-        return compute_whitening_filter(self.shape, self.micrograph, **kwargs)
 
-
-def compute_lowpass_filter(
-    shape: tuple[int, int],
-    cutoff: float = 0.667,
-    rolloff: float = 0.05,
-    **kwargs: Any,
+def _compute_lowpass_filter(
+    freqs: ImageCoords, cutoff: float = 0.667, rolloff: float = 0.05
 ) -> RealImage:
     """
     Create a low-pass filter.
 
     Parameters
     ----------
-    shape :
-        The shape of the filter. This is used to compute the image
-        coordinates.
+    freqs :
+        The image coordinates.
     cutoff :
         The cutoff frequency as a fraction of the Nyquist frequency,
         By default, ``0.667``.
     rolloff :
         The rolloff width as a fraction of the Nyquist frequency.
         By default, ``0.05``.
-    kwargs :
-        Keyword arguments passed to ``cryojax.utils.make_coordinates``.
 
     Returns
     -------
     mask : `Array`, shape `shape`
-        An array representing the anti-aliasing filter.
+        An array representing the low pass filter.
     """
-    freqs = make_frequencies(shape, **kwargs)
 
     k_max = 1.0 / 2.0
     k_cut = cutoff * k_max
@@ -144,34 +163,54 @@ def compute_lowpass_filter(
     return mask
 
 
-def compute_whitening_filter(
-    shape: tuple[int, int], micrograph: ComplexImage, **kwargs: Any
+def _compute_whitening_filter(
+    freqs: ImageCoords,
+    micrograph: RealImage,
+    grid_spacing: float = 1.0,
 ) -> RealImage:
     """
     Compute a whitening filter from a micrograph. This is taken
     to be the inverse square root of the 2D radially averaged
     power spectrum.
 
+    This implementation follows the cisTEM whitening filter
+    algorithm.
+
     Parameters
     ----------
-    shape :
-        The shape of the filter. This is used to compute the image
-        coordinates.
+    freqs :
+        The image coordinates.
     micrograph :
-        The micrograph in fourier space.
+        The micrograph in real space.
 
     Returns
     -------
-    spectrum :
-        The power spectrum isotropically averaged onto a coordinate
-        system whose shape is set by ``shape``.
+    filter :
+        The whitening filter.
     """
-    micrograph = jnp.asarray(micrograph)
     # Make coordinates
-    freqs = make_frequencies(shape, **kwargs)
-    micrograph_freqs = make_frequencies(micrograph.shape, *kwargs)
+    micrograph_frequency_grid = make_frequencies(
+        micrograph.shape, grid_spacing
+    )
+    # Transform to fourier space
+    fourier_micrograph = rfftn(micrograph)
+    # Compute norms
+    radial_frequency_grid = jnp.linalg.norm(micrograph_frequency_grid, axis=-1)
+    interpolating_radial_frequency_grid = jnp.linalg.norm(freqs, axis=-1)
     # Compute power spectrum
-    micrograph /= jnp.sqrt(np.prod(micrograph.shape))
-    spectrum, _ = powerspectrum(micrograph, micrograph_freqs, grid=freqs)
+    spectrum, _ = powerspectrum(
+        fourier_micrograph,
+        radial_frequency_grid,
+        k_max=jnp.sqrt(2.0) / 2.0,
+        interpolating_radial_frequency_grid=interpolating_radial_frequency_grid,
+    )
+    # Compute inverse square root
+    filter = jax.lax.rsqrt(spectrum)
+    # Divide filter by maximum, excluding zero mode
+    maximum = jnp.max(jnp.delete(filter, jnp.asarray((0, 0), dtype=int)))
+    filter /= maximum
+    # Set zero mode manually to 1 (this diverges from the cisTEM
+    # algorithm).
+    filter = filter.at[0, 0].set(1.0)
 
-    return 1 / jnp.sqrt(spectrum)
+    return filter

@@ -8,9 +8,7 @@ from cryojax.simulator import NullExposure
 config.update("jax_enable_x64", True)
 
 
-@pytest.mark.parametrize(
-    "rescaled_model", ["noisy_model", "maskless_model", "likelihood_model"]
-)
+@pytest.mark.parametrize("rescaled_model", ["noisy_model", "noiseless_model"])
 def test_rescale(rescaled_model, request):
     rescaled_model = request.getfixturevalue(rescaled_model)
     exposure = rescaled_model.instrument.exposure
