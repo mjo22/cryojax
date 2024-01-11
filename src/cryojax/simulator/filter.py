@@ -9,6 +9,7 @@ __all__ = [
     "FilterType",
     "LowpassFilter",
     "WhiteningFilter",
+    "WienerFilter",
 ]
 
 from abc import abstractmethod
@@ -21,7 +22,7 @@ import jax.numpy as jnp
 from ..utils import powerspectrum, make_frequencies, rfftn
 from ..core import field, BufferModule
 from ..typing import Image, ImageCoords, RealImage
-from .optics import Optics, NullOptics
+from .optics import Optics, CTFOptics
 
 
 FilterType = TypeVar("FilterType", bound="Filter")
@@ -129,11 +130,11 @@ class WienerFilter(Filter):
     def __init__(
         self,
         frequency_grid: ImageCoords,
-        optics: Optics = field(default_factory=NullOptics),
+        optics: Optics = field(default_factory=CTFOptics),
         noise_level: float = 0.0,
     ):
         self.filter = _compute_wiener_filter(
-            optics, frequency_grid, noise_level
+            frequency_grid, optics, noise_level
         )
 
 
@@ -234,8 +235,8 @@ def _compute_whitening_filter(
     return filter
 
 def _compute_wiener_filter(
-        optics: Optics = field(default_factory=NullOptics),
         freqs: ImageCoords,
+        optics: Optics = field(default_factory=CTFOptics),
         noise_level: float = 0.0) -> RealImage:
     """
     Compute a wiener filter from a micrograph. This is taken
