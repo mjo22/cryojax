@@ -4,24 +4,28 @@ Routines for dealing with image edges.
 
 __all__ = ["crop", "pad", "crop_or_pad"]
 
-from typing import Union
-from jaxtyping import Array, Float
-
-import jax
 import jax.numpy as jnp
 
-from ..typing import Cloud, CloudCoords2D, Image, Volume
+from ..typing import Image, Volume
 
 
-def crop(image: Image, shape: tuple[int, int] | tuple[int, int, int]) -> Image:
+def crop(
+    image: Image | Volume,
+    shape: tuple[int, int] | tuple[int, int, int],
+) -> Image | Volume:
     """
     Crop an image to a new shape.
+
+    Will crop the last axes of the given Image or Volume.
+    This is to support if they are really a stacks of images
+    or volumes.
     """
     if len(shape) == 2:
         M1, M2 = image.shape
         xc, yc = M1 // 2, M2 // 2
         w, h = shape
         cropped = image[
+            ...,
             xc - w // 2 : xc + w // 2 + w % 2,
             yc - h // 2 : yc + h // 2 + h % 2,
         ]
@@ -30,6 +34,7 @@ def crop(image: Image, shape: tuple[int, int] | tuple[int, int, int]) -> Image:
         xc, yc, zc = M1 // 2, M2 // 2, M3 // 2
         w, h, d = shape
         cropped = image[
+            ...,
             xc - w // 2 : xc + w // 2 + w % 2,
             yc - h // 2 : yc + h // 2 + h % 2,
             zc - d // 2 : zc + d // 2 + d % 2,
@@ -40,13 +45,15 @@ def crop(image: Image, shape: tuple[int, int] | tuple[int, int, int]) -> Image:
 
 
 def pad(
-    image: Union[Image, Volume],
+    image: Image | Volume,
     shape: tuple[int, int] | tuple[int, int, int],
     **kwargs,
-) -> Union[Image, Volume]:
+) -> Image | Volume:
     """
     Pad an image or volume to a new shape.
     """
+    n_extra_dims = image.ndim - len(shape)
+    extra_padding = tuple([(0, 0) for _ in range(n_extra_dims)])
     if len(shape) == 2:
         x_pad = shape[0] - image.shape[0]
         y_pad = shape[1] - image.shape[1]
@@ -65,7 +72,7 @@ def pad(
         )
     else:
         raise NotImplementedError(f"Cannot pad arrays with ndim={len(shape)}")
-    return jnp.pad(image, padding, **kwargs)
+    return jnp.pad(image, (*extra_padding, *padding), **kwargs)
 
 
 def crop_or_pad(image: Image, shape: tuple[int, int], **kwargs) -> Image:

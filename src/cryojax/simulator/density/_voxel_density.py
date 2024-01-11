@@ -77,6 +77,7 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: float,
         coordinate_grid: None,
+        n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> VoxelType:
         ...
@@ -89,6 +90,7 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: float,
         coordinate_grid: VolumeCoords,
+        n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> VoxelType:
         ...
@@ -100,6 +102,7 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
+        n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> VoxelType:
         """
@@ -236,22 +239,25 @@ class FourierVoxelGrid(Voxels):
         voxel_size: float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         pad_scale: float = 1.0,
+        n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> "FourierVoxelGrid":
         # Change how template sits in box to match cisTEM
-        density_grid = jnp.transpose(density_grid, axes=[2, 1, 0])
+        density_grid = jnp.transpose(density_grid, axes=[-1, -2, -3])
         # Pad template
         if pad_scale < 1.0:
             raise ValueError("pad_scale must be greater than 1.0")
-        padded_shape = tuple([int(s * pad_scale) for s in density_grid.shape])
+        padded_shape = tuple(
+            [int(s * pad_scale) for s in density_grid.shape[-3:]]
+        )
         padded_density_grid = pad(density_grid, padded_shape)
         # Load density and coordinates. For now, do not store the
         # fourier density only on the half space. Fourier slice extraction
-        # does not currently work if rfftn is used
-        fourier_density_grid = fftn(padded_density_grid)
+        # does not currently work if rfftn is us
+        fourier_density_grid = fftn(padded_density_grid, axes=(-3, -2, -1))
         # ... create in-plane frequency slice on the half space
         frequency_slice = make_frequencies(
-            padded_density_grid.shape[:-1], half_space=True
+            padded_density_grid.shape[-3:-1], half_space=True
         )
         # ... zero pad to make the slice 3-dimensional
         frequency_slice = jnp.expand_dims(
@@ -268,6 +274,7 @@ class FourierVoxelGrid(Voxels):
             weights=fourier_density_grid,
             frequency_slice=frequency_slice,
             voxel_size=voxel_size,
+            n_stacked_dims=n_stacked_dims,
         )
 
 
@@ -313,6 +320,7 @@ class RealVoxelGrid(Voxels):
         density_grid: RealVolume,
         voxel_size: float,
         coordinate_grid: VolumeCoords,
+        n_stacked_dims: int,
         crop_scale: None,
         **kwargs: Any,
     ) -> "RealVoxelGrid":
@@ -325,6 +333,7 @@ class RealVoxelGrid(Voxels):
         density_grid: RealVolume,
         voxel_size: float,
         coordinate_grid: None,
+        n_stacked_dims: int,
         crop_scale: Optional[float],
         **kwargs: Any,
     ) -> "RealVoxelGrid":
@@ -336,6 +345,7 @@ class RealVoxelGrid(Voxels):
         density_grid: RealVolume,
         voxel_size: float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
+        n_stacked_dims: int = 0,
         crop_scale: Optional[float] = None,
         **kwargs: Any,
     ) -> "RealVoxelGrid":
@@ -344,7 +354,7 @@ class RealVoxelGrid(Voxels):
         # I/O methods. However, the algorithms used all
         # have their own xyz conventions. The choice here is to
         # make jax-finufft output match cisTEM.
-        density_grid = jnp.transpose(density_grid, axes=[1, 2, 0])
+        density_grid = jnp.transpose(density_grid, axes=[-2, -1, -3])
         # Make coordinates if not given
         if coordinate_grid is None:
             # Option for cropping template
@@ -352,15 +362,16 @@ class RealVoxelGrid(Voxels):
                 if crop_scale > 1.0:
                     raise ValueError("crop_scale must be less than 1.0")
                 cropped_shape = tuple(
-                    [int(s * crop_scale) for s in density_grid.shape]
+                    [int(s * crop_scale) for s in density_grid.shape[-3:]]
                 )
                 density_grid = crop(density_grid, cropped_shape)
-            coordinate_grid = make_coordinates(density_grid.shape)
+            coordinate_grid = make_coordinates(density_grid.shape[-3:])
 
         return cls(
             weights=density_grid,
             coordinate_grid=coordinate_grid,
             voxel_size=voxel_size,
+            n_stacked_dims=0,
         )
 
 
@@ -407,14 +418,17 @@ class VoxelCloud(Voxels):
         density_grid: RealVolume,
         voxel_size: float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
+        n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> "VoxelCloud":
+        if n_stacked_dims != 0:
+            raise NotImplementedError("Stacked VoxelClouds are not supported.")
         # Change how template sits in the box.
         # Ideally we would change this in the same way for all
         # I/O methods. However, the algorithms used all
         # have their own xyz conventions. The choice here is to
         # make jax-finufft output match cisTEM.
-        density_grid = jnp.transpose(density_grid, axes=[1, 2, 0])
+        density_grid = jnp.transpose(density_grid, axes=[-2, -1, -3])
         # Make coordinates if not given
         if coordinate_grid is None:
             coordinate_grid = make_coordinates(density_grid.shape)
@@ -428,6 +442,7 @@ class VoxelCloud(Voxels):
             weights=flat_density,
             coordinate_list=coordinate_list,
             voxel_size=voxel_size,
+            n_stacked_dims=0,
         )
 
     @override

@@ -4,22 +4,19 @@ Base electron density representation.
 
 __all__ = ["ElectronDensity", "ElectronDensityType"]
 
-import dataclasses
 from abc import abstractmethod
 from typing import Type, Any, TypeVar
 from typing_extensions import Self
 from equinox import AbstractClassVar
 
-import jax.numpy as jnp
-
 from ..pose import Pose
-from ...core import BatchedModule, field
+from ...core import StackedModule
 
 
 ElectronDensityType = TypeVar("ElectronDensityType", bound="ElectronDensity")
 
 
-class ElectronDensity(BatchedModule):
+class ElectronDensity(StackedModule):
     """
     Abstraction of an electron density map.
 

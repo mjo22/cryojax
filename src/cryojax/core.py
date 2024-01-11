@@ -4,7 +4,7 @@ Core functionality in cryojax, i.e. base classes and metadata.
 
 from __future__ import annotations
 
-__all__ = ["field", "Module", "BatchedModule", "BufferModule"]
+__all__ = ["field", "Module", "StackedModule", "BufferModule"]
 
 import math
 import dataclasses
@@ -33,14 +33,12 @@ def field(
     ---------
     stack : `bool`
         Metadata that indicates if a field is to be stacked
-        when giving Module fields a batch dimension. This metadata
-        is not currently supported in every cryojax Module, and is
-        only for internal cryojax batch dimension functionality.
-        In general, a user can add batch dimensions however they want.
+        when giving Module fields a stacked dimension. This metadata
+        is only used for StackedModules.
 
         As a rule of thumb, this should only be set to ``False`` if the
         field in question is cumbersome and unecessary to store. See
-        ``cryojax.simulator.density.VoxelGrid`` for an example. This
+        ``cryojax.simulator.density.FourierVoxelGrid`` for an example. This
         argument is not used if ``static = True``.
     """
     # Equinox metadata
@@ -71,25 +69,25 @@ def field(
 
 
 class Module(eqx.Module):
-   """
-   Base class for ``cryojax`` objects.
-   """
-
-
-class BatchedModule(Module):
     """
-    A ``Module`` with batching utiltiies.
+    Base class for ``cryojax`` objects.
+    """
 
-    Note that a ``BatchedModule`` must directly
+
+class StackedModule(Module):
+    """
+    A ``Module`` that is stacked along leading axes.
+
+    Note that a ``StackedModule`` must directly
     have jax arrays as its dataclass fields.
     """
 
-    n_batch_dims: int = field(static=True, default=0, kw_only=True)
+    n_stacked_dims: int = field(static=True, default=0, kw_only=True)
 
     def __check_init__(self):
-        if self.n_batch_dims < 0:
+        if self.n_stacked_dims < 0:
             raise ValueError(
-                "Number of batching axes must be greater than zero."
+                "Number of stacked axes must be greater than zero."
             )
 
     @classmethod
@@ -106,7 +104,7 @@ class BatchedModule(Module):
         other, stacked = {}, {}
         for field in dataclasses.fields(stack[0]):
             name = field.name
-            if name == "n_batch_dims":
+            if name == "n_stack_dims":
                 pass
             elif ("static" in field.metadata and field.metadata["static"]) or (
                 "stack" in field.metadata and not field.metadata["stack"]
@@ -118,11 +116,11 @@ class BatchedModule(Module):
                 stacked[name] = jnp.stack(
                     [getattr(density, name) for density in stack], axis=0
                 )
-        return cls(**stacked, **other, n_batch_dims=1)
+        return cls(**stacked, **other, n_stacked_dims=1)
 
     @property
-    def batch_shape(self) -> tuple[int, ...]:
-        if self.n_batch_dims > 0:
+    def stack_shape(self) -> tuple[int, ...]:
+        if self.n_stacked_dims > 0:
             for field in dataclasses.fields(self):
                 if not (
                     ("static" in field.metadata and field.metadata["static"])
@@ -132,18 +130,18 @@ class BatchedModule(Module):
                     )
                 ):
                     value = getattr(self, field.name)
-                    return value.shape[0 : self.n_batch_dims]
+                    return value.shape[0 : self.n_stacked_dims]
             raise AttributeError(
-                f"Could not get the batch_shape of the {type(self)}."
+                f"Could not get the stack_shape of the {type(self)}."
             )
         else:
             return ()
 
     def __len__(self) -> int:
-        return math.prod(self.batch_shape)
+        return math.prod(self.stack_shape)
 
     def __getitem__(self, idx) -> Self:
-        if self.n_batch_dims > 0:
+        if self.n_stacked_dims > 0:
             # Gather static and traced fields separately
             indexed = {}
             for field in dataclasses.fields(self):
@@ -157,10 +155,10 @@ class BatchedModule(Module):
                 ):
                     # Get stacked fields at particular index
                     indexed[name] = getattr(self, name)[idx]
-            return dataclasses.replace(self, **indexed, n_batch_dims=0)
+            return dataclasses.replace(self, **indexed, n_stacked_dims=0)
         else:
             raise IndexError(
-                f"Tried to index a {type(self)} with n_batch_dims = 0."
+                f"Tried to index a {type(self)} with n_stacked_dims = 0."
             )
 
 
