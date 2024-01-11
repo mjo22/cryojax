@@ -28,16 +28,26 @@ class Ensemble(Module):
         specimen.
     conformation :
         The conformational variable at which to evaulate
-        the electron density. Use this variable when
+        the electron density. Use this variable when, for example,
         the specimen ``ElectronDensity`` is constructed
         with ``ElectronDensity.from_stack``.
     pose :
         The pose of the specimen.
     """
 
-    density: ElectronDensity = field()
+    density: ElectronDensity
     pose: Pose = field(default_factory=EulerPose)
-    conformation: Optional[Int_] = field(default=None)
+    conformation: Optional[Int_] = None
+
+    def __check_init__(self):
+        if self.density.n_stacked_dims != 0 and self.conformation is None:
+            raise ValueError(
+                "The conformation must be set if the ElectronDensity has a stacked dimension."
+            )
+        if self.density.n_stacked_dims != 1 and self.conformation is not None:
+            raise ValueError(
+                "If the conformation is set, the number of stacked dimensions of the ElectronDensity must be one."
+            )
 
     @cached_property
     def realization(self) -> ElectronDensity:

@@ -15,7 +15,7 @@ import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate
 
-from ..density import ElectronDensity, Voxels, VoxelGrid
+from ..density import ElectronDensity, Voxels, FourierVoxelGrid
 from ..manager import ImageManager
 
 from ...utils import rfftn, irfftn
@@ -76,8 +76,12 @@ class ScatteringModel(Module):
         Compute an image at the exit plane, measured at the ScatteringModel
         pixel size and post-processed with the ImageManager utilities.
         """
+        if density.n_stacked_dims != 0:
+            raise ValueError(
+                "The number of stacked dimensions in the ElectronDensity must be zero."
+            )
         image = self.scatter(density, **kwargs)
-        if isinstance(density, VoxelGrid):
+        if isinstance(density, FourierVoxelGrid):
             # Resize the image to match the ImageManager.padded_shape
             image = self.manager.crop_or_pad_to_padded_shape(
                 irfftn(image, s=density.weights.shape[0:2])

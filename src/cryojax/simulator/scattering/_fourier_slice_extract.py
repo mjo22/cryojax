@@ -12,7 +12,7 @@ import jax.numpy as jnp
 from jax.scipy.ndimage import map_coordinates
 
 from ._scattering_model import ScatteringModel
-from ..density import VoxelGrid
+from ..density import FourierVoxelGrid
 from ...core import field
 from ...typing import (
     ComplexImage,
@@ -34,7 +34,7 @@ class FourierSliceExtract(ScatteringModel):
     mode: str = field(static=True, default="wrap")
     cval: complex = field(static=True, default=0.0 + 0.0j)
 
-    def scatter(self, density: VoxelGrid) -> ComplexImage:
+    def scatter(self, density: FourierVoxelGrid) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto

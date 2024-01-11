@@ -9,7 +9,7 @@ from __future__ import annotations
 __all__ = ["Assembly"]
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Optional, Any
 from jaxtyping import Array, Float, Int
 from functools import cached_property
 
@@ -67,7 +67,9 @@ class Assembly(Module):
         *,
         pose: Optional[Pose] = None,
         conformation: Optional[_Conformations] = None,
+        **kwargs: Any,
     ):
+        super().__init__(**kwargs)
         self.subunit = subunit
         self.pose = pose or EulerPose()
         self.conformation = conformation

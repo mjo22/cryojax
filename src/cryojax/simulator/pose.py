@@ -98,7 +98,7 @@ class Pose(Module):
 
 
 class EulerPose(Pose):
-    """
+    r"""
     An image pose using Euler angles.
 
     Attributes

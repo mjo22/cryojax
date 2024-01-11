@@ -46,7 +46,7 @@ import jax.numpy as jnp
 import cryojax.simulator as cs
 
 filename = "example.mrc"
-density = cs.VoxelGrid.from_file(filename)
+density = cs.FourierVoxelGrid.from_file(filename)
 pixel_size = density.voxel_size
 manager = cs.ImageManager(shape=(320, 320))
 scattering = cs.FourierSliceExtract(manager, pixel_size=pixel_size)
@@ -64,11 +64,11 @@ Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead 
 
 ```python
 filenames = ...
-density = cs.VoxelGrid.from_stack([cs.VoxelGrid.from_file(filename) for filename in filenames])
+density = cs.FourierVoxelGrid.from_stack([cs.FourierVoxelGrid.from_file(filename) for filename in filenames])
 ensemble = cs.Ensemble(density=density, pose=pose, conformation=0)
 ```
 
-The stack of electron densities is stored in a single `ElectronDensity`, whose parameters now have a leading batch dimension. This can either be evaluated at a particular conformation (as in this example) or can be used across `vmap` boundaries.
+The stack of electron densities is stored in a single `ElectronDensity`, whose parameters now have a leading batch dimension. This can either be used to simulate an image at a particular conformation.
 
 Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
