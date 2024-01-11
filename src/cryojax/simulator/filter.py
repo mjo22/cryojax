@@ -9,7 +9,6 @@ __all__ = [
     "FilterType",
     "LowpassFilter",
     "WhiteningFilter",
-    "WienerFilter",
 ]
 
 from abc import abstractmethod
@@ -22,7 +21,6 @@ import jax.numpy as jnp
 from ..utils import powerspectrum, make_frequencies, rfftn
 from ..core import field, BufferModule
 from ..typing import Image, ImageCoords, RealImage
-from .optics import Optics, CTFOptics
 
 
 FilterType = TypeVar("FilterType", bound="Filter")
@@ -122,22 +120,6 @@ class WhiteningFilter(Filter):
         )
 
 
-class WienerFilter(Filter):
-    """
-    Apply a wiener filter to an image.
-    """
-
-    def __init__(
-        self,
-        frequency_grid: ImageCoords,
-        optics: Optics = field(default_factory=CTFOptics),
-        noise_level: float = 0.0,
-    ):
-        self.filter = _compute_wiener_filter(
-            frequency_grid, optics, noise_level
-        )
-
-
 def _compute_lowpass_filter(
     freqs: ImageCoords, cutoff: float = 0.667, rolloff: float = 0.05
 ) -> RealImage:
@@ -233,31 +215,3 @@ def _compute_whitening_filter(
     filter = filter.at[0, 0].set(1.0)
 
     return filter
-
-
-def _compute_wiener_filter(
-    freqs: ImageCoords,
-    optics: Optics = field(default_factory=CTFOptics),
-    noise_level: float = 0.0,
-) -> RealImage:
-    """
-    Compute a wiener filter from the CTF in CTFOptics
-
-    Parameters
-    ----------
-    freqs :
-        The image coordinates.
-    optics :
-        The optics model.
-    noise_level :
-        The noise level.
-
-    Returns
-    -------
-    filter :
-        The wiener filter.
-    """
-    # Make filter
-    ctf = optics.evaluate(freqs)
-    wiener_filter = ctf / (ctf * ctf + noise_level)
-    return wiener_filter
