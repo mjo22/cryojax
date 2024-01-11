@@ -13,7 +13,9 @@ from cryojax.utils import make_frequencies, cartesian_to_polar, fftn, ifftn
         (12000, 12000, 0.0, 200.0, 0.01, 0.12, 1.3),
     ],
 )
-def test_wiener_filter(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size):
+def test_wiener_filter_divides_by_ctf(
+    defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size
+):
     N = 512
     shape = (N, N)
     freqs = make_frequencies(shape, pixel_size, half_space=False)
