@@ -19,7 +19,7 @@ from ..density import ElectronDensity, Voxels, FourierVoxelGrid
 from ..manager import ImageManager
 
 from ...utils import rfftn, irfftn
-from ...core import field, Module
+from ...core import field, Module, CoordinateGrid, FrequencyGrid
 from ...typing import Real_, RealImage, ComplexImage
 
 
@@ -76,10 +76,6 @@ class ScatteringModel(Module):
         Compute an image at the exit plane, measured at the ScatteringModel
         pixel size and post-processed with the ImageManager utilities.
         """
-        if density.n_stacked_dims != 0:
-            raise ValueError(
-                "The number of stacked dimensions in the ElectronDensity must be zero."
-            )
         image = self.scatter(density, **kwargs)
         if isinstance(density, FourierVoxelGrid):
             # Resize the image to match the ImageManager.padded_shape
@@ -111,19 +107,19 @@ class ScatteringModel(Module):
         return image
 
     @cached_property
-    def coordinate_grid_in_angstroms(self):
+    def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         return self.pixel_size * self.manager.coordinate_grid
 
     @cached_property
-    def frequency_grid_in_angstroms(self):
+    def frequency_grid_in_angstroms(self) -> FrequencyGrid:
         return self.manager.frequency_grid / self.pixel_size
 
     @cached_property
-    def padded_coordinate_grid_in_angstroms(self):
+    def padded_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         return self.pixel_size * self.manager.padded_coordinate_grid
 
     @cached_property
-    def padded_frequency_grid_in_angstroms(self):
+    def padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
         return self.manager.padded_frequency_grid / self.pixel_size
 
 

@@ -30,7 +30,7 @@ from ...io import (
     read_atomic_model_from_cif,
     get_scattering_info_from_gemmi_model,
 )
-from ...core import field
+from ...core import field, CoordinateGrid, CoordinateList, FrequencyGrid
 from cryojax.utils import (
     make_frequencies,
     make_coordinates,
@@ -42,7 +42,6 @@ from cryojax.typing import (
     RealCloud,
     RealVolume,
     VolumeCoords,
-    CloudCoords3D,
     Real_,
 )
 
@@ -67,7 +66,7 @@ class Voxels(ElectronDensity):
     """
 
     weights: AbstractVar[Array]
-    voxel_size: Real_ = field(stack=False)
+    voxel_size: Real_ = field()
 
     @overload
     @classmethod
@@ -75,7 +74,7 @@ class Voxels(ElectronDensity):
     def from_density_grid(
         cls: Type[VoxelType],
         density_grid: RealVolume,
-        voxel_size: float,
+        voxel_size: Real_ | float,
         coordinate_grid: None,
         n_stacked_dims: int = 0,
         **kwargs: Any,
@@ -88,7 +87,7 @@ class Voxels(ElectronDensity):
     def from_density_grid(
         cls: Type[VoxelType],
         density_grid: RealVolume,
-        voxel_size: float,
+        voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
         n_stacked_dims: int = 0,
         **kwargs: Any,
@@ -100,7 +99,7 @@ class Voxels(ElectronDensity):
     def from_density_grid(
         cls: Type[VoxelType],
         density_grid: RealVolume,
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         n_stacked_dims: int = 0,
         **kwargs: Any,
@@ -116,7 +115,7 @@ class Voxels(ElectronDensity):
         cls: Type[VoxelType],
         model,
         n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> VoxelType:
         """
@@ -176,7 +175,7 @@ class Voxels(ElectronDensity):
         cls: Type[VoxelType],
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> VoxelType:
         """Load Voxels from PDB file format."""
@@ -188,7 +187,7 @@ class Voxels(ElectronDensity):
         cls: Type[VoxelType],
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> VoxelType:
         """Load Voxels from CIF file format."""
@@ -211,12 +210,12 @@ class FourierVoxelGrid(Voxels):
     """
 
     weights: _ComplexCubicVolume = field()
-    frequency_slice: _VolumeSliceCoords = field(stack=False)
+    frequency_slice: FrequencyGrid = field()
 
     is_real: ClassVar[bool] = False
 
     @cached_property
-    def frequency_slice_in_angstroms(self) -> _VolumeSliceCoords:
+    def frequency_slice_in_angstroms(self) -> FrequencyGrid:
         return self.frequency_slice / self.voxel_size
 
     def rotate_to_pose(self, pose: Pose) -> Self:
@@ -229,14 +228,17 @@ class FourierVoxelGrid(Voxels):
         return eqx.tree_at(
             lambda d: d.frequency_slice,
             self,
-            pose.rotate(self.frequency_slice, is_real=self.is_real),
+            FrequencyGrid(
+                pose.rotate(self.frequency_slice.get(), is_real=self.is_real)
+            ),
+            is_leaf=lambda x: isinstance(x, FrequencyGrid),
         )
 
     @classmethod
     def from_density_grid(
         cls: Type["FourierVoxelGrid"],
         density_grid: RealVolume,
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         pad_scale: float = 1.0,
         n_stacked_dims: int = 0,
@@ -272,7 +274,7 @@ class FourierVoxelGrid(Voxels):
 
         return cls(
             weights=fourier_density_grid,
-            frequency_slice=frequency_slice,
+            frequency_slice=FrequencyGrid(frequency_slice),
             voxel_size=voxel_size,
             n_stacked_dims=n_stacked_dims,
         )
@@ -292,12 +294,12 @@ class RealVoxelGrid(Voxels):
     """
 
     weights: RealVolume = field()
-    coordinate_grid: VolumeCoords = field(stack=False)
+    coordinate_grid: CoordinateGrid = field()
 
     is_real: ClassVar[bool] = True
 
     @cached_property
-    def coordinate_grid_in_angstroms(self) -> VolumeCoords:
+    def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         return self.voxel_size * self.coordinate_grid
 
     def rotate_to_pose(self, pose: Pose) -> Self:
@@ -310,7 +312,10 @@ class RealVoxelGrid(Voxels):
         return eqx.tree_at(
             lambda d: d.coordinate_grid,
             self,
-            pose.rotate(self.coordinate_grid, is_real=self.is_real),
+            CoordinateGrid(
+                pose.rotate(self.coordinate_grid.get(), is_real=self.is_real)
+            ),
+            is_leaf=lambda x: isinstance(x, CoordinateGrid),
         )
 
     @overload
@@ -318,7 +323,7 @@ class RealVoxelGrid(Voxels):
     def from_density_grid(
         cls: Type["RealVoxelGrid"],
         density_grid: RealVolume,
-        voxel_size: float,
+        voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
         n_stacked_dims: int,
         crop_scale: None,
@@ -331,7 +336,7 @@ class RealVoxelGrid(Voxels):
     def from_density_grid(
         cls: Type["RealVoxelGrid"],
         density_grid: RealVolume,
-        voxel_size: float,
+        voxel_size: Real_ | float,
         coordinate_grid: None,
         n_stacked_dims: int,
         crop_scale: Optional[float],
@@ -343,7 +348,7 @@ class RealVoxelGrid(Voxels):
     def from_density_grid(
         cls: Type["RealVoxelGrid"],
         density_grid: RealVolume,
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         n_stacked_dims: int = 0,
         crop_scale: Optional[float] = None,
@@ -369,9 +374,9 @@ class RealVoxelGrid(Voxels):
 
         return cls(
             weights=density_grid,
-            coordinate_grid=coordinate_grid,
+            coordinate_grid=CoordinateGrid(coordinate_grid),
             voxel_size=voxel_size,
-            n_stacked_dims=0,
+            n_stacked_dims=n_stacked_dims,
         )
 
 
@@ -391,12 +396,12 @@ class VoxelCloud(Voxels):
     """
 
     weights: RealCloud = field()
-    coordinate_list: CloudCoords3D = field(stack=False)
+    coordinate_list: CoordinateList = field()
 
     is_real: ClassVar[bool] = True
 
     @cached_property
-    def coordinate_list_in_angstroms(self) -> CloudCoords3D:
+    def coordinate_list_in_angstroms(self) -> CoordinateList:
         return self.voxel_size * self.coordinate_list
 
     def rotate_to_pose(self, pose: Pose) -> Self:
@@ -409,14 +414,17 @@ class VoxelCloud(Voxels):
         return eqx.tree_at(
             lambda d: d.coordinate_list,
             self,
-            pose.rotate(self.coordinate_list, is_real=self.is_real),
+            CoordinateList(
+                pose.rotate(self.coordinate_list.get(), is_real=self.is_real)
+            ),
+            is_leaf=lambda x: isinstance(x, CoordinateList),
         )
 
     @classmethod
     def from_density_grid(
         cls: Type["VoxelCloud"],
         density_grid: RealVolume,
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         n_stacked_dims: int = 0,
         **kwargs: Any,
@@ -440,7 +448,7 @@ class VoxelCloud(Voxels):
 
         return cls(
             weights=flat_density,
-            coordinate_list=coordinate_list,
+            coordinate_list=CoordinateList(coordinate_list),
             voxel_size=voxel_size,
             n_stacked_dims=0,
         )

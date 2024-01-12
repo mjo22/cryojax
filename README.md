@@ -64,7 +64,7 @@ Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead 
 
 ```python
 filenames = ...
-density = cs.FourierVoxelGrid.from_stack([cs.FourierVoxelGrid.from_file(filename) for filename in filenames])
+density = cs.FourierVoxelGrid.from_list([cs.FourierVoxelGrid.from_file(filename) for filename in filenames])
 ensemble = cs.Ensemble(density=density, pose=pose, conformation=0)
 ```
 
@@ -97,8 +97,8 @@ Imaging models also accept a series of `Filter`s and `Mask`s. For example, one c
 
 ```python
 micrograph = ...  # A micrograph used for whitening
-freqs = manager.padded_frequency_grid  # Get the upsampled frequency grid
-coords = manager.coordinate_grid  # Get the coordinate grid
+freqs = manager.padded_frequency_grid.get()  # Get the upsampled frequency grid
+coords = manager.coordinate_grid.get()  # Get the coordinate grid
 filter = cs.LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequency
          * cs.WhiteningFilter(freqs, micrograph=micrograph)
 mask = cs.CircularMask(coords, radius=1.0)    # Cutoff pixels above radius equal to (half) image size

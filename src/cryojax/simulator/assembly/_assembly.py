@@ -16,7 +16,7 @@ from functools import cached_property
 import jax.numpy as jnp
 import equinox as eqx
 
-from ..ensemble import Ensemble
+from ..ensemble import Ensemble, Conformation
 from ..pose import Pose, EulerPose, MatrixPose
 
 from ...core import field, Module
@@ -57,9 +57,9 @@ class Assembly(Module):
         The conformation of each `subunit`.
     """
 
-    subunit: Ensemble = field()
-    pose: Pose = field()
-    conformation: Optional[_Conformations] = field(default=None)
+    subunit: Ensemble
+    pose: Pose
+    conformation: Optional[Conformation] = None
 
     def __init__(
         self,
@@ -72,7 +72,9 @@ class Assembly(Module):
         super().__init__(**kwargs)
         self.subunit = subunit
         self.pose = pose or EulerPose()
-        self.conformation = conformation
+        self.conformation = (
+            None if conformation is None else Conformation(conformation)
+        )
 
     @cached_property
     @abstractmethod

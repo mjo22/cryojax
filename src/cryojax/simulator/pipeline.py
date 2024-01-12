@@ -17,7 +17,8 @@ from jaxtyping import PRNGKeyArray
 
 from .filter import Filter
 from .mask import Mask
-from .ensemble import Ensemble
+from .ensemble import Ensemble, Conformation
+from .pose import Pose
 from .scattering import ScatteringModel
 from .instrument import Instrument
 from .detector import NullDetector
@@ -79,7 +80,7 @@ class ImagePipeline(Module):
             If ``True``, normalize the image to mean zero
             and standard deviation 1.
         """
-        freqs = self.scattering.padded_frequency_grid_in_angstroms
+        freqs = self.scattering.padded_frequency_grid_in_angstroms.get()
         # Draw the electron density at a particular conformation and pose
         density = self.ensemble.realization
         # Compute the scattering image in fourier space
@@ -132,7 +133,7 @@ class ImagePipeline(Module):
         else:
             keys = jnp.expand_dims(key, axis=0)
         # Frequencies
-        freqs = self.scattering.padded_frequency_grid_in_angstroms
+        freqs = self.scattering.padded_frequency_grid_in_angstroms.get()
         # The image of the specimen drawn from the ensemble
         image = self.render(view=False, get_real=False)
         if not isinstance(self.solvent, NullIce):
@@ -254,23 +255,10 @@ class SuperpositionPipeline(ImagePipeline):
         normalize: bool = False,
     ) -> Image:
         """Render the superposition of states in the Ensemble."""
-        # Setup vmap over poses and conformations
-        false_pytree = jtu.tree_map(lambda _: False, self)
-        if self.ensemble.conformation is None:
-            # ... only vmap over poses
-            to_vmap_args = (
-                lambda m: (m.ensemble.pose,),
-                false_pytree,
-                (True,),
-            )
-        else:
-            # ... vmap over poses and conformations
-            to_vmap_args = (
-                lambda m: (m.ensemble.pose, m.ensemble.conformation),
-                false_pytree,
-                (True, True),
-            )
-        vmap, novmap = eqx.partition(self, eqx.tree_at(*to_vmap_args))
+        # Setup vmap over the Ensemble
+        is_vmap = lambda x: isinstance(x, (Pose, Conformation))
+        to_vmap = jax.tree_util.tree_map(is_vmap, self, is_leaf=is_vmap)
+        vmap, novmap = eqx.partition(self, to_vmap)
         # Compute all images and sum
         compute_image = lambda model: super(type(model), model).render(
             view=False, get_real=False

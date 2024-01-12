@@ -41,13 +41,13 @@ def sample_pdb_path():
 
 @pytest.fixture
 def filters(manager):
-    return cs.LowpassFilter(manager.padded_frequency_grid)
+    return cs.LowpassFilter(manager.padded_frequency_grid.get())
     # return None
 
 
 @pytest.fixture
 def masks(manager):
-    return cs.CircularMask(manager.coordinate_grid)
+    return cs.CircularMask(manager.coordinate_grid.get())
 
 
 @pytest.fixture

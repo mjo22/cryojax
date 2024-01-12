@@ -42,7 +42,7 @@ class FourierSliceExtract(ScatteringModel):
         """
         return extract_slice(
             density.weights,
-            density.frequency_slice,
+            density.frequency_slice.get(),
             order=self.order,
             mode=self.mode,
             cval=self.cval,

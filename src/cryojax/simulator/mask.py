@@ -15,7 +15,7 @@ from typing import Any, TypeVar
 
 import jax.numpy as jnp
 
-from ..core import field, BufferModule
+from ..core import field, Module
 from ..typing import RealImage, ImageCoords
 
 
@@ -23,7 +23,7 @@ MaskType = TypeVar("MaskType", bound="Mask")
 """TypeVar for the Mask base class."""
 
 
-class Mask(BufferModule):
+class Mask(Module):
     """
     Base class for computing and applying an image mask.
 

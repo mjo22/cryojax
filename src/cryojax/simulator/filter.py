@@ -19,14 +19,14 @@ import jax
 import jax.numpy as jnp
 
 from ..utils import powerspectrum, make_frequencies, rfftn
-from ..core import field, BufferModule
+from ..core import field, Module
 from ..typing import Image, ImageCoords, RealImage
 
 FilterType = TypeVar("FilterType", bound="Filter")
 """TypeVar for the Filter base class."""
 
 
-class Filter(BufferModule):
+class Filter(Module):
     """
     Base class for computing and applying an image filter.
 
