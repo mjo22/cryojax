@@ -4,7 +4,7 @@ Abstractions of a biological specimen.
 
 from __future__ import annotations
 
-__all__ = ["Ensemble"]
+__all__ = ["Ensemble", "Conformation"]
 
 from typing import Optional
 from functools import cached_property
@@ -45,13 +45,11 @@ class Ensemble(Module):
         self,
         density: ElectronDensity,
         pose: Optional[Pose] = None,
-        conformation: Optional[int | Int_] = None,
+        conformation: Optional[Conformation] = None,
     ):
         self.density = density
         self.pose = pose or EulerPose()
-        self.conformation = (
-            None if conformation is None else Conformation(conformation)
-        )
+        self.conformation = None if conformation is None else conformation
 
     def __check_init__(self):
         if self.density.n_stacked_dims != 1 and self.conformation is not None:

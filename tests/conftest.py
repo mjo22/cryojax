@@ -36,6 +36,11 @@ def density():
 
 
 @pytest.fixture
+def stacked_density(density):
+    return density.from_list([density for _ in range(3)])
+
+
+@pytest.fixture
 def sample_pdb_path():
     return os.path.join(os.path.dirname(__file__), "data", "1uao.pdb")
 
@@ -61,17 +66,19 @@ def instrument():
 
 
 @pytest.fixture
-def ensemble(density):
-    return cs.Ensemble(
-        density=density,
-        pose=cs.EulerPose(
-            view_phi=30.0,
-            view_theta=100.0,
-            view_psi=-10.0,
-            offset_x=10.0,
-            offset_y=-5.0,
-        ),
+def pose():
+    return cs.EulerPose(
+        view_phi=30.0,
+        view_theta=100.0,
+        view_psi=-10.0,
+        offset_x=10.0,
+        offset_y=-5.0,
     )
+
+
+@pytest.fixture
+def ensemble(density, pose):
+    return cs.Ensemble(density=density, pose=pose)
 
 
 @pytest.fixture

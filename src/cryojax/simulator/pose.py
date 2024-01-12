@@ -11,6 +11,7 @@ __all__ = [
     "Pose",
     "EulerPose",
     "QuaternionPose",
+    "MatrixPose",
 ]
 
 from abc import abstractmethod
@@ -177,7 +178,7 @@ class QuaternionPose(Pose):
             [self.view_qw, self.view_qx, self.view_qy, self.view_qz]
         )
         q_norm = jnp.sqrt(
-            self.view_qx**2
+            self.view_qw**2
             + self.view_qx**2
             + self.view_qy**2
             + self.view_qz**2

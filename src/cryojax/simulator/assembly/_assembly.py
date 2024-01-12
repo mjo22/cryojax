@@ -27,9 +27,6 @@ _Positions = Float[Array, "N 3"]
 _Rotations = Float[Array, "N 3 3"]
 """Type hint for array where each element is a subunit rotation."""
 
-_Conformations = Int[Array, "N"]
-"""Type hint for array where each element updates a Conformation."""
-
 
 class Assembly(eqx.Module):
     """
@@ -65,15 +62,13 @@ class Assembly(eqx.Module):
         subunit: Ensemble,
         *,
         pose: Optional[Pose] = None,
-        conformation: Optional[_Conformations] = None,
+        conformation: Optional[Conformation] = None,
         **kwargs: Any,
     ):
         super().__init__(**kwargs)
         self.subunit = subunit
         self.pose = pose or EulerPose()
-        self.conformation = (
-            None if conformation is None else Conformation(conformation)
-        )
+        self.conformation = None if conformation is None else conformation
 
     @cached_property
     @abstractmethod
