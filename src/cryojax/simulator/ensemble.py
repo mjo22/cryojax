@@ -68,6 +68,7 @@ class Ensemble(Module):
                 lambda i=i: self.density[i] for i in range(len(self.density))
             ]
             density = jax.lax.switch(self.conformation.get(), funcs)
+
         return density.rotate_to_pose(self.pose)
 
 

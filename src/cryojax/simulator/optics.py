@@ -12,17 +12,17 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, overload
 from functools import partial
 
 import jax
 import jax.numpy as jnp
 
 from .pose import Pose
-from .kernel import Kernel
+from .kernel import KernelType
 from ..utils import cartesian_to_polar
 from ..core import field, Module
-from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
+from ..typing import Real_, RealImage, Image, ImageCoords
 
 
 class Optics(Module):
@@ -43,7 +43,17 @@ class Optics(Module):
         the optics model. By default, ``Gaussian()``.
     """
 
-    envelope: Optional[Kernel] = field(default=None)
+    envelope: Optional[KernelType] = field(default=None)  # type: ignore
+
+    @overload
+    @abstractmethod
+    def evaluate(self, freqs: ImageCoords, pose: None, **kwargs: Any) -> Image:
+        ...
+
+    @overload
+    @abstractmethod
+    def evaluate(self, freqs: ImageCoords, pose: Pose, **kwargs: Any) -> Image:
+        ...
 
     @abstractmethod
     def evaluate(
@@ -54,7 +64,7 @@ class Optics(Module):
 
     def __call__(
         self, freqs: ImageCoords, normalize: bool = True, **kwargs: Any
-    ) -> ComplexImage:
+    ) -> Image:
         """Compute the optics model with an envelope."""
         if self.envelope is None:
             return self.evaluate(freqs, **kwargs)
@@ -69,12 +79,12 @@ class NullOptics(Optics):
     A null optics model.
     """
 
-    envelope: Optional[Kernel] = field(default=None)
+    envelope: Optional[KernelType] = field(default=None)  # type: ignore
 
     def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
-    ) -> ComplexImage:
-        return jnp.array(1.0)
+    ) -> RealImage:
+        return jnp.ones(freqs.shape[0:-1], dtype=float)
 
 
 class CTFOptics(Optics):

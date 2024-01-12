@@ -57,7 +57,7 @@ ComplexImage = Complex[Array, "... N1 N2"]
 Image = Union[RealImage, ComplexImage]
 """Type hint for an image."""
 
-ImageCoords = Float[Array, "N1 N2 2"]
+ImageCoords = Float[Array, "... N1 N2 2"]
 """Type hint for a coordinate system."""
 
 # 3-d array type hints
@@ -70,7 +70,7 @@ ComplexVolume = Complex[Array, "... N1 N2 N3"]
 Volume = Union[RealVolume, ComplexVolume]
 """Type hint for an volume."""
 
-VolumeCoords = Float[Array, "N1 N2 N3 3"]
+VolumeCoords = Float[Array, "... N1 N2 N3 3"]
 """Type hint for a volume coordinate system."""
 
 # Point cloud type hints (non-uniformly spaced points).
@@ -86,8 +86,8 @@ ComplexCloud = Complex[Array, "... N"]
 Cloud = Union[RealCloud, ComplexCloud]
 """Type hint for a point cloud."""
 
-CloudCoords3D = Float[Array, "N 3"]
+CloudCoords3D = Float[Array, "... N 3"]
 """Type hint for a 3D point cloud coordinate system."""
 
-CloudCoords2D = Float[Array, "N 2"]
+CloudCoords2D = Float[Array, "... N 2"]
 """Type hint for a 2D point cloud coordinate system."""

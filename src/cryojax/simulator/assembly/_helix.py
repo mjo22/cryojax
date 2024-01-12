@@ -190,9 +190,8 @@ def compute_lattice_positions(
         _, r = jax.lax.scan(f, r_0, None, length=n_subunits_per_start - 1)
         r = jnp.insert(r, 0, r_0, axis=0)
         # Shift helix center of mass to the origin
-        r -= jnp.asarray(
-            [0.0, 0.0, rise * n_subunits_per_start / 2], dtype=float
-        )
+        delta_z = rise * jnp.asarray(n_subunits_per_start - 1, dtype=float) / 2
+        r -= jnp.asarray((0.0, 0.0, delta_z), dtype=float)
         # Transformation between helical strands from start-number
         c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
         R_n = jnp.array(

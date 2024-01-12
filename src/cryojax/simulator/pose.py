@@ -125,14 +125,14 @@ class EulerPose(Pose):
         Third rotation axis, ranging :math:`(-\pi, \pi]`.
     """
 
+    view_phi: Real_ = field(default=0.0)
+    view_theta: Real_ = field(default=0.0)
+    view_psi: Real_ = field(default=0.0)
+
     convention: str = field(static=True, default="zyz")
     intrinsic: bool = field(static=True, default=True)
     inverse: bool = field(static=True, default=False)
     degrees: bool = field(static=True, default=True)
-
-    view_phi: Real_ = field(default=0.0)
-    view_theta: Real_ = field(default=0.0)
-    view_psi: Real_ = field(default=0.0)
 
     @cached_property
     @override
@@ -161,12 +161,12 @@ class QuaternionPose(Pose):
     view_qz :
     """
 
-    inverse: bool = field(static=True, default=False)
-
     view_qw: Real_ = field(default=1.0)
     view_qx: Real_ = field(default=0.0)
     view_qy: Real_ = field(default=0.0)
     view_qz: Real_ = field(default=0.0)
+
+    inverse: bool = field(static=True, default=False)
 
     @cached_property
     @override
