@@ -53,7 +53,7 @@ class Ensemble(Module):
         )
 
     def __check_init__(self):
-        if self.density.n_stacked_dims != 1 and conformation is not None:
+        if self.density.n_stacked_dims != 1 and self.conformation is not None:
             raise ValueError(
                 "ElectronDensity.n_stacked_dims must be 1 if conformation is set."
             )
@@ -79,5 +79,5 @@ class Conformation(Module):
 
     _value: Int_ = field(converter=jnp.asarray)
 
-    def get(self):
+    def get(self) -> Int_:
         return self._value
