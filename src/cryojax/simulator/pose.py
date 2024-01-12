@@ -17,10 +17,11 @@ __all__ = [
 from abc import abstractmethod
 from typing import Union, Optional, Any
 from typing_extensions import override
-from jaxtyping import Float, Array
+from jaxtyping import Float, Array, Shaped
 from functools import cached_property
 
 import jax
+import equinox as eqx
 import jax.numpy as jnp
 from jaxlie import SO3
 from equinox import Module
@@ -98,6 +99,28 @@ class Pose(Module):
         """Generate a rotation."""
         raise NotImplementedError
 
+    @classmethod
+    @abstractmethod
+    def from_rotation(cls, rotation: SO3):
+        """
+        Construct a ``Pose`` from a ``jaxlie.SO3`` object.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def from_rotation_and_translation(
+        cls, rotation: SO3, translation: _Vector3D
+    ):
+        """
+        Construct a ``Pose`` from a ``jaxlie.SO3`` object and a
+        translation vector.
+        """
+        return eqx.tree_at(
+            lambda self: (self.offset_x, self.offset_y, self.offset_z),
+            cls.from_rotation(rotation),
+            (translation[..., 0], translation[..., 1], translation[..., 2]),
+        )
+
 
 class EulerPose(Pose):
     r"""
@@ -150,6 +173,13 @@ class EulerPose(Pose):
         )
         return R.inverse() if self.inverse else R
 
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3):
+        raise NotImplementedError(
+            "Cannot convert SO3 object to arbitrary Euler angle convention. See https://github.com/brentyi/jaxlie/issues/16"
+        )
+
 
 class QuaternionPose(Pose):
     """
@@ -157,16 +187,12 @@ class QuaternionPose(Pose):
 
     Attributes
     ----------
-    view_qw :
-    view_qx :
-    view_qy :
-    view_qz :
+    view_wxyz :
     """
 
-    view_qw: Real_ = field(default=1.0)
-    view_qx: Real_ = field(default=0.0)
-    view_qy: Real_ = field(default=0.0)
-    view_qz: Real_ = field(default=0.0)
+    wxyz: Float[Array, "... 4"] = field(
+        default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray
+    )
 
     inverse: bool = field(static=True, default=False)
 
@@ -174,17 +200,14 @@ class QuaternionPose(Pose):
     @override
     def rotation(self) -> SO3:
         """Generate rotation from a unit quaternion."""
-        q = jnp.asarray(
-            [self.view_qw, self.view_qx, self.view_qy, self.view_qz]
-        )
-        q_norm = jnp.sqrt(
-            self.view_qw**2
-            + self.view_qx**2
-            + self.view_qy**2
-            + self.view_qz**2
-        )
-        R = SO3(wxyz=q / q_norm)
+        q_norm = jnp.linalg.norm(self.wxyz)
+        R = SO3(wxyz=self.wxyz / q_norm)
         return R.inverse() if self.inverse else R
+
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3):
+        return cls(wxyz=rotation.wxyz)
 
 
 class MatrixPose(Pose):
@@ -213,6 +236,11 @@ class MatrixPose(Pose):
     def rotation(self) -> SO3:
         """Generate rotation from a rotation matrix."""
         return SO3.from_matrix(self.matrix)
+
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3):
+        return cls(matrix=rotation.as_matrix())
 
 
 def rotate_coordinates(
