@@ -244,6 +244,15 @@ class FourierVoxelGrid(Voxels):
         n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> "FourierVoxelGrid":
+        if n_stacked_dims > 0:
+            stack_shape = density_grid.shape[:n_stacked_dims]
+            if isinstance(voxel_size, float):
+                voxel_size = jnp.full(stack_shape, voxel_size)
+            else:
+                if voxel_size.shape != stack_shape:
+                    raise ValueError(
+                        "voxel_size.shape must match density_grid.shape[:n_stacked_dims]"
+                    )
         # Change how template sits in box to match cisTEM
         density_grid = jnp.transpose(density_grid, axes=[-1, -2, -3])
         # Pad template
@@ -354,6 +363,15 @@ class RealVoxelGrid(Voxels):
         crop_scale: Optional[float] = None,
         **kwargs: Any,
     ) -> "RealVoxelGrid":
+        if n_stacked_dims > 0:
+            stack_shape = density_grid.shape[:n_stacked_dims]
+            if isinstance(voxel_size, float):
+                voxel_size = jnp.full(stack_shape, voxel_size)
+            else:
+                if voxel_size.shape != stack_shape:
+                    raise ValueError(
+                        "voxel_size.shape must match density_grid.shape[:n_stacked_dims]"
+                    )
         # Change how template sits in the box.
         # Ideally we would change this in the same way for all
         # I/O methods. However, the algorithms used all
