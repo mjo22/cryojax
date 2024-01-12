@@ -11,10 +11,11 @@ from functools import cached_property
 
 import jax
 import jax.numpy as jnp
+from equinox import Module
 
 from .density import ElectronDensity
 from .pose import Pose, EulerPose
-from ..core import field, Module
+from ..core import field
 from ..typing import Int_
 
 

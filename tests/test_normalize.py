@@ -3,7 +3,7 @@ import pytest
 import jax
 import jax.numpy as jnp
 import numpy as np
-from cryojax.utils import irfftn
+from cryojax.image import irfftn
 from jax import config
 
 config.update("jax_enable_x64", True)

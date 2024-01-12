@@ -8,14 +8,12 @@ __all__ = ["ImageManager"]
 
 from typing import Any, Union, Callable, Optional
 
-from ..core import field, Module, CoordinateGrid, FrequencyGrid
-from ..typing import (
-    Image,
-    ImageCoords,
-)
-from ..utils import (
-    make_frequencies,
-    make_coordinates,
+from equinox import Module
+
+from ..core import field, CoordinateGrid, FrequencyGrid
+from ..image import make_coordinates, make_frequencies
+from ..typing import Image
+from ..image import (
     crop,
     pad,
     crop_or_pad,

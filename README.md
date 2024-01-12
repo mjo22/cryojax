@@ -96,12 +96,14 @@ image = pipeline.render()
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
+from cryojax.core import LowpassFilter, WhiteningFilter, CircularMask
+
 micrograph = ...  # A micrograph used for whitening
 freqs = manager.padded_frequency_grid.get()  # Get the upsampled frequency grid
 coords = manager.coordinate_grid.get()  # Get the coordinate grid
-filter = cs.LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequency
-         * cs.WhiteningFilter(freqs, micrograph=micrograph)
-mask = cs.CircularMask(coords, radius=1.0)    # Cutoff pixels above radius equal to (half) image size
+filter = LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequency
+         * WhiteningFilter(freqs, micrograph=micrograph)
+mask = CircularMask(coords, radius=1.0)    # Cutoff pixels above radius equal to (half) image size
 pipeline = cs.ImagePipeline(
     scattering=scattering, ensemble=ensemble, instrument=instrument, filter=filter, mask=mask
     )
@@ -111,7 +113,7 @@ image = pipeline.sample(key)
 `cryojax` also defines a library of `Distribution`s, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
 
 ```python
-from cryojax.utils import rfftn
+from cryojax.image import rfftn
 
 # Read observed data in real space
 observed = ...

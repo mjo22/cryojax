@@ -9,10 +9,11 @@ from typing import Optional
 
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
+from equinox import Module
 
 from .kernel import KernelType, Exp
 from .noise import GaussianNoise
-from ..core import field, Module
+from ..core import field
 from ..typing import RealImage, ComplexImage, Image, ImageCoords
 
 

@@ -11,8 +11,9 @@ from abc import abstractmethod
 from typing import Any, Union
 
 import jax.numpy as jnp
+from equinox import Module
 
-from ..core import field, Module
+from ..core import field
 from ..typing import RealImage, ImageCoords, Real_
 
 

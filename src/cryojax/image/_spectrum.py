@@ -8,19 +8,45 @@ from typing import Optional, Union, overload
 
 import jax.numpy as jnp
 
-from .average import radial_average
+from ._average import radial_average
 from ..typing import Real_, RealVector, RealImage, ComplexImage
+
+
+@overload
+def powerspectrum(
+    fourier_image: ComplexImage,
+    radial_frequency_grid: RealImage,
+    pixel_size: Real_ | float,
+    *,
+    k_min: Optional[Real_ | float],
+    k_max: Optional[Real_ | float],
+    interpolating_radial_frequency_grid: None,
+) -> tuple[RealVector, RealVector]:
+    ...
+
+
+@overload
+def powerspectrum(
+    fourier_image: ComplexImage,
+    radial_frequency_grid: RealImage,
+    pixel_size: Real_ | float,
+    *,
+    k_min: Optional[Real_ | float],
+    k_max: Optional[Real_ | float],
+    interpolating_radial_frequency_grid: RealImage,
+) -> tuple[RealImage, RealVector]:
+    ...
 
 
 def powerspectrum(
     fourier_image: ComplexImage,
     radial_frequency_grid: RealImage,
-    pixel_size: Real_ = 1.0,
+    pixel_size: Real_ | float = 1.0,
     *,
-    k_min: Optional[Real_] = None,
-    k_max: Optional[Real_] = None,
+    k_min: Optional[Real_ | float] = None,
+    k_max: Optional[Real_ | float] = None,
     interpolating_radial_frequency_grid: Optional[RealImage] = None,
-) -> tuple[Union[RealImage, RealVector], RealVector]:
+) -> tuple[RealVector | RealImage, RealVector]:
     """
     Compute the power spectrum of an image averaged on a set
     of radial bins. This does not compute the zero mode of

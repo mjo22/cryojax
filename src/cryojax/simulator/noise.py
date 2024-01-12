@@ -9,10 +9,10 @@ from typing_extensions import override
 
 import jax.random as jr
 from jaxtyping import PRNGKeyArray
+from equinox import Module
 
 from .kernel import Kernel, Constant
-from ..utils import rfftn
-from ..core import field, Module
+from ..core import field
 from ..typing import ImageCoords, ComplexImage
 
 

@@ -13,13 +13,14 @@ from functools import cached_property
 
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
+from equinox import Module
 
 from .noise import GaussianNoise
 from .ice import GaussianIce
 from .detector import GaussianDetector
 from .pipeline import ImagePipeline
 from ..typing import Real_, RealImage, ComplexImage, Image
-from ..core import Module, field
+from ..core import field
 
 
 class Distribution(Module):

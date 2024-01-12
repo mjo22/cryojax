@@ -12,10 +12,11 @@ __all__ = [
 
 from abc import abstractmethod
 from typing import Any, TypeVar
+from equinox import Module
 
 import jax.numpy as jnp
 
-from ..core import field, Module
+from ._field import field
 from ..typing import RealImage, ImageCoords
 
 
@@ -116,8 +117,6 @@ def _compute_circular_mask(
     rolloff :
         The rolloff width as a fraction of the smallest box dimension.
         By default, ``0.05``.
-    kwargs :
-        Keyword arguments passed to ``cryojax.utils.make_coordinates``.
 
     Returns
     -------

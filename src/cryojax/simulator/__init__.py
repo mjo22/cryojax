@@ -6,8 +6,6 @@ from . import (
     assembly,
     density,
     scattering,
-    filter,
-    mask,
     noise,
     ice,
     optics,
@@ -25,8 +23,6 @@ from .ensemble import *
 from .assembly import *
 from .density import *
 from .scattering import *
-from .filter import *
-from .mask import *
 from .noise import *
 from .ice import *
 from .optics import *
@@ -45,8 +41,6 @@ __all__ = (
     + assembly.__all__
     + density.__all__
     + scattering.__all__
-    + filter.__all__
-    + mask.__all__
     + noise.__all__
     + ice.__all__
     + optics.__all__
@@ -66,8 +60,6 @@ __all__.extend(
         assembly,
         density,
         scattering,
-        filter,
-        mask,
         noise,
         ice,
         optics,

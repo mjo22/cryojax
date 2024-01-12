@@ -19,7 +19,6 @@ import equinox as eqx
 from ..ensemble import Ensemble, Conformation
 from ..pose import Pose, EulerPose, MatrixPose
 
-from ...core import field, Module
 from ...typing import Real_
 
 _Positions = Float[Array, "N 3"]
@@ -32,7 +31,7 @@ _Conformations = Int[Array, "N"]
 """Type hint for array where each element updates a Conformation."""
 
 
-class Assembly(Module):
+class Assembly(eqx.Module):
     """
     Abstraction of a biological assembly.
 

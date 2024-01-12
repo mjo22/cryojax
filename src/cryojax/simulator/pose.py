@@ -22,8 +22,9 @@ from functools import cached_property
 import jax
 import jax.numpy as jnp
 from jaxlie import SO3
+from equinox import Module
 
-from ..core import field, Module
+from ..core import field
 from ..typing import (
     Real_,
     ComplexImage,

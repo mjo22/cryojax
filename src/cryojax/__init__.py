@@ -1,20 +1,12 @@
-__all__ = [
-    "core",
-    "typing",
-    "io",
-    "simulator",
-    "utils",
-]
+__all__ = ["typing", "io", "simulator", "core", "image"]
 
 from cryojax.cryojax_version import __version__
+import importlib as _importlib
 
-from . import (
-    core as core,
-    typing as typing,
-    io as io,
-    utils as utils,
-    simulator as simulator,
-)
+
+def __getattr__(name):
+    return _importlib.import_module("." + name, __name__)
+
 
 __author__ = "Michael O'Brien"
 __email__ = "michaelobrien@g.harvard.edu"
