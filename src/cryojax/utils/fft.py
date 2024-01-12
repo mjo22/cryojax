@@ -19,7 +19,10 @@ from ..typing import (
 
 
 def ifftn(
-    ft: Union[Image, Volume], real: bool = False, **kwargs: Any
+    ft: Union[Image, Volume],
+    real: bool = False,
+    axes: Optional[tuple[int, ...]] = None,
+    **kwargs: Any
 ) -> Union[Image, Volume]:
     """
     Helper routine to match the inverse fourier transform
@@ -38,7 +41,7 @@ def ifftn(
     ift :
         Inverse fourier transform.
     """
-    ift = jnp.fft.fftshift(jnp.fft.ifftn(ft, **kwargs))
+    ift = jnp.fft.fftshift(jnp.fft.ifftn(ft, axes=axes, **kwargs), axes=axes)
 
     if real:
         return ift.real
@@ -47,7 +50,9 @@ def ifftn(
 
 
 def fftn(
-    ift: Union[Image, Volume], **kwargs: Any
+    ift: Union[Image, Volume],
+    axes: Optional[tuple[int, ...]] = None,
+    **kwargs: Any
 ) -> Union[ComplexImage, ComplexVolume]:
     """
     Helper routine to match the fourier transform of an array
@@ -63,7 +68,7 @@ def fftn(
     ft :
         Fourier transform of array.
     """
-    ft = jnp.fft.fftn(jnp.fft.ifftshift(ift), **kwargs)
+    ft = jnp.fft.fftn(jnp.fft.ifftshift(ift, axes=axes), axes=axes, **kwargs)
 
     return ft
 
@@ -71,6 +76,7 @@ def fftn(
 def irfftn(
     ft: Union[ComplexImage, ComplexVolume],
     s: Optional[tuple[int, ...]] = None,
+    axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any
 ) -> Union[RealImage, RealVolume]:
     """
@@ -87,13 +93,17 @@ def irfftn(
     ift :
         Inverse fourier transform.
     """
-    ift = jnp.fft.fftshift(jnp.fft.irfftn(ft, s=s, **kwargs))
+    ift = jnp.fft.fftshift(
+        jnp.fft.irfftn(ft, s=s, axes=axes, **kwargs), axes=axes
+    )
 
     return ift
 
 
 def rfftn(
-    ift: Union[RealImage, RealVolume], **kwargs: Any
+    ift: Union[RealImage, RealVolume],
+    axes: Optional[tuple[int, ...]] = None,
+    **kwargs: Any
 ) -> Union[ComplexImage, ComplexVolume]:
     """
     Helper routine to compute the fourier transform of an array
@@ -109,6 +119,6 @@ def rfftn(
     ft :
         Fourier transform of array.
     """
-    ft = jnp.fft.rfftn(jnp.fft.ifftshift(ift), **kwargs)
+    ft = jnp.fft.rfftn(jnp.fft.ifftshift(ift, axes=axes), axes=axes, **kwargs)
 
     return ft

@@ -8,7 +8,7 @@ __all__ = ["ImageManager"]
 
 from typing import Any, Union, Callable, Optional
 
-from ..core import field, BufferModule
+from ..core import field, Module, CoordinateGrid, FrequencyGrid
 from ..typing import (
     Image,
     ImageCoords,
@@ -23,7 +23,7 @@ from ..utils import (
 )
 
 
-class ImageManager(BufferModule):
+class ImageManager(Module):
     """
     Configuration and utilities for an electron microscopy image.
 
@@ -59,20 +59,25 @@ class ImageManager(BufferModule):
 
     padded_shape: tuple[int, int] = field(static=True, init=False)
 
-    frequency_grid: ImageCoords = field(init=False)
-    padded_frequency_grid: ImageCoords = field(init=False)
-    coordinate_grid: ImageCoords = field(init=False)
-    padded_coordinate_grid: ImageCoords = field(init=False)
+    frequency_grid: FrequencyGrid = field(init=False)
+    padded_frequency_grid: FrequencyGrid = field(init=False)
+    coordinate_grid: CoordinateGrid = field(init=False)
+    padded_coordinate_grid: CoordinateGrid = field(init=False)
 
     def __post_init__(self):
         # Set shape after padding
         padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
         self.padded_shape = padded_shape
         # Set coordinates
-        self.frequency_grid = make_frequencies(self.shape)
-        self.padded_frequency_grid = make_frequencies(self.padded_shape)
-        self.coordinate_grid = make_coordinates(self.shape)
-        self.padded_coordinate_grid = make_coordinates(self.padded_shape)
+        self.frequency_grid = FrequencyGrid(make_frequencies(self.shape))
+        self.padded_frequency_grid = FrequencyGrid(
+            make_frequencies(self.padded_shape)
+        )
+
+        self.coordinate_grid = CoordinateGrid(make_coordinates(self.shape))
+        self.padded_coordinate_grid = CoordinateGrid(
+            make_coordinates(self.padded_shape)
+        )
 
     def crop_to_shape(self, image: Image) -> Image:
         """Crop an image."""

@@ -1,7 +1,5 @@
 __all__ = [
-    "Module",
-    "BufferModule",
-    "field",
+    "core",
     "typing",
     "io",
     "simulator",
@@ -10,10 +8,15 @@ __all__ = [
 
 from cryojax.cryojax_version import __version__
 
-from .core import Module, BufferModule, field
 from . import (
+    core as core,
     typing as typing,
     io as io,
     utils as utils,
     simulator as simulator,
 )
+
+__author__ = "Michael O'Brien"
+__email__ = "michaelobrien@g.harvard.edu"
+__uri__ = "https://github.com/mjo22/cryojax"
+__description__ = "Cryo-EM image simulation and analysis powered by JAX"
