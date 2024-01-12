@@ -52,14 +52,8 @@ class Ensemble(Module):
             None if conformation is None else Conformation(conformation)
         )
 
-    def __check_init__(self):
-        if self.density.n_stacked_dims not in [0, 1]:
-            raise ValueError(
-                "Number of stacked dimensions in the ElectronDensity must be zero or one."
-            )
-
     @cached_property
-    def realization(self) -> ElectronDensity:
+    def density_at_conformation_and_pose(self) -> ElectronDensity:
         """Get the electron density at the configured pose and conformation."""
         if self.conformation is None:
             density = self.density

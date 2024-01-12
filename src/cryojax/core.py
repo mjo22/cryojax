@@ -174,12 +174,18 @@ class StackedModule(Module):
     def __getitem__(self, idx) -> Self:
         if self.n_stacked_dims > 0:
             indexed = {}
+            n_stacked_dims = self.n_stacked_dims
             for field in dataclasses.fields(self):
                 value = getattr(self, field.name)
                 if isinstance(value, Array):
                     # ... index all arrays in the stack
                     indexed[field.name] = value[idx]
-            return dataclasses.replace(self, **indexed, n_stacked_dims=0)
+                    n_stacked_dims = self.n_stacked_dims - (
+                        value.ndim - indexed[field.name].ndim
+                    )
+            return dataclasses.replace(
+                self, **indexed, n_stacked_dims=n_stacked_dims
+            )
         else:
             raise IndexError(
                 f"Tried to index a {type(self)} with n_stacked_dims = 0."

@@ -82,7 +82,7 @@ class ImagePipeline(Module):
         """
         freqs = self.scattering.padded_frequency_grid_in_angstroms.get()
         # Draw the electron density at a particular conformation and pose
-        density = self.ensemble.realization
+        density = self.ensemble.density_at_conformation_and_pose
         # Compute the scattering image in fourier space
         image = self.scattering(density)
         # Apply translation
