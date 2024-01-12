@@ -17,9 +17,10 @@ from typing_extensions import override
 
 import jax
 import jax.numpy as jnp
+from equinox import Module
 
-from ..utils import powerspectrum, make_frequencies, rfftn
-from ..core import field, Module
+from ..image import powerspectrum, rfftn, make_frequencies
+from ._field import field
 from ..typing import Image, ImageCoords, RealImage
 
 FilterType = TypeVar("FilterType", bound="Filter")

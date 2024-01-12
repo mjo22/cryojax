@@ -14,12 +14,13 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate
+from equinox import Module
 
 from ..density import ElectronDensity, Voxels, FourierVoxelGrid
 from ..manager import ImageManager
 
-from ...utils import rfftn, irfftn
-from ...core import field, Module, CoordinateGrid, FrequencyGrid
+from ...image import rfftn, irfftn
+from ...core import field, CoordinateGrid, FrequencyGrid
 from ...typing import Real_, RealImage, ComplexImage
 
 

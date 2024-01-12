@@ -1,19 +1,17 @@
 """
-Routines to compute and operate on coordinate systems.
+Routines to create coordinate systems.
 """
 
-__all__ = [
-    "make_coordinates",
-    "make_frequencies",
-    "cartesian_to_polar",
-]
+from __future__ import annotations
 
-from typing import Union, Any, Optional
+__all__ = ["make_coordinates", "make_frequencies", "cartesian_to_polar"]
+
 from jaxtyping import Array, Float
+from typing import Optional
 
 import jax.numpy as jnp
 
-from ..typing import RealImage, RealVolume, Image, ImageCoords
+from ..typing import ImageCoords, Image
 
 
 def make_coordinates(

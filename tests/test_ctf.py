@@ -4,7 +4,7 @@ import numpy as np
 from pycistem.core import CTF
 
 from cryojax.simulator import CTFOptics
-from cryojax.utils import make_frequencies, cartesian_to_polar, powerspectrum
+from cryojax.image import make_frequencies, cartesian_to_polar, powerspectrum
 
 
 @pytest.mark.parametrize(

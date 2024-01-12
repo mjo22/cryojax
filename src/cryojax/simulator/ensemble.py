@@ -11,10 +11,11 @@ from functools import cached_property
 
 import jax
 import jax.numpy as jnp
+from equinox import Module
 
 from .density import ElectronDensity
 from .pose import Pose, EulerPose
-from ..core import field, Module
+from ..core import field
 from ..typing import Int_
 
 
@@ -53,13 +54,13 @@ class Ensemble(Module):
         )
 
     def __check_init__(self):
-        if self.density.n_stacked_dims not in [0, 1]:
+        if self.density.n_stacked_dims != 1 and self.conformation is not None:
             raise ValueError(
-                "Number of stacked dimensions in the ElectronDensity must be zero or one."
+                "ElectronDensity.n_stacked_dims must be 1 if conformation is set."
             )
 
     @cached_property
-    def realization(self) -> ElectronDensity:
+    def density_at_conformation_and_pose(self) -> ElectronDensity:
         """Get the electron density at the configured pose and conformation."""
         if self.conformation is None:
             density = self.density
@@ -79,5 +80,5 @@ class Conformation(Module):
 
     _value: Int_ = field(converter=jnp.asarray)
 
-    def get(self):
+    def get(self) -> Int_:
         return self._value

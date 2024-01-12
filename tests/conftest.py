@@ -6,7 +6,8 @@ import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
-from cryojax.utils import rfftn
+import cryojax.core as cc
+from cryojax.image import rfftn
 
 config.update("jax_enable_x64", True)
 
@@ -41,13 +42,13 @@ def sample_pdb_path():
 
 @pytest.fixture
 def filters(manager):
-    return cs.LowpassFilter(manager.padded_frequency_grid.get())
+    return cc.LowpassFilter(manager.padded_frequency_grid.get())
     # return None
 
 
 @pytest.fixture
 def masks(manager):
-    return cs.CircularMask(manager.coordinate_grid.get())
+    return cc.CircularMask(manager.coordinate_grid.get())
 
 
 @pytest.fixture

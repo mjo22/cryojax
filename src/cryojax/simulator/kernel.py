@@ -21,10 +21,11 @@ from abc import abstractmethod
 from typing import overload, Any, Union, Callable, Concatenate, TypeVar
 from typing_extensions import override
 from jaxtyping import Array
+from equinox import Module
 
 import jax.numpy as jnp
 
-from ..core import field, Module
+from ..core import field
 from ..typing import Real_, ImageCoords, RealImage, Image
 
 KernelType = TypeVar("KernelType", bound="Kernel")

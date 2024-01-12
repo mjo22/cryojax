@@ -13,10 +13,11 @@ from typing_extensions import override
 
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
+from equinox import Module
 
 from .noise import GaussianNoise
 from .kernel import KernelType, Constant
-from ..core import field, Module
+from ..core import field
 from ..typing import ComplexImage, ImageCoords
 
 

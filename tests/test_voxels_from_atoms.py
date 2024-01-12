@@ -5,7 +5,7 @@ from cryojax.simulator.density import FourierVoxelGrid, RealVoxelGrid
 from cryojax.simulator.density._voxel_density import (
     _build_real_space_voxels_from_atoms,
 )
-from cryojax.utils import ifftn, make_coordinates
+from cryojax.image import ifftn, make_coordinates
 from jax import config
 
 config.update("jax_enable_x64", True)

@@ -12,19 +12,17 @@ from typing_extensions import override
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-import jax.tree_util as jtu
 from jaxtyping import PRNGKeyArray
+from equinox import Module
 
-from .filter import Filter
-from .mask import Mask
 from .ensemble import Ensemble, Conformation
 from .pose import Pose
 from .scattering import ScatteringModel
 from .instrument import Instrument
 from .detector import NullDetector
 from .ice import Ice, NullIce
-from ..utils import rfftn, irfftn
-from ..core import field, Module
+from ..image import rfftn, irfftn
+from ..core import field, FilterType, MaskType
 from ..typing import ComplexImage, RealImage, Image
 
 
@@ -56,8 +54,8 @@ class ImagePipeline(Module):
     instrument: Instrument = field(default_factory=Instrument)
     solvent: Ice = field(default_factory=NullIce)
 
-    filter: Optional[Filter] = field(default=None)
-    mask: Optional[Mask] = field(default=None)
+    filter: Optional[FilterType] = field(default=None)
+    mask: Optional[MaskType] = field(default=None)
 
     def render(
         self,
@@ -82,7 +80,7 @@ class ImagePipeline(Module):
         """
         freqs = self.scattering.padded_frequency_grid_in_angstroms.get()
         # Draw the electron density at a particular conformation and pose
-        density = self.ensemble.realization
+        density = self.ensemble.density_at_conformation_and_pose
         # Compute the scattering image in fourier space
         image = self.scattering(density)
         # Apply translation

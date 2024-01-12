@@ -4,12 +4,34 @@ Routines to compute radial averages of images.
 
 __all__ = ["radial_average"]
 
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, overload
 
 import jax
 import jax.numpy as jnp
 
 from ..typing import RealVector, Vector, Image, RealImage
+
+
+@overload
+def radial_average(
+    image: Image,
+    radial_grid: RealImage,
+    bins: RealVector,
+    interpolating_radial_grid: None,
+    **kwargs: Any,
+) -> Union[Vector, Vector]:
+    ...
+
+
+@overload
+def radial_average(
+    image: Image,
+    radial_grid: RealImage,
+    bins: RealVector,
+    interpolating_radial_grid: RealImage,
+    **kwargs: Any,
+) -> Union[Image, Vector]:
+    ...
 
 
 @jax.jit
@@ -19,7 +41,7 @@ def radial_average(
     bins: RealVector,
     interpolating_radial_grid: Optional[RealImage] = None,
     **kwargs: Any,
-) -> Union[Image, Vector]:
+) -> Union[Vector | Image, Vector]:
     """
     Radially average vectors r with a given magnitude
     coordinate system |r|.

@@ -30,24 +30,23 @@ from ...io import (
     read_atomic_model_from_cif,
     get_scattering_info_from_gemmi_model,
 )
-from ...core import field, CoordinateGrid, CoordinateList, FrequencyGrid
-from cryojax.utils import (
-    make_frequencies,
-    make_coordinates,
-    pad,
-    crop,
-    fftn,
+from ...core import (
+    field,
+    CoordinateGrid,
+    CoordinateList,
+    FrequencyGrid,
+    FrequencySlice,
 )
+from cryojax.image import pad, crop, fftn, make_coordinates
 from cryojax.typing import (
     RealCloud,
     RealVolume,
+    RealCubicVolume,
+    ComplexCubicVolume,
     VolumeCoords,
+    VolumeSliceCoords,
     Real_,
 )
-
-_RealCubicVolume = Float[Array, "N N N"]
-_ComplexCubicVolume = Complex[Array, "N N N"]
-_VolumeSliceCoords = Float[Array, "N N//2+1 1 3"]
 
 VoxelType = TypeVar("VoxelType", bound="Voxels")
 """Type hint for a voxel-based electron density."""
@@ -76,7 +75,7 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: None,
-        n_stacked_dims: int = 0,
+        n_stacked_dims: int,
         **kwargs: Any,
     ) -> VoxelType:
         ...
@@ -89,7 +88,7 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
-        n_stacked_dims: int = 0,
+        n_stacked_dims: int,
         **kwargs: Any,
     ) -> VoxelType:
         ...
@@ -168,7 +167,9 @@ class Voxels(ElectronDensity):
     ) -> VoxelType:
         """Load Voxels from MRC file format."""
         density_grid, voxel_size = load_mrc(filename)
-        return cls.from_density_grid(density_grid, voxel_size, **kwargs)
+        return cls.from_density_grid(
+            jnp.asarray(density_grid), voxel_size, **kwargs
+        )
 
     @classmethod
     def from_pdb(
@@ -209,13 +210,13 @@ class FourierVoxelGrid(Voxels):
         in fourier space.
     """
 
-    weights: _ComplexCubicVolume = field()
-    frequency_slice: FrequencyGrid = field()
+    weights: ComplexCubicVolume = field()
+    frequency_slice: FrequencySlice = field()
 
     is_real: ClassVar[bool] = False
 
     @cached_property
-    def frequency_slice_in_angstroms(self) -> FrequencyGrid:
+    def frequency_slice_in_angstroms(self) -> FrequencySlice:
         return self.frequency_slice / self.voxel_size
 
     def rotate_to_pose(self, pose: Pose) -> Self:
@@ -231,7 +232,7 @@ class FourierVoxelGrid(Voxels):
             FrequencyGrid(
                 pose.rotate(self.frequency_slice.get(), is_real=self.is_real)
             ),
-            is_leaf=lambda x: isinstance(x, FrequencyGrid),
+            is_leaf=lambda x: isinstance(x, FrequencySlice),
         )
 
     @classmethod
@@ -267,23 +268,13 @@ class FourierVoxelGrid(Voxels):
         # does not currently work if rfftn is us
         fourier_density_grid = fftn(padded_density_grid, axes=(-3, -2, -1))
         # ... create in-plane frequency slice on the half space
-        frequency_slice = make_frequencies(
-            padded_density_grid.shape[-3:-1], half_space=True
-        )
-        # ... zero pad to make the slice 3-dimensional
-        frequency_slice = jnp.expand_dims(
-            jnp.pad(
-                frequency_slice,
-                ((0, 0), (0, 0), (0, 1)),
-                mode="constant",
-                constant_values=0.0,
-            ),
-            axis=2,
+        frequency_slice = FrequencySlice(
+            shape=padded_density_grid.shape[-3:-1], half_space=True
         )
 
         return cls(
             weights=fourier_density_grid,
-            frequency_slice=FrequencyGrid(frequency_slice),
+            frequency_slice=frequency_slice,
             voxel_size=voxel_size,
             n_stacked_dims=n_stacked_dims,
         )
@@ -388,11 +379,11 @@ class RealVoxelGrid(Voxels):
                     [int(s * crop_scale) for s in density_grid.shape[-3:]]
                 )
                 density_grid = crop(density_grid, cropped_shape)
-            coordinate_grid = make_coordinates(density_grid.shape[-3:])
+            coordinate_grid = CoordinateGrid(shape=density_grid.shape[-3:])
 
         return cls(
             weights=density_grid,
-            coordinate_grid=CoordinateGrid(coordinate_grid),
+            coordinate_grid=coordinate_grid,
             voxel_size=voxel_size,
             n_stacked_dims=n_stacked_dims,
         )
@@ -558,7 +549,7 @@ def _build_real_space_voxels_from_atoms(
     ff_a: Float[Array, "N 5"],
     ff_b: Float[Array, "N 5"],
     coordinate_system: Float[Array, "N1 N2 N3 3"],
-) -> Tuple[_RealCubicVolume, _VolumeSliceCoords]:
+) -> Tuple[RealCubicVolume, VolumeSliceCoords]:
     """
     Build a voxel representation of an atomic model.
 
