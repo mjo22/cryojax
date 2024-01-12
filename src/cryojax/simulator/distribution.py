@@ -95,7 +95,9 @@ class IndependentFourierGaussian(Distribution):
         if self.noise is None:
             return super().sample(key, **kwargs)
         else:
-            freqs = self.pipeline.scattering.padded_frequency_grid_in_angstroms
+            freqs = (
+                self.pipeline.scattering.padded_frequency_grid_in_angstroms.get()
+            )
             noise = self.noise.sample(key, freqs)
             image = self.pipeline.render(view=False, get_real=False)
             return self.pipeline._postprocess_image(image + noise, **kwargs)
@@ -116,10 +118,8 @@ class IndependentFourierGaussian(Distribution):
            the ImageManager.padded_shape shape.
         """
         pipeline = self.pipeline
-        if (
-            observed.shape
-            != pipeline.scattering.manager.padded_frequency_grid.shape[:-1]
-        ):
+        freqs = pipeline.scattering.manager.padded_frequency_grid.get()
+        if observed.shape != freqs.shape[:-1]:
             raise ValueError(
                 "Shape of observed must match ImageManager.padded_shape"
             )
@@ -142,7 +142,7 @@ class IndependentFourierGaussian(Distribution):
     def variance(self) -> Union[Real_, RealImage]:
         pipeline = self.pipeline
         # Gather frequency coordinates
-        freqs = pipeline.scattering.frequency_grid_in_angstroms
+        freqs = pipeline.scattering.frequency_grid_in_angstroms.get()
         if self.noise is None:
             # Variance from detector
             if isinstance(pipeline.instrument.detector, GaussianDetector):

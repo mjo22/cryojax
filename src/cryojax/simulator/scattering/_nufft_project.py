@@ -4,18 +4,14 @@ Scattering methods using non-uniform FFTs.
 
 from __future__ import annotations
 
-__all__ = [
-    "project_with_nufft",
-    "project_atoms_with_nufft",
-    "NufftProject",
-]
+__all__ = ["project_with_nufft", "NufftProject"]
 
+import math
 from typing import Any, Union
 
 import jax.numpy as jnp
-import numpy as np
 
-from ..density import VoxelCloud, AtomCloud
+from ..density import VoxelCloud, RealVoxelGrid, AtomCloud
 from ._scattering_model import ScatteringModel
 from ...core import field
 from ...typing import (
@@ -34,33 +30,33 @@ class NufftProject(ScatteringModel):
     Attributes
     ----------
     eps : `float`
-        See ``cryojax.utils.integration.nufft``
-        for documentation.
+        See ``jax-finufft`` for documentation.
     """
 
     eps: float = field(static=True, default=1e-6)
 
-    def scatter(self, density: Union[VoxelCloud, AtomCloud]) -> ComplexImage:
+    def scatter(
+        self, density: RealVoxelGrid | VoxelCloud | AtomCloud
+    ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
-        if isinstance(density, VoxelCloud):
+        if isinstance(density, RealVoxelGrid):
+            shape = density.weights.shape
             fourier_projection = project_with_nufft(
-                density.weights,
-                density.coordinate_list,
+                density.weights.ravel(),
+                density.coordinate_grid.get().reshape((math.prod(shape), 3)),
                 self.manager.padded_shape,
                 eps=self.eps,
             )
-        elif isinstance(density, AtomCloud):
-            fourier_projection = project_atoms_with_nufft(
+        elif isinstance(density, VoxelCloud):
+            fourier_projection = project_with_nufft(
                 density.weights,
-                density.coordinate_list,
-                density.variances,
-                density.identity,
+                density.coordinate_list.get(),
                 self.manager.padded_shape,
                 eps=self.eps,
             )
         else:
             raise NotImplementedError(
-                "Supported density representations are VoxelCloud and AtomCloud"
+                "Supported density representations are RealVoxelGrid and VoxelCloud."
             )
         return fourier_projection
 

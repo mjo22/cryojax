@@ -31,7 +31,7 @@ def density():
     filename = os.path.join(
         os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
     )
-    return cs.VoxelGrid.from_file(filename)
+    return cs.FourierVoxelGrid.from_file(filename)
 
 
 @pytest.fixture
@@ -41,13 +41,13 @@ def sample_pdb_path():
 
 @pytest.fixture
 def filters(manager):
-    return cs.LowpassFilter(manager.padded_frequency_grid)
+    return cs.LowpassFilter(manager.padded_frequency_grid.get())
     # return None
 
 
 @pytest.fixture
 def masks(manager):
-    return cs.CircularMask(manager.coordinate_grid)
+    return cs.CircularMask(manager.coordinate_grid.get())
 
 
 @pytest.fixture

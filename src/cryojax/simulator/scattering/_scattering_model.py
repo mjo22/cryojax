@@ -15,11 +15,11 @@ import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate
 
-from ..density import ElectronDensity, Voxels, VoxelGrid
+from ..density import ElectronDensity, Voxels, FourierVoxelGrid
 from ..manager import ImageManager
 
 from ...utils import rfftn, irfftn
-from ...core import field, Module
+from ...core import field, Module, CoordinateGrid, FrequencyGrid
 from ...typing import Real_, RealImage, ComplexImage
 
 
@@ -77,7 +77,7 @@ class ScatteringModel(Module):
         pixel size and post-processed with the ImageManager utilities.
         """
         image = self.scatter(density, **kwargs)
-        if isinstance(density, VoxelGrid):
+        if isinstance(density, FourierVoxelGrid):
             # Resize the image to match the ImageManager.padded_shape
             image = self.manager.crop_or_pad_to_padded_shape(
                 irfftn(image, s=density.weights.shape[0:2])
@@ -107,19 +107,19 @@ class ScatteringModel(Module):
         return image
 
     @cached_property
-    def coordinate_grid_in_angstroms(self):
+    def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         return self.pixel_size * self.manager.coordinate_grid
 
     @cached_property
-    def frequency_grid_in_angstroms(self):
+    def frequency_grid_in_angstroms(self) -> FrequencyGrid:
         return self.manager.frequency_grid / self.pixel_size
 
     @cached_property
-    def padded_coordinate_grid_in_angstroms(self):
+    def padded_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         return self.pixel_size * self.manager.padded_coordinate_grid
 
     @cached_property
-    def padded_frequency_grid_in_angstroms(self):
+    def padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
         return self.manager.padded_frequency_grid / self.pixel_size
 
 

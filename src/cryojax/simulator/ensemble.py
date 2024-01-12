@@ -10,6 +10,7 @@ from typing import Optional
 from functools import cached_property
 
 import jax
+import jax.numpy as jnp
 
 from .density import ElectronDensity
 from .pose import Pose, EulerPose
@@ -28,16 +29,34 @@ class Ensemble(Module):
         specimen.
     conformation :
         The conformational variable at which to evaulate
-        the electron density. Use this variable when
+        the electron density. Use this variable when, for example,
         the specimen ``ElectronDensity`` is constructed
-        with ``ElectronDensity.from_stack``.
+        with ``ElectronDensity.from_list``.
     pose :
         The pose of the specimen.
     """
 
-    density: ElectronDensity = field()
-    pose: Pose = field(default_factory=EulerPose)
-    conformation: Optional[Int_] = field(default=None)
+    density: ElectronDensity
+    pose: Pose
+    conformation: Optional[Conformation] = None
+
+    def __init__(
+        self,
+        density: ElectronDensity,
+        pose: Optional[Pose] = None,
+        conformation: Optional[int | Int_] = None,
+    ):
+        self.density = density
+        self.pose = pose or EulerPose()
+        self.conformation = (
+            None if conformation is None else Conformation(conformation)
+        )
+
+    def __check_init__(self):
+        if self.density.n_stacked_dims not in [0, 1]:
+            raise ValueError(
+                "Number of stacked dimensions in the ElectronDensity must be zero or one."
+            )
 
     @cached_property
     def realization(self) -> ElectronDensity:
@@ -48,6 +67,17 @@ class Ensemble(Module):
             funcs = [
                 lambda i=i: self.density[i] for i in range(len(self.density))
             ]
-            density = jax.lax.switch(self.conformation, funcs)
+            density = jax.lax.switch(self.conformation.get(), funcs)
 
         return density.rotate_to_pose(self.pose)
+
+
+class Conformation(Module):
+    """
+    A conformational variable wrapped in a Module.
+    """
+
+    _value: Int_ = field(converter=jnp.asarray)
+
+    def get(self):
+        return self._value

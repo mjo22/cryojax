@@ -2,12 +2,18 @@
 Voxel-based electron density representations.
 """
 
-__all__ = ["Voxels", "VoxelType", "VoxelCloud", "VoxelGrid"]
+__all__ = [
+    "Voxels",
+    "VoxelType",
+    "RealVoxelGrid",
+    "FourierVoxelGrid",
+    "VoxelCloud",
+]
 
 import pathlib
 from abc import abstractmethod
 from typing import Any, Tuple, Type, ClassVar, TypeVar, Optional, overload
-from typing_extensions import Self
+from typing_extensions import Self, override
 from jaxtyping import Complex, Float, Array
 from equinox import AbstractVar
 from functools import cached_property
@@ -24,18 +30,18 @@ from ...io import (
     read_atomic_model_from_cif,
     get_scattering_info_from_gemmi_model,
 )
-from ...core import field
+from ...core import field, CoordinateGrid, CoordinateList, FrequencyGrid
 from cryojax.utils import (
     make_frequencies,
     make_coordinates,
     pad,
+    crop,
     fftn,
 )
 from cryojax.typing import (
     RealCloud,
     RealVolume,
     VolumeCoords,
-    CloudCoords3D,
     Real_,
 )
 
@@ -60,7 +66,7 @@ class Voxels(ElectronDensity):
     """
 
     weights: AbstractVar[Array]
-    voxel_size: Real_ = field(stack=False)
+    voxel_size: Real_ = field()
 
     @overload
     @classmethod
@@ -68,8 +74,9 @@ class Voxels(ElectronDensity):
     def from_density_grid(
         cls: Type[VoxelType],
         density_grid: RealVolume,
-        voxel_size: float,
+        voxel_size: Real_ | float,
         coordinate_grid: None,
+        n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> VoxelType:
         ...
@@ -80,8 +87,9 @@ class Voxels(ElectronDensity):
     def from_density_grid(
         cls: Type[VoxelType],
         density_grid: RealVolume,
-        voxel_size: float,
+        voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
+        n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> VoxelType:
         ...
@@ -91,8 +99,9 @@ class Voxels(ElectronDensity):
     def from_density_grid(
         cls: Type[VoxelType],
         density_grid: RealVolume,
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
+        n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> VoxelType:
         """
@@ -106,7 +115,7 @@ class Voxels(ElectronDensity):
         cls: Type[VoxelType],
         model,
         n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> VoxelType:
         """
@@ -166,7 +175,7 @@ class Voxels(ElectronDensity):
         cls: Type[VoxelType],
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> VoxelType:
         """Load Voxels from PDB file format."""
@@ -178,7 +187,7 @@ class Voxels(ElectronDensity):
         cls: Type[VoxelType],
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> VoxelType:
         """Load Voxels from CIF file format."""
@@ -186,11 +195,10 @@ class Voxels(ElectronDensity):
         return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
 
 
-class VoxelGrid(Voxels):
+class FourierVoxelGrid(Voxels):
     """
-    Abstraction of a 3D electron density voxel grid.
-
-    The voxel grid should be given in fourier space.
+    Abstraction of a 3D electron density voxel grid
+    in fourier space.
 
     Attributes
     ----------
@@ -202,12 +210,12 @@ class VoxelGrid(Voxels):
     """
 
     weights: _ComplexCubicVolume = field()
-    frequency_slice: _VolumeSliceCoords = field(stack=False)
+    frequency_slice: FrequencyGrid = field()
 
     is_real: ClassVar[bool] = False
 
     @cached_property
-    def frequency_slice_in_angstroms(self) -> _VolumeSliceCoords:
+    def frequency_slice_in_angstroms(self) -> FrequencyGrid:
         return self.frequency_slice / self.voxel_size
 
     def rotate_to_pose(self, pose: Pose) -> Self:
@@ -220,30 +228,38 @@ class VoxelGrid(Voxels):
         return eqx.tree_at(
             lambda d: d.frequency_slice,
             self,
-            pose.rotate(self.frequency_slice, is_real=self.is_real),
+            FrequencyGrid(
+                pose.rotate(self.frequency_slice.get(), is_real=self.is_real)
+            ),
+            is_leaf=lambda x: isinstance(x, FrequencyGrid),
         )
 
     @classmethod
     def from_density_grid(
-        cls: Type["VoxelGrid"],
+        cls: Type["FourierVoxelGrid"],
         density_grid: RealVolume,
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         pad_scale: float = 1.0,
+        n_stacked_dims: int = 0,
         **kwargs: Any,
-    ) -> "VoxelGrid":
+    ) -> "FourierVoxelGrid":
         # Change how template sits in box to match cisTEM
-        density_grid = jnp.transpose(density_grid, axes=[2, 1, 0])
+        density_grid = jnp.transpose(density_grid, axes=[-1, -2, -3])
         # Pad template
-        padded_shape = tuple([int(s * pad_scale) for s in density_grid.shape])
+        if pad_scale < 1.0:
+            raise ValueError("pad_scale must be greater than 1.0")
+        padded_shape = tuple(
+            [int(s * pad_scale) for s in density_grid.shape[-3:]]
+        )
         padded_density_grid = pad(density_grid, padded_shape)
         # Load density and coordinates. For now, do not store the
         # fourier density only on the half space. Fourier slice extraction
-        # does not currently work if rfftn is used
-        fourier_density_grid = fftn(padded_density_grid)
+        # does not currently work if rfftn is us
+        fourier_density_grid = fftn(padded_density_grid, axes=(-3, -2, -1))
         # ... create in-plane frequency slice on the half space
         frequency_slice = make_frequencies(
-            padded_density_grid.shape[:-1], half_space=True
+            padded_density_grid.shape[-3:-1], half_space=True
         )
         # ... zero pad to make the slice 3-dimensional
         frequency_slice = jnp.expand_dims(
@@ -258,8 +274,109 @@ class VoxelGrid(Voxels):
 
         return cls(
             weights=fourier_density_grid,
-            frequency_slice=frequency_slice,
+            frequency_slice=FrequencyGrid(frequency_slice),
             voxel_size=voxel_size,
+            n_stacked_dims=n_stacked_dims,
+        )
+
+
+class RealVoxelGrid(Voxels):
+    """
+    Abstraction of a 3D electron density voxel grid.
+    The voxel grid is given in real space.
+
+    Attributes
+    ----------
+    weights :
+        3D electron density voxel grid.
+    coordinate_list :
+        List of coordinates for the point cloud.
+    """
+
+    weights: RealVolume = field()
+    coordinate_grid: CoordinateGrid = field()
+
+    is_real: ClassVar[bool] = True
+
+    @cached_property
+    def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
+        return self.voxel_size * self.coordinate_grid
+
+    def rotate_to_pose(self, pose: Pose) -> Self:
+        """
+        Compute rotations of a point cloud by an imaging pose.
+
+        This transformation will return a new density cloud
+        with rotated coordinates.
+        """
+        return eqx.tree_at(
+            lambda d: d.coordinate_grid,
+            self,
+            CoordinateGrid(
+                pose.rotate(self.coordinate_grid.get(), is_real=self.is_real)
+            ),
+            is_leaf=lambda x: isinstance(x, CoordinateGrid),
+        )
+
+    @overload
+    @classmethod
+    def from_density_grid(
+        cls: Type["RealVoxelGrid"],
+        density_grid: RealVolume,
+        voxel_size: Real_ | float,
+        coordinate_grid: VolumeCoords,
+        n_stacked_dims: int,
+        crop_scale: None,
+        **kwargs: Any,
+    ) -> "RealVoxelGrid":
+        ...
+
+    @overload
+    @classmethod
+    def from_density_grid(
+        cls: Type["RealVoxelGrid"],
+        density_grid: RealVolume,
+        voxel_size: Real_ | float,
+        coordinate_grid: None,
+        n_stacked_dims: int,
+        crop_scale: Optional[float],
+        **kwargs: Any,
+    ) -> "RealVoxelGrid":
+        ...
+
+    @classmethod
+    def from_density_grid(
+        cls: Type["RealVoxelGrid"],
+        density_grid: RealVolume,
+        voxel_size: Real_ | float = 1.0,
+        coordinate_grid: Optional[VolumeCoords] = None,
+        n_stacked_dims: int = 0,
+        crop_scale: Optional[float] = None,
+        **kwargs: Any,
+    ) -> "RealVoxelGrid":
+        # Change how template sits in the box.
+        # Ideally we would change this in the same way for all
+        # I/O methods. However, the algorithms used all
+        # have their own xyz conventions. The choice here is to
+        # make jax-finufft output match cisTEM.
+        density_grid = jnp.transpose(density_grid, axes=[-2, -1, -3])
+        # Make coordinates if not given
+        if coordinate_grid is None:
+            # Option for cropping template
+            if crop_scale is not None:
+                if crop_scale > 1.0:
+                    raise ValueError("crop_scale must be less than 1.0")
+                cropped_shape = tuple(
+                    [int(s * crop_scale) for s in density_grid.shape[-3:]]
+                )
+                density_grid = crop(density_grid, cropped_shape)
+            coordinate_grid = make_coordinates(density_grid.shape[-3:])
+
+        return cls(
+            weights=density_grid,
+            coordinate_grid=CoordinateGrid(coordinate_grid),
+            voxel_size=voxel_size,
+            n_stacked_dims=n_stacked_dims,
         )
 
 
@@ -279,12 +396,12 @@ class VoxelCloud(Voxels):
     """
 
     weights: RealCloud = field()
-    coordinate_list: CloudCoords3D = field(stack=False)
+    coordinate_list: CoordinateList = field()
 
     is_real: ClassVar[bool] = True
 
     @cached_property
-    def coordinate_list_in_angstroms(self) -> CloudCoords3D:
+    def coordinate_list_in_angstroms(self) -> CoordinateList:
         return self.voxel_size * self.coordinate_list
 
     def rotate_to_pose(self, pose: Pose) -> Self:
@@ -297,42 +414,53 @@ class VoxelCloud(Voxels):
         return eqx.tree_at(
             lambda d: d.coordinate_list,
             self,
-            pose.rotate(self.coordinate_list, is_real=self.is_real),
+            CoordinateList(
+                pose.rotate(self.coordinate_list.get(), is_real=self.is_real)
+            ),
+            is_leaf=lambda x: isinstance(x, CoordinateList),
         )
 
     @classmethod
     def from_density_grid(
         cls: Type["VoxelCloud"],
         density_grid: RealVolume,
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
-        mask_zeros: bool = True,
+        n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> "VoxelCloud":
+        if n_stacked_dims != 0:
+            raise NotImplementedError("Stacked VoxelClouds are not supported.")
         # Change how template sits in the box.
         # Ideally we would change this in the same way for all
         # I/O methods. However, the algorithms used all
         # have their own xyz conventions. The choice here is to
         # make jax-finufft output match cisTEM.
-        density_grid = jnp.transpose(density_grid, axes=[1, 2, 0])
+        density_grid = jnp.transpose(density_grid, axes=[-2, -1, -3])
         # Make coordinates if not given
         if coordinate_grid is None:
             coordinate_grid = make_coordinates(density_grid.shape)
-        # Load flattened density and coordinates
-        if not mask_zeros:
-            flat_density = density_grid.ravel()
-            coordinate_list = coordinate_grid.ravel()
-        else:
-            # ... mask zeros if desired to store smaller arrays. This
-            # option is not jittable.
-            nonzero = jnp.where(~jnp.isclose(density_grid, 0.0, **kwargs))
-            flat_density = density_grid[nonzero]
-            coordinate_list = coordinate_grid[nonzero]
+        # ... mask zeros to store smaller arrays. This
+        # option is not jittable.
+        nonzero = jnp.where(~jnp.isclose(density_grid, 0.0, **kwargs))
+        flat_density = density_grid[nonzero]
+        coordinate_list = coordinate_grid[nonzero]
 
         return cls(
             weights=flat_density,
-            coordinate_list=coordinate_list,
+            coordinate_list=CoordinateList(coordinate_list),
             voxel_size=voxel_size,
+            n_stacked_dims=0,
+        )
+
+    @override
+    def __getitem__(self, idx):
+        raise NotImplementedError("Indexing a VoxelCloud is not implemented.")
+
+    @override
+    def __len__(self) -> int:
+        raise NotImplementedError(
+            "Getting the length VoxelCloud is not implemented."
         )
 
 
