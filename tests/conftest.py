@@ -88,8 +88,8 @@ def pose():
 
 
 @pytest.fixture
-def ensemble(density, pose):
-    return cs.Ensemble(density=density, pose=pose)
+def specimen(density, pose):
+    return cs.Specimen(density=density, pose=pose)
 
 
 @pytest.fixture
@@ -98,30 +98,30 @@ def solvent():
 
 
 @pytest.fixture
-def noiseless_model(scattering, ensemble, instrument):
+def noiseless_model(scattering, specimen, instrument):
     instrument = eqx.tree_at(
         lambda ins: ins.detector, instrument, cs.NullDetector()
     )
     return cs.ImagePipeline(
-        scattering=scattering, ensemble=ensemble, instrument=instrument
+        scattering=scattering, specimen=specimen, instrument=instrument
     )
 
 
 @pytest.fixture
-def noisy_model(scattering, ensemble, instrument, solvent):
+def noisy_model(scattering, specimen, instrument, solvent):
     return cs.ImagePipeline(
         scattering=scattering,
-        ensemble=ensemble,
+        specimen=specimen,
         instrument=instrument,
         solvent=solvent,
     )
 
 
 @pytest.fixture
-def filtered_model(scattering, ensemble, instrument, solvent, filters):
+def filtered_model(scattering, specimen, instrument, solvent, filters):
     return cs.ImagePipeline(
         scattering=scattering,
-        ensemble=ensemble,
+        specimen=specimen,
         instrument=instrument,
         solvent=solvent,
         filter=filters,
@@ -130,11 +130,11 @@ def filtered_model(scattering, ensemble, instrument, solvent, filters):
 
 @pytest.fixture
 def filtered_and_masked_model(
-    scattering, ensemble, instrument, solvent, filters, masks
+    scattering, specimen, instrument, solvent, filters, masks
 ):
     return cs.ImagePipeline(
         scattering=scattering,
-        ensemble=ensemble,
+        specimen=specimen,
         instrument=instrument,
         solvent=solvent,
         filter=filters,

@@ -15,13 +15,13 @@ import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from .ensemble import Ensemble, Conformation
+from .specimen import Specimen, Ensemble, Conformation
 from .pose import Pose
 from .scattering import ScatteringModel
 from .instrument import Instrument
 from .detector import NullDetector
 from .ice import Ice, NullIce
-from ..image import rfftn, irfftn, FilterType, MaskType
+from ..image import rfftn, irfftn, Filter, Mask
 from ..core import field
 from ..typing import ComplexImage, RealImage, Image
 
@@ -35,7 +35,7 @@ class ImagePipeline(Module):
 
     Attributes
     ----------
-    ensemble :
+    specimen :
         The ensemble from which to render images.
     scattering :
         The scattering model.
@@ -49,13 +49,13 @@ class ImagePipeline(Module):
         A mask to apply to the image.
     """
 
-    ensemble: Ensemble = field()
+    specimen: Specimen | Ensemble = field()
     scattering: ScatteringModel = field()
     instrument: Instrument = field(default_factory=Instrument)
     solvent: Ice = field(default_factory=NullIce)
 
-    filter: Optional[FilterType] = field(default=None)
-    mask: Optional[MaskType] = field(default=None)
+    filter: Optional[Filter] = field(default=None)
+    mask: Optional[Mask] = field(default=None)
 
     def render(
         self,
@@ -80,14 +80,14 @@ class ImagePipeline(Module):
         """
         freqs = self.scattering.padded_frequency_grid_in_angstroms.get()
         # Draw the electron density at a particular conformation and pose
-        density = self.ensemble.density_at_conformation_and_pose
+        density = self.specimen.get_density()
         # Compute the scattering image in fourier space
         image = self.scattering(density)
         # Apply translation
-        image *= self.ensemble.pose.shifts(freqs)
+        image *= self.specimen.pose.shifts(freqs)
         # Measure the image with the instrument
         # ... first compute and apply CTF
-        ctf = self.instrument.optics(freqs, pose=self.ensemble.pose)
+        ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
         image = ctf * image
         # ... then apply the electron exposure model
         scaling, offset = self.instrument.exposure.scaling(

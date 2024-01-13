@@ -52,20 +52,21 @@ manager = cs.ImageManager(shape=(320, 320))
 scattering = cs.FourierSliceExtract(manager, pixel_size=pixel_size)
 ```
 
-Here, `filename` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the `Ensemble` of biological specimen.
+Here, `filename` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the biological `Specimen`.
 
 ```python
 # Translations in Angstroms, angles in degrees
 pose = cs.EulerPose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0, view_psi=-10.0)
-ensemble = cs.Ensemble(density=density, pose=pose)
+specimen = cs.Specimen(density=density, pose=pose)
 ```
 
-Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead a stack of `ElectronDensity` is loaded, the `Ensemble` can be evaluated at a particular conformation.
+Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead a stack of `ElectronDensity` is loaded, an `Ensemble` can be loaded, which is a `Specimen` that can be evaluated at a particular conformation.
 
 ```python
 filenames = ...
 density = cs.FourierVoxelGrid.from_list([cs.FourierVoxelGrid.from_file(filename) for filename in filenames])
-ensemble = cs.Ensemble(density=density, pose=pose, conformation=0)
+conformation = cs.Conformation(0)
+specimen = cs.Ensemble(density=density, pose=pose, conformation=conformation)
 ```
 
 The stack of electron densities is stored in a single `ElectronDensity`, whose parameters now have a leading batch dimension. This can either be used to simulate an image at a particular conformation.
@@ -83,7 +84,7 @@ explicitly configured here. Finally, we can instantiate the `ImagePipeline`.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
-pipeline = cs.ImagePipeline(scattering=scattering, ensemble=ensemble, instrument=instrument)
+pipeline = cs.ImagePipeline(scattering=scattering, specimen=specimen, instrument=instrument)
 image = pipeline.sample(key)
 ```
 
@@ -105,7 +106,7 @@ filter = LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequenc
          * WhiteningFilter(freqs, micrograph=micrograph)
 mask = CircularMask(coords, radius=1.0)    # Cutoff pixels above radius equal to (half) image size
 pipeline = cs.ImagePipeline(
-    scattering=scattering, ensemble=ensemble, instrument=instrument, filter=filter, mask=mask
+    scattering=scattering, specimen=specimen, instrument=instrument, filter=filter, mask=mask
     )
 image = pipeline.sample(key)
 ```
@@ -144,7 +145,7 @@ def update_model(model, params):
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
     where = lambda model: (
-        model.pipeline.ensemble.pose.view_phi,
+        model.pipeline.specimen.pose.view_phi,
         model.pipeline.instrument.optics.defocus_u,
         model.pipeline.scattering.pixel_size
     )

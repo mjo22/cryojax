@@ -1,6 +1,6 @@
-from . import _field, _stacking
+from . import _field, _indexing
 
 from ._field import *
-from ._stacking import *
+from ._indexing import *
 
-__all__ = _field.__all__ + _stacking.__all__
+__all__ = _field.__all__ + _indexing.__all__

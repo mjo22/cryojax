@@ -153,7 +153,7 @@ class IndependentFourierGaussian(Distribution):
             # Variance from ice
             if isinstance(pipeline.solvent, GaussianIce):
                 ctf = pipeline.instrument.optics(
-                    freqs, pose=pipeline.ensemble.pose
+                    freqs, pose=pipeline.specimen.pose
                 )
                 variance += ctf**2 * pipeline.solvent.variance(freqs)
             return variance
