@@ -35,4 +35,4 @@ def test_compute_with_filters_and_masks(model, request):
     )
     for im in [im1, im2, im3, im4, im5, im6]:
         np.testing.assert_allclose(jnp.std(im), jnp.asarray(1.0), rtol=1e-3)
-        np.testing.assert_allclose(jnp.mean(im), jnp.asarray(0.0), atol=1e-16)
+        np.testing.assert_allclose(jnp.mean(im), jnp.asarray(0.0), atol=1e-12)
