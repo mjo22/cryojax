@@ -96,7 +96,7 @@ image = pipeline.render()
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
-from cryojax.core import LowpassFilter, WhiteningFilter, CircularMask
+from cryojax.image import LowpassFilter, WhiteningFilter, CircularMask
 
 micrograph = ...  # A micrograph used for whitening
 freqs = manager.padded_frequency_grid.get()  # Get the upsampled frequency grid

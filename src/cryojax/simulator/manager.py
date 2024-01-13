@@ -10,8 +10,13 @@ from typing import Any, Union, Callable, Optional
 
 from equinox import Module
 
-from ..core import field, CoordinateGrid, FrequencyGrid
-from ..image import make_coordinates, make_frequencies
+from ..core import field
+from ..image import (
+    make_coordinates,
+    make_frequencies,
+    CoordinateGrid,
+    FrequencyGrid,
+)
 from ..typing import Image
 from ..image import (
     crop,

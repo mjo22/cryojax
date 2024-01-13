@@ -4,11 +4,7 @@ Masks to apply to images in real space.
 
 from __future__ import annotations
 
-__all__ = [
-    "Mask",
-    "MaskType",
-    "CircularMask",
-]
+__all__ = ["Mask", "MaskType", "CircularMask", "compute_circular_mask"]
 
 from abc import abstractmethod
 from typing import Any, TypeVar
@@ -16,7 +12,7 @@ from equinox import Module
 
 import jax.numpy as jnp
 
-from ._field import field
+from ..core import field
 from ..typing import RealImage, ImageCoords
 
 
@@ -60,7 +56,6 @@ class _ProductMask(Mask):
     mask2: MaskType  # type: ignore
 
     def __init__(self, mask1: MaskType, mask2: MaskType):
-        super().__init__(**kwargs)
         self.mask1 = mask1
         self.mask2 = mask2
         self.mask = mask1.mask * mask2.mask
@@ -98,10 +93,10 @@ class CircularMask(Mask):
         super().__init__(**kwargs)
         self.radius = radius
         self.rolloff = rolloff
-        self.mask = _compute_circular_mask(freqs, self.radius, self.rolloff)
+        self.mask = compute_circular_mask(freqs, self.radius, self.rolloff)
 
 
-def _compute_circular_mask(
+def compute_circular_mask(
     coords: ImageCoords, cutoff: float = 0.95, rolloff: float = 0.05
 ) -> RealImage:
     """

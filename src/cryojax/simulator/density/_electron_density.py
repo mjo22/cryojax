@@ -11,7 +11,8 @@ from jaxtyping import PyTree
 from equinox import AbstractClassVar
 
 from ..pose import Pose
-from ...core import StackedModule, get_not_coordinate_filter_spec
+from ...core import StackedModule
+from ...image import get_not_coordinate_filter_spec
 
 
 ElectronDensityType = TypeVar("ElectronDensityType", bound="ElectronDensity")

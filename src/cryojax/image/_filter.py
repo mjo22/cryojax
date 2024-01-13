@@ -9,6 +9,8 @@ __all__ = [
     "FilterType",
     "LowpassFilter",
     "WhiteningFilter",
+    "compute_lowpass_filter",
+    "compute_whitening_filter",
 ]
 
 from abc import abstractmethod
@@ -19,8 +21,10 @@ import jax
 import jax.numpy as jnp
 from equinox import Module
 
-from ..image import powerspectrum, rfftn, make_frequencies
-from ._field import field
+from ._spectrum import powerspectrum
+from ._fft import rfftn
+from ._coordinates import make_frequencies
+from ..core import field
 from ..typing import Image, ImageCoords, RealImage
 
 FilterType = TypeVar("FilterType", bound="Filter")
@@ -105,7 +109,7 @@ class LowpassFilter(Filter):
         super().__init__(**kwargs)
         self.cutoff = cutoff
         self.rolloff = rolloff
-        self.filter = _compute_lowpass_filter(freqs, self.cutoff, self.rolloff)
+        self.filter = compute_lowpass_filter(freqs, self.cutoff, self.rolloff)
 
 
 class WhiteningFilter(Filter):
@@ -122,12 +126,12 @@ class WhiteningFilter(Filter):
         **kwargs: Any,
     ):
         super().__init__(**kwargs)
-        self.filter = _compute_whitening_filter(
+        self.filter = compute_whitening_filter(
             frequency_grid, micrograph, grid_spacing
         )
 
 
-def _compute_lowpass_filter(
+def compute_lowpass_filter(
     freqs: ImageCoords, cutoff: float = 0.667, rolloff: float = 0.05
 ) -> RealImage:
     """
@@ -171,7 +175,7 @@ def _compute_lowpass_filter(
     return mask
 
 
-def _compute_whitening_filter(
+def compute_whitening_filter(
     freqs: ImageCoords,
     micrograph: RealImage,
     grid_spacing: float = 1.0,

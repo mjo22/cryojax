@@ -21,8 +21,8 @@ from .scattering import ScatteringModel
 from .instrument import Instrument
 from .detector import NullDetector
 from .ice import Ice, NullIce
-from ..image import rfftn, irfftn
-from ..core import field, FilterType, MaskType
+from ..image import rfftn, irfftn, FilterType, MaskType
+from ..core import field
 from ..typing import ComplexImage, RealImage, Image
 
 

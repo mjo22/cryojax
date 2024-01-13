@@ -6,7 +6,7 @@ import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
-import cryojax.core as cc
+import cryojax.image as ci
 from cryojax.image import rfftn
 
 config.update("jax_enable_x64", True)
@@ -58,13 +58,13 @@ def stacked_density(density):
 
 @pytest.fixture
 def filters(manager):
-    return cc.LowpassFilter(manager.padded_frequency_grid.get())
+    return ci.LowpassFilter(manager.padded_frequency_grid.get())
     # return None
 
 
 @pytest.fixture
 def masks(manager):
-    return cc.CircularMask(manager.coordinate_grid.get())
+    return ci.CircularMask(manager.coordinate_grid.get())
 
 
 @pytest.fixture

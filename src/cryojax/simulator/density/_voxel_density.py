@@ -31,13 +31,16 @@ from ...io import (
     read_atomic_model_from_cif,
     get_scattering_info_from_gemmi_model,
 )
-from ...core import (
-    field,
+from ...core import field
+from cryojax.image import (
+    pad,
+    crop,
+    fftn,
+    make_coordinates,
     CoordinateGrid,
     CoordinateList,
     FrequencySlice,
 )
-from cryojax.image import pad, crop, fftn, make_coordinates
 from cryojax.typing import (
     RealCloud,
     RealVolume,

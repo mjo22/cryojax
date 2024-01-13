@@ -7,7 +7,7 @@ import jax.tree_util as jtu
 import jax.numpy as jnp
 import numpy as np
 import equinox as eqx
-import cryojax.core as cc
+import cryojax.image as ci
 import cryojax.simulator as cs
 
 from cryojax.io import load_mrc
@@ -30,11 +30,11 @@ def test_voxel_electron_density_loaders():
         assert density.n_stacked_dims == 0
         assert density.voxel_size == jnp.asarray(voxel_size)
 
-    assert isinstance(fourier_density.frequency_slice, cc.FrequencySlice)
+    assert isinstance(fourier_density.frequency_slice, ci.FrequencySlice)
     assert isinstance(fourier_density.frequency_slice.get(), VolumeSliceCoords)
-    assert isinstance(real_density.coordinate_grid, cc.CoordinateGrid)
+    assert isinstance(real_density.coordinate_grid, ci.CoordinateGrid)
     assert isinstance(real_density.coordinate_grid.get(), VolumeCoords)
-    assert isinstance(cloud_density.coordinate_list, cc.CoordinateList)
+    assert isinstance(cloud_density.coordinate_list, ci.CoordinateList)
     assert isinstance(cloud_density.coordinate_list.get(), CloudCoords3D)
 
 
@@ -94,7 +94,7 @@ def test_electron_density_shape(density):
 def test_electron_density_vmap(density, scattering):
     cls = type(density)
     stacked_density = cls.from_list([density for _ in range(3)])
-    to_vmap = cc.get_not_coordinate_filter_spec(stacked_density)
+    to_vmap = ci.get_not_coordinate_filter_spec(stacked_density)
     vmap, novmap = eqx.partition(stacked_density, to_vmap)
 
     @partial(jax.vmap, in_axes=[0, None, None])
