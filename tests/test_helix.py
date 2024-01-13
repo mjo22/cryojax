@@ -11,7 +11,7 @@ def build_helix(sample_subunit_mrc_path) -> cs.Helix:
     subunit_density = cs.FourierVoxelGrid.from_file(sample_subunit_mrc_path)
     r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
     pose = cs.EulerPose(*r_0)
-    ensemble = cs.Ensemble(subunit_density, pose)
+    ensemble = cs.Specimen(subunit_density, pose)
     return cs.Helix(
         ensemble, rise=21.8, twist=29.4, n_start=6, n_subunits_per_start=1
     )
@@ -46,7 +46,7 @@ def test_superposition_pipeline_without_conformation(
 ):
     helix = build_helix(sample_subunit_mrc_path)
     pipeline = cs.SuperpositionPipeline(
-        scattering=scattering, ensemble=helix.subunits
+        scattering=scattering, specimen=helix.subunits
     )
     image = pipeline.render()
 
@@ -56,7 +56,7 @@ def test_superposition_pipeline_with_conformation(
 ):
     helix = build_helix_with_conformation(sample_subunit_mrc_path)
     pipeline = cs.SuperpositionPipeline(
-        scattering=scattering, ensemble=helix.subunits
+        scattering=scattering, specimen=helix.subunits
     )
     image = pipeline.render()
 
@@ -73,7 +73,7 @@ def test_c6_rotation(sample_subunit_mrc_path, scattering, rotation_angle):
         where = lambda m: (m.pose.view_phi, m.pose.view_theta, m.pose.view_psi)
         helix = eqx.tree_at(where, helix, angles)
         pipeline = cs.SuperpositionPipeline(
-            scattering=scattering, ensemble=helix.subunits
+            scattering=scattering, specimen=helix.subunits
         )
         return pipeline.render()
 

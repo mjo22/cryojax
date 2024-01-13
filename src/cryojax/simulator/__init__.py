@@ -1,5 +1,4 @@
 from . import (
-    ensemble,
     manager,
     kernel,
     pose,
@@ -14,12 +13,13 @@ from . import (
     instrument,
     pipeline,
     distribution,
+    specimen,
 )
 
 from .manager import *
 from .kernel import *
 from .pose import *
-from .ensemble import *
+from .specimen import *
 from .assembly import *
 from .density import *
 from .scattering import *
@@ -37,7 +37,7 @@ __all__ = (
     manager.__all__
     + kernel.__all__
     + pose.__all__
-    + ensemble.__all__
+    + specimen.__all__
     + assembly.__all__
     + density.__all__
     + scattering.__all__
@@ -56,7 +56,7 @@ __all__.extend(
         manager,
         kernel,
         pose,
-        ensemble,
+        specimen,
         assembly,
         density,
         scattering,

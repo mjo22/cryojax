@@ -11,7 +11,7 @@ from jaxtyping import PyTree
 from equinox import AbstractClassVar
 
 from ..pose import Pose
-from ...core import StackedModule
+from ...core import IndexedModule
 from ...image import get_not_coordinate_filter_spec
 
 
@@ -28,7 +28,7 @@ def is_density_leaves(element: Any) -> bool | PyTree[bool]:
         return False
 
 
-class ElectronDensity(StackedModule):
+class ElectronDensity(IndexedModule):
     """
     Abstraction of an electron density distribution.
 

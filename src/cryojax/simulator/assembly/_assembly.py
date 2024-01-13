@@ -16,10 +16,8 @@ from functools import cached_property
 import jax.numpy as jnp
 import equinox as eqx
 
-from ..ensemble import Ensemble, Conformation
+from ..specimen import SpecimenLike, Specimen, Ensemble, Conformation
 from ..pose import Pose, EulerPose, MatrixPose
-
-from ...typing import Real_
 
 _Positions = Float[Array, "N 3"]
 """Type hint for array where each element is a subunit coordinate."""
@@ -53,7 +51,7 @@ class Assembly(eqx.Module):
         The conformation of each `subunit`.
     """
 
-    subunit: Ensemble
+    subunit: SpecimenLike
     pose: Pose
     conformation: Optional[Conformation] = None
 
@@ -69,6 +67,14 @@ class Assembly(eqx.Module):
         self.subunit = subunit
         self.pose = pose or EulerPose()
         self.conformation = None if conformation is None else conformation
+
+    def __check_init__(self):
+        if self.conformation is not None and not isinstance(
+            self.subunit, Ensemble
+        ):
+            raise AttributeError(
+                "conformation cannot be set if the subunit is not an Ensemble."
+            )
 
     @cached_property
     @abstractmethod
@@ -113,11 +119,13 @@ class Assembly(eqx.Module):
     def subunits(self) -> Ensemble:
         """Draw a realization of all of the subunits in the lab frame."""
         # Compute a list of subunits, configured at the correct conformations
-        if self.conformation is None:
+        if isinstance(self.subunit, Specimen):
             where = lambda s: s.pose
             return eqx.tree_at(where, self.subunit, self.poses)
-        else:
+        elif isinstance(self.subunit, Ensemble):
             where = lambda s: (s.conformation, s.pose)
             return eqx.tree_at(
                 where, self.subunit, (self.conformation, self.poses)
             )
+        else:
+            raise AttributeError("The subunit must be of type SpecimenLike.")

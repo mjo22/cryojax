@@ -35,7 +35,7 @@ def test_default_pose_images(noiseless_model):
     euler = cs.EulerPose()
     quat = cs.QuaternionPose()
     model_euler = eqx.tree_at(
-        lambda m: m.ensemble.pose, noiseless_model, euler
+        lambda m: m.specimen.pose, noiseless_model, euler
     )
-    model_quat = eqx.tree_at(lambda m: m.ensemble.pose, noiseless_model, quat)
+    model_quat = eqx.tree_at(lambda m: m.specimen.pose, noiseless_model, quat)
     np.testing.assert_allclose(model_euler.render(), model_quat.render())

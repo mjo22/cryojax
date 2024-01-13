@@ -78,7 +78,7 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: None,
-        n_stacked_dims: int,
+        n_indexed_dims: int,
         **kwargs: Any,
     ) -> VoxelType:
         ...
@@ -91,7 +91,7 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
-        n_stacked_dims: int,
+        n_indexed_dims: int,
         **kwargs: Any,
     ) -> VoxelType:
         ...
@@ -103,7 +103,7 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
-        n_stacked_dims: int = 0,
+        n_indexed_dims: int = 0,
         **kwargs: Any,
     ) -> VoxelType:
         """
@@ -245,12 +245,12 @@ class FourierVoxelGrid(Voxels):
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         pad_scale: float = 1.0,
-        n_stacked_dims: int = 0,
+        n_indexed_dims: int = 0,
         **kwargs: Any,
     ) -> "FourierVoxelGrid":
         # If voxel size is given as a float, broadcast to the stacked shape
-        if n_stacked_dims > 0:
-            stack_shape = density_grid.shape[:n_stacked_dims]
+        if n_indexed_dims > 0:
+            stack_shape = density_grid.shape[:n_indexed_dims]
             if isinstance(
                 voxel_size, (float, Float[Array, ""], Float[np.ndarray, ""])
             ):
@@ -258,11 +258,11 @@ class FourierVoxelGrid(Voxels):
             else:
                 if voxel_size.shape != stack_shape:
                     raise ValueError(
-                        "voxel_size.shape must match density_grid.shape[:n_stacked_dims]"
+                        "voxel_size.shape must match density_grid.shape[:n_indexed_dims]"
                     )
         # Change how template sits in box to match cisTEM
         density_grid = jnp.transpose(
-            density_grid, axes=[*tuple(range(n_stacked_dims)), -1, -2, -3]
+            density_grid, axes=[*tuple(range(n_indexed_dims)), -1, -2, -3]
         )
         # Pad template
         if pad_scale < 1.0:
@@ -284,7 +284,7 @@ class FourierVoxelGrid(Voxels):
             weights=fourier_density_grid,
             frequency_slice=frequency_slice,
             voxel_size=voxel_size,
-            n_stacked_dims=n_stacked_dims,
+            n_indexed_dims=n_indexed_dims,
         )
 
 
@@ -333,7 +333,7 @@ class RealVoxelGrid(Voxels):
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
-        n_stacked_dims: int,
+        n_indexed_dims: int,
         crop_scale: None,
         **kwargs: Any,
     ) -> "RealVoxelGrid":
@@ -346,7 +346,7 @@ class RealVoxelGrid(Voxels):
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: None,
-        n_stacked_dims: int,
+        n_indexed_dims: int,
         crop_scale: Optional[float],
         **kwargs: Any,
     ) -> "RealVoxelGrid":
@@ -358,13 +358,13 @@ class RealVoxelGrid(Voxels):
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
-        n_stacked_dims: int = 0,
+        n_indexed_dims: int = 0,
         crop_scale: Optional[float] = None,
         **kwargs: Any,
     ) -> "RealVoxelGrid":
         # If voxel size is given as a float, broadcast to the stacked shape
-        if n_stacked_dims > 0:
-            stack_shape = density_grid.shape[:n_stacked_dims]
+        if n_indexed_dims > 0:
+            stack_shape = density_grid.shape[:n_indexed_dims]
             if isinstance(
                 voxel_size, (float, Float[Array, ""], Float[np.ndarray, ""])
             ):
@@ -372,7 +372,7 @@ class RealVoxelGrid(Voxels):
             else:
                 if voxel_size.shape != stack_shape:
                     raise ValueError(
-                        "voxel_size.shape must match density_grid.shape[:n_stacked_dims]"
+                        "voxel_size.shape must match density_grid.shape[:n_indexed_dims]"
                     )
         # Change how template sits in the box.
         # Ideally we would change this in the same way for all
@@ -380,7 +380,7 @@ class RealVoxelGrid(Voxels):
         # have their own xyz conventions. The choice here is to
         # make jax-finufft output match cisTEM.
         density_grid = jnp.transpose(
-            density_grid, axes=[*tuple(range(n_stacked_dims)), -2, -1, -3]
+            density_grid, axes=[*tuple(range(n_indexed_dims)), -2, -1, -3]
         )
         # Make coordinates if not given
         if coordinate_grid is None:
@@ -398,7 +398,7 @@ class RealVoxelGrid(Voxels):
             weights=density_grid,
             coordinate_grid=coordinate_grid,
             voxel_size=voxel_size,
-            n_stacked_dims=n_stacked_dims,
+            n_indexed_dims=n_indexed_dims,
         )
 
 
@@ -448,10 +448,10 @@ class VoxelCloud(Voxels):
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
-        n_stacked_dims: int = 0,
+        n_indexed_dims: int = 0,
         **kwargs: Any,
     ) -> "VoxelCloud":
-        if n_stacked_dims != 0:
+        if n_indexed_dims != 0:
             raise NotImplementedError("Stacked VoxelClouds are not supported.")
         # Change how template sits in the box.
         # Ideally we would change this in the same way for all
@@ -472,7 +472,7 @@ class VoxelCloud(Voxels):
             weights=flat_density,
             coordinate_list=CoordinateList(coordinate_list),
             voxel_size=voxel_size,
-            n_stacked_dims=0,
+            n_indexed_dims=0,
         )
 
     @override
