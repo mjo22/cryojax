@@ -77,6 +77,10 @@ class ScatteringModel(Module):
         Compute an image at the exit plane, measured at the ScatteringModel
         pixel size and post-processed with the ImageManager utilities.
         """
+        if density.n_indexed_dims != 0:
+            raise AttributeError(
+                "ElectronDensity.n_indexed_dims must be zero when passing to ScatteringModel"
+            )
         image = self.scatter(density, **kwargs)
         if isinstance(density, FourierVoxelGrid):
             # Resize the image to match the ImageManager.padded_shape
