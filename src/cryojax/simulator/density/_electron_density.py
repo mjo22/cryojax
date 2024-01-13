@@ -2,18 +2,29 @@
 Base electron density representation.
 """
 
-__all__ = ["ElectronDensity", "ElectronDensityType"]
+__all__ = ["is_density_leaves", "ElectronDensity", "ElectronDensityType"]
 
 from abc import abstractmethod
 from typing import Type, Any, TypeVar
 from typing_extensions import Self
+from jaxtyping import PyTree
 from equinox import AbstractClassVar
 
 from ..pose import Pose
-from ...core import StackedModule
+from ...core import StackedModule, get_not_coordinate_filter_spec
 
 
 ElectronDensityType = TypeVar("ElectronDensityType", bound="ElectronDensity")
+
+
+def is_density_leaves(element: Any) -> bool | PyTree[bool]:
+    """Returns a filter spec that is ``True`` at the ``ElectronDensity``
+    leaves, besides its coordinates.
+    """
+    if isinstance(element, ElectronDensity):
+        return get_not_coordinate_filter_spec(element)
+    else:
+        return False
 
 
 class ElectronDensity(StackedModule):

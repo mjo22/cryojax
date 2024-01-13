@@ -5,6 +5,9 @@ Coordinate functionality in cryojax.
 from __future__ import annotations
 
 __all__ = [
+    "is_not_coordinate_array",
+    "get_not_coordinate_filter_spec",
+    "Coordinates",
     "CoordinateList",
     "CoordinateGrid",
     "FrequencyGrid",
@@ -12,11 +15,12 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from jaxtyping import ArrayLike, Array, Float
-from typing import TypeVar, Optional
+from jaxtyping import ArrayLike, Array, PyTree
+from typing import TypeVar, Optional, Any
 from typing_extensions import overload
 
 import equinox as eqx
+import jax.tree_util as jtu
 import jax.numpy as jnp
 
 from ..typing import (
@@ -31,6 +35,29 @@ from ..image import make_coordinates, make_frequencies
 
 CoordinateType = TypeVar("CoordinateType", bound="Coordinates")
 """Type hint for a coordinate-like object."""
+
+
+#
+# Filter functions
+#
+def is_not_coordinate_array(element: Any) -> bool:
+    """Returns ``False`` if ``element`` is ``Coordinates``."""
+    if isinstance(element, Coordinates):
+        return False
+    else:
+        return eqx.is_array(element)
+
+
+#
+# Common filter specs
+#
+def get_not_coordinate_filter_spec(pytree: PyTree) -> PyTree[bool]:
+    """Filter spec that is ``True`` for all arrays that are not ``Coordinates``."""
+    return jtu.tree_map(
+        is_not_coordinate_array,
+        pytree,
+        is_leaf=lambda x: isinstance(x, Coordinates),
+    )
 
 
 class Coordinates(eqx.Module):

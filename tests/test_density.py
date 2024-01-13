@@ -94,9 +94,7 @@ def test_electron_density_shape(density):
 def test_electron_density_vmap(density, scattering):
     cls = type(density)
     stacked_density = cls.from_list([density for _ in range(3)])
-    to_vmap = jtu.tree_map(
-        cc.is_not_coordinate_array, stacked_density, is_leaf=cc.is_coordinates
-    )
+    to_vmap = cc.get_not_coordinate_filter_spec(stacked_density)
     vmap, novmap = eqx.partition(stacked_density, to_vmap)
 
     @partial(jax.vmap, in_axes=[0, None, None])
@@ -106,5 +104,27 @@ def test_electron_density_vmap(density, scattering):
 
     # vmap over first axis
     image_stack = compute_image_stack(vmap, novmap, scattering)
+    assert image_stack.shape[:1] == stacked_density.stack_shape
+    assert image_stack.shape[0] == len(stacked_density)
+
+
+def test_electron_density_vmap_with_pipeline(density, pose, scattering):
+    cls = type(density)
+    stacked_density = cls.from_list([density for _ in range(3)])
+    pipeline = cs.ImagePipeline(cs.Ensemble(stacked_density, pose), scattering)
+    to_vmap = jtu.tree_map(
+        cs.is_density_leaves,
+        pipeline,
+        is_leaf=lambda x: isinstance(x, cs.ElectronDensity),
+    )
+    vmap, novmap = eqx.partition(pipeline, to_vmap)
+
+    @partial(jax.vmap, in_axes=[0, None])
+    def compute_image_stack(vmap, novmap):
+        pipeline = eqx.combine(vmap, novmap)
+        return pipeline.render()
+
+    # vmap over first axis
+    image_stack = compute_image_stack(vmap, novmap)
     assert image_stack.shape[:1] == stacked_density.stack_shape
     assert image_stack.shape[0] == len(stacked_density)
