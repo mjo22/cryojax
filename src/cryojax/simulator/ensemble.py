@@ -51,12 +51,6 @@ class Ensemble(Module):
         self.pose = pose or EulerPose()
         self.conformation = None if conformation is None else conformation
 
-    def __check_init__(self):
-        if self.density.n_stacked_dims != 1 and self.conformation is not None:
-            raise ValueError(
-                "ElectronDensity.n_stacked_dims must be 1 if conformation is set."
-            )
-
     @cached_property
     def density_at_conformation_and_pose(self) -> ElectronDensity:
         """Get the electron density at the configured pose and conformation."""
@@ -64,7 +58,10 @@ class Ensemble(Module):
             density = self.density
         else:
             funcs = [
-                lambda i=i: self.density[i] for i in range(len(self.density))
+                lambda i=i: self.density[
+                    jnp.unravel_index(i, self.density.stack_shape)
+                ]
+                for i in range(len(self.density))
             ]
             density = jax.lax.switch(self.conformation.get(), funcs)
 
