@@ -7,7 +7,7 @@ __pycache__/
 *.so
 
 # VS Code
-.vscode/setings.json
+.vscode/settings.json
 
 # Save history
 *.swp
