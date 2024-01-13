@@ -10,7 +10,7 @@ __all__ = ["Assembly"]
 
 from abc import abstractmethod
 from typing import Optional, Any
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Float
 from functools import cached_property
 
 import jax.numpy as jnp

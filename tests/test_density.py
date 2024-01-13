@@ -4,8 +4,65 @@ from functools import partial
 
 import jax
 import jax.tree_util as jtu
+import jax.numpy as jnp
+import numpy as np
 import equinox as eqx
 import cryojax.core as cc
+import cryojax.simulator as cs
+
+from cryojax.io import load_mrc
+from cryojax.typing import VolumeSliceCoords, VolumeCoords, CloudCoords3D
+
+
+def test_voxel_electron_density_loaders():
+    density_grid = jnp.zeros((10, 10, 10), dtype=float)
+    voxel_size = 1.1
+    fourier_density = cs.FourierVoxelGrid.from_density_grid(
+        density_grid, voxel_size=voxel_size
+    )
+    real_density = cs.RealVoxelGrid.from_density_grid(
+        density_grid, voxel_size=voxel_size
+    )
+    cloud_density = cs.VoxelCloud.from_density_grid(
+        density_grid, voxel_size=voxel_size
+    )
+    for density in [real_density, fourier_density, cloud_density]:
+        assert density.n_stacked_dims == 0
+        assert density.voxel_size == jnp.asarray(voxel_size)
+
+    assert isinstance(fourier_density.frequency_slice, cc.FrequencySlice)
+    assert isinstance(fourier_density.frequency_slice.get(), VolumeSliceCoords)
+    assert isinstance(real_density.coordinate_grid, cc.CoordinateGrid)
+    assert isinstance(real_density.coordinate_grid.get(), VolumeCoords)
+    assert isinstance(cloud_density.coordinate_list, cc.CoordinateList)
+    assert isinstance(cloud_density.coordinate_list.get(), CloudCoords3D)
+
+
+@pytest.mark.parametrize(
+    "stack_shape,voxel_size,n_stacked_dims",
+    [((2,), 1.1, 1), ((2, 3), 1.1, 2), ((2, 2), jnp.full((2, 2), 1.1), 2)],
+)
+def test_voxel_electron_density_stacked_loader(
+    stack_shape, voxel_size, n_stacked_dims
+):
+    density_grid = jnp.zeros((*stack_shape, 10, 10, 10), dtype=float)
+    fourier_density = cs.FourierVoxelGrid.from_density_grid(
+        density_grid,
+        voxel_size=voxel_size,
+        n_stacked_dims=n_stacked_dims,
+    )
+    real_density = cs.RealVoxelGrid.from_density_grid(
+        density_grid,
+        voxel_size=voxel_size,
+        n_stacked_dims=n_stacked_dims,
+    )
+    for density in [real_density, fourier_density]:
+        assert density.n_stacked_dims == n_stacked_dims
+        assert density.weights.shape[: density.n_stacked_dims] == stack_shape
+        assert density.stack_shape == stack_shape
+        np.testing.assert_allclose(
+            density.voxel_size, jnp.full(stack_shape, voxel_size)
+        )
 
 
 def test_electron_density_indexing(density):
