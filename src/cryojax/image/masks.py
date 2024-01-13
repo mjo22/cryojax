@@ -4,7 +4,7 @@ Masks to apply to images in real space.
 
 from __future__ import annotations
 
-__all__ = ["Mask", "MaskType", "CircularMask", "compute_circular_mask"]
+__all__ = ["Mask", "MaskT", "CircularMask", "compute_circular_mask"]
 
 from abc import abstractmethod
 from typing import Any, TypeVar
@@ -16,7 +16,7 @@ from ..core import field
 from ..typing import RealImage, ImageCoords
 
 
-MaskType = TypeVar("MaskType", bound="Mask")
+MaskT = TypeVar("MaskT", bound="Mask")
 """TypeVar for the Mask base class."""
 
 
@@ -42,10 +42,10 @@ class Mask(Module):
         """Apply the mask to an image."""
         return self.mask * image
 
-    def __mul__(self: MaskType, other: MaskType) -> _ProductMask:
+    def __mul__(self: MaskT, other: MaskT) -> _ProductMask:
         return _ProductMask(mask1=self, mask2=other)
 
-    def __rmul__(self: MaskType, other: MaskType) -> _ProductMask:
+    def __rmul__(self: MaskT, other: MaskT) -> _ProductMask:
         return _ProductMask(mask1=other, mask2=self)
 
 
@@ -55,7 +55,7 @@ class _ProductMask(Mask):
     mask1: Mask
     mask2: Mask
 
-    def __init__(self, mask1: MaskType, mask2: MaskType):
+    def __init__(self, mask1: MaskT, mask2: MaskT):
         self.mask1 = mask1
         self.mask2 = mask2
         self.mask = mask1.mask * mask2.mask

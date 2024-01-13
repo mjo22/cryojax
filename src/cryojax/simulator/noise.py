@@ -11,7 +11,7 @@ import jax.random as jr
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from .kernel import Kernel, Constant
+from ..image import Kernel, Constant
 from ..core import field
 from ..typing import ImageCoords, ComplexImage
 

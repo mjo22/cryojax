@@ -4,7 +4,7 @@ Abstractions of biological specimen.
 
 from __future__ import annotations
 
-__all__ = ["SpecimenBase", "Specimen", "Ensemble", "Conformation"]
+__all__ = ["SpecimenT", "SpecimenBase", "Specimen", "Ensemble", "Conformation"]
 
 from abc import abstractmethod
 from typing import Optional, TypeVar
@@ -21,7 +21,7 @@ from ..core import field
 from ..typing import Int_
 
 
-SpecimenType = TypeVar("SpecimenType", bound="SpecimenBase")
+SpecimenT = TypeVar("SpecimenT", bound="SpecimenBase")
 
 
 class SpecimenBase(Module):

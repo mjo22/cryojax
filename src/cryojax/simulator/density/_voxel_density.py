@@ -4,7 +4,7 @@ Voxel-based electron density representations.
 
 __all__ = [
     "Voxels",
-    "VoxelType",
+    "VoxelT",
     "RealVoxelGrid",
     "FourierVoxelGrid",
     "VoxelCloud",
@@ -51,7 +51,7 @@ from cryojax.typing import (
     Real_,
 )
 
-VoxelType = TypeVar("VoxelType", bound="Voxels")
+VoxelT = TypeVar("VoxelT", bound="Voxels")
 """Type hint for a voxel-based electron density."""
 
 
@@ -74,38 +74,38 @@ class Voxels(ElectronDensity):
     @classmethod
     @abstractmethod
     def from_density_grid(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: None,
         n_indexed_dims: int,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         ...
 
     @overload
     @classmethod
     @abstractmethod
     def from_density_grid(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
         n_indexed_dims: int,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         ...
 
     @classmethod
     @abstractmethod
     def from_density_grid(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         n_indexed_dims: int = 0,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """
         Load a Voxels object from real-valued 3D electron
         density map.
@@ -114,12 +114,12 @@ class Voxels(ElectronDensity):
 
     @classmethod
     def from_gemmi(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         model,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """
         Loads a PDB file as a Voxels subclass.  Uses the Gemmi library.
         Heavily based on a code from Frederic Poitevin, located at
@@ -144,11 +144,11 @@ class Voxels(ElectronDensity):
 
     @classmethod
     def from_file(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         filename: str,
         *args: Any,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """Load a voxel-based electron density."""
         path = pathlib.Path(filename)
         if path.suffix == ".mrc":
@@ -164,10 +164,10 @@ class Voxels(ElectronDensity):
 
     @classmethod
     def from_mrc(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         filename: str,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """Load Voxels from MRC file format."""
         density_grid, voxel_size = load_mrc(filename)
         return cls.from_density_grid(
@@ -176,24 +176,24 @@ class Voxels(ElectronDensity):
 
     @classmethod
     def from_pdb(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """Load Voxels from PDB file format."""
         model = read_atomic_model_from_pdb(filename)
         return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
 
     @classmethod
     def from_cif(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """Load Voxels from CIF file format."""
         model = read_atomic_model_from_cif(filename)
         return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)

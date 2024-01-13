@@ -6,7 +6,7 @@ from __future__ import annotations
 
 __all__ = [
     "Filter",
-    "FilterType",
+    "FilterT",
     "LowpassFilter",
     "WhiteningFilter",
     "compute_lowpass_filter",
@@ -23,11 +23,11 @@ from equinox import Module
 
 from ._spectrum import powerspectrum
 from ._fft import rfftn
-from ._coordinates import make_frequencies
+from .coordinates import make_frequencies
 from ..core import field
 from ..typing import Image, ImageCoords, RealImage
 
-FilterType = TypeVar("FilterType", bound="Filter")
+FilterT = TypeVar("FilterT", bound="Filter")
 """TypeVar for the Filter base class."""
 
 
@@ -53,10 +53,10 @@ class Filter(Module):
         """Apply the filter to an image."""
         return self.filter * image
 
-    def __mul__(self: FilterType, other: FilterType) -> _ProductFilter:
+    def __mul__(self: FilterT, other: FilterT) -> _ProductFilter:
         return _ProductFilter(filter1=self, filter2=other)
 
-    def __rmul__(self: FilterType, other: FilterType) -> _ProductFilter:
+    def __rmul__(self: FilterT, other: FilterT) -> _ProductFilter:
         return _ProductFilter(filter1=other, filter2=self)
 
 
@@ -68,7 +68,7 @@ class _ProductFilter(Filter):
 
     @override
     def __init__(
-        self, filter1: FilterType, filter2: FilterType, **kwargs: Any
+        self, filter1: FilterT, filter2: FilterT, **kwargs: Any
     ) -> None:
         super().__init__(**kwargs)
         self.filter1 = filter1

@@ -8,6 +8,7 @@ __all__ = [
     "rotate_coordinates",
     "compute_shifts",
     "make_euler_rotation",
+    "PoseT",
     "Pose",
     "EulerPose",
     "QuaternionPose",
@@ -15,9 +16,9 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Union, Optional, Any
+from typing import Union, Optional, Any, TypeVar
 from typing_extensions import override
-from jaxtyping import Float, Array, Shaped
+from jaxtyping import Float, Array
 from functools import cached_property
 
 import jax
@@ -38,6 +39,9 @@ from ..typing import (
 _RotationMatrix3D = Float[Array, "3 3"]
 _Vector3D = Float[Array, "3"]
 _Vector2D = Float[Array, "2"]
+
+PoseT = TypeVar("PoseT", bound="Pose")
+"""TypeVar for the Pose base class."""
 
 
 class Pose(Module):

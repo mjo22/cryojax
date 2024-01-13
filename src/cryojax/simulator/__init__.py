@@ -1,23 +1,20 @@
 from . import (
+    detector,
+    exposure,
+    ice,
+    instrument,
     manager,
-    kernel,
+    noise,
+    optics,
+    pipeline,
     pose,
     assembly,
     density,
     scattering,
-    noise,
-    ice,
-    optics,
-    exposure,
-    detector,
-    instrument,
-    pipeline,
-    distribution,
     specimen,
 )
 
 from .manager import *
-from .kernel import *
 from .pose import *
 from .specimen import *
 from .assembly import *
@@ -30,12 +27,10 @@ from .exposure import *
 from .detector import *
 from .instrument import *
 from .pipeline import *
-from .distribution import *
 
 
 __all__ = (
     manager.__all__
-    + kernel.__all__
     + pose.__all__
     + specimen.__all__
     + assembly.__all__
@@ -48,13 +43,11 @@ __all__ = (
     + detector.__all__
     + instrument.__all__
     + pipeline.__all__
-    + distribution.__all__
 )
 
 __all__.extend(
     [
         manager,
-        kernel,
         pose,
         specimen,
         assembly,
@@ -67,6 +60,5 @@ __all__.extend(
         detector,
         instrument,
         pipeline,
-        distribution,
     ]
 )

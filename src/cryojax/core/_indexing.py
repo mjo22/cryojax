@@ -4,7 +4,7 @@ Utilities for cryojax modules that can be stacked along leading axes and indexed
 
 from __future__ import annotations
 
-__all__ = ["IndexedModule", "IndexedType"]
+__all__ = ["IndexedModule", "IndexedT"]
 
 import math
 import dataclasses
@@ -18,7 +18,7 @@ import jax.numpy as jnp
 from ._field import field
 
 
-IndexedType = TypeVar("IndexedType", bound="IndexedModule")
+IndexedT = TypeVar("IndexedT", bound="IndexedModule")
 
 
 class IndexedModule(eqx.Module):
@@ -36,9 +36,7 @@ class IndexedModule(eqx.Module):
             )
 
     @classmethod
-    def from_list(
-        cls: Type[IndexedType], modules: list[IndexedType]
-    ) -> IndexedType:
+    def from_list(cls: Type[IndexedT], modules: list[IndexedT]) -> IndexedT:
         """
         Stack a list of IndexedModules along a leading axis.
         """

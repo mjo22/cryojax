@@ -8,6 +8,7 @@ __all__ = [
     "is_not_coordinate_array",
     "get_not_coordinate_filter_spec",
     "Coordinates",
+    "CoordinateT",
     "CoordinateList",
     "CoordinateGrid",
     "FrequencyGrid",
@@ -36,7 +37,7 @@ from ..typing import (
 )
 
 
-CoordinateType = TypeVar("CoordinateType", bound="Coordinates")
+CoordinateT = TypeVar("CoordinateT", bound="Coordinates")
 """Type hint for a coordinate-like object."""
 
 
@@ -79,19 +80,19 @@ class Coordinates(eqx.Module):
         """Get the coordinates."""
         return self._coordinates
 
-    def __mul__(self: CoordinateType, arr: ArrayLike) -> CoordinateType:
+    def __mul__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
         cls = type(self)
         return cls(self._coordinates * jnp.asarray(arr))
 
-    def __rmul__(self: CoordinateType, arr: ArrayLike) -> CoordinateType:
+    def __rmul__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
         cls = type(self)
         return cls(jnp.asarray(arr) * self._coordinates)
 
-    def __truediv__(self: CoordinateType, arr: ArrayLike) -> CoordinateType:
+    def __truediv__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
         cls = type(self)
         return cls(self._coordinates / jnp.asarray(arr))
 
-    def __rtruediv__(self: CoordinateType, arr: ArrayLike) -> CoordinateType:
+    def __rtruediv__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
         cls = type(self)
         return cls(jnp.asarray(arr) / self._coordinates)
 

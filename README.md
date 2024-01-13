@@ -115,6 +115,7 @@ image = pipeline.sample(key)
 
 ```python
 from cryojax.image import rfftn
+from cryojax.inference import distributions
 
 # Read observed data in real space
 observed = ...
@@ -123,7 +124,7 @@ observed = manager.normalize_image(observed, is_real=True)
 # Upsample observed data in fourier space
 observed = rfftn(manager.pad_to_padded_shape(observed))
 # Instantiate distribution and compute
-model = cs.IndependentFourierGaussian(pipeline)
+model = distributions.IndependentFourierGaussian(pipeline)
 log_likelihood = model.log_probability(observed)
 ```
 

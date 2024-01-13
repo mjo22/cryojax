@@ -20,7 +20,7 @@ import jax.numpy as jnp
 from equinox import Module
 
 from .pose import Pose
-from .kernel import Kernel
+from ..image import Kernel
 from ..core import field
 from ..image import cartesian_to_polar
 from ..typing import Real_, RealImage, Image, ImageCoords

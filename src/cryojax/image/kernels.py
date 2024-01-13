@@ -9,7 +9,7 @@ from __future__ import annotations
 
 __all__ = [
     "Kernel",
-    "KernelType",
+    "KernelT",
     "Constant",
     "Exp",
     "Gaussian",
@@ -28,7 +28,7 @@ import jax.numpy as jnp
 from ..core import field
 from ..typing import Real_, ImageCoords, RealImage, Image
 
-KernelType = TypeVar("KernelType", bound="Kernel")
+KernelT = TypeVar("KernelT", bound="Kernel")
 """TypeVar for the Kernel base class"""
 
 
@@ -73,22 +73,22 @@ class Kernel(Module):
     ) -> Array:
         return self.evaluate(freqs, **kwargs)
 
-    def __add__(self, other: Union[KernelType, Real_]) -> _SumKernel:
+    def __add__(self, other: Union[KernelT, Real_]) -> _SumKernel:
         if isinstance(other, Kernel):
             return _SumKernel(self, other)
         return _SumKernel(self, Constant(other))
 
-    def __radd__(self, other: Union[KernelType, Real_]) -> _SumKernel:
+    def __radd__(self, other: Union[KernelT, Real_]) -> _SumKernel:
         if isinstance(other, Kernel):
             return _SumKernel(other, self)
         return _SumKernel(Constant(other), self)
 
-    def __mul__(self, other: Union[KernelType, Real_]) -> _ProductKernel:
+    def __mul__(self, other: Union[KernelT, Real_]) -> _ProductKernel:
         if isinstance(other, Kernel):
             return _ProductKernel(self, other)
         return _ProductKernel(self, Constant(other))
 
-    def __rmul__(self, other: Union[KernelType, Real_]) -> _ProductKernel:
+    def __rmul__(self, other: Union[KernelT, Real_]) -> _ProductKernel:
         if isinstance(other, Kernel):
             return _ProductKernel(other, self)
         return _ProductKernel(Constant(other), self)

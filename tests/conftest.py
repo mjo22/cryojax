@@ -5,8 +5,9 @@ import equinox as eqx
 import jax.random as jr
 from jax import config
 
-import cryojax.simulator as cs
 import cryojax.image as ci
+import cryojax.simulator as cs
+from cryojax.inference import distributions
 from cryojax.image import rfftn
 
 config.update("jax_enable_x64", True)
@@ -72,7 +73,7 @@ def instrument():
     return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1000.0, mu=0.0),
-        detector=cs.GaussianDetector(cs.Constant(1.0)),
+        detector=cs.GaussianDetector(ci.Constant(1.0)),
     )
 
 
@@ -150,11 +151,11 @@ def test_image(noisy_model):
 
 @pytest.fixture
 def likelihood_model(noisy_model):
-    return cs.IndependentFourierGaussian(noisy_model)
+    return distributions.IndependentFourierGaussian(noisy_model)
 
 
 @pytest.fixture
 def likelihood_model_with_custom_variance(noiseless_model):
-    return cs.IndependentFourierGaussian(
-        noiseless_model, noise=cs.GaussianNoise(variance=cs.Constant(1.0))
+    return distributions.IndependentFourierGaussian(
+        noiseless_model, noise=cs.GaussianNoise(variance=ci.Constant(1.0))
     )
