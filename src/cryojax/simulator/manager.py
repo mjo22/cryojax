@@ -53,7 +53,7 @@ class ImageManager(Module):
 
     shape: tuple[int, int] = field(static=True)
     pad_scale: float = field(static=True, default=1.0)
-    pad_mode: Union[str, Callable] = field(static=True, default="edge")
+    pad_mode: Union[str, Callable] = field(static=True, default="constant")
 
     padded_shape: tuple[int, int] = field(static=True, init=False)
 
