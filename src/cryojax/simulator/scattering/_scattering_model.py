@@ -19,8 +19,8 @@ from equinox import Module
 from ..density import ElectronDensity, Voxels, FourierVoxelGrid
 from ..manager import ImageManager
 
-from ...image import rfftn, irfftn
-from ...core import field, CoordinateGrid, FrequencyGrid
+from ...image import rfftn, irfftn, CoordinateGrid, FrequencyGrid
+from ...core import field
 from ...typing import Real_, RealImage, ComplexImage
 
 

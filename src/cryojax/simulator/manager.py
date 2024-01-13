@@ -10,8 +10,13 @@ from typing import Any, Union, Callable, Optional
 
 from equinox import Module
 
-from ..core import field, CoordinateGrid, FrequencyGrid
-from ..image import make_coordinates, make_frequencies
+from ..core import field
+from ..image import (
+    make_coordinates,
+    make_frequencies,
+    CoordinateGrid,
+    FrequencyGrid,
+)
 from ..typing import Image
 from ..image import (
     crop,
@@ -53,7 +58,7 @@ class ImageManager(Module):
 
     shape: tuple[int, int] = field(static=True)
     pad_scale: float = field(static=True, default=1.0)
-    pad_mode: Union[str, Callable] = field(static=True, default="edge")
+    pad_mode: Union[str, Callable] = field(static=True, default="constant")
 
     padded_shape: tuple[int, int] = field(static=True, init=False)
 

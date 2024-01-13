@@ -13,7 +13,7 @@ from functools import cached_property
 import jax
 import jax.numpy as jnp
 
-from ..ensemble import Ensemble
+from ..specimen import Ensemble
 from ._assembly import Assembly, _Positions, _Rotations
 
 from ...core import field

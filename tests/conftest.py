@@ -6,7 +6,7 @@ import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
-import cryojax.core as cc
+import cryojax.image as ci
 from cryojax.image import rfftn
 
 config.update("jax_enable_x64", True)
@@ -15,7 +15,14 @@ config.update("jax_enable_x64", True)
 @pytest.fixture
 def sample_mrc_path():
     return os.path.join(
-        os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
+        os.path.dirname(__file__), "data", "3j9g_bfm1_ps4_4.mrc"
+    )
+
+
+@pytest.fixture
+def sample_subunit_mrc_path():
+    return os.path.join(
+        os.path.dirname(__file__), "data", "3j9g_subunit_bfm1_ps4_4.mrc"
     )
 
 
@@ -26,7 +33,7 @@ def sample_pdb_path():
 
 @pytest.fixture
 def manager():
-    return cs.ImageManager(shape=(81, 82), pad_scale=1.1)
+    return cs.ImageManager(shape=(65, 66), pad_scale=1.1)
 
 
 @pytest.fixture
@@ -41,7 +48,7 @@ def scattering(manager, pixel_size):
 
 @pytest.fixture
 def density(sample_mrc_path):
-    return cs.FourierVoxelGrid.from_file(sample_mrc_path)
+    return cs.FourierVoxelGrid.from_file(sample_mrc_path, pad_scale=1.3)
 
 
 @pytest.fixture
@@ -51,13 +58,13 @@ def stacked_density(density):
 
 @pytest.fixture
 def filters(manager):
-    return cc.LowpassFilter(manager.padded_frequency_grid.get())
+    return ci.LowpassFilter(manager.padded_frequency_grid.get())
     # return None
 
 
 @pytest.fixture
 def masks(manager):
-    return cc.CircularMask(manager.coordinate_grid.get())
+    return ci.CircularMask(manager.coordinate_grid.get())
 
 
 @pytest.fixture
@@ -81,8 +88,8 @@ def pose():
 
 
 @pytest.fixture
-def ensemble(density, pose):
-    return cs.Ensemble(density=density, pose=pose)
+def specimen(density, pose):
+    return cs.Specimen(density=density, pose=pose)
 
 
 @pytest.fixture
@@ -91,30 +98,30 @@ def solvent():
 
 
 @pytest.fixture
-def noiseless_model(scattering, ensemble, instrument):
+def noiseless_model(scattering, specimen, instrument):
     instrument = eqx.tree_at(
         lambda ins: ins.detector, instrument, cs.NullDetector()
     )
     return cs.ImagePipeline(
-        scattering=scattering, ensemble=ensemble, instrument=instrument
+        scattering=scattering, specimen=specimen, instrument=instrument
     )
 
 
 @pytest.fixture
-def noisy_model(scattering, ensemble, instrument, solvent):
+def noisy_model(scattering, specimen, instrument, solvent):
     return cs.ImagePipeline(
         scattering=scattering,
-        ensemble=ensemble,
+        specimen=specimen,
         instrument=instrument,
         solvent=solvent,
     )
 
 
 @pytest.fixture
-def filtered_model(scattering, ensemble, instrument, solvent, filters):
+def filtered_model(scattering, specimen, instrument, solvent, filters):
     return cs.ImagePipeline(
         scattering=scattering,
-        ensemble=ensemble,
+        specimen=specimen,
         instrument=instrument,
         solvent=solvent,
         filter=filters,
@@ -123,11 +130,11 @@ def filtered_model(scattering, ensemble, instrument, solvent, filters):
 
 @pytest.fixture
 def filtered_and_masked_model(
-    scattering, ensemble, instrument, solvent, filters, masks
+    scattering, specimen, instrument, solvent, filters, masks
 ):
     return cs.ImagePipeline(
         scattering=scattering,
-        ensemble=ensemble,
+        specimen=specimen,
         instrument=instrument,
         solvent=solvent,
         filter=filters,

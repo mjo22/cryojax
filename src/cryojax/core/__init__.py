@@ -1,24 +1,6 @@
-from . import (
-    _coordinates,
-    _filter,
-    _mask,
-    _field,
-    _equinox,
-    _stacking,
-)
+from . import _field, _indexing
 
-from ._coordinates import *
-from ._filter import *
-from ._mask import *
 from ._field import *
-from ._equinox import *
-from ._stacking import *
+from ._indexing import *
 
-__all__ = (
-    _coordinates.__all__
-    + _filter.__all__
-    + _mask.__all__
-    + _field.__all__
-    + _equinox.__all__
-    + _stacking.__all__
-)
+__all__ = _field.__all__ + _indexing.__all__

@@ -34,7 +34,7 @@ def test_conformation_vmap(density, pose, scattering):
     @partial(jax.vmap, in_axes=[0, None, None])
     def compute_conformation_stack(vmap, novmap, scattering):
         ensemble = eqx.combine(vmap, novmap)
-        return scattering(ensemble.density_at_conformation_and_pose)
+        return scattering(ensemble.get_density())
 
     # Vmap over conformations
     image_stack = compute_conformation_stack(vmap, novmap, scattering)
