@@ -15,7 +15,7 @@ import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from .specimen import Specimen, Ensemble, Conformation
+from .specimen import SpecimenBase, Conformation
 from .pose import Pose
 from .scattering import ScatteringModel
 from .instrument import Instrument
@@ -49,7 +49,7 @@ class ImagePipeline(Module):
         A mask to apply to the image.
     """
 
-    specimen: Specimen | Ensemble = field()
+    specimen: SpecimenBase = field()
     scattering: ScatteringModel = field()
     instrument: Instrument = field(default_factory=Instrument)
     solvent: Ice = field(default_factory=NullIce)

@@ -78,17 +78,17 @@ class Kernel(Module):
             return _SumKernel(self, other)
         return _SumKernel(self, Constant(other))
 
-    def __radd__(self, other: Any) -> _SumKernel:
+    def __radd__(self, other: Union[KernelType, Real_]) -> _SumKernel:
         if isinstance(other, Kernel):
             return _SumKernel(other, self)
         return _SumKernel(Constant(other), self)
 
-    def __mul__(self, other: Union[Kernel, Real_]) -> _ProductKernel:
+    def __mul__(self, other: Union[KernelType, Real_]) -> _ProductKernel:
         if isinstance(other, Kernel):
             return _ProductKernel(self, other)
         return _ProductKernel(self, Constant(other))
 
-    def __rmul__(self, other: Any) -> _ProductKernel:
+    def __rmul__(self, other: Union[KernelType, Real_]) -> _ProductKernel:
         if isinstance(other, Kernel):
             return _ProductKernel(other, self)
         return _ProductKernel(Constant(other), self)
@@ -97,8 +97,8 @@ class Kernel(Module):
 class _SumKernel(Kernel):
     """A helper to represent the sum of two kernels"""
 
-    kernel1: KernelType = field()  # type: ignore
-    kernel2: KernelType = field()  # type: ignore
+    kernel1: Kernel = field()
+    kernel2: Kernel = field()
 
     @override
     def evaluate(
@@ -113,8 +113,8 @@ class _SumKernel(Kernel):
 class _ProductKernel(Kernel):
     """A helper to represent the product of two kernels"""
 
-    kernel1: KernelType = field()  # type: ignore
-    kernel2: KernelType = field()  # type: ignore
+    kernel1: Kernel = field()
+    kernel2: Kernel = field()
 
     @override
     def evaluate(

@@ -1,13 +1,13 @@
 """
-Abstractions of a biological specimen.
+Abstractions of biological specimen.
 """
 
 from __future__ import annotations
 
-__all__ = ["SpecimenLike", "Specimen", "Ensemble", "Conformation"]
+__all__ = ["SpecimenBase", "Specimen", "Ensemble", "Conformation"]
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Optional, TypeVar
 from typing_extensions import override
 from functools import cached_property
 
@@ -21,9 +21,12 @@ from ..core import field
 from ..typing import Int_
 
 
-class SpecimenLike(Module):
+SpecimenType = TypeVar("SpecimenType", bound="SpecimenBase")
+
+
+class SpecimenBase(Module):
     """
-    Base class for things at act like biological specimen.
+    Base class for things that act like biological specimen.
     """
 
     @abstractmethod
@@ -32,7 +35,7 @@ class SpecimenLike(Module):
         raise NotImplementedError
 
 
-class Specimen(SpecimenLike):
+class Specimen(SpecimenBase):
     """
     Abstraction of a of biological specimen.
 
@@ -71,7 +74,7 @@ class Specimen(SpecimenLike):
         return self.density_at_pose
 
 
-class Ensemble(SpecimenLike):
+class Ensemble(SpecimenBase):
     """
     Abstraction of an ensemble of biological specimen.
 

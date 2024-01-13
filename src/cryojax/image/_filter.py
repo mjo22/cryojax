@@ -42,7 +42,7 @@ class Filter(Module):
         computed upon instantiation.
     """
 
-    filter: Image = field()
+    filter: Image
 
     @abstractmethod
     def __init__(self, **kwargs: Any) -> None:
@@ -63,8 +63,8 @@ class Filter(Module):
 class _ProductFilter(Filter):
     """A helper to represent the product of two filters."""
 
-    filter1: FilterType  # type: ignore
-    filter2: FilterType  # type: ignore
+    filter1: Filter
+    filter2: Filter
 
     @override
     def __init__(

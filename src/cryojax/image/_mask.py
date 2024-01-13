@@ -31,7 +31,7 @@ class Mask(Module):
         computed upon instantiation.
     """
 
-    mask: RealImage = field()
+    mask: RealImage
 
     @abstractmethod
     def __init__(self, **kwargs: Any):
@@ -52,8 +52,8 @@ class Mask(Module):
 class _ProductMask(Mask):
     """A helper to represent the product of two filters."""
 
-    mask1: MaskType  # type: ignore
-    mask2: MaskType  # type: ignore
+    mask1: Mask
+    mask2: Mask
 
     def __init__(self, mask1: MaskType, mask2: MaskType):
         self.mask1 = mask1

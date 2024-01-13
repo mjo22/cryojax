@@ -16,7 +16,7 @@ from functools import cached_property
 import jax.numpy as jnp
 import equinox as eqx
 
-from ..specimen import SpecimenLike, Specimen, Ensemble, Conformation
+from ..specimen import SpecimenBase, Specimen, Ensemble, Conformation
 from ..pose import Pose, EulerPose, MatrixPose
 
 _Positions = Float[Array, "N 3"]
@@ -51,7 +51,7 @@ class Assembly(eqx.Module):
         The conformation of each `subunit`.
     """
 
-    subunit: SpecimenLike
+    subunit: SpecimenBase
     pose: Pose
     conformation: Optional[Conformation] = None
 
