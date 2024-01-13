@@ -13,6 +13,18 @@ config.update("jax_enable_x64", True)
 
 
 @pytest.fixture
+def sample_mrc_path():
+    return os.path.join(
+        os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
+    )
+
+
+@pytest.fixture
+def sample_pdb_path():
+    return os.path.join(os.path.dirname(__file__), "data", "1uao.pdb")
+
+
+@pytest.fixture
 def manager():
     return cs.ImageManager(shape=(81, 82), pad_scale=1.1)
 
@@ -28,16 +40,13 @@ def scattering(manager, pixel_size):
 
 
 @pytest.fixture
-def density():
-    filename = os.path.join(
-        os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
-    )
-    return cs.FourierVoxelGrid.from_file(filename)
+def density(sample_mrc_path):
+    return cs.FourierVoxelGrid.from_file(sample_mrc_path)
 
 
 @pytest.fixture
-def sample_pdb_path():
-    return os.path.join(os.path.dirname(__file__), "data", "1uao.pdb")
+def stacked_density(density):
+    return density.from_list([density for _ in range(3)])
 
 
 @pytest.fixture
@@ -61,17 +70,19 @@ def instrument():
 
 
 @pytest.fixture
-def ensemble(density):
-    return cs.Ensemble(
-        density=density,
-        pose=cs.EulerPose(
-            view_phi=30.0,
-            view_theta=100.0,
-            view_psi=-10.0,
-            offset_x=10.0,
-            offset_y=-5.0,
-        ),
+def pose():
+    return cs.EulerPose(
+        view_phi=30.0,
+        view_theta=100.0,
+        view_psi=-10.0,
+        offset_x=10.0,
+        offset_y=-5.0,
     )
+
+
+@pytest.fixture
+def ensemble(density, pose):
+    return cs.Ensemble(density=density, pose=pose)
 
 
 @pytest.fixture

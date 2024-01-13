@@ -14,13 +14,14 @@ import pathlib
 from abc import abstractmethod
 from typing import Any, Tuple, Type, ClassVar, TypeVar, Optional, overload
 from typing_extensions import Self, override
-from jaxtyping import Complex, Float, Array
+from jaxtyping import Float, Array
 from equinox import AbstractVar
 from functools import cached_property
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from ._electron_density import ElectronDensity
 from ..pose import Pose
@@ -34,7 +35,6 @@ from ...core import (
     field,
     CoordinateGrid,
     CoordinateList,
-    FrequencyGrid,
     FrequencySlice,
 )
 from cryojax.image import pad, crop, fftn, make_coordinates
@@ -229,7 +229,7 @@ class FourierVoxelGrid(Voxels):
         return eqx.tree_at(
             lambda d: d.frequency_slice,
             self,
-            FrequencyGrid(
+            FrequencySlice(
                 pose.rotate(self.frequency_slice.get(), is_real=self.is_real)
             ),
             is_leaf=lambda x: isinstance(x, FrequencySlice),
@@ -245,9 +245,12 @@ class FourierVoxelGrid(Voxels):
         n_stacked_dims: int = 0,
         **kwargs: Any,
     ) -> "FourierVoxelGrid":
+        # If voxel size is given as a float, broadcast to the stacked shape
         if n_stacked_dims > 0:
             stack_shape = density_grid.shape[:n_stacked_dims]
-            if isinstance(voxel_size, float):
+            if isinstance(
+                voxel_size, (float, Float[Array, ""], Float[np.ndarray, ""])
+            ):
                 voxel_size = jnp.full(stack_shape, voxel_size)
             else:
                 if voxel_size.shape != stack_shape:
@@ -255,7 +258,9 @@ class FourierVoxelGrid(Voxels):
                         "voxel_size.shape must match density_grid.shape[:n_stacked_dims]"
                     )
         # Change how template sits in box to match cisTEM
-        density_grid = jnp.transpose(density_grid, axes=[-1, -2, -3])
+        density_grid = jnp.transpose(
+            density_grid, axes=[*tuple(range(n_stacked_dims)), -1, -2, -3]
+        )
         # Pad template
         if pad_scale < 1.0:
             raise ValueError("pad_scale must be greater than 1.0")
@@ -354,9 +359,12 @@ class RealVoxelGrid(Voxels):
         crop_scale: Optional[float] = None,
         **kwargs: Any,
     ) -> "RealVoxelGrid":
+        # If voxel size is given as a float, broadcast to the stacked shape
         if n_stacked_dims > 0:
             stack_shape = density_grid.shape[:n_stacked_dims]
-            if isinstance(voxel_size, float):
+            if isinstance(
+                voxel_size, (float, Float[Array, ""], Float[np.ndarray, ""])
+            ):
                 voxel_size = jnp.full(stack_shape, voxel_size)
             else:
                 if voxel_size.shape != stack_shape:
@@ -368,7 +376,9 @@ class RealVoxelGrid(Voxels):
         # I/O methods. However, the algorithms used all
         # have their own xyz conventions. The choice here is to
         # make jax-finufft output match cisTEM.
-        density_grid = jnp.transpose(density_grid, axes=[-2, -1, -3])
+        density_grid = jnp.transpose(
+            density_grid, axes=[*tuple(range(n_stacked_dims)), -2, -1, -3]
+        )
         # Make coordinates if not given
         if coordinate_grid is None:
             # Option for cropping template

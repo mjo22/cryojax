@@ -1,5 +1,5 @@
 """
-Wrapper for the for eqx.field.
+Wrapper for eqx.field.
 """
 
 from __future__ import annotations

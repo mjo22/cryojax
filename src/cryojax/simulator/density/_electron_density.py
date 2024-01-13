@@ -18,7 +18,7 @@ ElectronDensityType = TypeVar("ElectronDensityType", bound="ElectronDensity")
 
 class ElectronDensity(StackedModule):
     """
-    Abstraction of an electron density map.
+    Abstraction of an electron density distribution.
 
     Attributes
     ----------
