@@ -5,11 +5,10 @@ Base classes for image operators.
 from __future__ import annotations
 
 __all__ = [
-    "ImageOperator",
-    "ParameterizedImageOperator",
-    "Constant",
-    "ImageOperatorT",
-    "ParameterizedImageOperatorT",
+    "OperatorAsBuffer",
+    "OperatorAsFunction",
+    "OperatorAsBufferT",
+    "OperatorAsFunctionT",
     "OperatorLike",
 ]
 
@@ -18,22 +17,21 @@ from typing import overload, Any, TypeVar
 from typing_extensions import override
 from jaxtyping import Array
 
-import jax.numpy as jnp
 from equinox import Module
 
 from ...core import field
 from ...typing import ImageCoords, Image, Real_
 
-ImageOperatorT = TypeVar("ImageOperatorT", bound="ImageOperator")
-"""TypeVar for ``ImageOperator``s"""
+OperatorAsBufferT = TypeVar("OperatorAsBufferT", bound="OperatorAsBuffer")
+"""TypeVar for ``OperatorAsBuffer``s"""
 
-ParameterizedImageOperatorT = TypeVar(
-    "ParameterizedImageOperatorT", bound="ParameterizedImageOperator"
+OperatorAsFunctionT = TypeVar(
+    "OperatorAsFunctionT", bound="OperatorAsFunction"
 )
-"""TypeVar for ``ParameterizedImageOperator``s"""
+"""TypeVar for ``OperatorAsFunction``s"""
 
 
-class ImageOperator(Module):
+class OperatorAsBuffer(Module):
     """
     Base class for computing and applying an ``Array`` to an image.
 
@@ -51,54 +49,44 @@ class ImageOperator(Module):
         """Compute the operator."""
         super().__init__(**kwargs)
 
+    def get(self, *args: Any, **kwargs: Any):
+        """Get the operator."""
+        return self.operator
+
     def __call__(self, image: Image) -> Image:
         """Apply the operator to an image."""
         return self.operator * image
 
     def __mul__(
-        self: ImageOperatorT, other: ImageOperatorT
-    ) -> _ProductOperator:
-        return _ProductOperator(operator1=self, operator2=other)
+        self: OperatorAsBufferT, other: OperatorAsBufferT
+    ) -> _ProductOperatorAsBuffer:
+        return _ProductOperatorAsBuffer(operator1=self, operator2=other)
 
     def __rmul__(
-        self: ImageOperatorT, other: ImageOperatorT
-    ) -> _ProductOperator:
-        return _ProductOperator(operator1=other, operator2=self)
+        self: OperatorAsBufferT, other: OperatorAsBufferT
+    ) -> _ProductOperatorAsBuffer:
+        return _ProductOperatorAsBuffer(operator1=other, operator2=self)
+
+    def __add__(
+        self: OperatorAsBufferT, other: OperatorAsBufferT
+    ) -> _SumOperatorAsBuffer:
+        return _SumOperatorAsBuffer(operator1=self, operator2=other)
+
+    def __radd__(
+        self: OperatorAsBufferT, other: OperatorAsBufferT
+    ) -> _SumOperatorAsBuffer:
+        return _SumOperatorAsBuffer(operator1=other, operator2=self)
 
 
-class _ProductOperator(ImageOperator):
-    """A helper to represent the product of two operators."""
-
-    operator1: ImageOperator
-    operator2: ImageOperator
-
-    @override
-    def __init__(
-        self,
-        operator1: ImageOperatorT,
-        operator2: ImageOperatorT,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(**kwargs)
-        self.operator1 = operator1
-        self.operator2 = operator2
-        self.operator = operator1.operator * operator2.operator
-
-    def __repr__(self):
-        return f"{repr(self.operator1)} * {repr(self.operator2)}"
-
-
-class ParameterizedImageOperator(Module):
+class OperatorAsFunction(Module):
     """
     The base class for image operators that contain
-    model parameters and are computed at runtime.
-
-    To create a subclass,
-
-        1) Include the necessary parameters in
-           the class definition.
-        2) Overrwrite :func:`Kernel.__call__`.
+    model parameters and compute an ``Array`` at runtime.
     """
+
+    def get(self, *args: Any, **kwargs: Any):
+        """Get the operator."""
+        return self.__call__(*args, **kwargs)
 
     @overload
     @abstractmethod
@@ -117,89 +105,124 @@ class ParameterizedImageOperator(Module):
         raise NotImplementedError
 
     def __add__(
-        self: ParameterizedImageOperatorT,
-        other: ParameterizedImageOperatorT | Real_,
-    ) -> _SumParameterizedOperator:
-        if isinstance(other, ParameterizedImageOperator):
-            return _SumParameterizedOperator(self, other)
-        return _SumParameterizedOperator(self, Constant(other))
+        self: OperatorAsFunctionT,
+        other: OperatorAsFunctionT | Real_,
+    ) -> _SumOperatorAsFunction:
+        if isinstance(other, OperatorAsFunction):
+            return _SumOperatorAsFunction(self, other)
+        return _SumOperatorAsFunction(self, _Constant(other))
 
     def __radd__(
-        self: ParameterizedImageOperatorT,
-        other: ParameterizedImageOperatorT | Real_,
-    ) -> _SumParameterizedOperator:
-        if isinstance(other, ParameterizedImageOperator):
-            return _SumParameterizedOperator(other, self)
-        return _SumParameterizedOperator(Constant(other), self)
+        self: OperatorAsFunctionT,
+        other: OperatorAsFunctionT | Real_,
+    ) -> _SumOperatorAsFunction:
+        if isinstance(other, OperatorAsFunction):
+            return _SumOperatorAsFunction(other, self)
+        return _SumOperatorAsFunction(_Constant(other), self)
 
     def __mul__(
-        self: ParameterizedImageOperatorT,
-        other: ParameterizedImageOperatorT | Real_,
-    ) -> _ProductParameterizedOperator:
-        if isinstance(other, ParameterizedImageOperator):
-            return _ProductParameterizedOperator(self, other)
-        return _ProductParameterizedOperator(self, Constant(other))
+        self: OperatorAsFunctionT,
+        other: OperatorAsFunctionT | Real_,
+    ) -> _ProductOperatorAsFunction:
+        if isinstance(other, OperatorAsFunction):
+            return _ProductOperatorAsFunction(self, other)
+        return _ProductOperatorAsFunction(self, _Constant(other))
 
     def __rmul__(
-        self: ParameterizedImageOperatorT,
-        other: ParameterizedImageOperatorT | Real_,
-    ) -> _ProductParameterizedOperator:
-        if isinstance(other, ParameterizedImageOperator):
-            return _ProductParameterizedOperator(other, self)
-        return _ProductParameterizedOperator(Constant(other), self)
+        self: OperatorAsFunctionT,
+        other: OperatorAsFunctionT | Real_,
+    ) -> _ProductOperatorAsFunction:
+        if isinstance(other, OperatorAsFunction):
+            return _ProductOperatorAsFunction(other, self)
+        return _ProductOperatorAsFunction(_Constant(other), self)
 
 
-class Constant(ParameterizedImageOperator):
-    """
-    This kernel returns a constant.
+OperatorLike = OperatorAsBuffer | OperatorAsFunction
 
-    Attributes
-    ----------
-    value :
-        The value of the kernel.
-    """
+
+class _SumOperatorAsBuffer(OperatorAsBuffer):
+    """A helper to represent the product of two operators."""
+
+    operator1: OperatorAsBuffer
+    operator2: OperatorAsBuffer
+
+    @override
+    def __init__(
+        self,
+        operator1: OperatorAsBufferT,
+        operator2: OperatorAsBufferT,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.operator1 = operator1
+        self.operator2 = operator2
+        self.operator = operator1.operator + operator2.operator
+
+    def __repr__(self):
+        return f"{repr(self.operator1)} + {repr(self.operator2)}"
+
+
+class _ProductOperatorAsBuffer(OperatorAsBuffer):
+    """A helper to represent the product of two operators."""
+
+    operator1: OperatorAsBuffer
+    operator2: OperatorAsBuffer
+
+    @override
+    def __init__(
+        self,
+        operator1: OperatorAsBufferT,
+        operator2: OperatorAsBufferT,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.operator1 = operator1
+        self.operator2 = operator2
+        self.operator = operator1.operator * operator2.operator
+
+    def __repr__(self):
+        return f"{repr(self.operator1)} * {repr(self.operator2)}"
+
+
+class _Constant(OperatorAsFunction):
+    """A helper to add a constant to an operator."""
 
     value: Real_ = field(default=1.0)
 
     @override
     def __call__(
-        self, freqs: ImageCoords | None = None, **kwargs: Any
+        self, coords: ImageCoords | None = None, **kwargs: Any
     ) -> Real_:
-        if jnp.ndim(self.value) != 0:
-            raise ValueError("The value of a constant kernel must be a scalar")
         return self.value
 
 
-class _SumParameterizedOperator(ParameterizedImageOperator):
-    """A helper to represent the sum of two kernels"""
+class _SumOperatorAsFunction(OperatorAsFunction):
+    """A helper to represent the sum of two operators."""
 
-    kernel1: ParameterizedImageOperator
-    kernel2: ParameterizedImageOperator
-
-    @override
-    def __call__(
-        self, coords: ImageCoords | None = None, **kwargs: Any
-    ) -> Array:
-        return self.kernel1(coords) + self.kernel2(coords)
-
-    def __repr__(self):
-        return f"{repr(self.kernel1)} + {repr(self.kernel2)}"
-
-
-class _ProductParameterizedOperator(ParameterizedImageOperator):
-    """A helper to represent the product of two kernels"""
-
-    kernel1: ParameterizedImageOperator
-    kernel2: ParameterizedImageOperator
+    operator1: OperatorAsFunction
+    operator2: OperatorAsFunction
 
     @override
     def __call__(
         self, coords: ImageCoords | None = None, **kwargs: Any
     ) -> Array:
-        return self.kernel1(coords) * self.kernel2(coords)
+        return self.operator1(coords) + self.operator2(coords)
 
     def __repr__(self):
-        return f"{repr(self.kernel1)} * {repr(self.kernel2)}"
+        return f"{repr(self.operator1)} + {repr(self.operator2)}"
 
 
-OperatorLike = ImageOperator | ParameterizedImageOperator
+class _ProductOperatorAsFunction(OperatorAsFunction):
+    """A helper to represent the product of two operators."""
+
+    operator1: OperatorAsFunction
+    operator2: OperatorAsFunction
+
+    @override
+    def __call__(
+        self, coords: ImageCoords | None = None, **kwargs: Any
+    ) -> Array:
+        return self.operator1(coords) * self.operator2(coords)
+
+    def __repr__(self):
+        return f"{repr(self.operator1)} * {repr(self.operator2)}"

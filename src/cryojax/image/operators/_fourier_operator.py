@@ -1,8 +1,8 @@
 """
-Implementation of a ParameterizedFilter. Put simply, these are
+Implementation of a FourierOperator. Put simply, these are
 functions commonly applied to images in fourier space.
 
-Opposed to a Filter, a ParameterizedFilter is computed at
+Opposed to a Filter, a FourierOperator is computed at
 runtime---not upon initialization.
 
 These classes are modified from the library ``tinygp``.
@@ -11,7 +11,9 @@ These classes are modified from the library ``tinygp``.
 from __future__ import annotations
 
 __all__ = [
-    "ParameterizedFilter",
+    "FourierOperator",
+    "Constant",
+    "ZeroMode",
     "Exp",
     "Gaussian",
     "Empirical",
@@ -21,26 +23,26 @@ from abc import abstractmethod
 from typing import Any
 from typing_extensions import override
 from jaxtyping import Array
-from equinox import Module
 
 import jax.numpy as jnp
 
+from ._operator import OperatorAsFunction
 from ...core import field
 from ...typing import Real_, ImageCoords, RealImage, Image
 
 
-class ParameterizedFilter(Module):
+class FourierOperator(OperatorAsFunction):
     """
-    The base class for all kernels.
+    The base class for all fourier-based operators.
 
-    By convention, Kernels should be defined to
+    By convention, operators should be defined to
     be dimensionless (up to a scale factor).
 
     To create a subclass,
 
         1) Include the necessary parameters in
            the class definition.
-        2) Overrwrite :func:`Kernel.evaluate`.
+        2) Overrwrite the ``__call__`` method.
     """
 
     @abstractmethod
@@ -50,9 +52,21 @@ class ParameterizedFilter(Module):
         raise NotImplementedError
 
 
-class ZeroMode(ParameterizedFilter):
+class Constant(OperatorAsFunction):
+    """An operator that is a constant."""
+
+    value: Real_ = field(default=1.0)
+
+    @override
+    def __call__(
+        self, freqs: ImageCoords | None = None, **kwargs: Any
+    ) -> Real_:
+        return self.value
+
+
+class ZeroMode(FourierOperator):
     """
-    This kernel returns a constant in the zero mode.
+    This operator returns a constant in the zero mode.
 
     Attributes
     ----------
@@ -66,16 +80,16 @@ class ZeroMode(ParameterizedFilter):
     def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
         if freqs is None:
             raise ValueError(
-                "The frequency grid must be given as an argument to the Kernel call."
+                "The frequency grid must be given as an argument to the operator call."
             )
         else:
             N1, N2 = freqs.shape[0:-1]
             return jnp.zeros((N1, N2)).at[0, 0].set(N1 * N2 * self.value)
 
 
-class Exp(ParameterizedFilter):
+class Exp(FourierOperator):
     r"""
-    This kernel, in real space, represents a covariance
+    This operator, in real space, represents a covariance
     function equal to an exponential decay, given by
 
     .. math::
@@ -95,11 +109,11 @@ class Exp(ParameterizedFilter):
     Attributes
     ----------
     amplitude :
-        The amplitude of the kernel, equal to :math:`\kappa`
+        The amplitude of the operator, equal to :math:`\kappa`
         in the above equation. Note that this has dimensions
         of inverse volume.
     scale :
-        The length scale of the kernel, equal to :math:`\xi`
+        The length scale of the operator, equal to :math:`\xi`
         in the above equation.
     offset :
         An offset added to the above equation.
@@ -113,7 +127,7 @@ class Exp(ParameterizedFilter):
     def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
         if freqs is None:
             raise ValueError(
-                "The frequency grid must be given as an argument to the Kernel call."
+                "The frequency grid must be given as an argument to the operator call."
             )
         else:
             k_sqr = jnp.sum(freqs**2, axis=-1)
@@ -122,9 +136,9 @@ class Exp(ParameterizedFilter):
             return scaling + self.offset
 
 
-class Gaussian(ParameterizedFilter):
+class Gaussian(FourierOperator):
     r"""
-    This kernel represents a simple gaussian.
+    This operator represents a simple gaussian.
     Specifically, this is
 
     .. math::
@@ -143,10 +157,10 @@ class Gaussian(ParameterizedFilter):
     Attributes
     ----------
     amplitude :
-        The amplitude of the kernel, equal to :math:`\kappa`
+        The amplitude of the operator, equal to :math:`\kappa`
         in the above equation.
     b_factor :
-        The length scale of the kernel, equal to :math:`\beta`
+        The length scale of the operator, equal to :math:`\beta`
         in the above equation.
     offset :
         An offset added to the above equation.
@@ -160,7 +174,7 @@ class Gaussian(ParameterizedFilter):
     def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
         if freqs is None:
             raise ValueError(
-                "The frequency grid must be given as an argument to the Kernel call."
+                "The frequency grid must be given as an argument to the operator call."
             )
         else:
             k_sqr = jnp.sum(freqs**2, axis=-1)
@@ -168,9 +182,9 @@ class Gaussian(ParameterizedFilter):
             return scaling + self.offset
 
 
-class Empirical(ParameterizedFilter):
+class Empirical(FourierOperator):
     r"""
-    This kernel stores a measured image, rather than
+    This operator stores a measured image, rather than
     computing one from a model.
 
     Attributes
@@ -178,7 +192,7 @@ class Empirical(ParameterizedFilter):
     measurement :
         The measured image.
     amplitude :
-        An amplitude scaling for the kernel.
+        An amplitude scaling for the operator.
     offset :
         An offset added to the above equation.
     """
