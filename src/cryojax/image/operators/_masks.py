@@ -34,6 +34,10 @@ class Mask(OperatorAsBuffer):
     def mask(self) -> RealImage:
         return self.operator
 
+    def __call__(self, image: RealImage) -> RealImage:
+        """Apply the operator to an image."""
+        return self.mask * image
+
 
 class CircularMask(Mask):
     """

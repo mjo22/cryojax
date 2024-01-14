@@ -45,6 +45,10 @@ class Filter(OperatorAsBuffer):
     def filter(self) -> Image:
         return self.operator
 
+    def __call__(self, image: Image) -> Image:
+        """Apply the filter to an image."""
+        return self.filter * image
+
 
 class LowpassFilter(Filter):
     """
