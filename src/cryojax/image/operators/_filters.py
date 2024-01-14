@@ -19,7 +19,7 @@ from typing_extensions import override
 import jax
 import jax.numpy as jnp
 
-from ._operator import ImageOperator
+from ._operator import OperatorAsBuffer
 from .._spectrum import powerspectrum
 from .._fft import rfftn
 from ..coordinates import make_frequencies
@@ -30,7 +30,7 @@ FilterT = TypeVar("FilterT", bound="Filter")
 """TypeVar for the Filter base class."""
 
 
-class Filter(ImageOperator):
+class Filter(OperatorAsBuffer):
     """
     Base class for computing and applying an image filter.
 
