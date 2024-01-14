@@ -93,7 +93,9 @@ class ImagePipeline(Module):
         # ... then apply the electron exposure model
         scaling, offset = self.instrument.exposure.scaling(
             freqs
-        ), self.instrument.exposure.offset(freqs)
+        ), self.instrument.exposure.offset(
+            freqs, shape_in_real_space=self.scattering.manager.padded_shape
+        )
         image = scaling * image + offset
 
         return self._postprocess_image(
@@ -137,9 +139,9 @@ class ImagePipeline(Module):
         image = self.render(view=False, get_real=False)
         if not isinstance(self.solvent, NullIce):
             # The image of the solvent
-            ice_image = self.instrument.optics(freqs) * self.solvent.sample(
-                keys[idx], freqs
-            )
+            ice_image = self.instrument.optics(
+                freqs, pose=self.specimen.pose
+            ) * self.solvent.sample(keys[idx], freqs)
             image = image + ice_image
             idx += 1
         if not isinstance(self.instrument.detector, NullDetector):

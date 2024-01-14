@@ -4,7 +4,13 @@ Abstractions of biological specimen.
 
 from __future__ import annotations
 
-__all__ = ["SpecimenT", "SpecimenBase", "Specimen", "Ensemble", "Conformation"]
+__all__ = [
+    "SpecimenT",
+    "SpecimenBase",
+    "Specimen",
+    "Ensemble",
+    "Conformation",
+]
 
 from abc import abstractmethod
 from typing import Optional, TypeVar
@@ -29,6 +35,9 @@ class SpecimenBase(Module):
     Base class for things that act like biological specimen.
     """
 
+    density: ElectronDensity
+    pose: Pose
+
     @abstractmethod
     def get_density(self) -> ElectronDensity:
         """Get the ElectronDensity at the configured state."""
@@ -47,9 +56,6 @@ class Specimen(SpecimenBase):
     pose :
         The pose of the specimen.
     """
-
-    density: ElectronDensity
-    pose: Pose
 
     def __init__(
         self,
@@ -89,8 +95,6 @@ class Ensemble(SpecimenBase):
         The conformation at which to evaluate the ElectronDensity.
     """
 
-    density: ElectronDensity
-    pose: Pose
     conformation: Conformation
 
     def __init__(

@@ -7,12 +7,12 @@ __all__ = ["Ice", "NullIce", "GaussianIce"]
 from abc import abstractmethod
 from typing import Optional
 
+import jax.random as jr
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
 from ..image import FourierOperator, Exp
-from .noise import GaussianNoise
 from ..core import field
 from ..typing import RealImage, ComplexImage, Image, ImageCoords
 
@@ -47,7 +47,7 @@ class NullIce(Ice):
         return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
 
-class GaussianIce(GaussianNoise, Ice):
+class GaussianIce(Ice):
     r"""
     Ice modeled as gaussian noise.
 
@@ -67,4 +67,4 @@ class GaussianIce(GaussianNoise, Ice):
         freqs: ImageCoords,
         image: Optional[ComplexImage] = None,
     ) -> ComplexImage:
-        return super().sample(key, freqs)
+        return self.variance(freqs) * jr.normal(key, shape=freqs.shape[0:-1])

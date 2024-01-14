@@ -11,11 +11,11 @@ __all__ = [
 from abc import abstractmethod
 from typing_extensions import override
 
+import jax.random as jr
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from .noise import GaussianNoise
 from ..image import FourierOperator, Constant
 from ..core import field
 from ..typing import ComplexImage, ImageCoords
@@ -42,7 +42,7 @@ class NullDetector(Detector):
         return jnp.zeros(jnp.asarray(freqs).shape[0:-1], dtype=complex)
 
 
-class GaussianDetector(GaussianNoise, Detector):
+class GaussianDetector(Detector):
     """
     A detector with a gaussian noise model. By default,
     this is a white noise model.
@@ -59,4 +59,4 @@ class GaussianDetector(GaussianNoise, Detector):
 
     @override
     def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:
-        return super().sample(key, freqs)
+        return self.variance(freqs) * jr.normal(key, shape=freqs.shape[0:-1])

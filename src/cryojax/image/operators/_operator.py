@@ -53,6 +53,10 @@ class OperatorAsBuffer(Module):
         """Get the operator."""
         return self.operator
 
+    def __call__(self, image: Image) -> Image:
+        """Apply the operator to an image."""
+        return self.operator * image
+
     def __mul__(
         self: OperatorAsBufferT, other: OperatorAsBufferT
     ) -> _ProductOperatorAsBuffer:

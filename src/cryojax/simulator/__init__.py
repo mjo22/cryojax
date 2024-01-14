@@ -4,7 +4,6 @@ from . import (
     ice,
     instrument,
     manager,
-    noise,
     optics,
     pipeline,
     pose,
@@ -20,7 +19,6 @@ from .specimen import *
 from .assembly import *
 from .density import *
 from .scattering import *
-from .noise import *
 from .ice import *
 from .optics import *
 from .exposure import *
@@ -36,7 +34,6 @@ __all__ = (
     + assembly.__all__
     + density.__all__
     + scattering.__all__
-    + noise.__all__
     + ice.__all__
     + optics.__all__
     + exposure.__all__
@@ -53,7 +50,6 @@ __all__.extend(
         assembly,
         density,
         scattering,
-        noise,
         ice,
         optics,
         exposure,

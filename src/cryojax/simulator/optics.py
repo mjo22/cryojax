@@ -4,12 +4,7 @@ Models of instrument optics.
 
 from __future__ import annotations
 
-__all__ = [
-    "Optics",
-    "NullOptics",
-    "CTFOptics",
-    "compute_ctf",
-]
+__all__ = ["Optics", "NullOptics", "CTFOptics", "compute_ctf"]
 
 from abc import abstractmethod
 from typing import Any, Optional, overload
@@ -17,7 +12,6 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
-from equinox import Module
 
 from .pose import Pose
 from ..image import FourierOperator
@@ -26,7 +20,7 @@ from ..image import cartesian_to_polar
 from ..typing import Real_, RealImage, Image, ImageCoords
 
 
-class Optics(Module):
+class Optics(FourierOperator):
     """
     Base class for an optics model. This
     is designed to compute an optics model in Fourier
@@ -42,9 +36,14 @@ class Optics(Module):
     envelope :
         A kernel that computes the envelope function of
         the optics model. By default, ``Gaussian()``.
+    normalize :
+        Whether to normalize the CTF so that it has norm 1 in real space.
+        Default is ``False``.
     """
 
     envelope: Optional[FourierOperator] = field(default=None)
+
+    normalize: bool = field(static=True, default=False)
 
     @overload
     @abstractmethod
@@ -64,15 +63,23 @@ class Optics(Module):
         raise NotImplementedError
 
     def __call__(
-        self, freqs: ImageCoords, normalize: bool = True, **kwargs: Any
+        self,
+        freqs: ImageCoords,
+        pose: Optional[Pose] = None,
+        **kwargs: Any,
     ) -> Image:
         """Compute the optics model with an envelope."""
         if self.envelope is None:
-            return self.evaluate(freqs, **kwargs)
+            ctf = self.evaluate(freqs, pose=pose, **kwargs)
         else:
-            return self.envelope(freqs) * self.evaluate(
-                freqs, normalize=normalize, **kwargs
+            ctf = self.envelope(freqs) * self.evaluate(
+                freqs, normalize=self.normalize, pose=pose, **kwargs
             )
+        if self.normalize:
+            N1, N2 = freqs.shape[0:-1]
+            ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
+
+        return ctf
 
 
 class NullOptics(Optics):
@@ -80,7 +87,8 @@ class NullOptics(Optics):
     A null optics model.
     """
 
-    envelope: Optional[FourierOperator] = field(default=None)
+    def __init__(self):
+        self.envelope = None
 
     def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
@@ -107,8 +115,6 @@ class CTFOptics(Optics):
     phase_shift :
     """
 
-    degrees: bool = field(static=True, default=True)
-
     defocus_u: Real_ = field(default=10000.0)
     defocus_v: Real_ = field(default=10000.0)
     defocus_angle: Real_ = field(default=0.0)
@@ -116,6 +122,8 @@ class CTFOptics(Optics):
     spherical_aberration: Real_ = field(default=2.7)
     amplitude_contrast: Real_ = field(default=0.1)
     phase_shift: Real_ = field(default=0.0)
+
+    degrees: bool = field(static=True, default=True)
 
     def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
@@ -135,7 +143,7 @@ class CTFOptics(Optics):
         )
 
 
-@partial(jax.jit, static_argnames=["normalize", "degrees"])
+@partial(jax.jit, static_argnames=["degrees"])
 def compute_ctf(
     freqs: ImageCoords,
     defocus_u: Real_,
@@ -146,7 +154,6 @@ def compute_ctf(
     amplitude_contrast: Real_,
     phase_shift: Real_,
     *,
-    normalize: bool = False,
     degrees: bool = True,
 ) -> RealImage:
     """
@@ -171,9 +178,6 @@ def compute_ctf(
         The amplitude contrast ratio.
     phase_shift :
         The additional phase shift.
-    normalize :
-        Whether to normalize the CTF so that it has norm 1 in real space.
-        Default is ``False``.
     degrees :
         Whether or not the ``defocus_angle`` and ``phase_shift`` are given
         in degrees or radians.
@@ -208,9 +212,5 @@ def compute_ctf(
     gamma_sph = 0.25 * spherical_aberration * (lam**3) * (k_sqr**2)
     gamma = (2 * jnp.pi) * (gamma_defocus + gamma_sph) - phase_shift - ac
     ctf = jnp.sin(gamma)
-
-    if normalize:
-        N1, N2 = freqs.shape[0:-1]
-        ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
 
     return ctf
