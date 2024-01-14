@@ -6,32 +6,31 @@ from __future__ import annotations
 
 __all__ = [
     "Filter",
-    "FilterType",
+    "FilterT",
     "LowpassFilter",
     "WhiteningFilter",
     "compute_lowpass_filter",
     "compute_whitening_filter",
 ]
 
-from abc import abstractmethod
 from typing import Any, TypeVar
 from typing_extensions import override
 
 import jax
 import jax.numpy as jnp
-from equinox import Module
 
-from ._spectrum import powerspectrum
-from ._fft import rfftn
-from ._coordinates import make_frequencies
-from ..core import field
-from ..typing import Image, ImageCoords, RealImage
+from ._operator import ImageOperator
+from .._spectrum import powerspectrum
+from .._fft import rfftn
+from ..coordinates import make_frequencies
+from ...core import field
+from ...typing import Image, ImageCoords, RealImage
 
-FilterType = TypeVar("FilterType", bound="Filter")
+FilterT = TypeVar("FilterT", bound="Filter")
 """TypeVar for the Filter base class."""
 
 
-class Filter(Module):
+class Filter(ImageOperator):
     """
     Base class for computing and applying an image filter.
 
@@ -42,41 +41,9 @@ class Filter(Module):
         computed upon instantiation.
     """
 
-    filter: Image = field()
-
-    @abstractmethod
-    def __init__(self, **kwargs: Any) -> None:
-        """Compute the filter."""
-        super().__init__(**kwargs)
-
-    def __call__(self, image: Image) -> Image:
-        """Apply the filter to an image."""
-        return self.filter * image
-
-    def __mul__(self: FilterType, other: FilterType) -> _ProductFilter:
-        return _ProductFilter(filter1=self, filter2=other)
-
-    def __rmul__(self: FilterType, other: FilterType) -> _ProductFilter:
-        return _ProductFilter(filter1=other, filter2=self)
-
-
-class _ProductFilter(Filter):
-    """A helper to represent the product of two filters."""
-
-    filter1: FilterType  # type: ignore
-    filter2: FilterType  # type: ignore
-
-    @override
-    def __init__(
-        self, filter1: FilterType, filter2: FilterType, **kwargs: Any
-    ) -> None:
-        super().__init__(**kwargs)
-        self.filter1 = filter1
-        self.filter2 = filter2
-        self.filter = filter1.filter * filter2.filter
-
-    def __repr__(self):
-        return f"{repr(self.filter1)} * {repr(self.filter2)}"
+    @property
+    def filter(self) -> Image:
+        return self.operator
 
 
 class LowpassFilter(Filter):
@@ -109,7 +76,9 @@ class LowpassFilter(Filter):
         super().__init__(**kwargs)
         self.cutoff = cutoff
         self.rolloff = rolloff
-        self.filter = compute_lowpass_filter(freqs, self.cutoff, self.rolloff)
+        self.operator = compute_lowpass_filter(
+            freqs, self.cutoff, self.rolloff
+        )
 
 
 class WhiteningFilter(Filter):
@@ -126,7 +95,7 @@ class WhiteningFilter(Filter):
         **kwargs: Any,
     ):
         super().__init__(**kwargs)
-        self.filter = compute_whitening_filter(
+        self.operator = compute_whitening_filter(
             frequency_grid, micrograph, grid_spacing
         )
 

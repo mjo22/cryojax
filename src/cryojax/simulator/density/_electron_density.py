@@ -2,7 +2,7 @@
 Base electron density representation.
 """
 
-__all__ = ["is_density_leaves", "ElectronDensity", "ElectronDensityType"]
+__all__ = ["is_density_leaves", "ElectronDensity", "ElectronDensityT"]
 
 from abc import abstractmethod
 from typing import Type, Any, TypeVar
@@ -15,7 +15,7 @@ from ...core import IndexedModule
 from ...image import get_not_coordinate_filter_spec
 
 
-ElectronDensityType = TypeVar("ElectronDensityType", bound="ElectronDensity")
+ElectronDensityT = TypeVar("ElectronDensityT", bound="ElectronDensity")
 
 
 def is_density_leaves(element: Any) -> bool | PyTree[bool]:
@@ -56,10 +56,10 @@ class ElectronDensity(IndexedModule):
     @classmethod
     @abstractmethod
     def from_file(
-        cls: Type[ElectronDensityType],
+        cls: Type[ElectronDensityT],
         filename: str,
         **kwargs: Any,
-    ) -> ElectronDensityType:
+    ) -> ElectronDensityT:
         """
         Load an ElectronDensity from a file.
         """
