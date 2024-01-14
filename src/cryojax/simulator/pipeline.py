@@ -61,7 +61,7 @@ class ImagePipeline(Module):
     def render(
         self,
         *,
-        view: bool = True,
+        view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
@@ -70,9 +70,11 @@ class ImagePipeline(Module):
 
         Parameters
         ----------
-        view : `bool`, optional
-            If ``True``, view the cropped, masked,
-            and filtered image.
+        view_cropped : `bool`, optional
+            If ``True``, view the cropped image.
+            If ``view_cropped = False``, ``ImagePipeline.filter``,
+            ``ImagePipeline.mask``, and normalization with
+            ``normalize = True`` are not applied.
         get_real : `bool`, optional
             If ``True``, return the image in real space.
         normalize : `bool`, optional
@@ -98,15 +100,18 @@ class ImagePipeline(Module):
         )
         image = scaling * image + offset
 
-        return self._postprocess_image(
-            image, view=view, get_real=get_real, normalize=normalize
+        return self._get_final_image(
+            image,
+            view_cropped=view_cropped,
+            get_real=get_real,
+            normalize=normalize,
         )
 
     def sample(
         self,
         key: PRNGKeyArray,
         *,
-        view: bool = True,
+        view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
     ) -> RealImage:
@@ -117,9 +122,11 @@ class ImagePipeline(Module):
         ----------
         key :
             The random number generator key.
-        view : `bool`, optional
-            If ``True``, view the cropped, masked,
-            and filtered image.
+        view_cropped : `bool`, optional
+            If ``True``, view the cropped image.
+            If ``view_cropped = False``, ``ImagePipeline.filter``,
+            ``ImagePipeline.mask``, and normalization with
+            ``normalize = True`` are not applied.
         get_real : `bool`, optional
             If ``True``, return the image in real space.
         normalize : `bool`, optional
@@ -136,7 +143,7 @@ class ImagePipeline(Module):
         # Frequencies
         freqs = self.scattering.padded_frequency_grid_in_angstroms.get()
         # The image of the specimen drawn from the ensemble
-        image = self.render(view=False, get_real=False)
+        image = self.render(view_cropped=False, get_real=False)
         if not isinstance(self.solvent, NullIce):
             # The image of the solvent
             ice_image = self.instrument.optics(
@@ -150,66 +157,48 @@ class ImagePipeline(Module):
             image = image + noise
             idx += 1
 
-        return self._postprocess_image(
-            image, view=view, get_real=get_real, normalize=normalize
+        return self._get_final_image(
+            image,
+            view_cropped=view_cropped,
+            get_real=get_real,
+            normalize=normalize,
         )
 
     def __call__(
         self,
-        key: Optional[Union[PRNGKeyArray, _PRNGKeyArrayLike]] = None,
+        key: Optional[PRNGKeyArray] = None,
         *,
-        view: bool = True,
+        view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
-        """
-        Sample or render an image.
+        """Sample an image with the noise models or render an image
+        without them.
         """
         if key is None:
             return self.render(
-                view=view, get_real=get_real, normalize=normalize
+                view_cropped=view_cropped,
+                get_real=get_real,
+                normalize=normalize,
             )
         else:
             return self.sample(
-                key, view=view, get_real=get_real, normalize=normalize
+                key,
+                view_cropped=view_cropped,
+                get_real=get_real,
+                normalize=normalize,
             )
 
-    def _postprocess_image(
+    def crop_and_apply_operators(
         self,
         image: ComplexImage,
         *,
-        view: bool = True,
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
         """
         Return an image postprocessed with filters, cropping, and masking
         in either real or fourier space.
-        """
-        manager = self.scattering.manager
-        if view:
-            return self._filter_crop_mask(
-                image, get_real=get_real, normalize=normalize
-            )
-        else:
-            if normalize:
-                image = manager.normalize_image(
-                    image,
-                    is_real=False,
-                    shape_in_real_space=manager.padded_shape,
-                )
-            return irfftn(image, s=manager.padded_shape) if get_real else image
-
-    def _filter_crop_mask(
-        self,
-        image: ComplexImage,
-        *,
-        get_real: bool = True,
-        normalize: bool = False,
-    ) -> Image:
-        """
-        View the image. This function applies
-        filters, crops the image, then applies masks.
         """
         manager = self.scattering.manager
         # Apply filter
@@ -235,6 +224,24 @@ class ImagePipeline(Module):
                 image = manager.normalize_image(image, is_real=True)
             return image if get_real else rfftn(image)
 
+    def _get_final_image(
+        self,
+        image: ComplexImage,
+        *,
+        view_cropped: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
+    ) -> Image:
+        manager = self.scattering.manager
+        if view_cropped:
+            return self.crop_and_apply_operators(
+                image,
+                get_real=get_real,
+                normalize=normalize,
+            )
+        else:
+            return irfftn(image, s=manager.padded_shape) if get_real else image
+
 
 class SuperpositionPipeline(ImagePipeline):
     """
@@ -251,7 +258,7 @@ class SuperpositionPipeline(ImagePipeline):
     def render(
         self,
         *,
-        view: bool = True,
+        view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
@@ -262,7 +269,7 @@ class SuperpositionPipeline(ImagePipeline):
         vmap, novmap = eqx.partition(self, to_vmap)
         # Compute all images and sum
         compute_image = lambda model: super(type(model), model).render(
-            view=False, get_real=False
+            view_cropped=False, get_real=False
         )
         # ... vmap to compute a stack of images to superimpose
         compute_stack = jax.vmap(
@@ -279,6 +286,9 @@ class SuperpositionPipeline(ImagePipeline):
         # ... compute the superposition
         image = compute_stack_and_sum(vmap, novmap)
 
-        return self._postprocess_image(
-            image, view=view, get_real=get_real, normalize=normalize
+        return self._get_final_image(
+            image,
+            view_cropped=view_cropped,
+            get_real=get_real,
+            normalize=normalize,
         )
