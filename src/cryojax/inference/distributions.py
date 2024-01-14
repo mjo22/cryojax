@@ -62,7 +62,7 @@ class IndependentFourierGaussian(Distribution):
     This computes the likelihood in Fourier space,
     which allows one to model an arbitrary noise power spectrum.
 
-    If no `GaussianNoise` model is explicitly passed, the variance is computed as
+    If no variance model is explicitly passed, the variance is computed as
 
     .. math::
         Var[D(q)] + CTF(q)^2 Var[I(q)]
@@ -72,9 +72,9 @@ class IndependentFourierGaussian(Distribution):
 
     Attributes
     ----------
-    noise :
-        The gaussian noise model. If not given, use the detector and ice noise
-        models.
+    variance :
+        The gaussian variance function. If not given, use the detector and ice noise
+        models as described above.
     """
 
     variance: FourierOperator
