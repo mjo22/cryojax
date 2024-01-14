@@ -42,6 +42,7 @@ class Distribution(Module):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
         """
         Sample from the distribution.
@@ -52,7 +53,7 @@ class Distribution(Module):
             The RNG key or key(s). See ``ImagePipeline.sample`` for
             documentation.
         """
-        return self.pipeline.sample(key, **kwargs)
+        raise NotImplementedError
 
 
 class IndependentFourierGaussian(Distribution):
@@ -110,8 +111,8 @@ class IndependentFourierGaussian(Distribution):
         noise = self.variance(
             freqs, pose=self.pipeline.specimen.pose
         ) * jr.normal(key, shape=freqs.shape[0:-1])
-        image = self.pipeline.render(view=False, get_real=False)
-        return self.pipeline._postprocess_image(image + noise, **kwargs)
+        image = self.pipeline.render(view_cropped=False, get_real=False)
+        return self.pipeline.crop_and_apply_operators(image + noise, **kwargs)
 
     @override
     def log_probability(self, observed: ComplexImage) -> Real_:
@@ -138,10 +139,12 @@ class IndependentFourierGaussian(Distribution):
                 "Shape of observed must match ImageManager.padded_shape"
             )
         # Get residuals
-        residuals = pipeline.render(view=False, get_real=False) - observed
+        residuals = (
+            pipeline.render(view_cropped=False, get_real=False) - observed
+        )
         # Apply filters, crop, and mask
-        residuals = pipeline._postprocess_image(
-            residuals, view=True, get_real=False
+        residuals = pipeline.crop_and_apply_operators(
+            residuals, get_real=False
         )
         # Compute loss
         loss = jnp.sum(

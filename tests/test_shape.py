@@ -6,7 +6,7 @@ def test_real_shape(model, request):
     """Make sure shapes are as expected in real space."""
     model = request.getfixturevalue(model)
     image = model()
-    padded_image = model(view=False)
+    padded_image = model(view_cropped=False)
     assert image.shape == model.scattering.manager.shape
     assert padded_image.shape == model.scattering.manager.padded_shape
 
@@ -16,7 +16,7 @@ def test_fourier_shape(model, request):
     """Make sure shapes are as expected in fourier space."""
     model = request.getfixturevalue(model)
     image = model(get_real=False)
-    padded_image = model(view=False, get_real=False)
+    padded_image = model(view_cropped=False, get_real=False)
     assert (
         image.shape == model.scattering.manager.frequency_grid.get().shape[0:2]
     )

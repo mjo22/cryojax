@@ -24,7 +24,7 @@ def test_rescale(model, request):
         lambda x: x.instrument.exposure, model, null_exposure
     )
     # Compute images
-    null_image = null_model.render(view=False)
-    rescaled_image = rescaled_model.render(view=False)
+    null_image = null_model.render(view_cropped=False)
+    rescaled_image = rescaled_model.render(view_cropped=False)
 
     np.testing.assert_allclose(rescaled_image, N * null_image + mu)
