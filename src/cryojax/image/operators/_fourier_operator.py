@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 from abc import abstractmethod
-from typing import Any
+from typing import Any, Optional
 from typing_extensions import override
 from jaxtyping import Array
 
@@ -74,17 +74,31 @@ class ZeroMode(FourierOperator):
         The value of the zero mode.
     """
 
-    value: Real_ = field(default=1.0)
+    value: Real_ = field(default=0.0)
 
     @override
-    def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
+    def __call__(
+        self,
+        freqs: ImageCoords | None,
+        half_space: bool = True,
+        shape_in_real_space: Optional[None] = None,
+        **kwargs: Any,
+    ) -> RealImage:
         if freqs is None:
             raise ValueError(
                 "The frequency grid must be given as an argument to the operator call."
             )
         else:
             N1, N2 = freqs.shape[0:-1]
-            return jnp.zeros((N1, N2)).at[0, 0].set(N1 * N2 * self.value)
+            if half_space:
+                N_modes = (
+                    N1 * (2 * N2 - 1)
+                    if shape_in_real_space is None
+                    else shape_in_real_space[0] * shape_in_real_space[1]
+                )
+            else:
+                N_modes = N1 * N2
+            return jnp.zeros((N1, N2)).at[0, 0].set(N_modes * self.value)
 
 
 class Exp(FourierOperator):

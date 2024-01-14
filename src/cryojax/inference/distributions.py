@@ -7,20 +7,20 @@ from __future__ import annotations
 __all__ = ["Distribution", "IndependentFourierGaussian"]
 
 from abc import abstractmethod
-from typing import Union, Optional, Any
+from typing import Optional, Any
 from typing_extensions import override
-from functools import cached_property
 
+import equinox as eqx
+import jax.random as jr
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from ..simulator.noise import GaussianNoise
+from ..image.operators import FourierOperator, Constant
 from ..simulator.ice import GaussianIce
 from ..simulator.detector import GaussianDetector
 from ..simulator.pipeline import ImagePipeline
 from ..typing import Real_, RealImage, ComplexImage, Image
-from ..core import field
 
 
 class Distribution(Module):
@@ -28,7 +28,7 @@ class Distribution(Module):
     An imaging pipeline equipped with a probabilistic model.
     """
 
-    pipeline: ImagePipeline = field()
+    pipeline: ImagePipeline
 
     @abstractmethod
     def log_probability(self, observed: Image) -> Real_:
@@ -77,31 +77,41 @@ class IndependentFourierGaussian(Distribution):
         models.
     """
 
-    noise: Optional[GaussianNoise] = field(default=None)
+    variance: FourierOperator
 
-    def __check_init__(self):
-        if (
-            not isinstance(self.pipeline.solvent, GaussianIce)
-            and not isinstance(
-                self.pipeline.instrument.detector, GaussianDetector
-            )
-        ) and self.noise is None:
-            raise ValueError(
-                "Either a GaussianIce, GaussianDetector, or GaussianNoise model are required."
-            )
+    def __init__(
+        self,
+        pipeline: ImagePipeline,
+        variance: Optional[FourierOperator] = None,
+    ):
+        self.pipeline = pipeline
+        if variance is None:
+            # Variance from detector
+            if isinstance(pipeline.instrument.detector, GaussianDetector):
+                variance = pipeline.instrument.detector.variance
+            else:
+                variance = Constant(0.0)
+            # Variance from ice
+            if isinstance(pipeline.solvent, GaussianIce):
+                optics = pipeline.instrument.optics
+                variance += optics * optics * pipeline.solvent.variance
+            if eqx.tree_equal(variance, Constant(0.0)):
+                raise AttributeError(
+                    "If variance is not given, the ImagePipeline must have either a GaussianDetector or GaussianIce model."
+                )
+        self.variance = variance
 
     @override
     def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
         """Sample from the Gaussian noise model."""
-        if self.noise is None:
-            return super().sample(key, **kwargs)
-        else:
-            freqs = (
-                self.pipeline.scattering.padded_frequency_grid_in_angstroms.get()
-            )
-            noise = self.noise.sample(key, freqs)
-            image = self.pipeline.render(view=False, get_real=False)
-            return self.pipeline._postprocess_image(image + noise, **kwargs)
+        freqs = (
+            self.pipeline.scattering.padded_frequency_grid_in_angstroms.get()
+        )
+        noise = self.variance(
+            freqs, pose=self.pipeline.specimen.pose
+        ) * jr.normal(key, shape=freqs.shape[0:-1])
+        image = self.pipeline.render(view=False, get_real=False)
+        return self.pipeline._postprocess_image(image + noise, **kwargs)
 
     @override
     def log_probability(self, observed: ComplexImage) -> Real_:
@@ -119,8 +129,11 @@ class IndependentFourierGaussian(Distribution):
            the ImageManager.padded_shape shape.
         """
         pipeline = self.pipeline
-        freqs = pipeline.scattering.manager.padded_frequency_grid.get()
-        if observed.shape != freqs.shape[:-1]:
+        padded_freqs = (
+            pipeline.scattering.padded_frequency_grid_in_angstroms.get()
+        )
+        freqs = pipeline.scattering.frequency_grid_in_angstroms.get()
+        if observed.shape != padded_freqs.shape[:-1]:
             raise ValueError(
                 "Shape of observed must match ImageManager.padded_shape"
             )
@@ -132,30 +145,9 @@ class IndependentFourierGaussian(Distribution):
         )
         # Compute loss
         loss = jnp.sum(
-            (residuals * jnp.conjugate(residuals)) / (2 * self.variance)
+            (residuals * jnp.conjugate(residuals)) / (2 * self.variance(freqs))
         )
         # Divide by number of modes (parseval's theorem)
         loss = loss.real / residuals.size
 
         return loss
-
-    @cached_property
-    def variance(self) -> Union[Real_, RealImage]:
-        pipeline = self.pipeline
-        # Gather frequency coordinates
-        freqs = pipeline.scattering.frequency_grid_in_angstroms.get()
-        if self.noise is None:
-            # Variance from detector
-            if isinstance(pipeline.instrument.detector, GaussianDetector):
-                variance = pipeline.instrument.detector.variance(freqs)
-            else:
-                variance = jnp.asarray(0.0)
-            # Variance from ice
-            if isinstance(pipeline.solvent, GaussianIce):
-                ctf = pipeline.instrument.optics(
-                    freqs, pose=pipeline.specimen.pose
-                )
-                variance += ctf**2 * pipeline.solvent.variance(freqs)
-            return variance
-        else:
-            return self.noise.variance(freqs)

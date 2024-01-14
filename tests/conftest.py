@@ -72,7 +72,9 @@ def masks(manager):
 def instrument():
     return cs.Instrument(
         optics=cs.CTFOptics(),
-        exposure=cs.UniformExposure(N=1000.0, mu=0.0),
+        exposure=cs.Exposure(
+            scaling=op.Constant(1000.0), offset=op.ZeroMode(0.0)
+        ),
         detector=cs.GaussianDetector(op.Constant(1.0)),
     )
 
@@ -147,15 +149,3 @@ def filtered_and_masked_model(
 def test_image(noisy_model):
     image = noisy_model.sample(jr.PRNGKey(1234), view=False)
     return rfftn(image)
-
-
-@pytest.fixture
-def likelihood_model(noisy_model):
-    return dist.IndependentFourierGaussian(noisy_model)
-
-
-@pytest.fixture
-def likelihood_model_with_custom_variance(noiseless_model):
-    return dist.IndependentFourierGaussian(
-        noiseless_model, noise=cs.GaussianNoise(variance=op.Constant(1.0))
-    )
