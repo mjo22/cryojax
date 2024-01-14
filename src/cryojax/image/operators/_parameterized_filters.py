@@ -1,6 +1,9 @@
 """
-Implementation of a Kernel. Put simply, these are
-functions commonly applied to images, usually in fourier space.
+Implementation of a ParameterizedFilter. Put simply, these are
+functions commonly applied to images in fourier space.
+
+Opposed to a Filter, a ParameterizedFilter is computed at
+runtime---not upon initialization.
 
 These classes are modified from the library ``tinygp``.
 """
@@ -8,31 +11,25 @@ These classes are modified from the library ``tinygp``.
 from __future__ import annotations
 
 __all__ = [
-    "Kernel",
-    "KernelT",
-    "Constant",
+    "ParameterizedFilter",
     "Exp",
     "Gaussian",
     "Empirical",
-    "Custom",
 ]
 
 from abc import abstractmethod
-from typing import overload, Any, Union, Callable, Concatenate, TypeVar
+from typing import Any
 from typing_extensions import override
 from jaxtyping import Array
 from equinox import Module
 
 import jax.numpy as jnp
 
-from ..core import field
-from ..typing import Real_, ImageCoords, RealImage, Image
-
-KernelT = TypeVar("KernelT", bound="Kernel")
-"""TypeVar for the Kernel base class"""
+from ...core import field
+from ...typing import Real_, ImageCoords, RealImage, Image
 
 
-class Kernel(Module):
+class ParameterizedFilter(Module):
     """
     The base class for all kernels.
 
@@ -46,108 +43,14 @@ class Kernel(Module):
         2) Overrwrite :func:`Kernel.evaluate`.
     """
 
-    @overload
     @abstractmethod
-    def evaluate(self, freqs: ImageCoords, **kwargs: Any) -> Array:
-        ...
-
-    @overload
-    @abstractmethod
-    def evaluate(self, freqs: None, **kwargs: Any) -> Array:
-        ...
-
-    @abstractmethod
-    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> Array:
-        """
-        Evaluate the kernel at a set of coordinates.
-
-        Arguments
-        ----------
-        coords :
-            The real or fourier space cartesian coordinates.
-        """
-        pass
-
     def __call__(
         self, freqs: ImageCoords | None = None, **kwargs: Any
     ) -> Array:
-        return self.evaluate(freqs, **kwargs)
-
-    def __add__(self, other: Union[KernelT, Real_]) -> _SumKernel:
-        if isinstance(other, Kernel):
-            return _SumKernel(self, other)
-        return _SumKernel(self, Constant(other))
-
-    def __radd__(self, other: Union[KernelT, Real_]) -> _SumKernel:
-        if isinstance(other, Kernel):
-            return _SumKernel(other, self)
-        return _SumKernel(Constant(other), self)
-
-    def __mul__(self, other: Union[KernelT, Real_]) -> _ProductKernel:
-        if isinstance(other, Kernel):
-            return _ProductKernel(self, other)
-        return _ProductKernel(self, Constant(other))
-
-    def __rmul__(self, other: Union[KernelT, Real_]) -> _ProductKernel:
-        if isinstance(other, Kernel):
-            return _ProductKernel(other, self)
-        return _ProductKernel(Constant(other), self)
+        raise NotImplementedError
 
 
-class _SumKernel(Kernel):
-    """A helper to represent the sum of two kernels"""
-
-    kernel1: Kernel = field()
-    kernel2: Kernel = field()
-
-    @override
-    def evaluate(
-        self, freqs: ImageCoords | None = None, **kwargs: Any
-    ) -> Array:
-        return self.kernel1(freqs) + self.kernel2(freqs)
-
-    def __repr__(self):
-        return f"{repr(self.kernel1)} + {repr(self.kernel2)}"
-
-
-class _ProductKernel(Kernel):
-    """A helper to represent the product of two kernels"""
-
-    kernel1: Kernel = field()
-    kernel2: Kernel = field()
-
-    @override
-    def evaluate(
-        self, freqs: ImageCoords | None = None, **kwargs: Any
-    ) -> Array:
-        return self.kernel1(freqs) * self.kernel2(freqs)
-
-    def __repr__(self):
-        return f"{repr(self.kernel1)} * {repr(self.kernel2)}"
-
-
-class Constant(Kernel):
-    """
-    This kernel returns a constant.
-
-    Attributes
-    ----------
-    value :
-        The value of the kernel.
-    """
-
-    value: Real_ = field(default=1.0)
-
-    @override
-    def evaluate(
-        self, freqs: ImageCoords | None = None, **kwargs: Any
-    ) -> Real_:
-        if jnp.ndim(self.value) != 0:
-            raise ValueError("The value of a constant kernel must be a scalar")
-        return self.value
-
-
-class ZeroMode(Kernel):
+class ZeroMode(ParameterizedFilter):
     """
     This kernel returns a constant in the zero mode.
 
@@ -160,7 +63,7 @@ class ZeroMode(Kernel):
     value: Real_ = field(default=1.0)
 
     @override
-    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
+    def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
         if freqs is None:
             raise ValueError(
                 "The frequency grid must be given as an argument to the Kernel call."
@@ -170,7 +73,7 @@ class ZeroMode(Kernel):
             return jnp.zeros((N1, N2)).at[0, 0].set(N1 * N2 * self.value)
 
 
-class Exp(Kernel):
+class Exp(ParameterizedFilter):
     r"""
     This kernel, in real space, represents a covariance
     function equal to an exponential decay, given by
@@ -207,7 +110,7 @@ class Exp(Kernel):
     offset: Real_ = field(default=0.0)
 
     @override
-    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
+    def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
         if freqs is None:
             raise ValueError(
                 "The frequency grid must be given as an argument to the Kernel call."
@@ -219,7 +122,7 @@ class Exp(Kernel):
             return scaling + self.offset
 
 
-class Gaussian(Kernel):
+class Gaussian(ParameterizedFilter):
     r"""
     This kernel represents a simple gaussian.
     Specifically, this is
@@ -254,7 +157,7 @@ class Gaussian(Kernel):
     offset: Real_ = field(default=0.0)
 
     @override
-    def evaluate(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
+    def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
         if freqs is None:
             raise ValueError(
                 "The frequency grid must be given as an argument to the Kernel call."
@@ -265,7 +168,7 @@ class Gaussian(Kernel):
             return scaling + self.offset
 
 
-class Empirical(Kernel):
+class Empirical(ParameterizedFilter):
     r"""
     This kernel stores a measured image, rather than
     computing one from a model.
@@ -286,33 +189,8 @@ class Empirical(Kernel):
     offset: Real_ = field(default=0.0)
 
     @override
-    def evaluate(
+    def __call__(
         self, freqs: ImageCoords | None = None, **kwargs: Any
     ) -> Image:
         """Return the scaled and offset measurement."""
         return self.amplitude * self.measurement + self.offset
-
-
-class Custom(Kernel):
-    """
-    A custom kernel class implemented as a callable.
-
-    Attributes
-    ----------
-    function: `Callable`
-        A callable with a signature and behavior that matches
-        :func:`Kernel.evaluate`.
-    """
-
-    function: Callable[Concatenate[ImageCoords, ...], Array] = field(
-        static=True
-    )
-
-    @override
-    def evaluate(
-        self, freqs: ImageCoords | None = None, *args: Any, **kwargs: Any
-    ) -> Array:
-        if freqs is None:
-            return self.function(*args, **kwargs)
-        else:
-            return self.function(freqs, *args, **kwargs)

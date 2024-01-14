@@ -6,21 +6,20 @@ from __future__ import annotations
 
 __all__ = ["Mask", "MaskT", "CircularMask", "compute_circular_mask"]
 
-from abc import abstractmethod
 from typing import Any, TypeVar
-from equinox import Module
 
 import jax.numpy as jnp
 
-from ..core import field
-from ..typing import RealImage, ImageCoords
+from ._operator import ImageOperator
+from ...core import field
+from ...typing import RealImage, ImageCoords
 
 
 MaskT = TypeVar("MaskT", bound="Mask")
 """TypeVar for the Mask base class."""
 
 
-class Mask(Module):
+class Mask(ImageOperator):
     """
     Base class for computing and applying an image mask.
 
@@ -31,37 +30,9 @@ class Mask(Module):
         computed upon instantiation.
     """
 
-    mask: RealImage
-
-    @abstractmethod
-    def __init__(self, **kwargs: Any):
-        """Compute the mask. This must be overwritten in subclasses."""
-        super().__init__(**kwargs)
-
-    def __call__(self, image: RealImage) -> RealImage:
-        """Apply the mask to an image."""
-        return self.mask * image
-
-    def __mul__(self: MaskT, other: MaskT) -> _ProductMask:
-        return _ProductMask(mask1=self, mask2=other)
-
-    def __rmul__(self: MaskT, other: MaskT) -> _ProductMask:
-        return _ProductMask(mask1=other, mask2=self)
-
-
-class _ProductMask(Mask):
-    """A helper to represent the product of two filters."""
-
-    mask1: Mask
-    mask2: Mask
-
-    def __init__(self, mask1: MaskT, mask2: MaskT):
-        self.mask1 = mask1
-        self.mask2 = mask2
-        self.mask = mask1.mask * mask2.mask
-
-    def __repr__(self):
-        return f"{repr(self.mask1)} * {repr(self.mask2)}"
+    @property
+    def mask(self) -> RealImage:
+        return self.operator
 
 
 class CircularMask(Mask):
@@ -93,7 +64,7 @@ class CircularMask(Mask):
         super().__init__(**kwargs)
         self.radius = radius
         self.rolloff = rolloff
-        self.mask = compute_circular_mask(freqs, self.radius, self.rolloff)
+        self.operator = compute_circular_mask(freqs, self.radius, self.rolloff)
 
 
 def compute_circular_mask(

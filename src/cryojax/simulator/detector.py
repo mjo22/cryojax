@@ -16,7 +16,7 @@ from jaxtyping import PRNGKeyArray
 from equinox import Module
 
 from .noise import GaussianNoise
-from ..image import Kernel, Constant
+from ..image import ParameterizedFilter, Constant
 from ..core import field
 from ..typing import ComplexImage, ImageCoords
 
@@ -55,7 +55,7 @@ class GaussianDetector(GaussianNoise, Detector):
         ``Constant()``.
     """
 
-    variance: Kernel = field(default_factory=Constant)
+    variance: ParameterizedFilter = field(default_factory=Constant)
 
     @override
     def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:

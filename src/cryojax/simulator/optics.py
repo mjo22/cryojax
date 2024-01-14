@@ -20,7 +20,7 @@ import jax.numpy as jnp
 from equinox import Module
 
 from .pose import Pose
-from ..image import Kernel
+from ..image import ParameterizedFilter
 from ..core import field
 from ..image import cartesian_to_polar
 from ..typing import Real_, RealImage, Image, ImageCoords
@@ -44,7 +44,7 @@ class Optics(Module):
         the optics model. By default, ``Gaussian()``.
     """
 
-    envelope: Optional[Kernel] = field(default=None)
+    envelope: Optional[ParameterizedFilter] = field(default=None)
 
     @overload
     @abstractmethod
@@ -80,7 +80,7 @@ class NullOptics(Optics):
     A null optics model.
     """
 
-    envelope: Optional[Kernel] = field(default=None)
+    envelope: Optional[ParameterizedFilter] = field(default=None)
 
     def evaluate(
         self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any

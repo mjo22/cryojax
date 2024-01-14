@@ -11,7 +11,7 @@ import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from ..image import Kernel, Exp
+from ..image import ParameterizedFilter, Exp
 from .noise import GaussianNoise
 from ..core import field
 from ..typing import RealImage, ComplexImage, Image, ImageCoords
@@ -59,7 +59,7 @@ class GaussianIce(GaussianNoise, Ice):
         ``Exp()``.
     """
 
-    variance: Kernel = field(default_factory=Exp)
+    variance: ParameterizedFilter = field(default_factory=Exp)
 
     def sample(
         self,

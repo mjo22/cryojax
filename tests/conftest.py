@@ -5,9 +5,9 @@ import equinox as eqx
 import jax.random as jr
 from jax import config
 
-import cryojax.image as ci
 import cryojax.simulator as cs
-from cryojax.inference import distributions
+from cryojax.image import operators as op
+from cryojax.inference import distributions as dist
 from cryojax.image import rfftn
 
 config.update("jax_enable_x64", True)
@@ -59,13 +59,13 @@ def stacked_density(density):
 
 @pytest.fixture
 def filters(manager):
-    return ci.LowpassFilter(manager.padded_frequency_grid.get())
+    return op.LowpassFilter(manager.padded_frequency_grid.get())
     # return None
 
 
 @pytest.fixture
 def masks(manager):
-    return ci.CircularMask(manager.coordinate_grid.get())
+    return op.CircularMask(manager.coordinate_grid.get())
 
 
 @pytest.fixture
@@ -73,7 +73,7 @@ def instrument():
     return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.UniformExposure(N=1000.0, mu=0.0),
-        detector=cs.GaussianDetector(ci.Constant(1.0)),
+        detector=cs.GaussianDetector(op.Constant(1.0)),
     )
 
 
@@ -151,11 +151,11 @@ def test_image(noisy_model):
 
 @pytest.fixture
 def likelihood_model(noisy_model):
-    return distributions.IndependentFourierGaussian(noisy_model)
+    return dist.IndependentFourierGaussian(noisy_model)
 
 
 @pytest.fixture
 def likelihood_model_with_custom_variance(noiseless_model):
-    return distributions.IndependentFourierGaussian(
-        noiseless_model, noise=cs.GaussianNoise(variance=ci.Constant(1.0))
+    return dist.IndependentFourierGaussian(
+        noiseless_model, noise=cs.GaussianNoise(variance=op.Constant(1.0))
     )

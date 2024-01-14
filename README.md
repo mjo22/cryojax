@@ -97,14 +97,14 @@ image = pipeline.render()
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
-from cryojax.image import LowpassFilter, WhiteningFilter, CircularMask
+from cryojax.image import operators as op
 
 micrograph = ...  # A micrograph used for whitening
 freqs = manager.padded_frequency_grid.get()  # Get the upsampled frequency grid
 coords = manager.coordinate_grid.get()  # Get the coordinate grid
-filter = LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequency
-         * WhiteningFilter(freqs, micrograph=micrograph)
-mask = CircularMask(coords, radius=1.0)    # Cutoff pixels above radius equal to (half) image size
+filter = op.LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequency
+         * op.WhiteningFilter(freqs, micrograph=micrograph)
+mask = op.CircularMask(coords, radius=1.0)    # Cutoff pixels above radius equal to (half) image size
 pipeline = cs.ImagePipeline(
     scattering=scattering, specimen=specimen, instrument=instrument, filter=filter, mask=mask
     )
@@ -115,7 +115,7 @@ image = pipeline.sample(key)
 
 ```python
 from cryojax.image import rfftn
-from cryojax.inference import distributions
+from cryojax.inference import distributions as dist
 
 # Read observed data in real space
 observed = ...
@@ -124,7 +124,7 @@ observed = manager.normalize_image(observed, is_real=True)
 # Upsample observed data in fourier space
 observed = rfftn(manager.pad_to_padded_shape(observed))
 # Instantiate distribution and compute
-model = distributions.IndependentFourierGaussian(pipeline)
+model = dist.IndependentFourierGaussian(pipeline)
 log_likelihood = model.log_probability(observed)
 ```
 
