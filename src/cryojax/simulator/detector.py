@@ -13,9 +13,15 @@ from jaxtyping import PRNGKeyArray
 from equinox import AbstractClassVar
 
 from ._stochastic_model import StochasticModel
-from ..image import FourierOperatorLike, RealOperatorLike, Constant, irfftn
+from ..image import (
+    FourierOperatorLike,
+    RealOperatorLike,
+    Constant,
+    irfftn,
+    rfftn,
+)
 from ..core import field
-from ..typing import ComplexImage, ImageCoords, RealImage, Image
+from ..typing import ComplexImage, ImageCoords, RealImage
 
 
 class Detector(StochasticModel):
@@ -23,7 +29,7 @@ class Detector(StochasticModel):
     Base class for an electron detector.
     """
 
-    is_real: AbstractClassVar[bool]
+    is_sample_real: AbstractClassVar[bool]
 
     @abstractmethod
     def sample(
@@ -31,9 +37,24 @@ class Detector(StochasticModel):
         key: PRNGKeyArray,
         image: ComplexImage,
         coords_or_freqs: ImageCoords,
-    ) -> Image:
-        """Sample a realization from the detector."""
+    ) -> ComplexImage:
+        """Sample a realization from the detector noise model."""
         raise NotImplementedError
+
+    def __call__(
+        self,
+        key: PRNGKeyArray,
+        image: ComplexImage,
+        freqs: ImageCoords,
+        coords: ImageCoords,
+    ) -> ComplexImage:
+        """Pass the image through the detector model."""
+        if self.is_sample_real:
+            return rfftn(
+                self.sample(key, irfftn(image, s=coords.shape[0:-1]), coords)
+            )
+        else:
+            return self.sample(key, image, freqs)
 
 
 class NullDetector(Detector):
@@ -41,15 +62,15 @@ class NullDetector(Detector):
     A 'null' detector.
     """
 
-    is_real: ClassVar[bool] = False
+    is_sample_real: ClassVar[bool] = False
 
     @override
     def sample(
         self,
-        image: ComplexImage,
         key: PRNGKeyArray,
+        image: ComplexImage,
         coords_or_freqs: ImageCoords,
-    ) -> Image:
+    ) -> ComplexImage:
         return image
 
 
@@ -66,7 +87,7 @@ class GaussianDetector(Detector):
         ``Constant()``.
     """
 
-    is_real: ClassVar[bool] = False
+    is_sample_real: ClassVar[bool] = False
 
     variance: FourierOperatorLike = field(default_factory=Constant)
 
@@ -90,7 +111,7 @@ class PoissonDetector(Detector):
     NOTE: This is untested and very much in a beta version.
     """
 
-    is_real: ClassVar[bool] = True
+    is_sample_real: ClassVar[bool] = True
 
     dose: RealOperatorLike = field(default_factory=Constant)
 
@@ -98,11 +119,9 @@ class PoissonDetector(Detector):
     def sample(
         self,
         key: PRNGKeyArray,
-        image: ComplexImage,
+        image: RealImage,
         coords_or_freqs: ImageCoords,
     ) -> RealImage:
-        return jr.poisson(
-            key,
-            self.dose(coords_or_freqs)
-            * irfftn(image, s=coords_or_freqs.shape[0:-1]),
-        ).astype(float)
+        return jr.poisson(key, self.dose(coords_or_freqs) * image).astype(
+            float
+        )
