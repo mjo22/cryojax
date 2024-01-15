@@ -74,9 +74,11 @@ The stack of electron densities is stored in a single `ElectronDensity`, whose p
 Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
 ```python
+from cryojax.image import operators as op
+
 ctf = cs.CTF(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
-optics = cs.CTFOptics(ctf)
-detector = cs.GaussianDetector(variance=cs.Constant(1.0))
+optics = cs.CTFOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # defocus and b_factor in Angstroms and Angstroms^2, respectively
+detector = cs.GaussianDetector(variance=op.Constant(1.0))
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
