@@ -15,7 +15,7 @@ from ._stochastic_model import StochasticModel
 from .optics import Optics
 from ..image import FourierOperatorLike, FourierExp
 from ..core import field
-from ..typing import ComplexImage, Image, RealImage, ImageCoords
+from ..typing import ComplexImage, ImageCoords
 
 
 class Ice(StochasticModel):
