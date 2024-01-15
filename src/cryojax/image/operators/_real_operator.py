@@ -7,9 +7,9 @@ from __future__ import annotations
 __all__ = ["RealOperator", "Gaussian", "RealOperatorLike"]
 
 from abc import abstractmethod
-from typing import Any
+from typing import Any, Optional
 from typing_extensions import override
-from jaxtyping import Array
+from jaxtyping import Array, Float
 
 import jax.numpy as jnp
 
@@ -48,7 +48,7 @@ class Gaussian(RealOperator):
     Specifically, this is
 
     .. math::
-        g(r) = \frac{\kappa}{2\pi \beta} \exp(- r^2 / (2 \beta)),
+        g(r) = \frac{\kappa}{2\pi \beta} \exp(- (r - r_0)^2 / (2 \beta)),
 
     where :math:`r^2 = x^2 + y^2`.
 
@@ -61,12 +61,15 @@ class Gaussian(RealOperator):
         The length scale of the operator, equal to :math:`\beta`
         in the above equation.
     offset :
-        An offset added to the above equation.
+        An offset to the origin, equal to :math:`r_0`
+        in the above equation.
     """
 
     amplitude: Real_ = field(default=1.0)
     b_factor: Real_ = field(default=1.0)
-    offset: Real_ = field(default=0.0)
+    offset: Float[Array, "... 2"] = field(
+        default=(0.0, 0.0), converter=jnp.asarray
+    )
 
     @override
     def __call__(self, coords: ImageCoords | None, **kwargs: Any) -> RealImage:
@@ -75,8 +78,8 @@ class Gaussian(RealOperator):
                 "The coordinate grid must be given as an argument to the operator call."
             )
         else:
-            r_sqr = jnp.sum(coords**2, axis=-1)
+            r_sqr = jnp.sum((coords - self.offset) ** 2, axis=-1)
             scaling = (
                 self.amplitude / (2 * jnp.pi * self.b_factor)
             ) * jnp.exp(-0.5 * r_sqr / self.b_factor)
-            return scaling + self.offset
+            return scaling

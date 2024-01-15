@@ -7,49 +7,57 @@ __all__ = ["Ice", "NullIce", "GaussianIce"]
 from abc import abstractmethod
 
 import jax.random as jr
-import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
-from typing import ClassVar
 
 from ._stochastic_model import StochasticModel
 from .optics import Optics
 from ..image import FourierOperatorLike, FourierExp
 from ..core import field
-from ..typing import ComplexImage, ImageCoords
+from ..typing import ComplexImage, Image, ImageCoords
 
 
 class Ice(StochasticModel):
     """
     Base class for an ice model.
-
-    This is modeled as additive noise.
     """
-
-    is_real: ClassVar[bool] = False
 
     @abstractmethod
     def sample(
         self,
         key: PRNGKeyArray,
+        image: ComplexImage,
         freqs: ImageCoords,
+        ctf: Image,
+    ) -> ComplexImage:
+        """Sample the stochastic part of the model."""
+        raise NotImplementedError
+
+    def __call__(
+        self,
+        key: PRNGKeyArray,
+        image: ComplexImage,
+        freqs: ImageCoords,
+        coords: ImageCoords,
         optics: Optics,
     ) -> ComplexImage:
-        """Sample a realization from the model."""
-        raise NotImplementedError
+        """Pass the image through the ice model."""
+        ctf = optics(freqs)
+        return self.sample(key, image, freqs, ctf)
 
 
 class NullIce(Ice):
     """
-    A 'null' ice model.
+    A "null" ice model.
     """
 
     def sample(
         self,
         key: PRNGKeyArray,
+        image: ComplexImage,
         freqs: ImageCoords,
-        optics: Optics,
+        ctf: Image,
     ) -> ComplexImage:
-        return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
+        return image
 
 
 class GaussianIce(Ice):
@@ -69,11 +77,12 @@ class GaussianIce(Ice):
     def sample(
         self,
         key: PRNGKeyArray,
+        image: ComplexImage,
         freqs: ImageCoords,
-        optics: Optics,
+        ctf: Image,
     ) -> ComplexImage:
-        return (
-            optics(freqs)
-            * self.variance(freqs)
-            * jr.normal(key, shape=freqs.shape[0:-1])
+        """Sample from a gaussian noise model, with the variance
+        modulated by the CTF."""
+        return image + ctf * self.variance(freqs) * jr.normal(
+            key, shape=freqs.shape[0:-1]
         )

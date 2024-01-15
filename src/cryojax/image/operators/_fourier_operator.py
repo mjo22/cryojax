@@ -27,7 +27,7 @@ import jax.numpy as jnp
 
 from ._operator import OperatorAsFunction
 from ...core import field
-from ...typing import Real_, ImageCoords, RealImage, Image
+from ...typing import Real_, ImageCoords, RealImage
 
 
 class FourierOperator(OperatorAsFunction):
@@ -119,13 +119,10 @@ class FourierExp(FourierOperator):
     scale :
         The length scale of the operator, equal to :math:`\xi`
         in the above equation.
-    offset :
-        An offset added to the above equation.
     """
 
     amplitude: Real_ = field(default=1.0)
     scale: Real_ = field(default=1.0)
-    offset: Real_ = field(default=0.0)
 
     @override
     def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
@@ -137,7 +134,7 @@ class FourierExp(FourierOperator):
             k_sqr = jnp.sum(freqs**2, axis=-1)
             scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
             scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
-            return scaling + self.offset
+            return scaling
 
 
 class FourierGaussian(FourierOperator):
@@ -166,13 +163,10 @@ class FourierGaussian(FourierOperator):
     b_factor :
         The length scale of the operator, equal to :math:`\beta`
         in the above equation.
-    offset :
-        An offset added to the above equation.
     """
 
     amplitude: Real_ = field(default=1.0)
     b_factor: Real_ = field(default=1.0)
-    offset: Real_ = field(default=0.0)
 
     @override
     def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
@@ -183,4 +177,4 @@ class FourierGaussian(FourierOperator):
         else:
             k_sqr = jnp.sum(freqs**2, axis=-1)
             scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
-            return scaling + self.offset
+            return scaling
