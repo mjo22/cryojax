@@ -80,6 +80,6 @@ class Gaussian(RealOperator):
         else:
             r_sqr = jnp.sum((coords - self.offset) ** 2, axis=-1)
             scaling = (
-                self.amplitude / (2 * jnp.pi * self.b_factor)
+                self.amplitude / jnp.sqrt(2 * jnp.pi * self.b_factor)
             ) * jnp.exp(-0.5 * r_sqr / self.b_factor)
             return scaling
