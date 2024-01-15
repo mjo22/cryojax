@@ -16,6 +16,7 @@ import jax.numpy as jnp
 from jax.image import scale_and_translate
 from equinox import Module
 
+from ..pose import Pose
 from ..density import ElectronDensity, Voxels, FourierVoxelGrid
 from ..manager import ImageManager
 
@@ -71,7 +72,7 @@ class ScatteringModel(Module):
         raise NotImplementedError
 
     def __call__(
-        self, density: ElectronDensity, **kwargs: Any
+        self, density: ElectronDensity, pose: Pose, **kwargs: Any
     ) -> ComplexImage:
         """
         Compute an image at the exit plane, measured at the ScatteringModel
@@ -109,6 +110,9 @@ class ScatteringModel(Module):
             )
         # Transform back to fourier space and give the image zero mean
         image = rfftn(image).at[0, 0].set(0.0 + 0.0j)
+        # Apply translation through phase shifts
+        image *= pose.shifts(self.padded_frequency_grid_in_angstroms.get())
+
         return image
 
     @cached_property

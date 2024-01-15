@@ -5,16 +5,17 @@ import equinox as eqx
 import numpy as np
 
 from cryojax.image import operators as op
-from cryojax.simulator import Exposure, NullExposure
+from cryojax.simulator import Exposure, NullExposure, NullIce
 
 config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize("model", ["noisy_model", "noiseless_model"])
-def test_rescale(model, request):
+def test_scale(model, request):
     model = request.getfixturevalue(model)
-    N, mu = 10.0, 0.5
-    exposure = Exposure(scaling=op.Constant(N), offset=op.ZeroMode(mu))
+    rescaled_model = eqx.tree_at(lambda x: x.solvent, model, NullIce())
+    N = 10.0
+    exposure = Exposure(scaling=op.Constant(N), offset=op.ZeroMode(0.0))
     null_exposure = NullExposure()
     # Create null model
     rescaled_model = eqx.tree_at(
@@ -27,4 +28,4 @@ def test_rescale(model, request):
     null_image = null_model.render(view_cropped=False)
     rescaled_image = rescaled_model.render(view_cropped=False)
 
-    np.testing.assert_allclose(rescaled_image, N * null_image + mu)
+    np.testing.assert_allclose(rescaled_image, N * null_image)

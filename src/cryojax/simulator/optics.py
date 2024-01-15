@@ -12,7 +12,6 @@ from equinox import AbstractVar, Module
 import jax
 import jax.numpy as jnp
 
-from .pose import Pose
 from ..image import FourierOperatorLike, FourierOperator, Constant
 from ..core import field
 from ..image import cartesian_to_polar
@@ -49,9 +48,8 @@ class CTF(FourierOperator):
     degrees: bool = field(static=True, default=True)
 
     def __call__(
-        self, freqs: ImageCoords, pose: Optional[Pose] = None
+        self, freqs: ImageCoords, defocus_offset: Real_ | float = 0.0
     ) -> RealImage:
-        defocus_offset = 0.0 if pose is None else pose.offset_z
         return compute_ctf(
             freqs,
             self.defocus_u + defocus_offset,
@@ -91,13 +89,17 @@ class Optics(Module):
 
     normalize: bool = field(static=True, default=False)
 
-    def evaluate(self, freqs: ImageCoords, pose: Optional[Pose] = None):
+    def evaluate(
+        self, freqs: ImageCoords, defocus_offset: Real_ | float = 0.0
+    ):
         """Evaluate the optics model. This is modeled as a contrast
         transfer function multiplied by an envelope function."""
         if self.envelope is None:
-            ctf = self.ctf(freqs, pose=pose)
+            ctf = self.ctf(freqs, defocus_offset=defocus_offset)
         else:
-            ctf = self.envelope(freqs) * self.ctf(freqs, pose=pose)
+            ctf = self.envelope(freqs) * self.ctf(
+                freqs, defocus_offset=defocus_offset
+            )
         if self.normalize:
             N1, N2 = freqs.shape[0:-1]
             ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
@@ -109,7 +111,7 @@ class Optics(Module):
         self,
         image: ComplexImage,
         freqs: ImageCoords,
-        pose: Optional[Pose] = None,
+        defocus_offset: Real_ | float = 0.0,
     ) -> Image:
         """Pass an image through the optics model."""
         raise NotImplementedError
@@ -132,7 +134,7 @@ class NullOptics(Optics):
         self,
         image: ComplexImage,
         freqs: ImageCoords,
-        pose: Optional[Pose] = None,
+        defocus_offset: Real_ | float = 0.0,
     ) -> Image:
         return image
 
@@ -149,11 +151,11 @@ class CTFOptics(Optics):
         self,
         image: ComplexImage,
         freqs: ImageCoords,
-        pose: Optional[Pose] = None,
+        defocus_offset: Real_ | float = 0.0,
         **kwargs: Any,
     ) -> Image:
         """Compute the optics model with an envelope."""
-        return image * self.evaluate(freqs, pose=pose)
+        return image * self.evaluate(freqs, defocus_offset=defocus_offset)
 
 
 @partial(jax.jit, static_argnames=["degrees"])

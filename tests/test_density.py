@@ -91,7 +91,7 @@ def test_electron_density_shape(density):
     assert len(double_stacked_density) == 6
 
 
-def test_electron_density_vmap(density, scattering):
+def test_electron_density_vmap(density, scattering, pose):
     filter_spec = ci.get_not_coordinate_filter_spec(density)
     # Add a leading dimension to ElectronDensity leaves
     density = jtu.tree_map(
@@ -102,13 +102,13 @@ def test_electron_density_vmap(density, scattering):
     )
     vmap, novmap = eqx.partition(density, filter_spec)
 
-    @partial(jax.vmap, in_axes=[0, None, None])
-    def compute_image_stack(vmap, novmap, scattering):
+    @partial(jax.vmap, in_axes=[0, None, None, None])
+    def compute_image_stack(vmap, novmap, scattering, pose):
         density = eqx.combine(vmap, novmap)
-        return scattering(density)
+        return scattering(density, pose)
 
     # vmap over first axis
-    image_stack = compute_image_stack(vmap, novmap, scattering)
+    image_stack = compute_image_stack(vmap, novmap, scattering, pose)
     assert image_stack.shape[:1] == (1,)
 
 
