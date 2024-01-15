@@ -29,8 +29,8 @@ class Detector(StochasticModel):
     def sample(
         self,
         key: PRNGKeyArray,
-        coords_or_freqs: ImageCoords,
         image: ComplexImage,
+        coords_or_freqs: ImageCoords,
     ) -> Image:
         """Sample a realization from the detector."""
         raise NotImplementedError
@@ -46,9 +46,9 @@ class NullDetector(Detector):
     @override
     def sample(
         self,
+        image: ComplexImage,
         key: PRNGKeyArray,
         coords_or_freqs: ImageCoords,
-        image: ComplexImage,
     ) -> Image:
         return image
 
@@ -74,8 +74,8 @@ class GaussianDetector(Detector):
     def sample(
         self,
         key: PRNGKeyArray,
-        coords_or_freqs: ImageCoords,
         image: ComplexImage,
+        coords_or_freqs: ImageCoords,
     ) -> ComplexImage:
         noise = self.variance(coords_or_freqs) * jr.normal(
             key, shape=coords_or_freqs.shape[0:-1], dtype=complex
@@ -98,8 +98,8 @@ class PoissonDetector(Detector):
     def sample(
         self,
         key: PRNGKeyArray,
-        coords_or_freqs: ImageCoords,
         image: ComplexImage,
+        coords_or_freqs: ImageCoords,
     ) -> RealImage:
         return jr.poisson(
             key,

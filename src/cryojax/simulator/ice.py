@@ -27,9 +27,9 @@ class Ice(StochasticModel):
     def sample(
         self,
         key: PRNGKeyArray,
+        image: ComplexImage,
         freqs: ImageCoords,
         coords: ImageCoords,
-        image: ComplexImage,
         optics: Optics,
     ) -> ComplexImage:
         """Sample a realization from the model."""
@@ -46,9 +46,9 @@ class NullIce(Ice):
     def sample(
         self,
         key: PRNGKeyArray,
+        image: ComplexImage,
         freqs: ImageCoords,
         coords: ImageCoords,
-        image: ComplexImage,
         optics: Optics,
     ) -> ComplexImage:
         return image
@@ -73,9 +73,9 @@ class GaussianIce(Ice):
     def sample(
         self,
         key: PRNGKeyArray,
+        image: ComplexImage,
         freqs: ImageCoords,
         coords: ImageCoords,
-        image: ComplexImage,
         optics: Optics,
     ) -> ComplexImage:
         return image + (

@@ -148,18 +148,18 @@ class ImagePipeline(Module):
         if not isinstance(self.solvent, NullIce):
             # The image with the solvent.
             image = self.solvent.sample(
-                keys[idx], freqs, coords, image, self.instrument.optics
+                keys[idx], image, freqs, coords, self.instrument.optics
             )
             idx += 1
         if not isinstance(self.instrument.detector, NullDetector):
             # Measure the detector readout
             if self.instrument.detector.is_real:
                 image = rfftn(
-                    self.instrument.detector.sample(keys[idx], coords, image)
+                    self.instrument.detector.sample(keys[idx], image, coords)
                 )
             else:
                 image = self.instrument.detector.sample(
-                    keys[idx], freqs, image
+                    keys[idx], image, freqs
                 )
             idx += 1
 
