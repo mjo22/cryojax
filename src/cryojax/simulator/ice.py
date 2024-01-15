@@ -31,7 +31,7 @@ class Ice(StochasticModel):
         coords: ImageCoords,
         image: ComplexImage,
         optics: Optics,
-    ) -> Image:
+    ) -> ComplexImage:
         """Sample a realization from the model."""
         raise NotImplementedError
 
@@ -50,7 +50,7 @@ class NullIce(Ice):
         coords: ImageCoords,
         image: ComplexImage,
         optics: Optics,
-    ) -> Image:
+    ) -> ComplexImage:
         return image
 
 

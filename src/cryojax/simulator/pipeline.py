@@ -150,7 +150,6 @@ class ImagePipeline(Module):
             image = self.solvent.sample(
                 keys[idx], freqs, coords, image, self.instrument.optics
             )
-            image = rfftn(image) if self.solvent.is_real else image
             idx += 1
         if not isinstance(self.instrument.detector, NullDetector):
             # Measure the detector readout

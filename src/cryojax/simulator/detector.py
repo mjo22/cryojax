@@ -24,6 +24,8 @@ class Detector(StochasticModel):
     Base class for an electron detector.
     """
 
+    is_real: AbstractClassVar[bool]
+
     @abstractmethod
     def sample(
         self,
