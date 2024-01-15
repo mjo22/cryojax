@@ -24,8 +24,6 @@ class Detector(StochasticModel):
     Base class for an electron detector.
     """
 
-    is_real: AbstractClassVar[bool]
-
     @abstractmethod
     def sample(
         self,
@@ -51,7 +49,7 @@ class NullDetector(Detector):
         coords_or_freqs: ImageCoords,
         image: ComplexImage,
     ) -> Image:
-        return jnp.zeros(jnp.asarray(coords_or_freqs).shape[0:-1])
+        return image
 
 
 class GaussianDetector(Detector):

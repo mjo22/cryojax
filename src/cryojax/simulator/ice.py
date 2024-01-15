@@ -15,25 +15,23 @@ from ._stochastic_model import StochasticModel
 from .optics import Optics
 from ..image import FourierOperatorLike, FourierExp
 from ..core import field
-from ..typing import ComplexImage, ImageCoords
+from ..typing import ComplexImage, Image, RealImage, ImageCoords
 
 
 class Ice(StochasticModel):
     """
     Base class for an ice model.
-
-    This is modeled as additive noise.
     """
-
-    is_real: ClassVar[bool] = False
 
     @abstractmethod
     def sample(
         self,
         key: PRNGKeyArray,
         freqs: ImageCoords,
+        coords: ImageCoords,
+        image: ComplexImage,
         optics: Optics,
-    ) -> ComplexImage:
+    ) -> Image:
         """Sample a realization from the model."""
         raise NotImplementedError
 
@@ -43,13 +41,17 @@ class NullIce(Ice):
     A 'null' ice model.
     """
 
+    is_real: ClassVar[bool] = False
+
     def sample(
         self,
         key: PRNGKeyArray,
         freqs: ImageCoords,
+        coords: ImageCoords,
+        image: ComplexImage,
         optics: Optics,
-    ) -> ComplexImage:
-        return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
+    ) -> Image:
+        return image
 
 
 class GaussianIce(Ice):
@@ -64,15 +66,19 @@ class GaussianIce(Ice):
         ``FourierExp()``.
     """
 
+    is_real: ClassVar[bool] = False
+
     variance: FourierOperatorLike = field(default_factory=FourierExp)
 
     def sample(
         self,
         key: PRNGKeyArray,
         freqs: ImageCoords,
+        coords: ImageCoords,
+        image: ComplexImage,
         optics: Optics,
     ) -> ComplexImage:
-        return (
+        return image + (
             optics(freqs)
             * self.variance(freqs)
             * jr.normal(key, shape=freqs.shape[0:-1])

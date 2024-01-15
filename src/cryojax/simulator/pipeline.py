@@ -146,11 +146,11 @@ class ImagePipeline(Module):
         # The image of the specimen drawn from the ensemble
         image = self.render(view_cropped=False, get_real=False)
         if not isinstance(self.solvent, NullIce):
-            # The image of the solvent.
-            ice_image = self.solvent.sample(
-                keys[idx], freqs, self.instrument.optics
+            # The image with the solvent.
+            image = self.solvent.sample(
+                keys[idx], freqs, coords, image, self.instrument.optics
             )
-            image = image + ice_image
+            image = rfftn(image) if self.solvent.is_real else image
             idx += 1
         if not isinstance(self.instrument.detector, NullDetector):
             # Measure the detector readout
