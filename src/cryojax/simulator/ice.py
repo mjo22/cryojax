@@ -41,7 +41,7 @@ class Ice(StochasticModel):
         optics: Optics,
     ) -> ComplexImage:
         """Pass the image through the ice model."""
-        ctf = optics(freqs)
+        ctf = optics.evaluate(freqs)
         return self.sample(key, image, freqs, ctf)
 
 

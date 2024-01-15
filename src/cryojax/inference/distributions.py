@@ -94,8 +94,8 @@ class IndependentFourierGaussian(Distribution):
                 variance = Constant(0.0)
             # Variance from ice
             if isinstance(pipeline.solvent, GaussianIce):
-                optics = pipeline.instrument.optics
-                variance += optics * optics * pipeline.solvent.variance
+                ctf = pipeline.instrument.optics.ctf
+                variance += ctf * ctf * pipeline.solvent.variance
             if eqx.tree_equal(variance, Constant(0.0)):
                 raise AttributeError(
                     "If variance is not given, the ImagePipeline must have either a GaussianDetector or GaussianIce model."

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 __all__ = ["ImagePipeline", "SuperpositionPipeline"]
 
-from typing import Union, Optional
+from typing import Optional
 from typing_extensions import override
 
 import equinox as eqx
@@ -88,17 +88,14 @@ class ImagePipeline(Module):
         image = self.scattering(density)
         # Apply translation
         image *= self.specimen.pose.shifts(freqs)
-        # Measure the image with the instrument
-        # ... first compute and apply CTF
-        ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
-        image = ctf * image
-        # ... then apply the electron exposure model
-        scaling, offset = self.instrument.exposure.scaling(
-            freqs
-        ), self.instrument.exposure.offset(
-            freqs, shape_in_real_space=self.scattering.manager.padded_shape
+        # Pass image through the optics model
+        image = self.instrument.optics(image, freqs, pose=self.specimen.pose)
+        # Pass image through the electron exposure model
+        image = self.instrument.exposure(
+            image,
+            freqs,
+            shape_in_real_space=self.scattering.manager.padded_shape,
         )
-        image = scaling * image + offset
 
         return self._get_final_image(
             image,
@@ -146,7 +143,7 @@ class ImagePipeline(Module):
         # The image of the specimen drawn from the ensemble
         image = self.render(view_cropped=False, get_real=False)
         if not isinstance(self.solvent, NullIce):
-            # Compute the image with the solvent
+            # Pass the image through the solvent model
             image = self.solvent(
                 keys[idx], image, freqs, coords, self.instrument.optics
             )
