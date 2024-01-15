@@ -187,7 +187,7 @@ In general, there are many ways to write loss functions. See the [equinox](https
 ## Features
 
 - Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration.
-- A `cryojax.Module` is just an `equinox.Module`. Therefore, the `equinox` ecosystem is available for usage!
+- `cryojax` is built on `equinox`. Therefore, the `equinox` ecosystem is available for usage!
 
 ## Similar libraries
 
