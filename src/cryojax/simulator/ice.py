@@ -7,7 +7,6 @@ __all__ = ["Ice", "NullIce", "GaussianIce"]
 from abc import abstractmethod
 
 import jax.random as jr
-import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from typing import ClassVar
 

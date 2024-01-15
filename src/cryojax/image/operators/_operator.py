@@ -166,8 +166,6 @@ class Empirical(OperatorAsFunction):
         The measured image.
     amplitude :
         An amplitude scaling for the operator.
-    offset :
-        An offset added to the above equation.
     """
 
     measurement: Image
@@ -180,10 +178,7 @@ class Empirical(OperatorAsFunction):
         self, coords_or_freqs: ImageCoords | None = None, **kwargs: Any
     ) -> Image:
         """Return the scaled and offset measurement."""
-        return (
-            self.amplitude * jax.lax.stop_gradient(self.measurement)
-            + self.offset
-        )
+        return self.amplitude * jax.lax.stop_gradient(self.measurement)
 
 
 class _SumOperatorAsBuffer(OperatorAsBuffer):
