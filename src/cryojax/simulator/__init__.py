@@ -1,4 +1,5 @@
 from . import (
+    _stochastic_model,
     detector,
     exposure,
     ice,
@@ -13,6 +14,7 @@ from . import (
     specimen,
 )
 
+from ._stochastic_model import *
 from .manager import *
 from .pose import *
 from .specimen import *
@@ -28,7 +30,8 @@ from .pipeline import *
 
 
 __all__ = (
-    manager.__all__
+    _stochastic_model.__all__
+    + manager.__all__
     + pose.__all__
     + specimen.__all__
     + assembly.__all__

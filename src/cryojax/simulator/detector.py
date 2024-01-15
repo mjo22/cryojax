@@ -2,33 +2,38 @@
 Abstraction of electron detectors in a cryo-EM image.
 """
 
-__all__ = [
-    "Detector",
-    "NullDetector",
-    "GaussianDetector",
-]
+__all__ = ["Detector", "NullDetector", "GaussianDetector"]
 
 from abc import abstractmethod
+from typing import ClassVar
 from typing_extensions import override
 
 import jax.random as jr
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
-from equinox import Module
+from equinox import AbstractClassVar
 
-from ..image import FourierOperator, Constant
+from ._stochastic_model import StochasticModel
+from ..image import FourierOperatorLike, RealOperatorLike, Constant, irfftn
 from ..core import field
-from ..typing import ComplexImage, ImageCoords
+from ..typing import ComplexImage, ImageCoords, RealImage, Image
 
 
-class Detector(Module):
+class Detector(StochasticModel):
     """
     Base class for an electron detector.
     """
 
+    is_real: AbstractClassVar[bool]
+
     @abstractmethod
-    def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:
-        """Sample a realization from the detector noise model."""
+    def sample(
+        self,
+        key: PRNGKeyArray,
+        coords_or_freqs: ImageCoords,
+        image: ComplexImage,
+    ) -> Image:
+        """Sample a realization from the detector."""
         raise NotImplementedError
 
 
@@ -37,9 +42,16 @@ class NullDetector(Detector):
     A 'null' detector.
     """
 
+    is_real: ClassVar[bool] = False
+
     @override
-    def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:
-        return jnp.zeros(jnp.asarray(freqs).shape[0:-1], dtype=complex)
+    def sample(
+        self,
+        key: PRNGKeyArray,
+        coords_or_freqs: ImageCoords,
+        image: ComplexImage,
+    ) -> Image:
+        return jnp.zeros(jnp.asarray(coords_or_freqs).shape[0:-1])
 
 
 class GaussianDetector(Detector):
@@ -55,8 +67,43 @@ class GaussianDetector(Detector):
         ``Constant()``.
     """
 
-    variance: FourierOperator = field(default_factory=Constant)
+    is_real: ClassVar[bool] = False
+
+    variance: FourierOperatorLike = field(default_factory=Constant)
 
     @override
-    def sample(self, key: PRNGKeyArray, freqs: ImageCoords) -> ComplexImage:
-        return self.variance(freqs) * jr.normal(key, shape=freqs.shape[0:-1])
+    def sample(
+        self,
+        key: PRNGKeyArray,
+        coords_or_freqs: ImageCoords,
+        image: ComplexImage,
+    ) -> ComplexImage:
+        noise = self.variance(coords_or_freqs) * jr.normal(
+            key, shape=coords_or_freqs.shape[0:-1], dtype=complex
+        )
+        return image + noise
+
+
+class PoissonDetector(Detector):
+    """
+    A detector with a poisson noise model.
+
+    NOTE: This is untested and very much in a beta version.
+    """
+
+    is_real: ClassVar[bool] = True
+
+    dose: RealOperatorLike = field(default_factory=Constant)
+
+    @override
+    def sample(
+        self,
+        key: PRNGKeyArray,
+        coords_or_freqs: ImageCoords,
+        image: ComplexImage,
+    ) -> RealImage:
+        return jr.poisson(
+            key,
+            self.dose(coords_or_freqs)
+            * irfftn(image, s=coords_or_freqs.shape[0:-1]),
+        ).astype(float)

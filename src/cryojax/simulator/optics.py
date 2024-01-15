@@ -14,7 +14,7 @@ import jax
 import jax.numpy as jnp
 
 from .pose import Pose
-from ..image import FourierOperator
+from ..image import FourierOperatorLike, FourierOperator
 from ..core import field
 from ..image import cartesian_to_polar
 from ..typing import Real_, RealImage, Image, ImageCoords
@@ -41,7 +41,7 @@ class Optics(FourierOperator):
         Default is ``False``.
     """
 
-    envelope: Optional[FourierOperator] = field(default=None)
+    envelope: Optional[FourierOperatorLike] = field(default=None)
 
     normalize: bool = field(static=True, default=False)
 

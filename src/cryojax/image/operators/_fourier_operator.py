@@ -12,11 +12,10 @@ from __future__ import annotations
 
 __all__ = [
     "FourierOperator",
-    "Constant",
     "ZeroMode",
-    "Exp",
-    "Gaussian",
-    "Empirical",
+    "FourierExp",
+    "FourierGaussian",
+    "FourierOperatorLike",
 ]
 
 from abc import abstractmethod
@@ -52,16 +51,7 @@ class FourierOperator(OperatorAsFunction):
         raise NotImplementedError
 
 
-class Constant(OperatorAsFunction):
-    """An operator that is a constant."""
-
-    value: Real_ = field(default=1.0)
-
-    @override
-    def __call__(
-        self, freqs: ImageCoords | None = None, **kwargs: Any
-    ) -> Real_:
-        return self.value
+FourierOperatorLike = FourierOperator | OperatorAsFunction
 
 
 class ZeroMode(FourierOperator):
@@ -101,9 +91,9 @@ class ZeroMode(FourierOperator):
             return jnp.zeros((N1, N2)).at[0, 0].set(N_modes * self.value)
 
 
-class Exp(FourierOperator):
+class FourierExp(FourierOperator):
     r"""
-    This operator, in real space, represents a covariance
+    This operator, in real space, represents a
     function equal to an exponential decay, given by
 
     .. math::
@@ -150,7 +140,7 @@ class Exp(FourierOperator):
             return scaling + self.offset
 
 
-class Gaussian(FourierOperator):
+class FourierGaussian(FourierOperator):
     r"""
     This operator represents a simple gaussian.
     Specifically, this is
@@ -194,31 +184,3 @@ class Gaussian(FourierOperator):
             k_sqr = jnp.sum(freqs**2, axis=-1)
             scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
             return scaling + self.offset
-
-
-class Empirical(FourierOperator):
-    r"""
-    This operator stores a measured image, rather than
-    computing one from a model.
-
-    Attributes
-    ----------
-    measurement :
-        The measured image.
-    amplitude :
-        An amplitude scaling for the operator.
-    offset :
-        An offset added to the above equation.
-    """
-
-    measurement: Image = field(static=True)
-
-    amplitude: Real_ = field(default=1.0)
-    offset: Real_ = field(default=0.0)
-
-    @override
-    def __call__(
-        self, freqs: ImageCoords | None = None, **kwargs: Any
-    ) -> Image:
-        """Return the scaled and offset measurement."""
-        return self.amplitude * self.measurement + self.offset

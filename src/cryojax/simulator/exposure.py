@@ -10,7 +10,7 @@ __all__ = ["Exposure", "NullExposure"]
 
 from equinox import Module
 
-from ..image.operators import FourierOperator, Constant, ZeroMode
+from ..image.operators import FourierOperatorLike, Constant, ZeroMode
 from ..core import field
 
 
@@ -23,8 +23,8 @@ class Exposure(Module):
     the incoming electron dose and radiation damage.
     """
 
-    scaling: FourierOperator = field(default_factory=Constant)
-    offset: FourierOperator = field(default_factory=ZeroMode)
+    scaling: FourierOperatorLike = field(default_factory=Constant)
+    offset: FourierOperatorLike = field(default_factory=ZeroMode)
 
 
 class NullExposure(Exposure):

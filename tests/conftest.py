@@ -7,7 +7,6 @@ from jax import config
 
 import cryojax.simulator as cs
 from cryojax.image import operators as op
-from cryojax.inference import distributions as dist
 from cryojax.image import rfftn
 
 config.update("jax_enable_x64", True)

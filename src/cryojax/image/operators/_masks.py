@@ -56,7 +56,7 @@ class CircularMask(Mask):
 
     def __init__(
         self,
-        freqs: ImageCoords,
+        coords: ImageCoords,
         radius: float = 0.95,
         rolloff: float = 0.05,
         **kwargs: Any,
@@ -64,7 +64,9 @@ class CircularMask(Mask):
         super().__init__(**kwargs)
         self.radius = radius
         self.rolloff = rolloff
-        self.operator = compute_circular_mask(freqs, self.radius, self.rolloff)
+        self.operator = compute_circular_mask(
+            coords, self.radius, self.rolloff
+        )
 
 
 def compute_circular_mask(
