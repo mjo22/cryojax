@@ -10,6 +10,8 @@ __all__ = [
     "OperatorAsBufferT",
     "OperatorAsFunctionT",
     "OperatorLike",
+    "Constant",
+    "Empirical",
 ]
 
 from abc import abstractmethod
@@ -17,6 +19,7 @@ from typing import overload, Any, TypeVar
 from typing_extensions import override
 from jaxtyping import Array
 
+import jax
 from equinox import Module
 
 from ...core import field
@@ -90,17 +93,17 @@ class OperatorAsFunction(Module):
 
     @overload
     @abstractmethod
-    def __call__(self, coords: ImageCoords, **kwargs: Any) -> Array:
+    def __call__(self, coords_or_freqs: ImageCoords, **kwargs: Any) -> Array:
         ...
 
     @overload
     @abstractmethod
-    def __call__(self, coords: None, **kwargs: Any) -> Array:
+    def __call__(self, coords_or_freqs: None, **kwargs: Any) -> Array:
         ...
 
     @abstractmethod
     def __call__(
-        self, coords: ImageCoords | None = None, **kwargs: Any
+        self, coords_or_freqs: ImageCoords | None = None, **kwargs: Any
     ) -> Array:
         raise NotImplementedError
 
@@ -110,7 +113,7 @@ class OperatorAsFunction(Module):
     ) -> _SumOperatorAsFunction:
         if isinstance(other, OperatorAsFunction):
             return _SumOperatorAsFunction(self, other)
-        return _SumOperatorAsFunction(self, _Constant(other))
+        return _SumOperatorAsFunction(self, Constant(other))
 
     def __radd__(
         self: OperatorAsFunctionT,
@@ -118,7 +121,7 @@ class OperatorAsFunction(Module):
     ) -> _SumOperatorAsFunction:
         if isinstance(other, OperatorAsFunction):
             return _SumOperatorAsFunction(other, self)
-        return _SumOperatorAsFunction(_Constant(other), self)
+        return _SumOperatorAsFunction(Constant(other), self)
 
     def __mul__(
         self: OperatorAsFunctionT,
@@ -126,7 +129,7 @@ class OperatorAsFunction(Module):
     ) -> _ProductOperatorAsFunction:
         if isinstance(other, OperatorAsFunction):
             return _ProductOperatorAsFunction(self, other)
-        return _ProductOperatorAsFunction(self, _Constant(other))
+        return _ProductOperatorAsFunction(self, Constant(other))
 
     def __rmul__(
         self: OperatorAsFunctionT,
@@ -134,10 +137,53 @@ class OperatorAsFunction(Module):
     ) -> _ProductOperatorAsFunction:
         if isinstance(other, OperatorAsFunction):
             return _ProductOperatorAsFunction(other, self)
-        return _ProductOperatorAsFunction(_Constant(other), self)
+        return _ProductOperatorAsFunction(Constant(other), self)
 
 
 OperatorLike = OperatorAsBuffer | OperatorAsFunction
+
+
+class Constant(OperatorAsFunction):
+    """An operator that is a constant."""
+
+    value: Real_ = field(default=1.0)
+
+    @override
+    def __call__(
+        self, coords_or_freqs: ImageCoords | None = None, **kwargs: Any
+    ) -> Real_:
+        return self.value
+
+
+class Empirical(OperatorAsFunction):
+    r"""
+    This operator stores a measured image, rather than
+    computing one from a model.
+
+    Attributes
+    ----------
+    measurement :
+        The measured image.
+    amplitude :
+        An amplitude scaling for the operator.
+    offset :
+        An offset added to the above equation.
+    """
+
+    measurement: Image
+
+    amplitude: Real_ = field(default=1.0)
+    offset: Real_ = field(default=0.0)
+
+    @override
+    def __call__(
+        self, coords_or_freqs: ImageCoords | None = None, **kwargs: Any
+    ) -> Image:
+        """Return the scaled and offset measurement."""
+        return (
+            self.amplitude * jax.lax.stop_gradient(self.measurement)
+            + self.offset
+        )
 
 
 class _SumOperatorAsBuffer(OperatorAsBuffer):
@@ -184,18 +230,6 @@ class _ProductOperatorAsBuffer(OperatorAsBuffer):
         return f"{repr(self.operator1)} * {repr(self.operator2)}"
 
 
-class _Constant(OperatorAsFunction):
-    """A helper to add a constant to an operator."""
-
-    value: Real_ = field(default=1.0)
-
-    @override
-    def __call__(
-        self, coords: ImageCoords | None = None, **kwargs: Any
-    ) -> Real_:
-        return self.value
-
-
 class _SumOperatorAsFunction(OperatorAsFunction):
     """A helper to represent the sum of two operators."""
 
@@ -204,9 +238,11 @@ class _SumOperatorAsFunction(OperatorAsFunction):
 
     @override
     def __call__(
-        self, coords: ImageCoords | None = None, **kwargs: Any
+        self, coords_or_freqs: ImageCoords | None = None, **kwargs: Any
     ) -> Array:
-        return self.operator1(coords) + self.operator2(coords)
+        return self.operator1(coords_or_freqs) + self.operator2(
+            coords_or_freqs
+        )
 
     def __repr__(self):
         return f"{repr(self.operator1)} + {repr(self.operator2)}"
@@ -220,9 +256,11 @@ class _ProductOperatorAsFunction(OperatorAsFunction):
 
     @override
     def __call__(
-        self, coords: ImageCoords | None = None, **kwargs: Any
+        self, coords_or_freqs: ImageCoords | None = None, **kwargs: Any
     ) -> Array:
-        return self.operator1(coords) * self.operator2(coords)
+        return self.operator1(coords_or_freqs) * self.operator2(
+            coords_or_freqs
+        )
 
     def __repr__(self):
         return f"{repr(self.operator1)} * {repr(self.operator2)}"

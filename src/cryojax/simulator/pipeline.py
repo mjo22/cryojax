@@ -140,21 +140,31 @@ class ImagePipeline(Module):
             keys = jax.random.split(key)
         else:
             keys = jnp.expand_dims(key, axis=0)
-        # Frequencies
+        # Frequencies and coordinates
+        coords = self.scattering.padded_coordinate_grid_in_angstroms.get()
         freqs = self.scattering.padded_frequency_grid_in_angstroms.get()
         # The image of the specimen drawn from the ensemble
         image = self.render(view_cropped=False, get_real=False)
         if not isinstance(self.solvent, NullIce):
-            # The image of the solvent
-            ice_image = self.instrument.optics(
-                freqs, pose=self.specimen.pose
-            ) * self.solvent.sample(keys[idx], freqs)
+            # The image of the solvent.
+            ice_image = self.solvent.sample(
+                keys[idx], freqs, self.instrument.optics
+            )
             image = image + ice_image
             idx += 1
         if not isinstance(self.instrument.detector, NullDetector):
             # Measure the detector readout
-            noise = self.instrument.detector.sample(keys[idx], freqs)
-            image = image + noise
+            if self.instrument.detector.is_real:
+                padded_shape = self.scattering.manager.padded_shape
+                image = rfftn(
+                    self.instrument.detector.sample(
+                        keys[idx], coords, irfftn(image, s=padded_shape)
+                    )
+                )
+            else:
+                image = self.instrument.detector.sample(
+                    keys[idx], freqs, image
+                )
             idx += 1
 
         return self._get_final_image(

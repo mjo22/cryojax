@@ -16,7 +16,7 @@ import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from ..image.operators import FourierOperator, Constant
+from ..image.operators import FourierOperatorLike, Constant
 from ..simulator.ice import GaussianIce
 from ..simulator.detector import GaussianDetector
 from ..simulator.pipeline import ImagePipeline
@@ -78,12 +78,12 @@ class IndependentFourierGaussian(Distribution):
         models as described above.
     """
 
-    variance: FourierOperator
+    variance: FourierOperatorLike
 
     def __init__(
         self,
         pipeline: ImagePipeline,
-        variance: Optional[FourierOperator] = None,
+        variance: Optional[FourierOperatorLike] = None,
     ):
         self.pipeline = pipeline
         if variance is None:

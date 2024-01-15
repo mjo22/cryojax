@@ -5,31 +5,36 @@ Abstraction of the ice in a cryo-EM image.
 __all__ = ["Ice", "NullIce", "GaussianIce"]
 
 from abc import abstractmethod
-from typing import Optional
 
 import jax.random as jr
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
-from equinox import Module
+from typing import ClassVar
 
-from ..image import FourierOperator, Exp
+from ._stochastic_model import StochasticModel
+from .optics import Optics
+from ..image import FourierOperatorLike, FourierExp
 from ..core import field
-from ..typing import RealImage, ComplexImage, Image, ImageCoords
+from ..typing import ComplexImage, ImageCoords
 
 
-class Ice(Module):
+class Ice(StochasticModel):
     """
     Base class for an ice model.
+
+    This is modeled as additive noise.
     """
+
+    is_real: ClassVar[bool] = False
 
     @abstractmethod
     def sample(
         self,
         key: PRNGKeyArray,
         freqs: ImageCoords,
-        image: Optional[Image] = None,
-    ) -> Image:
-        """Sample a realization from the ice model."""
+        optics: Optics,
+    ) -> ComplexImage:
+        """Sample a realization from the model."""
         raise NotImplementedError
 
 
@@ -42,8 +47,8 @@ class NullIce(Ice):
         self,
         key: PRNGKeyArray,
         freqs: ImageCoords,
-        image: Optional[ComplexImage] = None,
-    ) -> RealImage:
+        optics: Optics,
+    ) -> ComplexImage:
         return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
 
 
@@ -56,15 +61,19 @@ class GaussianIce(Ice):
     variance :
         A kernel that computes the variance
         of the ice, modeled as noise. By default,
-        ``Exp()``.
+        ``FourierExp()``.
     """
 
-    variance: FourierOperator = field(default_factory=Exp)
+    variance: FourierOperatorLike = field(default_factory=FourierExp)
 
     def sample(
         self,
         key: PRNGKeyArray,
         freqs: ImageCoords,
-        image: Optional[ComplexImage] = None,
+        optics: Optics,
     ) -> ComplexImage:
-        return self.variance(freqs) * jr.normal(key, shape=freqs.shape[0:-1])
+        return (
+            optics(freqs)
+            * self.variance(freqs)
+            * jr.normal(key, shape=freqs.shape[0:-1])
+        )
