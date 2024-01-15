@@ -47,7 +47,7 @@ class Helix(Assembly):
         ``degrees = True`` and radians otherwise.
     pose :
         The center of mass pose of the helix.
-    conformations :
+    conformation :
         The conformation of `subunit` at each lattice site.
         This can either be a fixed set of conformations or a function
         that computes conformations based on the lattice positions.
@@ -219,16 +219,10 @@ def compute_lattice_rotations(
 
     Arguments
     ---------
-    rise : `Real_` or `RealVector`, shape `(n_subunits,)`
-        The helical rise.
     twist : `Real_` or `RealVector`, shape `(n_subunits,)`
         The helical twist.
-    initial_displacement : `Array`, shape `(3,)`
-        The initial position vector of the first subunit, in
-        the center of mass frame of the helix.
-        The xy values are an in-plane displacement from
-        the screw axis, and the z value is an offset from the
-        first subunit's position.
+    initial_rotation : `Array`, shape `(3, 3)`
+        The initial rotation of the first subunit.
     n_start :
         The start number of the helix.
     n_subunits_per_start :
