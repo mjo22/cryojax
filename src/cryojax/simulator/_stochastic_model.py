@@ -7,7 +7,7 @@ __all__ = ["StochasticModel"]
 from abc import abstractmethod
 
 from typing import Any
-from equinox import Module, AbstractClassVar
+from equinox import Module
 from jaxtyping import PRNGKeyArray
 
 from ..typing import Image
