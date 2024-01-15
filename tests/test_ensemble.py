@@ -31,7 +31,7 @@ def test_conformation_vmap(density, pose, scattering):
     to_vmap = jtu.tree_map(is_vmap, ensemble, is_leaf=is_vmap)
     vmap, novmap = eqx.partition(ensemble, to_vmap)
 
-    @partial(jax.vmap, in_axes=[0, None, None])
+    @partial(jax.vmap, in_axes=[0, None, None, None])
     def compute_conformation_stack(vmap, novmap, scattering, pose):
         ensemble = eqx.combine(vmap, novmap)
         return scattering(ensemble.get_density(), pose)
