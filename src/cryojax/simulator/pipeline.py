@@ -6,7 +6,7 @@ from __future__ import annotations
 
 __all__ = ["ImagePipeline", "SuperpositionPipeline"]
 
-from typing import Union, Optional
+from typing import Optional
 from typing_extensions import override
 
 import equinox as eqx
@@ -66,10 +66,16 @@ class ImagePipeline(Module):
         normalize: bool = False,
     ) -> Image:
         """
-        Render an image of a Specimen.
+        Render an image of a Specimen without any stochasticity.
+
+        Namely, do not sample from the ``Ice`` and ``Detector``
+        models.
 
         Parameters
         ----------
+        at_detector_plane : `bool`, optional
+            If ``True`` use the ``Instrument`` to propagate
+            the image to the detector plane.
         view_cropped : `bool`, optional
             If ``True``, view the cropped image.
             If ``view_cropped = False``, ``ImagePipeline.filter``,
@@ -81,24 +87,16 @@ class ImagePipeline(Module):
             If ``True``, normalize the image to mean zero
             and standard deviation 1.
         """
-        freqs = self.scattering.padded_frequency_grid_in_angstroms.get()
-        # Draw the electron density at a particular conformation and pose
-        density = self.specimen.get_density()
-        # Compute the scattering image in fourier space
-        image = self.scattering(density)
-        # Apply translation
-        image *= self.specimen.pose.shifts(freqs)
-        # Measure the image with the instrument
-        # ... first compute and apply CTF
-        ctf = self.instrument.optics(freqs, pose=self.specimen.pose)
-        image = ctf * image
-        # ... then apply the electron exposure model
-        scaling, offset = self.instrument.exposure.scaling(
-            freqs
-        ), self.instrument.exposure.offset(
-            freqs, shape_in_real_space=self.scattering.manager.padded_shape
+        # Scattering the specimen to the exit plane
+        image = self.instrument.scatter_to_exit_plane(
+            self.specimen, self.scattering
         )
-        image = scaling * image + offset
+        # Measure the image at the detector plane
+        image = self.instrument.propagate_to_detector_plane(
+            image,
+            self.scattering,
+            defocus_offset=self.specimen.pose.offset_z,
+        )
 
         return self._get_final_image(
             image,
@@ -116,7 +114,8 @@ class ImagePipeline(Module):
         normalize: bool = False,
     ) -> RealImage:
         """
-        Sample the an image from a realization of the noise.
+        Sample an image from a realization of the ``Ice`` and
+        ``Detector`` models.
 
         Parameters
         ----------
@@ -140,24 +139,38 @@ class ImagePipeline(Module):
             keys = jax.random.split(key)
         else:
             keys = jnp.expand_dims(key, axis=0)
-        # Frequencies and coordinates
-        coords = self.scattering.padded_coordinate_grid_in_angstroms.get()
-        freqs = self.scattering.padded_frequency_grid_in_angstroms.get()
-        # The image of the specimen drawn from the ensemble
-        image = self.render(view_cropped=False, get_real=False)
+        # Scatter the specimen to the exit plane
+        image_at_exit_plane = self.instrument.scatter_to_exit_plane(
+            self.specimen, self.scattering
+        )
         if not isinstance(self.solvent, NullIce):
-            # Compute the image with the solvent
-            image = self.solvent(
-                keys[idx], image, freqs, coords, self.instrument.optics
+            # Measure the image at the detector plane with the solvent
+            image_at_detector_plane = (
+                self.instrument.propagate_to_detector_plane_with_solvent(
+                    keys[idx],
+                    image_at_exit_plane,
+                    self.solvent,
+                    self.scattering,
+                    defocus_offset=self.specimen.pose.offset_z,
+                )
             )
             idx += 1
-        if not isinstance(self.instrument.detector, NullDetector):
-            # Measure the detector readout
-            image = self.instrument.detector(keys[idx], image, freqs, coords)
-            idx += 1
+        else:
+            # ... otherwise, just measure the specimen at the detector plane
+            image_at_detector_plane = (
+                self.instrument.propagate_to_detector_plane(
+                    image_at_exit_plane,
+                    self.scattering,
+                    defocus_offset=self.specimen.pose.offset_z,
+                )
+            )
+        # Finally, measure the detector readout
+        detector_readout = self.instrument.measure_detector_readout(
+            keys[idx], image_at_detector_plane, self.scattering
+        )
 
         return self._get_final_image(
-            image,
+            detector_readout,
             view_cropped=view_cropped,
             get_real=get_real,
             normalize=normalize,

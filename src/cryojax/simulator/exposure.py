@@ -7,24 +7,31 @@ from __future__ import annotations
 
 __all__ = ["Exposure", "NullExposure"]
 
-
 from equinox import Module
+from typing import Any
 
 from ..image.operators import FourierOperatorLike, Constant, ZeroMode
 from ..core import field
+from ..typing import ComplexImage, ImageCoords
 
 
 class Exposure(Module):
     """
     Controls parameters related to variation in
-    the image intensity.
+    the image intensity. This is implemented as a fourier
+    space scaling and offset.
 
-    For example, this might include
-    the incoming electron dose and radiation damage.
+    NOTE: In the future this might include a model for radiation damage.
     """
 
     scaling: FourierOperatorLike = field(default_factory=Constant)
     offset: FourierOperatorLike = field(default_factory=ZeroMode)
+
+    def __call__(self, image: ComplexImage, freqs: ImageCoords, **kwargs: Any):
+        """Evaluate the electron exposure model."""
+        return self.scaling(freqs, **kwargs) * image + self.offset(
+            freqs, **kwargs
+        )
 
 
 class NullExposure(Exposure):

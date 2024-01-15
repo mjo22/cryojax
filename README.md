@@ -74,12 +74,13 @@ The stack of electron densities is stored in a single `ElectronDensity`, whose p
 Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
 ```python
-optics = cs.CTFOptics(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
+ctf = cs.CTF(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
+optics = cs.CTFOptics(ctf)
 detector = cs.GaussianDetector(variance=cs.Constant(1.0))
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
-Here, the `Detector` is simply modeled by gaussian white noise. The `CTFOptics` has all parameters used in CTFFIND4, which take their default values if not
+Here, the `Detector` is simply modeled by gaussian white noise. The `CTF` has all parameters used in CTFFIND4, which take their default values if not
 explicitly configured here. Finally, we can instantiate the `ImagePipeline`.
 
 ```python
@@ -147,7 +148,7 @@ def update_model(model, params):
     """
     where = lambda model: (
         model.pipeline.specimen.pose.view_phi,
-        model.pipeline.instrument.optics.defocus_u,
+        model.pipeline.instrument.optics.ctf.defocus_u,
         model.pipeline.scattering.pixel_size
     )
     updated_model = eqx.tree_at(
