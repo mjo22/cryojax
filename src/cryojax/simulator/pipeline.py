@@ -155,11 +155,8 @@ class ImagePipeline(Module):
         if not isinstance(self.instrument.detector, NullDetector):
             # Measure the detector readout
             if self.instrument.detector.is_real:
-                padded_shape = self.scattering.manager.padded_shape
                 image = rfftn(
-                    self.instrument.detector.sample(
-                        keys[idx], coords, irfftn(image, s=padded_shape)
-                    )
+                    self.instrument.detector.sample(keys[idx], coords, image)
                 )
             else:
                 image = self.instrument.detector.sample(

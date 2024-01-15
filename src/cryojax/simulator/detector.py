@@ -14,8 +14,7 @@ from jaxtyping import PRNGKeyArray
 from equinox import AbstractClassVar
 
 from ._stochastic_model import StochasticModel
-from .exposure import Exposure
-from ..image import FourierOperatorLike, RealOperatorLike, Constant
+from ..image import FourierOperatorLike, RealOperatorLike, Constant, irfftn
 from ..core import field
 from ..typing import ComplexImage, ImageCoords, RealImage, Image
 
@@ -32,7 +31,7 @@ class Detector(StochasticModel):
         self,
         key: PRNGKeyArray,
         coords_or_freqs: ImageCoords,
-        image: Image,
+        image: ComplexImage,
     ) -> Image:
         """Sample a realization from the detector."""
         raise NotImplementedError
@@ -50,7 +49,7 @@ class NullDetector(Detector):
         self,
         key: PRNGKeyArray,
         coords_or_freqs: ImageCoords,
-        image: RealImage,
+        image: ComplexImage,
     ) -> Image:
         return jnp.zeros(jnp.asarray(coords_or_freqs).shape[0:-1])
 
@@ -101,8 +100,10 @@ class PoissonDetector(Detector):
         self,
         key: PRNGKeyArray,
         coords_or_freqs: ImageCoords,
-        image: RealImage,
+        image: ComplexImage,
     ) -> RealImage:
-        return jr.poisson(key, self.dose(coords_or_freqs) * image).astype(
-            float
-        )
+        return jr.poisson(
+            key,
+            self.dose(coords_or_freqs)
+            * irfftn(image, s=coords_or_freqs.shape[0:-1]),
+        ).astype(float)
