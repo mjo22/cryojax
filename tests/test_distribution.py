@@ -10,7 +10,7 @@ import equinox as eqx
 import jax.random as jr
 
 
-def test_custom_variance(noisy_model, scattering, test_image):
+def test_custom_variance(noisy_model, manager, test_image):
     noisy_model = eqx.tree_at(
         lambda m: (m.solvent, m.instrument.detector),
         noisy_model,
@@ -20,7 +20,7 @@ def test_custom_variance(noisy_model, scattering, test_image):
     likelihood_model_with_custom_variance = dist.IndependentFourierGaussian(
         noisy_model, variance=op.Constant(1.0)
     )
-    freqs = scattering.frequency_grid_in_angstroms.get()
+    freqs = manager.frequency_grid_in_angstroms.get()
     assert eqx.tree_equal(
         likelihood_model.variance,
         likelihood_model_with_custom_variance.variance,

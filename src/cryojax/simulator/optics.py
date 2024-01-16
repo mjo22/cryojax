@@ -5,13 +5,14 @@ Models of instrument optics.
 __all__ = ["CTF", "Optics", "NullOptics", "CTFOptics", "compute_ctf"]
 
 from abc import abstractmethod
-from typing import Any, Optional
+from typing import Optional
 from functools import partial
 from equinox import AbstractVar, Module
 
 import jax
 import jax.numpy as jnp
 
+from .manager import ImageManager
 from ..image import FourierOperatorLike, FourierOperator, Constant
 from ..core import field
 from ..image import cartesian_to_polar
@@ -110,7 +111,7 @@ class Optics(Module):
     def __call__(
         self,
         image: ComplexImage,
-        freqs: ImageCoords,
+        manager: ImageManager,
         defocus_offset: Real_ | float = 0.0,
     ) -> Image:
         """Pass an image through the optics model."""
@@ -133,7 +134,7 @@ class NullOptics(Optics):
     def __call__(
         self,
         image: ComplexImage,
-        freqs: ImageCoords,
+        manager: ImageManager,
         defocus_offset: Real_ | float = 0.0,
     ) -> Image:
         return image
@@ -150,12 +151,14 @@ class CTFOptics(Optics):
     def __call__(
         self,
         image: ComplexImage,
-        freqs: ImageCoords,
+        manager: ImageManager,
         defocus_offset: Real_ | float = 0.0,
-        **kwargs: Any,
     ) -> Image:
         """Compute the optics model with an envelope."""
-        return image * self.evaluate(freqs, defocus_offset=defocus_offset)
+        frequency_grid = manager.padded_frequency_grid_in_angstroms.get()
+        return image * self.evaluate(
+            frequency_grid, defocus_offset=defocus_offset
+        )
 
 
 @partial(jax.jit, static_argnames=["degrees"])

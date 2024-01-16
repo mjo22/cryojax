@@ -12,6 +12,7 @@ import jax.random as jr
 from jaxtyping import PRNGKeyArray
 from equinox import AbstractClassVar
 
+from .manager import ImageManager
 from ._stochastic_model import StochasticModel
 from ..image import (
     FourierOperatorLike,
@@ -45,16 +46,19 @@ class Detector(StochasticModel):
         self,
         key: PRNGKeyArray,
         image: ComplexImage,
-        freqs: ImageCoords,
-        coords: ImageCoords,
+        manager: ImageManager,
     ) -> ComplexImage:
         """Pass the image through the detector model."""
         if self.is_sample_real:
+            coordinate_grid = manager.padded_coordinate_grid_in_angstroms.get()
             return rfftn(
-                self.sample(key, irfftn(image, s=coords.shape[0:-1]), coords)
+                self.sample(
+                    key, irfftn(image, s=manager.padded_shape), coordinate_grid
+                )
             )
         else:
-            return self.sample(key, image, freqs)
+            frequency_grid = manager.padded_frequency_grid_in_angstroms.get()
+            return self.sample(key, image, frequency_grid)
 
 
 class NullDetector(Detector):

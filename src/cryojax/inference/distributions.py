@@ -106,7 +106,7 @@ class IndependentFourierGaussian(Distribution):
     def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
         """Sample from the Gaussian noise model."""
         freqs = (
-            self.pipeline.scattering.padded_frequency_grid_in_angstroms.get()
+            self.pipeline.scattering.manager.padded_frequency_grid_in_angstroms.get()
         )
         noise = self.variance(freqs) * jr.normal(key, shape=freqs.shape[0:-1])
         image = self.pipeline.render(view_cropped=False, get_real=False)
@@ -129,9 +129,9 @@ class IndependentFourierGaussian(Distribution):
         """
         pipeline = self.pipeline
         padded_freqs = (
-            pipeline.scattering.padded_frequency_grid_in_angstroms.get()
+            pipeline.scattering.manager.padded_frequency_grid_in_angstroms.get()
         )
-        freqs = pipeline.scattering.frequency_grid_in_angstroms.get()
+        freqs = pipeline.scattering.manager.frequency_grid_in_angstroms.get()
         if observed.shape != padded_freqs.shape[:-1]:
             raise ValueError(
                 "Shape of observed must match ImageManager.padded_shape"

@@ -46,9 +46,7 @@ class Instrument(Module):
         image_at_exit_plane = scattering(specimen, **kwargs)
         # Pass image through the electron exposure model
         image_at_exit_plane = self.exposure(
-            image_at_exit_plane,
-            scattering.padded_frequency_grid_in_angstroms.get(),
-            shape_in_real_space=scattering.manager.padded_shape,
+            image_at_exit_plane, scattering.manager
         )
 
         return image_at_exit_plane
@@ -63,8 +61,8 @@ class Instrument(Module):
         """Propagate the image with the optics model"""
         image_at_detector_plane = self.optics(
             image_at_exit_plane,
-            scattering.padded_frequency_grid_in_angstroms.get(),
-            defocus_offset,
+            scattering.manager,
+            defocus_offset=defocus_offset,
             **kwargs,
         )
 
@@ -81,7 +79,9 @@ class Instrument(Module):
     ) -> ComplexImage:
         """Propagate the image to the detector plane using the solvent model"""
         # Compute the image of the ice in the exit plane
-        ice_at_exit_plane = solvent(key, image_at_exit_plane, scattering)
+        ice_at_exit_plane = solvent(
+            key, image_at_exit_plane, scattering.manager
+        )
         # Now, propagate the image of the ice to the detector plane
         ice_at_detector_plane = self.propagate_to_detector_plane(
             ice_at_exit_plane, scattering, **kwargs
@@ -104,11 +104,7 @@ class Instrument(Module):
     ) -> ComplexImage:
         """Measure the detector readout"""
         detector_readout = self.detector(
-            key,
-            image_at_detector_plane,
-            scattering.padded_frequency_grid_in_angstroms.get(),
-            scattering.padded_coordinate_grid_in_angstroms.get(),
-            **kwargs,
+            key, image_at_detector_plane, scattering.manager, **kwargs
         )
 
         return detector_readout

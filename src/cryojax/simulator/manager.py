@@ -6,6 +6,7 @@ from __future__ import annotations
 
 __all__ = ["ImageManager"]
 
+from functools import cached_property
 from typing import Any, Union, Callable, Optional
 
 from equinox import Module
@@ -17,7 +18,7 @@ from ..image import (
     CoordinateGrid,
     FrequencyGrid,
 )
-from ..typing import Image
+from ..typing import Image, Real_
 from ..image import (
     crop,
     pad,
@@ -36,6 +37,8 @@ class ImageManager(Module):
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
+    pixel_size :
+        The pixel size of the image in Angstroms.
     pad_scale :
         The scale at which to pad (or upsample) the image
         when computing it in the object plane. This
@@ -57,6 +60,8 @@ class ImageManager(Module):
     """
 
     shape: tuple[int, int] = field(static=True)
+    pixel_size: Real_ = field()
+
     pad_scale: float = field(static=True, default=1.0)
     pad_mode: Union[str, Callable] = field(static=True, default="constant")
 
@@ -81,6 +86,22 @@ class ImageManager(Module):
         self.padded_coordinate_grid = CoordinateGrid(
             make_coordinates(self.padded_shape)
         )
+
+    @cached_property
+    def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
+        return self.pixel_size * self.coordinate_grid
+
+    @cached_property
+    def frequency_grid_in_angstroms(self) -> FrequencyGrid:
+        return self.frequency_grid / self.pixel_size
+
+    @cached_property
+    def padded_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
+        return self.pixel_size * self.padded_coordinate_grid
+
+    @cached_property
+    def padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
+        return self.padded_frequency_grid / self.pixel_size
 
     def crop_to_shape(self, image: Image) -> Image:
         """Crop an image."""

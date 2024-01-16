@@ -10,6 +10,7 @@ __all__ = ["Exposure", "NullExposure"]
 from equinox import Module
 from typing import Any
 
+from .manager import ImageManager
 from ..image.operators import FourierOperatorLike, Constant, ZeroMode
 from ..core import field
 from ..typing import ComplexImage, ImageCoords
@@ -27,10 +28,13 @@ class Exposure(Module):
     scaling: FourierOperatorLike = field(default_factory=Constant)
     offset: FourierOperatorLike = field(default_factory=ZeroMode)
 
-    def __call__(self, image: ComplexImage, freqs: ImageCoords, **kwargs: Any):
+    def __call__(
+        self, image: ComplexImage, manager: ImageManager, **kwargs: Any
+    ):
         """Evaluate the electron exposure model."""
-        return self.scaling(freqs, **kwargs) * image + self.offset(
-            freqs, **kwargs
+        frequency_grid = manager.padded_frequency_grid_in_angstroms.get()
+        return self.scaling(frequency_grid, **kwargs) * image + self.offset(
+            frequency_grid, shape_in_real_space=manager.padded_shape, **kwargs
         )
 
 
