@@ -26,7 +26,7 @@ INSTALL_REQUIRES = [
     "mrcfile",
 ]
 EXTRA_REQUIRE = {
-    "test": ["pytest>=3.6", "pycistem", "gemmi"],
+    "test": ["pytest>=3.6", "pycistem", "gemmi", "mdtraj"],
     "docs": [],
 }
 EXTRA_REQUIRE["coverage"] = EXTRA_REQUIRE["test"] + ["pytest-cov"]

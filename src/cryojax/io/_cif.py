@@ -1,3 +1,5 @@
+import numpy as np
+from jaxtyping import Float, Int
 from cryojax.io._gemmi import (
     extract_gemmi_atoms,
     extract_atom_positions_and_names,
@@ -10,7 +12,9 @@ __all__ = [
 ]
 
 
-def read_atoms_from_cif(path, i_model=0, clean=True, assemble=True):
+def read_atoms_from_cif(
+    path, i_model=0, clean=True, assemble=True
+) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, "N"]]:
     """Read atomic positions and element names from a mmCIF file using Gemmi
 
     Parameters

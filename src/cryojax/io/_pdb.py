@@ -7,18 +7,22 @@ __all__ = [
     "read_atoms_from_pdb",
 ]
 
-from ._gemmi import (
+import numpy as np
+from jaxtyping import Float, Int
+from cryojax.io._gemmi import (
     clean_gemmi_structure,
     extract_gemmi_atoms,
     extract_atom_positions_and_names,
 )
 
 
-def read_atoms_from_pdb(path, i_model=0, clean=True, assemble=True):
+def read_atoms_from_pdb(
+    path: str, i_model: int = 0, clean: bool = True, assemble: bool = True
+) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, "N"]]:
     """Read atomic information from a PDB file using Gemmi
 
     Parameters
-    ----------At
+    ----------
     path : string
         Path to PDB file.
     i_model : integer
@@ -41,7 +45,8 @@ def read_atoms_from_pdb(path, i_model=0, clean=True, assemble=True):
     Notes
     -----
     Currently Hydrogen atoms are not read in!
-    We should look into adding hydrogens, potentially.
+    We should look into adding hydrogens: does this slow things down
+    appreciably?  Also, does it have a big effect on the scattering?
     """
     import gemmi
 
