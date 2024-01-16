@@ -46,88 +46,88 @@ def test_VoxelGrid_agreement(sample_pdb_path):
 
 class TestBuildRealSpaceVoxelsFromAtoms:
     @pytest.mark.parametrize("largest_atom", range(0, 3))
-    def test_maxima_are_in_write_positions(self, largest_atom):
+    def test_maxima_are_in_right_positions(
+        self, toy_gaussian_cloud, largest_atom
+    ):
         """
         Test that the maxima of the density are in the correct positions.
         """
-        atom_positions = jnp.array(
-            [
-                [0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0],
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-            ]
-        )
-        num_atoms = atom_positions.shape[0]
-        ff_a = np.array(
-            num_atoms
-            * [
-                [1.0, 0.5],
-            ]
-        )
-        ff_a[
-            largest_atom
-        ] += 0.5  # Give one atom more weight for testing purposes
-        ff_a = jnp.array(ff_a)
-        ff_b = jnp.array(
-            num_atoms
-            * [
-                [0.3, 0.2],
-            ]
-        )
-
-        # Build the coordinate system
-        n_voxels_per_side = (128, 128, 128)
-        voxel_size = 0.1
-        coordinate_system = make_coordinates(n_voxels_per_side, voxel_size)
+        (
+            atom_positions,
+            ff_a,
+            ff_b,
+            n_voxels_per_side,
+            voxel_size,
+        ) = toy_gaussian_cloud
+        ff_a[largest_atom] += 1.0
+        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
 
         # Build the density
         density = _build_real_space_voxels_from_atoms(
-            atom_positions, ff_a, ff_b, coordinate_system
+            atom_positions, ff_a, ff_b, coordinate_grid
         )
 
         # Find the maximum
         maximum_index = jnp.argmax(density)
-        maximum_position = coordinate_system.reshape(-1, 3)[maximum_index]
+        maximum_position = coordinate_grid.reshape(-1, 3)[maximum_index]
 
         # Check that the maximum is in the correct position
         assert jnp.allclose(maximum_position, atom_positions[largest_atom])
 
-    def test_integral_is_correct(self):
+    def test_integral_is_correct(self, toy_gaussian_cloud):
         """
         Test that the maxima of the density are in the correct positions.
         """
-        atom_positions = jnp.array(
-            [
-                [0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0],
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-            ]
-        )
-        num_atoms = atom_positions.shape[0]
-        ff_a = np.array(
-            num_atoms
-            * [
-                [1.0, 0.5],
-            ]
-        )
-
-        ff_b = jnp.array(
-            num_atoms
-            * [
-                [0.3, 0.2],
-            ]
-        )
-
-        n_voxels_per_side = (128, 128, 128)
-        voxel_size = 0.05
-        coordinate_system = make_coordinates(n_voxels_per_side, voxel_size)
+        (
+            atom_positions,
+            ff_a,
+            ff_b,
+            n_voxels_per_side,
+            voxel_size,
+        ) = toy_gaussian_cloud
+        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
 
         # Build the density
         density = _build_real_space_voxels_from_atoms(
-            atom_positions, ff_a, ff_b, coordinate_system
+            atom_positions, ff_a, ff_b, coordinate_grid
         )
 
         integral = jnp.sum(density) * voxel_size**3
         assert jnp.isclose(integral, jnp.sum(ff_a))
+
+
+class TestBuildVoxelsFromTrajectories:
+    def test_indexing_matches_individual_calls(self, toy_gaussian_cloud):
+        (
+            atom_positions,
+            ff_a,
+            ff_b,
+            n_voxels_per_side,
+            voxel_size,
+        ) = toy_gaussian_cloud
+        second_set_of_positions = atom_positions + 1.0
+        traj = np.stack([atom_positions, second_set_of_positions], axis=0)
+
+        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
+
+        # Build the trajectory $density
+        elements = np.array([1, 1, 2, 6])
+
+        traj_voxels = RealVoxelGrid.from_trajectory(
+            traj, elements, voxel_size, coordinate_grid
+        )
+
+        voxel1 = RealVoxelGrid.from_atoms(
+            atom_positions, elements, voxel_size, coordinate_grid
+        )
+
+        voxel2 = RealVoxelGrid.from_atoms(
+            second_set_of_positions, elements, voxel_size, coordinate_grid
+        )
+
+        np.testing.assert_allclose(
+            traj_voxels.weights[0], voxel1.weights, atol=1e-12
+        )
+        np.testing.assert_allclose(
+            traj_voxels.weights[1], voxel2.weights, atol=1e-12
+        )

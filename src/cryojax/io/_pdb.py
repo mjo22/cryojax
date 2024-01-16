@@ -4,14 +4,22 @@ Large amounts of the code are adapted from the ioSPI package
 """
 
 __all__ = [
-    "read_atomic_model_from_pdb",
+    "read_atoms_from_pdb",
 ]
 
-from .load_atoms import clean_gemmi_structure
+import numpy as np
+from jaxtyping import Float, Int
+from cryojax.io._gemmi import (
+    clean_gemmi_structure,
+    extract_gemmi_atoms,
+    extract_atom_positions_and_names,
+)
 
 
-def read_atomic_model_from_pdb(path, i_model=0, clean=True, assemble=True):
-    """Read Gemmi Model from PDB file.
+def read_atoms_from_pdb(
+    path: str, i_model: int = 0, clean: bool = True, assemble: bool = True
+) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, "N"]]:
+    """Read atomic information from a PDB file using Gemmi
 
     Parameters
     ----------
@@ -29,13 +37,16 @@ def read_atomic_model_from_pdb(path, i_model=0, clean=True, assemble=True):
 
     Returns
     -------
-    model : Gemmi Class
-        Gemmi model
+    atom_positions: list of numpy arrays
+        List of coordinates containing atomic positions
+    atom_element_names: list of strings
+        List of atomic element names
 
     Notes
     -----
     Currently Hydrogen atoms are not read in!
-    We should look into adding hydrogens, potentially.
+    We should look into adding hydrogens: does this slow things down
+    appreciably?  Also, does it have a big effect on the scattering?
     """
     import gemmi
 
@@ -47,4 +58,9 @@ def read_atomic_model_from_pdb(path, i_model=0, clean=True, assemble=True):
         assembly = structure.assemblies[i_model]
         chain_naming = gemmi.HowToNameCopiedChain.AddNumber
         model = gemmi.make_assembly(assembly, model, chain_naming)
-    return model
+
+    atoms = extract_gemmi_atoms(model)
+    atom_positions, atom_element_names = extract_atom_positions_and_names(
+        atoms
+    )
+    return atom_positions, atom_element_names

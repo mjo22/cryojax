@@ -1,6 +1,6 @@
 import os
 import pytest
-
+import numpy as np
 import equinox as eqx
 import jax.random as jr
 from jax import config
@@ -29,6 +29,36 @@ def sample_subunit_mrc_path():
 @pytest.fixture
 def sample_pdb_path():
     return os.path.join(os.path.dirname(__file__), "data", "1uao.pdb")
+
+
+@pytest.fixture
+def toy_gaussian_cloud():
+    atom_positions = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ]
+    )
+    num_atoms = atom_positions.shape[0]
+    ff_a = np.array(
+        num_atoms
+        * [
+            [1.0, 0.5],
+        ]
+    )
+
+    ff_b = np.array(
+        num_atoms
+        * [
+            [0.3, 0.2],
+        ]
+    )
+
+    n_voxels_per_side = (128, 128, 128)
+    voxel_size = 0.05
+    return (atom_positions, ff_a, ff_b, n_voxels_per_side, voxel_size)
 
 
 @pytest.fixture

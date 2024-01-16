@@ -12,9 +12,18 @@ __all__ = [
 
 import pathlib
 from abc import abstractmethod
-from typing import Any, Tuple, Type, ClassVar, TypeVar, Optional, overload
+from typing import (
+    Any,
+    Tuple,
+    Type,
+    ClassVar,
+    TypeVar,
+    Optional,
+    overload,
+    Dict,
+)
 from typing_extensions import Self, override
-from jaxtyping import Float, Array
+from jaxtyping import Complex, Float, Array, Int
 from equinox import AbstractVar
 from functools import cached_property
 
@@ -27,10 +36,11 @@ from ._electron_density import ElectronDensity
 from ..pose import Pose
 from ...io import (
     load_mrc,
-    read_atomic_model_from_pdb,
-    read_atomic_model_from_cif,
-    get_scattering_info_from_gemmi_model,
+    get_atom_info_from_gemmi_model,
+    read_atoms_from_pdb,
+    read_atoms_from_cif,
 )
+import cryojax.io.load_atoms as load_atoms
 from ...core import field
 from cryojax.image import (
     pad,
@@ -113,6 +123,74 @@ class Voxels(ElectronDensity):
         raise NotImplementedError
 
     @classmethod
+    def from_atoms(
+        cls: Type[VoxelT],
+        atom_positions: Float[Array, "N 3"],
+        atom_identities: Int[Array, "N"],
+        voxel_size: float,
+        coordinate_grid_in_angstroms: VolumeCoords,
+        form_factors: Optional[Float[Array, "N 5"]] = None,
+        **kwargs: Any,
+    ) -> VoxelT:
+        """
+        Load a Voxels object from atom positions and identities.
+        """
+        a_vals, b_vals = load_atoms.get_form_factor_params(
+            atom_identities, form_factors
+        )
+
+        density = _build_real_space_voxels_from_atoms(
+            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms
+        )
+
+        return cls.from_density_grid(
+            density,
+            voxel_size,
+            coordinate_grid_in_angstroms / voxel_size,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_trajectory(
+        cls: Type[VoxelT],
+        trajectory: Float[Array, "M N 3"],
+        atom_identities: Int[Array, "N"],
+        voxel_size: float,
+        coordinate_grid_in_angstroms: VolumeCoords,
+        form_factors: Optional[Float[Array, "N 5"]] = None,
+        **kwargs: Any,
+    ) -> VoxelT:
+        a_vals, b_vals = load_atoms.get_form_factor_params(
+            atom_identities, form_factors
+        )
+
+        _build_real_space_voxels_from_atomic_trajectory = jax.vmap(
+            _build_real_space_voxels_from_atoms, (0, None, None, None), 0
+        )
+
+        _build_real_space_voxels_from_atoms(
+            trajectory[0], a_vals, b_vals, coordinate_grid_in_angstroms
+        )
+
+        density = _build_real_space_voxels_from_atomic_trajectory(
+            trajectory, a_vals, b_vals, coordinate_grid_in_angstroms
+        )
+        print(
+            density.shape,
+            atom_identities.shape,
+            voxel_size,
+            coordinate_grid_in_angstroms.shape,
+        )
+
+        return cls.from_density_grid(
+            density,
+            voxel_size,
+            coordinate_grid_in_angstroms / voxel_size,
+            n_indexed_dims=1,
+            **kwargs,
+        )
+
+    @classmethod
     def from_gemmi(
         cls: Type[VoxelT],
         model,
@@ -126,19 +204,17 @@ class Voxels(ElectronDensity):
 
         https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
         """
-        coords, a_vals, b_vals = get_scattering_info_from_gemmi_model(model)
+        atom_positions, atom_elements = get_atom_info_from_gemmi_model(model)
 
         coordinate_grid_in_angstroms = make_coordinates(
             n_voxels_per_side, voxel_size
         )
-        density = _build_real_space_voxels_from_atoms(
-            coords, a_vals, b_vals, coordinate_grid_in_angstroms
-        )
 
-        return cls.from_density_grid(
-            density,
+        return cls.from_atoms(
+            atom_positions,
+            atom_elements,
             voxel_size,
-            coordinate_grid_in_angstroms / voxel_size,
+            coordinate_grid_in_angstroms,
             **kwargs,
         )
 
@@ -183,8 +259,18 @@ class Voxels(ElectronDensity):
         **kwargs: Any,
     ) -> VoxelT:
         """Load Voxels from PDB file format."""
-        model = read_atomic_model_from_pdb(filename)
-        return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
+        atom_positions, atom_elements = read_atoms_from_pdb(filename)
+        coordinate_grid_in_angstroms = make_coordinates(
+            n_voxels_per_side, voxel_size
+        )
+
+        return cls.from_atoms(
+            atom_positions,
+            atom_elements,
+            voxel_size,
+            coordinate_grid_in_angstroms,
+            **kwargs,
+        )
 
     @classmethod
     def from_cif(
@@ -195,8 +281,66 @@ class Voxels(ElectronDensity):
         **kwargs: Any,
     ) -> VoxelT:
         """Load Voxels from CIF file format."""
-        model = read_atomic_model_from_cif(filename)
-        return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
+        atom_positions, atom_elements = read_atoms_from_cif(filename)
+        coordinate_grid_in_angstroms = make_coordinates(
+            n_voxels_per_side, voxel_size
+        )
+
+        return cls.from_atoms(
+            atom_positions,
+            atom_elements,
+            voxel_size,
+            coordinate_grid_in_angstroms,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_mdtraj(
+        cls: Type[VoxelT],
+        trajectory_path: str,
+        n_voxels_per_side: Tuple[int, int, int],
+        voxel_size: Real_ | float = 1.0,
+        topology_file: str = None,
+        **kwargs: Any,
+    ) -> VoxelT:
+        """
+        Load Voxels from MDTraj trajectory.
+
+        Parameters
+        ----------
+        trajectory_path : str
+            Path to trajectory file.
+        n_voxels_per_side : tuple of int
+            Number of voxels per side.
+        voxel_size : float
+            Size of each voxel in angstroms.
+        topology_file : str, optional
+            Path to topology file, if required to load the trajectory.
+
+        Returns
+        -------
+        VoxelT
+            A subclass of Voxels.
+
+        Notes
+        -----
+        Returns a Voxel object with
+        a nontrivial indexed dimension (the first dimension): scattering or
+        otherwise using the density may require vmaps!
+        """
+        trajectory, atom_identities = load_atoms.mdtraj_load_from_file(
+            trajectory_path, topology_file
+        )
+        coordinate_grid_in_angstroms = make_coordinates(
+            n_voxels_per_side, voxel_size
+        )
+        return cls.from_trajectory_info(
+            trajectory,
+            atom_identities,
+            voxel_size,
+            coordinate_grid_in_angstroms,
+            None,
+        )
 
 
 class FourierVoxelGrid(Voxels):
