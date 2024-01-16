@@ -70,8 +70,20 @@ ComplexVolume = Complex[Array, "N1 N2 N3"]
 Volume = Union[RealVolume, ComplexVolume]
 """Type hint for an volume."""
 
+RealCubicVolume = Float[Array, "N N N"]
+"""Type hint for a real-valued cubic volume."""
+
+ComplexCubicVolume = Complex[Array, "N N N"]
+"""Type hint for a complex-valued cubic volume."""
+
+CubicVolume = Union[RealCubicVolume, ComplexCubicVolume]
+"""Type hint for a cubic volume."""
+
 VolumeCoords = Float[Array, "N1 N2 N3 3"]
 """Type hint for a volume coordinate system."""
+
+VolumeSliceCoords = Float[Array, "N N//2+1 1 3"] | Float[Array, "N N 1 3"]
+"""Type hint for a volume slice coordinate system."""
 
 # Point cloud type hints (non-uniformly spaced points).
 RealCloud = Float[Array, "N"]

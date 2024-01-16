@@ -1,10 +1,10 @@
 import pytest
 import jax.numpy as jnp
 import numpy as np
-from pycistem.core import CTF
+from pycistem.core import CTF as cisCTF
 
-from cryojax.simulator import CTFOptics
-from cryojax.utils import make_frequencies, cartesian_to_polar, powerspectrum
+from cryojax.simulator import CTF
+from cryojax.image import make_frequencies, cartesian_to_polar, powerspectrum
 
 
 @pytest.mark.parametrize(
@@ -31,7 +31,7 @@ def test_ctf_with_cistem(
     freqs = make_frequencies(shape, pixel_size)
     k_sqr, theta = cartesian_to_polar(freqs, square=True)
     # Compute cryojax CTF
-    optics = CTFOptics(
+    optics = CTF(
         defocus_u=defocus1,
         defocus_v=defocus2,
         defocus_angle=asti_angle,
@@ -41,7 +41,7 @@ def test_ctf_with_cistem(
     )
     ctf = np.array(optics(freqs))
     # Compute cisTEM CTF
-    cisTEM_optics = CTF(
+    cisTEM_optics = cisCTF(
         kV=kV,
         cs=cs,
         ac=ac,

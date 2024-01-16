@@ -5,18 +5,20 @@ Abstraction of the ice in a cryo-EM image.
 __all__ = ["Ice", "NullIce", "GaussianIce"]
 
 from abc import abstractmethod
-from typing import Optional
+from typing_extensions import override
 
 import jax.numpy as jnp
+import jax.random as jr
 from jaxtyping import PRNGKeyArray
 
-from .kernel import KernelType, Exp
-from .noise import GaussianNoise
-from ..core import field, Module
-from ..typing import RealImage, ComplexImage, Image, ImageCoords
+from ._stochastic_model import StochasticModel
+from .manager import ImageManager
+from ..image import FourierOperatorLike, FourierExp
+from ..core import field
+from ..typing import ComplexImage, ImageCoords
 
 
-class Ice(Module):
+class Ice(StochasticModel):
     """
     Base class for an ice model.
     """
@@ -25,28 +27,40 @@ class Ice(Module):
     def sample(
         self,
         key: PRNGKeyArray,
-        freqs: ImageCoords,
-        image: Optional[Image] = None,
-    ) -> Image:
-        """Sample a realization from the ice model."""
+        frequency_grid_in_angstroms: ImageCoords,
+    ) -> ComplexImage:
+        """Sample a stochastic realization of the ice at the exit plane."""
         raise NotImplementedError
+
+    def __call__(
+        self,
+        key: PRNGKeyArray,
+        image_at_exit_plane: ComplexImage,
+        manager: ImageManager,
+    ) -> ComplexImage:
+        """Compute a realization of the ice surrounding a specimen."""
+        ice_at_exit_plane = self.sample(
+            key, manager.padded_frequency_grid_in_angstroms.get()
+        )
+
+        return ice_at_exit_plane
 
 
 class NullIce(Ice):
     """
-    A 'null' ice model.
+    A "null" ice model.
     """
 
+    @override
     def sample(
         self,
         key: PRNGKeyArray,
-        freqs: ImageCoords,
-        image: Optional[ComplexImage] = None,
-    ) -> RealImage:
-        return jnp.zeros(jnp.asarray(freqs).shape[0:-1])
+        frequency_grid_in_angstroms: ImageCoords,
+    ) -> ComplexImage:
+        return jnp.zeros(frequency_grid_in_angstroms.shape[0:-1])
 
 
-class GaussianIce(GaussianNoise, Ice):
+class GaussianIce(Ice):
     r"""
     Ice modeled as gaussian noise.
 
@@ -55,15 +69,19 @@ class GaussianIce(GaussianNoise, Ice):
     variance :
         A kernel that computes the variance
         of the ice, modeled as noise. By default,
-        ``Exp()``.
+        ``FourierExp()``.
     """
 
-    variance: KernelType = field(default_factory=Exp)  # type: ignore
+    variance: FourierOperatorLike = field(default_factory=FourierExp)
 
+    @override
     def sample(
         self,
         key: PRNGKeyArray,
-        freqs: ImageCoords,
-        image: Optional[ComplexImage] = None,
+        frequency_grid_in_angstroms: ImageCoords,
     ) -> ComplexImage:
-        return super().sample(key, freqs)
+        """Sample from a gaussian noise model, with the variance
+        modulated by the CTF."""
+        return self.variance(frequency_grid_in_angstroms) * jr.normal(
+            key, shape=frequency_grid_in_angstroms.shape[0:-1]
+        )

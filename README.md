@@ -46,44 +46,48 @@ import jax.numpy as jnp
 import cryojax.simulator as cs
 
 filename = "example.mrc"
-density = cs.VoxelGrid.from_file(filename)
+density = cs.FourierVoxelGrid.from_file(filename)
 pixel_size = density.voxel_size
-manager = cs.ImageManager(shape=(320, 320))
-scattering = cs.FourierSliceExtract(manager, pixel_size=pixel_size)
+manager = cs.ImageManager(shape=(320, 320), pixel_size)
+scattering = cs.FourierSliceExtract(manager)
 ```
 
-Here, `filename` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the `Ensemble` of biological specimen.
+Here, `filename` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the biological `Specimen`.
 
 ```python
 # Translations in Angstroms, angles in degrees
 pose = cs.EulerPose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0, view_psi=-10.0)
-ensemble = cs.Ensemble(density=density, pose=pose)
+specimen = cs.Specimen(density=density, pose=pose)
 ```
 
-Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead a stack of `ElectronDensity` is loaded, the `Ensemble` can be evaluated at a particular conformation.
+Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead a stack of `ElectronDensity` is loaded, an `Ensemble` can be loaded, which is a `Specimen` that can be evaluated at a particular conformation.
 
 ```python
 filenames = ...
-density = cs.VoxelGrid.from_stack([cs.VoxelGrid.from_file(filename) for filename in filenames])
-ensemble = cs.Ensemble(density=density, pose=pose, conformation=0)
+density = cs.FourierVoxelGrid.from_list([cs.FourierVoxelGrid.from_file(filename) for filename in filenames])
+conformation = cs.Conformation(0)
+specimen = cs.Ensemble(density=density, pose=pose, conformation=conformation)
 ```
 
-The stack of electron densities is stored in a single `ElectronDensity`, whose parameters now have a leading batch dimension. This can either be evaluated at a particular conformation (as in this example) or can be used across `vmap` boundaries.
+The stack of electron densities is stored in a single `ElectronDensity`, whose parameters now have a leading batch dimension. This can either be used to simulate an image at a particular conformation.
 
 Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
 ```python
-optics = cs.CTFOptics(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
-detector = cs.GaussianDetector(variance=cs.Constant(1.0))
+from cryojax.image import operators as op
+
+ctf = cs.CTF(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
+optics = cs.CTFOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # defocus and b_factor in Angstroms and Angstroms^2, respectively
+detector = cs.GaussianDetector(variance=op.Constant(1.0))
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
-Here, the `Detector` is simply modeled by gaussian white noise. The `CTFOptics` has all parameters used in CTFFIND4, which take their default values if not
+Here, the `Detector` is simply modeled by gaussian white noise. The `CTF` has all parameters used in CTFFIND4, which take their default values if not
 explicitly configured here. Finally, we can instantiate the `ImagePipeline`.
 
 ```python
 key = jax.random.PRNGKey(seed=0)
-pipeline = cs.ImagePipeline(scattering=scattering, ensemble=ensemble, instrument=instrument)
+pipeline = cs.ImagePipeline(scattering=scattering, specimen=specimen, instrument=instrument)
 image = pipeline.sample(key)
 ```
 
@@ -96,14 +100,16 @@ image = pipeline.render()
 Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
+from cryojax.image import operators as op
+
 micrograph = ...  # A micrograph used for whitening
-freqs = manager.padded_frequency_grid  # Get the upsampled frequency grid
-coords = manager.coordinate_grid  # Get the coordinate grid
-filter = cs.LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequency
-         * cs.WhiteningFilter(freqs, micrograph=micrograph)
-mask = cs.CircularMask(coords, radius=1.0)    # Cutoff pixels above radius equal to (half) image size
+freqs = manager.padded_frequency_grid.get()  # Get the upsampled frequency grid
+coords = manager.coordinate_grid.get()  # Get the coordinate grid
+filter = op.LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequency
+         * op.WhiteningFilter(freqs, micrograph=micrograph)
+mask = op.CircularMask(coords, radius=1.0)    # Cutoff pixels above radius equal to (half) image size
 pipeline = cs.ImagePipeline(
-    scattering=scattering, ensemble=ensemble, instrument=instrument, filter=filter, mask=mask
+    scattering=scattering, specimen=specimen, instrument=instrument, filter=filter, mask=mask
     )
 image = pipeline.sample(key)
 ```
@@ -111,7 +117,8 @@ image = pipeline.sample(key)
 `cryojax` also defines a library of `Distribution`s, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
 
 ```python
-from cryojax.utils import rfftn
+from cryojax.image import rfftn
+from cryojax.inference import distributions as dist
 
 # Read observed data in real space
 observed = ...
@@ -120,7 +127,7 @@ observed = manager.normalize_image(observed, is_real=True)
 # Upsample observed data in fourier space
 observed = rfftn(manager.pad_to_padded_shape(observed))
 # Instantiate distribution and compute
-model = cs.IndependentFourierGaussian(pipeline)
+model = dist.IndependentFourierGaussian(pipeline)
 log_likelihood = model.log_probability(observed)
 ```
 
@@ -142,9 +149,9 @@ def update_model(model, params):
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
     where = lambda model: (
-        model.pipeline.ensemble.pose.view_phi,
-        model.pipeline.instrument.optics.defocus_u,
-        model.pipeline.scattering.pixel_size
+        model.pipeline.specimen.pose.view_phi,
+        model.pipeline.instrument.optics.ctf.defocus_u,
+        model.pipeline.scattering.manager.pixel_size
     )
     updated_model = eqx.tree_at(
         where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"])
@@ -180,7 +187,7 @@ In general, there are many ways to write loss functions. See the [equinox](https
 ## Features
 
 - Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration.
-- A `cryojax.Module` is just an `equinox.Module`. Therefore, the `equinox` ecosystem is available for usage!
+- `cryojax` is built on `equinox`. Therefore, the `equinox` ecosystem is available for usage!
 
 ## Similar libraries
 

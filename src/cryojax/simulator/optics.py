@@ -2,82 +2,24 @@
 Models of instrument optics.
 """
 
-from __future__ import annotations
-
-__all__ = [
-    "Optics",
-    "NullOptics",
-    "CTFOptics",
-    "compute_ctf",
-]
+__all__ = ["CTF", "Optics", "NullOptics", "CTFOptics", "compute_ctf"]
 
 from abc import abstractmethod
-from typing import Any, Optional
+from typing import Optional
 from functools import partial
+from equinox import AbstractVar, Module
 
 import jax
 import jax.numpy as jnp
 
-from .pose import Pose
-from .kernel import Kernel
-from ..utils import cartesian_to_polar
-from ..core import field, Module
-from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
+from .manager import ImageManager
+from ..image import FourierOperatorLike, FourierOperator, Constant
+from ..core import field
+from ..image import cartesian_to_polar
+from ..typing import Real_, RealImage, Image, ComplexImage, ImageCoords
 
 
-class Optics(Module):
-    """
-    Base class for an optics model. This
-    is designed to compute an optics model in Fourier
-    space given some frequencies, and apply the model
-    to an image.
-
-    When writing subclasses,
-
-        1) Overwrite the ``Optics.evaluate`` method.
-
-    Attributes
-    ----------
-    envelope :
-        A kernel that computes the envelope function of
-        the optics model. By default, ``Gaussian()``.
-    """
-
-    envelope: Optional[Kernel] = field(default=None)
-
-    @abstractmethod
-    def evaluate(
-        self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
-    ) -> Image:
-        """Compute the optics model."""
-        raise NotImplementedError
-
-    def __call__(
-        self, freqs: ImageCoords, normalize: bool = True, **kwargs: Any
-    ) -> ComplexImage:
-        """Compute the optics model with an envelope."""
-        if self.envelope is None:
-            return self.evaluate(freqs, **kwargs)
-        else:
-            return self.envelope(freqs) * self.evaluate(
-                freqs, normalize=normalize, **kwargs
-            )
-
-
-class NullOptics(Optics):
-    """
-    A null optics model.
-    """
-
-    envelope: Optional[Kernel] = field(default=None)
-
-    def evaluate(
-        self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
-    ) -> ComplexImage:
-        return jnp.array(1.0)
-
-
-class CTFOptics(Optics):
+class CTF(FourierOperator):
     """
     Compute a Contrast Transfer Function (CTF).
 
@@ -96,8 +38,6 @@ class CTFOptics(Optics):
     phase_shift :
     """
 
-    degrees: bool = field(static=True, default=True)
-
     defocus_u: Real_ = field(default=10000.0)
     defocus_v: Real_ = field(default=10000.0)
     defocus_angle: Real_ = field(default=0.0)
@@ -106,10 +46,11 @@ class CTFOptics(Optics):
     amplitude_contrast: Real_ = field(default=0.1)
     phase_shift: Real_ = field(default=0.0)
 
-    def evaluate(
-        self, freqs: ImageCoords, pose: Optional[Pose] = None, **kwargs: Any
+    degrees: bool = field(static=True, default=True)
+
+    def __call__(
+        self, freqs: ImageCoords, defocus_offset: Real_ | float = 0.0
     ) -> RealImage:
-        defocus_offset = 0.0 if pose is None else pose.offset_z
         return compute_ctf(
             freqs,
             self.defocus_u + defocus_offset,
@@ -120,11 +61,107 @@ class CTFOptics(Optics):
             self.amplitude_contrast,
             self.phase_shift,
             degrees=self.degrees,
-            **kwargs,
         )
 
 
-@partial(jax.jit, static_argnames=["normalize", "degrees"])
+class Optics(Module):
+    """
+    Base class for an optics model.
+
+    When writing subclasses,
+
+        1) Overwrite the ``Optics.__call__`` method.
+        2) Overwrite the ``Optics.ctf`` property.
+
+    Attributes
+    ----------
+    ctf :
+        The contrast transfer function model.
+    envelope :
+        A kernel that computes the envelope function of
+        the optics model.
+    normalize :
+        Whether to normalize the CTF so that it has norm 1 in real space.
+        Default is ``False``.
+    """
+
+    ctf: AbstractVar[FourierOperator]
+    envelope: Optional[FourierOperatorLike] = field(default=None)
+
+    normalize: bool = field(static=True, default=False)
+
+    def evaluate(
+        self, freqs: ImageCoords, defocus_offset: Real_ | float = 0.0
+    ):
+        """Evaluate the optics model. This is modeled as a contrast
+        transfer function multiplied by an envelope function."""
+        if self.envelope is None:
+            ctf = self.ctf(freqs, defocus_offset=defocus_offset)
+        else:
+            ctf = self.envelope(freqs) * self.ctf(
+                freqs, defocus_offset=defocus_offset
+            )
+        if self.normalize:
+            N1, N2 = freqs.shape[0:-1]
+            ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
+
+        return ctf
+
+    @abstractmethod
+    def __call__(
+        self,
+        image: ComplexImage,
+        manager: ImageManager,
+        defocus_offset: Real_ | float = 0.0,
+    ) -> Image:
+        """Pass an image through the optics model."""
+        raise NotImplementedError
+
+
+class NullOptics(Optics):
+    """
+    A null optics model.
+    """
+
+    ctf: FourierOperatorLike
+    envelope: Optional[FourierOperatorLike] = field(default=None)
+
+    def __init__(self):
+        self.ctf = Constant(1.0)
+        self.envelope = None
+        self.normalize = False
+
+    def __call__(
+        self,
+        image: ComplexImage,
+        manager: ImageManager,
+        defocus_offset: Real_ | float = 0.0,
+    ) -> Image:
+        return image
+
+
+class CTFOptics(Optics):
+    """
+    An optics model with a real-valued contrast transfer function.
+    """
+
+    ctf: CTF = field(default_factory=CTF)
+    envelope: Optional[FourierOperatorLike] = field(default=None)
+
+    def __call__(
+        self,
+        image: ComplexImage,
+        manager: ImageManager,
+        defocus_offset: Real_ | float = 0.0,
+    ) -> Image:
+        """Compute the optics model with an envelope."""
+        frequency_grid = manager.padded_frequency_grid_in_angstroms.get()
+        return image * self.evaluate(
+            frequency_grid, defocus_offset=defocus_offset
+        )
+
+
+@partial(jax.jit, static_argnames=["degrees"])
 def compute_ctf(
     freqs: ImageCoords,
     defocus_u: Real_,
@@ -135,7 +172,6 @@ def compute_ctf(
     amplitude_contrast: Real_,
     phase_shift: Real_,
     *,
-    normalize: bool = False,
     degrees: bool = True,
 ) -> RealImage:
     """
@@ -160,9 +196,6 @@ def compute_ctf(
         The amplitude contrast ratio.
     phase_shift :
         The additional phase shift.
-    normalize :
-        Whether to normalize the CTF so that it has norm 1 in real space.
-        Default is ``False``.
     degrees :
         Whether or not the ``defocus_angle`` and ``phase_shift`` are given
         in degrees or radians.
@@ -197,9 +230,5 @@ def compute_ctf(
     gamma_sph = 0.25 * spherical_aberration * (lam**3) * (k_sqr**2)
     gamma = (2 * jnp.pi) * (gamma_defocus + gamma_sph) - phase_shift - ac
     ctf = jnp.sin(gamma)
-
-    if normalize:
-        N1, N2 = freqs.shape[0:-1]
-        ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
 
     return ctf

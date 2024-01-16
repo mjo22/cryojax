@@ -1,13 +1,11 @@
-__all__ = ["Module", "field", "types", "io", "simulator", "utils"]
+__all__ = ["typing", "io", "simulator", "core", "image"]
 
-import importlib
 from cryojax.cryojax_version import __version__
-
-from .core import Module, field
+import importlib as _importlib
 
 
 def __getattr__(name):
-    return importlib.import_module("." + name, __name__)
+    return _importlib.import_module("." + name, __name__)
 
 
 __author__ = "Michael O'Brien"

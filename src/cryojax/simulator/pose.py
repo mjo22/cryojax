@@ -8,22 +8,26 @@ __all__ = [
     "rotate_coordinates",
     "compute_shifts",
     "make_euler_rotation",
+    "PoseT",
     "Pose",
     "EulerPose",
     "QuaternionPose",
+    "MatrixPose",
 ]
 
 from abc import abstractmethod
-from typing import Union, Optional, Any
+from typing import Union, Optional, Any, TypeVar
 from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
 
 import jax
+import equinox as eqx
 import jax.numpy as jnp
 from jaxlie import SO3
+from equinox import Module
 
-from ..core import field, Module
+from ..core import field
 from ..typing import (
     Real_,
     ComplexImage,
@@ -35,6 +39,9 @@ from ..typing import (
 _RotationMatrix3D = Float[Array, "3 3"]
 _Vector3D = Float[Array, "3"]
 _Vector2D = Float[Array, "2"]
+
+PoseT = TypeVar("PoseT", bound="Pose")
+"""TypeVar for the Pose base class."""
 
 
 class Pose(Module):
@@ -96,9 +103,31 @@ class Pose(Module):
         """Generate a rotation."""
         raise NotImplementedError
 
+    @classmethod
+    @abstractmethod
+    def from_rotation(cls, rotation: SO3):
+        """
+        Construct a ``Pose`` from a ``jaxlie.SO3`` object.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def from_rotation_and_translation(
+        cls, rotation: SO3, translation: _Vector3D
+    ):
+        """
+        Construct a ``Pose`` from a ``jaxlie.SO3`` object and a
+        translation vector.
+        """
+        return eqx.tree_at(
+            lambda self: (self.offset_x, self.offset_y, self.offset_z),
+            cls.from_rotation(rotation),
+            (translation[..., 0], translation[..., 1], translation[..., 2]),
+        )
+
 
 class EulerPose(Pose):
-    """
+    r"""
     An image pose using Euler angles.
 
     Attributes
@@ -125,14 +154,14 @@ class EulerPose(Pose):
         Third rotation axis, ranging :math:`(-\pi, \pi]`.
     """
 
+    view_phi: Real_ = field(default=0.0)
+    view_theta: Real_ = field(default=0.0)
+    view_psi: Real_ = field(default=0.0)
+
     convention: str = field(static=True, default="zyz")
     intrinsic: bool = field(static=True, default=True)
     inverse: bool = field(static=True, default=False)
     degrees: bool = field(static=True, default=True)
-
-    view_phi: Real_ = field(default=0.0)
-    view_theta: Real_ = field(default=0.0)
-    view_psi: Real_ = field(default=0.0)
 
     @cached_property
     @override
@@ -148,6 +177,13 @@ class EulerPose(Pose):
         )
         return R.inverse() if self.inverse else R
 
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3):
+        raise NotImplementedError(
+            "Cannot convert SO3 object to arbitrary Euler angle convention. See https://github.com/brentyi/jaxlie/issues/16"
+        )
+
 
 class QuaternionPose(Pose):
     """
@@ -155,34 +191,27 @@ class QuaternionPose(Pose):
 
     Attributes
     ----------
-    view_qw :
-    view_qx :
-    view_qy :
-    view_qz :
+    view_wxyz :
     """
 
-    inverse: bool = field(static=True, default=False)
+    wxyz: Float[Array, "... 4"] = field(
+        default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray
+    )
 
-    view_qw: Real_ = field(default=1.0)
-    view_qx: Real_ = field(default=0.0)
-    view_qy: Real_ = field(default=0.0)
-    view_qz: Real_ = field(default=0.0)
+    inverse: bool = field(static=True, default=False)
 
     @cached_property
     @override
     def rotation(self) -> SO3:
         """Generate rotation from a unit quaternion."""
-        q = jnp.asarray(
-            [self.view_qw, self.view_qx, self.view_qy, self.view_qz]
-        )
-        q_norm = jnp.sqrt(
-            self.view_qx**2
-            + self.view_qx**2
-            + self.view_qy**2
-            + self.view_qz**2
-        )
-        R = SO3(wxyz=q / q_norm)
+        q_norm = jnp.linalg.norm(self.wxyz)
+        R = SO3(wxyz=self.wxyz / q_norm)
         return R.inverse() if self.inverse else R
+
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3):
+        return cls(wxyz=rotation.wxyz)
 
 
 class MatrixPose(Pose):
@@ -211,6 +240,11 @@ class MatrixPose(Pose):
     def rotation(self) -> SO3:
         """Generate rotation from a rotation matrix."""
         return SO3.from_matrix(self.matrix)
+
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3):
+        return cls(matrix=rotation.as_matrix())
 
 
 def rotate_coordinates(

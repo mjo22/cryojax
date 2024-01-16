@@ -13,7 +13,7 @@ from functools import cached_property
 import jax
 import jax.numpy as jnp
 
-from ..ensemble import Ensemble
+from ..specimen import Ensemble
 from ._assembly import Assembly, _Positions, _Rotations
 
 from ...core import field
@@ -47,7 +47,7 @@ class Helix(Assembly):
         ``degrees = True`` and radians otherwise.
     pose :
         The center of mass pose of the helix.
-    conformations :
+    conformation :
         The conformation of `subunit` at each lattice site.
         This can either be a fixed set of conformations or a function
         that computes conformations based on the lattice positions.
@@ -166,7 +166,7 @@ def compute_lattice_positions(
         twist = jnp.deg2rad(twist)
     # If the number of subunits is not given, compute for one helix
     if n_subunits_per_start is None:
-        n_subunits_per_start = int(2 * jnp.pi / twist)
+        n_subunits_per_start = abs(int(2 * jnp.pi / twist))
     # Rotational symmetry between helices due to the start number
     symmetry_angles = jnp.array(
         [2 * jnp.pi * n / n_start for n in range(n_start)]
@@ -184,15 +184,14 @@ def compute_lattice_positions(
 
         # Coordinate transformation between subunits
         def f(carry, x):
-            y = R @ carry + jnp.asarray((0, 0, rise), dtype=float)
+            y = R.T @ carry + jnp.asarray((0, 0, rise), dtype=float)
             return y, y
 
         _, r = jax.lax.scan(f, r_0, None, length=n_subunits_per_start - 1)
         r = jnp.insert(r, 0, r_0, axis=0)
         # Shift helix center of mass to the origin
-        r -= jnp.asarray(
-            [0.0, 0.0, rise * n_subunits_per_start / 2], dtype=float
-        )
+        delta_z = rise * jnp.asarray(n_subunits_per_start - 1, dtype=float) / 2
+        r -= jnp.asarray((0.0, 0.0, delta_z), dtype=float)
         # Transformation between helical strands from start-number
         c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
         R_n = jnp.array(
@@ -220,16 +219,10 @@ def compute_lattice_rotations(
 
     Arguments
     ---------
-    rise : `Real_` or `RealVector`, shape `(n_subunits,)`
-        The helical rise.
     twist : `Real_` or `RealVector`, shape `(n_subunits,)`
         The helical twist.
-    initial_displacement : `Array`, shape `(3,)`
-        The initial position vector of the first subunit, in
-        the center of mass frame of the helix.
-        The xy values are an in-plane displacement from
-        the screw axis, and the z value is an offset from the
-        first subunit's position.
+    initial_rotation : `Array`, shape `(3, 3)`
+        The initial rotation of the first subunit.
     n_start :
         The start number of the helix.
     n_subunits_per_start :
@@ -270,7 +263,7 @@ def compute_lattice_rotations(
 
         # Coordinate transformation between subunits
         def f(carry, x):
-            y = R.T @ carry
+            y = R @ carry
             return y, y
 
         _, T = jax.lax.scan(f, T_0, None, length=n_subunits_per_start - 1)

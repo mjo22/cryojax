@@ -5,51 +5,37 @@ due to electron exposure.
 
 from __future__ import annotations
 
-__all__ = ["Exposure", "NullExposure", "UniformExposure"]
+__all__ = ["Exposure", "NullExposure"]
 
-from abc import abstractmethod
-from typing import Any, Union
+from equinox import Module
+from typing import Any
 
-import jax.numpy as jnp
-
-from ..core import field, Module
-from ..typing import RealImage, ImageCoords, Real_
+from .manager import ImageManager
+from ..image.operators import FourierOperatorLike, Constant, ZeroMode
+from ..core import field
+from ..typing import ComplexImage, ImageCoords
 
 
 class Exposure(Module):
     """
     Controls parameters related to variation in
-    the image intensity.
+    the image intensity. This is implemented as a fourier
+    space scaling and offset.
 
-    For example, this might include
-    the incoming electron dose and radiation damage.
+    NOTE: In the future this might include a model for radiation damage.
     """
 
-    @abstractmethod
-    def scaling(
-        self, freqs: ImageCoords, **kwargs: Any
-    ) -> Union[RealImage, Real_]:
-        """
-        Evaluate the intensity scaling.
+    scaling: FourierOperatorLike = field(default_factory=Constant)
+    offset: FourierOperatorLike = field(default_factory=ZeroMode)
 
-        Arguments
-        ----------
-        freqs : The fourier space cartesian coordinates.
-        """
-        pass
-
-    @abstractmethod
-    def offset(
-        self, freqs: ImageCoords, **kwargs: Any
-    ) -> Union[RealImage, Real_]:
-        """
-        Evaluate the intensity offset.
-
-        Arguments
-        ----------
-        freqs : The fourier space cartesian coordinates.
-        """
-        pass
+    def __call__(
+        self, image: ComplexImage, manager: ImageManager, **kwargs: Any
+    ):
+        """Evaluate the electron exposure model."""
+        frequency_grid = manager.padded_frequency_grid_in_angstroms.get()
+        return self.scaling(frequency_grid, **kwargs) * image + self.offset(
+            frequency_grid, shape_in_real_space=manager.padded_shape, **kwargs
+        )
 
 
 class NullExposure(Exposure):
@@ -58,29 +44,6 @@ class NullExposure(Exposure):
     image when it is passsed through the pipeline.
     """
 
-    def scaling(self, freqs: ImageCoords, **kwargs: Any) -> Real_:
-        return jnp.asarray(1.0)
-
-    def offset(self, freqs: ImageCoords, **kwargs: Any) -> Real_:
-        return jnp.asarray(0.0)
-
-
-class UniformExposure(Exposure):
-    """
-    Rescale the signal intensity uniformly.
-
-    Attributes
-    ----------
-    N : Intensity scaling.
-    mu: Intensity offset.
-    """
-
-    N: Real_ = field(default=1.0)
-    mu: Real_ = field(default=0.0)
-
-    def scaling(self, freqs: ImageCoords, **kwargs: Any) -> Real_:
-        return self.N
-
-    def offset(self, freqs: ImageCoords, **kwargs: Any) -> RealImage:
-        N1, N2 = freqs.shape[0:-1]
-        return jnp.zeros((N1, N2)).at[0, 0].set(N1 * N2 * self.mu)
+    def __init__(self):
+        self.scaling = Constant(1.0)
+        self.offset = Constant(0.0)

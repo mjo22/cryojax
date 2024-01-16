@@ -1,26 +1,26 @@
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from cryojax.simulator.density import VoxelGrid, VoxelCloud
+from cryojax.simulator.density import FourierVoxelGrid, RealVoxelGrid
 from cryojax.simulator.density._voxel_density import (
     _build_real_space_voxels_from_atoms,
 )
-from cryojax.utils import ifftn, make_coordinates
+from cryojax.image import ifftn, make_coordinates
 from jax import config
 
 config.update("jax_enable_x64", True)
 
 
-def test_VoxelGrid_VoxelCloud_agreement(sample_pdb_path):
+def test_VoxelGrid_agreement(sample_pdb_path):
     """
-    Integration test ensuring that the VoxelGrid and VoxelCloud classes
+    Integration test ensuring that the VoxelGrid classes
     produce comparable electron densities when loaded from PDB.
     """
     n_voxels_per_side = (128, 128, 128)
     voxel_size = 0.5
 
     # Load the PDB file into a VoxelGrid
-    vg = VoxelGrid.from_pdb(
+    vg = FourierVoxelGrid.from_pdb(
         sample_pdb_path,
         n_voxels_per_side=n_voxels_per_side,
         voxel_size=voxel_size,
@@ -35,14 +35,13 @@ def test_VoxelGrid_VoxelCloud_agreement(sample_pdb_path):
     # Ravel the grid
     vg_density = vg_density.ravel()
 
-    vc = VoxelCloud.from_pdb(
+    vc = RealVoxelGrid.from_pdb(
         sample_pdb_path,
         n_voxels_per_side=n_voxels_per_side,
         voxel_size=voxel_size,
-        mask_zeros=False,
     )
 
-    np.testing.assert_allclose(vg_density, vc.weights, atol=1e-12)
+    np.testing.assert_allclose(vg_density, vc.weights.ravel(), atol=1e-12)
 
 
 class TestBuildRealSpaceVoxelsFromAtoms:

@@ -2,7 +2,13 @@
 Voxel-based electron density representations.
 """
 
-__all__ = ["Voxels", "VoxelCloud", "VoxelGrid"]
+__all__ = [
+    "Voxels",
+    "VoxelT",
+    "RealVoxelGrid",
+    "FourierVoxelGrid",
+    "VoxelCloud",
+]
 
 import pathlib
 from abc import abstractmethod
@@ -16,7 +22,7 @@ from typing import (
     overload,
     Dict,
 )
-from typing_extensions import Self
+from typing_extensions import Self, override
 from jaxtyping import Complex, Float, Array, Int
 from equinox import AbstractVar
 from functools import cached_property
@@ -24,6 +30,7 @@ from functools import cached_property
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from ._electron_density import ElectronDensity
 from ..pose import Pose
@@ -35,25 +42,27 @@ from ...io import (
 )
 import cryojax.io.load_atoms as load_atoms
 from ...core import field
-from cryojax.utils import (
-    make_frequencies,
-    make_coordinates,
+from cryojax.image import (
     pad,
+    crop,
     fftn,
+    make_coordinates,
+    CoordinateGrid,
+    CoordinateList,
+    FrequencySlice,
 )
 from cryojax.typing import (
     RealCloud,
     RealVolume,
+    RealCubicVolume,
+    ComplexCubicVolume,
     VolumeCoords,
-    CloudCoords3D,
+    VolumeSliceCoords,
     Real_,
 )
 
-_RealCubicVolume = Float[Array, "N N N"]
-_ComplexCubicVolume = Complex[Array, "N N N"]
-_VolumeSliceCoords = Float[Array, "N N//2+1 1 3"]
-
-VoxelType = TypeVar("VoxelType", bound="Voxels")
+VoxelT = TypeVar("VoxelT", bound="Voxels")
+"""Type hint for a voxel-based electron density."""
 
 
 class Voxels(ElectronDensity):
@@ -69,41 +78,44 @@ class Voxels(ElectronDensity):
     """
 
     weights: AbstractVar[Array]
-    voxel_size: Real_ = field(stack=False)
+    voxel_size: Real_ = field()
 
     @overload
     @classmethod
     @abstractmethod
     def from_density_grid(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         density_grid: RealVolume,
-        voxel_size: float,
+        voxel_size: Real_ | float,
         coordinate_grid: None,
+        n_indexed_dims: int,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         ...
 
     @overload
     @classmethod
     @abstractmethod
     def from_density_grid(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         density_grid: RealVolume,
-        voxel_size: float,
+        voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
+        n_indexed_dims: int,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         ...
 
     @classmethod
     @abstractmethod
     def from_density_grid(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         density_grid: RealVolume,
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
+        n_indexed_dims: int = 0,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """
         Load a Voxels object from real-valued 3D electron
         density map.
@@ -112,7 +124,7 @@ class Voxels(ElectronDensity):
 
     @classmethod
     def from_atom_info(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
         voxel_size: float,
@@ -140,12 +152,12 @@ class Voxels(ElectronDensity):
 
     @classmethod
     def from_gemmi(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         model,
         n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """
         Loads a PDB file as a Voxels subclass.  Uses the Gemmi library.
         Heavily based on a code from Frederic Poitevin, located at
@@ -168,11 +180,11 @@ class Voxels(ElectronDensity):
 
     @classmethod
     def from_file(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         filename: str,
         *args: Any,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """Load a voxel-based electron density."""
         path = pathlib.Path(filename)
         if path.suffix == ".mrc":
@@ -188,22 +200,24 @@ class Voxels(ElectronDensity):
 
     @classmethod
     def from_mrc(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         filename: str,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """Load Voxels from MRC file format."""
         density_grid, voxel_size = load_mrc(filename)
-        return cls.from_density_grid(density_grid, voxel_size, **kwargs)
+        return cls.from_density_grid(
+            jnp.asarray(density_grid), voxel_size, **kwargs
+        )
 
     @classmethod
     def from_pdb(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """Load Voxels from PDB file format."""
         atom_positions, atom_elements = read_atoms_from_pdb(filename)
         coordinate_grid_in_angstroms = make_coordinates(
@@ -220,12 +234,12 @@ class Voxels(ElectronDensity):
 
     @classmethod
     def from_cif(
-        cls: Type[VoxelType],
+        cls: Type[VoxelT],
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> VoxelType:
+    ) -> VoxelT:
         """Load Voxels from CIF file format."""
         atom_positions, atom_elements = read_atoms_from_cif(filename)
         coordinate_grid_in_angstroms = make_coordinates(
@@ -241,11 +255,10 @@ class Voxels(ElectronDensity):
         )
 
 
-class VoxelGrid(Voxels):
+class FourierVoxelGrid(Voxels):
     """
-    Abstraction of a 3D electron density voxel grid.
-
-    The voxel grid should be given in fourier space.
+    Abstraction of a 3D electron density voxel grid
+    in fourier space.
 
     Attributes
     ----------
@@ -256,13 +269,13 @@ class VoxelGrid(Voxels):
         in fourier space.
     """
 
-    weights: _ComplexCubicVolume = field()
-    frequency_slice: _VolumeSliceCoords = field(stack=False)
+    weights: ComplexCubicVolume = field()
+    frequency_slice: FrequencySlice = field()
 
     is_real: ClassVar[bool] = False
 
     @cached_property
-    def frequency_slice_in_angstroms(self) -> _VolumeSliceCoords:
+    def frequency_slice_in_angstroms(self) -> FrequencySlice:
         return self.frequency_slice / self.voxel_size
 
     def rotate_to_pose(self, pose: Pose) -> Self:
@@ -275,46 +288,173 @@ class VoxelGrid(Voxels):
         return eqx.tree_at(
             lambda d: d.frequency_slice,
             self,
-            pose.rotate(self.frequency_slice, is_real=self.is_real),
+            FrequencySlice(
+                pose.rotate(self.frequency_slice.get(), is_real=self.is_real)
+            ),
+            is_leaf=lambda x: isinstance(x, FrequencySlice),
         )
 
     @classmethod
     def from_density_grid(
-        cls: Type["VoxelGrid"],
+        cls: Type["FourierVoxelGrid"],
         density_grid: RealVolume,
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         pad_scale: float = 1.0,
+        n_indexed_dims: int = 0,
         **kwargs: Any,
-    ) -> "VoxelGrid":
+    ) -> "FourierVoxelGrid":
+        # If voxel size is given as a float, broadcast to the stacked shape
+        if n_indexed_dims > 0:
+            stack_shape = density_grid.shape[:n_indexed_dims]
+            if isinstance(
+                voxel_size, (float, Float[Array, ""], Float[np.ndarray, ""])
+            ):
+                voxel_size = jnp.full(stack_shape, voxel_size)
+            else:
+                if voxel_size.shape != stack_shape:
+                    raise ValueError(
+                        "voxel_size.shape must match density_grid.shape[:n_indexed_dims]"
+                    )
         # Change how template sits in box to match cisTEM
-        density_grid = jnp.transpose(density_grid, axes=[2, 1, 0])
+        density_grid = jnp.transpose(
+            density_grid, axes=[*tuple(range(n_indexed_dims)), -1, -2, -3]
+        )
         # Pad template
-        padded_shape = tuple([int(s * pad_scale) for s in density_grid.shape])
+        if pad_scale < 1.0:
+            raise ValueError("pad_scale must be greater than 1.0")
+        padded_shape = tuple(
+            [int(s * pad_scale) for s in density_grid.shape[-3:]]
+        )
         padded_density_grid = pad(density_grid, padded_shape)
         # Load density and coordinates. For now, do not store the
         # fourier density only on the half space. Fourier slice extraction
-        # does not currently work if rfftn is used
-        fourier_density_grid = fftn(padded_density_grid)
+        # does not currently work if rfftn is us
+        fourier_density_grid = fftn(padded_density_grid, axes=(-3, -2, -1))
         # ... create in-plane frequency slice on the half space
-        frequency_slice = make_frequencies(
-            padded_density_grid.shape[:-1], half_space=True
-        )
-        # ... zero pad to make the slice 3-dimensional
-        frequency_slice = jnp.expand_dims(
-            jnp.pad(
-                frequency_slice,
-                ((0, 0), (0, 0), (0, 1)),
-                mode="constant",
-                constant_values=0.0,
-            ),
-            axis=2,
+        frequency_slice = FrequencySlice(
+            shape=padded_density_grid.shape[-3:-1], half_space=True
         )
 
         return cls(
             weights=fourier_density_grid,
             frequency_slice=frequency_slice,
             voxel_size=voxel_size,
+            n_indexed_dims=n_indexed_dims,
+        )
+
+
+class RealVoxelGrid(Voxels):
+    """
+    Abstraction of a 3D electron density voxel grid.
+    The voxel grid is given in real space.
+
+    Attributes
+    ----------
+    weights :
+        3D electron density voxel grid.
+    coordinate_list :
+        List of coordinates for the point cloud.
+    """
+
+    weights: RealVolume = field()
+    coordinate_grid: CoordinateGrid = field()
+
+    is_real: ClassVar[bool] = True
+
+    @cached_property
+    def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
+        return self.voxel_size * self.coordinate_grid
+
+    def rotate_to_pose(self, pose: Pose) -> Self:
+        """
+        Compute rotations of a point cloud by an imaging pose.
+
+        This transformation will return a new density cloud
+        with rotated coordinates.
+        """
+        return eqx.tree_at(
+            lambda d: d.coordinate_grid,
+            self,
+            CoordinateGrid(
+                pose.rotate(self.coordinate_grid.get(), is_real=self.is_real)
+            ),
+            is_leaf=lambda x: isinstance(x, CoordinateGrid),
+        )
+
+    @overload
+    @classmethod
+    def from_density_grid(
+        cls: Type["RealVoxelGrid"],
+        density_grid: RealVolume,
+        voxel_size: Real_ | float,
+        coordinate_grid: VolumeCoords,
+        n_indexed_dims: int,
+        crop_scale: None,
+        **kwargs: Any,
+    ) -> "RealVoxelGrid":
+        ...
+
+    @overload
+    @classmethod
+    def from_density_grid(
+        cls: Type["RealVoxelGrid"],
+        density_grid: RealVolume,
+        voxel_size: Real_ | float,
+        coordinate_grid: None,
+        n_indexed_dims: int,
+        crop_scale: Optional[float],
+        **kwargs: Any,
+    ) -> "RealVoxelGrid":
+        ...
+
+    @classmethod
+    def from_density_grid(
+        cls: Type["RealVoxelGrid"],
+        density_grid: RealVolume,
+        voxel_size: Real_ | float = 1.0,
+        coordinate_grid: Optional[VolumeCoords] = None,
+        n_indexed_dims: int = 0,
+        crop_scale: Optional[float] = None,
+        **kwargs: Any,
+    ) -> "RealVoxelGrid":
+        # If voxel size is given as a float, broadcast to the stacked shape
+        if n_indexed_dims > 0:
+            stack_shape = density_grid.shape[:n_indexed_dims]
+            if isinstance(
+                voxel_size, (float, Float[Array, ""], Float[np.ndarray, ""])
+            ):
+                voxel_size = jnp.full(stack_shape, voxel_size)
+            else:
+                if voxel_size.shape != stack_shape:
+                    raise ValueError(
+                        "voxel_size.shape must match density_grid.shape[:n_indexed_dims]"
+                    )
+        # Change how template sits in the box.
+        # Ideally we would change this in the same way for all
+        # I/O methods. However, the algorithms used all
+        # have their own xyz conventions. The choice here is to
+        # make jax-finufft output match cisTEM.
+        density_grid = jnp.transpose(
+            density_grid, axes=[*tuple(range(n_indexed_dims)), -2, -1, -3]
+        )
+        # Make coordinates if not given
+        if coordinate_grid is None:
+            # Option for cropping template
+            if crop_scale is not None:
+                if crop_scale > 1.0:
+                    raise ValueError("crop_scale must be less than 1.0")
+                cropped_shape = tuple(
+                    [int(s * crop_scale) for s in density_grid.shape[-3:]]
+                )
+                density_grid = crop(density_grid, cropped_shape)
+            coordinate_grid = CoordinateGrid(shape=density_grid.shape[-3:])
+
+        return cls(
+            weights=density_grid,
+            coordinate_grid=coordinate_grid,
+            voxel_size=voxel_size,
+            n_indexed_dims=n_indexed_dims,
         )
 
 
@@ -334,12 +474,12 @@ class VoxelCloud(Voxels):
     """
 
     weights: RealCloud = field()
-    coordinate_list: CloudCoords3D = field(stack=False)
+    coordinate_list: CoordinateList = field()
 
     is_real: ClassVar[bool] = True
 
     @cached_property
-    def coordinate_list_in_angstroms(self) -> CloudCoords3D:
+    def coordinate_list_in_angstroms(self) -> CoordinateList:
         return self.voxel_size * self.coordinate_list
 
     def rotate_to_pose(self, pose: Pose) -> Self:
@@ -352,42 +492,53 @@ class VoxelCloud(Voxels):
         return eqx.tree_at(
             lambda d: d.coordinate_list,
             self,
-            pose.rotate(self.coordinate_list, is_real=self.is_real),
+            CoordinateList(
+                pose.rotate(self.coordinate_list.get(), is_real=self.is_real)
+            ),
+            is_leaf=lambda x: isinstance(x, CoordinateList),
         )
 
     @classmethod
     def from_density_grid(
         cls: Type["VoxelCloud"],
         density_grid: RealVolume,
-        voxel_size: float = 1.0,
+        voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
-        mask_zeros: bool = True,
+        n_indexed_dims: int = 0,
         **kwargs: Any,
     ) -> "VoxelCloud":
+        if n_indexed_dims != 0:
+            raise NotImplementedError("Stacked VoxelClouds are not supported.")
         # Change how template sits in the box.
         # Ideally we would change this in the same way for all
         # I/O methods. However, the algorithms used all
         # have their own xyz conventions. The choice here is to
         # make jax-finufft output match cisTEM.
-        density_grid = jnp.transpose(density_grid, axes=[1, 2, 0])
+        density_grid = jnp.transpose(density_grid, axes=[-2, -1, -3])
         # Make coordinates if not given
         if coordinate_grid is None:
             coordinate_grid = make_coordinates(density_grid.shape)
-        # Load flattened density and coordinates
-        if not mask_zeros:
-            flat_density = density_grid.ravel()
-            coordinate_list = coordinate_grid.ravel()
-        else:
-            # ... mask zeros if desired to store smaller arrays. This
-            # option is not jittable.
-            nonzero = jnp.where(~jnp.isclose(density_grid, 0.0, **kwargs))
-            flat_density = density_grid[nonzero]
-            coordinate_list = coordinate_grid[nonzero]
+        # ... mask zeros to store smaller arrays. This
+        # option is not jittable.
+        nonzero = jnp.where(~jnp.isclose(density_grid, 0.0, **kwargs))
+        flat_density = density_grid[nonzero]
+        coordinate_list = coordinate_grid[nonzero]
 
         return cls(
             weights=flat_density,
-            coordinate_list=coordinate_list,
+            coordinate_list=CoordinateList(coordinate_list),
             voxel_size=voxel_size,
+            n_indexed_dims=0,
+        )
+
+    @override
+    def __getitem__(self, idx):
+        raise NotImplementedError("Indexing a VoxelCloud is not implemented.")
+
+    @override
+    def __len__(self) -> int:
+        raise NotImplementedError(
+            "Getting the length VoxelCloud is not implemented."
         )
 
 
@@ -467,7 +618,7 @@ def _build_real_space_voxels_from_atoms(
     ff_a: Float[Array, "N 5"],
     ff_b: Float[Array, "N 5"],
     coordinate_system: Float[Array, "N1 N2 N3 3"],
-) -> Tuple[_RealCubicVolume, _VolumeSliceCoords]:
+) -> Tuple[RealCubicVolume, VolumeSliceCoords]:
     """
     Build a voxel representation of an atomic model.
 

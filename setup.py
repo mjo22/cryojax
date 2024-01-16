@@ -21,7 +21,7 @@ INSTALL_REQUIRES = [
     "jax",
     "jaxlib",
     "equinox>=0.11.0",
-    "jaxtyping",
+    "jaxtyping>=0.2.23",
     "jaxlie",
     "mrcfile",
 ]

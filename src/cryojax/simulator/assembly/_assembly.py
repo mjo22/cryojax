@@ -9,18 +9,15 @@ from __future__ import annotations
 __all__ = ["Assembly"]
 
 from abc import abstractmethod
-from typing import Optional
-from jaxtyping import Array, Float, Int
+from typing import Optional, Any
+from jaxtyping import Array, Float
 from functools import cached_property
 
 import jax.numpy as jnp
 import equinox as eqx
 
-from ..ensemble import Ensemble
+from ..specimen import Specimen, Ensemble, Conformation
 from ..pose import Pose, EulerPose, MatrixPose
-
-from ...core import field, Module
-from ...typing import Real_
 
 _Positions = Float[Array, "N 3"]
 """Type hint for array where each element is a subunit coordinate."""
@@ -28,11 +25,8 @@ _Positions = Float[Array, "N 3"]
 _Rotations = Float[Array, "N 3 3"]
 """Type hint for array where each element is a subunit rotation."""
 
-_Conformations = Int[Array, "N"]
-"""Type hint for array where each element updates a Conformation."""
 
-
-class Assembly(Module):
+class Assembly(eqx.Module):
     """
     Abstraction of a biological assembly.
 
@@ -57,20 +51,30 @@ class Assembly(Module):
         The conformation of each `subunit`.
     """
 
-    subunit: Ensemble = field()
-    pose: Pose = field()
-    conformation: Optional[_Conformations] = field(default=None)
+    subunit: Specimen
+    pose: Pose
+    conformation: Optional[Conformation] = None
 
     def __init__(
         self,
         subunit: Ensemble,
         *,
         pose: Optional[Pose] = None,
-        conformation: Optional[_Conformations] = None,
+        conformation: Optional[Conformation] = None,
+        **kwargs: Any,
     ):
+        super().__init__(**kwargs)
         self.subunit = subunit
         self.pose = pose or EulerPose()
-        self.conformation = conformation
+        self.conformation = None if conformation is None else conformation
+
+    def __check_init__(self):
+        if self.conformation is not None and not isinstance(
+            self.subunit, Ensemble
+        ):
+            raise AttributeError(
+                "conformation cannot be set if the subunit is not an Ensemble."
+            )
 
     @cached_property
     @abstractmethod
@@ -112,14 +116,16 @@ class Assembly(Module):
         )
 
     @cached_property
-    def subunits(self) -> Ensemble:
+    def subunits(self) -> Specimen:
         """Draw a realization of all of the subunits in the lab frame."""
         # Compute a list of subunits, configured at the correct conformations
-        if self.conformation is None:
-            where = lambda s: s.pose
-            return eqx.tree_at(where, self.subunit, self.poses)
-        else:
+        if isinstance(self.subunit, Ensemble):
             where = lambda s: (s.conformation, s.pose)
             return eqx.tree_at(
                 where, self.subunit, (self.conformation, self.poses)
             )
+        elif isinstance(self.subunit, Specimen):
+            where = lambda s: s.pose
+            return eqx.tree_at(where, self.subunit, self.poses)
+        else:
+            raise AttributeError("The subunit must be of type SpecimenLike.")

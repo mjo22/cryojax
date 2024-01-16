@@ -14,12 +14,14 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate
+from equinox import Module
 
-from ..density import ElectronDensity, Voxels, VoxelGrid
+from ..specimen import Specimen
+from ..density import ElectronDensity, Voxels, FourierVoxelGrid
 from ..manager import ImageManager
 
-from ...utils import rfftn, irfftn
-from ...core import field, Module
+from ...image import rfftn, irfftn, CoordinateGrid, FrequencyGrid
+from ...core import field
 from ...typing import Real_, RealImage, ComplexImage
 
 
@@ -35,24 +37,14 @@ class ScatteringModel(Module):
     manager:
         Handles image configuration and
         utility routines.
-    pixel_size :
-        The pixel size of the image in Angstroms.
-        For voxel-based ``ElectronDensity`` representations,
-        if the pixel size is different than the voxel size,
-        images will be interpolated in real space.
     method :
         The interpolation method used for measuring
         the image at the new ``pixel_size``. Passed to
-        ``jax.image.scale_and_translate``.
-
-    Methods
-    -------
-    scatter:
-        The scattering model.
+        ``jax.image.scale_and_translate``. This options
+        applies to voxel-based ``ElectronDensity`` representations.
     """
 
     manager: ImageManager = field()
-    pixel_size: Real_ = field()
 
     method: str = field(static=True, default="bicubic")
 
@@ -69,26 +61,33 @@ class ScatteringModel(Module):
         """
         raise NotImplementedError
 
-    def __call__(
-        self, density: ElectronDensity, **kwargs: Any
-    ) -> ComplexImage:
+    def __call__(self, specimen: Specimen, **kwargs: Any) -> ComplexImage:
         """
         Compute an image at the exit plane, measured at the ScatteringModel
         pixel size and post-processed with the ImageManager utilities.
         """
-        image = self.scatter(density, **kwargs)
-        if isinstance(density, VoxelGrid):
+        # Get density in the lab frame
+        density = specimen.density_in_lab_frame
+        if density.n_indexed_dims != 0:
+            raise AttributeError(
+                "ElectronDensity.n_indexed_dims must be zero when passing to ScatteringModel"
+            )
+        # Compute the image in the exit plane
+        image_at_exit_plane = self.scatter(density, **kwargs)
+        if isinstance(density, FourierVoxelGrid):
             # Resize the image to match the ImageManager.padded_shape
-            image = self.manager.crop_or_pad_to_padded_shape(
-                irfftn(image, s=density.weights.shape[0:2])
+            image_at_exit_plane = self.manager.crop_or_pad_to_padded_shape(
+                irfftn(image_at_exit_plane, s=density.weights.shape[0:2])
             )
         else:
             # ... otherwise, assume the image is already at the padded_shape
-            image = irfftn(image, s=self.manager.padded_shape)
+            image_at_exit_plane = irfftn(
+                image_at_exit_plane, s=self.manager.padded_shape
+            )
         # Rescale the pixel size if different from the voxel size
         if isinstance(density, Voxels):
             current_pixel_size = density.voxel_size
-            new_pixel_size = self.pixel_size
+            new_pixel_size = self.manager.pixel_size
             rescale_fn = lambda image: rescale_pixel_size(
                 image,
                 current_pixel_size,
@@ -96,31 +95,22 @@ class ScatteringModel(Module):
                 method=self.method,
             )
             null_fn = lambda image: image
-            image = jax.lax.cond(
+            image_at_exit_plane = jax.lax.cond(
                 jnp.isclose(current_pixel_size, new_pixel_size),
                 null_fn,
                 rescale_fn,
-                image,
+                image_at_exit_plane,
             )
         # Transform back to fourier space and give the image zero mean
-        image = rfftn(image).at[0, 0].set(0.0 + 0.0j)
-        return image
+        image_at_exit_plane = (
+            rfftn(image_at_exit_plane).at[0, 0].set(0.0 + 0.0j)
+        )
+        # Apply translation through phase shifts
+        image_at_exit_plane *= specimen.pose.shifts(
+            self.manager.padded_frequency_grid_in_angstroms.get()
+        )
 
-    @cached_property
-    def coordinate_grid_in_angstroms(self):
-        return self.pixel_size * self.manager.coordinate_grid
-
-    @cached_property
-    def frequency_grid_in_angstroms(self):
-        return self.manager.frequency_grid / self.pixel_size
-
-    @cached_property
-    def padded_coordinate_grid_in_angstroms(self):
-        return self.pixel_size * self.manager.padded_coordinate_grid
-
-    @cached_property
-    def padded_frequency_grid_in_angstroms(self):
-        return self.manager.padded_frequency_grid / self.pixel_size
+        return image_at_exit_plane
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])
