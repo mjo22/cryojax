@@ -108,9 +108,7 @@ class IndependentFourierGaussian(Distribution):
         freqs = (
             self.pipeline.scattering.padded_frequency_grid_in_angstroms.get()
         )
-        noise = self.variance(
-            freqs, pose=self.pipeline.specimen.pose
-        ) * jr.normal(key, shape=freqs.shape[0:-1])
+        noise = self.variance(freqs) * jr.normal(key, shape=freqs.shape[0:-1])
         image = self.pipeline.render(view_cropped=False, get_real=False)
         return self.pipeline.crop_and_apply_operators(image + noise, **kwargs)
 
