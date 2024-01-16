@@ -117,8 +117,6 @@ class PoissonDetector(Detector):
 
     is_sample_real: ClassVar[bool] = True
 
-    dose: RealOperatorLike = field(default_factory=Constant)
-
     @override
     def sample(
         self,
@@ -126,6 +124,4 @@ class PoissonDetector(Detector):
         image: RealImage,
         coords_or_freqs: ImageCoords,
     ) -> RealImage:
-        return jr.poisson(key, self.dose(coords_or_freqs) * image).astype(
-            float
-        )
+        return jr.poisson(key, image).astype(float)

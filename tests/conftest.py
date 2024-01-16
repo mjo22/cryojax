@@ -72,9 +72,9 @@ def instrument():
     return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.Exposure(
-            scaling=op.Constant(1000.0), offset=op.ZeroMode(0.0)
+            dose=op.Constant(10.0), radiation=op.Constant(1.0)
         ),
-        detector=cs.GaussianDetector(op.Constant(1.0)),
+        detector=cs.GaussianDetector(variance=op.Constant(1.0)),
     )
 
 
