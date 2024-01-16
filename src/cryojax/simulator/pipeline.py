@@ -73,9 +73,6 @@ class ImagePipeline(Module):
 
         Parameters
         ----------
-        at_detector_plane : `bool`, optional
-            If ``True`` use the ``Instrument`` to propagate
-            the image to the detector plane.
         view_cropped : `bool`, optional
             If ``True``, view the cropped image.
             If ``view_cropped = False``, ``ImagePipeline.filter``,

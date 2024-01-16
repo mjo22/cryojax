@@ -32,18 +32,18 @@ def sample_pdb_path():
 
 
 @pytest.fixture
-def manager():
-    return cs.ImageManager(shape=(65, 66), pad_scale=1.1)
-
-
-@pytest.fixture
 def pixel_size():
-    return 5.32
+    return 4.4
 
 
 @pytest.fixture
-def scattering(manager, pixel_size):
-    return cs.FourierSliceExtract(manager, pixel_size=pixel_size)
+def manager(pixel_size):
+    return cs.ImageManager((65, 66), pixel_size, pad_scale=1.1)
+
+
+@pytest.fixture
+def scattering(manager):
+    return cs.FourierSliceExtract(manager)
 
 
 @pytest.fixture

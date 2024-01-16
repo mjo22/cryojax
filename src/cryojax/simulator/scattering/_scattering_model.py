@@ -37,24 +37,14 @@ class ScatteringModel(Module):
     manager:
         Handles image configuration and
         utility routines.
-    pixel_size :
-        The pixel size of the image in Angstroms.
-        For voxel-based ``ElectronDensity`` representations,
-        if the pixel size is different than the voxel size,
-        images will be interpolated in real space.
     method :
         The interpolation method used for measuring
         the image at the new ``pixel_size``. Passed to
-        ``jax.image.scale_and_translate``.
-
-    Methods
-    -------
-    scatter:
-        The scattering model.
+        ``jax.image.scale_and_translate``. This options
+        applies to voxel-based ``ElectronDensity`` representations.
     """
 
     manager: ImageManager = field()
-    pixel_size: Real_ = field()
 
     method: str = field(static=True, default="bicubic")
 
@@ -91,11 +81,13 @@ class ScatteringModel(Module):
             )
         else:
             # ... otherwise, assume the image is already at the padded_shape
-            image = irfftn(image_at_exit_plane, s=self.manager.padded_shape)
+            image_at_exit_plane = irfftn(
+                image_at_exit_plane, s=self.manager.padded_shape
+            )
         # Rescale the pixel size if different from the voxel size
         if isinstance(density, Voxels):
             current_pixel_size = density.voxel_size
-            new_pixel_size = self.pixel_size
+            new_pixel_size = self.manager.pixel_size
             rescale_fn = lambda image: rescale_pixel_size(
                 image,
                 current_pixel_size,
@@ -115,26 +107,10 @@ class ScatteringModel(Module):
         )
         # Apply translation through phase shifts
         image_at_exit_plane *= specimen.pose.shifts(
-            self.padded_frequency_grid_in_angstroms.get()
+            self.manager.padded_frequency_grid_in_angstroms.get()
         )
 
         return image_at_exit_plane
-
-    @cached_property
-    def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
-        return self.pixel_size * self.manager.coordinate_grid
-
-    @cached_property
-    def frequency_grid_in_angstroms(self) -> FrequencyGrid:
-        return self.manager.frequency_grid / self.pixel_size
-
-    @cached_property
-    def padded_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
-        return self.pixel_size * self.manager.padded_coordinate_grid
-
-    @cached_property
-    def padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
-        return self.manager.padded_frequency_grid / self.pixel_size
 
 
 @partial(jax.jit, static_argnames=["method", "antialias"])
