@@ -5,11 +5,12 @@ for the optics, detector, and beam.
 
 __all__ = ["Instrument"]
 
+from typing import Any
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
 from .ice import Ice
-from .specimen import SpecimenBase
+from .specimen import Specimen
 from .scattering import ScatteringModel
 from .optics import Optics, NullOptics
 from .exposure import Exposure, NullExposure
@@ -38,13 +39,11 @@ class Instrument(Module):
     detector: Detector = field(default_factory=NullDetector)
 
     def scatter_to_exit_plane(
-        self, specimen: SpecimenBase, scattering: ScatteringModel
+        self, specimen: Specimen, scattering: ScatteringModel, **kwargs: Any
     ) -> ComplexImage:
         """Scatter the specimen to the exit plane"""
-        # Draw the electron density at a particular conformation and pose
-        density = specimen.get_density()
         # Compute the scattering image in fourier space
-        image_at_exit_plane = scattering(density, specimen.pose)
+        image_at_exit_plane = scattering(specimen, **kwargs)
         # Pass image through the electron exposure model
         image_at_exit_plane = self.exposure(
             image_at_exit_plane,
@@ -59,12 +58,14 @@ class Instrument(Module):
         image_at_exit_plane: ComplexImage,
         scattering: ScatteringModel,
         defocus_offset: Real_ | float = 0.0,
+        **kwargs: Any,
     ) -> ComplexImage:
         """Propagate the image with the optics model"""
         image_at_detector_plane = self.optics(
             image_at_exit_plane,
             scattering.padded_frequency_grid_in_angstroms.get(),
             defocus_offset,
+            **kwargs,
         )
 
         return image_at_detector_plane
@@ -76,17 +77,21 @@ class Instrument(Module):
         solvent: Ice,
         scattering: ScatteringModel,
         defocus_offset: Real_ | float = 0.0,
+        **kwargs: Any,
     ) -> ComplexImage:
         """Propagate the image to the detector plane using the solvent model"""
         # Compute the image of the ice in the exit plane
         ice_at_exit_plane = solvent(key, image_at_exit_plane, scattering)
         # Now, propagate the image of the ice to the detector plane
         ice_at_detector_plane = self.propagate_to_detector_plane(
-            ice_at_exit_plane, scattering
+            ice_at_exit_plane, scattering, **kwargs
         )
         # ... and also the image of the specimen to the detector plane
         image_at_detector_plane = self.propagate_to_detector_plane(
-            image_at_exit_plane, scattering, defocus_offset=defocus_offset
+            image_at_exit_plane,
+            scattering,
+            defocus_offset=defocus_offset,
+            **kwargs,
         )
         return image_at_detector_plane + ice_at_detector_plane
 
@@ -95,6 +100,7 @@ class Instrument(Module):
         key: PRNGKeyArray,
         image_at_detector_plane: ComplexImage,
         scattering: ScatteringModel,
+        **kwargs: Any,
     ) -> ComplexImage:
         """Measure the detector readout"""
         detector_readout = self.detector(
@@ -102,6 +108,7 @@ class Instrument(Module):
             image_at_detector_plane,
             scattering.padded_frequency_grid_in_angstroms.get(),
             scattering.padded_coordinate_grid_in_angstroms.get(),
+            **kwargs,
         )
 
         return detector_readout

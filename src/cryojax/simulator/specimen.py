@@ -6,16 +6,14 @@ from __future__ import annotations
 
 __all__ = [
     "SpecimenT",
-    "SpecimenBase",
     "Specimen",
     "Ensemble",
     "Conformation",
 ]
 
-from abc import abstractmethod
 from typing import Optional, TypeVar
-from typing_extensions import override
 from functools import cached_property
+from typing_extensions import override
 
 import jax
 import jax.numpy as jnp
@@ -27,24 +25,10 @@ from ..core import field
 from ..typing import Int_
 
 
-SpecimenT = TypeVar("SpecimenT", bound="SpecimenBase")
+SpecimenT = TypeVar("SpecimenT", bound="Specimen")
 
 
-class SpecimenBase(Module):
-    """
-    Base class for things that act like biological specimen.
-    """
-
-    density: ElectronDensity
-    pose: Pose
-
-    @abstractmethod
-    def get_density(self) -> ElectronDensity:
-        """Get the ElectronDensity at the configured state."""
-        raise NotImplementedError
-
-
-class Specimen(SpecimenBase):
+class Specimen(Module):
     """
     Abstraction of a of biological specimen.
 
@@ -57,30 +41,32 @@ class Specimen(SpecimenBase):
         The pose of the specimen.
     """
 
+    density: ElectronDensity
+    pose: Pose
+
     def __init__(
         self,
         density: ElectronDensity,
         pose: Optional[Pose] = None,
     ):
+        if density.n_indexed_dims != 0:
+            raise AttributeError("ElectronDensity.n_indexed_dims must be 0.")
         self.density = density
         self.pose = pose or EulerPose()
 
-    def __check_init__(self):
-        if self.density.n_indexed_dims != 0:
-            raise AttributeError("ElectronDensity.n_indexed_dims must be 0.")
+    @cached_property
+    def density_in_com_frame(self) -> ElectronDensity:
+        """Get the electron density in the center of mass
+        frame."""
+        return self.density
 
     @cached_property
-    def density_at_pose(self) -> ElectronDensity:
-        """Get the electron density at the configured pose."""
-        return self.density.rotate_to_pose(self.pose)
-
-    @override
-    def get_density(self) -> ElectronDensity:
-        """Get the ElectronDensity."""
-        return self.density_at_pose
+    def density_in_lab_frame(self) -> ElectronDensity:
+        """Get the electron density in the lab frame."""
+        return self.density_in_com_frame.rotate_to_pose(self.pose)
 
 
-class Ensemble(SpecimenBase):
+class Ensemble(Specimen):
     """
     Abstraction of an ensemble of biological specimen.
 
@@ -103,28 +89,22 @@ class Ensemble(SpecimenBase):
         pose: Optional[Pose] = None,
         conformation: Optional[Conformation] = None,
     ):
+        if density.n_indexed_dims != 1:
+            raise AttributeError(
+                "ElectronDensity.n_indexed_dims must be 1 to evaluate at a density at a conformation."
+            )
         self.density = density
         self.pose = pose or EulerPose()
         self.conformation = conformation or Conformation(0)
 
-    def __check_init__(self):
-        if self.density.n_indexed_dims != 1:
-            raise AttributeError(
-                "ElectronDensity.n_indexed_dims must be 1 to evaluate at a density at a conformation."
-            )
-
     @cached_property
-    def density_at_conformation_and_pose(self) -> ElectronDensity:
-        """Get the electron density at the configured pose and conformation."""
+    @override
+    def density_in_com_frame(self) -> ElectronDensity:
+        """Get the electron density at configured conformation."""
         funcs = [lambda i=i: self.density[i] for i in range(len(self.density))]
         density = jax.lax.switch(self.conformation.get(), funcs)
 
-        return density.rotate_to_pose(self.pose)
-
-    @override
-    def get_density(self) -> ElectronDensity:
-        """Get the ElectronDensity."""
-        return self.density_at_conformation_and_pose
+        return density
 
 
 class Conformation(Module):

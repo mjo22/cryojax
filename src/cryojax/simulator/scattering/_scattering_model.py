@@ -16,7 +16,7 @@ import jax.numpy as jnp
 from jax.image import scale_and_translate
 from equinox import Module
 
-from ..pose import Pose
+from ..specimen import Specimen
 from ..density import ElectronDensity, Voxels, FourierVoxelGrid
 from ..manager import ImageManager
 
@@ -71,26 +71,27 @@ class ScatteringModel(Module):
         """
         raise NotImplementedError
 
-    def __call__(
-        self, density: ElectronDensity, pose: Pose, **kwargs: Any
-    ) -> ComplexImage:
+    def __call__(self, specimen: Specimen, **kwargs: Any) -> ComplexImage:
         """
         Compute an image at the exit plane, measured at the ScatteringModel
         pixel size and post-processed with the ImageManager utilities.
         """
+        # Get density in the lab frame
+        density = specimen.density_in_lab_frame
         if density.n_indexed_dims != 0:
             raise AttributeError(
                 "ElectronDensity.n_indexed_dims must be zero when passing to ScatteringModel"
             )
-        image = self.scatter(density, **kwargs)
+        # Compute the image in the exit plane
+        image_at_exit_plane = self.scatter(density, **kwargs)
         if isinstance(density, FourierVoxelGrid):
             # Resize the image to match the ImageManager.padded_shape
-            image = self.manager.crop_or_pad_to_padded_shape(
-                irfftn(image, s=density.weights.shape[0:2])
+            image_at_exit_plane = self.manager.crop_or_pad_to_padded_shape(
+                irfftn(image_at_exit_plane, s=density.weights.shape[0:2])
             )
         else:
             # ... otherwise, assume the image is already at the padded_shape
-            image = irfftn(image, s=self.manager.padded_shape)
+            image = irfftn(image_at_exit_plane, s=self.manager.padded_shape)
         # Rescale the pixel size if different from the voxel size
         if isinstance(density, Voxels):
             current_pixel_size = density.voxel_size
@@ -102,18 +103,22 @@ class ScatteringModel(Module):
                 method=self.method,
             )
             null_fn = lambda image: image
-            image = jax.lax.cond(
+            image_at_exit_plane = jax.lax.cond(
                 jnp.isclose(current_pixel_size, new_pixel_size),
                 null_fn,
                 rescale_fn,
-                image,
+                image_at_exit_plane,
             )
         # Transform back to fourier space and give the image zero mean
-        image = rfftn(image).at[0, 0].set(0.0 + 0.0j)
+        image_at_exit_plane = (
+            rfftn(image_at_exit_plane).at[0, 0].set(0.0 + 0.0j)
+        )
         # Apply translation through phase shifts
-        image *= pose.shifts(self.padded_frequency_grid_in_angstroms.get())
+        image_at_exit_plane *= specimen.pose.shifts(
+            self.padded_frequency_grid_in_angstroms.get()
+        )
 
-        return image
+        return image_at_exit_plane
 
     @cached_property
     def coordinate_grid_in_angstroms(self) -> CoordinateGrid:

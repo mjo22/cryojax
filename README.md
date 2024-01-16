@@ -74,9 +74,11 @@ The stack of electron densities is stored in a single `ElectronDensity`, whose p
 Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
 ```python
+from cryojax.image import operators as op
+
 ctf = cs.CTF(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
-optics = cs.CTFOptics(ctf)
-detector = cs.GaussianDetector(variance=cs.Constant(1.0))
+optics = cs.CTFOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # defocus and b_factor in Angstroms and Angstroms^2, respectively
+detector = cs.GaussianDetector(variance=op.Constant(1.0))
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
@@ -185,7 +187,7 @@ In general, there are many ways to write loss functions. See the [equinox](https
 ## Features
 
 - Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration.
-- A `cryojax.Module` is just an `equinox.Module`. Therefore, the `equinox` ecosystem is available for usage!
+- `cryojax` is built on `equinox`. Therefore, the `equinox` ecosystem is available for usage!
 
 ## Similar libraries
 

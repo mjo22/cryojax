@@ -14,7 +14,7 @@ def test_conformation(density, pose, scattering):
     cls = type(density)
     stacked_density = cls.from_list([density for _ in range(3)])
     ensemble = Ensemble(stacked_density, pose, conformation=Conformation(0))
-    _ = scattering(ensemble.density_at_conformation_and_pose, pose)
+    _ = scattering(ensemble)
 
 
 def test_conformation_vmap(density, pose, scattering):
@@ -31,11 +31,11 @@ def test_conformation_vmap(density, pose, scattering):
     to_vmap = jtu.tree_map(is_vmap, ensemble, is_leaf=is_vmap)
     vmap, novmap = eqx.partition(ensemble, to_vmap)
 
-    @partial(jax.vmap, in_axes=[0, None, None, None])
-    def compute_conformation_stack(vmap, novmap, scattering, pose):
+    @partial(jax.vmap, in_axes=[0, None, None])
+    def compute_conformation_stack(vmap, novmap, scattering):
         ensemble = eqx.combine(vmap, novmap)
-        return scattering(ensemble.get_density(), pose)
+        return scattering(ensemble)
 
     # Vmap over conformations
-    image_stack = compute_conformation_stack(vmap, novmap, scattering, pose)
+    image_stack = compute_conformation_stack(vmap, novmap, scattering)
     assert image_stack.shape[0] == ensemble.conformation.get().shape[0]

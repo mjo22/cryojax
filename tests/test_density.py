@@ -105,7 +105,7 @@ def test_electron_density_vmap(density, scattering, pose):
     @partial(jax.vmap, in_axes=[0, None, None, None])
     def compute_image_stack(vmap, novmap, scattering, pose):
         density = eqx.combine(vmap, novmap)
-        return scattering(density, pose)
+        return scattering(cs.Specimen(density, pose))
 
     # vmap over first axis
     image_stack = compute_image_stack(vmap, novmap, scattering, pose)
