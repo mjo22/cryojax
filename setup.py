@@ -26,7 +26,7 @@ INSTALL_REQUIRES = [
     "mrcfile",
 ]
 EXTRA_REQUIRE = {
-    "test": ["pytest>=3.6", "pycistem", "gemmi", "mdtraj"],
+    "test": ["pytest>=3.6", "pycistem", "gemmi"],
     "docs": [],
 }
 EXTRA_REQUIRE["coverage"] = EXTRA_REQUIRE["test"] + ["pytest-cov"]
@@ -70,6 +70,7 @@ if __name__ == "__main__":
         long_description_content_type="text/markdown",
         packages=PACKAGES,
         package_dir={"": "src"},
+        include_package_data=True,
         python_requires=">=3.10",
         install_requires=INSTALL_REQUIRES,
         extras_require=EXTRA_REQUIRE,
