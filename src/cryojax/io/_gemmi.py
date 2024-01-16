@@ -2,31 +2,49 @@
 Routines for converting Gemmi structures into voxel densities.
 """
 __all__ = [
-    "get_scattering_info_from_gemmi_model",
     "clean_gemmi_structure",
     "extract_gemmi_atoms",
+    "extract_atom_positions_and_names",
+    "get_atom_info_from_gemmi_model",
 ]
 
 import numpy as np
 import itertools
+from typing import List
 
 from cryojax.io.load_atoms import (
     get_form_factor_params,
 )
 
 
-def get_scattering_info_from_gemmi_model(model):
+def get_atom_info_from_gemmi_model(model):
+    """
+    Gets the atomic positions and element names from a Gemmi model.
+
+    Parameters
+    ----------
+
+    model : Gemmi Class
+        Gemmi model
+
+    Returns
+    -------
+    atom_positions: numpy array
+        Array of coordinates containing atomic positions
+    atom_element_names: numpy array
+        Array of atomic element names
+
+    """
     atoms = extract_gemmi_atoms(model)
     atom_positions, atom_element_names = extract_atom_positions_and_names(
         atoms
     )
-
-    a_vals, b_vals = get_form_factor_params(atom_element_names)
-    return np.array(atom_positions), np.array(a_vals), np.array(b_vals)
+    return atom_positions, atom_element_names
 
 
 def clean_gemmi_structure(structure=None):
-    """Clean Gemmi Structure.
+    """
+    Clean Gemmi Structure.
 
     Parameters
     ----------
@@ -91,21 +109,23 @@ def extract_atom_positions_and_names(atoms):
     ----------
     atoms : list (of list(s)) of Gemmi atoms
         Gemmi atom objects associated with each chain
-    parameter_type : string
-        'cartesian_coordinates', 'form_factor_a', or 'form_factor_b'
-    split_chains : bool
-        Optional, default: False
-        if True, keep the atoms from different chains in separate lists
 
     Returns
     -------
-    atomic_parameter : list of floats, or list of lists of floats
-        atomic parameter associated with each atom, optionally split by chain
+    positions : numpy array
+        Array of atomic positions
+    atomic_numbers : numpy array
+        Array of atomic numbers
+
+    TODO:
+    - atomic charges?
     """
     # if list of Gemmi atoms, convert into a list of list
     if type(atoms[0]) != list:
         atoms = [atoms]
 
-    positions = [at.pos.tolist() for ch in atoms for at in ch]
-    names = [at.element.name for ch in atoms for at in ch]
-    return positions, names
+    positions = np.array([at.pos.tolist() for ch in atoms for at in ch])
+    atomic_numbers = np.array(
+        [at.element.atomic_number for ch in atoms for at in ch]
+    )
+    return positions, atomic_numbers

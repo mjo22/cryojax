@@ -6,9 +6,18 @@ __all__ = ["Voxels", "VoxelCloud", "VoxelGrid"]
 
 import pathlib
 from abc import abstractmethod
-from typing import Any, Tuple, Type, ClassVar, TypeVar, Optional, overload
+from typing import (
+    Any,
+    Tuple,
+    Type,
+    ClassVar,
+    TypeVar,
+    Optional,
+    overload,
+    Dict,
+)
 from typing_extensions import Self
-from jaxtyping import Complex, Float, Array
+from jaxtyping import Complex, Float, Array, Int
 from equinox import AbstractVar
 from functools import cached_property
 
@@ -20,10 +29,11 @@ from ._electron_density import ElectronDensity
 from ..pose import Pose
 from ...io import (
     load_mrc,
-    read_atomic_model_from_pdb,
-    read_atomic_model_from_cif,
-    get_scattering_info_from_gemmi_model,
+    get_atom_info_from_gemmi_model,
+    read_atoms_from_pdb,
+    read_atoms_from_cif,
 )
+import cryojax.io.load_atoms as load_atoms
 from ...core import field
 from cryojax.utils import (
     make_frequencies,
@@ -101,6 +111,34 @@ class Voxels(ElectronDensity):
         raise NotImplementedError
 
     @classmethod
+    def from_atom_info(
+        cls: Type[VoxelType],
+        atom_positions: Float[Array, "N 3"],
+        atom_identities: Int[Array, "N"],
+        voxel_size: float,
+        coordinate_grid_in_angstroms: VolumeCoords,
+        form_factors: Optional[Float[Array, "N 5"]] = None,
+        **kwargs: Any,
+    ):
+        """
+        Load a Voxels object from atom positions and identities.
+        """
+        a_vals, b_vals = load_atoms.get_form_factor_params(
+            atom_identities, form_factors
+        )
+
+        density = _build_real_space_voxels_from_atoms(
+            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms
+        )
+
+        return cls.from_density_grid(
+            density,
+            voxel_size,
+            coordinate_grid_in_angstroms / voxel_size,
+            **kwargs,
+        )
+
+    @classmethod
     def from_gemmi(
         cls: Type[VoxelType],
         model,
@@ -114,19 +152,17 @@ class Voxels(ElectronDensity):
 
         https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
         """
-        coords, a_vals, b_vals = get_scattering_info_from_gemmi_model(model)
+        atom_positions, atom_elements = get_atom_info_from_gemmi_model(model)
 
         coordinate_grid_in_angstroms = make_coordinates(
             n_voxels_per_side, voxel_size
         )
-        density = _build_real_space_voxels_from_atoms(
-            coords, a_vals, b_vals, coordinate_grid_in_angstroms
-        )
 
-        return cls.from_density_grid(
-            density,
+        return cls.from_atom_info(
+            atom_positions,
+            atom_elements,
             voxel_size,
-            coordinate_grid_in_angstroms / voxel_size,
+            coordinate_grid_in_angstroms,
             **kwargs,
         )
 
@@ -169,8 +205,18 @@ class Voxels(ElectronDensity):
         **kwargs: Any,
     ) -> VoxelType:
         """Load Voxels from PDB file format."""
-        model = read_atomic_model_from_pdb(filename)
-        return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
+        atom_positions, atom_elements = read_atoms_from_pdb(filename)
+        coordinate_grid_in_angstroms = make_coordinates(
+            n_voxels_per_side, voxel_size
+        )
+
+        return cls.from_atom_info(
+            atom_positions,
+            atom_elements,
+            voxel_size,
+            coordinate_grid_in_angstroms,
+            **kwargs,
+        )
 
     @classmethod
     def from_cif(
@@ -181,8 +227,18 @@ class Voxels(ElectronDensity):
         **kwargs: Any,
     ) -> VoxelType:
         """Load Voxels from CIF file format."""
-        model = read_atomic_model_from_cif(filename)
-        return cls.from_gemmi(model, n_voxels_per_side, voxel_size, **kwargs)
+        atom_positions, atom_elements = read_atoms_from_cif(filename)
+        coordinate_grid_in_angstroms = make_coordinates(
+            n_voxels_per_side, voxel_size
+        )
+
+        return cls.from_atom_info(
+            atom_positions,
+            atom_elements,
+            voxel_size,
+            coordinate_grid_in_angstroms,
+            **kwargs,
+        )
 
 
 class VoxelGrid(Voxels):

@@ -47,39 +47,20 @@ def test_VoxelGrid_VoxelCloud_agreement(sample_pdb_path):
 
 class TestBuildRealSpaceVoxelsFromAtoms:
     @pytest.mark.parametrize("largest_atom", range(0, 3))
-    def test_maxima_are_in_write_positions(self, largest_atom):
+    def test_maxima_are_in_right_positions(
+        self, toy_gaussian_cloud, largest_atom
+    ):
         """
         Test that the maxima of the density are in the correct positions.
         """
-        atom_positions = jnp.array(
-            [
-                [0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0],
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-            ]
-        )
-        num_atoms = atom_positions.shape[0]
-        ff_a = np.array(
-            num_atoms
-            * [
-                [1.0, 0.5],
-            ]
-        )
-        ff_a[
-            largest_atom
-        ] += 0.5  # Give one atom more weight for testing purposes
-        ff_a = jnp.array(ff_a)
-        ff_b = jnp.array(
-            num_atoms
-            * [
-                [0.3, 0.2],
-            ]
-        )
-
-        # Build the coordinate system
-        n_voxels_per_side = (128, 128, 128)
-        voxel_size = 0.1
+        (
+            atom_positions,
+            ff_a,
+            ff_b,
+            n_voxels_per_side,
+            voxel_size,
+        ) = toy_gaussian_cloud
+        ff_a[largest_atom] += 1.0
         coordinate_system = make_coordinates(n_voxels_per_side, voxel_size)
 
         # Build the density
@@ -94,35 +75,17 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         # Check that the maximum is in the correct position
         assert jnp.allclose(maximum_position, atom_positions[largest_atom])
 
-    def test_integral_is_correct(self):
+    def test_integral_is_correct(self, toy_gaussian_cloud):
         """
         Test that the maxima of the density are in the correct positions.
         """
-        atom_positions = jnp.array(
-            [
-                [0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0],
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-            ]
-        )
-        num_atoms = atom_positions.shape[0]
-        ff_a = np.array(
-            num_atoms
-            * [
-                [1.0, 0.5],
-            ]
-        )
-
-        ff_b = jnp.array(
-            num_atoms
-            * [
-                [0.3, 0.2],
-            ]
-        )
-
-        n_voxels_per_side = (128, 128, 128)
-        voxel_size = 0.05
+        (
+            atom_positions,
+            ff_a,
+            ff_b,
+            n_voxels_per_side,
+            voxel_size,
+        ) = toy_gaussian_cloud
         coordinate_system = make_coordinates(n_voxels_per_side, voxel_size)
 
         # Build the density

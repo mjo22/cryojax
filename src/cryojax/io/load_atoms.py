@@ -4,17 +4,18 @@ Large amounts of the code are adapted from the ioSPI package
 """
 
 __all__ = [
-    "atom_form_factor_params",
+    "default_form_factor_params",
     "get_form_factor_params",
 ]
 
 import numpy as np
-import numpy.typing as npt
-import os
+import jax
 import jax.numpy as jnp
+import os
 import importlib.resources as pkg_resources
-import pickle
-from typing import Iterable, Dict
+from cryojax.typing import IntCloud
+from jaxtyping import Array, Float
+from functools import partial
 
 
 def _load_element_form_factor_params():
@@ -22,27 +23,38 @@ def _load_element_form_factor_params():
     Internal function to load the atomic form factor parameters.
     """
     with pkg_resources.path("cryojax", "parameters") as path:
-        with open(
-            os.path.join(path, "atom_form_factor_params.pkl"), "rb"
-        ) as f:
-            atom_form_factor_params = pickle.load(f)
+        atom_form_factor_params = np.load(
+            os.path.join(path, "element_params.npy")
+        )
 
-    return atom_form_factor_params
-
-
-atom_form_factor_params = _load_element_form_factor_params()
+    return jnp.array(atom_form_factor_params)
 
 
+default_form_factor_params = _load_element_form_factor_params()
+
+
+@partial(jax.jit, static_argnums=(1,))
 def get_form_factor_params(
-    atom_names: Iterable[str],
-    form_factor_params: Dict[
-        str, Dict[str, npt.NDArray[float]]
-    ] = atom_form_factor_params,
+    atom_names: IntCloud,
+    form_factor_params: Float[Array, "2 N k"] = None,
 ):
     """
-    Gets the parameters for the form factor for each atom in a list.
-    """
-    a_vals = np.array([form_factor_params[atom]["a"] for atom in atom_names])
+    Gets the parameters for the form factor for each atom in atom_names.
 
-    b_vals = np.array([form_factor_params[atom]["b"] for atom in atom_names])
-    return a_vals, b_vals
+    Parameters
+    ----------
+    atom_names : npt.NDArray[int]
+        Array containing the index of the one-hot encoded atom names.
+        By default, Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.
+    a_params : npt.NDArray[float], optional
+        Array containing the strength of the Gaussian for each form factor
+    b_params : npt.NDArray[float], optional
+        Array containing the scaling of the Gaussian for each form factor
+    """
+
+    if form_factor_params is None:
+        data = default_form_factor_params[:, atom_names]
+        return data[0], data[1]
+    else:
+        data = form_factor_params[:, atom_names]
+        return data[0], data[1]

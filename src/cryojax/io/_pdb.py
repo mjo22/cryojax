@@ -4,17 +4,21 @@ Large amounts of the code are adapted from the ioSPI package
 """
 
 __all__ = [
-    "read_atomic_model_from_pdb",
+    "read_atoms_from_pdb",
 ]
 
-from ._gemmi import clean_gemmi_structure
+from ._gemmi import (
+    clean_gemmi_structure,
+    extract_gemmi_atoms,
+    extract_atom_positions_and_names,
+)
 
 
-def read_atomic_model_from_pdb(path, i_model=0, clean=True, assemble=True):
-    """Read Gemmi Model from PDB file.
+def read_atoms_from_pdb(path, i_model=0, clean=True, assemble=True):
+    """Read atomic information from a PDB file using Gemmi
 
     Parameters
-    ----------
+    ----------At
     path : string
         Path to PDB file.
     i_model : integer
@@ -29,8 +33,10 @@ def read_atomic_model_from_pdb(path, i_model=0, clean=True, assemble=True):
 
     Returns
     -------
-    model : Gemmi Class
-        Gemmi model
+    atom_positions: list of numpy arrays
+        List of coordinates containing atomic positions
+    atom_element_names: list of strings
+        List of atomic element names
 
     Notes
     -----
@@ -47,4 +53,9 @@ def read_atomic_model_from_pdb(path, i_model=0, clean=True, assemble=True):
         assembly = structure.assemblies[i_model]
         chain_naming = gemmi.HowToNameCopiedChain.AddNumber
         model = gemmi.make_assembly(assembly, model, chain_naming)
-    return model
+
+    atoms = extract_gemmi_atoms(model)
+    atom_positions, atom_element_names = extract_atom_positions_and_names(
+        atoms
+    )
+    return atom_positions, atom_element_names
