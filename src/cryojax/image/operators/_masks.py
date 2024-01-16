@@ -30,6 +30,10 @@ class Mask(OperatorAsBuffer):
         computed upon instantiation.
     """
 
+    def __init__(self, mask: RealImage):
+        """Compute the mask."""
+        self.operator = mask
+
     @property
     def mask(self) -> RealImage:
         return self.operator
@@ -59,9 +63,7 @@ class CircularMask(Mask):
         coords: ImageCoords,
         radius: float = 0.95,
         rolloff: float = 0.05,
-        **kwargs: Any,
     ) -> None:
-        super().__init__(**kwargs)
         self.radius = radius
         self.rolloff = rolloff
         self.operator = compute_circular_mask(
