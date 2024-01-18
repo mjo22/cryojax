@@ -50,7 +50,9 @@ class Specimen(Module):
         pose: Optional[Pose] = None,
     ):
         if density.n_indexed_dims != 0:
-            raise AttributeError("ElectronDensity.n_indexed_dims must be 0.")
+            raise AttributeError(
+                "ElectronDensity.n_indexed_dims must be 0. If you want to evaluate the ElectronDensity at a conformation, use the Ensemble class."
+            )
         self.density = density
         self.pose = pose or EulerPose()
 
@@ -91,7 +93,7 @@ class Ensemble(Specimen):
     ):
         if density.n_indexed_dims != 1:
             raise AttributeError(
-                "ElectronDensity.n_indexed_dims must be 1 to evaluate at a density at a conformation."
+                "ElectronDensity.n_indexed_dims must be 1 to evaluate at a density at a conformation. If you do not want to evaluate a conformation, use the Specimen class."
             )
         self.density = density
         self.pose = pose or EulerPose()

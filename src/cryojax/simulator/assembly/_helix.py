@@ -4,7 +4,11 @@ Abstraction of a helical polymer.
 
 from __future__ import annotations
 
-__all__ = ["Helix", "compute_lattice_positions", "compute_lattice_rotations"]
+__all__ = [
+    "Helix",
+    "compute_helical_lattice_positions",
+    "compute_helical_lattice_rotations",
+]
 
 from typing import Union, Optional, Any
 from jaxtyping import Array, Float
@@ -95,7 +99,7 @@ class Helix(Assembly):
     @cached_property
     def positions(self) -> _Positions:
         """Get the helical lattice positions in the center of mass frame."""
-        return compute_lattice_positions(
+        return compute_helical_lattice_positions(
             self.rise,
             self.twist,
             self.subunit.pose.offset,
@@ -111,7 +115,7 @@ class Helix(Assembly):
 
         These are rotations of the initial subunit.
         """
-        return compute_lattice_rotations(
+        return compute_helical_lattice_rotations(
             self.twist,
             self.subunit.pose.rotation.as_matrix(),
             n_start=self.n_start,
@@ -120,7 +124,7 @@ class Helix(Assembly):
         )
 
 
-def compute_lattice_positions(
+def compute_helical_lattice_positions(
     rise: Union[Real_, RealVector],
     twist: Union[Real_, RealVector],
     initial_displacement: _Vector3D,
@@ -204,7 +208,7 @@ def compute_lattice_positions(
     return positions.reshape((n_start * n_subunits_per_start, 3))
 
 
-def compute_lattice_rotations(
+def compute_helical_lattice_rotations(
     twist: Union[Real_, RealVector],
     initial_rotation: _RotationMatrix3D,
     n_start: int = 1,
