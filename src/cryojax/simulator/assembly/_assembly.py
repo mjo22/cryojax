@@ -61,19 +61,15 @@ class Assembly(eqx.Module):
         *,
         pose: Optional[Pose] = None,
         conformation: Optional[Conformation] = None,
-        **kwargs: Any,
     ):
-        super().__init__(**kwargs)
         self.subunit = subunit
         self.pose = pose or EulerPose()
-        self.conformation = None if conformation is None else conformation
-
-    def __check_init__(self):
-        if self.conformation is not None and not isinstance(
-            self.subunit, Ensemble
-        ):
+        self.conformation = conformation
+        # Make sure that if conformation is set, subunit is an Ensemble
+        if conformation is not None and not isinstance(subunit, Ensemble):
+            cls = type(self)
             raise AttributeError(
-                "conformation cannot be set if the subunit is not an Ensemble."
+                f"If {cls}.conformation is set, {cls}.subunit must be an Ensemble."
             )
 
     @cached_property

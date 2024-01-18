@@ -41,6 +41,10 @@ class Filter(OperatorAsBuffer):
         computed upon instantiation.
     """
 
+    def __init__(self, filter: Image):
+        """Compute the filter."""
+        self.operator = filter
+
     @property
     def filter(self) -> Image:
         return self.operator
@@ -71,9 +75,7 @@ class LowpassFilter(Filter):
         freqs: ImageCoords,
         cutoff: float = 0.95,
         rolloff: float = 0.05,
-        **kwargs: Any,
     ) -> None:
-        super().__init__(**kwargs)
         self.cutoff = cutoff
         self.rolloff = rolloff
         self.operator = compute_lowpass_filter(
@@ -92,9 +94,7 @@ class WhiteningFilter(Filter):
         micrograph: RealImage,
         *,
         grid_spacing: float = 1.0,
-        **kwargs: Any,
     ):
-        super().__init__(**kwargs)
         self.operator = compute_whitening_filter(
             frequency_grid, micrograph, grid_spacing
         )
