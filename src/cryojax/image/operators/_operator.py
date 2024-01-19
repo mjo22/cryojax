@@ -5,11 +5,10 @@ Base classes for image operators.
 from __future__ import annotations
 
 __all__ = [
-    "OperatorAsBuffer",
-    "OperatorAsFunction",
-    "OperatorAsBufferT",
-    "OperatorAsFunctionT",
-    "OperatorLike",
+    "ImageMultiplier",
+    "ImageOperator",
+    "ImageMultiplierT",
+    "ImageOperator",
     "Constant",
     "Empirical",
 ]
@@ -25,79 +24,18 @@ from equinox import Module
 from ...core import field
 from ...typing import ImageCoords, Image, Real_
 
-OperatorAsBufferT = TypeVar("OperatorAsBufferT", bound="OperatorAsBuffer")
-"""TypeVar for ``OperatorAsBuffer``s"""
+ImageMultiplierT = TypeVar("ImageMultiplierT", bound="ImageMultiplier")
+"""TypeVar for ``ProductOperatorAsBuffer``s"""
 
-OperatorAsFunctionT = TypeVar(
-    "OperatorAsFunctionT", bound="OperatorAsFunction"
-)
+ImageOperatorT = TypeVar("ImageOperatorT", bound="ImageOperator")
 """TypeVar for ``OperatorAsFunction``s"""
 
 
-class OperatorAsBuffer(Module):
-    """
-    Base class for computing and applying an ``Array`` to an image.
-
-    Attributes
-    ----------
-    operator :
-        The operator. Note that this is automatically
-        computed upon instantiation.
-    """
-
-    buffer: Image
-
-    def __init__(self, operator: Image) -> None:
-        """Compute the operator."""
-        self.buffer = operator
-
-    def get(self, *args: Any, **kwargs: Any):
-        """Get the operator."""
-        return self.buffer
-
-    def __call__(self, image: Image) -> Image:
-        return image * self.buffer
-
-    def __mul__(
-        self: OperatorAsBufferT, other: OperatorAsBufferT
-    ) -> _ProductOperatorAsBuffer:
-        return _ProductOperatorAsBuffer(operator1=self, operator2=other)
-
-    def __rmul__(
-        self: OperatorAsBufferT, other: OperatorAsBufferT
-    ) -> _ProductOperatorAsBuffer:
-        return _ProductOperatorAsBuffer(operator1=other, operator2=self)
-
-    def __add__(
-        self: OperatorAsBufferT, other: OperatorAsBufferT
-    ) -> _SumOperatorAsBuffer:
-        return _SumOperatorAsBuffer(operator1=self, operator2=other)
-
-    def __radd__(
-        self: OperatorAsBufferT, other: OperatorAsBufferT
-    ) -> _SumOperatorAsBuffer:
-        return _SumOperatorAsBuffer(operator1=other, operator2=self)
-
-    def __sub__(
-        self: OperatorAsBufferT, other: OperatorAsBufferT
-    ) -> _DiffOperatorAsBuffer:
-        return _DiffOperatorAsBuffer(operator1=self, operator2=other)
-
-    def __rsub__(
-        self: OperatorAsBufferT, other: OperatorAsBufferT
-    ) -> _DiffOperatorAsBuffer:
-        return _DiffOperatorAsBuffer(operator1=other, operator2=self)
-
-
-class OperatorAsFunction(Module):
+class ImageOperator(Module):
     """
     The base class for image operators that contain
     model parameters and compute an ``Array`` at runtime.
     """
-
-    def get(self, *args: Any, **kwargs: Any):
-        """Get the operator."""
-        return self.__call__(*args, **kwargs)
 
     @overload
     @abstractmethod
@@ -116,58 +54,86 @@ class OperatorAsFunction(Module):
         raise NotImplementedError
 
     def __add__(
-        self: OperatorAsFunctionT,
-        other: OperatorAsFunctionT | Real_,
-    ) -> _SumOperatorAsFunction:
-        if isinstance(other, OperatorAsFunction):
-            return _SumOperatorAsFunction(self, other)
-        return _SumOperatorAsFunction(self, Constant(other))
+        self: ImageOperator,
+        other: ImageOperator | Real_,
+    ) -> _SumImageOperator:
+        if isinstance(other, ImageOperator):
+            return _SumImageOperator(self, other)
+        return _SumImageOperator(self, Constant(other))
 
     def __radd__(
-        self: OperatorAsFunctionT,
-        other: OperatorAsFunctionT | Real_,
-    ) -> _SumOperatorAsFunction:
-        if isinstance(other, OperatorAsFunction):
-            return _SumOperatorAsFunction(other, self)
-        return _SumOperatorAsFunction(Constant(other), self)
+        self: ImageOperator,
+        other: ImageOperator | Real_,
+    ) -> _SumImageOperator:
+        if isinstance(other, ImageOperator):
+            return _SumImageOperator(other, self)
+        return _SumImageOperator(Constant(other), self)
 
     def __sub__(
-        self: OperatorAsFunctionT,
-        other: OperatorAsFunctionT | Real_,
-    ) -> _DiffOperatorAsFunction:
-        if isinstance(other, OperatorAsFunction):
-            return _DiffOperatorAsFunction(self, other)
-        return _DiffOperatorAsFunction(self, Constant(other))
+        self: ImageOperator,
+        other: ImageOperator | Real_,
+    ) -> _DiffImageOperator:
+        if isinstance(other, ImageOperator):
+            return _DiffImageOperator(self, other)
+        return _DiffImageOperator(self, Constant(other))
 
     def __rsub__(
-        self: OperatorAsFunctionT,
-        other: OperatorAsFunctionT | Real_,
-    ) -> _DiffOperatorAsFunction:
-        if isinstance(other, OperatorAsFunction):
-            return _DiffOperatorAsFunction(other, self)
-        return _DiffOperatorAsFunction(Constant(other), self)
+        self: ImageOperator,
+        other: ImageOperator | Real_,
+    ) -> _DiffImageOperator:
+        if isinstance(other, ImageOperator):
+            return _DiffImageOperator(other, self)
+        return _DiffImageOperator(Constant(other), self)
 
     def __mul__(
-        self: OperatorAsFunctionT,
-        other: OperatorAsFunctionT | Real_,
-    ) -> _ProductOperatorAsFunction:
-        if isinstance(other, OperatorAsFunction):
-            return _ProductOperatorAsFunction(self, other)
-        return _ProductOperatorAsFunction(self, Constant(other))
+        self: ImageOperator,
+        other: ImageOperator | Real_,
+    ) -> _ProductImageOperator:
+        if isinstance(other, ImageOperator):
+            return _ProductImageOperator(self, other)
+        return _ProductImageOperator(self, Constant(other))
 
     def __rmul__(
-        self: OperatorAsFunctionT,
-        other: OperatorAsFunctionT | Real_,
-    ) -> _ProductOperatorAsFunction:
-        if isinstance(other, OperatorAsFunction):
-            return _ProductOperatorAsFunction(other, self)
-        return _ProductOperatorAsFunction(Constant(other), self)
+        self: ImageOperator,
+        other: ImageOperator | Real_,
+    ) -> _ProductImageOperator:
+        if isinstance(other, ImageOperator):
+            return _ProductImageOperator(other, self)
+        return _ProductImageOperator(Constant(other), self)
 
 
-OperatorLike = OperatorAsBuffer | OperatorAsFunction
+class ImageMultiplier(Module):
+    """
+    Base class for computing and applying an ``Array`` to an image.
+
+    Attributes
+    ----------
+    operator :
+        The operator. Note that this is automatically
+        computed upon instantiation.
+    """
+
+    buffer: Image
+
+    def __init__(self, buffer: Image) -> None:
+        """Compute the operator."""
+        self.buffer = buffer
+
+    def __call__(self, image: Image) -> Image:
+        return image * jax.lax.stop_gradient(self.buffer)
+
+    def __mul__(
+        self: ImageMultiplierT, other: ImageMultiplierT
+    ) -> _ProductImageMultiplier:
+        return _ProductImageMultiplier(operator1=self, operator2=other)
+
+    def __rmul__(
+        self: ImageMultiplierT, other: ImageMultiplierT
+    ) -> _ProductImageMultiplier:
+        return _ProductImageMultiplier(operator1=other, operator2=self)
 
 
-class Constant(OperatorAsFunction):
+class Constant(ImageOperator):
     """An operator that is a constant."""
 
     value: Real_ = field(default=1.0)
@@ -179,7 +145,7 @@ class Constant(OperatorAsFunction):
         return self.value
 
 
-class Empirical(OperatorAsFunction):
+class Empirical(ImageOperator):
     r"""
     This operator stores a measured image, rather than
     computing one from a model.
@@ -205,51 +171,17 @@ class Empirical(OperatorAsFunction):
         return self.amplitude * jax.lax.stop_gradient(self.measurement)
 
 
-class _SumOperatorAsBuffer(OperatorAsBuffer):
-    """A helper to represent the sum of two operators."""
-
-    operator1: OperatorAsBuffer
-    operator2: OperatorAsBuffer
-
-    @override
-    def __init__(
-        self, operator1: OperatorAsBufferT, operator2: OperatorAsBufferT
-    ):
-        self.operator1 = operator1
-        self.operator2 = operator2
-        self.buffer = operator1.buffer + operator2.buffer
-
-    def __repr__(self):
-        return f"{repr(self.operator1)} + {repr(self.operator2)}"
-
-
-class _DiffOperatorAsBuffer(OperatorAsBuffer):
+class _ProductImageMultiplier(ImageMultiplier):
     """A helper to represent the product of two operators."""
 
-    operator1: OperatorAsBuffer
-    operator2: OperatorAsBuffer
+    operator1: ImageMultiplier
+    operator2: ImageMultiplier
 
     @override
     def __init__(
-        self, operator1: OperatorAsBufferT, operator2: OperatorAsBufferT
-    ):
-        self.operator1 = operator1
-        self.operator2 = operator2
-        self.buffer = operator1.buffer - operator2.buffer
-
-    def __repr__(self):
-        return f"{repr(self.operator1)} - {repr(self.operator2)}"
-
-
-class _ProductOperatorAsBuffer(OperatorAsBuffer):
-    """A helper to represent the product of two operators."""
-
-    operator1: OperatorAsBuffer
-    operator2: OperatorAsBuffer
-
-    @override
-    def __init__(
-        self, operator1: OperatorAsBufferT, operator2: OperatorAsBufferT
+        self,
+        operator1: ImageMultiplierT,
+        operator2: ImageMultiplierT,
     ):
         self.operator1 = operator1
         self.operator2 = operator2
@@ -259,11 +191,11 @@ class _ProductOperatorAsBuffer(OperatorAsBuffer):
         return f"{repr(self.operator1)} * {repr(self.operator2)}"
 
 
-class _SumOperatorAsFunction(OperatorAsFunction):
+class _SumImageOperator(ImageOperator):
     """A helper to represent the sum of two operators."""
 
-    operator1: OperatorAsFunction
-    operator2: OperatorAsFunction
+    operator1: ImageOperator
+    operator2: ImageOperator
 
     @override
     def __call__(
@@ -277,11 +209,11 @@ class _SumOperatorAsFunction(OperatorAsFunction):
         return f"{repr(self.operator1)} + {repr(self.operator2)}"
 
 
-class _DiffOperatorAsFunction(OperatorAsFunction):
+class _DiffImageOperator(ImageOperator):
     """A helper to represent the difference of two operators."""
 
-    operator1: OperatorAsFunction
-    operator2: OperatorAsFunction
+    operator1: ImageOperator
+    operator2: ImageOperator
 
     @override
     def __call__(
@@ -295,11 +227,11 @@ class _DiffOperatorAsFunction(OperatorAsFunction):
         return f"{repr(self.operator1)} - {repr(self.operator2)}"
 
 
-class _ProductOperatorAsFunction(OperatorAsFunction):
+class _ProductImageOperator(ImageOperator):
     """A helper to represent the product of two operators."""
 
-    operator1: OperatorAsFunction
-    operator2: OperatorAsFunction
+    operator1: ImageOperator
+    operator2: ImageOperator
 
     @override
     def __call__(

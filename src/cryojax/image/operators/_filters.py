@@ -19,7 +19,7 @@ import jax
 import jax.numpy as jnp
 
 from .._edges import crop_or_pad
-from ._operator import OperatorAsBuffer
+from ._operator import ImageMultiplier
 from .._spectrum import powerspectrum
 from .._fft import rfftn, irfftn
 from ..coordinates import make_frequencies
@@ -30,7 +30,7 @@ FilterT = TypeVar("FilterT", bound="Filter")
 """TypeVar for the Filter base class."""
 
 
-class Filter(OperatorAsBuffer):
+class Filter(ImageMultiplier):
     """
     Base class for computing and applying an image filter.
 
@@ -46,7 +46,7 @@ class Filter(OperatorAsBuffer):
         self.buffer = filter
 
     def __call__(self, image: ComplexImage) -> ComplexImage:
-        return self.buffer * image
+        return image * jax.lax.stop_gradient(self.buffer)
 
 
 class LowpassFilter(Filter):

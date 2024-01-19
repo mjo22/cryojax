@@ -25,12 +25,12 @@ from jaxtyping import Array
 
 import jax.numpy as jnp
 
-from ._operator import OperatorAsFunction
+from ._operator import ImageOperator
 from ...core import field
 from ...typing import Real_, ImageCoords, RealImage
 
 
-class FourierOperator(OperatorAsFunction):
+class FourierOperator(ImageOperator):
     """
     The base class for all fourier-based operators.
 
@@ -51,7 +51,7 @@ class FourierOperator(OperatorAsFunction):
         raise NotImplementedError
 
 
-FourierOperatorLike = FourierOperator | OperatorAsFunction
+FourierOperatorLike = FourierOperator | ImageOperator
 
 
 class ZeroMode(FourierOperator):

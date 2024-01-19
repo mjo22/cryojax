@@ -6,11 +6,12 @@ from __future__ import annotations
 
 __all__ = ["Mask", "MaskT", "CircularMask", "compute_circular_mask"]
 
-from typing import Any, TypeVar
+from typing import TypeVar
 
+import jax
 import jax.numpy as jnp
 
-from ._operator import OperatorAsBuffer
+from ._operator import ImageMultiplier
 from ...core import field
 from ...typing import RealImage, ImageCoords
 
@@ -19,7 +20,7 @@ MaskT = TypeVar("MaskT", bound="Mask")
 """TypeVar for the Mask base class."""
 
 
-class Mask(OperatorAsBuffer):
+class Mask(ImageMultiplier):
     """
     Base class for computing and applying an image mask.
 
@@ -35,7 +36,7 @@ class Mask(OperatorAsBuffer):
         self.buffer = mask
 
     def __call__(self, image: RealImage) -> RealImage:
-        return self.buffer * image
+        return image * jax.lax.stop_gradient(self.buffer)
 
 
 class CircularMask(Mask):
