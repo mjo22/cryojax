@@ -13,24 +13,24 @@ __all__ = [
     "compute_whitening_filter",
 ]
 
-from typing import Any, TypeVar
-from typing_extensions import override
+from typing import TypeVar, Optional
 
 import jax
 import jax.numpy as jnp
 
-from ._operator import OperatorAsBuffer
+from .._edges import crop_or_pad
+from ._operator import ImageMultiplier
 from .._spectrum import powerspectrum
-from .._fft import rfftn
+from .._fft import rfftn, irfftn
 from ..coordinates import make_frequencies
 from ...core import field
-from ...typing import Image, ImageCoords, RealImage
+from ...typing import Image, ComplexImage, ImageCoords, RealImage
 
 FilterT = TypeVar("FilterT", bound="Filter")
 """TypeVar for the Filter base class."""
 
 
-class Filter(OperatorAsBuffer):
+class Filter(ImageMultiplier):
     """
     Base class for computing and applying an image filter.
 
@@ -41,24 +41,24 @@ class Filter(OperatorAsBuffer):
         computed upon instantiation.
     """
 
-    @property
-    def filter(self) -> Image:
-        return self.operator
+    def __init__(self, filter: Image):
+        """Compute the filter."""
+        self.buffer = filter
+
+    def __call__(self, image: ComplexImage) -> ComplexImage:
+        return image * jax.lax.stop_gradient(self.buffer)
 
 
 class LowpassFilter(Filter):
     """
     Apply a low-pass filter to an image.
 
-    See documentation for
-    ``cryojax.simulator.compute_lowpass_filter``
-    for more information.
-
     Attributes
     ----------
     cutoff :
-        By default, ``0.95``, This cuts off
-        modes above the Nyquist frequency.
+        By default, ``0.95``. This cuts off modes as
+        a fraction of the Nyquist frequency. To keep
+        modes up to Nyquist, ``cutoff = 1.0``
     rolloff :
         By default, ``0.05``.
     """
@@ -68,16 +68,15 @@ class LowpassFilter(Filter):
 
     def __init__(
         self,
-        freqs: ImageCoords,
+        frequency_grid: ImageCoords,
+        grid_spacing: float = 1.0,
         cutoff: float = 0.95,
         rolloff: float = 0.05,
-        **kwargs: Any,
     ) -> None:
-        super().__init__(**kwargs)
         self.cutoff = cutoff
         self.rolloff = rolloff
-        self.operator = compute_lowpass_filter(
-            freqs, self.cutoff, self.rolloff
+        self.buffer = compute_lowpass_filter(
+            frequency_grid, grid_spacing, self.cutoff, self.rolloff
         )
 
 
@@ -88,28 +87,28 @@ class WhiteningFilter(Filter):
 
     def __init__(
         self,
-        frequency_grid: ImageCoords,
         micrograph: RealImage,
-        *,
-        grid_spacing: float = 1.0,
-        **kwargs: Any,
+        shape: Optional[tuple[int, int]] = None,
     ):
-        super().__init__(**kwargs)
-        self.operator = compute_whitening_filter(
-            frequency_grid, micrograph, grid_spacing
-        )
+        self.buffer = compute_whitening_filter(micrograph, shape)
 
 
 def compute_lowpass_filter(
-    freqs: ImageCoords, cutoff: float = 0.667, rolloff: float = 0.05
+    frequency_grid: ImageCoords,
+    grid_spacing: float = 1.0,
+    cutoff: float = 0.667,
+    rolloff: float = 0.05,
 ) -> RealImage:
     """
     Create a low-pass filter.
 
     Parameters
     ----------
-    freqs :
-        The image coordinates.
+    frequency_grid :
+        The frequency coordinate system at which to evaulate
+        the filter.
+    grid_spacing :
+        The grid spacing of ``frequency_grid``.
     cutoff :
         The cutoff frequency as a fraction of the Nyquist frequency,
         By default, ``0.667``.
@@ -123,10 +122,10 @@ def compute_lowpass_filter(
         An array representing the low pass filter.
     """
 
-    k_max = 1.0 / 2.0
+    k_max = 1.0 / (2.0 * grid_spacing)
     k_cut = cutoff * k_max
 
-    freqs_norm = jnp.linalg.norm(freqs, axis=-1)
+    freqs_norm = jnp.linalg.norm(frequency_grid, axis=-1)
 
     frequencies_cut = freqs_norm > k_cut
 
@@ -145,9 +144,8 @@ def compute_lowpass_filter(
 
 
 def compute_whitening_filter(
-    freqs: ImageCoords,
     micrograph: RealImage,
-    grid_spacing: float = 1.0,
+    shape: Optional[tuple[int, int]] = None,
 ) -> RealImage:
     """
     Compute a whitening filter from a micrograph. This is taken
@@ -159,10 +157,13 @@ def compute_whitening_filter(
 
     Parameters
     ----------
-    freqs :
-        The image coordinates.
+    frequency_grid_in_angstroms :
+        The frequency coordinate system at which to evaulate
+        the filter.
     micrograph :
         The micrograph in real space.
+    grid_spacing :
+        The grid spacing of ``frequency_grid_in_angstroms``.
 
     Returns
     -------
@@ -170,21 +171,27 @@ def compute_whitening_filter(
         The whitening filter.
     """
     # Make coordinates
-    micrograph_frequency_grid = make_frequencies(
-        micrograph.shape, grid_spacing
-    )
+    micrograph_frequency_grid_in_angstroms = make_frequencies(micrograph.shape)
     # Transform to fourier space
     fourier_micrograph = rfftn(micrograph)
     # Compute norms
-    radial_frequency_grid = jnp.linalg.norm(micrograph_frequency_grid, axis=-1)
-    interpolating_radial_frequency_grid = jnp.linalg.norm(freqs, axis=-1)
+    radial_frequency_grid = jnp.linalg.norm(
+        micrograph_frequency_grid_in_angstroms, axis=-1
+    )
     # Compute power spectrum
     spectrum, _ = powerspectrum(
         fourier_micrograph,
         radial_frequency_grid,
+        to_grid=True,
+        interpolation_mode="nearest",
         k_max=jnp.sqrt(2.0) / 2.0,
-        interpolating_radial_frequency_grid=interpolating_radial_frequency_grid,
     )
+    if shape is not None:
+        spectrum = rfftn(
+            crop_or_pad(
+                irfftn(spectrum, s=micrograph.shape), shape, pad_mode="edge"
+            )
+        ).real
     # Compute inverse square root
     filter = jax.lax.rsqrt(spectrum)
     # Divide filter by maximum, excluding zero mode

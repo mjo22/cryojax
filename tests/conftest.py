@@ -89,12 +89,13 @@ def stacked_density(density):
 @pytest.fixture
 def filters(manager):
     return op.LowpassFilter(manager.padded_frequency_grid.get())
-    # return None
 
 
 @pytest.fixture
 def masks(manager):
-    return op.CircularMask(manager.coordinate_grid.get())
+    return op.CircularMask(
+        manager.coordinate_grid.get(), radius=20 * manager.pixel_size
+    )
 
 
 @pytest.fixture
@@ -102,9 +103,9 @@ def instrument():
     return cs.Instrument(
         optics=cs.CTFOptics(),
         exposure=cs.Exposure(
-            scaling=op.Constant(1000.0), offset=op.ZeroMode(0.0)
+            dose=op.Constant(10.0), radiation=op.Constant(1.0)
         ),
-        detector=cs.GaussianDetector(op.Constant(1.0)),
+        detector=cs.GaussianDetector(variance=op.Constant(1.0)),
     )
 
 

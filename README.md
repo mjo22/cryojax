@@ -103,11 +103,11 @@ Imaging models also accept a series of `Filter`s and `Mask`s. For example, one c
 from cryojax.image import operators as op
 
 micrograph = ...  # A micrograph used for whitening
-freqs = manager.padded_frequency_grid.get()  # Get the upsampled frequency grid
-coords = manager.coordinate_grid.get()  # Get the coordinate grid
-filter = op.LowpassFilter(freqs, cutoff=1.0)  # Cutoff modes above Nyquist frequency
-         * op.WhiteningFilter(freqs, micrograph=micrograph)
-mask = op.CircularMask(coords, radius=1.0)    # Cutoff pixels above radius equal to (half) image size
+freqs = manager.padded_frequency_grid_in_angstroms.get()  # Get the upsampled frequency grid
+coords = manager.coordinate_grid_in_angstroms.get()  # Get the coordinate grid
+filter = op.LowpassFilter(freqs, pixel_size, cutoff=1.0)  # Cutoff modes above Nyquist frequency
+         * op.WhiteningFilter(micrograph, manager.padded_shape)
+mask = op.CircularMask(coords, radius=20 * pixel_size)  # Radius in Angstroms
 pipeline = cs.ImagePipeline(
     scattering=scattering, specimen=specimen, instrument=instrument, filter=filter, mask=mask
     )

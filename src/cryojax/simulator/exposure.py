@@ -8,34 +8,53 @@ from __future__ import annotations
 __all__ = ["Exposure", "NullExposure"]
 
 from equinox import Module
-from typing import Any
 
 from .manager import ImageManager
-from ..image.operators import FourierOperatorLike, Constant, ZeroMode
+from ..image import rfftn, irfftn
+from ..image.operators import (
+    RealOperatorLike,
+    FourierOperatorLike,
+    Constant,
+)
 from ..core import field
-from ..typing import ComplexImage, ImageCoords
+from ..typing import ComplexImage
 
 
 class Exposure(Module):
     """
     Controls parameters related to variation in
-    the image intensity. This is implemented as a fourier
-    space scaling and offset.
+    the image intensity. This is implemented as a combination
+    of real and fourier-space image operations.
 
-    NOTE: In the future this might include a model for radiation damage.
+    Attributes
+    ----------
+    dose :
+        The dose delivered to the sample.
+        This is modeled as a real-space function applied to the image.
+    radiation :
+        The amplitude attenuation function due to radiation damage.
+        This is modeled as a fourier-space function applied to the image.
     """
 
-    scaling: FourierOperatorLike = field(default_factory=Constant)
-    offset: FourierOperatorLike = field(default_factory=ZeroMode)
+    dose: RealOperatorLike = field(default_factory=Constant)
+    radiation: FourierOperatorLike = field(default_factory=Constant)
 
     def __call__(
-        self, image: ComplexImage, manager: ImageManager, **kwargs: Any
-    ):
+        self,
+        image_at_exit_plane: ComplexImage,
+        manager: ImageManager,
+    ) -> ComplexImage:
         """Evaluate the electron exposure model."""
+        coordinate_grid = manager.padded_coordinate_grid_in_angstroms.get()
         frequency_grid = manager.padded_frequency_grid_in_angstroms.get()
-        return self.scaling(frequency_grid, **kwargs) * image + self.offset(
-            frequency_grid, shape_in_real_space=manager.padded_shape, **kwargs
-        )
+        if isinstance(self.dose, Constant):
+            image_at_exit_plane *= self.dose(coordinate_grid)
+        else:
+            image_at_exit_plane = rfftn(
+                self.dose(coordinate_grid)
+                * irfftn(image_at_exit_plane, s=manager.padded_shape)
+            )
+        return self.radiation(frequency_grid) * image_at_exit_plane
 
 
 class NullExposure(Exposure):
@@ -45,5 +64,5 @@ class NullExposure(Exposure):
     """
 
     def __init__(self):
-        self.scaling = Constant(1.0)
-        self.offset = Constant(0.0)
+        self.dose = Constant(1.0)
+        self.radiation = Constant(1.0)

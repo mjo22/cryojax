@@ -7,18 +7,18 @@ from __future__ import annotations
 __all__ = ["RealOperator", "Gaussian", "RealOperatorLike"]
 
 from abc import abstractmethod
-from typing import Any, Optional
+from typing import Any
 from typing_extensions import override
 from jaxtyping import Array, Float
 
 import jax.numpy as jnp
 
-from ._operator import OperatorAsFunction
+from ._operator import ImageOperator
 from ...core import field
 from ...typing import ImageCoords, RealImage, Real_
 
 
-class RealOperator(OperatorAsFunction):
+class RealOperator(ImageOperator):
     """
     The base class for all real operators.
 
@@ -39,7 +39,7 @@ class RealOperator(OperatorAsFunction):
         raise NotImplementedError
 
 
-RealOperatorLike = RealOperator | OperatorAsFunction
+RealOperatorLike = RealOperator | ImageOperator
 
 
 class Gaussian(RealOperator):

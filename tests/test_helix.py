@@ -5,32 +5,42 @@ import jax.numpy as jnp
 import numpy as np
 import equinox as eqx
 import cryojax.simulator as cs
+from jax import config
+
+config.update("jax_enable_x64", True)
 
 
-def build_helix(sample_subunit_mrc_path) -> cs.Helix:
-    subunit_density = cs.FourierVoxelGrid.from_file(sample_subunit_mrc_path)
+def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
+    subunit_density = cs.FourierVoxelGrid.from_file(
+        sample_subunit_mrc_path, pad_scale=2
+    )
     r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
     pose = cs.EulerPose(*r_0)
-    ensemble = cs.Specimen(subunit_density, pose)
+    specimen = cs.Specimen(subunit_density, pose)
     return cs.Helix(
-        ensemble, rise=21.8, twist=29.4, n_start=6, n_subunits_per_start=1
+        specimen,
+        rise=21.8,
+        twist=29.4,
+        n_start=6,
+        n_subunits_per_start=n_subunits_per_start,
     )
 
 
-def build_helix_with_conformation(sample_subunit_mrc_path) -> cs.Helix:
+def build_helix_with_conformation(
+    sample_subunit_mrc_path, n_subunits_per_start
+) -> cs.Helix:
     subunit_density = cs.FourierVoxelGrid.from_list(
         [
             cs.FourierVoxelGrid.from_file(sample_subunit_mrc_path)
             for _ in range(2)
         ]
     )
-    n_start, n_subunits_per_start = 6, 1
+    n_start = 6
     pose = cs.EulerPose()
     ensemble = cs.Ensemble(subunit_density, pose)
     conformation = cs.Conformation(
         np.random.choice(2, n_start * n_subunits_per_start)
     )
-    print(conformation)
     return cs.Helix(
         ensemble,
         conformation=conformation,
@@ -44,7 +54,7 @@ def build_helix_with_conformation(sample_subunit_mrc_path) -> cs.Helix:
 def test_superposition_pipeline_without_conformation(
     sample_subunit_mrc_path, scattering
 ):
-    helix = build_helix(sample_subunit_mrc_path)
+    helix = build_helix(sample_subunit_mrc_path, 1)
     pipeline = cs.SuperpositionPipeline(
         scattering=scattering, specimen=helix.subunits
     )
@@ -54,7 +64,7 @@ def test_superposition_pipeline_without_conformation(
 def test_superposition_pipeline_with_conformation(
     sample_subunit_mrc_path, scattering
 ):
-    helix = build_helix_with_conformation(sample_subunit_mrc_path)
+    helix = build_helix_with_conformation(sample_subunit_mrc_path, 1)
     pipeline = cs.SuperpositionPipeline(
         scattering=scattering, specimen=helix.subunits
     )
@@ -62,25 +72,99 @@ def test_superposition_pipeline_with_conformation(
 
 
 @pytest.mark.parametrize(
-    "rotation_angle",
-    [360.0 / 6, 2 * 360.0 / 6],
+    "rotation_angle, n_subunits_per_start",
+    [(360.0 / 6, 1), (2 * 360.0 / 6, 1), (360.0 / 6, 2)],
 )
-def test_c6_rotation(sample_subunit_mrc_path, scattering, rotation_angle):
-    helix = build_helix(sample_subunit_mrc_path)
+def test_c6_rotation(
+    sample_subunit_mrc_path, scattering, rotation_angle, n_subunits_per_start
+):
+    helix = build_helix(sample_subunit_mrc_path, n_subunits_per_start)
 
     @jax.jit
-    def compute_rotated_image(helix, scattering, angles):
-        where = lambda m: (m.pose.view_phi, m.pose.view_theta, m.pose.view_psi)
-        helix = eqx.tree_at(where, helix, angles)
+    def compute_rotated_image(helix, scattering, pose):
+        helix = eqx.tree_at(lambda m: m.pose, helix, pose)
         pipeline = cs.SuperpositionPipeline(
             scattering=scattering, specimen=helix.subunits
         )
-        return pipeline.render()
+        return pipeline.render(normalize=True)
 
-    null_angles, rotated_angles = jnp.asarray((0.0, 0.0, 0.0)), jnp.asarray(
-        (rotation_angle, 0.0, 0.0)
-    )
     np.testing.assert_allclose(
-        compute_rotated_image(helix, scattering, null_angles),
-        compute_rotated_image(helix, scattering, rotated_angles),
+        compute_rotated_image(helix, scattering, cs.EulerPose()),
+        compute_rotated_image(
+            helix, scattering, cs.EulerPose(view_phi=rotation_angle)
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "translation, euler_angles",
+    [
+        ((0.0, 0.0), (60.0, 100.0, -40.0)),
+        ((1.0, -3.0), (10.0, 50.0, 100.0)),
+    ],
+)
+def test_agree_with_3j9g_assembly(
+    sample_subunit_mrc_path, density, scattering, translation, euler_angles
+):
+    helix = build_helix(sample_subunit_mrc_path, 2)
+    specimen_39jg = cs.Specimen(density)
+
+    @jax.jit
+    def compute_rotated_image_with_helix(helix, scattering, pose):
+        helix = eqx.tree_at(lambda m: m.pose, helix, pose)
+        pipeline = cs.SuperpositionPipeline(
+            scattering=scattering, specimen=helix.subunits
+        )
+        return pipeline.render(normalize=True)
+
+    @jax.jit
+    def compute_rotated_image_with_3j9g(specimen, scattering, pose):
+        specimen = eqx.tree_at(lambda m: m.pose, specimen, pose)
+        pipeline = cs.ImagePipeline(scattering=scattering, specimen=specimen)
+        return pipeline.render(normalize=True)
+
+    pose = cs.EulerPose(*translation, 0.0, *euler_angles)
+    reference_image = compute_rotated_image_with_3j9g(
+        specimen_39jg, scattering, cs.EulerPose()
+    )
+    assembled_image = compute_rotated_image_with_helix(helix, scattering, pose)
+    test_image = compute_rotated_image_with_3j9g(
+        specimen_39jg, scattering, pose
+    )
+    assert np.std(assembled_image - test_image) < 10 * np.std(
+        assembled_image - reference_image
+    )
+
+
+def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
+    helix = build_helix(sample_subunit_mrc_path, 12)
+    scattering = cs.FourierSliceExtract(
+        cs.ImageManager((50, 20), pixel_size, pad_scale=6)
+    )
+
+    @jax.jit
+    def compute_rotated_image(helix, scattering, pose):
+        helix = eqx.tree_at(lambda m: m.pose, helix, pose)
+        pipeline = cs.SuperpositionPipeline(
+            scattering=scattering, specimen=helix.subunits
+        )
+        return pipeline.render(normalize=True)
+
+    np.testing.assert_allclose(
+        compute_rotated_image(
+            helix,
+            scattering,
+            cs.EulerPose(view_phi=0.0, view_theta=90.0, view_psi=0.0),
+        ),
+        compute_rotated_image(
+            helix,
+            scattering,
+            cs.EulerPose(
+                view_phi=helix.twist,
+                view_theta=90.0,
+                view_psi=0.0,
+                offset_x=helix.rise,
+            ),
+        ),
+        atol=1e-1,
     )

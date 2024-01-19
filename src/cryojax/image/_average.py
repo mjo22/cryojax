@@ -4,12 +4,12 @@ Routines to compute radial averages of images.
 
 __all__ = ["radial_average"]
 
-from typing import Optional, Union, Any, overload
+from typing import Union, overload
 
 import jax
 import jax.numpy as jnp
 
-from ..typing import RealVector, Vector, Image, RealImage
+from ..typing import RealVector, Vector, Image, RealImage, Volume, RealVolume
 
 
 @overload
@@ -17,8 +17,15 @@ def radial_average(
     image: Image,
     radial_grid: RealImage,
     bins: RealVector,
-    interpolating_radial_grid: None,
-    **kwargs: Any,
+) -> Union[Vector, Vector]:
+    ...
+
+
+@overload
+def radial_average(
+    image: Volume,
+    radial_grid: RealVolume,
+    bins: RealVector,
 ) -> Union[Vector, Vector]:
     ...
 
@@ -28,20 +35,33 @@ def radial_average(
     image: Image,
     radial_grid: RealImage,
     bins: RealVector,
-    interpolating_radial_grid: RealImage,
-    **kwargs: Any,
+    *,
+    to_grid: bool,
+    interpolation_mode: str,
 ) -> Union[Image, Vector]:
     ...
 
 
-@jax.jit
+@overload
 def radial_average(
-    image: Image,
-    radial_grid: RealImage,
+    image: Volume,
+    radial_grid: RealVolume,
     bins: RealVector,
-    interpolating_radial_grid: Optional[RealImage] = None,
-    **kwargs: Any,
-) -> Union[Vector | Image, Vector]:
+    *,
+    to_grid: bool,
+    interpolation_mode: str,
+) -> Union[Volume, Vector]:
+    ...
+
+
+def radial_average(
+    image: Image | Volume,
+    radial_grid: RealImage | RealVolume,
+    bins: RealVector,
+    *,
+    to_grid: bool = False,
+    interpolation_mode: str = "nearest",
+) -> Union[Vector | Image | Volume, Vector]:
     """
     Radially average vectors r with a given magnitude
     coordinate system |r|.
@@ -55,10 +75,13 @@ def radial_average(
     bins :
         Radial bins for averaging. These
         must be evenly spaced.
-    interpolating_radial_grid :
-        If ``None``, evalulate the spectrum as a 1D
-        profile. Otherwise, evaluate the spectrum on this
-        2D grid of frequencies using linear interpolation.
+    to_grid :
+        If ``False``, evalulate the spectrum as a 1D
+        profile. Otherwise, evaluate the spectrum on the
+        grid.
+    interpolation_mode :
+        If ``"linear"``, evaluate on the grid using linear
+        interpolation. If ``False``,
 
     Returns
     -------
@@ -66,18 +89,31 @@ def radial_average(
         Radial average of image.
     """
     bins = jnp.asarray(bins)
-
-    dr = bins[1] - bins[0]
-
-    def average(carry, r_i):
-        mask = jnp.logical_and(radial_grid >= r_i, radial_grid < r_i + dr)
-        return carry, jnp.sum(jnp.where(mask, image, 0.0)) / jnp.sum(mask)
-
-    _, profile = jax.lax.scan(average, None, bins)
-
-    if interpolating_radial_grid is not None:
-        return jnp.interp(
-            interpolating_radial_grid.ravel(), bins, profile, **kwargs
-        ).reshape(interpolating_radial_grid.shape)
+    # Discretize the radial grid
+    digitized_radial_grid = jnp.digitize(radial_grid, bins, right=True)
+    # Compute the radial profile as the average value of the image in each bin
+    profile = jnp.bincount(
+        digitized_radial_grid.ravel(),
+        weights=image.ravel(),
+        length=bins.size,
+    ) / jnp.bincount(digitized_radial_grid.ravel(), length=bins.size)
+    # Interpolate to a grid or return the profile
+    if to_grid:
+        if interpolation_mode == "nearest":
+            eval_nearest = jax.vmap(
+                lambda idx, profile: profile[idx], in_axes=[0, None]
+            )
+            flat_digitized_radial_grid = digitized_radial_grid.ravel()
+            return eval_nearest(flat_digitized_radial_grid, profile).reshape(
+                radial_grid.shape
+            )
+        elif interpolation_mode == "linear":
+            return jnp.interp(radial_grid.ravel(), bins, profile).reshape(
+                radial_grid.shape
+            )
+        else:
+            raise ValueError(
+                f"interpolation_mode = {interpolation_mode} not supported."
+            )
     else:
         return profile

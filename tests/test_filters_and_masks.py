@@ -12,8 +12,8 @@ def test_compute_with_filters_and_masks(
     """Make sure that adding null filters and masks does not change output"""
     model = request.getfixturevalue(model)
     # Add null filters and masks
-    null_mask = eqx.tree_at(lambda m: m.mask, masks, jnp.asarray(1.0))
-    null_filter = eqx.tree_at(lambda f: f.filter, filters, jnp.asarray(1.0))
+    null_mask = eqx.tree_at(lambda m: m.buffer, masks, jnp.asarray(1.0))
+    null_filter = eqx.tree_at(lambda f: f.buffer, filters, jnp.asarray(1.0))
     where = lambda m: (m.filter, m.mask)
     model_with_null_mask = eqx.tree_at(
         where, filtered_and_masked_model, (None, null_mask)
