@@ -105,6 +105,7 @@ class GaussianDetector(Detector):
         noise = self.variance(coords_or_freqs) * jr.normal(
             key, shape=coords_or_freqs.shape[0:-1], dtype=complex
         )
+        noise = noise.at[0, 0].set(0.0 + 0.0j)
         return image + noise
 
 

@@ -82,6 +82,8 @@ class GaussianIce(Ice):
     ) -> ComplexImage:
         """Sample from a gaussian noise model, with the variance
         modulated by the CTF."""
-        return self.variance(frequency_grid_in_angstroms) * jr.normal(
+        ice_image = self.variance(frequency_grid_in_angstroms) * jr.normal(
             key, shape=frequency_grid_in_angstroms.shape[0:-1]
         )
+        ice_image = ice_image.at[0, 0].set(0.0 + 0.0j)
+        return ice_image

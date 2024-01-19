@@ -50,7 +50,7 @@ class CircularMask(Mask):
     Attributes
     ----------
     radius :
-        By default, ``0.95``.
+        The radius of the mask in Angstroms.
     rolloff :
         By default, ``0.05``.
     """
@@ -60,27 +60,31 @@ class CircularMask(Mask):
 
     def __init__(
         self,
-        coords: ImageCoords,
-        radius: float = 0.95,
+        coordinate_grid_in_angstroms: ImageCoords,
+        radius: float,
         rolloff: float = 0.05,
     ) -> None:
         self.radius = radius
         self.rolloff = rolloff
         self.operator = compute_circular_mask(
-            coords, self.radius, self.rolloff
+            coordinate_grid_in_angstroms, self.radius, self.rolloff
         )
 
 
 def compute_circular_mask(
-    coords: ImageCoords, cutoff: float = 0.95, rolloff: float = 0.05
+    coordinate_grid_in_angstroms: ImageCoords,
+    radius: float,
+    rolloff: float = 0.05,
 ) -> RealImage:
     """
     Create a circular mask.
 
     Parameters
     ----------
-    shape :
+    coordinate_grid :
         The image coordinates.
+    grid_spacing :
+        The grid spacing of ``coordinate_grid``.
     cutoff :
         The cutoff radius as a fraction of half
         the smallest box dimension. By default, ``0.95``.
@@ -94,14 +98,12 @@ def compute_circular_mask(
         An array representing the circular mask.
     """
 
-    r_max = min(coords.shape[0:2]) // 2
-    r_cut = cutoff * r_max
-
-    coords_norm = jnp.linalg.norm(coords, axis=-1)
+    coords_norm = jnp.linalg.norm(coordinate_grid_in_angstroms, axis=-1)
+    r_cut = radius
 
     coords_cut = coords_norm > r_cut
 
-    rolloff_width = rolloff * r_max
+    rolloff_width = rolloff * coords_norm.max()
     mask = 0.5 * (
         1
         + jnp.cos(
