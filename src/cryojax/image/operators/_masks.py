@@ -32,11 +32,10 @@ class Mask(OperatorAsBuffer):
 
     def __init__(self, mask: RealImage):
         """Compute the mask."""
-        self.operator = mask
+        self.buffer = mask
 
-    @property
-    def mask(self) -> RealImage:
-        return self.operator
+    def __call__(self, image: RealImage) -> RealImage:
+        return self.buffer * image
 
 
 class CircularMask(Mask):
@@ -66,7 +65,7 @@ class CircularMask(Mask):
     ) -> None:
         self.radius = radius
         self.rolloff = rolloff
-        self.operator = compute_circular_mask(
+        self.buffer = compute_circular_mask(
             coordinate_grid_in_angstroms, self.radius, self.rolloff
         )
 

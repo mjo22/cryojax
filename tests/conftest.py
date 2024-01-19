@@ -59,12 +59,13 @@ def stacked_density(density):
 @pytest.fixture
 def filters(manager):
     return op.LowpassFilter(manager.padded_frequency_grid.get())
-    # return None
 
 
 @pytest.fixture
 def masks(manager):
-    return op.CircularMask(manager.coordinate_grid.get())
+    return op.CircularMask(
+        manager.coordinate_grid.get(), radius=20 * manager.pixel_size
+    )
 
 
 @pytest.fixture

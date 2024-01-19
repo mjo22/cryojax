@@ -24,7 +24,7 @@ from .._spectrum import powerspectrum
 from .._fft import rfftn, irfftn
 from ..coordinates import make_frequencies
 from ...core import field
-from ...typing import Image, ImageCoords, RealImage
+from ...typing import Image, ComplexImage, ImageCoords, RealImage
 
 FilterT = TypeVar("FilterT", bound="Filter")
 """TypeVar for the Filter base class."""
@@ -43,11 +43,10 @@ class Filter(OperatorAsBuffer):
 
     def __init__(self, filter: Image):
         """Compute the filter."""
-        self.operator = filter
+        self.buffer = filter
 
-    @property
-    def filter(self) -> Image:
-        return self.operator
+    def __call__(self, image: ComplexImage) -> ComplexImage:
+        return self.buffer * image
 
 
 class LowpassFilter(Filter):
@@ -76,7 +75,7 @@ class LowpassFilter(Filter):
     ) -> None:
         self.cutoff = cutoff
         self.rolloff = rolloff
-        self.operator = compute_lowpass_filter(
+        self.buffer = compute_lowpass_filter(
             frequency_grid, grid_spacing, self.cutoff, self.rolloff
         )
 
@@ -91,7 +90,7 @@ class WhiteningFilter(Filter):
         micrograph: RealImage,
         shape: Optional[tuple[int, int]] = None,
     ):
-        self.operator = compute_whitening_filter(micrograph, shape)
+        self.buffer = compute_whitening_filter(micrograph, shape)
 
 
 def compute_lowpass_filter(
