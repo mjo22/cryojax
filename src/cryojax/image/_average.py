@@ -100,11 +100,7 @@ def radial_average(
     # Interpolate to a grid or return the profile
     if to_grid:
         if interpolation_mode == "nearest":
-            eval_nearest = jax.vmap(
-                lambda idx, profile: profile[idx], in_axes=[0, None]
-            )
-            flat_digitized_radial_grid = digitized_radial_grid.ravel()
-            return eval_nearest(flat_digitized_radial_grid, profile).reshape(
+            return jnp.take(profile, digitized_radial_grid.ravel()).reshape(
                 radial_grid.shape
             )
         elif interpolation_mode == "linear":
