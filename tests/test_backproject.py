@@ -107,9 +107,9 @@ def test_filtered_backprojection():
 
         ctf = optics(freq_xy)
         wiener_filter = backproject.WeinerFilter(ctf, 0.0001)
-        image_deconv = wiener_filter(image_f)
+        image_deconv_f = wiener_filter(image_f)
 
-        slices_f = slices_f.at[idx].set(image_deconv)
+        slices_f = slices_f.at[idx].set(image_deconv_f)
 
     fbp_vol_r = backproject.filtered_backprojection(
         deconolved_images_f=slices_f, poses=poses, to_real=True
