@@ -8,13 +8,14 @@ __all__ = [
     "ImageMultiplier",
     "ImageOperator",
     "ImageMultiplierT",
-    "ImageOperator",
+    "ImageOperatorT",
     "Constant",
     "Empirical",
+    "Lambda",
 ]
 
 from abc import abstractmethod
-from typing import overload, Any, TypeVar
+from typing import overload, Any, TypeVar, Callable
 from typing_extensions import override
 from jaxtyping import Array
 
@@ -143,6 +144,18 @@ class Constant(ImageOperator):
         self, coords_or_freqs: ImageCoords | None = None, **kwargs: Any
     ) -> Real_:
         return self.value
+
+
+class Lambda(ImageOperator):
+    """An operator that calls a custom function."""
+
+    fn: Callable[[ImageCoords, ...], Image] = field(static=True)
+
+    @override
+    def __call__(
+        self, coords_or_freqs: ImageCoords, **kwargs: Any
+    ) -> Image:
+        return self.fn(coords_or_freqs, **kwargs)
 
 
 class Empirical(ImageOperator):
