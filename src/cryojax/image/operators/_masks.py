@@ -4,7 +4,7 @@ Masks to apply to images in real space.
 
 from __future__ import annotations
 
-__all__ = ["Mask", "MaskT", "CircularMask", "compute_circular_mask"]
+__all__ = ["Mask", "MaskT", "CircularMask"]
 
 from typing import TypeVar
 
@@ -66,12 +66,12 @@ class CircularMask(Mask):
     ) -> None:
         self.radius = radius
         self.rolloff = rolloff
-        self.buffer = compute_circular_mask(
+        self.buffer = _compute_circular_mask(
             coordinate_grid_in_angstroms, self.radius, self.rolloff
         )
 
 
-def compute_circular_mask(
+def _compute_circular_mask(
     coordinate_grid_in_angstroms: ImageCoords,
     radius: float,
     rolloff: float = 0.05,

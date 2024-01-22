@@ -9,8 +9,6 @@ __all__ = [
     "FilterT",
     "LowpassFilter",
     "WhiteningFilter",
-    "compute_lowpass_filter",
-    "compute_whitening_filter",
 ]
 
 from typing import TypeVar, Optional
@@ -75,7 +73,7 @@ class LowpassFilter(Filter):
     ) -> None:
         self.cutoff = cutoff
         self.rolloff = rolloff
-        self.buffer = compute_lowpass_filter(
+        self.buffer = _compute_lowpass_filter(
             frequency_grid, grid_spacing, self.cutoff, self.rolloff
         )
 
@@ -89,11 +87,14 @@ class WhiteningFilter(Filter):
         self,
         micrograph: RealImage,
         shape: Optional[tuple[int, int]] = None,
+        interpolation_mode: str = "nearest",
     ):
-        self.buffer = compute_whitening_filter(micrograph, shape)
+        self.buffer = _compute_whitening_filter(
+            micrograph, shape, interpolation_mode=interpolation_mode
+        )
 
 
-def compute_lowpass_filter(
+def _compute_lowpass_filter(
     frequency_grid: ImageCoords,
     grid_spacing: float = 1.0,
     cutoff: float = 0.667,
@@ -143,9 +144,10 @@ def compute_lowpass_filter(
     return mask
 
 
-def compute_whitening_filter(
+def _compute_whitening_filter(
     micrograph: RealImage,
     shape: Optional[tuple[int, int]] = None,
+    interpolation_mode="nearest",
 ) -> RealImage:
     """
     Compute a whitening filter from a micrograph. This is taken
@@ -157,13 +159,11 @@ def compute_whitening_filter(
 
     Parameters
     ----------
-    frequency_grid_in_angstroms :
-        The frequency coordinate system at which to evaulate
-        the filter.
     micrograph :
         The micrograph in real space.
-    grid_spacing :
-        The grid spacing of ``frequency_grid_in_angstroms``.
+    shape :
+        The shape at which to compute the filter. This downsamples or
+        upsamples the filter by cropping or padding in real space.
 
     Returns
     -------
@@ -179,12 +179,12 @@ def compute_whitening_filter(
         micrograph_frequency_grid_in_angstroms, axis=-1
     )
     # Compute power spectrum
-    spectrum, _ = powerspectrum(
+    _, spectrum, _ = powerspectrum(
         fourier_micrograph,
         radial_frequency_grid,
         to_grid=True,
-        interpolation_mode="nearest",
-        k_max=jnp.sqrt(2.0) / 2.0,
+        interpolation_mode=interpolation_mode,
+        k_max=jnp.sqrt(2) / 2.0,
     )
     if shape is not None:
         spectrum = rfftn(

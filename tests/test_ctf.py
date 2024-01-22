@@ -56,8 +56,12 @@ def test_ctf_with_cistem(
 
     # Compute cryojax and cisTEM power spectrum
     radial_freqs = jnp.linalg.norm(freqs, axis=-1)
-    spectrum1D, _ = powerspectrum(ctf, radial_freqs, pixel_size)
-    cisTEM_spectrum1D, _ = powerspectrum(cisTEM_ctf, radial_freqs, pixel_size)
+    spectrum1D, _ = powerspectrum(
+        ctf, radial_freqs, pixel_size, k_max=1 / (2 * pixel_size)
+    )
+    cisTEM_spectrum1D, _ = powerspectrum(
+        cisTEM_ctf, radial_freqs, pixel_size, k_max=1 / (2 * pixel_size)
+    )
 
     np.testing.assert_allclose(ctf, cisTEM_ctf, atol=5e-2)
     np.testing.assert_allclose(spectrum1D, cisTEM_spectrum1D, atol=5e-3)

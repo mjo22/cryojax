@@ -94,7 +94,8 @@ def filters(manager):
 @pytest.fixture
 def masks(manager):
     return op.CircularMask(
-        manager.coordinate_grid.get(), radius=20 * manager.pixel_size
+        manager.padded_coordinate_grid_in_angstroms.get(),
+        radius=20 * manager.pixel_size,
     )
 
 
