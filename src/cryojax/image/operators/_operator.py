@@ -152,9 +152,7 @@ class Lambda(ImageOperator):
     fn: Callable[[ImageCoords, ...], Image] = field(static=True)
 
     @override
-    def __call__(
-        self, coords_or_freqs: ImageCoords, **kwargs: Any
-    ) -> Image:
+    def __call__(self, coords_or_freqs: ImageCoords, **kwargs: Any) -> Image:
         return self.fn(coords_or_freqs, **kwargs)
 
 
