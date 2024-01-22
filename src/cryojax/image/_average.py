@@ -4,7 +4,8 @@ Routines to compute radial averages of images.
 
 __all__ = ["radial_average"]
 
-from typing import Union, overload
+from typing import overload
+from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -17,7 +18,7 @@ def radial_average(
     image: Image,
     radial_grid: RealImage,
     bins: RealVector,
-) -> Union[Vector, Vector]:
+) -> Vector:
     ...
 
 
@@ -26,7 +27,7 @@ def radial_average(
     image: Volume,
     radial_grid: RealVolume,
     bins: RealVector,
-) -> Union[Vector, Vector]:
+) -> Vector:
     ...
 
 
@@ -38,7 +39,7 @@ def radial_average(
     *,
     to_grid: bool,
     interpolation_mode: str,
-) -> Union[Image, Vector]:
+) -> tuple[Vector, Image]:
     ...
 
 
@@ -50,10 +51,11 @@ def radial_average(
     *,
     to_grid: bool,
     interpolation_mode: str,
-) -> Union[Volume, Vector]:
+) -> tuple[Vector, Volume]:
     ...
 
 
+@partial(jax.jit, static_argnames=["to_grid", "interpolation_mode"])
 def radial_average(
     image: Image | Volume,
     radial_grid: RealImage | RealVolume,
@@ -61,7 +63,7 @@ def radial_average(
     *,
     to_grid: bool = False,
     interpolation_mode: str = "nearest",
-) -> Union[Vector | Image | Volume, Vector]:
+) -> Vector | tuple[Vector, Image | Volume]:
     """
     Radially average vectors r with a given magnitude
     coordinate system |r|.
@@ -92,7 +94,7 @@ def radial_average(
     # Discretize the radial grid
     digitized_radial_grid = jnp.digitize(radial_grid, bins, right=True)
     # Compute the radial profile as the average value of the image in each bin
-    profile = jnp.bincount(
+    average_as_profile = jnp.bincount(
         digitized_radial_grid.ravel(),
         weights=image.ravel(),
         length=bins.size,
@@ -100,20 +102,21 @@ def radial_average(
     # Interpolate to a grid or return the profile
     if to_grid:
         if interpolation_mode == "nearest":
-            eval_nearest = jax.vmap(
-                lambda idx, profile: profile[idx], in_axes=[0, None]
-            )
-            flat_digitized_radial_grid = digitized_radial_grid.ravel()
-            return eval_nearest(flat_digitized_radial_grid, profile).reshape(
-                radial_grid.shape
+            average_as_grid = jnp.take(
+                average_as_profile,
+                digitized_radial_grid,
+                mode="clip",
             )
         elif interpolation_mode == "linear":
-            return jnp.interp(radial_grid.ravel(), bins, profile).reshape(
-                radial_grid.shape
-            )
+            average_as_grid = jnp.interp(
+                radial_grid.ravel(),
+                bins,
+                average_as_profile,
+            ).reshape(radial_grid.shape)
         else:
             raise ValueError(
                 f"interpolation_mode = {interpolation_mode} not supported."
             )
+        return average_as_profile, average_as_grid
     else:
-        return profile
+        return average_as_profile

@@ -223,12 +223,11 @@ class ImagePipeline(Module):
                 )
             return irfftn(image, s=manager.shape) if get_real else image
         else:
-            # ... otherwise, inverse transform, crop, mask, and normalize
-            image = manager.crop_to_shape(
-                irfftn(image, s=manager.padded_shape)
-            )
+            # ... otherwise, inverse transform, mask, crop, and normalize
+            image = irfftn(image, s=manager.padded_shape)
             if self.mask is not None:
                 image = self.mask(image)
+            image = manager.crop_to_shape(image)
             if normalize:
                 image = manager.normalize_image(image, is_real=True)
             return image if get_real else rfftn(image)
