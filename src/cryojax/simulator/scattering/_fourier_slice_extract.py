@@ -30,9 +30,9 @@ class FourierSliceExtract(ScatteringModel):
     are passed to ``jax.scipy.map_coordinates``.
     """
 
-    order: int = field(static=True, default=1)
-    mode: str = field(static=True, default="wrap")
-    cval: complex = field(static=True, default=0.0 + 0.0j)
+    interpolation_order: int = field(static=True, default=1)
+    interpolation_mode: str = field(static=True, default="wrap")
+    interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
 
     def scatter(self, density: FourierVoxelGrid) -> ComplexImage:
         """
@@ -43,9 +43,9 @@ class FourierSliceExtract(ScatteringModel):
         return extract_slice(
             density.weights,
             density.frequency_slice.get(),
-            order=self.order,
-            mode=self.mode,
-            cval=self.cval,
+            order=self.interpolation_order,
+            mode=self.interpolation_mode,
+            cval=self.interpolation_cval,
         )
 
 
@@ -84,6 +84,10 @@ def extract_slice(
     # Need to convert to logical coordinates, so make coordinates dimensionless
     grid_shape = jnp.asarray([N, N, N], dtype=float)
     frequency_slice *= grid_shape
+    # ... then flip negative frequencies to positive
+    frequency_slice = jnp.where(
+        frequency_slice < 0, grid_shape + frequency_slice, frequency_slice
+    )
     # Convert arguments to map_coordinates convention and compute
     k_x, k_y, k_z = jnp.transpose(frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates(weights, (k_x, k_y, k_z), order, **kwargs)[

@@ -389,8 +389,8 @@ class FourierVoxelGrid(Voxels):
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         pad_scale: float = 1.0,
+        pad_mode: str = "constant",
         n_indexed_dims: int = 0,
-        **kwargs: Any,
     ) -> "FourierVoxelGrid":
         # If voxel size is given as a float, broadcast to the stacked shape
         if n_indexed_dims > 0:
@@ -414,7 +414,7 @@ class FourierVoxelGrid(Voxels):
         padded_shape = tuple(
             [int(s * pad_scale) for s in density_grid.shape[-3:]]
         )
-        padded_density_grid = pad(density_grid, padded_shape)
+        padded_density_grid = pad(density_grid, padded_shape, mode=pad_mode)
         # Load density and coordinates. For now, do not store the
         # fourier density only on the half space. Fourier slice extraction
         # does not currently work if rfftn is us
@@ -479,7 +479,6 @@ class RealVoxelGrid(Voxels):
         coordinate_grid: VolumeCoords,
         n_indexed_dims: int,
         crop_scale: None,
-        **kwargs: Any,
     ) -> "RealVoxelGrid":
         ...
 
@@ -492,7 +491,6 @@ class RealVoxelGrid(Voxels):
         coordinate_grid: None,
         n_indexed_dims: int,
         crop_scale: Optional[float],
-        **kwargs: Any,
     ) -> "RealVoxelGrid":
         ...
 
@@ -504,7 +502,6 @@ class RealVoxelGrid(Voxels):
         coordinate_grid: Optional[VolumeCoords] = None,
         n_indexed_dims: int = 0,
         crop_scale: Optional[float] = None,
-        **kwargs: Any,
     ) -> "RealVoxelGrid":
         # If voxel size is given as a float, broadcast to the stacked shape
         if n_indexed_dims > 0:
@@ -593,7 +590,6 @@ class VoxelCloud(Voxels):
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         n_indexed_dims: int = 0,
-        **kwargs: Any,
     ) -> "VoxelCloud":
         if n_indexed_dims != 0:
             raise NotImplementedError("Stacked VoxelClouds are not supported.")
@@ -608,7 +604,7 @@ class VoxelCloud(Voxels):
             coordinate_grid = make_coordinates(density_grid.shape)
         # ... mask zeros to store smaller arrays. This
         # option is not jittable.
-        nonzero = jnp.where(~jnp.isclose(density_grid, 0.0, **kwargs))
+        nonzero = jnp.where(~jnp.isclose(density_grid, 0.0))
         flat_density = density_grid[nonzero]
         coordinate_list = coordinate_grid[nonzero]
 

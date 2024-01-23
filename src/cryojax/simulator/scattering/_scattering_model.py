@@ -37,7 +37,7 @@ class ScatteringModel(Module):
     manager:
         Handles image configuration and
         utility routines.
-    method :
+    rescale_method :
         The interpolation method used for measuring
         the image at the new ``pixel_size``. Passed to
         ``jax.image.scale_and_translate``. This options
@@ -46,7 +46,7 @@ class ScatteringModel(Module):
 
     manager: ImageManager = field()
 
-    method: str = field(static=True, default="bicubic")
+    rescale_method: str = field(static=True, default="bicubic")
 
     @abstractmethod
     def scatter(self, density: ElectronDensity) -> ComplexImage:
@@ -92,7 +92,7 @@ class ScatteringModel(Module):
                 image,
                 current_pixel_size,
                 new_pixel_size,
-                method=self.method,
+                method=self.rescale_method,
             )
             null_fn = lambda image: image
             image_at_exit_plane = jax.lax.cond(
