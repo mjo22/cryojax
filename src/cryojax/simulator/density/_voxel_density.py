@@ -20,10 +20,9 @@ from typing import (
     TypeVar,
     Optional,
     overload,
-    Dict,
 )
-from typing_extensions import Self, override
-from jaxtyping import Complex, Float, Array, Int
+from typing_extensions import Self
+from jaxtyping import Float, Array, Int
 from equinox import AbstractVar
 from functools import cached_property
 
@@ -88,7 +87,6 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: None,
-        n_indexed_dims: int,
         **kwargs: Any,
     ) -> VoxelT:
         ...
@@ -101,7 +99,6 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
-        n_indexed_dims: int,
         **kwargs: Any,
     ) -> VoxelT:
         ...
@@ -113,7 +110,6 @@ class Voxels(ElectronDensity):
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
-        n_indexed_dims: int = 0,
         **kwargs: Any,
     ) -> VoxelT:
         """
@@ -186,7 +182,7 @@ class Voxels(ElectronDensity):
             density,
             voxel_size,
             coordinate_grid_in_angstroms / voxel_size,
-            n_indexed_dims=1,
+            # n_indexed_dims=1,
             **kwargs,
         )
 
@@ -390,24 +386,9 @@ class FourierVoxelGrid(Voxels):
         coordinate_grid: Optional[VolumeCoords] = None,
         pad_scale: float = 1.0,
         pad_mode: str = "constant",
-        n_indexed_dims: int = 0,
     ) -> "FourierVoxelGrid":
-        # If voxel size is given as a float, broadcast to the stacked shape
-        if n_indexed_dims > 0:
-            stack_shape = density_grid.shape[:n_indexed_dims]
-            if isinstance(
-                voxel_size, (float, Float[Array, ""], Float[np.ndarray, ""])
-            ):
-                voxel_size = jnp.full(stack_shape, voxel_size)
-            else:
-                if voxel_size.shape != stack_shape:
-                    raise ValueError(
-                        "voxel_size.shape must match density_grid.shape[:n_indexed_dims]"
-                    )
         # Change how template sits in box to match cisTEM
-        density_grid = jnp.transpose(
-            density_grid, axes=[*tuple(range(n_indexed_dims)), -1, -2, -3]
-        )
+        density_grid = jnp.transpose(density_grid, axes=[-1, -2, -3])
         # Pad template
         if pad_scale < 1.0:
             raise ValueError("pad_scale must be greater than 1.0")
@@ -428,7 +409,6 @@ class FourierVoxelGrid(Voxels):
             weights=fourier_density_grid,
             frequency_slice=frequency_slice,
             voxel_size=voxel_size,
-            n_indexed_dims=n_indexed_dims,
         )
 
 
@@ -477,7 +457,6 @@ class RealVoxelGrid(Voxels):
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
-        n_indexed_dims: int,
         crop_scale: None,
     ) -> "RealVoxelGrid":
         ...
@@ -489,7 +468,6 @@ class RealVoxelGrid(Voxels):
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: None,
-        n_indexed_dims: int,
         crop_scale: Optional[float],
     ) -> "RealVoxelGrid":
         ...
@@ -500,29 +478,14 @@ class RealVoxelGrid(Voxels):
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
-        n_indexed_dims: int = 0,
         crop_scale: Optional[float] = None,
     ) -> "RealVoxelGrid":
-        # If voxel size is given as a float, broadcast to the stacked shape
-        if n_indexed_dims > 0:
-            stack_shape = density_grid.shape[:n_indexed_dims]
-            if isinstance(
-                voxel_size, (float, Float[Array, ""], Float[np.ndarray, ""])
-            ):
-                voxel_size = jnp.full(stack_shape, voxel_size)
-            else:
-                if voxel_size.shape != stack_shape:
-                    raise ValueError(
-                        "voxel_size.shape must match density_grid.shape[:n_indexed_dims]"
-                    )
         # Change how template sits in the box.
         # Ideally we would change this in the same way for all
         # I/O methods. However, the algorithms used all
         # have their own xyz conventions. The choice here is to
         # make jax-finufft output match cisTEM.
-        density_grid = jnp.transpose(
-            density_grid, axes=[*tuple(range(n_indexed_dims)), -2, -1, -3]
-        )
+        density_grid = jnp.transpose(density_grid, axes=[-2, -1, -3])
         # Make coordinates if not given
         if coordinate_grid is None:
             # Option for cropping template
@@ -539,7 +502,6 @@ class RealVoxelGrid(Voxels):
             weights=density_grid,
             coordinate_grid=coordinate_grid,
             voxel_size=voxel_size,
-            n_indexed_dims=n_indexed_dims,
         )
 
 
@@ -589,10 +551,7 @@ class VoxelCloud(Voxels):
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
-        n_indexed_dims: int = 0,
     ) -> "VoxelCloud":
-        if n_indexed_dims != 0:
-            raise NotImplementedError("Stacked VoxelClouds are not supported.")
         # Change how template sits in the box.
         # Ideally we would change this in the same way for all
         # I/O methods. However, the algorithms used all
@@ -612,17 +571,6 @@ class VoxelCloud(Voxels):
             weights=flat_density,
             coordinate_list=CoordinateList(coordinate_list),
             voxel_size=voxel_size,
-            n_indexed_dims=0,
-        )
-
-    @override
-    def __getitem__(self, idx):
-        raise NotImplementedError("Indexing a VoxelCloud is not implemented.")
-
-    @override
-    def __len__(self) -> int:
-        raise NotImplementedError(
-            "Getting the length VoxelCloud is not implemented."
         )
 
 

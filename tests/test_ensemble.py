@@ -11,16 +11,15 @@ from cryojax.simulator import Ensemble, Conformation
 
 
 def test_conformation(density, pose, scattering):
-    cls = type(density)
-    stacked_density = cls.from_list([density for _ in range(3)])
-    ensemble = Ensemble(stacked_density, pose, conformation=Conformation(0))
+    density = tuple([density for _ in range(3)])
+    ensemble = Ensemble(density, pose, conformation=Conformation(0))
     _ = scattering(ensemble)
 
 
 def test_conformation_vmap(density, pose, scattering):
     # Build Ensemble
     cls = type(density)
-    stacked_density = cls.from_list([density for _ in range(3)])
+    stacked_density = tuple([density for _ in range(3)])
     ensemble = Ensemble(
         stacked_density,
         pose,

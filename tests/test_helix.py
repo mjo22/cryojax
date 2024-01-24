@@ -29,7 +29,7 @@ def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
 def build_helix_with_conformation(
     sample_subunit_mrc_path, n_subunits_per_start
 ) -> cs.Helix:
-    subunit_density = cs.FourierVoxelGrid.from_list(
+    subunit_density = tuple(
         [
             cs.FourierVoxelGrid.from_file(sample_subunit_mrc_path)
             for _ in range(2)

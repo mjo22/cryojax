@@ -8,10 +8,9 @@ from abc import abstractmethod
 from typing import Type, Any, TypeVar
 from typing_extensions import Self
 from jaxtyping import PyTree
-from equinox import AbstractClassVar
+from equinox import AbstractClassVar, Module
 
 from ..pose import Pose
-from ...core import IndexedModule
 from ...image import get_not_coordinate_filter_spec
 
 
@@ -28,7 +27,7 @@ def is_density_leaves(element: Any) -> bool | PyTree[bool]:
         return False
 
 
-class ElectronDensity(IndexedModule):
+class ElectronDensity(Module):
     """
     Abstraction of an electron density distribution.
 

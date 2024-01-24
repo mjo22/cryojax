@@ -49,10 +49,6 @@ class Specimen(Module):
         density: ElectronDensity,
         pose: Optional[Pose] = None,
     ):
-        if density.n_indexed_dims != 0:
-            raise AttributeError(
-                "ElectronDensity.n_indexed_dims must be 0. If you want to evaluate the ElectronDensity at a conformation, use the Ensemble class."
-            )
         self.density = density
         self.pose = pose or EulerPose()
 
@@ -75,26 +71,23 @@ class Ensemble(Specimen):
     Attributes
     ----------
     density :
-        The electron density representation of the
-        specimen.
+        A tuple of electron density representations.
     pose :
         The pose of the specimen.
     conformation :
         The conformation at which to evaluate the ElectronDensity.
     """
 
+    density: tuple[ElectronDensity, ...]
+    pose: Pose
     conformation: Conformation
 
     def __init__(
         self,
-        density: ElectronDensity,
+        density: tuple[ElectronDensity, ...],
         pose: Optional[Pose] = None,
         conformation: Optional[Conformation] = None,
     ):
-        if density.n_indexed_dims != 1:
-            raise AttributeError(
-                "ElectronDensity.n_indexed_dims must be 1 to evaluate at a density at a conformation. If you do not want to evaluate a conformation, use the Specimen class."
-            )
         self.density = density
         self.pose = pose or EulerPose()
         self.conformation = conformation or Conformation(0)
