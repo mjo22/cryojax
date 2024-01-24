@@ -3,13 +3,11 @@ Read and write atomic models in various formats.
 Large amounts of the code are adapted from the ioSPI package
 """
 
-__all__ = [
-    "read_atoms_from_pdb",
-]
+__all__ = ["read_atoms_from_pdb"]
 
 import numpy as np
 from jaxtyping import Float, Int
-from cryojax.io._gemmi import (
+from ._gemmi import (
     clean_gemmi_structure,
     extract_gemmi_atoms,
     extract_atom_positions_and_names,

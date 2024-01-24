@@ -15,3 +15,5 @@ __all__ = (
     + _gemmi.__all__
     + _mdtraj.__all__
 )
+
+__all__.extend([load_atoms])

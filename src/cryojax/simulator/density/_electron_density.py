@@ -2,7 +2,11 @@
 Base electron density representation.
 """
 
-__all__ = ["is_density_leaves", "ElectronDensity", "ElectronDensityT"]
+__all__ = [
+    "is_density_leaves_without_coordinates",
+    "ElectronDensity",
+    "ElectronDensityT",
+]
 
 from abc import abstractmethod
 from typing import Type, Any, TypeVar
@@ -17,7 +21,7 @@ from ...image import get_not_coordinate_filter_spec
 ElectronDensityT = TypeVar("ElectronDensityT", bound="ElectronDensity")
 
 
-def is_density_leaves(element: Any) -> bool | PyTree[bool]:
+def is_density_leaves_without_coordinates(element: Any) -> bool | PyTree[bool]:
     """Returns a filter spec that is ``True`` at the ``ElectronDensity``
     leaves, besides its coordinates.
     """

@@ -29,19 +29,19 @@ from functools import cached_property
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 from ._electron_density import ElectronDensity
 from ..pose import Pose
 from ...io import (
+    load_atoms,
     load_mrc,
     get_atom_info_from_gemmi_model,
     read_atoms_from_pdb,
     read_atoms_from_cif,
+    mdtraj_load_from_file,
 )
-import cryojax.io.load_atoms as load_atoms
 from ...core import field
-from cryojax.image import (
+from ...image import (
     pad,
     crop,
     fftn,
@@ -50,7 +50,7 @@ from cryojax.image import (
     CoordinateList,
     FrequencySlice,
 )
-from cryojax.typing import (
+from ...typing import (
     RealCloud,
     RealVolume,
     RealCubicVolume,
@@ -171,19 +171,15 @@ class Voxels(ElectronDensity):
         density = _build_real_space_voxels_from_atomic_trajectory(
             trajectory, a_vals, b_vals, coordinate_grid_in_angstroms
         )
-        print(
-            density.shape,
-            atom_identities.shape,
-            voxel_size,
-            coordinate_grid_in_angstroms.shape,
-        )
 
-        return cls.from_density_grid(
+        from_density_grid_vmap = jax.vmap(
+            lambda d, vs, c: cls.from_density_grid(d, vs, c, **kwargs),
+            in_axes=[0, 0, None],
+        )
+        return from_density_grid_vmap(
             density,
-            voxel_size,
+            jnp.full(density.shape[0], voxel_size),
             coordinate_grid_in_angstroms / voxel_size,
-            # n_indexed_dims=1,
-            **kwargs,
         )
 
     @classmethod
@@ -324,13 +320,13 @@ class Voxels(ElectronDensity):
         a nontrivial indexed dimension (the first dimension): scattering or
         otherwise using the density may require vmaps!
         """
-        trajectory, atom_identities = load_atoms.mdtraj_load_from_file(
+        trajectory, atom_identities = mdtraj_load_from_file(
             trajectory_path, topology_file
         )
         coordinate_grid_in_angstroms = make_coordinates(
             n_voxels_per_side, voxel_size
         )
-        return cls.from_trajectory_info(
+        return cls.from_trajectory(
             trajectory,
             atom_identities,
             voxel_size,

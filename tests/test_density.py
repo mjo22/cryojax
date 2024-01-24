@@ -61,7 +61,7 @@ def test_electron_density_vmap_with_pipeline(density, pose, scattering):
     pipeline = cs.ImagePipeline(cs.Specimen(density, pose), scattering)
     # Get filter spec for ElectronDensity
     filter_spec = jtu.tree_map(
-        cs.is_density_leaves,
+        cs.is_density_leaves_without_coordinates,
         pipeline,
         is_leaf=lambda x: isinstance(x, cs.ElectronDensity),
     )

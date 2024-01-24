@@ -2,14 +2,10 @@
 Routines for interfacing with mdtraj
 """
 
-import numpy as np
-from cryojax.io.load_atoms import get_form_factor_params
-from jaxtyping import Float, Int
+__all__ = ["get_atom_info_from_mdtraj", "mdtraj_load_from_file"]
 
-__all__ = [
-    "get_atom_info_from_mdtraj",
-    "mdtraj_load_from_file",
-]
+import numpy as np
+from jaxtyping import Float, Int
 
 
 def get_atom_info_from_mdtraj(
