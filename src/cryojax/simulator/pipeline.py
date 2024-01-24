@@ -85,18 +85,18 @@ class ImagePipeline(Module):
             and standard deviation 1.
         """
         # Scattering the specimen to the exit plane
-        image = self.instrument.scatter_to_exit_plane(
+        image_at_exit_plane = self.instrument.scatter_to_exit_plane(
             self.specimen, self.scattering
         )
         # Measure the image at the detector plane
-        image = self.instrument.propagate_to_detector_plane(
-            image,
+        image_at_detector_plane = self.instrument.propagate_to_detector_plane(
+            image_at_exit_plane,
             self.scattering,
             defocus_offset=self.specimen.pose.offset_z,
         )
 
         return self._get_final_image(
-            image,
+            image_at_detector_plane,
             view_cropped=view_cropped,
             get_real=get_real,
             normalize=normalize,
@@ -109,7 +109,7 @@ class ImagePipeline(Module):
         view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
-    ) -> RealImage:
+    ) -> Image:
         """
         Sample an image from a realization of the ``Ice`` and
         ``Detector`` models.
@@ -263,6 +263,36 @@ class SuperpositionPipeline(ImagePipeline):
     """
 
     @override
+    def sample(
+        self,
+        key: PRNGKeyArray,
+        *,
+        view_cropped: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
+    ) -> Image:
+        """Sample the superposition of states from the stochastic models."""
+        if not isinstance(self.solvent, NullIce):
+            raise NotImplementedError(
+                "The SuperpositionPipeline does not currently support sampling from the solvent model."
+            )
+        # Get the superposition of images
+        image_at_detector_plane = self.render(
+            view_cropped=False, get_real=False
+        )
+        # Sample from the detector model
+        detector_readout = self.instrument.measure_detector_readout(
+            key, image_at_detector_plane, self.scattering
+        )
+
+        return self._get_final_image(
+            detector_readout,
+            view_cropped=view_cropped,
+            get_real=get_real,
+            normalize=normalize,
+        )
+
+    @override
     def render(
         self,
         *,
@@ -271,7 +301,7 @@ class SuperpositionPipeline(ImagePipeline):
         normalize: bool = False,
     ) -> Image:
         """Render the superposition of states in the Ensemble."""
-        # Setup vmap over the Ensemble
+        # Setup vmap over the pose and conformation
         is_vmap = lambda x: isinstance(x, (Pose, Conformation))
         to_vmap = jax.tree_util.tree_map(is_vmap, self, is_leaf=is_vmap)
         vmap, novmap = eqx.partition(self, to_vmap)
