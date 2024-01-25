@@ -247,7 +247,9 @@ class FrequencySlice(Coordinates):
             if half_space:
                 frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0,))
             else:
-                frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0, 1))
+                frequency_slice = jnp.fft.fftshift(
+                    frequency_slice, axes=(0, 1)
+                )
             frequency_slice = jnp.expand_dims(
                 jnp.pad(
                     frequency_slice,
