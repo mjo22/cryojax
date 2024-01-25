@@ -360,7 +360,6 @@ class FourierVoxelGrid(Voxels):
         return self.frequency_slice / self.voxel_size
 
     @cached_property
-    @jax.jit
     def spline_coefficients(self) -> ComplexCubicVolume:
         return compute_spline_coefficients(self.weights)
 

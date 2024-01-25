@@ -69,6 +69,7 @@ def map_coordinates_with_cubic_spline(
     return _map_coordinates_with_cubic_spline(input, coordinates, mode, cval)
 
 
+@jax.jit
 def compute_spline_coefficients(data: Array) -> Array:
     """Solve for the spline coefficients of an input array."""
     ndim = data.ndim

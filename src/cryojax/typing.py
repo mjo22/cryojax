@@ -82,7 +82,7 @@ CubicVolume = Union[RealCubicVolume, ComplexCubicVolume]
 VolumeCoords = Float[Array, "N1 N2 N3 3"]
 """Type hint for a volume coordinate system."""
 
-VolumeSliceCoords = Float[Array, "N N//2+1 1 3"] | Float[Array, "N N 1 3"]
+VolumeSliceCoords = Float[Array, "N N 1 3"]
 """Type hint for a volume slice coordinate system."""
 
 # Point cloud type hints (non-uniformly spaced points).
