@@ -15,7 +15,7 @@ from ..density import FourierVoxelGrid
 from ...image import (
     map_coordinates,
     map_coordinates_with_cubic_spline,
-    spline_coefficients,
+    compute_spline_coefficients,
 )
 from ...core import field
 from ...typing import (
@@ -110,6 +110,8 @@ def extract_slice(
     frequency_slice *= grid_shape
     # ... then shift from coordinates to indices
     frequency_slice += N // 2
+    # Only take the lower half plane
+    frequency_slice = jnp.flip(frequency_slice[:, : N // 2 + 1], axis=1)
     # Convert arguments to map_coordinates convention and compute
     k_x, k_y, k_z = jnp.transpose(frequency_slice, axes=[3, 0, 1, 2])
     if order in [0, 1]:
@@ -118,11 +120,11 @@ def extract_slice(
         )[:, :, 0]
     elif order == 3:
         if coefficients is None:
-            coefficients = spline_coefficients(weights)
+            coefficients = compute_spline_coefficients(weights)
         projection = map_coordinates_with_cubic_spline(
             coefficients, (k_x, k_y, k_z), **kwargs
         )[:, :, 0]
     else:
         raise NotImplementedError(f"order={order} not implemented.")
 
-    return jnp.fft.ifftshift(projection)[:, : N // 2 + 1]
+    return jnp.fft.ifftshift(projection, axes=(0,))

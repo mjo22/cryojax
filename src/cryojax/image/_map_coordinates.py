@@ -6,7 +6,7 @@ version: https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_sr
 __all__ = [
     "map_coordinates",
     "map_coordinates_with_cubic_spline",
-    "spline_coefficients",
+    "compute_spline_coefficients",
 ]
 
 import functools
@@ -69,7 +69,7 @@ def map_coordinates_with_cubic_spline(
     return _map_coordinates_with_cubic_spline(input, coordinates, mode, cval)
 
 
-def spline_coefficients(data: Array) -> Array:
+def compute_spline_coefficients(data: Array) -> Array:
     """Solve for the spline coefficients of an input array."""
     ndim = data.ndim
     for i in range(ndim):
@@ -246,7 +246,7 @@ def _map_coordinates(
     return result.astype(input_arr.dtype)
 
 
-@functools.partial(jax.jit, static_argnums=(2, 3, 4))
+@functools.partial(jax.jit, static_argnums=(2, 3))
 def _map_coordinates_with_cubic_spline(
     coefficients: ArrayLike,
     coordinates: Sequence[ArrayLike],

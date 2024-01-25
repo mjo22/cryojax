@@ -46,7 +46,7 @@ from ...image import (
     crop,
     fftn,
     make_coordinates,
-    spline_coefficients,
+    compute_spline_coefficients,
     CoordinateGrid,
     CoordinateList,
     FrequencySlice,
@@ -362,7 +362,7 @@ class FourierVoxelGrid(Voxels):
     @cached_property
     @jax.jit
     def spline_coefficients(self) -> ComplexCubicVolume:
-        return spline_coefficients(self.weights)
+        return compute_spline_coefficients(self.weights)
 
     def rotate_to_pose(self, pose: Pose) -> Self:
         """
