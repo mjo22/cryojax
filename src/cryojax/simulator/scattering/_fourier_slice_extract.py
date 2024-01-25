@@ -87,11 +87,11 @@ def extract_slice(
     grid_shape = jnp.asarray([N, N, N], dtype=float)
     frequency_slice *= grid_shape
     # ... then shift from coordinates to indices
-    frequency_slice += N//2
+    frequency_slice += N // 2
     # Convert arguments to map_coordinates convention and compute
     k_x, k_y, k_z = jnp.transpose(frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates(weights, (k_x, k_y, k_z), order, **kwargs)[
         :, :, 0
     ]
 
-    return jnp.fft.ifftshift(projection)[:, :N//2]
+    return jnp.fft.ifftshift(projection)[:, : N // 2 + 1]

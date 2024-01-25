@@ -411,6 +411,8 @@ class FourierVoxelGrid(Voxels):
         # Pad template
         if pad_scale < 1.0:
             raise ValueError("pad_scale must be greater than 1.0")
+        # ... always pad to even size to avoid interpolation issues in
+        # fourier slice extraction.
         padded_shape = tuple(
             [int(s * pad_scale) for s in density_grid.shape[-3:]]
         )
@@ -419,7 +421,9 @@ class FourierVoxelGrid(Voxels):
         # fourier density only on the half space. Fourier slice extraction
         # does not currently work if rfftn is us
         # ... store the density grid with the zero frequency component in the center
-        fourier_density_grid = jnp.fft.fftshift(fftn(padded_density_grid, axes=(-3, -2, -1)))
+        fourier_density_grid = jnp.fft.fftshift(
+            fftn(padded_density_grid, axes=(-3, -2, -1))
+        )
         # ... create in-plane frequency slice on the half space
         frequency_slice = FrequencySlice(
             shape=padded_density_grid.shape[-3:-1], half_space=False

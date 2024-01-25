@@ -1,17 +1,3 @@
-# Copyright 2019 The JAX Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """
 This version of the scipy function map_coordinates is modified from Louis Desdoigts's
 version: https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_src/scipy/ndimage.py
@@ -55,7 +41,6 @@ def map_coordinates(
         See https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html.
     """
     return _map_coordinates(input, coordinates, order, mode, cval)
-
 
 
 def _nonempty_prod(arrs: Sequence[Array]) -> Array:
@@ -161,9 +146,7 @@ def _spline_value(
     mode: str,
     cval: ArrayLike,
 ) -> Array:
-    coefficient = coefficients.at[tuple(index)].get(
-            mode=mode, fill_value=cval
-        )
+    coefficient = coefficients.at[tuple(index)].get(mode=mode, fill_value=cval)
     fn = vmap(lambda x, i: _spline_basis(x - i + 1), (0, 0))
     return coefficient * fn(coordinate, index).prod()
 
@@ -184,14 +167,16 @@ def _spline_point(
 
 
 def _cubic_spline(
-    input: Array, coordinates: Array, mode: str, cval: ArrayLike
+    coefficients: Array,
+    coordinates: tuple[Array, ...],
+    mode: str,
+    cval: ArrayLike,
 ) -> Array:
-    coefficients = _spline_coefficients(input)
-    points = coordinates.reshape(input.ndim, -1).T
-    fn = lambda coord: _spline_point(
-        coefficients, coord, mode, cval
-    )
-    return vmap(fn)(points).reshape(coordinates.shape[1:])
+    coords = jnp.stack([c for c in coordinates], axis=0)
+    ndim = coords.ndim - 1
+    points = coords.reshape(ndim, -1).T
+    fn = lambda coord: _spline_point(coefficients, coord, mode, cval)
+    return vmap(fn)(points).reshape(coords.shape[1:])
 
 
 @functools.partial(jax.jit, static_argnums=(2, 3, 4))
@@ -230,11 +215,13 @@ def _map_coordinates(
     for items in itertools.product(*interpolations_1d):
         index_like, weights = util.unzip2(items)
         if order in [0, 1]:
-            contribution = input_arr.at[index_like].get(mode=mode, fill_value=cval)
+            contribution = input_arr.at[index_like].get(
+                mode=mode, fill_value=cval
+            )
             interpolated = _nonempty_prod(weights) * contribution
         else:
-            index_like = jnp.asarray(index_like)
-            interpolated = _cubic_spline(input_arr, index_like, mode, cval)
+            coefficients = _spline_coefficients(input_arr)
+            interpolated = _cubic_spline(coefficients, index_like, mode, cval)
         outputs.append(interpolated)
     result = _nonempty_sum(outputs)
     if jnp.issubdtype(input_arr.dtype, jnp.integer):
