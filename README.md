@@ -60,7 +60,7 @@ pose = cs.EulerPose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0,
 specimen = cs.Specimen(density=density, pose=pose)
 ```
 
-Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead a stack of `ElectronDensity` is loaded, an `Ensemble` can be loaded, which is a `Specimen` that can be evaluated at a particular conformation.
+Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead a tuple of `ElectronDensity` is loaded, this can be placed in an `Ensemble`. An `Ensemble` is a `Specimen` that can be evaluated at a particular conformation.
 
 ```python
 filenames = ...
