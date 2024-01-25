@@ -9,10 +9,10 @@ __all__ = ["extract_slice", "FourierSliceExtract"]
 from typing import Any
 
 import jax.numpy as jnp
-from jax.scipy.ndimage import map_coordinates
 
 from ._scattering_model import ScatteringModel
 from ..density import FourierVoxelGrid
+from ...image import map_coordinates
 from ...core import field
 from ...typing import (
     ComplexImage,
@@ -27,11 +27,11 @@ class FourierSliceExtract(ScatteringModel):
     Fourier-projection slice theorem.
 
     Attributes ``order``, ``mode``, and ``cval``
-    are passed to ``jax.scipy.map_coordinates``.
+    are passed to ``cryojax.image.map_coordinates``.
     """
 
     interpolation_order: int = field(static=True, default=1)
-    interpolation_mode: str = field(static=True, default="wrap")
+    interpolation_mode: str = field(static=True, default="clip")
     interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
 
     def scatter(self, density: FourierVoxelGrid) -> ComplexImage:
@@ -68,7 +68,7 @@ def extract_slice(
     order : int
         Spline order of interpolation. By default, ``1``.
     kwargs
-        Keyword arguments passed to ``jax.scipy.ndimage.map_coordinates``.
+        Keyword arguments passed to ``cryojax.image.map_coordinates``.
 
     Returns
     -------
