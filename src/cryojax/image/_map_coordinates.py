@@ -135,13 +135,17 @@ def _spline_value(
     coefficients: Array,
     coordinate: Array,
     index: Array,
-    shape: tuple[int, ...],
     mode: str,
     cval: ArrayLike,
 ) -> Array:
-    coefficient = jnp.squeeze(
-        lax.dynamic_slice(coefficients, index, [1] * coefficients.ndim)
-    )
+    if mode == "wrap":
+        coefficient = coefficients.at[tuple(index)].get(
+            mode="promise_in_bounds"
+        )
+    else:
+        coefficient = coefficients.at[tuple(index)].get(
+            mode=mode, fill_value=cval
+        )
     fn = vmap(lambda x, i: _spline_basis(x - i + 1), (0, 0))
     return coefficient * fn(coordinate, index).prod()
 
@@ -153,11 +157,19 @@ def _spline_point(
     mode: str,
     cval: ArrayLike,
 ) -> Array:
-    index_fn = lambda x: (jnp.arange(0, 4) + jnp.floor(x)).astype(int)
-    index_vals = vmap(index_fn)(coordinate)
+    if mode == "wrap":
+        shape_arr = jnp.asarray(shape, dtype=int)
+        index_fn = lambda x, s: (jnp.arange(0, 4) + jnp.floor(x) % s).astype(
+            int
+        )
+        index_vals = vmap(index_fn, (0, 0))(coordinate, shape_arr)
+        coordinate = coordinate % (shape_arr - 1)
+    else:
+        index_fn = lambda x: (jnp.arange(0, 4) + jnp.floor(x)).astype(int)
+        index_vals = vmap(index_fn)(coordinate)
     indices = jnp.array(jnp.meshgrid(*index_vals, indexing="ij"))
     fn = lambda index: _spline_value(
-        coefficients, coordinate, index, shape, mode, cval
+        coefficients, coordinate, index, mode, cval
     )
     return vmap(fn)(indices.reshape(coefficients.ndim, -1).T).sum()
 
@@ -225,9 +237,12 @@ def _map_coordinates(
                 )
             interpolated = _nonempty_prod(weights) * contribution
         else:
-            interpolated = _cubic_spline(
-                input_arr, jnp.asarray(index_like), mode, cval
-            )
+            if mode == "wrap":
+                raise NotImplementedError(
+                    f"mode {mode} not supported for order=3."
+                )
+            index_like = jnp.asarray(index_like)
+            interpolated = _cubic_spline(input_arr, index_like, mode, cval)
         outputs.append(interpolated)
     result = _nonempty_sum(outputs)
     if jnp.issubdtype(input_arr.dtype, jnp.integer):
