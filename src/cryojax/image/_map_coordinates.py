@@ -35,6 +35,29 @@ import jax.numpy as jnp
 from jaxtyping import ArrayLike, Array
 
 
+def map_coordinates(
+    input: ArrayLike,
+    coordinates: Sequence[ArrayLike],
+    order: int,
+    mode: str = "fill",
+    cval: ArrayLike = 0.0,
+):
+    """
+    Similar to scipy.map_coordinates, but diverges from the API.
+
+    Adapted from https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_src/scipy/ndimage.py.
+
+    Arguments
+    ---------
+    mode :
+        Uses built-in JAX out-of-bounds indexing to determine how to
+        extrapolate beyond boundaries.
+        See https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html.
+    """
+    return _map_coordinates(input, coordinates, order, mode, cval)
+
+
+
 def _nonempty_prod(arrs: Sequence[Array]) -> Array:
     return functools.reduce(operator.mul, arrs)
 
@@ -138,12 +161,7 @@ def _spline_value(
     mode: str,
     cval: ArrayLike,
 ) -> Array:
-    if mode == "wrap":
-        coefficient = coefficients.at[tuple(index)].get(
-            mode="promise_in_bounds"
-        )
-    else:
-        coefficient = coefficients.at[tuple(index)].get(
+    coefficient = coefficients.at[tuple(index)].get(
             mode=mode, fill_value=cval
         )
     fn = vmap(lambda x, i: _spline_basis(x - i + 1), (0, 0))
@@ -153,20 +171,11 @@ def _spline_value(
 def _spline_point(
     coefficients: Array,
     coordinate: Array,
-    shape: tuple[int, ...],
     mode: str,
     cval: ArrayLike,
 ) -> Array:
-    if mode == "wrap":
-        shape_arr = jnp.asarray(shape, dtype=int)
-        index_fn = lambda x, s: (jnp.arange(0, 4) + jnp.floor(x) % s).astype(
-            int
-        )
-        index_vals = vmap(index_fn, (0, 0))(coordinate, shape_arr)
-        coordinate = coordinate % (shape_arr - 1)
-    else:
-        index_fn = lambda x: (jnp.arange(0, 4) + jnp.floor(x)).astype(int)
-        index_vals = vmap(index_fn)(coordinate)
+    index_fn = lambda x: (jnp.arange(0, 4) + jnp.floor(x)).astype(int)
+    index_vals = vmap(index_fn)(coordinate)
     indices = jnp.array(jnp.meshgrid(*index_vals, indexing="ij"))
     fn = lambda index: _spline_value(
         coefficients, coordinate, index, mode, cval
@@ -180,7 +189,7 @@ def _cubic_spline(
     coefficients = _spline_coefficients(input)
     points = coordinates.reshape(input.ndim, -1).T
     fn = lambda coord: _spline_point(
-        coefficients, coord, input.shape, mode, cval
+        coefficients, coord, mode, cval
     )
     return vmap(fn)(points).reshape(coordinates.shape[1:])
 
@@ -221,26 +230,9 @@ def _map_coordinates(
     for items in itertools.product(*interpolations_1d):
         index_like, weights = util.unzip2(items)
         if order in [0, 1]:
-            if mode == "wrap":
-                index_like = tuple(
-                    [
-                        idxs % jnp.asarray(input_arr.shape, dtype=int)
-                        for idxs in index_like
-                    ]
-                )
-                contribution = input_arr.at[index_like].get(
-                    mode="promise_in_bounds"
-                )
-            else:
-                contribution = input_arr.at[index_like].get(
-                    mode=mode, fill_value=cval
-                )
+            contribution = input_arr.at[index_like].get(mode=mode, fill_value=cval)
             interpolated = _nonempty_prod(weights) * contribution
         else:
-            if mode == "wrap":
-                raise NotImplementedError(
-                    f"mode {mode} not supported for order=3."
-                )
             index_like = jnp.asarray(index_like)
             interpolated = _cubic_spline(input_arr, index_like, mode, cval)
         outputs.append(interpolated)
@@ -248,27 +240,3 @@ def _map_coordinates(
     if jnp.issubdtype(input_arr.dtype, jnp.integer):
         result = _round_half_away_from_zero(result)
     return result.astype(input_arr.dtype)
-
-
-def map_coordinates(
-    input: ArrayLike,
-    coordinates: Sequence[ArrayLike],
-    order: int,
-    mode: str = "fill",
-    cval: ArrayLike = 0.0,
-):
-    """
-    Similar to scipy.map_coordinates, but diverges from the API.
-
-    Adapted from https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_src/scipy/ndimage.py.
-
-    Arguments
-    ---------
-    mode :
-        Uses built-in JAX out-of-bounds indexing to determine how to
-        extrapolate beyond boundaries.
-        See https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html.
-        Additionally, the mode "wrap" is supported, as described in the scipy.map_coordinates
-        documentation.
-    """
-    return _map_coordinates(input, coordinates, order, mode, cval)
