@@ -44,11 +44,17 @@ def map_coordinates(
         extrapolate beyond boundaries.
         See https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html.
     """
-    return _map_coordinates_nn_or_linear(input, coordinates, order, mode, cval)
+    if order in [0, 1]:
+        return _map_coordinates_nn_or_linear(input, coordinates, order, mode, cval)
+    elif order == 3:
+        coefficients = compute_spline_coefficients(input)
+        return _map_coordinates_with_cubic_spline(coefficients, coordinates, mode, cval)
+    else:
+        raise NotImplementedError(f"map_coordinates does not support order={order}.")
 
 
 def map_coordinates_with_cubic_spline(
-    input: ArrayLike,
+    coefficients: ArrayLike,
     coordinates: Sequence[ArrayLike],
     mode: str = "fill",
     cval: ArrayLike = 0.0,
@@ -66,7 +72,7 @@ def map_coordinates_with_cubic_spline(
         See https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html.
 
     """
-    return _map_coordinates_with_cubic_spline(input, coordinates, mode, cval)
+    return _map_coordinates_with_cubic_spline(coefficients, coordinates, mode, cval)
 
 
 @jax.jit
@@ -106,7 +112,7 @@ def _map_coordinates_nn_or_linear(
     elif order == 1:
         interp_fun = _linear_indices_and_weights
     else:
-        raise NotImplementedError("map_coordinates requires order = 0 or 1.")
+        raise NotImplementedError("_map_coordinates_nn_or_linear requires order = 0 or 1.")
 
     interpolations_1d = []
     for coordinate in coordinate_arrs:
@@ -126,13 +132,19 @@ def _map_coordinates_nn_or_linear(
 
 @functools.partial(jax.jit, static_argnums=(2, 3))
 def _map_coordinates_with_cubic_spline(
-    coefficients: Array,
-    coordinates: Sequence[Array],
+    coefficients: ArrayLike,
+    coordinates: Sequence[ArrayLike],
     mode: str,
     cval: ArrayLike,
 ) -> Array:
+    coefficients = jnp.asarray(coefficients)
+    if len(coordinates) != coefficients.ndim:
+        raise ValueError(
+            "coordinates must be a sequence of length coefficients.ndim, but "
+            "{} != {}".format(len(coordinates), coefficients.ndim)
+        )
     # Stack coordinates along one axis
-    coords = jnp.stack([c for c in coordinates], axis=0)
+    coords = jnp.stack([jnp.asarray(c) for c in coordinates], axis=0)
     # vmap spline evaluate over coordinates and return
     fn = lambda coord: _spline_point(coefficients, coord, mode, cval)
     return vmap(fn)(coords.reshape(coefficients.ndim, -1).T).reshape(
