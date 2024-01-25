@@ -68,10 +68,6 @@ class ScatteringModel(Module):
         """
         # Get density in the lab frame
         density = specimen.density_in_lab_frame
-        if density.n_indexed_dims != 0:
-            raise AttributeError(
-                "ElectronDensity.n_indexed_dims must be zero when passing to ScatteringModel"
-            )
         # Compute the image in the exit plane
         image_at_exit_plane = self.scatter(density, **kwargs)
         if isinstance(density, FourierVoxelGrid):

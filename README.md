@@ -64,7 +64,7 @@ Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead 
 
 ```python
 filenames = ...
-density = cs.FourierVoxelGrid.from_list([cs.FourierVoxelGrid.from_file(filename) for filename in filenames])
+density = tuple([cs.FourierVoxelGrid.from_file(filename) for filename in filenames])
 conformation = cs.Conformation(0)
 specimen = cs.Ensemble(density=density, pose=pose, conformation=conformation)
 ```

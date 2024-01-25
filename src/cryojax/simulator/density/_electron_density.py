@@ -2,23 +2,26 @@
 Base electron density representation.
 """
 
-__all__ = ["is_density_leaves", "ElectronDensity", "ElectronDensityT"]
+__all__ = [
+    "is_density_leaves_without_coordinates",
+    "ElectronDensity",
+    "ElectronDensityT",
+]
 
 from abc import abstractmethod
 from typing import Type, Any, TypeVar
 from typing_extensions import Self
 from jaxtyping import PyTree
-from equinox import AbstractClassVar
+from equinox import AbstractClassVar, Module
 
 from ..pose import Pose
-from ...core import IndexedModule
 from ...image import get_not_coordinate_filter_spec
 
 
 ElectronDensityT = TypeVar("ElectronDensityT", bound="ElectronDensity")
 
 
-def is_density_leaves(element: Any) -> bool | PyTree[bool]:
+def is_density_leaves_without_coordinates(element: Any) -> bool | PyTree[bool]:
     """Returns a filter spec that is ``True`` at the ``ElectronDensity``
     leaves, besides its coordinates.
     """
@@ -28,7 +31,7 @@ def is_density_leaves(element: Any) -> bool | PyTree[bool]:
         return False
 
 
-class ElectronDensity(IndexedModule):
+class ElectronDensity(Module):
     """
     Abstraction of an electron density distribution.
 

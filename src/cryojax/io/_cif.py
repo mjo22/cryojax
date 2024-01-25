@@ -1,15 +1,12 @@
+__all__ = ["read_atoms_from_cif"]
+
 import numpy as np
 from jaxtyping import Float, Int
-from cryojax.io._gemmi import (
+from ._gemmi import (
     extract_gemmi_atoms,
     extract_atom_positions_and_names,
     clean_gemmi_structure,
 )
-
-
-__all__ = [
-    "read_atoms_from_cif",
-]
 
 
 def read_atoms_from_cif(

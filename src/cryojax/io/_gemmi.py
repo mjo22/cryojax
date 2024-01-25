@@ -1,6 +1,7 @@
 """
 Routines for converting Gemmi structures into voxel densities.
 """
+
 __all__ = [
     "clean_gemmi_structure",
     "extract_gemmi_atoms",
@@ -10,11 +11,7 @@ __all__ = [
 
 import numpy as np
 import itertools
-from typing import List
 from jaxtyping import Float, Int
-from cryojax.io.load_atoms import (
-    get_form_factor_params,
-)
 
 
 def get_atom_info_from_gemmi_model(

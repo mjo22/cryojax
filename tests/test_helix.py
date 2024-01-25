@@ -15,10 +15,10 @@ def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
         sample_subunit_mrc_path, pad_scale=2
     )
     r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
-    pose = cs.EulerPose(*r_0)
-    specimen = cs.Specimen(subunit_density, pose)
+    subunit_pose = cs.EulerPose(*r_0)
+    subunit = cs.Specimen(subunit_density, subunit_pose)
     return cs.Helix(
-        specimen,
+        subunit,
         rise=21.8,
         twist=29.4,
         n_start=6,
@@ -29,20 +29,23 @@ def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
 def build_helix_with_conformation(
     sample_subunit_mrc_path, n_subunits_per_start
 ) -> cs.Helix:
-    subunit_density = cs.FourierVoxelGrid.from_list(
+    subunit_density = tuple(
         [
             cs.FourierVoxelGrid.from_file(sample_subunit_mrc_path)
             for _ in range(2)
         ]
     )
     n_start = 6
-    pose = cs.EulerPose()
-    ensemble = cs.Ensemble(subunit_density, pose)
+    r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
+    subunit_pose = cs.EulerPose(*r_0)
+    subunit = cs.Ensemble(
+        subunit_density, subunit_pose, conformation=cs.Conformation(0)
+    )
     conformation = cs.Conformation(
         np.random.choice(2, n_start * n_subunits_per_start)
     )
     return cs.Helix(
-        ensemble,
+        subunit,
         conformation=conformation,
         rise=21.8,
         twist=29.4,
@@ -59,16 +62,18 @@ def test_superposition_pipeline_without_conformation(
         scattering=scattering, specimen=helix.subunits
     )
     image = pipeline.render()
+    stochastic_image = pipeline.sample(jax.random.PRNGKey(0))
 
 
 def test_superposition_pipeline_with_conformation(
     sample_subunit_mrc_path, scattering
 ):
-    helix = build_helix_with_conformation(sample_subunit_mrc_path, 1)
+    helix = build_helix_with_conformation(sample_subunit_mrc_path, 2)
     pipeline = cs.SuperpositionPipeline(
         scattering=scattering, specimen=helix.subunits
     )
     image = pipeline.render()
+    stochastic_image = pipeline.sample(jax.random.PRNGKey(0))
 
 
 @pytest.mark.parametrize(
