@@ -27,7 +27,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     )
     # Since Voxelgrid is in Frequency space by default, we have to first
     # transform back into real space.
-    vg_density = ifftn(vg.weights).real
+    vg_density = ifftn(jnp.fft.ifftshift(vg.weights)).real
     # The constructors each transpose in a unique way in order for
     # jax-finufft and the fourier slice theorem to match each other
     # and cisTEM. This operation undos the difference between both transposes
