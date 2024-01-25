@@ -44,7 +44,7 @@ def map_coordinates(
         extrapolate beyond boundaries.
         See https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html.
     """
-    return _map_coordinates(input, coordinates, order, mode, cval)
+    return _map_coordinates_nn_or_linear(input, coordinates, order, mode, cval)
 
 
 def map_coordinates_with_cubic_spline(
@@ -83,6 +83,65 @@ def compute_spline_coefficients(data: Array) -> Array:
     return data
 
 
+@functools.partial(jax.jit, static_argnums=(2, 3, 4))
+def _map_coordinates_nn_or_linear(
+    input: ArrayLike,
+    coordinates: Sequence[ArrayLike],
+    order: int,
+    mode: str,
+    cval: ArrayLike,
+) -> Array:
+    input_arr = jnp.asarray(input)
+    coordinate_arrs = [jnp.asarray(c) for c in coordinates]
+
+    if len(coordinates) != input_arr.ndim:
+        raise ValueError(
+            "coordinates must be a sequence of length input.ndim, but "
+            "{} != {}".format(len(coordinates), input_arr.ndim)
+        )
+
+    if order == 0:
+        interp_fun = _nearest_indices_and_weights
+    elif order == 1:
+        interp_fun = _linear_indices_and_weights
+    else:
+        raise NotImplementedError("map_coordinates requires order = 0 or 1.")
+
+    interpolations_1d = []
+    for coordinate in coordinate_arrs:
+        interp_nodes = interp_fun(coordinate)
+        interpolations_1d.append(interp_nodes)
+    outputs = []
+    for items in itertools.product(*interpolations_1d):
+        indices, weights = util.unzip2(items)
+        contribution = input_arr.at[indices].get(mode=mode, fill_value=cval)
+        interpolated = _nonempty_prod(weights) * contribution
+        outputs.append(interpolated)
+    result = _nonempty_sum(outputs)
+    if jnp.issubdtype(input_arr.dtype, jnp.integer):
+        result = _round_half_away_from_zero(result)
+    return result.astype(input_arr.dtype)
+
+
+@functools.partial(jax.jit, static_argnums=(2, 3))
+def _map_coordinates_with_cubic_spline(
+    coefficients: Array,
+    coordinates: Sequence[Array],
+    mode: str,
+    cval: ArrayLike,
+) -> Array:
+    # Stack coordinates along one axis
+    coords = jnp.stack([c for c in coordinates], axis=0)
+    # vmap spline evaluate over coordinates and return
+    fn = lambda coord: _spline_point(coefficients, coord, mode, cval)
+    return vmap(fn)(coords.reshape(coefficients.ndim, -1).T).reshape(
+        coords.shape[1:]
+    )
+
+
+#
+# Nearest neighbor and linear interpolation utilities
+#
 def _nonempty_prod(arrs: Sequence[Array]) -> Array:
     return functools.reduce(operator.mul, arrs)
 
@@ -113,12 +172,9 @@ def _linear_indices_and_weights(
     return [(index, lower_weight), (index + 1, upper_weight)]
 
 
-def _cubic_indices_and_weights(
-    coordinate: Array,
-) -> List[Tuple[Array, None]]:
-    return [(coordinate, None)]
-
-
+#
+# Spline interpolation utilities
+#
 def _build_operator(
     n: int, dtype: DTypeLike | None = None, diag_value: float = 4
 ) -> lx.TridiagonalLinearOperator:
@@ -191,81 +247,3 @@ def _spline_point(
         coefficients, coordinate, index, mode, cval
     )
     return vmap(fn)(indices.reshape(coefficients.ndim, -1).T).sum()
-
-
-def _cubic_spline(
-    coefficients: Array,
-    coordinates: tuple[Array, ...],
-    mode: str,
-    cval: ArrayLike,
-) -> Array:
-    coords = jnp.stack([c for c in coordinates], axis=0)
-    ndim = coords.ndim - 1
-    points = coords.reshape(ndim, -1).T
-    fn = lambda coord: _spline_point(coefficients, coord, mode, cval)
-    return vmap(fn)(points).reshape(coords.shape[1:])
-
-
-@functools.partial(jax.jit, static_argnums=(2, 3, 4))
-def _map_coordinates(
-    input: ArrayLike,
-    coordinates: Sequence[ArrayLike],
-    order: int,
-    mode: str,
-    cval: ArrayLike,
-) -> Array:
-    input_arr = jnp.asarray(input)
-    coordinate_arrs = [jnp.asarray(c) for c in coordinates]
-
-    if len(coordinates) != input_arr.ndim:
-        raise ValueError(
-            "coordinates must be a sequence of length input.ndim, but "
-            "{} != {}".format(len(coordinates), input_arr.ndim)
-        )
-
-    if order == 0:
-        interp_fun = _nearest_indices_and_weights
-    elif order == 1:
-        interp_fun = _linear_indices_and_weights
-    else:
-        raise NotImplementedError("map_coordinates requires order = 0 or 1.")
-
-    interpolations_1d = []
-    for coordinate in coordinate_arrs:
-        interp_nodes = interp_fun(coordinate)
-        interpolations_1d.append(interp_nodes)
-    outputs = []
-    for items in itertools.product(*interpolations_1d):
-        indices, weights = util.unzip2(items)
-        contribution = input_arr.at[indices].get(mode=mode, fill_value=cval)
-        interpolated = _nonempty_prod(weights) * contribution
-        outputs.append(interpolated)
-    result = _nonempty_sum(outputs)
-    if jnp.issubdtype(input_arr.dtype, jnp.integer):
-        result = _round_half_away_from_zero(result)
-    return result.astype(input_arr.dtype)
-
-
-@functools.partial(jax.jit, static_argnums=(2, 3))
-def _map_coordinates_with_cubic_spline(
-    coefficients: ArrayLike,
-    coordinates: Sequence[ArrayLike],
-    mode: str,
-    cval: ArrayLike,
-) -> Array:
-    coefficients = jnp.asarray(coefficients)
-    coordinate_arrs = [jnp.asarray(c) for c in coordinates]
-
-    interpolations_1d = []
-    for coordinate in coordinate_arrs:
-        interp_nodes = _cubic_indices_and_weights(coordinate)
-        interpolations_1d.append(interp_nodes)
-    outputs = []
-    for items in itertools.product(*interpolations_1d):
-        coordinate, _ = util.unzip2(items)
-        interpolated = _cubic_spline(coefficients, coordinate, mode, cval)
-        outputs.append(interpolated)
-
-    result = _nonempty_sum(outputs)
-
-    return result
