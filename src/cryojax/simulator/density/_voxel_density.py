@@ -46,6 +46,7 @@ from ...image import (
     crop,
     fftn,
     make_coordinates,
+    spline_coefficients,
     CoordinateGrid,
     CoordinateList,
     FrequencySlice,
@@ -357,6 +358,11 @@ class FourierVoxelGrid(Voxels):
     @cached_property
     def frequency_slice_in_angstroms(self) -> FrequencySlice:
         return self.frequency_slice / self.voxel_size
+
+    @cached_property
+    @jax.jit
+    def spline_coefficients(self) -> ComplexCubicVolume:
+        return spline_coefficients(self.weights)
 
     def rotate_to_pose(self, pose: Pose) -> Self:
         """

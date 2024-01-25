@@ -6,17 +6,21 @@ from __future__ import annotations
 
 __all__ = ["extract_slice", "FourierSliceExtract"]
 
-from typing import Any
+from typing import Any, Optional
 
 import jax.numpy as jnp
 
 from ._scattering_model import ScatteringModel
 from ..density import FourierVoxelGrid
-from ...image import map_coordinates
+from ...image import (
+    map_coordinates,
+    map_coordinates_with_cubic_spline,
+    spline_coefficients,
+)
 from ...core import field
 from ...typing import (
     ComplexImage,
-    ComplexVolume,
+    ComplexCubicVolume,
     VolumeCoords,
 )
 
@@ -40,18 +44,33 @@ class FourierSliceExtract(ScatteringModel):
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
-        return extract_slice(
-            density.weights,
-            density.frequency_slice.get(),
-            order=self.interpolation_order,
-            mode=self.interpolation_mode,
-            cval=self.interpolation_cval,
-        )
+        if self.interpolation_order in [0, 1]:
+            return extract_slice(
+                density.weights,
+                density.frequency_slice.get(),
+                order=self.interpolation_order,
+                mode=self.interpolation_mode,
+                cval=self.interpolation_cval,
+            )
+        elif self.interpolation_order == 3:
+            return extract_slice(
+                density.weights,
+                density.frequency_slice.get(),
+                coefficients=density.spline_coefficients,
+                order=3,
+                mode=self.interpolation_mode,
+                cval=self.interpolation_cval,
+            )
+        else:
+            raise NotImplementedError(
+                f"interpolation_order={self.interpolation_order} not implemented."
+            )
 
 
 def extract_slice(
-    weights: ComplexVolume,
+    weights: ComplexCubicVolume,
     frequency_slice: VolumeCoords,
+    coefficients: Optional[ComplexCubicVolume] = None,
     order: int = 1,
     **kwargs: Any,
 ) -> ComplexImage:
@@ -67,8 +86,11 @@ def extract_slice(
     frequency_slice : shape `(N, N, 1, 3)`
         Frequency central slice coordinate system, with the zero
         frequency component in the corner.
+    coefficients : shape `(N+2, N+2, N+2)`
+        Optionally, include precomputed coefficients for the cubic spline.
+        If not given, compute the coefficients.
     order : int
-        Spline order of interpolation. By default, ``1``.
+        Order of interpolation, ranging from 0, 1, or 2.
     kwargs
         Keyword arguments passed to ``cryojax.image.map_coordinates``.
 
@@ -90,8 +112,17 @@ def extract_slice(
     frequency_slice += N // 2
     # Convert arguments to map_coordinates convention and compute
     k_x, k_y, k_z = jnp.transpose(frequency_slice, axes=[3, 0, 1, 2])
-    projection = map_coordinates(weights, (k_x, k_y, k_z), order, **kwargs)[
-        :, :, 0
-    ]
+    if order in [0, 1]:
+        projection = map_coordinates(
+            weights, (k_x, k_y, k_z), order, **kwargs
+        )[:, :, 0]
+    elif order == 3:
+        if coefficients is None:
+            coefficients = spline_coefficients(weights)
+        projection = map_coordinates_with_cubic_spline(
+            coefficients, (k_x, k_y, k_z), **kwargs
+        )[:, :, 0]
+    else:
+        raise NotImplementedError(f"order={order} not implemented.")
 
     return jnp.fft.ifftshift(projection)[:, : N // 2 + 1]
