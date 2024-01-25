@@ -31,7 +31,7 @@ class FourierSliceExtract(ScatteringModel):
     """
 
     interpolation_order: int = field(static=True, default=1)
-    interpolation_mode: str = field(static=True, default="clip")
+    interpolation_mode: str = field(static=True, default="fill")
     interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
 
     def scatter(self, density: FourierVoxelGrid) -> ComplexImage:
