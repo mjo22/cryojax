@@ -45,14 +45,18 @@ def map_coordinates(
         See https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html.
     """
     if order in [0, 1]:
-        return _map_coordinates_nn_or_linear(input, coordinates, order, mode, cval)
+        return _map_coordinates_nn_or_linear(
+            input, coordinates, order, mode, cval
+        )
     elif order == 3:
         coefficients = compute_spline_coefficients(input)
         return _map_coordinates_with_cubic_spline(
             coefficients, coordinates, mode, cval
         )
     else:
-        raise NotImplementedError(f"map_coordinates does not support order={order}.")
+        raise NotImplementedError(
+            f"map_coordinates does not support order={order}."
+        )
 
 
 def map_coordinates_with_cubic_spline(
