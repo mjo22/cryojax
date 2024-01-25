@@ -9,10 +9,10 @@ __all__ = ["extract_slice", "FourierSliceExtract"]
 from typing import Any
 
 import jax.numpy as jnp
-from jax.scipy.ndimage import map_coordinates
 
 from ._scattering_model import ScatteringModel
 from ..density import FourierVoxelGrid
+from ...image import map_coordinates
 from ...core import field
 from ...typing import (
     ComplexImage,
@@ -27,11 +27,11 @@ class FourierSliceExtract(ScatteringModel):
     Fourier-projection slice theorem.
 
     Attributes ``order``, ``mode``, and ``cval``
-    are passed to ``jax.scipy.map_coordinates``.
+    are passed to ``cryojax.image.map_coordinates``.
     """
 
     interpolation_order: int = field(static=True, default=1)
-    interpolation_mode: str = field(static=True, default="wrap")
+    interpolation_mode: str = field(static=True, default="fill")
     interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
 
     def scatter(self, density: FourierVoxelGrid) -> ComplexImage:
@@ -62,13 +62,15 @@ def extract_slice(
     Arguments
     ---------
     weights : shape `(N, N, N)`
-        Density grid in fourier space.
-    frequency_slice : shape `(N, N//2+1, 1, 3)`
-        Frequency central slice coordinate system.
+        Density grid in fourier space. The zero frequency component
+        should be in the center.
+    frequency_slice : shape `(N, N, 1, 3)`
+        Frequency central slice coordinate system, with the zero
+        frequency component in the corner.
     order : int
         Spline order of interpolation. By default, ``1``.
     kwargs
-        Keyword arguments passed to ``jax.scipy.ndimage.map_coordinates``.
+        Keyword arguments passed to ``cryojax.image.map_coordinates``.
 
     Returns
     -------
@@ -81,17 +83,15 @@ def extract_slice(
         raise ValueError(
             "Only cubic boxes are supported for fourier slice theorem."
         )
-    # Need to convert to logical coordinates, so make coordinates dimensionless
+    # Need to convert to logical coordinates, so first make coordinates dimensionless
     grid_shape = jnp.asarray([N, N, N], dtype=float)
     frequency_slice *= grid_shape
-    # ... then flip negative frequencies to positive
-    frequency_slice = jnp.where(
-        frequency_slice < 0, grid_shape + frequency_slice, frequency_slice
-    )
+    # ... then shift from coordinates to indices
+    frequency_slice += N // 2
     # Convert arguments to map_coordinates convention and compute
     k_x, k_y, k_z = jnp.transpose(frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates(weights, (k_x, k_y, k_z), order, **kwargs)[
         :, :, 0
     ]
 
-    return projection
+    return jnp.fft.ifftshift(projection)[:, : N // 2 + 1]

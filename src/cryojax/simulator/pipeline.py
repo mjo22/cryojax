@@ -6,6 +6,7 @@ from __future__ import annotations
 
 __all__ = ["ImagePipeline", "SuperpositionPipeline"]
 
+from functools import partial
 from typing import Optional
 from typing_extensions import override
 
@@ -262,6 +263,9 @@ class SuperpositionPipeline(ImagePipeline):
     compute an image from ``Assembly.subunits``.
     """
 
+    @partial(
+        jax.jit, static_argnames=["view_cropped", "get_real", "normalize"]
+    )
     @override
     def render(
         self,

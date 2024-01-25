@@ -1,4 +1,5 @@
 from . import (
+    _map_coordinates,
     _fft,
     _average,
     _spectrum,
@@ -8,6 +9,7 @@ from . import (
     operators,
 )
 
+from ._map_coordinates import *
 from ._fft import *
 from ._average import *
 from ._spectrum import *
@@ -17,7 +19,8 @@ from .coordinates import *
 from .operators import *
 
 __all__ = (
-    _fft.__all__
+    _map_coordinates.__all__
+    + _fft.__all__
     + _average.__all__
     + _spectrum.__all__
     + _normalize.__all__

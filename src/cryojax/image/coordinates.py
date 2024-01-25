@@ -236,12 +236,20 @@ class FrequencySlice(Coordinates):
         grid_spacing: float = 1.0,
         half_space: bool = True,
     ):
+        """Create a frequency slice. If not given, by default store
+        with the zero frequency component in the center."""
         if frequency_slice is not None:
             self._coordinates = frequency_slice
         elif shape is not None:
             frequency_slice = make_frequencies(
                 shape, grid_spacing, half_space=half_space
             )
+            if half_space:
+                frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0,))
+            else:
+                frequency_slice = jnp.fft.fftshift(
+                    frequency_slice, axes=(0, 1)
+                )
             frequency_slice = jnp.expand_dims(
                 jnp.pad(
                     frequency_slice,

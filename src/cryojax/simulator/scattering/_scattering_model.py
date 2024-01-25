@@ -102,9 +102,7 @@ class ScatteringModel(Module):
                 image_at_exit_plane,
             )
         # Transform back to fourier space and give the image zero mean
-        image_at_exit_plane = (
-            rfftn(image_at_exit_plane).at[0, 0].set(0.0 + 0.0j)
-        )
+        image_at_exit_plane = rfftn(image_at_exit_plane)
         # Apply translation through phase shifts
         image_at_exit_plane *= specimen.pose.shifts(
             self.manager.padded_frequency_grid_in_angstroms.get()
