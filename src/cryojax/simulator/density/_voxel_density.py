@@ -7,6 +7,7 @@ __all__ = [
     "VoxelT",
     "RealVoxelGrid",
     "FourierVoxelGrid",
+    "FourierVoxelGridAsSpline",
     "VoxelCloud",
 ]
 
@@ -77,7 +78,6 @@ class Voxels(ElectronDensity):
         The voxel size of the electron density.
     """
 
-    weights: AbstractVar[Array]
     voxel_size: Real_ = field()
 
     @overload
@@ -350,18 +350,28 @@ class FourierVoxelGrid(Voxels):
         in fourier space.
     """
 
-    weights: ComplexCubicVolume = field()
+    fourier_density_grid: ComplexCubicVolume = field()
     frequency_slice: FrequencySlice = field()
 
     is_real: ClassVar[bool] = False
 
+    def __init__(
+        self,
+        fourier_density_grid: ComplexCubicVolume,
+        frequency_slice: FrequencySlice,
+        voxel_size: Real_,
+    ):
+        self.fourier_density_grid = fourier_density_grid
+        self.frequency_slice = frequency_slice
+        self.voxel_size = voxel_size
+
+    @property
+    def shape(self) -> tuple[int, int, int]:
+        return self.fourier_density_grid.shape
+
     @cached_property
     def frequency_slice_in_angstroms(self) -> FrequencySlice:
         return self.frequency_slice / self.voxel_size
-
-    @cached_property
-    def spline_coefficients(self) -> ComplexCubicVolume:
-        return compute_spline_coefficients(self.weights)
 
     def rotate_to_pose(self, pose: Pose) -> Self:
         """
@@ -411,11 +421,45 @@ class FourierVoxelGrid(Voxels):
             shape=padded_density_grid.shape[-3:-1], half_space=False
         )
 
-        return cls(
-            weights=fourier_density_grid,
-            frequency_slice=frequency_slice,
-            voxel_size=voxel_size,
+        return cls(fourier_density_grid, frequency_slice, voxel_size)
+
+
+class FourierVoxelGridAsSpline(FourierVoxelGrid):
+    """
+    Abstraction of a 3D electron density voxel grid
+    in fourier space.
+
+    Attributes
+    ----------
+    weights :
+        3D electron density grid in fourier space.
+    frequency_slice :
+        Central slice of cartesian coordinate system
+        in fourier space.
+    """
+
+    spline_coefficients: ComplexCubicVolume = field()
+    frequency_slice: FrequencySlice = field()
+    fourier_density_grid: None = field()
+
+    is_real: ClassVar[bool] = False
+
+    def __init__(
+        self,
+        fourier_density_grid: ComplexCubicVolume,
+        frequency_slice: FrequencySlice,
+        voxel_size: Real_,
+    ):
+        self.spline_coefficients = compute_spline_coefficients(
+            fourier_density_grid
         )
+        self.frequency_slice = frequency_slice
+        self.voxel_size = voxel_size
+        self.fourier_density_grid = None
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return tuple([s - 2 for s in self.spline_coefficients.shape])
 
 
 class RealVoxelGrid(Voxels):
@@ -431,10 +475,24 @@ class RealVoxelGrid(Voxels):
         List of coordinates for the point cloud.
     """
 
-    weights: RealVolume = field()
+    density_grid: RealVolume = field()
     coordinate_grid: CoordinateGrid = field()
 
     is_real: ClassVar[bool] = True
+
+    def __init__(
+        self,
+        density_grid: ComplexCubicVolume,
+        coordinate_grid: CoordinateGrid,
+        voxel_size: Real_,
+    ):
+        self.density_grid = density_grid
+        self.coordinate_grid = coordinate_grid
+        self.voxel_size = voxel_size
+
+    @property
+    def shape(self) -> tuple[int, int, int]:
+        return self.density_grid.shape
 
     @cached_property
     def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
@@ -504,11 +562,7 @@ class RealVoxelGrid(Voxels):
                 density_grid = crop(density_grid, cropped_shape)
             coordinate_grid = CoordinateGrid(shape=density_grid.shape[-3:])
 
-        return cls(
-            weights=density_grid,
-            coordinate_grid=coordinate_grid,
-            voxel_size=voxel_size,
-        )
+        return cls(density_grid, coordinate_grid, voxel_size)
 
 
 class VoxelCloud(Voxels):
@@ -526,10 +580,24 @@ class VoxelCloud(Voxels):
         List of coordinates for the point cloud.
     """
 
-    weights: RealCloud = field()
+    density_weights: RealCloud = field()
     coordinate_list: CoordinateList = field()
 
     is_real: ClassVar[bool] = True
+
+    def __init__(
+        self,
+        density_weights: ComplexCubicVolume,
+        coordinate_list: CoordinateList,
+        voxel_size: Real_,
+    ):
+        self.density_weights = density_weights
+        self.coordinate_list = coordinate_list
+        self.voxel_size = voxel_size
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return self.density_weights.shape
 
     @cached_property
     def coordinate_list_in_angstroms(self) -> CoordinateList:
@@ -573,11 +641,7 @@ class VoxelCloud(Voxels):
         flat_density = density_grid[nonzero]
         coordinate_list = coordinate_grid[nonzero]
 
-        return cls(
-            weights=flat_density,
-            coordinate_list=CoordinateList(coordinate_list),
-            voxel_size=voxel_size,
-        )
+        return cls(flat_density, CoordinateList(coordinate_list), voxel_size)
 
 
 def _eval_3d_real_space_gaussian(

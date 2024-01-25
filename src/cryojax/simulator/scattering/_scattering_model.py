@@ -73,7 +73,7 @@ class ScatteringModel(Module):
         if isinstance(density, FourierVoxelGrid):
             # Resize the image to match the ImageManager.padded_shape
             image_at_exit_plane = self.manager.crop_or_pad_to_padded_shape(
-                irfftn(image_at_exit_plane, s=density.weights.shape[0:2])
+                irfftn(image_at_exit_plane, s=density.shape[0:2])
             )
         else:
             # ... otherwise, assume the image is already at the padded_shape

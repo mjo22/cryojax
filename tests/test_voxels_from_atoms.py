@@ -27,7 +27,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     )
     # Since Voxelgrid is in Frequency space by default, we have to first
     # transform back into real space.
-    vg_density = ifftn(jnp.fft.ifftshift(vg.weights)).real
+    vg_density = ifftn(jnp.fft.ifftshift(vg.fourier_density_grid)).real
     # The constructors each transpose in a unique way in order for
     # jax-finufft and the fourier slice theorem to match each other
     # and cisTEM. This operation undos the difference between both transposes
@@ -41,7 +41,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
         voxel_size=voxel_size,
     )
 
-    np.testing.assert_allclose(vg_density, vc.weights.ravel(), atol=1e-12)
+    np.testing.assert_allclose(vg_density, vc.density_grid.ravel(), atol=1e-12)
 
 
 class TestBuildRealSpaceVoxelsFromAtoms:
@@ -126,8 +126,8 @@ class TestBuildVoxelsFromTrajectories:
         )
 
         np.testing.assert_allclose(
-            traj_voxels.weights[0], voxel1.weights, atol=1e-12
+            traj_voxels.density_grid[0], voxel1.density_grid, atol=1e-12
         )
         np.testing.assert_allclose(
-            traj_voxels.weights[1], voxel2.weights, atol=1e-12
+            traj_voxels.density_grid[1], voxel2.density_grid, atol=1e-12
         )

@@ -4,25 +4,22 @@ Scattering methods for the fourier slice theorem.
 
 from __future__ import annotations
 
-__all__ = ["extract_slice", "FourierSliceExtract"]
+__all__ = [
+    "extract_slice",
+    "extract_slice_with_cubic_spline",
+    "FourierSliceExtract",
+]
 
-from typing import Any, Optional
+from typing import Any
+from jaxtyping import Float, Array
 
 import jax.numpy as jnp
 
 from ._scattering_model import ScatteringModel
-from ..density import FourierVoxelGrid
-from ...image import (
-    map_coordinates,
-    map_coordinates_with_cubic_spline,
-    compute_spline_coefficients,
-)
+from ..density import FourierVoxelGrid, FourierVoxelGridAsSpline
+from ...image import map_coordinates, map_coordinates_with_cubic_spline
 from ...core import field
-from ...typing import (
-    ComplexImage,
-    ComplexCubicVolume,
-    VolumeCoords,
-)
+from ...typing import ComplexImage, ComplexCubicVolume, VolumeSliceCoords
 
 
 class FourierSliceExtract(ScatteringModel):
@@ -30,8 +27,21 @@ class FourierSliceExtract(ScatteringModel):
     Scatter points to the image plane using the
     Fourier-projection slice theorem.
 
-    Attributes ``order``, ``mode``, and ``cval``
-    are passed to ``cryojax.image.map_coordinates``.
+    This extracts slices using resampling techniques housed in
+    ``cryojax.image._map_coordinates``. See here for more documentation.
+
+    Attributes
+    ----------
+    interpolation_order :
+        The interpolation order. This can be ``0`` (nearest-neighbor), ``1``
+        (linear), or ``3`` (cubic).
+        Note that this argument is ignored if a ``FourierVoxelGridAsSpline``
+        is passed.
+    interpolation_mode :
+        Specify how to handle out of bounds indexing.
+    interpolation_cval :
+        Value for filling out-of-bounds indices. Used only when
+        ``interpolation_mode = "fill"``.
     """
 
     interpolation_order: int = field(static=True, default=1)
@@ -44,34 +54,33 @@ class FourierSliceExtract(ScatteringModel):
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
-        if self.interpolation_order in [0, 1]:
-            return extract_slice(
-                density.weights,
-                density.frequency_slice.get(),
-                order=self.interpolation_order,
-                mode=self.interpolation_mode,
-                cval=self.interpolation_cval,
+        frequency_slice = density.frequency_slice.get()
+        N = frequency_slice.shape[0]
+        if density.shape != (N, N, N):
+            raise AttributeError(
+                "Only cubic boxes are supported for fourier slice extraction."
             )
-        elif self.interpolation_order == 3:
-            return extract_slice(
-                density.weights,
-                density.frequency_slice.get(),
-                coefficients=density.spline_coefficients,
-                order=3,
+        if isinstance(density, FourierVoxelGridAsSpline):
+            return extract_slice_with_cubic_spline(
+                density.spline_coefficients,
+                frequency_slice,
                 mode=self.interpolation_mode,
                 cval=self.interpolation_cval,
             )
         else:
-            raise NotImplementedError(
-                f"interpolation_order={self.interpolation_order} not implemented."
+            return extract_slice(
+                density.fourier_density_grid,
+                frequency_slice,
+                interpolation_order=self.interpolation_order,
+                mode=self.interpolation_mode,
+                cval=self.interpolation_cval,
             )
 
 
 def extract_slice(
     weights: ComplexCubicVolume,
-    frequency_slice: VolumeCoords,
-    coefficients: Optional[ComplexCubicVolume] = None,
-    order: int = 1,
+    frequency_slice: VolumeSliceCoords,
+    interpolation_order: int = 1,
     **kwargs: Any,
 ) -> ComplexImage:
     """
@@ -86,45 +95,87 @@ def extract_slice(
     frequency_slice : shape `(N, N, 1, 3)`
         Frequency central slice coordinate system, with the zero
         frequency component in the corner.
-    coefficients : shape `(N+2, N+2, N+2)`
-        Optionally, include precomputed coefficients for the cubic spline.
-        If not given, compute the coefficients.
-    order : int
-        Order of interpolation, ranging from 0, 1, or 2.
+    interpolation_order : int
+        Order of interpolation, either 0, 1, or 3.
     kwargs
-        Keyword arguments passed to ``cryojax.image.map_coordinates``.
+        Keyword arguments passed to ``cryojax.image.map_coordinates``
+        or ``cryojax.image.map_coordinates_with_cubic_spline``.
 
     Returns
     -------
     projection : shape `(N, N//2+1)`
         The output image in fourier space.
     """
-    N1, N2, N3 = weights.shape
-    N = N1
-    if (N1, N2, N3) != (N, N, N):
-        raise ValueError(
-            "Only cubic boxes are supported for fourier slice theorem."
-        )
-    # Need to convert to logical coordinates, so first make coordinates dimensionless
-    grid_shape = jnp.asarray([N, N, N], dtype=float)
-    frequency_slice *= grid_shape
-    # ... then shift from coordinates to indices
-    frequency_slice += N // 2
+    # Convert to logical coordinates
+    logical_frequency_slice = _convert_frequencies_to_indices(frequency_slice)
     # Only take the lower half plane
-    frequency_slice = jnp.flip(frequency_slice[:, : N // 2 + 1], axis=1)
+    logical_frequency_slice = _extract_lower_half_plane(
+        logical_frequency_slice
+    )
     # Convert arguments to map_coordinates convention and compute
-    k_x, k_y, k_z = jnp.transpose(frequency_slice, axes=[3, 0, 1, 2])
-    if order in [0, 1]:
-        projection = map_coordinates(
-            weights, (k_x, k_y, k_z), order, **kwargs
-        )[:, :, 0]
-    elif order == 3:
-        if coefficients is None:
-            coefficients = compute_spline_coefficients(weights)
-        projection = map_coordinates_with_cubic_spline(
-            coefficients, (k_x, k_y, k_z), **kwargs
-        )[:, :, 0]
-    else:
-        raise NotImplementedError(f"order={order} not implemented.")
+    k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
+    projection = map_coordinates(
+        weights, (k_x, k_y, k_z), interpolation_order, **kwargs
+    )[:, :, 0]
 
     return jnp.fft.ifftshift(projection, axes=(0,))
+
+
+def extract_slice_with_cubic_spline(
+    coefficients: ComplexCubicVolume,
+    frequency_slice: VolumeSliceCoords,
+    **kwargs: Any,
+) -> ComplexImage:
+    """
+    Project and interpolate 3D volume point cloud
+    onto imaging plane using the fourier slice theorem, using cubic
+    spline coefficients as input.
+
+    Arguments
+    ---------
+    coefficients : shape `(N+2, N+2, N+2)`
+        Coefficients for cubic spline.
+    frequency_slice : shape `(N, N, 1, 3)`
+        Frequency central slice coordinate system, with the zero
+        frequency component in the corner.
+    kwargs
+        Keyword arguments passed to ``cryojax.image.map_coordinates_with_cubic_spline``.
+
+    Returns
+    -------
+    projection : shape `(N, N//2+1)`
+        The output image in fourier space.
+    """
+    # Convert to logical coordinates
+    logical_frequency_slice = _convert_frequencies_to_indices(frequency_slice)
+    # Only take the lower half plane
+    logical_frequency_slice = _extract_lower_half_plane(
+        logical_frequency_slice
+    )
+    # Convert arguments to map_coordinates convention and compute
+    k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
+    projection = map_coordinates_with_cubic_spline(
+        coefficients, (k_x, k_y, k_z), **kwargs
+    )[:, :, 0]
+
+    return jnp.fft.ifftshift(projection, axes=(0,))
+
+
+def _convert_frequencies_to_indices(frequency_slice: VolumeSliceCoords):
+    """Convert a frequency coordinate system with the zero frequency
+    component in the center to logical coordinates.
+
+    Assume the grid is that the slice corresponds to is cubic.
+    """
+    N = frequency_slice.shape[0]
+    grid_shape = jnp.asarray([N, N, N], dtype=float)
+    return (frequency_slice * grid_shape) + grid_shape // 2
+
+
+def _extract_lower_half_plane(frequency_slice: VolumeSliceCoords):
+    """Extract the lower half plane of the frequency slice.
+
+    Assume the grid is that the slice corresponds to is cubic.
+    """
+    N = frequency_slice.shape[0]
+    return jnp.flip(frequency_slice[:, : N // 2 + 1], axis=1)
