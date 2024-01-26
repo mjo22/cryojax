@@ -73,13 +73,17 @@ class FourierSliceExtract(AbstractProjectionMethod):
                 mode=self.interpolation_mode,
                 cval=self.interpolation_cval,
             )
-        else:
+        elif isinstance(density, FourierVoxelGrid):
             fourier_projection = extract_slice(
                 density.fourier_density_grid,
                 frequency_slice,
                 interpolation_order=self.interpolation_order,
                 mode=self.interpolation_mode,
                 cval=self.interpolation_cval,
+            )
+        else:
+            raise ValueError(
+                "Supported density representations are FourierVoxelGrid and FourierVoxelGridAsSpline."
             )
         # Resize the image to match the ImageManager.padded_shape
         if self.manager.padded_shape == (N, N):
@@ -122,20 +126,17 @@ def extract_slice(
         The output image in fourier space.
     """
     # Convert to logical coordinates
-    logical_frequency_slice = _convert_frequencies_to_indices(frequency_slice)
-    # Only take the upper half plane
-    logical_frequency_slice = _extract_upper_half_plane(
-        logical_frequency_slice
-    )
+    N = frequency_slice.shape[0]
+    logical_frequency_slice = (frequency_slice * N) + N // 2
     # Convert arguments to map_coordinates convention and compute
     k_y, k_x, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates(
         fourier_density_grid, (k_x, k_y, k_z), interpolation_order, **kwargs
     )[:, :, 0]
-    # If the image size is even, pad last axis with zeros
-    projection = _pad_highest_frequency_with_zeros_if_even(projection)
-
-    return jnp.fft.ifftshift(projection, axes=(0,))
+    # Shift zero frequency component to corner and take upper half plane
+    projection = jnp.fft.ifftshift(projection)[:, : N // 2 + 1]
+    # Set last line of frequencies to zero if image dimension is even
+    return projection if N % 2 == 1 else projection.at[:, -1].set(0.0 + 0.0j)
 
 
 def extract_slice_with_cubic_spline(
@@ -164,57 +165,14 @@ def extract_slice_with_cubic_spline(
         The output image in fourier space.
     """
     # Convert to logical coordinates
-    logical_frequency_slice = _convert_frequencies_to_indices(frequency_slice)
-    # Only take the upper half plane
-    logical_frequency_slice = _extract_upper_half_plane(
-        logical_frequency_slice
-    )
+    N = frequency_slice.shape[0]
+    logical_frequency_slice = (frequency_slice * N) + N // 2
     # Convert arguments to map_coordinates convention and compute
     k_y, k_x, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates_with_cubic_spline(
         spline_coefficients, (k_x, k_y, k_z), **kwargs
     )[:, :, 0]
-    # If the image size is even, pad last axis with zeros
-    projection = _pad_highest_frequency_with_zeros_if_even(projection)
-
-    return jnp.fft.ifftshift(projection, axes=(0,))
-
-
-def _convert_frequencies_to_indices(
-    frequency_slice: VolumeSliceCoords,
-) -> VolumeSliceCoords:
-    """Convert a frequency coordinate system with the zero frequency
-    component in the center to logical coordinates.
-
-    Assume the grid is that the slice corresponds to is cubic.
-    """
-    N = frequency_slice.shape[0]
-    grid_shape = jnp.asarray([N, N, N], dtype=float)
-    return (frequency_slice * grid_shape) + grid_shape // 2
-
-
-def _extract_upper_half_plane(
-    frequency_slice: VolumeSliceCoords,
-) -> Float[Array, "N N//2+N%2 3"]:
-    """Extract the lower half plane of the frequency slice.
-
-    Assume the grid is that the slice corresponds to is cubic.
-    """
-    N = frequency_slice.shape[0]
-    return frequency_slice[:, N // 2 :]
-
-
-def _pad_highest_frequency_with_zeros_if_even(
-    fourier_projection: ComplexImage,
-) -> ComplexImage:
-    """If the image size is zero, pad highest frequency with zeros on final axis."""
-    N = fourier_projection.shape[0]
-    if N % 2 == 0:
-        return jnp.pad(
-            fourier_projection,
-            ((0, 0), (0, 1)),
-            mode="constant",
-            constant_values=0.0 + 0.0j,
-        )
-    else:
-        return fourier_projection
+    # Shift zero frequency component to corner and take upper half plane
+    projection = jnp.fft.ifftshift(projection)[:, : N // 2 + 1]
+    # Set last line of frequencies to zero if image dimension is even
+    return projection if N % 2 == 1 else projection.at[:, -1].set(0.0 + 0.0j)

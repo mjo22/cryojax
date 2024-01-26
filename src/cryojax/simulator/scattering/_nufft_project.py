@@ -55,7 +55,7 @@ class NufftProject(AbstractProjectionMethod):
                 eps=self.eps,
             )
         else:
-            raise NotImplementedError(
+            raise ValueError(
                 "Supported density representations are RealVoxelGrid and VoxelCloud."
             )
         return fourier_projection
@@ -127,11 +127,11 @@ def project_with_nufft(
     periodic_coords = 2 * jnp.pi * coordinates / image_size
     # Compute and shift origin to cryojax conventions
     x, y = periodic_coords.T
-    fourier_projection = jnp.fft.ifftshift(
-        nufft1(shape, weights, x, y, **kwargs)
-    )
-
-    return fourier_projection[:, : M2 // 2 + 1]
+    projection = nufft1(shape, weights, x, y, **kwargs)
+    # Shift zero frequency component to corner and take upper half plane
+    projection = jnp.fft.ifftshift(projection)[:, : M2 // 2 + 1]
+    # Set last line of frequencies to zero if image dimension is even
+    return projection if M2 % 2 == 1 else projection.at[:, -1].set(0.0 + 0.0j)
 
 
 """
