@@ -12,7 +12,7 @@ from typing import Any, Union
 import jax.numpy as jnp
 
 from ..density import VoxelCloud, RealVoxelGrid, AtomCloud
-from ._scattering_model import ScatteringModel
+from ._scattering_method import AbstractProjectionMethod
 from ...core import field
 from ...typing import (
     ComplexImage,
@@ -22,7 +22,7 @@ from ...typing import (
 )
 
 
-class NufftProject(ScatteringModel):
+class NufftProject(AbstractProjectionMethod):
     """
     Scatter points to image plane using a
     non-uniform FFT.
@@ -35,21 +35,21 @@ class NufftProject(ScatteringModel):
 
     eps: float = field(static=True, default=1e-6)
 
-    def scatter(
+    def project_density(
         self, density: RealVoxelGrid | VoxelCloud | AtomCloud
     ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(density, RealVoxelGrid):
-            shape = density.weights.shape
+            shape = density.shape
             fourier_projection = project_with_nufft(
-                density.weights.ravel(),
+                density.density_grid.ravel(),
                 density.coordinate_grid.get().reshape((math.prod(shape), 3)),
                 self.manager.padded_shape,
                 eps=self.eps,
             )
         elif isinstance(density, VoxelCloud):
             fourier_projection = project_with_nufft(
-                density.weights,
+                density.density_weights,
                 density.coordinate_list.get(),
                 self.manager.padded_shape,
                 eps=self.eps,

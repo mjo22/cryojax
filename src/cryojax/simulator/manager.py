@@ -18,12 +18,13 @@ from ..image import (
     CoordinateGrid,
     FrequencyGrid,
 )
-from ..typing import Image, Real_
+from ..typing import Image, Real_, RealImage
 from ..image import (
     crop,
     pad,
-    crop_or_pad,
+    resize_with_crop_or_pad,
     normalize_image,
+    rescale_pixel_size,
 )
 
 
@@ -62,6 +63,7 @@ class ImageManager(Module):
     shape: tuple[int, int] = field(static=True)
     pixel_size: Real_ = field()
 
+    rescale_method: str = field(static=True, default="bicubic")
     pad_scale: float = field(static=True, default=1.0)
     pad_mode: Union[str, Callable] = field(static=True, default="constant")
 
@@ -103,6 +105,17 @@ class ImageManager(Module):
     def padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
         return self.padded_frequency_grid / self.pixel_size
 
+    def rescale_to_pixel_size(
+        self, image: RealImage, current_pixel_size: Real_
+    ) -> RealImage:
+        """Rescale the image pixel size."""
+        return rescale_pixel_size(
+            image,
+            current_pixel_size,
+            self.pixel_size,
+            method=self.rescale_method,
+        )
+
     def crop_to_shape(self, image: Image) -> Image:
         """Crop an image."""
         return crop(image, self.shape)
@@ -115,7 +128,7 @@ class ImageManager(Module):
         self, image: Image, **kwargs: Any
     ) -> Image:
         """Reshape an image using cropping or padding."""
-        return crop_or_pad(
+        return resize_with_crop_or_pad(
             image, self.padded_shape, mode=self.pad_mode, **kwargs
         )
 

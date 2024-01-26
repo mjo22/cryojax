@@ -2,7 +2,7 @@
 Models of instrument optics.
 """
 
-__all__ = ["CTF", "Optics", "NullOptics", "CTFOptics", "compute_ctf"]
+__all__ = ["CTF", "AbstractOptics", "NullOptics", "CTFOptics", "compute_ctf"]
 
 from abc import abstractmethod
 from typing import Optional
@@ -13,13 +13,13 @@ import jax
 import jax.numpy as jnp
 
 from .manager import ImageManager
-from ..image import FourierOperatorLike, FourierOperator, Constant
+from ..image import FourierOperatorLike, AbstractFourierOperator, Constant
 from ..core import field
 from ..image import cartesian_to_polar
 from ..typing import Real_, RealImage, Image, ComplexImage, ImageCoords
 
 
-class CTF(FourierOperator):
+class CTF(AbstractFourierOperator):
     """
     Compute a Contrast Transfer Function (CTF).
 
@@ -64,14 +64,14 @@ class CTF(FourierOperator):
         )
 
 
-class Optics(Module):
+class AbstractOptics(Module):
     """
     Base class for an optics model.
 
     When writing subclasses,
 
-        1) Overwrite the ``Optics.__call__`` method.
-        2) Overwrite the ``Optics.ctf`` property.
+        1) Overwrite the ``AbstractOptics.__call__`` method.
+        2) Overwrite the ``AbstractOptics.ctf`` property.
 
     Attributes
     ----------
@@ -85,7 +85,7 @@ class Optics(Module):
         Default is ``False``.
     """
 
-    ctf: AbstractVar[FourierOperator]
+    ctf: AbstractVar[AbstractFourierOperator]
     envelope: Optional[FourierOperatorLike] = field(default=None)
 
     normalize: bool = field(static=True, default=False)
@@ -118,7 +118,7 @@ class Optics(Module):
         raise NotImplementedError
 
 
-class NullOptics(Optics):
+class NullOptics(AbstractOptics):
     """
     A null optics model.
     """
@@ -140,7 +140,7 @@ class NullOptics(Optics):
         return image
 
 
-class CTFOptics(Optics):
+class CTFOptics(AbstractOptics):
     """
     An optics model with a real-valued contrast transfer function.
     """

@@ -6,21 +6,21 @@ from __future__ import annotations
 
 __all__ = ["Mask", "MaskT", "CircularMask"]
 
-from typing import TypeVar
+from typing import TypeVar, overload
 
 import jax
 import jax.numpy as jnp
 
-from ._operator import ImageMultiplier
+from ._operator import AbstractImageMultiplier
 from ...core import field
-from ...typing import RealImage, ImageCoords
+from ...typing import RealImage, RealVolume, ImageCoords, VolumeCoords
 
 
 MaskT = TypeVar("MaskT", bound="Mask")
 """TypeVar for the Mask base class."""
 
 
-class Mask(ImageMultiplier):
+class Mask(AbstractImageMultiplier):
     """
     Base class for computing and applying an image mask.
 
@@ -31,11 +31,21 @@ class Mask(ImageMultiplier):
         computed upon instantiation.
     """
 
-    def __init__(self, mask: RealImage):
+    def __init__(self, mask: RealImage | RealVolume):
         """Compute the mask."""
         self.buffer = mask
 
+    @overload
     def __call__(self, image: RealImage) -> RealImage:
+        ...
+
+    @overload
+    def __call__(self, image: RealVolume) -> RealVolume:
+        ...
+
+    def __call__(
+        self, image: RealImage | RealVolume
+    ) -> RealImage | RealVolume:
         return image * jax.lax.stop_gradient(self.buffer)
 
 
@@ -60,7 +70,7 @@ class CircularMask(Mask):
 
     def __init__(
         self,
-        coordinate_grid_in_angstroms: ImageCoords,
+        coordinate_grid_in_angstroms: ImageCoords | VolumeCoords,
         radius: float,
         rolloff: float = 0.05,
     ) -> None:
@@ -71,11 +81,29 @@ class CircularMask(Mask):
         )
 
 
+@overload
 def _compute_circular_mask(
     coordinate_grid_in_angstroms: ImageCoords,
     radius: float,
-    rolloff: float = 0.05,
+    rolloff: float,
 ) -> RealImage:
+    ...
+
+
+@overload
+def _compute_circular_mask(
+    coordinate_grid_in_angstroms: VolumeCoords,
+    radius: float,
+    rolloff: float,
+) -> RealVolume:
+    ...
+
+
+def _compute_circular_mask(
+    coordinate_grid_in_angstroms: ImageCoords | VolumeCoords,
+    radius: float,
+    rolloff: float = 0.05,
+) -> RealImage | RealVolume:
     """
     Create a circular mask.
 

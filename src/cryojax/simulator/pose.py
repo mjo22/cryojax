@@ -9,7 +9,7 @@ __all__ = [
     "compute_shifts",
     "make_euler_rotation",
     "PoseT",
-    "Pose",
+    "AbstractPose",
     "EulerPose",
     "QuaternionPose",
     "MatrixPose",
@@ -40,11 +40,11 @@ _RotationMatrix3D = Float[Array, "3 3"]
 _Vector3D = Float[Array, "3"]
 _Vector2D = Float[Array, "2"]
 
-PoseT = TypeVar("PoseT", bound="Pose")
+PoseT = TypeVar("PoseT", bound="AbstractPose")
 """TypeVar for the Pose base class."""
 
 
-class Pose(Module):
+class AbstractPose(Module):
     """
     Base class for the image pose.
 
@@ -52,7 +52,7 @@ class Pose(Module):
     such as with Euler angles or Quaternions. In particular,
 
         1) Define angular coordinates.
-        2) Overwrite the ``Pose.rotation`` property.
+        2) Overwrite the ``AbstractPose.rotation`` property.
 
     Attributes
     ----------`
@@ -126,7 +126,7 @@ class Pose(Module):
         )
 
 
-class EulerPose(Pose):
+class EulerPose(AbstractPose):
     r"""
     An image pose using Euler angles.
 
@@ -185,7 +185,7 @@ class EulerPose(Pose):
         )
 
 
-class QuaternionPose(Pose):
+class QuaternionPose(AbstractPose):
     """
     An image pose using unit Quaternions.
 
@@ -214,7 +214,7 @@ class QuaternionPose(Pose):
         return cls(wxyz=rotation.wxyz)
 
 
-class MatrixPose(Pose):
+class MatrixPose(AbstractPose):
     """
     An image pose represented by a rotation matrix.
 

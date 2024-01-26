@@ -11,12 +11,12 @@ from typing import Type, Any, ClassVar
 import equinox as eqx
 from jaxtyping import Array
 
-from ._electron_density import ElectronDensity
-from ..pose import Pose
+from ._electron_density import AbstractElectronDensity
+from ..pose import AbstractPose
 from ...core import field
 
 
-class AtomCloud(ElectronDensity):
+class AtomCloud(AbstractElectronDensity):
     """
     Abstraction of a point cloud of atoms.
     """
@@ -28,7 +28,7 @@ class AtomCloud(ElectronDensity):
 
     is_real: ClassVar[bool] = True
 
-    def rotate_to(self, pose: Pose) -> AtomCloud:
+    def rotate_to(self, pose: AbstractPose) -> AtomCloud:
         return eqx.tree_at(
             lambda d: d.coordinate_list,
             self,

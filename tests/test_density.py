@@ -43,7 +43,7 @@ def test_electron_density_vmap(density, scattering, pose):
         lambda spec, x: jnp.expand_dims(x, axis=0) if spec else x,
         filter_spec,
         density,
-        is_leaf=lambda x: isinstance(x, ci.Coordinates),
+        is_leaf=lambda x: isinstance(x, ci.AbstractCoordinates),
     )
     vmap, novmap = eqx.partition(density, filter_spec)
 
@@ -63,7 +63,7 @@ def test_electron_density_vmap_with_pipeline(density, pose, scattering):
     filter_spec = jtu.tree_map(
         cs.is_density_leaves_without_coordinates,
         pipeline,
-        is_leaf=lambda x: isinstance(x, cs.ElectronDensity),
+        is_leaf=lambda x: isinstance(x, cs.AbstractElectronDensity),
     )
     # Add a leading dimension to ElectronDensity leaves
     pipeline = jtu.tree_map(

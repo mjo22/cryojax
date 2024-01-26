@@ -2,7 +2,7 @@
 Base class for stochastic models.
 """
 
-__all__ = ["StochasticModel"]
+__all__ = ["AbstractStochasticModel"]
 
 from abc import abstractmethod
 
@@ -13,7 +13,7 @@ from jaxtyping import PRNGKeyArray
 from ..typing import Image
 
 
-class StochasticModel(Module):
+class AbstractStochasticModel(Module):
     """
     Base class for stochastic models.
     """

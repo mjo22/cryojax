@@ -2,7 +2,7 @@
 Abstraction of the ice in a cryo-EM image.
 """
 
-__all__ = ["Ice", "NullIce", "GaussianIce"]
+__all__ = ["AbstractIce", "NullIce", "GaussianIce"]
 
 from abc import abstractmethod
 from typing_extensions import override
@@ -11,14 +11,14 @@ import jax.numpy as jnp
 import jax.random as jr
 from jaxtyping import PRNGKeyArray
 
-from ._stochastic_model import StochasticModel
+from ._stochastic_model import AbstractStochasticModel
 from .manager import ImageManager
-from ..image import FourierOperatorLike, FourierExp
+from ..image import FourierOperatorLike, FourierExp2D
 from ..core import field
 from ..typing import ComplexImage, ImageCoords
 
 
-class Ice(StochasticModel):
+class AbstractIce(AbstractStochasticModel):
     """
     Base class for an ice model.
     """
@@ -46,7 +46,7 @@ class Ice(StochasticModel):
         return ice_at_exit_plane
 
 
-class NullIce(Ice):
+class NullIce(AbstractIce):
     """
     A "null" ice model.
     """
@@ -60,7 +60,7 @@ class NullIce(Ice):
         return jnp.zeros(frequency_grid_in_angstroms.shape[0:-1])
 
 
-class GaussianIce(Ice):
+class GaussianIce(AbstractIce):
     r"""
     Ice modeled as gaussian noise.
 
@@ -72,7 +72,7 @@ class GaussianIce(Ice):
         ``FourierExp()``.
     """
 
-    variance: FourierOperatorLike = field(default_factory=FourierExp)
+    variance: FourierOperatorLike = field(default_factory=FourierExp2D)
 
     @override
     def sample(

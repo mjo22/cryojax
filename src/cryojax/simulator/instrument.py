@@ -9,12 +9,12 @@ from typing import Any
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from .ice import Ice
-from .specimen import Specimen
-from .scattering import ScatteringModel
-from .optics import Optics, NullOptics
+from .ice import AbstractIce
+from .specimen import AbstractSpecimen
+from .scattering import AbstractScatteringMethod
+from .optics import AbstractOptics, NullOptics
 from .exposure import Exposure, NullExposure
-from .detector import Detector, NullDetector
+from .detector import AbstractDetector, NullDetector
 
 from ..core import field
 from ..typing import ComplexImage, Real_
@@ -34,12 +34,15 @@ class Instrument(Module):
         The model of the detector.
     """
 
-    optics: Optics = field(default_factory=NullOptics)
+    optics: AbstractOptics = field(default_factory=NullOptics)
     exposure: Exposure = field(default_factory=NullExposure)
-    detector: Detector = field(default_factory=NullDetector)
+    detector: AbstractDetector = field(default_factory=NullDetector)
 
     def scatter_to_exit_plane(
-        self, specimen: Specimen, scattering: ScatteringModel, **kwargs: Any
+        self,
+        specimen: AbstractSpecimen,
+        scattering: AbstractScatteringMethod,
+        **kwargs: Any,
     ) -> ComplexImage:
         """Scatter the specimen to the exit plane"""
         # Compute the scattering image in fourier space
@@ -54,7 +57,7 @@ class Instrument(Module):
     def propagate_to_detector_plane(
         self,
         image_at_exit_plane: ComplexImage,
-        scattering: ScatteringModel,
+        scattering: AbstractScatteringMethod,
         defocus_offset: Real_ | float = 0.0,
         **kwargs: Any,
     ) -> ComplexImage:
@@ -72,8 +75,8 @@ class Instrument(Module):
         self,
         key: PRNGKeyArray,
         image_at_exit_plane: ComplexImage,
-        solvent: Ice,
-        scattering: ScatteringModel,
+        solvent: AbstractIce,
+        scattering: AbstractScatteringMethod,
         defocus_offset: Real_ | float = 0.0,
         **kwargs: Any,
     ) -> ComplexImage:
@@ -99,7 +102,7 @@ class Instrument(Module):
         self,
         key: PRNGKeyArray,
         image_at_detector_plane: ComplexImage,
-        scattering: ScatteringModel,
+        scattering: AbstractScatteringMethod,
         **kwargs: Any,
     ) -> ComplexImage:
         """Measure the detector readout"""

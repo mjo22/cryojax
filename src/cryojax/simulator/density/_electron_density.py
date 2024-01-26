@@ -4,7 +4,7 @@ Base electron density representation.
 
 __all__ = [
     "is_density_leaves_without_coordinates",
-    "ElectronDensity",
+    "AbstractElectronDensity",
     "ElectronDensityT",
 ]
 
@@ -14,24 +14,24 @@ from typing_extensions import Self
 from jaxtyping import PyTree
 from equinox import AbstractClassVar, Module
 
-from ..pose import Pose
+from ..pose import AbstractPose
 from ...image import get_not_coordinate_filter_spec
 
 
-ElectronDensityT = TypeVar("ElectronDensityT", bound="ElectronDensity")
+ElectronDensityT = TypeVar("ElectronDensityT", bound="AbstractElectronDensity")
 
 
 def is_density_leaves_without_coordinates(element: Any) -> bool | PyTree[bool]:
     """Returns a filter spec that is ``True`` at the ``ElectronDensity``
     leaves, besides its coordinates.
     """
-    if isinstance(element, ElectronDensity):
+    if isinstance(element, AbstractElectronDensity):
         return get_not_coordinate_filter_spec(element)
     else:
         return False
 
 
-class ElectronDensity(Module):
+class AbstractElectronDensity(Module):
     """
     Abstraction of an electron density distribution.
 
@@ -45,7 +45,7 @@ class ElectronDensity(Module):
     is_real: AbstractClassVar[bool]
 
     @abstractmethod
-    def rotate_to_pose(self, pose: Pose) -> Self:
+    def rotate_to_pose(self, pose: AbstractPose) -> Self:
         """
         View the electron density at a given pose.
 

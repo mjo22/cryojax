@@ -11,10 +11,10 @@ These classes are modified from the library ``tinygp``.
 from __future__ import annotations
 
 __all__ = [
-    "FourierOperator",
+    "AbstractFourierOperator",
     "ZeroMode",
-    "FourierExp",
-    "FourierGaussian",
+    "FourierExp2D",
+    "FourierGaussian2D",
     "FourierOperatorLike",
 ]
 
@@ -25,12 +25,12 @@ from jaxtyping import Array
 
 import jax.numpy as jnp
 
-from ._operator import ImageOperator
+from ._operator import AbstractImageOperator
 from ...core import field
-from ...typing import Real_, ImageCoords, RealImage
+from ...typing import Real_, ImageCoords, VolumeCoords, RealImage
 
 
-class FourierOperator(ImageOperator):
+class AbstractFourierOperator(AbstractImageOperator):
     """
     The base class for all fourier-based operators.
 
@@ -46,15 +46,15 @@ class FourierOperator(ImageOperator):
 
     @abstractmethod
     def __call__(
-        self, freqs: ImageCoords | None = None, **kwargs: Any
+        self, freqs: ImageCoords | VolumeCoords | None = None, **kwargs: Any
     ) -> Array:
         raise NotImplementedError
 
 
-FourierOperatorLike = FourierOperator | ImageOperator
+FourierOperatorLike = AbstractFourierOperator | AbstractImageOperator
 
 
-class ZeroMode(FourierOperator):
+class ZeroMode(AbstractFourierOperator):
     """
     This operator returns a constant in the zero mode.
 
@@ -91,7 +91,7 @@ class ZeroMode(FourierOperator):
             return jnp.zeros((N1, N2)).at[0, 0].set(N_modes * self.value)
 
 
-class FourierExp(FourierOperator):
+class FourierExp2D(AbstractFourierOperator):
     r"""
     This operator, in real space, represents a
     function equal to an exponential decay, given by
@@ -137,7 +137,7 @@ class FourierExp(FourierOperator):
             return scaling
 
 
-class FourierGaussian(FourierOperator):
+class FourierGaussian2D(AbstractFourierOperator):
     r"""
     This operator represents a simple gaussian.
     Specifically, this is

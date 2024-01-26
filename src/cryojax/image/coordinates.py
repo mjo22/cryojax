@@ -7,7 +7,7 @@ from __future__ import annotations
 __all__ = [
     "is_not_coordinate_array",
     "get_not_coordinate_filter_spec",
-    "Coordinates",
+    "AbstractCoordinates",
     "CoordinateT",
     "CoordinateList",
     "CoordinateGrid",
@@ -37,7 +37,7 @@ from ..typing import (
 )
 
 
-CoordinateT = TypeVar("CoordinateT", bound="Coordinates")
+CoordinateT = TypeVar("CoordinateT", bound="AbstractCoordinates")
 """Type hint for a coordinate-like object."""
 
 
@@ -46,7 +46,7 @@ CoordinateT = TypeVar("CoordinateT", bound="Coordinates")
 #
 def is_not_coordinate_array(element: Any) -> bool:
     """Returns ``False`` if ``element`` is ``Coordinates``."""
-    if isinstance(element, Coordinates):
+    if isinstance(element, AbstractCoordinates):
         return False
     else:
         return eqx.is_array(element)
@@ -60,11 +60,11 @@ def get_not_coordinate_filter_spec(pytree: PyTree) -> PyTree[bool]:
     return jtu.tree_map(
         is_not_coordinate_array,
         pytree,
-        is_leaf=lambda x: isinstance(x, Coordinates),
+        is_leaf=lambda x: isinstance(x, AbstractCoordinates),
     )
 
 
-class Coordinates(eqx.Module):
+class AbstractCoordinates(eqx.Module):
     """
     A base class that wraps a coordinate array.
     """
@@ -97,7 +97,7 @@ class Coordinates(eqx.Module):
         return cls(jnp.asarray(arr) / self._coordinates)
 
 
-class CoordinateList(Coordinates):
+class CoordinateList(AbstractCoordinates):
     """
     A Pytree that wraps a coordinate list.
     """
@@ -110,7 +110,7 @@ class CoordinateList(Coordinates):
         self._coordinates = coordinate_list
 
 
-class CoordinateGrid(Coordinates):
+class CoordinateGrid(AbstractCoordinates):
     """
     A Pytree that wraps a coordinate grid.
     """
@@ -152,7 +152,7 @@ class CoordinateGrid(Coordinates):
             raise ValueError("Must either pass a coordinate grid or a shape.")
 
 
-class FrequencyGrid(Coordinates):
+class FrequencyGrid(AbstractCoordinates):
     """
     A Pytree that wraps a frequency grid.
     """
@@ -199,7 +199,7 @@ class FrequencyGrid(Coordinates):
             raise ValueError("Must either pass a coordinate grid or a shape.")
 
 
-class FrequencySlice(Coordinates):
+class FrequencySlice(AbstractCoordinates):
     """
     A Pytree that wraps a frequency grid.
     """

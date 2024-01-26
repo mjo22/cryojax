@@ -16,16 +16,16 @@ import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from .specimen import Specimen, Conformation
-from .pose import Pose
-from .scattering import ScatteringModel
+from .specimen import AbstractSpecimen, AbstractConformation
+from .pose import AbstractPose
+from .scattering import AbstractScatteringMethod
 from .instrument import Instrument
 from .detector import NullDetector
-from .ice import Ice, NullIce
+from .ice import AbstractIce, NullIce
 from ..image import rfftn, irfftn
 from ..image.operators import Filter, Mask
 from ..core import field
-from ..typing import ComplexImage, RealImage, Image
+from ..typing import ComplexImage, Image
 
 
 class ImagePipeline(Module):
@@ -51,10 +51,10 @@ class ImagePipeline(Module):
         A mask to apply to the image.
     """
 
-    specimen: Specimen = field()
-    scattering: ScatteringModel = field()
+    specimen: AbstractSpecimen = field()
+    scattering: AbstractScatteringMethod = field()
     instrument: Instrument = field(default_factory=Instrument)
-    solvent: Ice = field(default_factory=NullIce)
+    solvent: AbstractIce = field(default_factory=NullIce)
 
     filter: Optional[Filter] = field(default=None)
     mask: Optional[Mask] = field(default=None)
@@ -306,7 +306,7 @@ class SuperpositionPipeline(ImagePipeline):
     ) -> Image:
         """Render the superposition of states in the Ensemble."""
         # Setup vmap over the pose and conformation
-        is_vmap = lambda x: isinstance(x, (Pose, Conformation))
+        is_vmap = lambda x: isinstance(x, (AbstractPose, AbstractConformation))
         to_vmap = jax.tree_util.tree_map(is_vmap, self, is_leaf=is_vmap)
         vmap, novmap = eqx.partition(self, to_vmap)
         # Compute all images and sum

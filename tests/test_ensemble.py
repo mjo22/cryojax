@@ -7,12 +7,14 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 import equinox as eqx
 
-from cryojax.simulator import Ensemble, Conformation
+from cryojax.simulator import DiscreteEnsemble, DiscreteConformation
 
 
 def test_conformation(density, pose, scattering):
     density = tuple([density for _ in range(3)])
-    ensemble = Ensemble(density, pose, conformation=Conformation(0))
+    ensemble = DiscreteEnsemble(
+        density, pose, conformation=DiscreteConformation(0)
+    )
     _ = scattering(ensemble)
 
 
@@ -20,13 +22,13 @@ def test_conformation_vmap(density, pose, scattering):
     # Build Ensemble
     cls = type(density)
     stacked_density = tuple([density for _ in range(3)])
-    ensemble = Ensemble(
+    ensemble = DiscreteEnsemble(
         stacked_density,
         pose,
-        conformation=Conformation(jnp.asarray((0, 1, 2, 1, 0))),
+        conformation=DiscreteConformation(jnp.asarray((0, 1, 2, 1, 0))),
     )
     # Setup vmap
-    is_vmap = lambda x: isinstance(x, Conformation)
+    is_vmap = lambda x: isinstance(x, DiscreteConformation)
     to_vmap = jtu.tree_map(is_vmap, ensemble, is_leaf=is_vmap)
     vmap, novmap = eqx.partition(ensemble, to_vmap)
 

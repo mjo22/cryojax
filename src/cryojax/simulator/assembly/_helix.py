@@ -17,8 +17,8 @@ from functools import cached_property
 import jax
 import jax.numpy as jnp
 
-from ..specimen import Ensemble
-from ._assembly import Assembly, _Positions, _Rotations
+from ..specimen import AbstractSpecimen
+from ._assembly import AbstractAssembly, _Positions, _Rotations
 
 from ...core import field
 from ...typing import Real_, RealVector
@@ -28,7 +28,7 @@ _RotationMatrix3D = Float[Array, "3 3"]
 _Vector3D = Float[Array, "3"]
 
 
-class Helix(Assembly):
+class Helix(AbstractAssembly):
     """
     Abstraction of a helical polymer.
 
@@ -75,7 +75,7 @@ class Helix(Assembly):
 
     def __init__(
         self,
-        subunit: Ensemble,
+        subunit: AbstractSpecimen,
         rise: Union[Real_, RealVector],
         twist: Union[Real_, RealVector],
         *,

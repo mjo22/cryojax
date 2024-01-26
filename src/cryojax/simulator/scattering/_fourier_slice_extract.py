@@ -11,18 +11,17 @@ __all__ = [
 ]
 
 from typing import Any
-from jaxtyping import Float, Array
 
 import jax.numpy as jnp
 
-from ._scattering_model import ScatteringModel
+from ._scattering_method import AbstractProjectionMethod
 from ..density import FourierVoxelGrid, FourierVoxelGridAsSpline
 from ...image import map_coordinates, map_coordinates_with_cubic_spline
 from ...core import field
 from ...typing import ComplexImage, ComplexCubicVolume, VolumeSliceCoords
 
 
-class FourierSliceExtract(ScatteringModel):
+class FourierSliceExtract(AbstractProjectionMethod):
     """
     Scatter points to the image plane using the
     Fourier-projection slice theorem.
@@ -48,7 +47,7 @@ class FourierSliceExtract(ScatteringModel):
     interpolation_mode: str = field(static=True, default="fill")
     interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
 
-    def scatter(self, density: FourierVoxelGrid) -> ComplexImage:
+    def project_density(self, density: FourierVoxelGrid) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
@@ -78,7 +77,7 @@ class FourierSliceExtract(ScatteringModel):
 
 
 def extract_slice(
-    weights: ComplexCubicVolume,
+    fourier_density_grid: ComplexCubicVolume,
     frequency_slice: VolumeSliceCoords,
     interpolation_order: int = 1,
     **kwargs: Any,
@@ -89,7 +88,7 @@ def extract_slice(
 
     Arguments
     ---------
-    weights : shape `(N, N, N)`
+    fourier_density_grid : shape `(N, N, N)`
         Density grid in fourier space. The zero frequency component
         should be in the center.
     frequency_slice : shape `(N, N, 1, 3)`
@@ -115,14 +114,14 @@ def extract_slice(
     # Convert arguments to map_coordinates convention and compute
     k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates(
-        weights, (k_x, k_y, k_z), interpolation_order, **kwargs
+        fourier_density_grid, (k_x, k_y, k_z), interpolation_order, **kwargs
     )[:, :, 0]
 
     return jnp.fft.ifftshift(projection, axes=(0,))
 
 
 def extract_slice_with_cubic_spline(
-    coefficients: ComplexCubicVolume,
+    spline_coefficients: ComplexCubicVolume,
     frequency_slice: VolumeSliceCoords,
     **kwargs: Any,
 ) -> ComplexImage:
@@ -133,7 +132,7 @@ def extract_slice_with_cubic_spline(
 
     Arguments
     ---------
-    coefficients : shape `(N+2, N+2, N+2)`
+    spline_coefficients : shape `(N+2, N+2, N+2)`
         Coefficients for cubic spline.
     frequency_slice : shape `(N, N, 1, 3)`
         Frequency central slice coordinate system, with the zero
@@ -155,7 +154,7 @@ def extract_slice_with_cubic_spline(
     # Convert arguments to map_coordinates convention and compute
     k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates_with_cubic_spline(
-        coefficients, (k_x, k_y, k_z), **kwargs
+        spline_coefficients, (k_x, k_y, k_z), **kwargs
     )[:, :, 0]
 
     return jnp.fft.ifftshift(projection, axes=(0,))

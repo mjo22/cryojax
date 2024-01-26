@@ -8,7 +8,7 @@ __all__ = ["IndependentAtomScattering"]
 
 import jax.numpy as jnp
 
-from ._scattering_model import ScatteringModel
+from ._scattering_method import AbstractProjectionMethod
 from ..density import AtomCloud
 from ...typing import (
     Real_,
@@ -18,7 +18,7 @@ from ...typing import (
 )
 
 
-class IndependentAtomScattering(ScatteringModel):
+class IndependentAtomScattering(AbstractProjectionMethod):
     """
     Projects a pointcloud of atoms onto the imaging plane.
     In contrast to the work in project_with_nufft, here each atom is
@@ -26,7 +26,7 @@ class IndependentAtomScattering(ScatteringModel):
     TODO: Typehints for atom_density_kernel
     """
 
-    def scatter(
+    def project_density(
         self,
         density: AtomCloud,
         # density: RealCloud,

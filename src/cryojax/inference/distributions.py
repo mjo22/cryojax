@@ -4,7 +4,7 @@ Image formation models, equipped with probabilistic models.
 
 from __future__ import annotations
 
-__all__ = ["Distribution", "IndependentFourierGaussian"]
+__all__ = ["AbstractDistribution", "IndependentFourierGaussian"]
 
 from abc import abstractmethod
 from typing import Optional, Any
@@ -23,7 +23,7 @@ from ..simulator.pipeline import ImagePipeline
 from ..typing import Real_, RealImage, ComplexImage, Image
 
 
-class Distribution(Module):
+class AbstractDistribution(Module):
     """
     An imaging pipeline equipped with a probabilistic model.
     """
@@ -56,7 +56,7 @@ class Distribution(Module):
         raise NotImplementedError
 
 
-class IndependentFourierGaussian(Distribution):
+class IndependentFourierGaussian(AbstractDistribution):
     r"""
     A gaussian noise model, where each fourier mode is independent.
 

@@ -11,12 +11,14 @@ from . import (
     assembly,
     density,
     scattering,
+    conformation,
     specimen,
 )
 
 from ._stochastic_model import *
 from .manager import *
 from .pose import *
+from .conformation import *
 from .specimen import *
 from .assembly import *
 from .density import *
@@ -33,6 +35,7 @@ __all__ = (
     _stochastic_model.__all__
     + manager.__all__
     + pose.__all__
+    + conformation.__all__
     + specimen.__all__
     + assembly.__all__
     + density.__all__
@@ -49,6 +52,7 @@ __all__.extend(
     [
         manager,
         pose,
+        conformation,
         specimen,
         assembly,
         density,

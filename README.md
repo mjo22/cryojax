@@ -52,7 +52,7 @@ manager = cs.ImageManager(shape=(320, 320), pixel_size)
 scattering = cs.FourierSliceExtract(manager)
 ```
 
-Here, `filename` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the biological `Specimen`.
+Here, `filename` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the biological specimen.
 
 ```python
 # Translations in Angstroms, angles in degrees
@@ -60,18 +60,16 @@ pose = cs.EulerPose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0,
 specimen = cs.Specimen(density=density, pose=pose)
 ```
 
-Here, this holds the `ElectronDensity` and the model for the `Pose`. If instead a tuple of `ElectronDensity` is loaded, this can be placed in an `Ensemble`. An `Ensemble` is a `Specimen` that can be evaluated at a particular conformation.
+Here, this holds the electron density and the model for the pose. If instead a tuple of electron density representations are loaded, this can be placed in an ensemble. A `DiscreteEnsemble` is a `Specimen` that can be evaluated at a particular conformation.
 
 ```python
 filenames = ...
 density = tuple([cs.FourierVoxelGrid.from_file(filename) for filename in filenames])
-conformation = cs.Conformation(0)
-specimen = cs.Ensemble(density=density, pose=pose, conformation=conformation)
+conformation = cs.DiscreteConformation(0)
+specimen = cs.DiscreteEnsemble(density=density, pose=pose, conformation=conformation)
 ```
 
-The stack of electron densities is stored in a single `ElectronDensity`, whose parameters now have a leading batch dimension. This can either be used to simulate an image at a particular conformation.
-
-Next, the model for the electron microscope. `Optics` and `Detector` models and their respective parameters are initialized. These are stored in the `Instrument` container.
+Next, the model for the electron microscope. Optics and detector models and their respective parameters are initialized. These are stored in the `Instrument` container.
 
 ```python
 from cryojax.image import operators as op
@@ -82,7 +80,7 @@ detector = cs.GaussianDetector(variance=op.Constant(1.0))
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
-Here, the `Detector` is simply modeled by gaussian white noise. The `CTF` has all parameters used in CTFFIND4, which take their default values if not
+Here, the `GaussianDetector` is simply modeled by gaussian white noise. The `CTF` has all parameters used in CTFFIND4, which take their default values if not
 explicitly configured here. Finally, we can instantiate the `ImagePipeline`.
 
 ```python
@@ -114,7 +112,7 @@ pipeline = cs.ImagePipeline(
 image = pipeline.sample(key)
 ```
 
-`cryojax` also defines a library of `Distribution`s, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
+`cryojax` also defines a library of distributions, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
 
 ```python
 from cryojax.image import rfftn
@@ -133,7 +131,7 @@ log_likelihood = model.log_probability(observed)
 
 Note that in this example, the user must make sure `observed` is the expected shape and is in fourier space.
 
-Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `Ice` model. Models for exposure to the electron beam are supported through the `Instrument`'s `Exposure` model.
+Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `AbstractIce` model. Models for exposure to the electron beam are supported through the `Instrument`'s `Exposure` model.
 
 For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
 
@@ -180,7 +178,7 @@ params = dict(
 log_likelihood, grad = loss(params, model, observed)
 ```
 
-To summarize, this example creates a loss function at an updated set of `Pose`, `Optics`, and `ScatteringModel` parameters. In general, any `cryojax` `Module` may contain model parameters. The exception to this is in the `ImageManager`, `Filter`, and `Mask`. These classes do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. However, this may result in slight speedups.
+To summarize, this example creates a loss function at an updated set of `AbstractPose`, `AbstractOptics`, and `AbstractScatteringMethod` parameters. In general, any `cryojax` `Module` may contain model parameters. The exception to this is in the `ImageManager`, `Filter`, and `Mask`. These classes do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. However, this may result in slight speedups.
 
 In general, there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
 

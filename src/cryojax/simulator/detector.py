@@ -2,7 +2,7 @@
 Abstraction of electron detectors in a cryo-EM image.
 """
 
-__all__ = ["Detector", "NullDetector", "GaussianDetector"]
+__all__ = ["AbstractDetector", "NullDetector", "GaussianDetector"]
 
 from abc import abstractmethod
 from typing import ClassVar
@@ -13,10 +13,9 @@ from jaxtyping import PRNGKeyArray
 from equinox import AbstractClassVar
 
 from .manager import ImageManager
-from ._stochastic_model import StochasticModel
+from ._stochastic_model import AbstractStochasticModel
 from ..image import (
     FourierOperatorLike,
-    RealOperatorLike,
     Constant,
     irfftn,
     rfftn,
@@ -25,7 +24,7 @@ from ..core import field
 from ..typing import ComplexImage, ImageCoords, RealImage
 
 
-class Detector(StochasticModel):
+class AbstractDetector(AbstractStochasticModel):
     """
     Base class for an electron detector.
     """
@@ -61,7 +60,7 @@ class Detector(StochasticModel):
             return self.sample(key, image, frequency_grid)
 
 
-class NullDetector(Detector):
+class NullDetector(AbstractDetector):
     """
     A 'null' detector.
     """
@@ -78,7 +77,7 @@ class NullDetector(Detector):
         return image
 
 
-class GaussianDetector(Detector):
+class GaussianDetector(AbstractDetector):
     """
     A detector with a gaussian noise model. By default,
     this is a white noise model.
@@ -109,7 +108,7 @@ class GaussianDetector(Detector):
         return image + noise
 
 
-class PoissonDetector(Detector):
+class PoissonDetector(AbstractDetector):
     """
     A detector with a poisson noise model.
 

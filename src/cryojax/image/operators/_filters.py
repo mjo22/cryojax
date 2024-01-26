@@ -11,24 +11,32 @@ __all__ = [
     "WhiteningFilter",
 ]
 
-from typing import TypeVar, Optional
+from typing import TypeVar, Optional, overload
 
 import jax
 import jax.numpy as jnp
 
-from .._edges import crop_or_pad
-from ._operator import ImageMultiplier
+from .._edges import resize_with_crop_or_pad
+from ._operator import AbstractImageMultiplier
 from .._spectrum import powerspectrum
 from .._fft import rfftn, irfftn
 from ..coordinates import make_frequencies
 from ...core import field
-from ...typing import Image, ComplexImage, ImageCoords, RealImage
+from ...typing import (
+    Image,
+    ComplexImage,
+    RealImage,
+    ComplexVolume,
+    RealVolume,
+    ImageCoords,
+    VolumeCoords,
+)
 
 FilterT = TypeVar("FilterT", bound="Filter")
 """TypeVar for the Filter base class."""
 
 
-class Filter(ImageMultiplier):
+class Filter(AbstractImageMultiplier):
     """
     Base class for computing and applying an image filter.
 
@@ -43,7 +51,17 @@ class Filter(ImageMultiplier):
         """Compute the filter."""
         self.buffer = filter
 
+    @overload
     def __call__(self, image: ComplexImage) -> ComplexImage:
+        ...
+
+    @overload
+    def __call__(self, image: ComplexVolume) -> ComplexVolume:
+        ...
+
+    def __call__(
+        self, image: ComplexImage | ComplexVolume
+    ) -> ComplexImage | ComplexVolume:
         return image * jax.lax.stop_gradient(self.buffer)
 
 
@@ -66,7 +84,7 @@ class LowpassFilter(Filter):
 
     def __init__(
         self,
-        frequency_grid: ImageCoords,
+        frequency_grid: ImageCoords | VolumeCoords,
         grid_spacing: float = 1.0,
         cutoff: float = 0.95,
         rolloff: float = 0.05,
@@ -94,12 +112,32 @@ class WhiteningFilter(Filter):
         )
 
 
+@overload
 def _compute_lowpass_filter(
     frequency_grid: ImageCoords,
+    grid_spacing: float,
+    cutoff: float,
+    rolloff: float,
+) -> RealImage:
+    ...
+
+
+@overload
+def _compute_lowpass_filter(
+    frequency_grid: VolumeCoords,
+    grid_spacing: float,
+    cutoff: float,
+    rolloff: float,
+) -> RealVolume:
+    ...
+
+
+def _compute_lowpass_filter(
+    frequency_grid: ImageCoords | VolumeCoords,
     grid_spacing: float = 1.0,
     cutoff: float = 0.667,
     rolloff: float = 0.05,
-) -> RealImage:
+) -> RealImage | RealVolume:
     """
     Create a low-pass filter.
 
@@ -188,7 +226,7 @@ def _compute_whitening_filter(
     )
     if shape is not None:
         spectrum = rfftn(
-            crop_or_pad(
+            resize_with_crop_or_pad(
                 irfftn(spectrum, s=micrograph.shape), shape, pad_mode="edge"
             )
         ).real

@@ -6,18 +6,19 @@ some geometry.
 
 from __future__ import annotations
 
-__all__ = ["Assembly"]
+__all__ = ["AbstractAssembly"]
 
 from abc import abstractmethod
-from typing import Optional, Any
+from typing import Optional
 from jaxtyping import Array, Float
 from functools import cached_property
 
 import jax.numpy as jnp
 import equinox as eqx
 
-from ..specimen import Specimen, Ensemble, Conformation
-from ..pose import Pose, EulerPose, MatrixPose
+from ..specimen import AbstractSpecimen, AbstractEnsemble
+from ..conformation import AbstractConformation
+from ..pose import AbstractPose, EulerPose, MatrixPose
 
 _Positions = Float[Array, "N 3"]
 """Type hint for array where each element is a subunit coordinate."""
@@ -26,18 +27,18 @@ _Rotations = Float[Array, "N 3 3"]
 """Type hint for array where each element is a subunit rotation."""
 
 
-class Assembly(eqx.Module):
+class AbstractAssembly(eqx.Module):
     """
     Abstraction of a biological assembly.
 
-    This class acts just like a ``Specimen``, however
+    This class acts just like an ``AbstractSpecimen``, however
     it creates an assembly from a subunit.
 
-    To subclass an ``Assembly``,
-        1) Overwrite the ``Assembly.n_subunits``
+    To subclass an ``AbstractAssembly``,
+        1) Overwrite the ``AbstractAssembly.n_subunits``
            property
-        2) Overwrite the ``Assembly.positions``
-           and ``Assembly.rotations`` properties.
+        2) Overwrite the ``AbstractAssembly.positions``
+           and ``AbstractAssembly.rotations`` properties.
 
     Attributes
     ----------
@@ -51,22 +52,24 @@ class Assembly(eqx.Module):
         The conformation of each `subunit`.
     """
 
-    subunit: Specimen
-    pose: Pose
-    conformation: Optional[Conformation] = None
+    subunit: AbstractSpecimen
+    pose: AbstractPose
+    conformation: Optional[AbstractConformation] = None
 
     def __init__(
         self,
-        subunit: Ensemble,
+        subunit: AbstractSpecimen,
         *,
-        pose: Optional[Pose] = None,
-        conformation: Optional[Conformation] = None,
+        pose: Optional[AbstractPose] = None,
+        conformation: Optional[AbstractConformation] = None,
     ):
         self.subunit = subunit
         self.pose = pose or EulerPose()
         self.conformation = conformation
         # Make sure that if conformation is set, subunit is an Ensemble
-        if conformation is not None and not isinstance(subunit, Ensemble):
+        if conformation is not None and not isinstance(
+            subunit, AbstractEnsemble
+        ):
             cls = type(self)
             raise AttributeError(
                 f"If {cls}.conformation is set, {cls}.subunit must be an Ensemble."
@@ -91,7 +94,7 @@ class Assembly(eqx.Module):
         raise NotImplementedError
 
     @cached_property
-    def poses(self) -> Pose:
+    def poses(self) -> AbstractPose:
         """
         Draw the poses of the subunits in the lab frame, measured
         from the rotation relative to the first subunit.
@@ -112,16 +115,14 @@ class Assembly(eqx.Module):
         )
 
     @cached_property
-    def subunits(self) -> Specimen:
+    def subunits(self) -> AbstractSpecimen:
         """Draw a realization of all of the subunits in the lab frame."""
         # Compute a list of subunits, configured at the correct conformations
-        if isinstance(self.subunit, Ensemble):
+        if isinstance(self.subunit, AbstractEnsemble):
             where = lambda s: (s.conformation, s.pose)
             return eqx.tree_at(
                 where, self.subunit, (self.conformation, self.poses)
             )
-        elif isinstance(self.subunit, Specimen):
+        else:
             where = lambda s: s.pose
             return eqx.tree_at(where, self.subunit, self.poses)
-        else:
-            raise AttributeError("The subunit must be of type SpecimenLike.")

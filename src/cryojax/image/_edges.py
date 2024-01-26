@@ -2,23 +2,23 @@
 Routines for dealing with image edges.
 """
 
-__all__ = ["crop", "pad", "crop_or_pad"]
+__all__ = ["crop", "pad", "resize_with_crop_or_pad"]
 
 import jax.numpy as jnp
+from jaxtyping import Shaped
 
 from ..typing import Image, Volume
 
 
 def crop(
-    image: Image | Volume,
+    image: Shaped[Image, "..."] | Shaped[Volume, "..."],
     shape: tuple[int, int] | tuple[int, int, int],
-) -> Image | Volume:
+) -> Shaped[Image, "..."] | Shaped[Volume, "..."]:
     """
     Crop an image to a new shape.
 
-    Will crop the last axes of the given Image or Volume.
-    This is to support if they are really a stacks of images
-    or volumes.
+    The input image or volume may have leading axes. Only
+    the last axes are padded.
     """
     if len(shape) == 2:
         M1, M2 = image.shape
@@ -45,12 +45,15 @@ def crop(
 
 
 def pad(
-    image: Image | Volume,
+    image: Shaped[Image, "..."] | Shaped[Volume, "..."],
     shape: tuple[int, int] | tuple[int, int, int],
     **kwargs,
-) -> Image | Volume:
+) -> Shaped[Image, "..."] | Shaped[Volume, "..."]:
     """
     Pad an image or volume to a new shape.
+
+    The input image or volume may have leading axes. Only
+    the last axes are padded.
     """
     n_extra_dims = image.ndim - len(shape)
     extra_padding = tuple([(0, 0) for _ in range(n_extra_dims)])
@@ -75,7 +78,9 @@ def pad(
     return jnp.pad(image, (*extra_padding, *padding), **kwargs)
 
 
-def crop_or_pad(image: Image, shape: tuple[int, int], **kwargs) -> Image:
+def resize_with_crop_or_pad(
+    image: Shaped[Image, "..."], shape: tuple[int, int], **kwargs
+) -> Shaped[Image, "..."]:
     """
     Resize an image to a new shape using padding and cropping
     """

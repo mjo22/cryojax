@@ -73,7 +73,7 @@ def manager(pixel_size):
 
 @pytest.fixture
 def scattering(manager):
-    return cs.FourierSliceExtract(manager)
+    return cs.FourierSliceExtract(manager, interpolation_order=1)
 
 
 @pytest.fixture

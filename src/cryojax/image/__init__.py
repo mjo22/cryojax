@@ -1,4 +1,5 @@
 from . import (
+    _rescale_pixel_size,
     _map_coordinates,
     _fft,
     _average,
@@ -9,6 +10,7 @@ from . import (
     operators,
 )
 
+from ._rescale_pixel_size import *
 from ._map_coordinates import *
 from ._fft import *
 from ._average import *
@@ -19,7 +21,8 @@ from .coordinates import *
 from .operators import *
 
 __all__ = (
-    _map_coordinates.__all__
+    _rescale_pixel_size.__all__
+    + _map_coordinates.__all__
     + _fft.__all__
     + _average.__all__
     + _spectrum.__all__

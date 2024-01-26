@@ -2,33 +2,34 @@
 Abstractions of biological specimen.
 """
 
-from __future__ import annotations
-
 __all__ = [
     "SpecimenT",
+    "EnsembleT",
+    "AbstractSpecimen",
+    "AbstractEnsemble",
     "Specimen",
-    "Ensemble",
-    "Conformation",
+    "DiscreteEnsemble",
 ]
 
-from typing import Optional, TypeVar
+from abc import abstractmethod
+from typing import Optional, TypeVar, Any
 from functools import cached_property
 from typing_extensions import override
+from equinox import AbstractVar
 
 import jax
-import jax.numpy as jnp
 from equinox import Module
 
-from .density import ElectronDensity
-from .pose import Pose, EulerPose
-from ..core import field
-from ..typing import Int_
+from .density import AbstractElectronDensity
+from .pose import AbstractPose, EulerPose
+from .conformation import AbstractConformation, DiscreteConformation
 
 
-SpecimenT = TypeVar("SpecimenT", bound="Specimen")
+SpecimenT = TypeVar("SpecimenT", bound="AbstractSpecimen")
+EnsembleT = TypeVar("EnsembleT", bound="AbstractEnsemble")
 
 
-class Specimen(Module):
+class AbstractSpecimen(Module):
     """
     Abstraction of a of biological specimen.
 
@@ -41,32 +42,58 @@ class Specimen(Module):
         The pose of the specimen.
     """
 
-    density: ElectronDensity
-    pose: Pose
+    density: AbstractVar[Any]
+    pose: AbstractPose
+
+    @cached_property
+    @abstractmethod
+    def density_in_com_frame(self) -> AbstractElectronDensity:
+        """Get the electron density in the center of mass
+        frame."""
+        raise NotImplementedError
+
+    @cached_property
+    def density_in_lab_frame(self) -> AbstractElectronDensity:
+        """Get the electron density in the lab frame."""
+        return self.density_in_com_frame.rotate_to_pose(self.pose)
+
+
+class Specimen(AbstractSpecimen):
+    """
+    Abstraction of a of biological specimen.
+
+    Attributes
+    ----------
+    density :
+        The electron density representation of the
+        specimen as a single electron density object.
+    pose :
+        The pose of the specimen.
+    """
+
+    density: AbstractElectronDensity
+    pose: AbstractPose
 
     def __init__(
         self,
-        density: ElectronDensity,
-        pose: Optional[Pose] = None,
+        density: AbstractElectronDensity,
+        pose: Optional[AbstractPose] = None,
     ):
         self.density = density
         self.pose = pose or EulerPose()
 
     @cached_property
-    def density_in_com_frame(self) -> ElectronDensity:
+    @override
+    def density_in_com_frame(self) -> AbstractElectronDensity:
         """Get the electron density in the center of mass
         frame."""
         return self.density
 
-    @cached_property
-    def density_in_lab_frame(self) -> ElectronDensity:
-        """Get the electron density in the lab frame."""
-        return self.density_in_com_frame.rotate_to_pose(self.pose)
 
-
-class Ensemble(Specimen):
+class AbstractEnsemble(AbstractSpecimen):
     """
-    Abstraction of an ensemble of biological specimen.
+    Abstraction of an ensemble of a biological specimen which can
+    occupy different conformations.
 
     Attributes
     ----------
@@ -78,36 +105,46 @@ class Ensemble(Specimen):
         The conformation at which to evaluate the ElectronDensity.
     """
 
-    density: tuple[ElectronDensity, ...]
-    pose: Pose
-    conformation: Conformation
+    density: AbstractVar[Any]
+    pose: AbstractPose
+    conformation: AbstractVar[AbstractConformation]
+
+
+class DiscreteEnsemble(AbstractEnsemble):
+    """
+    Abstraction of an ensemble with discrete conformational
+    heterogeneity.
+
+    Attributes
+    ----------
+    density :
+        A tuple of electron density representations.
+    pose :
+        The pose of the specimen.
+    conformation :
+        A conformation with a discrete index at which to evaluate
+        the electron density tuple.
+    """
+
+    density: tuple[AbstractElectronDensity, ...]
+    pose: AbstractPose
+    conformation: DiscreteConformation
 
     def __init__(
         self,
-        density: tuple[ElectronDensity, ...],
-        pose: Optional[Pose] = None,
-        conformation: Optional[Conformation] = None,
+        density: tuple[AbstractElectronDensity, ...],
+        pose: Optional[AbstractPose] = None,
+        conformation: Optional[DiscreteConformation] = None,
     ):
         self.density = density
         self.pose = pose or EulerPose()
-        self.conformation = conformation or Conformation(0)
+        self.conformation = conformation or DiscreteConformation(0)
 
     @cached_property
     @override
-    def density_in_com_frame(self) -> ElectronDensity:
+    def density_in_com_frame(self) -> AbstractElectronDensity:
         """Get the electron density at configured conformation."""
         funcs = [lambda i=i: self.density[i] for i in range(len(self.density))]
         density = jax.lax.switch(self.conformation.get(), funcs)
 
         return density
-
-
-class Conformation(Module):
-    """
-    A conformational variable wrapped in a Module.
-    """
-
-    _value: Int_ = field(converter=jnp.asarray)
-
-    def get(self) -> Int_:
-        return self._value

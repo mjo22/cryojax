@@ -4,7 +4,7 @@ Implementation of a RealOperator.
 
 from __future__ import annotations
 
-__all__ = ["RealOperator", "Gaussian", "RealOperatorLike"]
+__all__ = ["AbstractRealOperator", "Gaussian2D", "RealOperatorLike"]
 
 from abc import abstractmethod
 from typing import Any
@@ -13,12 +13,12 @@ from jaxtyping import Array, Float
 
 import jax.numpy as jnp
 
-from ._operator import ImageOperator
+from ._operator import AbstractImageOperator
 from ...core import field
-from ...typing import ImageCoords, RealImage, Real_
+from ...typing import ImageCoords, VolumeCoords, RealImage, Real_
 
 
-class RealOperator(ImageOperator):
+class AbstractRealOperator(AbstractImageOperator):
     """
     The base class for all real operators.
 
@@ -34,15 +34,15 @@ class RealOperator(ImageOperator):
 
     @abstractmethod
     def __call__(
-        self, coords: ImageCoords | None = None, **kwargs: Any
+        self, coords: ImageCoords | VolumeCoords | None = None, **kwargs: Any
     ) -> Array:
         raise NotImplementedError
 
 
-RealOperatorLike = RealOperator | ImageOperator
+RealOperatorLike = AbstractRealOperator | AbstractImageOperator
 
 
-class Gaussian(RealOperator):
+class Gaussian2D(AbstractRealOperator):
     r"""
     This operator represents a simple gaussian.
     Specifically, this is

@@ -3,7 +3,7 @@ Voxel-based electron density representations.
 """
 
 __all__ = [
-    "Voxels",
+    "AbstractVoxels",
     "VoxelT",
     "RealVoxelGrid",
     "FourierVoxelGrid",
@@ -31,8 +31,8 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 
-from ._electron_density import ElectronDensity
-from ..pose import Pose
+from ._electron_density import AbstractElectronDensity
+from ..pose import AbstractPose
 from ...io import (
     load_atoms,
     load_mrc,
@@ -66,7 +66,7 @@ VoxelT = TypeVar("VoxelT", bound="Voxels")
 """Type hint for a voxel-based electron density."""
 
 
-class Voxels(ElectronDensity):
+class AbstractVoxels(AbstractElectronDensity):
     """
     Voxel-based electron density representation.
 
@@ -336,7 +336,7 @@ class Voxels(ElectronDensity):
         )
 
 
-class FourierVoxelGrid(Voxels):
+class FourierVoxelGrid(AbstractVoxels):
     """
     Abstraction of a 3D electron density voxel grid
     in fourier space.
@@ -373,7 +373,7 @@ class FourierVoxelGrid(Voxels):
     def frequency_slice_in_angstroms(self) -> FrequencySlice:
         return self.frequency_slice / self.voxel_size
 
-    def rotate_to_pose(self, pose: Pose) -> Self:
+    def rotate_to_pose(self, pose: AbstractPose) -> Self:
         """
         Compute rotations of a central slice in fourier space
         by an imaging pose.
@@ -462,7 +462,7 @@ class FourierVoxelGridAsSpline(FourierVoxelGrid):
         return tuple([s - 2 for s in self.spline_coefficients.shape])
 
 
-class RealVoxelGrid(Voxels):
+class RealVoxelGrid(AbstractVoxels):
     """
     Abstraction of a 3D electron density voxel grid.
     The voxel grid is given in real space.
@@ -498,7 +498,7 @@ class RealVoxelGrid(Voxels):
     def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         return self.voxel_size * self.coordinate_grid
 
-    def rotate_to_pose(self, pose: Pose) -> Self:
+    def rotate_to_pose(self, pose: AbstractPose) -> Self:
         """
         Compute rotations of a point cloud by an imaging pose.
 
@@ -565,7 +565,7 @@ class RealVoxelGrid(Voxels):
         return cls(density_grid, coordinate_grid, voxel_size)
 
 
-class VoxelCloud(Voxels):
+class VoxelCloud(AbstractVoxels):
     """
     Abstraction of a 3D electron density voxel point cloud.
 
@@ -603,7 +603,7 @@ class VoxelCloud(Voxels):
     def coordinate_list_in_angstroms(self) -> CoordinateList:
         return self.voxel_size * self.coordinate_list
 
-    def rotate_to_pose(self, pose: Pose) -> Self:
+    def rotate_to_pose(self, pose: AbstractPose) -> Self:
         """
         Compute rotations of a point cloud by an imaging pose.
 

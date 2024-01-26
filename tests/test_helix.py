@@ -38,10 +38,10 @@ def build_helix_with_conformation(
     n_start = 6
     r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
     subunit_pose = cs.EulerPose(*r_0)
-    subunit = cs.Ensemble(
-        subunit_density, subunit_pose, conformation=cs.Conformation(0)
+    subunit = cs.DiscreteEnsemble(
+        subunit_density, subunit_pose, conformation=cs.DiscreteConformation(0)
     )
-    conformation = cs.Conformation(
+    conformation = cs.DiscreteConformation(
         np.random.choice(2, n_start * n_subunits_per_start)
     )
     return cs.Helix(
