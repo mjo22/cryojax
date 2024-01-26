@@ -47,9 +47,9 @@ import cryojax.simulator as cs
 
 filename = "example.mrc"
 density = cs.FourierVoxelGrid.from_file(filename)
-pixel_size = density.voxel_size
-manager = cs.ImageManager(shape=(320, 320), pixel_size)
-scattering = cs.FourierSliceExtract(manager)
+shape, pixel_size = (320, 320), density.voxel_size
+manager = cs.ImageManager(shape, pixel_size)
+scattering = cs.FourierSliceExtract(manager, interpolation_order=1)
 ```
 
 Here, `filename` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the biological specimen.
@@ -60,7 +60,7 @@ pose = cs.EulerPose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0,
 specimen = cs.Specimen(density=density, pose=pose)
 ```
 
-Here, this holds the electron density and the model for the pose. If instead a tuple of electron density representations are loaded, this can be placed in an ensemble. A `DiscreteEnsemble` is a `Specimen` that can be evaluated at a particular conformation.
+Here, this holds the electron density and the model for the pose. If instead a tuple of electron density representations are loaded, this can be placed in an ensemble. A `DiscreteEnsemble` is a `Specimen` that can be evaluated at a particular discrete conformation.
 
 ```python
 filenames = ...
