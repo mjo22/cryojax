@@ -398,8 +398,6 @@ class FourierVoxelGrid(AbstractVoxels):
         pad_scale: float = 1.0,
         pad_mode: str = "constant",
     ) -> "FourierVoxelGrid":
-        # Change how template sits in box to match cisTEM
-        density_grid = jnp.transpose(density_grid, axes=[-1, -2, -3])
         # Pad template
         if pad_scale < 1.0:
             raise ValueError("pad_scale must be greater than 1.0")
@@ -458,7 +456,7 @@ class FourierVoxelGridAsSpline(FourierVoxelGrid):
         self.fourier_density_grid = None
 
     @property
-    def shape(self) -> tuple[int, ...]:
+    def shape(self) -> tuple[int, int, int]:
         return tuple([s - 2 for s in self.spline_coefficients.shape])
 
 
@@ -544,12 +542,6 @@ class RealVoxelGrid(AbstractVoxels):
         coordinate_grid: Optional[VolumeCoords] = None,
         crop_scale: Optional[float] = None,
     ) -> "RealVoxelGrid":
-        # Change how template sits in the box.
-        # Ideally we would change this in the same way for all
-        # I/O methods. However, the algorithms used all
-        # have their own xyz conventions. The choice here is to
-        # make jax-finufft output match cisTEM.
-        density_grid = jnp.transpose(density_grid, axes=[-2, -1, -3])
         # Make coordinates if not given
         if coordinate_grid is None:
             # Option for cropping template
@@ -626,12 +618,6 @@ class VoxelCloud(AbstractVoxels):
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
     ) -> "VoxelCloud":
-        # Change how template sits in the box.
-        # Ideally we would change this in the same way for all
-        # I/O methods. However, the algorithms used all
-        # have their own xyz conventions. The choice here is to
-        # make jax-finufft output match cisTEM.
-        density_grid = jnp.transpose(density_grid, axes=[-2, -1, -3])
         # Make coordinates if not given
         if coordinate_grid is None:
             coordinate_grid = make_coordinates(density_grid.shape)

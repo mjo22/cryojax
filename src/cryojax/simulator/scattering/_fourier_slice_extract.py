@@ -11,12 +11,18 @@ __all__ = [
 ]
 
 from typing import Any
+from jaxtyping import Float, Array
 
 import jax.numpy as jnp
 
 from ._scattering_method import AbstractProjectionMethod
 from ..density import FourierVoxelGrid, FourierVoxelGridAsSpline
-from ...image import map_coordinates, map_coordinates_with_cubic_spline
+from ...image import (
+    irfftn,
+    rfftn,
+    map_coordinates,
+    map_coordinates_with_cubic_spline,
+)
 from ...core import field
 from ...typing import ComplexImage, ComplexCubicVolume, VolumeSliceCoords
 
@@ -59,20 +65,30 @@ class FourierSliceExtract(AbstractProjectionMethod):
             raise AttributeError(
                 "Only cubic boxes are supported for fourier slice extraction."
             )
+        # Compute the fourier projection
         if isinstance(density, FourierVoxelGridAsSpline):
-            return extract_slice_with_cubic_spline(
+            fourier_projection = extract_slice_with_cubic_spline(
                 density.spline_coefficients,
                 frequency_slice,
                 mode=self.interpolation_mode,
                 cval=self.interpolation_cval,
             )
         else:
-            return extract_slice(
+            fourier_projection = extract_slice(
                 density.fourier_density_grid,
                 frequency_slice,
                 interpolation_order=self.interpolation_order,
                 mode=self.interpolation_mode,
                 cval=self.interpolation_cval,
+            )
+        # Resize the image to match the ImageManager.padded_shape
+        if self.manager.padded_shape == (N, N):
+            return fourier_projection
+        else:
+            return rfftn(
+                self.manager.crop_or_pad_to_padded_shape(
+                    irfftn(fourier_projection, s=(N, N))
+                )
             )
 
 
@@ -107,15 +123,17 @@ def extract_slice(
     """
     # Convert to logical coordinates
     logical_frequency_slice = _convert_frequencies_to_indices(frequency_slice)
-    # Only take the lower half plane
-    logical_frequency_slice = _extract_lower_half_plane(
+    # Only take the upper half plane
+    logical_frequency_slice = _extract_upper_half_plane(
         logical_frequency_slice
     )
     # Convert arguments to map_coordinates convention and compute
-    k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
+    k_y, k_x, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates(
         fourier_density_grid, (k_x, k_y, k_z), interpolation_order, **kwargs
     )[:, :, 0]
+    # If the image size is even, pad last axis with zeros
+    projection = _pad_highest_frequency_with_zeros_if_even(projection)
 
     return jnp.fft.ifftshift(projection, axes=(0,))
 
@@ -147,20 +165,24 @@ def extract_slice_with_cubic_spline(
     """
     # Convert to logical coordinates
     logical_frequency_slice = _convert_frequencies_to_indices(frequency_slice)
-    # Only take the lower half plane
-    logical_frequency_slice = _extract_lower_half_plane(
+    # Only take the upper half plane
+    logical_frequency_slice = _extract_upper_half_plane(
         logical_frequency_slice
     )
     # Convert arguments to map_coordinates convention and compute
-    k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
+    k_y, k_x, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates_with_cubic_spline(
         spline_coefficients, (k_x, k_y, k_z), **kwargs
     )[:, :, 0]
+    # If the image size is even, pad last axis with zeros
+    projection = _pad_highest_frequency_with_zeros_if_even(projection)
 
     return jnp.fft.ifftshift(projection, axes=(0,))
 
 
-def _convert_frequencies_to_indices(frequency_slice: VolumeSliceCoords):
+def _convert_frequencies_to_indices(
+    frequency_slice: VolumeSliceCoords,
+) -> VolumeSliceCoords:
     """Convert a frequency coordinate system with the zero frequency
     component in the center to logical coordinates.
 
@@ -171,10 +193,28 @@ def _convert_frequencies_to_indices(frequency_slice: VolumeSliceCoords):
     return (frequency_slice * grid_shape) + grid_shape // 2
 
 
-def _extract_lower_half_plane(frequency_slice: VolumeSliceCoords):
+def _extract_upper_half_plane(
+    frequency_slice: VolumeSliceCoords,
+) -> Float[Array, "N N//2+N%2 3"]:
     """Extract the lower half plane of the frequency slice.
 
     Assume the grid is that the slice corresponds to is cubic.
     """
     N = frequency_slice.shape[0]
-    return jnp.flip(frequency_slice[:, : N // 2 + 1], axis=1)
+    return frequency_slice[:, N // 2 :]
+
+
+def _pad_highest_frequency_with_zeros_if_even(
+    fourier_projection: ComplexImage,
+) -> ComplexImage:
+    """If the image size is zero, pad highest frequency with zeros on final axis."""
+    N = fourier_projection.shape[0]
+    if N % 2 == 0:
+        return jnp.pad(
+            fourier_projection,
+            ((0, 0), (0, 1)),
+            mode="constant",
+            constant_values=0.0 + 0.0j,
+        )
+    else:
+        return fourier_projection
