@@ -255,17 +255,15 @@ class ImagePipeline(Module):
 class SuperpositionPipeline(ImagePipeline):
     """
     Compute an image from a superposition of states in
-    ``Ensemble``. This assumes that either ``Ensemble.Pose``
-    and/or ``Ensemble.conformation`` has a batch dimension.
+    the ``AbstractSpecimen``. This assumes that either
+    ``specimen.pose`` and/or ``specimen.conformation``
+    have batch dimensions.
 
     This class can be used to compute a micrograph, where there
     are many specimen in the field of view. Or it can be used to
-    compute an image from ``Assembly.subunits``.
+    compute an image from ``AbstractAssembly.subunits``.
     """
 
-    @partial(
-        jax.jit, static_argnames=["view_cropped", "get_real", "normalize"]
-    )
     @override
     def sample(
         self,
