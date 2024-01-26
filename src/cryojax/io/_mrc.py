@@ -29,12 +29,16 @@ def load_mrc(filename: str) -> tuple[np.ndarray, float]:
     with mrcfile.open(filename) as mrc:
         data = np.asarray(mrc.data, dtype=float)
         if data.ndim == 2:
+            # Change how template sits in box to match cisTEM
+            data = np.transpose(data, axes=[1, 0])
             voxel_size = np.asarray(
-                [mrc.voxel_size.x, mrc.voxel_size.y], dtype=float
+                [mrc.voxel_size.y, mrc.voxel_size.x], dtype=float
             )
         elif data.ndim == 3:
+            # Change how template sits in box to match cisTEM
+            data = np.transpose(data, axes=[1, 2, 0])
             voxel_size = np.asarray(
-                [mrc.voxel_size.x, mrc.voxel_size.y, mrc.voxel_size.z],
+                [mrc.voxel_size.y, mrc.voxel_size.z, mrc.voxel_size.x],
                 dtype=float,
             )
         else:

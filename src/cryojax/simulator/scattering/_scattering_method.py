@@ -15,7 +15,7 @@ import jax.numpy as jnp
 from equinox import Module
 
 from ..specimen import AbstractSpecimen
-from ..density import AbstractElectronDensity, AbstractVoxels, FourierVoxelGrid
+from ..density import AbstractElectronDensity, AbstractVoxels
 from ..manager import ImageManager
 
 from ...image import rfftn, irfftn
@@ -86,32 +86,23 @@ class AbstractProjectionMethod(AbstractScatteringMethod):
         """
         # Get density in the lab frame
         density = specimen.density_in_lab_frame
-        # Compute the image in the exit plane
+        # Compute the fourier projection in the exit plane
         image_at_exit_plane = self.project_density(density, **kwargs)
-        if isinstance(density, FourierVoxelGrid):
-            # Resize the image to match the ImageManager.padded_shape
-            image_at_exit_plane = self.manager.crop_or_pad_to_padded_shape(
-                irfftn(image_at_exit_plane, s=density.shape[0:2])
-            )
-        else:
-            # ... otherwise, assume the image is already at the padded_shape
-            image_at_exit_plane = irfftn(
-                image_at_exit_plane, s=self.manager.padded_shape
-            )
         # Rescale the pixel size if different from the voxel size
         if isinstance(density, AbstractVoxels):
-            rescale_fn = lambda image: self.manager.rescale_to_pixel_size(
-                image, density.voxel_size
+            rescale_fn = lambda fourier_image: rfftn(
+                self.manager.rescale_to_pixel_size(
+                    irfftn(fourier_image, s=self.manager.padded_shape),
+                    density.voxel_size,
+                )
             )
-            null_fn = lambda image: image
+            null_fn = lambda fourier_image: fourier_image
             image_at_exit_plane = jax.lax.cond(
                 jnp.isclose(density.voxel_size, self.manager.pixel_size),
                 null_fn,
                 rescale_fn,
                 image_at_exit_plane,
             )
-        # Transform back to fourier space and give the image zero mean
-        image_at_exit_plane = rfftn(image_at_exit_plane)
         # Apply translation through phase shifts
         image_at_exit_plane *= specimen.pose.shifts(
             self.manager.padded_frequency_grid_in_angstroms.get()

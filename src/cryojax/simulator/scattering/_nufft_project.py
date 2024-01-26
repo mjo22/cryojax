@@ -55,35 +55,10 @@ class NufftProject(AbstractProjectionMethod):
                 eps=self.eps,
             )
         else:
-            raise NotImplementedError(
+            raise ValueError(
                 "Supported density representations are RealVoxelGrid and VoxelCloud."
             )
         return fourier_projection
-
-
-def project_atoms_with_nufft(
-    weights,
-    coordinates,
-    variances,
-    identity,
-    shape: tuple[int, int],
-    **kwargs: Any,
-) -> ComplexImage:
-    atom_types = jnp.unique(identity)
-    img = jnp.zeros(shape, dtype=complex)
-    for atom_type_i in atom_types:
-        # Select the properties specific to that type of atom
-        coords_i = coordinates[identity == atom_type_i]
-        weights_i = weights[identity == atom_type_i]
-        # kernel_i = atom_density_kernel[atom_type_i]
-
-        # Build an
-        atom_i_image = project_with_nufft(weights_i, coords_i, shape, **kwargs)
-
-        # img += atom_i_image * kernel_i
-        img += atom_i_image
-
-    return img
 
 
 def project_with_nufft(
@@ -127,14 +102,38 @@ def project_with_nufft(
     periodic_coords = 2 * jnp.pi * coordinates / image_size
     # Compute and shift origin to cryojax conventions
     x, y = periodic_coords.T
-    fourier_projection = jnp.fft.ifftshift(
-        nufft1(shape, weights, x, y, **kwargs)
-    )
-
-    return fourier_projection[:, : M2 // 2 + 1]
+    projection = nufft1(shape, weights, x, y, **kwargs)
+    # Shift zero frequency component to corner and take upper half plane
+    projection = jnp.fft.ifftshift(projection)[:, : M2 // 2 + 1]
+    # Set last line of frequencies to zero if image dimension is even
+    return projection if M2 % 2 == 1 else projection.at[:, -1].set(0.0 + 0.0j)
 
 
 """
+def project_atoms_with_nufft(
+    weights,
+    coordinates,
+    variances,
+    identity,
+    shape: tuple[int, int],
+    **kwargs: Any,
+) -> ComplexImage:
+    atom_types = jnp.unique(identity)
+    img = jnp.zeros(shape, dtype=complex)
+    for atom_type_i in atom_types:
+        # Select the properties specific to that type of atom
+        coords_i = coordinates[identity == atom_type_i]
+        weights_i = weights[identity == atom_type_i]
+        # kernel_i = atom_density_kernel[atom_type_i]
+
+        # Build an
+        atom_i_image = project_with_nufft(weights_i, coords_i, shape, **kwargs)
+
+        # img += atom_i_image * kernel_i
+        img += atom_i_image
+
+    return img
+
 class IndependentAtomScatteringNufft(NufftScattering):
     '''
     Projects a pointcloud of atoms onto the imaging plane.

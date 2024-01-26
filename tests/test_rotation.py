@@ -9,7 +9,7 @@ config.update("jax_enable_x64", True)
 
 @pytest.mark.parametrize(
     "phi, theta, psi",
-    [(10, 90, 170)]
+    [(10, 90, 170)],
     # [(10, 80, -20), (1.2, -90.5, 67), (-50, 62, -21)],
 )
 def test_euler_matrix(phi, theta, psi):

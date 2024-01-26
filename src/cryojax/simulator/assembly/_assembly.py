@@ -66,14 +66,19 @@ class AbstractAssembly(eqx.Module):
         self.subunit = subunit
         self.pose = pose or EulerPose()
         self.conformation = conformation
-        # Make sure that if conformation is set, subunit is an Ensemble
         if conformation is not None and not isinstance(
             subunit, AbstractEnsemble
         ):
-            cls = type(self)
+            # Make sure that if conformation is set, subunit is an AbstractEnsemble
             raise AttributeError(
-                f"If {cls}.conformation is set, {cls}.subunit must be an Ensemble."
+                f"If {type(self)}.conformation is set, {type(self)}.subunit must be an AbstractEnsemble."
             )
+        if conformation is not None and isinstance(subunit, AbstractEnsemble):
+            # ... if it is an AbstractEnsemble, the AbstractConformation must be the right type
+            if not isinstance(conformation, type(subunit.conformation)):
+                raise AttributeError(
+                    f"{type(self)}.conformation must be type {type(subunit.conformation)} if {type(self)}.subunit is type {type(subunit)}."
+                )
 
     @cached_property
     @abstractmethod
