@@ -61,31 +61,6 @@ class NufftProject(AbstractProjectionMethod):
         return fourier_projection
 
 
-def project_atoms_with_nufft(
-    weights,
-    coordinates,
-    variances,
-    identity,
-    shape: tuple[int, int],
-    **kwargs: Any,
-) -> ComplexImage:
-    atom_types = jnp.unique(identity)
-    img = jnp.zeros(shape, dtype=complex)
-    for atom_type_i in atom_types:
-        # Select the properties specific to that type of atom
-        coords_i = coordinates[identity == atom_type_i]
-        weights_i = weights[identity == atom_type_i]
-        # kernel_i = atom_density_kernel[atom_type_i]
-
-        # Build an
-        atom_i_image = project_with_nufft(weights_i, coords_i, shape, **kwargs)
-
-        # img += atom_i_image * kernel_i
-        img += atom_i_image
-
-    return img
-
-
 def project_with_nufft(
     weights: RealCloud,
     coordinates: Union[CloudCoords2D, CloudCoords3D],
@@ -135,6 +110,30 @@ def project_with_nufft(
 
 
 """
+def project_atoms_with_nufft(
+    weights,
+    coordinates,
+    variances,
+    identity,
+    shape: tuple[int, int],
+    **kwargs: Any,
+) -> ComplexImage:
+    atom_types = jnp.unique(identity)
+    img = jnp.zeros(shape, dtype=complex)
+    for atom_type_i in atom_types:
+        # Select the properties specific to that type of atom
+        coords_i = coordinates[identity == atom_type_i]
+        weights_i = weights[identity == atom_type_i]
+        # kernel_i = atom_density_kernel[atom_type_i]
+
+        # Build an
+        atom_i_image = project_with_nufft(weights_i, coords_i, shape, **kwargs)
+
+        # img += atom_i_image * kernel_i
+        img += atom_i_image
+
+    return img
+
 class IndependentAtomScatteringNufft(NufftScattering):
     '''
     Projects a pointcloud of atoms onto the imaging plane.

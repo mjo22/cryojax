@@ -11,7 +11,6 @@ __all__ = [
 ]
 
 from typing import Any
-from jaxtyping import Float, Array
 
 import jax.numpy as jnp
 
