@@ -221,9 +221,7 @@ def compute_ctf(
         + defocus_v
         + (defocus_u - defocus_v) * jnp.cos(2.0 * (theta - defocus_angle))
     )
-    ac = jnp.arctan(
-        amplitude_contrast / jnp.sqrt(1.0 - amplitude_contrast**2)
-    )
+    ac = jnp.arctan(amplitude_contrast / jnp.sqrt(1.0 - amplitude_contrast**2))
 
     lam = 12.2643 / (voltage + 0.97845e-6 * voltage**2) ** 0.5
     gamma_defocus = -0.5 * defocus * lam * k_sqr

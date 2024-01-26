@@ -89,8 +89,7 @@ class AbstractVoxels(AbstractElectronDensity):
         voxel_size: Real_ | float,
         coordinate_grid: None,
         **kwargs: Any,
-    ) -> VoxelT:
-        ...
+    ) -> VoxelT: ...
 
     @overload
     @classmethod
@@ -101,8 +100,7 @@ class AbstractVoxels(AbstractElectronDensity):
         voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
         **kwargs: Any,
-    ) -> VoxelT:
-        ...
+    ) -> VoxelT: ...
 
     @classmethod
     @abstractmethod
@@ -520,8 +518,7 @@ class RealVoxelGrid(AbstractVoxels):
         voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
         crop_scale: None,
-    ) -> "RealVoxelGrid":
-        ...
+    ) -> "RealVoxelGrid": ...
 
     @overload
     @classmethod
@@ -531,8 +528,7 @@ class RealVoxelGrid(AbstractVoxels):
         voxel_size: Real_ | float,
         coordinate_grid: None,
         crop_scale: Optional[float],
-    ) -> "RealVoxelGrid":
-        ...
+    ) -> "RealVoxelGrid": ...
 
     @classmethod
     def from_density_grid(

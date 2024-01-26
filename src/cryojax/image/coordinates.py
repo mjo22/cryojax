@@ -124,8 +124,7 @@ class CoordinateGrid(AbstractCoordinates):
         *,
         shape: Optional[tuple[int, int] | tuple[int, int, int]],
         grid_spacing: float,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -134,8 +133,7 @@ class CoordinateGrid(AbstractCoordinates):
         *,
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float = 1.0,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -167,8 +165,7 @@ class FrequencyGrid(AbstractCoordinates):
         shape: Optional[tuple[int, int] | tuple[int, int, int]],
         grid_spacing: float,
         half_space: bool = True,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -178,8 +175,7 @@ class FrequencyGrid(AbstractCoordinates):
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float = 1.0,
         half_space: bool = True,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -214,8 +210,7 @@ class FrequencySlice(AbstractCoordinates):
         shape: Optional[tuple[int, int]],
         grid_spacing: float,
         half_space: bool = True,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -225,8 +220,7 @@ class FrequencySlice(AbstractCoordinates):
         shape: tuple[int, int],
         grid_spacing: float = 1.0,
         half_space: bool = True,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
