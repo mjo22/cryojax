@@ -22,8 +22,8 @@ def field(
         if static:
             return eqx.field(static=True, **kwargs)
         else:
-            default_converter = (
-                lambda x: jnp.asarray(x) if isinstance(x, ArrayLike) else x
+            default_converter = lambda x: (
+                jnp.asarray(x) if isinstance(x, ArrayLike) else x
             )
             return eqx.field(
                 static=False, converter=default_converter, **kwargs

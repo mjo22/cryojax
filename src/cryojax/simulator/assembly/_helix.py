@@ -33,7 +33,7 @@ class Helix(AbstractAssembly):
     Abstraction of a helical polymer.
 
     This class assembles a helix from a subunit.
-    See the ``Assembly`` base class for more information.
+    See the ``AbstractAssembly`` base class for more information.
 
     The screw axis is taken to be in the center of the
     image, pointing out-of-plane (i.e. along the z direction).

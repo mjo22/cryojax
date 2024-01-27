@@ -27,8 +27,7 @@ def powerspectrum(
     *,
     k_min: Optional[Real_ | float],
     k_max: Optional[Real_ | float],
-) -> tuple[RealVector, RealVector]:
-    ...
+) -> tuple[RealVector, RealVector]: ...
 
 
 @overload
@@ -39,8 +38,7 @@ def powerspectrum(
     *,
     k_min: Optional[Real_ | float],
     k_max: Optional[Real_ | float],
-) -> tuple[RealVector, RealVector]:
-    ...
+) -> tuple[RealVector, RealVector]: ...
 
 
 @overload
@@ -53,8 +51,7 @@ def powerspectrum(
     interpolation_mode: str,
     k_min: Optional[Real_ | float],
     k_max: Optional[Real_ | float],
-) -> tuple[RealVector, RealImage, RealVector]:
-    ...
+) -> tuple[RealVector, RealImage, RealVector]: ...
 
 
 @overload
@@ -67,8 +64,7 @@ def powerspectrum(
     interpolation_mode: str,
     k_min: Optional[Real_ | float],
     k_max: Optional[Real_ | float],
-) -> tuple[RealVector, RealVolume, RealVector]:
-    ...
+) -> tuple[RealVector, RealVolume, RealVector]: ...
 
 
 def powerspectrum(
