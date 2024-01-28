@@ -2,8 +2,6 @@
 Routines for interfacing with mdtraj
 """
 
-__all__ = ["get_atom_info_from_mdtraj", "mdtraj_load_from_file"]
-
 import numpy as np
 from jaxtyping import Float, Int
 

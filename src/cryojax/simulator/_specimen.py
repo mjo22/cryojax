@@ -2,15 +2,6 @@
 Abstractions of biological specimen.
 """
 
-__all__ = [
-    "SpecimenT",
-    "EnsembleT",
-    "AbstractSpecimen",
-    "AbstractEnsemble",
-    "Specimen",
-    "DiscreteEnsemble",
-]
-
 from abc import abstractmethod
 from typing import Optional, TypeVar, Any
 from functools import cached_property
@@ -20,9 +11,9 @@ from equinox import AbstractVar
 import jax
 from equinox import Module
 
-from .density import AbstractElectronDensity
-from .pose import AbstractPose, EulerPose
-from .conformation import AbstractConformation, DiscreteConformation
+from ._density import AbstractElectronDensity
+from ._pose import AbstractPose, EulerPose
+from ._conformation import AbstractConformation, DiscreteConformation
 
 
 SpecimenT = TypeVar("SpecimenT", bound="AbstractSpecimen")

@@ -2,38 +2,26 @@
 Masks to apply to images in real space.
 """
 
-from __future__ import annotations
-
-__all__ = ["Mask", "MaskT", "CircularMask"]
-
-from typing import TypeVar, overload
+from abc import abstractmethod
+from typing import overload, Any
+from equinox import field
 
 import jax
 import jax.numpy as jnp
 
 from ._operator import AbstractImageMultiplier
-from ...core import field
 from ...typing import RealImage, RealVolume, ImageCoords, VolumeCoords
 
 
-MaskT = TypeVar("MaskT", bound="Mask")
-"""TypeVar for the Mask base class."""
-
-
-class Mask(AbstractImageMultiplier):
+class AbstractMask(AbstractImageMultiplier):
     """
     Base class for computing and applying an image mask.
-
-    Attributes
-    ----------
-    mask :
-        The mask. Note that this is automatically
-        computed upon instantiation.
     """
 
-    def __init__(self, mask: RealImage | RealVolume):
-        """Compute the mask."""
-        self.buffer = mask
+    @abstractmethod
+    def __init__(self, *args: Any, **kwargs: Any):
+        """Compute the filter."""
+        raise NotImplementedError
 
     @overload
     def __call__(self, image: RealImage) -> RealImage: ...
@@ -47,7 +35,16 @@ class Mask(AbstractImageMultiplier):
         return image * jax.lax.stop_gradient(self.buffer)
 
 
-class CircularMask(Mask):
+class CustomMask(AbstractImageMultiplier):
+    """
+    Pass a custom mask as an array.
+    """
+
+    def __init__(self, mask: RealImage | RealVolume):
+        self.buffer = mask
+
+
+class CircularMask(AbstractMask):
     """
     Apply a circular mask to an image.
 

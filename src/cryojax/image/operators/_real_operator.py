@@ -1,20 +1,16 @@
 """
-Implementation of a RealOperator.
+Implementation of operators on images in real-space.
 """
-
-from __future__ import annotations
-
-__all__ = ["AbstractRealOperator", "Gaussian2D", "RealOperatorLike"]
 
 from abc import abstractmethod
 from typing import Any
 from typing_extensions import override
 from jaxtyping import Array, Float
+from equinox import field
 
 import jax.numpy as jnp
 
 from ._operator import AbstractImageOperator
-from ...core import field
 from ...typing import ImageCoords, VolumeCoords, RealImage, Real_
 
 
@@ -65,9 +61,9 @@ class Gaussian2D(AbstractRealOperator):
         in the above equation.
     """
 
-    amplitude: Real_ = field(default=1.0)
-    b_factor: Real_ = field(default=1.0)
-    offset: Float[Array, "... 2"] = field(
+    amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
+    b_factor: Real_ = field(default=1.0, converter=jnp.asarray)
+    offset: Float[Array, "2"] = field(
         default=(0.0, 0.0), converter=jnp.asarray
     )
 

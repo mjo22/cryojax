@@ -1,15 +1,34 @@
-from . import _filters, _fourier_operator, _real_operator, _masks, _operator
-
-from ._operator import *
-from ._filters import *
-from ._masks import *
-from ._fourier_operator import *
-from ._real_operator import *
-
-__all__ = (
-    _operator.__all__
-    + _filters.__all__
-    + _fourier_operator.__all__
-    + _masks.__all__
-    + _real_operator.__all__
+from ._filters import (
+    AbstractFilter as AbstractFilter,
+    CustomFilter as CustomFilter,
+    LowpassFilter as LowpassFilter,
+    WhiteningFilter as WhiteningFilter,
+)
+from ._masks import (
+    AbstractMask as AbstractMask,
+    CustomMask as CustomMask,
+    CircularMask as CircularMask,
+)
+from ._operator import (
+    Constant as Constant,
+    Empirical as Empirical,
+    Lambda as Lambda,
+    AbstractImageOperator as AbstractImageOperator,
+    ProductImageOperator as ProductImageOperator,
+    SumImageOperator as SumImageOperator,
+    DiffImageOperator as DiffImageOperator,
+    AbstractImageMultiplier as AbstractImageMultiplier,
+    ProductImageMultiplier as ProductImageMultiplier,
+)
+from ._fourier_operator import (
+    AbstractFourierOperator as AbstractFourierOperator,
+    FourierOperatorLike as FourierOperatorLike,
+    FourierGaussian2D as FourierGaussian2D,
+    FourierExp2D as FourierExp2D,
+    ZeroMode as ZeroMode,
+)
+from ._real_operator import (
+    AbstractRealOperator as AbstractRealOperator,
+    RealOperatorLike as RealOperatorLike,
+    Gaussian2D as Gaussian2D,
 )

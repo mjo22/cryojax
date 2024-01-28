@@ -3,8 +3,6 @@ Routines to model image formation from 3D electron density
 fields.
 """
 
-from __future__ import annotations
-
 __all__ = ["AbstractScatteringMethod", "AbstractProjectionMethod"]
 
 from abc import abstractmethod
@@ -14,9 +12,9 @@ import jax
 import jax.numpy as jnp
 from equinox import Module
 
-from ..specimen import AbstractSpecimen
-from ..density import AbstractElectronDensity, AbstractVoxels
-from ..manager import ImageManager
+from .._specimen import AbstractSpecimen
+from .._density import AbstractElectronDensity, AbstractVoxels
+from .._manager import ImageManager
 
 from ...image import rfftn, irfftn
 from ...typing import ComplexImage

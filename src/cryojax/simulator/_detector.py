@@ -7,20 +7,16 @@ __all__ = ["AbstractDetector", "NullDetector", "GaussianDetector"]
 from abc import abstractmethod
 from typing import ClassVar
 from typing_extensions import override
+from equinox import field
 
 import jax.random as jr
 from jaxtyping import PRNGKeyArray
 from equinox import AbstractClassVar
 
-from .manager import ImageManager
+from ._manager import ImageManager
 from ._stochastic_model import AbstractStochasticModel
-from ..image import (
-    FourierOperatorLike,
-    Constant,
-    irfftn,
-    rfftn,
-)
-from ..core import field
+from ..image.operators import FourierOperatorLike, Constant
+from ..image import irfftn, rfftn
 from ..typing import ComplexImage, ImageCoords, RealImage
 
 

@@ -2,8 +2,6 @@
 Routines to compute radial averages of images.
 """
 
-__all__ = ["radial_average"]
-
 from typing import overload
 from functools import partial
 

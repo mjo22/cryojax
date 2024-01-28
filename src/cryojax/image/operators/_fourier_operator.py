@@ -1,32 +1,23 @@
 """
-Implementation of a FourierOperator. Put simply, these are
+Implementation of an AbstractFourierOperator. Put simply, these are
 functions commonly applied to images in fourier space.
 
-Opposed to a Filter, a FourierOperator is computed at
-runtime---not upon initialization.
+Opposed to a AbstractFilter, a AbstractFourierOperator is computed at
+runtime---not upon initialization. AbstractFourierOperators also do not
+have a rule for how they should be applied to images.
 
 These classes are modified from the library ``tinygp``.
 """
-
-from __future__ import annotations
-
-__all__ = [
-    "AbstractFourierOperator",
-    "ZeroMode",
-    "FourierExp2D",
-    "FourierGaussian2D",
-    "FourierOperatorLike",
-]
 
 from abc import abstractmethod
 from typing import Any, Optional
 from typing_extensions import override
 from jaxtyping import Array
+from equinox import field
 
 import jax.numpy as jnp
 
 from ._operator import AbstractImageOperator
-from ...core import field
 from ...typing import Real_, ImageCoords, VolumeCoords, RealImage
 
 
@@ -64,7 +55,7 @@ class ZeroMode(AbstractFourierOperator):
         The value of the zero mode.
     """
 
-    value: Real_ = field(default=0.0)
+    value: Real_ = field(default=0.0, converter=jnp.asarray)
 
     @override
     def __call__(
@@ -121,8 +112,8 @@ class FourierExp2D(AbstractFourierOperator):
         in the above equation.
     """
 
-    amplitude: Real_ = field(default=1.0)
-    scale: Real_ = field(default=1.0)
+    amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
+    scale: Real_ = field(default=1.0, converter=jnp.asarray)
 
     @override
     def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
@@ -165,8 +156,8 @@ class FourierGaussian2D(AbstractFourierOperator):
         in the above equation.
     """
 
-    amplitude: Real_ = field(default=1.0)
-    b_factor: Real_ = field(default=1.0)
+    amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
+    b_factor: Real_ = field(default=1.0, converter=jnp.asarray)
 
     @override
     def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:

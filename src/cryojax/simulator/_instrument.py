@@ -7,16 +7,15 @@ __all__ = ["Instrument"]
 
 from typing import Any
 from jaxtyping import PRNGKeyArray
-from equinox import Module
+from equinox import Module, field
 
-from .ice import AbstractIce
-from .specimen import AbstractSpecimen
-from .scattering import AbstractScatteringMethod
-from .optics import AbstractOptics, NullOptics
-from .exposure import Exposure, NullExposure
-from .detector import AbstractDetector, NullDetector
+from ._ice import AbstractIce
+from ._specimen import AbstractSpecimen
+from ._scattering import AbstractScatteringMethod
+from ._optics import AbstractOptics, NullOptics
+from ._exposure import AbstractExposure, NullExposure
+from ._detector import AbstractDetector, NullDetector
 
-from ..core import field
 from ..typing import ComplexImage, Real_
 
 
@@ -35,7 +34,7 @@ class Instrument(Module):
     """
 
     optics: AbstractOptics = field(default_factory=NullOptics)
-    exposure: Exposure = field(default_factory=NullExposure)
+    exposure: AbstractExposure = field(default_factory=NullExposure)
     detector: AbstractDetector = field(default_factory=NullDetector)
 
     def scatter_to_exit_plane(

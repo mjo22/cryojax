@@ -3,24 +3,19 @@ Routines to handle variations in image intensity
 due to electron exposure.
 """
 
-from __future__ import annotations
+from equinox import Module, field, AbstractVar
 
-__all__ = ["Exposure", "NullExposure"]
-
-from equinox import Module
-
-from .manager import ImageManager
+from ._manager import ImageManager
 from ..image import rfftn, irfftn
 from ..image.operators import (
     RealOperatorLike,
     FourierOperatorLike,
     Constant,
 )
-from ..core import field
 from ..typing import ComplexImage
 
 
-class Exposure(Module):
+class AbstractExposure(Module):
     """
     Controls parameters related to variation in
     the image intensity. This is implemented as a combination
@@ -36,8 +31,8 @@ class Exposure(Module):
         This is modeled as a fourier-space function applied to the image.
     """
 
-    dose: RealOperatorLike = field(default_factory=Constant)
-    radiation: FourierOperatorLike = field(default_factory=Constant)
+    dose: AbstractVar[RealOperatorLike]
+    radiation: AbstractVar[FourierOperatorLike]
 
     def __call__(
         self,
@@ -57,11 +52,24 @@ class Exposure(Module):
         return self.radiation(frequency_grid) * image_at_exit_plane
 
 
-class NullExposure(Exposure):
+class Exposure(AbstractExposure):
+    """
+    A flexible exposure model, where any dose and radiation operators can
+    be passed.
+    """
+
+    dose: RealOperatorLike = field(default_factory=Constant)
+    radiation: FourierOperatorLike = field(default_factory=Constant)
+
+
+class NullExposure(AbstractExposure):
     """
     A `null` exposure model. Do not change the
     image when it is passsed through the pipeline.
     """
+
+    dose: Constant
+    radiation: Constant
 
     def __init__(self):
         self.dose = Constant(1.0)

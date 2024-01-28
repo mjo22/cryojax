@@ -2,27 +2,19 @@
 Scattering methods for the fourier slice theorem.
 """
 
-from __future__ import annotations
-
-__all__ = [
-    "extract_slice",
-    "extract_slice_with_cubic_spline",
-    "FourierSliceExtract",
-]
-
 from typing import Any
+from equinox import field
 
 import jax.numpy as jnp
 
 from ._scattering_method import AbstractProjectionMethod
-from ..density import FourierVoxelGrid, FourierVoxelGridAsSpline
+from .._density import FourierVoxelGrid, FourierVoxelGridAsSpline
 from ...image import (
     irfftn,
     rfftn,
     map_coordinates,
     map_coordinates_with_cubic_spline,
 )
-from ...core import field
 from ...typing import ComplexImage, ComplexCubicVolume, VolumeSliceCoords
 
 

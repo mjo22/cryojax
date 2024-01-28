@@ -2,8 +2,6 @@
 Image normalization routines.
 """
 
-__all__ = ["rescale_image", "normalize_image"]
-
 from typing import Any, Optional
 
 import jax.numpy as jnp

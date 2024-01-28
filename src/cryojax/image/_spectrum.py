@@ -2,8 +2,6 @@
 Helper routines to compute power spectra.
 """
 
-__all__ = ["powerspectrum"]
-
 from typing import Optional, overload
 
 import jax.numpy as jnp

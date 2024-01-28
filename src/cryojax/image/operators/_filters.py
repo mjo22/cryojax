@@ -2,16 +2,9 @@
 Filters to apply to images in Fourier space
 """
 
-from __future__ import annotations
-
-__all__ = [
-    "Filter",
-    "FilterT",
-    "LowpassFilter",
-    "WhiteningFilter",
-]
-
-from typing import TypeVar, Optional, overload
+from abc import abstractmethod
+from typing import Optional, Any, overload
+from equinox import field
 
 import jax
 import jax.numpy as jnp
@@ -20,23 +13,20 @@ from .._edges import resize_with_crop_or_pad
 from ._operator import AbstractImageMultiplier
 from .._spectrum import powerspectrum
 from .._fft import rfftn, irfftn
-from ..coordinates import make_frequencies
-from ...core import field
+from ...coordinates import make_frequencies
 from ...typing import (
     Image,
     ComplexImage,
     RealImage,
+    Volume,
     ComplexVolume,
     RealVolume,
     ImageCoords,
     VolumeCoords,
 )
 
-FilterT = TypeVar("FilterT", bound="Filter")
-"""TypeVar for the Filter base class."""
 
-
-class Filter(AbstractImageMultiplier):
+class AbstractFilter(AbstractImageMultiplier):
     """
     Base class for computing and applying an image filter.
 
@@ -47,9 +37,10 @@ class Filter(AbstractImageMultiplier):
         computed upon instantiation.
     """
 
-    def __init__(self, filter: Image):
+    @abstractmethod
+    def __init__(self, *args: Any, **kwargs: Any):
         """Compute the filter."""
-        self.buffer = filter
+        raise NotImplementedError
 
     @overload
     def __call__(self, image: ComplexImage) -> ComplexImage: ...
@@ -63,7 +54,16 @@ class Filter(AbstractImageMultiplier):
         return image * jax.lax.stop_gradient(self.buffer)
 
 
-class LowpassFilter(Filter):
+class CustomFilter(AbstractFilter):
+    """
+    Pass a custom filter as an array.
+    """
+
+    def __init__(self, filter: Image | Volume):
+        self.buffer = filter
+
+
+class LowpassFilter(AbstractFilter):
     """
     Apply a low-pass filter to an image.
 
@@ -94,7 +94,7 @@ class LowpassFilter(Filter):
         )
 
 
-class WhiteningFilter(Filter):
+class WhiteningFilter(AbstractFilter):
     """
     Apply a whitening filter to an image.
     """
