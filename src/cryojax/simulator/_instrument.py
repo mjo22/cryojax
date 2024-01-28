@@ -9,12 +9,12 @@ from typing import Any
 from jaxtyping import PRNGKeyArray
 from equinox import Module, field
 
-from .ice import AbstractIce
-from .specimen import AbstractSpecimen
-from .scattering import AbstractScatteringMethod
-from .optics import AbstractOptics, NullOptics
-from .exposure import Exposure, NullExposure
-from .detector import AbstractDetector, NullDetector
+from ._ice import AbstractIce
+from ._specimen import AbstractSpecimen
+from ._scattering import AbstractScatteringMethod
+from ._optics import AbstractOptics, NullOptics
+from ._exposure import Exposure, NullExposure
+from ._detector import AbstractDetector, NullDetector
 
 from ..typing import ComplexImage, Real_
 

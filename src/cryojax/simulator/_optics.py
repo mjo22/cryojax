@@ -10,7 +10,7 @@ from equinox import AbstractVar, Module, field
 import jax
 import jax.numpy as jnp
 
-from .manager import ImageManager
+from ._manager import ImageManager
 from ..image.operators import (
     FourierOperatorLike,
     AbstractFourierOperator,

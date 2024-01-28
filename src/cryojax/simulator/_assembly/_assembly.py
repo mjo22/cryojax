@@ -12,9 +12,9 @@ from functools import cached_property
 import jax.numpy as jnp
 import equinox as eqx
 
-from ..specimen import AbstractSpecimen, AbstractEnsemble
-from ..conformation import AbstractConformation
-from ..pose import AbstractPose, EulerPose, MatrixPose
+from .._specimen import AbstractSpecimen, AbstractEnsemble
+from .._conformation import AbstractConformation
+from .._pose import AbstractPose, EulerPose, MatrixPose
 
 _Positions = Float[Array, "N 3"]
 """Type hint for array where each element is a subunit coordinate."""

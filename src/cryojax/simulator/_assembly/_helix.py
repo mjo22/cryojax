@@ -10,9 +10,9 @@ from equinox import field
 import jax
 import jax.numpy as jnp
 
-from ..specimen import AbstractSpecimen
-from ..pose import AbstractPose, EulerPose
-from ..conformation import AbstractConformation
+from .._specimen import AbstractSpecimen
+from .._pose import AbstractPose, EulerPose
+from .._conformation import AbstractConformation
 from ._assembly import AbstractAssembly, _Positions, _Rotations
 
 from ...typing import Real_, RealVector

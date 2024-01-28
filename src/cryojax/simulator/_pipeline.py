@@ -12,12 +12,12 @@ import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from .specimen import AbstractSpecimen, AbstractConformation
-from .pose import AbstractPose
-from .scattering import AbstractScatteringMethod
-from .instrument import Instrument
-from .detector import NullDetector
-from .ice import AbstractIce, NullIce
+from ._specimen import AbstractSpecimen, AbstractConformation
+from ._pose import AbstractPose
+from ._scattering import AbstractScatteringMethod
+from ._instrument import Instrument
+from ._detector import NullDetector
+from ._ice import AbstractIce, NullIce
 from ..image import rfftn, irfftn
 from ..image.operators import AbstractFilter, AbstractMask
 from ..typing import ComplexImage, Image

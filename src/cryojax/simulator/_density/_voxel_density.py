@@ -23,7 +23,7 @@ import jax
 import jax.numpy as jnp
 
 from ._electron_density import AbstractElectronDensity
-from ..pose import AbstractPose
+from .._pose import AbstractPose
 from ...io import (
     load_atoms,
     load_mrc,

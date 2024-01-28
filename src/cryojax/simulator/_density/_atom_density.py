@@ -10,7 +10,7 @@ import equinox as eqx
 from jaxtyping import Array
 
 from ._electron_density import AbstractElectronDensity
-from ..pose import AbstractPose
+from .._pose import AbstractPose
 
 
 class AtomCloud(AbstractElectronDensity):

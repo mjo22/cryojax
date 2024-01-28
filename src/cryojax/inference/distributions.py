@@ -13,9 +13,9 @@ from jaxtyping import PRNGKeyArray
 from equinox import Module
 
 from ..image.operators import FourierOperatorLike, Constant
-from ..simulator.ice import GaussianIce
-from ..simulator.detector import GaussianDetector
-from ..simulator.pipeline import ImagePipeline
+from ..simulator._ice import GaussianIce
+from ..simulator._detector import GaussianDetector
+from ..simulator._pipeline import ImagePipeline
 from ..typing import Real_, RealImage, ComplexImage, Image
 
 

@@ -8,7 +8,7 @@ from equinox import field
 import jax.numpy as jnp
 
 from ._scattering_method import AbstractProjectionMethod
-from ..density import FourierVoxelGrid, FourierVoxelGridAsSpline
+from .._density import FourierVoxelGrid, FourierVoxelGridAsSpline
 from ...image import (
     irfftn,
     rfftn,

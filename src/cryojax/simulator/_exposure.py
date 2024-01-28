@@ -3,13 +3,9 @@ Routines to handle variations in image intensity
 due to electron exposure.
 """
 
-from __future__ import annotations
-
-__all__ = ["Exposure", "NullExposure"]
-
 from equinox import Module, field
 
-from .manager import ImageManager
+from ._manager import ImageManager
 from ..image import rfftn, irfftn
 from ..image.operators import (
     RealOperatorLike,

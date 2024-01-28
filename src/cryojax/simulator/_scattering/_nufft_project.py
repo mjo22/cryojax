@@ -8,7 +8,7 @@ from equinox import field
 
 import jax.numpy as jnp
 
-from ..density import VoxelCloud, RealVoxelGrid
+from .._density import VoxelCloud, RealVoxelGrid
 from ._scattering_method import AbstractProjectionMethod
 from ...typing import (
     ComplexImage,

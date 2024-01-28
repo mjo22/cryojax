@@ -2,14 +2,14 @@ import pytest
 import jax
 from jax import numpy as jnp
 from cryojax.simulator import ImageManager
-from cryojax.simulator.scattering._gaussian_mixture import (
+from cryojax.simulator._scattering._gaussian_mixture import (
     _evaluate_coord_to_grid_sq_distances,
 )
-from cryojax.simulator.scattering._gaussian_mixture import (
+from cryojax.simulator._scattering._gaussian_mixture import (
     _build_pixel_grid,
     IndependentAtomScattering,
 )
-from cryojax.simulator.density import AtomCloud
+from cryojax.simulator._density import AtomCloud
 
 """
 class TestDistanceEvaluation:

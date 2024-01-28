@@ -8,7 +8,7 @@ from typing_extensions import Self
 from jaxtyping import PyTree
 from equinox import AbstractClassVar, Module
 
-from ..pose import AbstractPose
+from .._pose import AbstractPose
 from ...coordinates import get_not_coordinate_filter_spec
 
 

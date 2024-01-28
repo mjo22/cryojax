@@ -11,7 +11,7 @@ import jax.random as jr
 from jaxtyping import PRNGKeyArray
 
 from ._stochastic_model import AbstractStochasticModel
-from .manager import ImageManager
+from ._manager import ImageManager
 from ..image.operators import FourierOperatorLike, FourierExp2D
 from ..typing import ComplexImage, ImageCoords
 

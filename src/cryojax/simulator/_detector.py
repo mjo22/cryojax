@@ -13,7 +13,7 @@ import jax.random as jr
 from jaxtyping import PRNGKeyArray
 from equinox import AbstractClassVar
 
-from .manager import ImageManager
+from ._manager import ImageManager
 from ._stochastic_model import AbstractStochasticModel
 from ..image.operators import FourierOperatorLike, Constant
 from ..image import irfftn, rfftn
