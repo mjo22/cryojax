@@ -2,15 +2,6 @@
 Voxel-based electron density representations.
 """
 
-__all__ = [
-    "AbstractVoxels",
-    "VoxelT",
-    "RealVoxelGrid",
-    "FourierVoxelGrid",
-    "FourierVoxelGridAsSpline",
-    "VoxelCloud",
-]
-
 import pathlib
 from abc import abstractmethod
 from typing import (
@@ -24,8 +15,8 @@ from typing import (
 )
 from typing_extensions import Self
 from jaxtyping import Float, Array, Int
-from equinox import AbstractVar
 from functools import cached_property
+from equinox import field
 
 import equinox as eqx
 import jax
@@ -41,13 +32,15 @@ from ...io import (
     read_atoms_from_cif,
     mdtraj_load_from_file,
 )
-from ...core import field
+
 from ...image import (
-    pad,
-    crop,
+    pad_to_shape,
+    crop_to_shape,
     fftn,
-    make_coordinates,
     compute_spline_coefficients,
+)
+from ...coordinates import (
+    make_coordinates,
     CoordinateGrid,
     CoordinateList,
     FrequencySlice,
@@ -62,8 +55,8 @@ from ...typing import (
     Real_,
 )
 
-VoxelT = TypeVar("VoxelT", bound="Voxels")
-"""Type hint for a voxel-based electron density."""
+VoxelT = TypeVar("VoxelT", bound="AbstractVoxels")
+"""TypeVar for a voxel-based electron density."""
 
 
 class AbstractVoxels(AbstractElectronDensity):
@@ -78,7 +71,7 @@ class AbstractVoxels(AbstractElectronDensity):
         The voxel size of the electron density.
     """
 
-    voxel_size: Real_ = field()
+    voxel_size: Real_ = field(converter=jnp.asarray)
 
     @overload
     @classmethod
@@ -89,7 +82,8 @@ class AbstractVoxels(AbstractElectronDensity):
         voxel_size: Real_ | float,
         coordinate_grid: None,
         **kwargs: Any,
-    ) -> VoxelT: ...
+    ) -> VoxelT:
+        ...
 
     @overload
     @classmethod
@@ -100,7 +94,8 @@ class AbstractVoxels(AbstractElectronDensity):
         voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
         **kwargs: Any,
-    ) -> VoxelT: ...
+    ) -> VoxelT:
+        ...
 
     @classmethod
     @abstractmethod
@@ -348,8 +343,8 @@ class FourierVoxelGrid(AbstractVoxels):
         in fourier space.
     """
 
-    fourier_density_grid: ComplexCubicVolume = field()
-    frequency_slice: FrequencySlice = field()
+    fourier_density_grid: ComplexCubicVolume = field(converter=jnp.asarray)
+    frequency_slice: FrequencySlice
 
     is_real: ClassVar[bool] = False
 
@@ -404,7 +399,9 @@ class FourierVoxelGrid(AbstractVoxels):
         padded_shape = tuple(
             [int(s * pad_scale) for s in density_grid.shape[-3:]]
         )
-        padded_density_grid = pad(density_grid, padded_shape, mode=pad_mode)
+        padded_density_grid = pad_to_shape(
+            density_grid, padded_shape, mode=pad_mode
+        )
         # Load density and coordinates. For now, do not store the
         # fourier density only on the half space. Fourier slice extraction
         # does not currently work if rfftn is us
@@ -434,9 +431,9 @@ class FourierVoxelGridAsSpline(FourierVoxelGrid):
         in fourier space.
     """
 
-    spline_coefficients: ComplexCubicVolume = field()
-    frequency_slice: FrequencySlice = field()
-    fourier_density_grid: None = field()
+    spline_coefficients: ComplexCubicVolume = field(converter=jnp.asarray)
+    frequency_slice: FrequencySlice
+    fourier_density_grid: None
 
     is_real: ClassVar[bool] = False
 
@@ -471,8 +468,8 @@ class RealVoxelGrid(AbstractVoxels):
         List of coordinates for the point cloud.
     """
 
-    density_grid: RealVolume = field()
-    coordinate_grid: CoordinateGrid = field()
+    density_grid: RealVolume = field(converter=jnp.asarray)
+    coordinate_grid: CoordinateGrid
 
     is_real: ClassVar[bool] = True
 
@@ -518,7 +515,8 @@ class RealVoxelGrid(AbstractVoxels):
         voxel_size: Real_ | float,
         coordinate_grid: VolumeCoords,
         crop_scale: None,
-    ) -> "RealVoxelGrid": ...
+    ) -> "RealVoxelGrid":
+        ...
 
     @overload
     @classmethod
@@ -528,7 +526,8 @@ class RealVoxelGrid(AbstractVoxels):
         voxel_size: Real_ | float,
         coordinate_grid: None,
         crop_scale: Optional[float],
-    ) -> "RealVoxelGrid": ...
+    ) -> "RealVoxelGrid":
+        ...
 
     @classmethod
     def from_density_grid(
@@ -547,7 +546,7 @@ class RealVoxelGrid(AbstractVoxels):
                 cropped_shape = tuple(
                     [int(s * crop_scale) for s in density_grid.shape[-3:]]
                 )
-                density_grid = crop(density_grid, cropped_shape)
+                density_grid = crop_to_shape(density_grid, cropped_shape)
             coordinate_grid = CoordinateGrid(shape=density_grid.shape[-3:])
 
         return cls(density_grid, coordinate_grid, voxel_size)
@@ -568,8 +567,8 @@ class VoxelCloud(AbstractVoxels):
         List of coordinates for the point cloud.
     """
 
-    density_weights: RealCloud = field()
-    coordinate_list: CoordinateList = field()
+    density_weights: RealCloud = field(converter=jnp.asarray)
+    coordinate_list: CoordinateList
 
     is_real: ClassVar[bool] = True
 

@@ -2,12 +2,6 @@
 Base electron density representation.
 """
 
-__all__ = [
-    "is_density_leaves_without_coordinates",
-    "AbstractElectronDensity",
-    "ElectronDensityT",
-]
-
 from abc import abstractmethod
 from typing import Type, Any, TypeVar
 from typing_extensions import Self
@@ -15,10 +9,11 @@ from jaxtyping import PyTree
 from equinox import AbstractClassVar, Module
 
 from ..pose import AbstractPose
-from ...image import get_not_coordinate_filter_spec
+from ...coordinates import get_not_coordinate_filter_spec
 
 
 ElectronDensityT = TypeVar("ElectronDensityT", bound="AbstractElectronDensity")
+"""TypeVar for an electron density."""
 
 
 def is_density_leaves_without_coordinates(element: Any) -> bool | PyTree[bool]:

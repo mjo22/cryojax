@@ -2,13 +2,9 @@
 Image formation models.
 """
 
-from __future__ import annotations
-
-__all__ = ["ImagePipeline", "SuperpositionPipeline"]
-
-from functools import partial
 from typing import Optional
 from typing_extensions import override
+from equinox import field
 
 import equinox as eqx
 import jax
@@ -23,8 +19,7 @@ from .instrument import Instrument
 from .detector import NullDetector
 from .ice import AbstractIce, NullIce
 from ..image import rfftn, irfftn
-from ..image.operators import Filter, Mask
-from ..core import field
+from ..image.operators import AbstractFilter, AbstractMask
 from ..typing import ComplexImage, Image
 
 
@@ -51,13 +46,13 @@ class ImagePipeline(Module):
         A mask to apply to the image.
     """
 
-    specimen: AbstractSpecimen = field()
-    scattering: AbstractScatteringMethod = field()
+    specimen: AbstractSpecimen
+    scattering: AbstractScatteringMethod
     instrument: Instrument = field(default_factory=Instrument)
     solvent: AbstractIce = field(default_factory=NullIce)
 
-    filter: Optional[Filter] = field(default=None)
-    mask: Optional[Mask] = field(default=None)
+    filter: Optional[AbstractFilter] = field(default=None)
+    mask: Optional[AbstractMask] = field(default=None)
 
     def render(
         self,

@@ -1,5 +1,1 @@
-from . import distributions
-
-from .distributions import *
-
-__all__ = distributions.__all__
+from . import distributions as distributions

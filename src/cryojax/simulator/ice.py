@@ -2,10 +2,9 @@
 Abstraction of the ice in a cryo-EM image.
 """
 
-__all__ = ["AbstractIce", "NullIce", "GaussianIce"]
-
 from abc import abstractmethod
 from typing_extensions import override
+from equinox import field
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -13,8 +12,7 @@ from jaxtyping import PRNGKeyArray
 
 from ._stochastic_model import AbstractStochasticModel
 from .manager import ImageManager
-from ..image import FourierOperatorLike, FourierExp2D
-from ..core import field
+from ..image.operators import FourierOperatorLike, FourierExp2D
 from ..typing import ComplexImage, ImageCoords
 
 

@@ -2,8 +2,6 @@
 Routines for working with MRC files.
 """
 
-__all__ = ["load_mrc"]
-
 import numpy as np
 import mrcfile
 

@@ -2,15 +2,13 @@
 Routines for dealing with image edges.
 """
 
-__all__ = ["crop", "pad", "resize_with_crop_or_pad"]
-
 import jax.numpy as jnp
 from jaxtyping import Shaped
 
 from ..typing import Image, Volume
 
 
-def crop(
+def crop_to_shape(
     image: Shaped[Image, "..."] | Shaped[Volume, "..."],
     shape: tuple[int, int] | tuple[int, int, int],
 ) -> Shaped[Image, "..."] | Shaped[Volume, "..."]:
@@ -44,7 +42,7 @@ def crop(
     return cropped
 
 
-def pad(
+def pad_to_shape(
     image: Shaped[Image, "..."] | Shaped[Volume, "..."],
     shape: tuple[int, int] | tuple[int, int, int],
     **kwargs,
@@ -87,14 +85,14 @@ def resize_with_crop_or_pad(
     N1, N2 = image.shape
     M1, M2 = shape
     if N1 >= M1 and N2 >= M2:
-        image = crop(image, shape)
+        image = crop_to_shape(image, shape)
     elif N1 <= M1 and N2 <= M2:
-        image = pad(image, shape, **kwargs)
+        image = pad_to_shape(image, shape, **kwargs)
     elif N1 <= M1 and N2 >= M2:
-        image = crop(image, (N1, M2))
-        image = pad(image, (M1, M2), **kwargs)
+        image = crop_to_shape(image, (N1, M2))
+        image = pad_to_shape(image, (M1, M2), **kwargs)
     else:
-        image = crop(image, (M1, N2))
-        image = pad(image, (M1, M2), **kwargs)
+        image = crop_to_shape(image, (M1, N2))
+        image = pad_to_shape(image, (M1, M2), **kwargs)
 
     return image

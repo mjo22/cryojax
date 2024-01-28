@@ -2,13 +2,6 @@
 Routines for converting Gemmi structures into voxel densities.
 """
 
-__all__ = [
-    "clean_gemmi_structure",
-    "extract_gemmi_atoms",
-    "extract_atom_positions_and_names",
-    "get_atom_info_from_gemmi_model",
-]
-
 import numpy as np
 import itertools
 from jaxtyping import Float, Int

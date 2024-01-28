@@ -2,32 +2,20 @@
 Routines that compute coordinate rotations and translations.
 """
 
-from __future__ import annotations
-
-__all__ = [
-    "rotate_coordinates",
-    "compute_shifts",
-    "make_euler_rotation",
-    "PoseT",
-    "AbstractPose",
-    "EulerPose",
-    "QuaternionPose",
-    "MatrixPose",
-]
-
 from abc import abstractmethod
-from typing import Union, Optional, Any, TypeVar
+from typing import Union, TypeVar
 from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
+from equinox import field
 
 import jax
 import equinox as eqx
+import numpy as np
 import jax.numpy as jnp
 from jaxlie import SO3
 from equinox import Module
 
-from ..core import field
 from ..typing import (
     Real_,
     ComplexImage,
@@ -66,9 +54,9 @@ class AbstractPose(Module):
         relative to the configured defocus.
     """
 
-    offset_x: Real_ = field(default=0.0)
-    offset_y: Real_ = field(default=0.0)
-    offset_z: Real_ = field(default=0.0)
+    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
 
     def rotate(
         self,
@@ -154,9 +142,9 @@ class EulerPose(AbstractPose):
         Third rotation axis, ranging :math:`(-\pi, \pi]`.
     """
 
-    view_phi: Real_ = field(default=0.0)
-    view_theta: Real_ = field(default=0.0)
-    view_psi: Real_ = field(default=0.0)
+    view_phi: Real_ = field(default=0.0, converter=jnp.asarray)
+    view_theta: Real_ = field(default=0.0, converter=jnp.asarray)
+    view_psi: Real_ = field(default=0.0, converter=jnp.asarray)
 
     convention: str = field(static=True, default="zyz")
     intrinsic: bool = field(static=True, default=True)
@@ -194,7 +182,7 @@ class QuaternionPose(AbstractPose):
     view_wxyz :
     """
 
-    wxyz: Float[Array, "... 4"] = field(
+    wxyz: Float[Array, "4"] = field(
         default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray
     )
 
@@ -224,16 +212,9 @@ class MatrixPose(AbstractPose):
         The rotation matrix.
     """
 
-    matrix: _RotationMatrix3D = field()
-
-    def __init__(
-        self,
-        *args: Any,
-        matrix: Optional[_RotationMatrix3D] = None,
-        **kwargs: Any,
-    ):
-        super().__init__(*args, **kwargs)
-        self.matrix = jnp.eye(3) if matrix is None else matrix
+    matrix: _RotationMatrix3D = field(
+        default_factory=lambda: jnp.eye(3), converter=jnp.asarray
+    )
 
     @cached_property
     @override

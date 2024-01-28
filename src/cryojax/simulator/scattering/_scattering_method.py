@@ -3,8 +3,6 @@ Routines to model image formation from 3D electron density
 fields.
 """
 
-from __future__ import annotations
-
 __all__ = ["AbstractScatteringMethod", "AbstractProjectionMethod"]
 
 from abc import abstractmethod

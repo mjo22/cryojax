@@ -4,10 +4,6 @@ by computing an Ensemble of subunits, parameterized by
 some geometry.
 """
 
-from __future__ import annotations
-
-__all__ = ["AbstractAssembly"]
-
 from abc import abstractmethod
 from typing import Optional
 from jaxtyping import Array, Float
@@ -54,30 +50,25 @@ class AbstractAssembly(eqx.Module):
 
     subunit: AbstractSpecimen
     pose: AbstractPose
-    conformation: Optional[AbstractConformation] = None
+    conformation: Optional[AbstractConformation]
 
-    def __init__(
-        self,
-        subunit: AbstractSpecimen,
-        *,
-        pose: Optional[AbstractPose] = None,
-        conformation: Optional[AbstractConformation] = None,
-    ):
-        self.subunit = subunit
-        self.pose = pose or EulerPose()
-        self.conformation = conformation
-        if conformation is not None and not isinstance(
-            subunit, AbstractEnsemble
+    def __check_init__(self):
+        if self.conformation is not None and not isinstance(
+            self.subunit, AbstractEnsemble
         ):
             # Make sure that if conformation is set, subunit is an AbstractEnsemble
             raise AttributeError(
                 f"If {type(self)}.conformation is set, {type(self)}.subunit must be an AbstractEnsemble."
             )
-        if conformation is not None and isinstance(subunit, AbstractEnsemble):
+        if self.conformation is not None and isinstance(
+            self.subunit, AbstractEnsemble
+        ):
             # ... if it is an AbstractEnsemble, the AbstractConformation must be the right type
-            if not isinstance(conformation, type(subunit.conformation)):
+            if not isinstance(
+                self.conformation, type(self.subunit.conformation)
+            ):
                 raise AttributeError(
-                    f"{type(self)}.conformation must be type {type(subunit.conformation)} if {type(self)}.subunit is type {type(subunit)}."
+                    f"{type(self)}.conformation must be type {type(self.subunit.conformation)} if {type(self)}.subunit is type {type(self.subunit)}."
                 )
 
     @cached_property

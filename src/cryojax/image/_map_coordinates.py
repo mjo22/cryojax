@@ -3,12 +3,6 @@ These versions of the scipy function map_coordinates is modified from Louis Desd
 version: https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_src/scipy/ndimage.py
 """
 
-__all__ = [
-    "map_coordinates",
-    "map_coordinates_with_cubic_spline",
-    "compute_spline_coefficients",
-]
-
 import functools
 import itertools
 import operator

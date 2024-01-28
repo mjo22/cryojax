@@ -3,8 +3,6 @@ Read and write atomic models in various formats.
 Large amounts of the code are adapted from the ioSPI package
 """
 
-__all__ = ["read_atoms_from_pdb"]
-
 import numpy as np
 from jaxtyping import Float, Int
 from ._gemmi import (

@@ -2,25 +2,19 @@
 Abstraction of a helical polymer.
 """
 
-from __future__ import annotations
-
-__all__ = [
-    "Helix",
-    "compute_helical_lattice_positions",
-    "compute_helical_lattice_rotations",
-]
-
-from typing import Union, Optional, Any
+from typing import Union, Optional
 from jaxtyping import Array, Float
 from functools import cached_property
+from equinox import field
 
 import jax
 import jax.numpy as jnp
 
 from ..specimen import AbstractSpecimen
+from ..pose import AbstractPose, EulerPose
+from ..conformation import AbstractConformation
 from ._assembly import AbstractAssembly, _Positions, _Rotations
 
-from ...core import field
 from ...typing import Real_, RealVector
 
 _RotationMatrix3D = Float[Array, "3 3"]
@@ -66,8 +60,8 @@ class Helix(AbstractAssembly):
         degrees. By default, ``True``.
     """
 
-    rise: Union[Real_, RealVector] = field()
-    twist: Union[Real_, RealVector] = field()
+    rise: Real_ = field(converter=jnp.asarray)
+    twist: Real_ = field(converter=jnp.asarray)
 
     n_start: int = field(static=True)
     n_subunits_per_start: int = field(static=True)
@@ -76,17 +70,19 @@ class Helix(AbstractAssembly):
     def __init__(
         self,
         subunit: AbstractSpecimen,
-        rise: Union[Real_, RealVector],
-        twist: Union[Real_, RealVector],
-        *,
+        rise: Real_,
+        twist: Real_,
+        pose: Optional[AbstractPose] = None,
+        conformation: Optional[AbstractConformation] = None,
         n_start: int = 1,
         n_subunits_per_start: int = 1,
         degrees: bool = True,
-        **kwargs: Any,
     ):
-        super().__init__(subunit, **kwargs)
+        self.subunit = subunit
+        self.pose = pose or EulerPose()
         self.rise = rise
         self.twist = twist
+        self.conformation = conformation
         self.n_start = n_start
         self.n_subunits_per_start = n_subunits_per_start
         self.degrees = degrees

@@ -2,17 +2,14 @@
 The image configuration and utility manager.
 """
 
-from __future__ import annotations
-
-__all__ = ["ImageManager"]
-
 from functools import cached_property
 from typing import Any, Union, Callable, Optional
 
-from equinox import Module
+from equinox import Module, field
 
-from ..core import field
-from ..image import (
+import jax.numpy as jnp
+
+from ..coordinates import (
     make_coordinates,
     make_frequencies,
     CoordinateGrid,
@@ -20,8 +17,6 @@ from ..image import (
 )
 from ..typing import Image, Real_, RealImage
 from ..image import (
-    crop,
-    pad,
     resize_with_crop_or_pad,
     normalize_image,
     rescale_pixel_size,
@@ -61,7 +56,7 @@ class ImageManager(Module):
     """
 
     shape: tuple[int, int] = field(static=True)
-    pixel_size: Real_ = field()
+    pixel_size: Real_ = field(converter=jnp.asarray)
 
     rescale_method: str = field(static=True, default="bicubic")
     pad_scale: float = field(static=True, default=1.0)
@@ -115,14 +110,6 @@ class ImageManager(Module):
             self.pixel_size,
             method=self.rescale_method,
         )
-
-    def crop_to_shape(self, image: Image) -> Image:
-        """Crop an image."""
-        return crop(image, self.shape)
-
-    def pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
-        """Pad an image."""
-        return pad(image, self.padded_shape, mode=self.pad_mode, **kwargs)
 
     def crop_or_pad_to_padded_shape(
         self, image: Image, **kwargs: Any

@@ -2,14 +2,11 @@
 Scattering methods for the gaussian mixtures of atoms.
 """
 
-from __future__ import annotations
-
-__all__ = ["IndependentAtomScattering"]
 
 import jax.numpy as jnp
 
 from ._scattering_method import AbstractProjectionMethod
-from ..density import AtomCloud
+from ..density._atom_density import AtomCloud
 from ...typing import (
     Real_,
     ComplexImage,

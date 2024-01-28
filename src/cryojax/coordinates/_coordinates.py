@@ -2,22 +2,6 @@
 Coordinate functionality in cryojax.
 """
 
-from __future__ import annotations
-
-__all__ = [
-    "is_not_coordinate_array",
-    "get_not_coordinate_filter_spec",
-    "AbstractCoordinates",
-    "CoordinateT",
-    "CoordinateList",
-    "CoordinateGrid",
-    "FrequencyGrid",
-    "FrequencySlice",
-    "make_coordinates",
-    "make_frequencies",
-    "cartesian_to_polar",
-]
-
 from abc import abstractmethod
 from jaxtyping import ArrayLike, Array, PyTree, Float
 from typing import TypeVar, Optional, Any
@@ -37,7 +21,7 @@ from ..typing import (
 )
 
 
-CoordinateT = TypeVar("CoordinateT", bound="AbstractCoordinates")
+_CoordinateT = TypeVar("_CoordinateT", bound="AbstractCoordinates")
 """Type hint for a coordinate-like object."""
 
 
@@ -80,19 +64,19 @@ class AbstractCoordinates(eqx.Module):
         """Get the coordinates."""
         return self._coordinates
 
-    def __mul__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+    def __mul__(self: _CoordinateT, arr: ArrayLike) -> _CoordinateT:
         cls = type(self)
         return cls(self._coordinates * jnp.asarray(arr))
 
-    def __rmul__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+    def __rmul__(self: _CoordinateT, arr: ArrayLike) -> _CoordinateT:
         cls = type(self)
         return cls(jnp.asarray(arr) * self._coordinates)
 
-    def __truediv__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+    def __truediv__(self: _CoordinateT, arr: ArrayLike) -> _CoordinateT:
         cls = type(self)
         return cls(self._coordinates / jnp.asarray(arr))
 
-    def __rtruediv__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+    def __rtruediv__(self: _CoordinateT, arr: ArrayLike) -> _CoordinateT:
         cls = type(self)
         return cls(jnp.asarray(arr) / self._coordinates)
 
@@ -124,7 +108,8 @@ class CoordinateGrid(AbstractCoordinates):
         *,
         shape: Optional[tuple[int, int] | tuple[int, int, int]],
         grid_spacing: float,
-    ): ...
+    ):
+        ...
 
     @overload
     def __init__(
@@ -133,7 +118,8 @@ class CoordinateGrid(AbstractCoordinates):
         *,
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float = 1.0,
-    ): ...
+    ):
+        ...
 
     def __init__(
         self,
@@ -165,7 +151,8 @@ class FrequencyGrid(AbstractCoordinates):
         shape: Optional[tuple[int, int] | tuple[int, int, int]],
         grid_spacing: float,
         half_space: bool = True,
-    ): ...
+    ):
+        ...
 
     @overload
     def __init__(
@@ -175,7 +162,8 @@ class FrequencyGrid(AbstractCoordinates):
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float = 1.0,
         half_space: bool = True,
-    ): ...
+    ):
+        ...
 
     def __init__(
         self,
@@ -210,7 +198,8 @@ class FrequencySlice(AbstractCoordinates):
         shape: Optional[tuple[int, int]],
         grid_spacing: float,
         half_space: bool = True,
-    ): ...
+    ):
+        ...
 
     @overload
     def __init__(
@@ -220,7 +209,8 @@ class FrequencySlice(AbstractCoordinates):
         shape: tuple[int, int],
         grid_spacing: float = 1.0,
         half_space: bool = True,
-    ): ...
+    ):
+        ...
 
     def __init__(
         self,

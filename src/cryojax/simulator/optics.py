@@ -2,20 +2,21 @@
 Models of instrument optics.
 """
 
-__all__ = ["CTF", "AbstractOptics", "NullOptics", "CTFOptics", "compute_ctf"]
-
 from abc import abstractmethod
 from typing import Optional
 from functools import partial
-from equinox import AbstractVar, Module
+from equinox import AbstractVar, Module, field
 
 import jax
 import jax.numpy as jnp
 
 from .manager import ImageManager
-from ..image import FourierOperatorLike, AbstractFourierOperator, Constant
-from ..core import field
-from ..image import cartesian_to_polar
+from ..image.operators import (
+    FourierOperatorLike,
+    AbstractFourierOperator,
+    Constant,
+)
+from ..coordinates import cartesian_to_polar
 from ..typing import Real_, RealImage, Image, ComplexImage, ImageCoords
 
 
@@ -38,13 +39,13 @@ class CTF(AbstractFourierOperator):
     phase_shift :
     """
 
-    defocus_u: Real_ = field(default=10000.0)
-    defocus_v: Real_ = field(default=10000.0)
-    defocus_angle: Real_ = field(default=0.0)
-    voltage: Real_ = field(default=300.0)
-    spherical_aberration: Real_ = field(default=2.7)
-    amplitude_contrast: Real_ = field(default=0.1)
-    phase_shift: Real_ = field(default=0.0)
+    defocus_u: Real_ = field(default=10000.0, converter=jnp.asarray)
+    defocus_v: Real_ = field(default=10000.0, converter=jnp.asarray)
+    defocus_angle: Real_ = field(default=0.0, converter=jnp.asarray)
+    voltage: Real_ = field(default=300.0, converter=jnp.asarray)
+    spherical_aberration: Real_ = field(default=2.7, converter=jnp.asarray)
+    amplitude_contrast: Real_ = field(default=0.1, converter=jnp.asarray)
+    phase_shift: Real_ = field(default=0.0, converter=jnp.asarray)
 
     degrees: bool = field(static=True, default=True)
 
@@ -221,7 +222,9 @@ def compute_ctf(
         + defocus_v
         + (defocus_u - defocus_v) * jnp.cos(2.0 * (theta - defocus_angle))
     )
-    ac = jnp.arctan(amplitude_contrast / jnp.sqrt(1.0 - amplitude_contrast**2))
+    ac = jnp.arctan(
+        amplitude_contrast / jnp.sqrt(1.0 - amplitude_contrast**2)
+    )
 
     lam = 12.2643 / (voltage + 0.97845e-6 * voltage**2) ** 0.5
     gamma_defocus = -0.5 * defocus * lam * k_sqr

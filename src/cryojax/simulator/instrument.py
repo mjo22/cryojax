@@ -7,7 +7,7 @@ __all__ = ["Instrument"]
 
 from typing import Any
 from jaxtyping import PRNGKeyArray
-from equinox import Module
+from equinox import Module, field
 
 from .ice import AbstractIce
 from .specimen import AbstractSpecimen
@@ -16,7 +16,6 @@ from .optics import AbstractOptics, NullOptics
 from .exposure import Exposure, NullExposure
 from .detector import AbstractDetector, NullDetector
 
-from ..core import field
 from ..typing import ComplexImage, Real_
 
 

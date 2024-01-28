@@ -2,10 +2,6 @@
 Image formation models, equipped with probabilistic models.
 """
 
-from __future__ import annotations
-
-__all__ = ["AbstractDistribution", "IndependentFourierGaussian"]
-
 from abc import abstractmethod
 from typing import Optional, Any
 from typing_extensions import override

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 __all__ = ["Exposure", "NullExposure"]
 
-from equinox import Module
+from equinox import Module, field
 
 from .manager import ImageManager
 from ..image import rfftn, irfftn
@@ -16,7 +16,6 @@ from ..image.operators import (
     FourierOperatorLike,
     Constant,
 )
-from ..core import field
 from ..typing import ComplexImage
 
 

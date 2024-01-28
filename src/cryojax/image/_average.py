@@ -2,8 +2,6 @@
 Routines to compute radial averages of images.
 """
 
-__all__ = ["radial_average"]
-
 from typing import overload
 from functools import partial
 
@@ -18,7 +16,8 @@ def radial_average(
     image: Image,
     radial_grid: RealImage,
     bins: RealVector,
-) -> Vector: ...
+) -> Vector:
+    ...
 
 
 @overload
@@ -26,7 +25,8 @@ def radial_average(
     image: Volume,
     radial_grid: RealVolume,
     bins: RealVector,
-) -> Vector: ...
+) -> Vector:
+    ...
 
 
 @overload
@@ -37,7 +37,8 @@ def radial_average(
     *,
     to_grid: bool,
     interpolation_mode: str,
-) -> tuple[Vector, Image]: ...
+) -> tuple[Vector, Image]:
+    ...
 
 
 @overload
@@ -48,7 +49,8 @@ def radial_average(
     *,
     to_grid: bool,
     interpolation_mode: str,
-) -> tuple[Vector, Volume]: ...
+) -> tuple[Vector, Volume]:
+    ...
 
 
 @partial(jax.jit, static_argnames=["to_grid", "interpolation_mode"])

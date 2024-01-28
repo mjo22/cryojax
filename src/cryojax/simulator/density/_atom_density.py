@@ -2,18 +2,15 @@
 Atomic-based electron density representations.
 """
 
-from __future__ import annotations
-
-__all__ = ["AtomCloud"]
-
 from typing import Type, Any, ClassVar
+from equinox import field
 
+import jax.numpy as jnp
 import equinox as eqx
 from jaxtyping import Array
 
 from ._electron_density import AbstractElectronDensity
 from ..pose import AbstractPose
-from ...core import field
 
 
 class AtomCloud(AbstractElectronDensity):
@@ -21,10 +18,10 @@ class AtomCloud(AbstractElectronDensity):
     Abstraction of a point cloud of atoms.
     """
 
-    weights: Array = field()
-    coordinate_list: Array = field()
-    variances: Array = field()
-    identity: Array = field()
+    weights: Array = field(converter=jnp.asarray)
+    coordinate_list: Array = field(converter=jnp.asarray)
+    variances: Array = field(converter=jnp.asarray)
+    identity: Array = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = True
 

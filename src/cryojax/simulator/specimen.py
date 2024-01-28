@@ -2,15 +2,6 @@
 Abstractions of biological specimen.
 """
 
-__all__ = [
-    "SpecimenT",
-    "EnsembleT",
-    "AbstractSpecimen",
-    "AbstractEnsemble",
-    "Specimen",
-    "DiscreteEnsemble",
-]
-
 from abc import abstractmethod
 from typing import Optional, TypeVar, Any
 from functools import cached_property

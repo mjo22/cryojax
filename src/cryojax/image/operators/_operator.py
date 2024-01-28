@@ -2,34 +2,16 @@
 Base classes for image operators.
 """
 
-from __future__ import annotations
-
-__all__ = [
-    "AbstractImageMultiplier",
-    "AbstractImageOperator",
-    "ImageMultiplierT",
-    "ImageOperatorT",
-    "Constant",
-    "Empirical",
-    "Lambda",
-]
-
 from abc import abstractmethod
-from typing import overload, Any, TypeVar, Callable
+from typing import overload, Any, Callable
 from typing_extensions import override
 from jaxtyping import Array
 
 import jax
-from equinox import Module
+import jax.numpy as jnp
+from equinox import Module, field
 
-from ...core import field
 from ...typing import ImageCoords, VolumeCoords, Image, Volume, Real_
-
-ImageMultiplierT = TypeVar("ImageMultiplierT", bound="AbstractImageMultiplier")
-"""TypeVar for ``ProductOperatorAsBuffer``s"""
-
-ImageOperatorT = TypeVar("ImageOperatorT", bound="AbstractImageOperator")
-"""TypeVar for ``OperatorAsFunction``s"""
 
 
 class AbstractImageOperator(Module):
@@ -42,11 +24,13 @@ class AbstractImageOperator(Module):
     @abstractmethod
     def __call__(
         self, coords_or_freqs: ImageCoords | VolumeCoords, **kwargs: Any
-    ) -> Array: ...
+    ) -> Array:
+        ...
 
     @overload
     @abstractmethod
-    def __call__(self, coords_or_freqs: None, **kwargs: Any) -> Array: ...
+    def __call__(self, coords_or_freqs: None, **kwargs: Any) -> Array:
+        ...
 
     @abstractmethod
     def __call__(
@@ -56,53 +40,35 @@ class AbstractImageOperator(Module):
     ) -> Array:
         raise NotImplementedError
 
-    def __add__(
-        self: AbstractImageOperator,
-        other: AbstractImageOperator | Real_,
-    ) -> _SumImageOperator:
+    def __add__(self, other) -> "AbstractImageOperator":
         if isinstance(other, AbstractImageOperator):
-            return _SumImageOperator(self, other)
-        return _SumImageOperator(self, Constant(other))
+            return SumImageOperator(self, other)
+        return SumImageOperator(self, Constant(other))
 
-    def __radd__(
-        self: AbstractImageOperator,
-        other: AbstractImageOperator | Real_,
-    ) -> _SumImageOperator:
+    def __radd__(self, other) -> "AbstractImageOperator":
         if isinstance(other, AbstractImageOperator):
-            return _SumImageOperator(other, self)
-        return _SumImageOperator(Constant(other), self)
+            return SumImageOperator(other, self)
+        return SumImageOperator(Constant(other), self)
 
-    def __sub__(
-        self: AbstractImageOperator,
-        other: AbstractImageOperator | Real_,
-    ) -> _DiffImageOperator:
+    def __sub__(self, other) -> "AbstractImageOperator":
         if isinstance(other, AbstractImageOperator):
-            return _DiffImageOperator(self, other)
-        return _DiffImageOperator(self, Constant(other))
+            return DiffImageOperator(self, other)
+        return DiffImageOperator(self, Constant(other))
 
-    def __rsub__(
-        self: AbstractImageOperator,
-        other: AbstractImageOperator | Real_,
-    ) -> _DiffImageOperator:
+    def __rsub__(self, other) -> "AbstractImageOperator":
         if isinstance(other, AbstractImageOperator):
-            return _DiffImageOperator(other, self)
-        return _DiffImageOperator(Constant(other), self)
+            return DiffImageOperator(other, self)
+        return DiffImageOperator(Constant(other), self)
 
-    def __mul__(
-        self: AbstractImageOperator,
-        other: AbstractImageOperator | Real_,
-    ) -> _ProductImageOperator:
+    def __mul__(self, other) -> "AbstractImageOperator":
         if isinstance(other, AbstractImageOperator):
-            return _ProductImageOperator(self, other)
-        return _ProductImageOperator(self, Constant(other))
+            return ProductImageOperator(self, other)
+        return ProductImageOperator(self, Constant(other))
 
-    def __rmul__(
-        self: AbstractImageOperator,
-        other: AbstractImageOperator | Real_,
-    ) -> _ProductImageOperator:
+    def __rmul__(self, other) -> "AbstractImageOperator":
         if isinstance(other, AbstractImageOperator):
-            return _ProductImageOperator(other, self)
-        return _ProductImageOperator(Constant(other), self)
+            return ProductImageOperator(other, self)
+        return ProductImageOperator(Constant(other), self)
 
 
 class AbstractImageMultiplier(Module):
@@ -125,21 +91,17 @@ class AbstractImageMultiplier(Module):
     def __call__(self, image: Image | Volume) -> Image | Volume:
         return image * jax.lax.stop_gradient(self.buffer)
 
-    def __mul__(
-        self: ImageMultiplierT, other: ImageMultiplierT
-    ) -> _ProductImageMultiplier:
-        return _ProductImageMultiplier(operator1=self, operator2=other)
+    def __mul__(self, other) -> "AbstractImageMultiplier":
+        return ProductImageMultiplier(operator1=self, operator2=other)
 
-    def __rmul__(
-        self: ImageMultiplierT, other: ImageMultiplierT
-    ) -> _ProductImageMultiplier:
-        return _ProductImageMultiplier(operator1=other, operator2=self)
+    def __rmul__(self, other) -> "AbstractImageMultiplier":
+        return ProductImageMultiplier(operator1=other, operator2=self)
 
 
 class Constant(AbstractImageOperator):
     """An operator that is a constant."""
 
-    value: Real_ = field(default=1.0)
+    value: Real_ = field(default=1.0, converter=jnp.asarray)
 
     @override
     def __call__(
@@ -177,8 +139,8 @@ class Empirical(AbstractImageOperator):
 
     measurement: Image | Volume
 
-    amplitude: Real_ = field(default=1.0)
-    offset: Real_ = field(default=0.0)
+    amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
+    offset: Real_ = field(default=0.0, converter=jnp.asarray)
 
     @override
     def __call__(
@@ -190,7 +152,7 @@ class Empirical(AbstractImageOperator):
         return self.amplitude * jax.lax.stop_gradient(self.measurement)
 
 
-class _ProductImageMultiplier(AbstractImageMultiplier):
+class ProductImageMultiplier(AbstractImageMultiplier):
     """A helper to represent the product of two operators."""
 
     operator1: AbstractImageMultiplier
@@ -199,8 +161,8 @@ class _ProductImageMultiplier(AbstractImageMultiplier):
     @override
     def __init__(
         self,
-        operator1: ImageMultiplierT,
-        operator2: ImageMultiplierT,
+        operator1: AbstractImageMultiplier,
+        operator2: AbstractImageMultiplier,
     ):
         self.operator1 = operator1
         self.operator2 = operator2
@@ -210,7 +172,7 @@ class _ProductImageMultiplier(AbstractImageMultiplier):
         return f"{repr(self.operator1)} * {repr(self.operator2)}"
 
 
-class _SumImageOperator(AbstractImageOperator):
+class SumImageOperator(AbstractImageOperator):
     """A helper to represent the sum of two operators."""
 
     operator1: AbstractImageOperator
@@ -230,7 +192,7 @@ class _SumImageOperator(AbstractImageOperator):
         return f"{repr(self.operator1)} + {repr(self.operator2)}"
 
 
-class _DiffImageOperator(AbstractImageOperator):
+class DiffImageOperator(AbstractImageOperator):
     """A helper to represent the difference of two operators."""
 
     operator1: AbstractImageOperator
@@ -250,7 +212,7 @@ class _DiffImageOperator(AbstractImageOperator):
         return f"{repr(self.operator1)} - {repr(self.operator2)}"
 
 
-class _ProductImageOperator(AbstractImageOperator):
+class ProductImageOperator(AbstractImageOperator):
     """A helper to represent the product of two operators."""
 
     operator1: AbstractImageOperator

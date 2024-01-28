@@ -3,8 +3,6 @@ Routines for loading atomic structures.
 Large amounts of the code are adapted from the ioSPI package
 """
 
-__all__ = ["default_form_factor_params", "get_form_factor_params"]
-
 import numpy as np
 import jax
 import jax.numpy as jnp

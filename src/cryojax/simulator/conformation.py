@@ -2,18 +2,15 @@
 Representations of conformational variables.
 """
 
-__all__ = ["AbstractConformation", "DiscreteConformation"]
-
 from abc import abstractmethod
 from typing import Any
-from equinox import AbstractVar
+from equinox import AbstractVar, field
 from typing_extensions import override
 
 import jax.numpy as jnp
 from equinox import Module
 
 from ..typing import Int_
-from ..core import field
 
 
 class AbstractConformation(Module):

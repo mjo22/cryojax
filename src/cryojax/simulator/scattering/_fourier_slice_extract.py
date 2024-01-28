@@ -2,15 +2,8 @@
 Scattering methods for the fourier slice theorem.
 """
 
-from __future__ import annotations
-
-__all__ = [
-    "extract_slice",
-    "extract_slice_with_cubic_spline",
-    "FourierSliceExtract",
-]
-
 from typing import Any
+from equinox import field
 
 import jax.numpy as jnp
 
@@ -22,7 +15,6 @@ from ...image import (
     map_coordinates,
     map_coordinates_with_cubic_spline,
 )
-from ...core import field
 from ...typing import ComplexImage, ComplexCubicVolume, VolumeSliceCoords
 
 
