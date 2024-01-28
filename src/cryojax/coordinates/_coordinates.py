@@ -100,25 +100,25 @@ class CoordinateGrid(AbstractCoordinates):
     @overload
     def __init__(
         self,
-        coordinate_grid: ImageCoords | VolumeCoords,
         *,
-        shape: Optional[tuple[int, int] | tuple[int, int, int]],
+        coordinate_grid: ImageCoords | VolumeCoords,
+        shape: None,
         grid_spacing: float,
     ): ...
 
     @overload
     def __init__(
         self,
-        coordinate_grid: None,
         *,
+        coordinate_grid: None,
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float = 1.0,
     ): ...
 
     def __init__(
         self,
-        coordinate_grid: Optional[ImageCoords | VolumeCoords] = None,
         *,
+        coordinate_grid: Optional[ImageCoords | VolumeCoords] = None,
         shape: Optional[tuple[int, int] | tuple[int, int, int]] = None,
         grid_spacing: float = 1.0,
     ):
@@ -140,9 +140,9 @@ class FrequencyGrid(AbstractCoordinates):
     @overload
     def __init__(
         self,
-        frequency_grid: ImageCoords | VolumeCoords,
         *,
-        shape: Optional[tuple[int, int] | tuple[int, int, int]],
+        frequency_grid: ImageCoords | VolumeCoords,
+        shape: None,
         grid_spacing: float,
         half_space: bool = True,
     ): ...
@@ -150,8 +150,8 @@ class FrequencyGrid(AbstractCoordinates):
     @overload
     def __init__(
         self,
-        frequency_grid: None,
         *,
+        frequency_grid: None,
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float = 1.0,
         half_space: bool = True,
@@ -159,8 +159,8 @@ class FrequencyGrid(AbstractCoordinates):
 
     def __init__(
         self,
-        frequency_grid: Optional[ImageCoords | VolumeCoords] = None,
         *,
+        frequency_grid: Optional[ImageCoords | VolumeCoords] = None,
         shape: Optional[tuple[int, int] | tuple[int, int, int]] = None,
         grid_spacing: float = 1.0,
         half_space: bool = True,
@@ -185,9 +185,9 @@ class FrequencySlice(AbstractCoordinates):
     @overload
     def __init__(
         self,
-        frequency_slice: VolumeSliceCoords,
         *,
-        shape: Optional[tuple[int, int]],
+        frequency_slice: VolumeSliceCoords,
+        shape: None,
         grid_spacing: float,
         half_space: bool = True,
     ): ...
@@ -195,8 +195,8 @@ class FrequencySlice(AbstractCoordinates):
     @overload
     def __init__(
         self,
-        frequency_slice: None,
         *,
+        frequency_slice: None,
         shape: tuple[int, int],
         grid_spacing: float = 1.0,
         half_space: bool = True,
@@ -204,8 +204,8 @@ class FrequencySlice(AbstractCoordinates):
 
     def __init__(
         self,
-        frequency_slice: Optional[VolumeSliceCoords] = None,
         *,
+        frequency_slice: Optional[VolumeSliceCoords] = None,
         shape: Optional[tuple[int, int]] = None,
         grid_spacing: float = 1.0,
         half_space: bool = True,
