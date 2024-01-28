@@ -15,7 +15,7 @@ from equinox import Module
 from ..image.operators import FourierOperatorLike, Constant
 from ..simulator._ice import GaussianIce
 from ..simulator._detector import GaussianDetector
-from ..simulator._pipeline import ImagePipeline
+from ..simulator._pipeline import AbstractPipeline
 from ..typing import Real_, RealImage, ComplexImage, Image
 
 
@@ -24,7 +24,7 @@ class AbstractDistribution(Module):
     An imaging pipeline equipped with a probabilistic model.
     """
 
-    pipeline: ImagePipeline
+    pipeline: AbstractPipeline
 
     @abstractmethod
     def log_probability(self, observed: Image) -> Real_:
@@ -78,7 +78,7 @@ class IndependentFourierGaussian(AbstractDistribution):
 
     def __init__(
         self,
-        pipeline: ImagePipeline,
+        pipeline: AbstractPipeline,
         variance: Optional[FourierOperatorLike] = None,
     ):
         self.pipeline = pipeline

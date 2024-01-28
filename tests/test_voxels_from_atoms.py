@@ -1,11 +1,12 @@
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from cryojax.simulator._density import FourierVoxelGrid, RealVoxelGrid
+from cryojax.simulator import FourierVoxelGrid, RealVoxelGrid
 from cryojax.simulator._density._voxel_density import (
     _build_real_space_voxels_from_atoms,
 )
-from cryojax.image import ifftn, make_coordinates
+from cryojax.image import ifftn
+from cryojax.coordinates import make_coordinates
 from jax import config
 
 config.update("jax_enable_x64", True)

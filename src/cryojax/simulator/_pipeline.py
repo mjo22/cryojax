@@ -2,9 +2,9 @@
 Image formation models.
 """
 
+from abc import abstractmethod
 from typing import Optional
 from typing_extensions import override
-from equinox import field
 
 import equinox as eqx
 import jax
@@ -18,12 +18,13 @@ from ._scattering import AbstractScatteringMethod
 from ._instrument import Instrument
 from ._detector import NullDetector
 from ._ice import AbstractIce, NullIce
+from ._assembly import AbstractAssembly
 from ..image import rfftn, irfftn
 from ..image.operators import AbstractFilter, AbstractMask
 from ..typing import ComplexImage, Image
 
 
-class ImagePipeline(Module):
+class AbstractPipeline(Module):
     """
     Base class for an imaging model.
 
@@ -48,12 +49,13 @@ class ImagePipeline(Module):
 
     specimen: AbstractSpecimen
     scattering: AbstractScatteringMethod
-    instrument: Instrument = field(default_factory=Instrument)
-    solvent: AbstractIce = field(default_factory=NullIce)
+    instrument: Instrument
+    solvent: AbstractIce
 
-    filter: Optional[AbstractFilter] = field(default=None)
-    mask: Optional[AbstractMask] = field(default=None)
+    filter: Optional[AbstractFilter]
+    mask: Optional[AbstractMask]
 
+    @abstractmethod
     def render(
         self,
         *,
@@ -80,24 +82,9 @@ class ImagePipeline(Module):
             If ``True``, normalize the image to mean zero
             and standard deviation 1.
         """
-        # Scattering the specimen to the exit plane
-        image_at_exit_plane = self.instrument.scatter_to_exit_plane(
-            self.specimen, self.scattering
-        )
-        # Measure the image at the detector plane
-        image_at_detector_plane = self.instrument.propagate_to_detector_plane(
-            image_at_exit_plane,
-            self.scattering,
-            defocus_offset=self.specimen.pose.offset_z,
-        )
+        raise NotImplementedError
 
-        return self._get_final_image(
-            image_at_detector_plane,
-            view_cropped=view_cropped,
-            get_real=get_real,
-            normalize=normalize,
-        )
-
+    @abstractmethod
     def sample(
         self,
         key: PRNGKeyArray,
@@ -125,49 +112,7 @@ class ImagePipeline(Module):
             If ``True``, normalize the image to mean zero
             and standard deviation 1.
         """
-        idx = 0  # Keep track of number of stochastic models
-        if not isinstance(self.solvent, NullIce) and not isinstance(
-            self.instrument.detector, NullDetector
-        ):
-            keys = jax.random.split(key)
-        else:
-            keys = jnp.expand_dims(key, axis=0)
-        # Scatter the specimen to the exit plane
-        image_at_exit_plane = self.instrument.scatter_to_exit_plane(
-            self.specimen, self.scattering
-        )
-        if not isinstance(self.solvent, NullIce):
-            # Measure the image at the detector plane with the solvent
-            image_at_detector_plane = (
-                self.instrument.propagate_to_detector_plane_with_solvent(
-                    keys[idx],
-                    image_at_exit_plane,
-                    self.solvent,
-                    self.scattering,
-                    defocus_offset=self.specimen.pose.offset_z,
-                )
-            )
-            idx += 1
-        else:
-            # ... otherwise, just measure the specimen at the detector plane
-            image_at_detector_plane = (
-                self.instrument.propagate_to_detector_plane(
-                    image_at_exit_plane,
-                    self.scattering,
-                    defocus_offset=self.specimen.pose.offset_z,
-                )
-            )
-        # Finally, measure the detector readout
-        detector_readout = self.instrument.measure_detector_readout(
-            keys[idx], image_at_detector_plane, self.scattering
-        )
-
-        return self._get_final_image(
-            detector_readout,
-            view_cropped=view_cropped,
-            get_real=get_real,
-            normalize=normalize,
-        )
+        raise NotImplementedError
 
     def __call__(
         self,
@@ -247,17 +192,132 @@ class ImagePipeline(Module):
             return irfftn(image, s=manager.padded_shape) if get_real else image
 
 
-class SuperpositionPipeline(ImagePipeline):
+class ImagePipeline(AbstractPipeline):
+    """Standard image formation pipeline."""
+
+    def __init__(
+        self,
+        specimen: AbstractSpecimen,
+        scattering: AbstractScatteringMethod,
+        instrument: Optional[Instrument] = None,
+        solvent: Optional[AbstractIce] = None,
+        *,
+        filter: Optional[AbstractFilter] = None,
+        mask: Optional[AbstractMask] = None,
+    ):
+        self.specimen = specimen
+        self.scattering = scattering
+        self.instrument = instrument or Instrument()
+        self.solvent = solvent or NullIce()
+        self.filter = filter
+        self.mask = mask
+
+    def render(
+        self,
+        *,
+        view_cropped: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
+    ) -> Image:
+        """Render an image of a Specimen without any stochasticity."""
+        # Scattering the specimen to the exit plane
+        image_at_exit_plane = self.instrument.scatter_to_exit_plane(
+            self.specimen, self.scattering
+        )
+        # Measure the image at the detector plane
+        image_at_detector_plane = self.instrument.propagate_to_detector_plane(
+            image_at_exit_plane,
+            self.scattering,
+            defocus_offset=self.specimen.pose.offset_z,
+        )
+
+        return self._get_final_image(
+            image_at_detector_plane,
+            view_cropped=view_cropped,
+            get_real=get_real,
+            normalize=normalize,
+        )
+
+    def sample(
+        self,
+        key: PRNGKeyArray,
+        *,
+        view_cropped: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
+    ) -> Image:
+        """Sample an image from a realization of the ``Ice`` and
+        ``Detector`` models."""
+        idx = 0  # Keep track of number of stochastic models
+        if not isinstance(self.solvent, NullIce) and not isinstance(
+            self.instrument.detector, NullDetector
+        ):
+            keys = jax.random.split(key)
+        else:
+            keys = jnp.expand_dims(key, axis=0)
+        # Scatter the specimen to the exit plane
+        image_at_exit_plane = self.instrument.scatter_to_exit_plane(
+            self.specimen, self.scattering
+        )
+        if not isinstance(self.solvent, NullIce):
+            # Measure the image at the detector plane with the solvent
+            image_at_detector_plane = (
+                self.instrument.propagate_to_detector_plane_with_solvent(
+                    keys[idx],
+                    image_at_exit_plane,
+                    self.solvent,
+                    self.scattering,
+                    defocus_offset=self.specimen.pose.offset_z,
+                )
+            )
+            idx += 1
+        else:
+            # ... otherwise, just measure the specimen at the detector plane
+            image_at_detector_plane = (
+                self.instrument.propagate_to_detector_plane(
+                    image_at_exit_plane,
+                    self.scattering,
+                    defocus_offset=self.specimen.pose.offset_z,
+                )
+            )
+        # Finally, measure the detector readout
+        detector_readout = self.instrument.measure_detector_readout(
+            keys[idx], image_at_detector_plane, self.scattering
+        )
+
+        return self._get_final_image(
+            detector_readout,
+            view_cropped=view_cropped,
+            get_real=get_real,
+            normalize=normalize,
+        )
+
+
+class AssemblyPipeline(AbstractPipeline):
     """
     Compute an image from a superposition of states in
-    the ``AbstractSpecimen``. This assumes that either
-    ``specimen.pose`` and/or ``specimen.conformation``
-    have batch dimensions.
-
-    This class can be used to compute a micrograph, where there
-    are many specimen in the field of view. Or it can be used to
-    compute an image from ``AbstractAssembly.subunits``.
+    the ``AbstractAssembly``.
     """
+
+    assembly: AbstractAssembly
+
+    def __init__(
+        self,
+        assembly: AbstractAssembly,
+        scattering: AbstractScatteringMethod,
+        instrument: Optional[Instrument] = None,
+        solvent: Optional[AbstractIce] = None,
+        *,
+        filter: Optional[AbstractFilter] = None,
+        mask: Optional[AbstractMask] = None,
+    ):
+        self.assembly = assembly
+        self.specimen = assembly.subunits
+        self.scattering = scattering
+        self.instrument = instrument or Instrument()
+        self.solvent = solvent or NullIce()
+        self.filter = filter
+        self.mask = mask
 
     @override
     def sample(
@@ -268,7 +328,7 @@ class SuperpositionPipeline(ImagePipeline):
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
-        """Sample the superposition of states from the stochastic models."""
+        """Sample the ``AbstractAssembly.subunits`` from the stochastic models."""
         if not isinstance(self.solvent, NullIce):
             raise NotImplementedError(
                 "The SuperpositionPipeline does not currently support sampling from the solvent model."
@@ -297,29 +357,39 @@ class SuperpositionPipeline(ImagePipeline):
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
-        """Render the superposition of states in the Ensemble."""
+        """Render the superposition of images from the ``AbstractAssembly.subunits``."""
         # Setup vmap over the pose and conformation
         is_vmap = lambda x: isinstance(x, (AbstractPose, AbstractConformation))
-        to_vmap = jax.tree_util.tree_map(is_vmap, self, is_leaf=is_vmap)
-        vmap, novmap = eqx.partition(self, to_vmap)
+        to_vmap = jax.tree_util.tree_map(
+            is_vmap, self.specimen, is_leaf=is_vmap
+        )
+        vmap, novmap = eqx.partition(self.specimen, to_vmap)
         # Compute all images and sum
-        compute_image = lambda model: super(type(model), model).render(
-            view_cropped=False, get_real=False
+        compute_image = (
+            lambda spec, scat, ins: ins.propagate_to_detector_plane(
+                ins.scatter_to_exit_plane(spec, scat),
+                scat,
+                defocus_offset=spec,
+            )
         )
         # ... vmap to compute a stack of images to superimpose
         compute_stack = jax.vmap(
-            lambda vmap, novmap: compute_image(eqx.combine(vmap, novmap)),
-            in_axes=(0, None),
+            lambda vmap, novmap, scat, ins: compute_image(
+                eqx.combine(vmap, novmap), scat, ins
+            ),
+            in_axes=(0, None, None, None),
         )
         # ... sum over the stack of images and jit
         compute_stack_and_sum = jax.jit(
-            lambda vmap, novmap: jnp.sum(
-                compute_stack(vmap, novmap),
+            lambda vmap, novmap, scat, ins: jnp.sum(
+                compute_stack(vmap, novmap, scat, ins),
                 axis=0,
             )
         )
         # ... compute the superposition
-        image = compute_stack_and_sum(vmap, novmap)
+        image = compute_stack_and_sum(
+            vmap, novmap, self.scattering, self.instrument
+        )
 
         return self._get_final_image(
             image,

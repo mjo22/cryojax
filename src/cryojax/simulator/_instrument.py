@@ -13,7 +13,7 @@ from ._ice import AbstractIce
 from ._specimen import AbstractSpecimen
 from ._scattering import AbstractScatteringMethod
 from ._optics import AbstractOptics, NullOptics
-from ._exposure import Exposure, NullExposure
+from ._exposure import AbstractExposure, NullExposure
 from ._detector import AbstractDetector, NullDetector
 
 from ..typing import ComplexImage, Real_
@@ -34,7 +34,7 @@ class Instrument(Module):
     """
 
     optics: AbstractOptics = field(default_factory=NullOptics)
-    exposure: Exposure = field(default_factory=NullExposure)
+    exposure: AbstractExposure = field(default_factory=NullExposure)
     detector: AbstractDetector = field(default_factory=NullDetector)
 
     def scatter_to_exit_plane(

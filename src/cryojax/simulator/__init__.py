@@ -74,7 +74,11 @@ from ._optics import (
     compute_ctf as compute_ctf,
 )
 
-from ._exposure import Exposure as Exposure, NullExposure as NullExposure
+from ._exposure import (
+    AbstractExposure as AbstractExposure,
+    Exposure as Exposure,
+    NullExposure as NullExposure,
+)
 
 from ._detector import (
     AbstractDetector as AbstractDetector,
@@ -85,6 +89,7 @@ from ._detector import (
 from ._instrument import Instrument as Instrument
 
 from ._pipeline import (
+    AbstractPipeline as AbstractPipeline,
     ImagePipeline as ImagePipeline,
-    SuperpositionPipeline as SuperpositionPipeline,
+    AssemblyPipeline as AssemblyPipeline,
 )

@@ -58,9 +58,7 @@ def test_superposition_pipeline_without_conformation(
     sample_subunit_mrc_path, scattering
 ):
     helix = build_helix(sample_subunit_mrc_path, 1)
-    pipeline = cs.SuperpositionPipeline(
-        scattering=scattering, specimen=helix.subunits
-    )
+    pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
     image = pipeline.render()
     stochastic_image = pipeline.sample(jax.random.PRNGKey(0))
 
@@ -69,9 +67,7 @@ def test_superposition_pipeline_with_conformation(
     sample_subunit_mrc_path, scattering
 ):
     helix = build_helix_with_conformation(sample_subunit_mrc_path, 2)
-    pipeline = cs.SuperpositionPipeline(
-        scattering=scattering, specimen=helix.subunits
-    )
+    pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
     image = pipeline.render()
     stochastic_image = pipeline.sample(jax.random.PRNGKey(0))
 
@@ -88,9 +84,7 @@ def test_c6_rotation(
     @jax.jit
     def compute_rotated_image(helix, scattering, pose):
         helix = eqx.tree_at(lambda m: m.pose, helix, pose)
-        pipeline = cs.SuperpositionPipeline(
-            scattering=scattering, specimen=helix.subunits
-        )
+        pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
         return pipeline.render(normalize=True)
 
     np.testing.assert_allclose(
@@ -117,9 +111,7 @@ def test_agree_with_3j9g_assembly(
     @jax.jit
     def compute_rotated_image_with_helix(helix, scattering, pose):
         helix = eqx.tree_at(lambda m: m.pose, helix, pose)
-        pipeline = cs.SuperpositionPipeline(
-            scattering=scattering, specimen=helix.subunits
-        )
+        pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
         return pipeline.render(normalize=True)
 
     @jax.jit
@@ -150,9 +142,7 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
     @jax.jit
     def compute_rotated_image(helix, scattering, pose):
         helix = eqx.tree_at(lambda m: m.pose, helix, pose)
-        pipeline = cs.SuperpositionPipeline(
-            scattering=scattering, specimen=helix.subunits
-        )
+        pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
         return pipeline.render(normalize=True)
 
     np.testing.assert_allclose(

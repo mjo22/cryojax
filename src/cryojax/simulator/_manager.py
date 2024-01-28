@@ -17,6 +17,8 @@ from ..coordinates import (
 )
 from ..typing import Image, Real_, RealImage
 from ..image import (
+    crop_to_shape,
+    pad_to_shape,
     resize_with_crop_or_pad,
     normalize_image,
     rescale_pixel_size,
@@ -109,6 +111,16 @@ class ImageManager(Module):
             current_pixel_size,
             self.pixel_size,
             method=self.rescale_method,
+        )
+
+    def crop_to_shape(self, image: Image) -> Image:
+        """Crop an image."""
+        return crop_to_shape(image, self.shape)
+
+    def pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
+        """Pad an image."""
+        return pad_to_shape(
+            image, self.padded_shape, mode=self.pad_mode, **kwargs
         )
 
     def crop_or_pad_to_padded_shape(
