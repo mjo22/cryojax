@@ -6,6 +6,7 @@ from abc import abstractmethod
 from jaxtyping import ArrayLike, Array, PyTree, Float
 from typing import TypeVar, Optional, Any
 from typing_extensions import overload
+from equinox import AbstractVar
 
 import equinox as eqx
 import jax.tree_util as jtu
@@ -53,12 +54,7 @@ class AbstractCoordinates(eqx.Module):
     A base class that wraps a coordinate array.
     """
 
-    _coordinates: Array
-
-    @abstractmethod
-    def __init__(self, coordinates: Array):
-        """Set the coordinate array"""
-        self._coordinates = coordinates
+    _coordinates: AbstractVar[Any]
 
     def get(self):
         """Get the coordinates."""
