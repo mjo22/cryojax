@@ -12,11 +12,11 @@ import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module
 
-from ..image.operators import FourierOperatorLike, Constant
-from ..simulator._ice import GaussianIce
-from ..simulator._detector import GaussianDetector
-from ..simulator._pipeline import AbstractPipeline
-from ..typing import Real_, RealImage, ComplexImage, Image
+from ...image.operators import FourierOperatorLike, Constant
+from ...simulator import GaussianIce
+from ...simulator import GaussianDetector
+from ...simulator import AbstractPipeline
+from ...typing import Real_, RealImage, ComplexImage, Image
 
 
 class AbstractDistribution(Module):
