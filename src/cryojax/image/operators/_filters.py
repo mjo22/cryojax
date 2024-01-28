@@ -43,12 +43,10 @@ class AbstractFilter(AbstractImageMultiplier):
         raise NotImplementedError
 
     @overload
-    def __call__(self, image: ComplexImage) -> ComplexImage:
-        ...
+    def __call__(self, image: ComplexImage) -> ComplexImage: ...
 
     @overload
-    def __call__(self, image: ComplexVolume) -> ComplexVolume:
-        ...
+    def __call__(self, image: ComplexVolume) -> ComplexVolume: ...
 
     def __call__(
         self, image: ComplexImage | ComplexVolume
@@ -118,8 +116,7 @@ def _compute_lowpass_filter(
     grid_spacing: float,
     cutoff: float,
     rolloff: float,
-) -> RealImage:
-    ...
+) -> RealImage: ...
 
 
 @overload
@@ -128,8 +125,7 @@ def _compute_lowpass_filter(
     grid_spacing: float,
     cutoff: float,
     rolloff: float,
-) -> RealVolume:
-    ...
+) -> RealVolume: ...
 
 
 def _compute_lowpass_filter(

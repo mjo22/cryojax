@@ -24,13 +24,11 @@ class AbstractImageOperator(Module):
     @abstractmethod
     def __call__(
         self, coords_or_freqs: ImageCoords | VolumeCoords, **kwargs: Any
-    ) -> Array:
-        ...
+    ) -> Array: ...
 
     @overload
     @abstractmethod
-    def __call__(self, coords_or_freqs: None, **kwargs: Any) -> Array:
-        ...
+    def __call__(self, coords_or_freqs: None, **kwargs: Any) -> Array: ...
 
     @abstractmethod
     def __call__(

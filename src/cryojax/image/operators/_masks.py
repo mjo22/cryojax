@@ -24,12 +24,10 @@ class AbstractMask(AbstractImageMultiplier):
         raise NotImplementedError
 
     @overload
-    def __call__(self, image: RealImage) -> RealImage:
-        ...
+    def __call__(self, image: RealImage) -> RealImage: ...
 
     @overload
-    def __call__(self, image: RealVolume) -> RealVolume:
-        ...
+    def __call__(self, image: RealVolume) -> RealVolume: ...
 
     def __call__(
         self, image: RealImage | RealVolume
@@ -83,8 +81,7 @@ def _compute_circular_mask(
     coordinate_grid_in_angstroms: ImageCoords,
     radius: float,
     rolloff: float,
-) -> RealImage:
-    ...
+) -> RealImage: ...
 
 
 @overload
@@ -92,8 +89,7 @@ def _compute_circular_mask(
     coordinate_grid_in_angstroms: VolumeCoords,
     radius: float,
     rolloff: float,
-) -> RealVolume:
-    ...
+) -> RealVolume: ...
 
 
 def _compute_circular_mask(

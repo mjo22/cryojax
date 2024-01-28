@@ -2,7 +2,6 @@
 Scattering methods for the gaussian mixtures of atoms.
 """
 
-
 import jax.numpy as jnp
 
 from ._scattering_method import AbstractProjectionMethod
