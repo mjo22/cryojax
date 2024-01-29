@@ -51,7 +51,6 @@ from ...typing import (
     RealVolume,
     RealCubicVolume,
     ComplexCubicVolume,
-    VolumeCoords,
     VolumeSliceCoords,
     Real_,
 )
@@ -80,6 +79,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         cls: Type[VoxelT],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
+        coordinate_grid: Optional[CoordinateGrid] = None,
         **kwargs: Any,
     ) -> VoxelT:
         """
@@ -94,7 +94,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
         voxel_size: float,
-        coordinate_grid_in_angstroms: VolumeCoords,
+        coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> VoxelT:
@@ -106,7 +106,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         )
 
         density = _build_real_space_voxels_from_atoms(
-            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms
+            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
         return cls.from_density_grid(
@@ -122,7 +122,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         trajectory: Float[Array, "M N 3"],
         atom_identities: Int[Array, "N"],
         voxel_size: float,
-        coordinate_grid_in_angstroms: VolumeCoords,
+        coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> VoxelT:
@@ -135,11 +135,11 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         )
 
         _build_real_space_voxels_from_atoms(
-            trajectory[0], a_vals, b_vals, coordinate_grid_in_angstroms
+            trajectory[0], a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
         density = _build_real_space_voxels_from_atomic_trajectory(
-            trajectory, a_vals, b_vals, coordinate_grid_in_angstroms
+            trajectory, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
         from_density_grid_vmap = jax.vmap(
@@ -168,7 +168,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         """
         atom_positions, atom_elements = get_atom_info_from_gemmi_model(model)
 
-        coordinate_grid_in_angstroms = make_coordinates(
+        coordinate_grid_in_angstroms = CoordinateGrid(
             n_voxels_per_side, voxel_size
         )
 
@@ -222,7 +222,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
     ) -> VoxelT:
         """Load Voxels from PDB file format."""
         atom_positions, atom_elements = read_atoms_from_pdb(filename)
-        coordinate_grid_in_angstroms = make_coordinates(
+        coordinate_grid_in_angstroms = CoordinateGrid(
             n_voxels_per_side, voxel_size
         )
 
@@ -244,7 +244,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
     ) -> VoxelT:
         """Load Voxels from CIF file format."""
         atom_positions, atom_elements = read_atoms_from_cif(filename)
-        coordinate_grid_in_angstroms = make_coordinates(
+        coordinate_grid_in_angstroms = CoordinateGrid(
             n_voxels_per_side, voxel_size
         )
 
@@ -293,7 +293,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         trajectory, atom_identities = mdtraj_load_from_file(
             trajectory_path, topology_file
         )
-        coordinate_grid_in_angstroms = make_coordinates(
+        coordinate_grid_in_angstroms = CoordinateGrid(
             n_voxels_per_side, voxel_size
         )
         return cls.from_trajectory(
@@ -346,6 +346,7 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         cls: Type["AbstractFourierVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
+        coordinate_grid: Optional[CoordinateGrid] = None,
         *,
         pad_scale: float = 1.0,
         pad_mode: str = "constant",
@@ -517,8 +518,8 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         cls: Type["RealVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float,
+        coordinate_grid: Optional[CoordinateGrid] = None,
         *,
-        coordinate_grid: CoordinateGrid,
         crop_scale: None,
     ) -> "RealVoxelGrid": ...
 
@@ -528,8 +529,8 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         cls: Type["RealVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float,
-        *,
         coordinate_grid: None,
+        *,
         crop_scale: Optional[float],
     ) -> "RealVoxelGrid": ...
 
@@ -538,8 +539,8 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         cls: Type["RealVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
-        *,
         coordinate_grid: Optional[CoordinateGrid] = None,
+        *,
         crop_scale: Optional[float] = None,
     ) -> "RealVoxelGrid":
         # Make coordinates if not given
@@ -614,17 +615,16 @@ class VoxelCloud(AbstractVoxels, strict=True):
         cls: Type["VoxelCloud"],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
-        *,
         coordinate_grid: Optional[CoordinateGrid] = None,
     ) -> "VoxelCloud":
         # Make coordinates if not given
         if coordinate_grid is None:
-            coordinate_grid = CoordinateGrid(density_grid.shape)
+            coordinate_grid = make_coordinates(density_grid.shape)
         # ... mask zeros to store smaller arrays. This
         # option is not jittable.
         nonzero = jnp.where(~jnp.isclose(density_grid, 0.0))
         flat_density = density_grid[nonzero]
-        coordinate_list = coordinate_grid.get()[nonzero]
+        coordinate_list = coordinate_grid[nonzero]
 
         return cls(flat_density, CoordinateList(coordinate_list), voxel_size)
 

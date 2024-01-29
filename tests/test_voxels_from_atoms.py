@@ -6,7 +6,7 @@ from cryojax.simulator._density._voxel_density import (
     _build_real_space_voxels_from_atoms,
 )
 from cryojax.image import ifftn
-from cryojax.coordinates import make_coordinates
+from cryojax.coordinates import CoordinateGrid
 from jax import config
 
 config.update("jax_enable_x64", True)
@@ -57,16 +57,16 @@ class TestBuildRealSpaceVoxelsFromAtoms:
             voxel_size,
         ) = toy_gaussian_cloud
         ff_a[largest_atom] += 1.0
-        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
+        coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
 
         # Build the density
         density = _build_real_space_voxels_from_atoms(
-            atom_positions, ff_a, ff_b, coordinate_grid
+            atom_positions, ff_a, ff_b, coordinate_grid.get()
         )
 
         # Find the maximum
         maximum_index = jnp.argmax(density)
-        maximum_position = coordinate_grid.reshape(-1, 3)[maximum_index]
+        maximum_position = coordinate_grid.get().reshape(-1, 3)[maximum_index]
 
         # Check that the maximum is in the correct position
         assert jnp.allclose(maximum_position, atom_positions[largest_atom])
@@ -82,11 +82,11 @@ class TestBuildRealSpaceVoxelsFromAtoms:
             n_voxels_per_side,
             voxel_size,
         ) = toy_gaussian_cloud
-        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
+        coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
 
         # Build the density
         density = _build_real_space_voxels_from_atoms(
-            atom_positions, ff_a, ff_b, coordinate_grid
+            atom_positions, ff_a, ff_b, coordinate_grid.get()
         )
 
         integral = jnp.sum(density) * voxel_size**3
@@ -105,7 +105,7 @@ class TestBuildVoxelsFromTrajectories:
         second_set_of_positions = atom_positions + 1.0
         traj = np.stack([atom_positions, second_set_of_positions], axis=0)
 
-        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
+        coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
 
         # Build the trajectory $density
         elements = np.array([1, 1, 2, 6])

@@ -99,7 +99,7 @@ class CoordinateGrid(AbstractCoordinates, strict=True):
     def __init__(
         self,
         shape: tuple[int, int] | tuple[int, int, int],
-        grid_spacing: float = 1.0,
+        grid_spacing: float | ArrayLike = 1.0,
     ):
         self.coordinates = make_coordinates(shape, grid_spacing)
 
@@ -114,7 +114,7 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
     def __init__(
         self,
         shape: tuple[int, int] | tuple[int, int, int],
-        grid_spacing: float = 1.0,
+        grid_spacing: float | ArrayLike = 1.0,
         half_space: bool = True,
     ):
         self.coordinates = make_frequencies(
@@ -132,7 +132,7 @@ class FrequencySlice(AbstractCoordinates, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        grid_spacing: float = 1.0,
+        grid_spacing: float | ArrayLike = 1.0,
         half_space: bool = True,
     ):
         """Create a frequency slice. If not given, by default store
@@ -157,7 +157,9 @@ class FrequencySlice(AbstractCoordinates, strict=True):
 
 
 def make_coordinates(
-    shape: tuple[int, ...], grid_spacing: float = 1.0, indexing: str = "xy"
+    shape: tuple[int, ...],
+    grid_spacing: float | ArrayLike = 1.0,
+    indexing: str = "xy",
 ) -> Float[Array, "*shape len(shape)"]:
     """
     Create a real-space cartesian coordinate system on a grid.
@@ -186,7 +188,7 @@ def make_coordinates(
 
 def make_frequencies(
     shape: tuple[int, ...],
-    grid_spacing: float = 1.0,
+    grid_spacing: float | ArrayLike = 1.0,
     half_space: bool = True,
     indexing: str = "xy",
 ) -> Float[Array, "*shape len(shape)"]:
@@ -250,7 +252,7 @@ def cartesian_to_polar(
 
 def _make_coordinates_or_frequencies(
     shape: tuple[int, ...],
-    grid_spacing: float = 1.0,
+    grid_spacing: float | ArrayLike = 1.0,
     real_space: bool = False,
     half_space: bool = True,
     indexing: str = "xy",
@@ -282,7 +284,7 @@ def _make_coordinates_or_frequencies(
 
 def _make_coordinates_or_frequencies_1d(
     size: int,
-    grid_spacing: float,
+    grid_spacing: float | ArrayLike,
     real_space: bool = False,
     rfftfreq: Optional[bool] = None,
 ) -> Float[Array, "size"]:
