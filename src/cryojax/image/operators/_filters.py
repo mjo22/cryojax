@@ -68,7 +68,7 @@ class InverseSincFilter(AbstractFilter):
         grid_spacing: float = 1.0,
     ):
         ndim = len(frequency_grid.shape) - 1
-        self.buffer = jax.lax.rsqrt(
+        self.buffer = jax.lax.reciprocal(
             functools.reduce(
                 operator.mul,
                 [
@@ -76,6 +76,7 @@ class InverseSincFilter(AbstractFilter):
                     for i in range(ndim)
                 ],
             )
+            ** 2
         )
 
 
