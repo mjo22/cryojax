@@ -15,7 +15,7 @@ from ..image.operators import (
 from ..typing import ComplexImage
 
 
-class AbstractExposure(Module):
+class AbstractExposure(Module, strict=True):
     """
     Controls parameters related to variation in
     the image intensity. This is implemented as a combination
@@ -52,7 +52,7 @@ class AbstractExposure(Module):
         return self.radiation(frequency_grid) * image_at_exit_plane
 
 
-class Exposure(AbstractExposure):
+class Exposure(AbstractExposure, strict=True):
     """
     A flexible exposure model, where any dose and radiation operators can
     be passed.
@@ -62,7 +62,7 @@ class Exposure(AbstractExposure):
     radiation: FourierOperatorLike = field(default_factory=Constant)
 
 
-class NullExposure(AbstractExposure):
+class NullExposure(AbstractExposure, strict=True):
     """
     A `null` exposure model. Do not change the
     image when it is passsed through the pipeline.

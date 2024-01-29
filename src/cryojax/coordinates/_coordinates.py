@@ -3,7 +3,8 @@ Coordinate functionality in cryojax.
 """
 
 from jaxtyping import ArrayLike, Array, PyTree, Float
-from typing import TypeVar, Optional, Any
+from typing import Optional, Any
+from typing_extensions import Self
 from equinox import AbstractVar
 
 import equinox as eqx
@@ -18,10 +19,6 @@ from ..typing import (
     VolumeCoords,
     VolumeSliceCoords,
 )
-
-
-CoordinateT = TypeVar("CoordinateT", bound="AbstractCoordinates")
-"""Type hint for a coordinate-like object."""
 
 
 #
@@ -47,7 +44,7 @@ def get_not_coordinate_filter_spec(pytree: PyTree) -> PyTree[bool]:
     )
 
 
-class AbstractCoordinates(eqx.Module):
+class AbstractCoordinates(eqx.Module, strict=True):
     """
     A base class that wraps a coordinate array.
     """
@@ -58,28 +55,28 @@ class AbstractCoordinates(eqx.Module):
         """Get the coordinates."""
         return self.coordinates
 
-    def __mul__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+    def __mul__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
             lambda x: x.coordinates, self, self.coordinates * jnp.asarray(arr)
         )
 
-    def __rmul__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+    def __rmul__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
             lambda x: x.coordinates, self, jnp.asarray(arr) * self.coordinates
         )
 
-    def __truediv__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+    def __truediv__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
             lambda x: x.coordinates, self, self.coordinates / jnp.asarray(arr)
         )
 
-    def __rtruediv__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+    def __rtruediv__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
             lambda x: x.coordinates, self, jnp.asarray(arr) / self.coordinates
         )
 
 
-class CoordinateList(AbstractCoordinates):
+class CoordinateList(AbstractCoordinates, strict=True):
     """
     A Pytree that wraps a coordinate list.
     """
@@ -92,7 +89,7 @@ class CoordinateList(AbstractCoordinates):
         self.coordinates = coordinate_list
 
 
-class CoordinateGrid(AbstractCoordinates):
+class CoordinateGrid(AbstractCoordinates, strict=True):
     """
     A Pytree that wraps a coordinate grid.
     """
@@ -107,7 +104,7 @@ class CoordinateGrid(AbstractCoordinates):
         self.coordinates = make_coordinates(shape, grid_spacing)
 
 
-class FrequencyGrid(AbstractCoordinates):
+class FrequencyGrid(AbstractCoordinates, strict=True):
     """
     A Pytree that wraps a frequency grid.
     """
@@ -125,7 +122,7 @@ class FrequencyGrid(AbstractCoordinates):
         )
 
 
-class FrequencySlice(AbstractCoordinates):
+class FrequencySlice(AbstractCoordinates, strict=True):
     """
     A Pytree that wraps a frequency grid.
     """

@@ -8,6 +8,7 @@ from equinox import field
 import jax.numpy as jnp
 
 from ._scattering_method import AbstractProjectionMethod
+from .._manager import ImageManager
 from .._density import FourierVoxelGrid, FourierVoxelGridAsSpline
 from ...image import (
     irfftn,
@@ -18,7 +19,7 @@ from ...image import (
 from ...typing import ComplexImage, ComplexCubicVolume, VolumeSliceCoords
 
 
-class FourierSliceExtract(AbstractProjectionMethod):
+class FourierSliceExtract(AbstractProjectionMethod, strict=True):
     """
     Scatter points to the image plane using the
     Fourier-projection slice theorem.
@@ -39,6 +40,8 @@ class FourierSliceExtract(AbstractProjectionMethod):
         Value for filling out-of-bounds indices. Used only when
         ``interpolation_mode = "fill"``.
     """
+
+    manager: ImageManager
 
     interpolation_order: int = field(static=True, default=1)
     interpolation_mode: str = field(static=True, default="fill")

@@ -13,10 +13,10 @@ from typing import (
     Optional,
     overload,
 )
-from typing_extensions import Self
+from typing_extensions import Self, override
 from jaxtyping import Float, Array, Int
 from functools import cached_property
-from equinox import field
+from equinox import field, AbstractVar
 
 import equinox as eqx
 import jax
@@ -59,7 +59,7 @@ VoxelT = TypeVar("VoxelT", bound="AbstractVoxels")
 """TypeVar for a voxel-based electron density."""
 
 
-class AbstractVoxels(AbstractElectronDensity):
+class AbstractVoxels(AbstractElectronDensity, strict=True):
     """
     Voxel-based electron density representation.
 
@@ -71,7 +71,7 @@ class AbstractVoxels(AbstractElectronDensity):
         The voxel size of the electron density.
     """
 
-    voxel_size: Real_ = field(converter=jnp.asarray)
+    voxel_size: AbstractVar[Real_]
 
     @overload
     @classmethod
@@ -327,38 +327,22 @@ class AbstractVoxels(AbstractElectronDensity):
         )
 
 
-class FourierVoxelGrid(AbstractVoxels):
+class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
     """
-    Abstraction of a 3D electron density voxel grid
+    Abstract interface of a 3D electron density voxel grid
     in fourier space.
-
-    Attributes
-    ----------
-    weights :
-        3D electron density grid in fourier space.
-    frequency_slice :
-        Central slice of cartesian coordinate system
-        in fourier space.
     """
 
-    fourier_density_grid: ComplexCubicVolume = field(converter=jnp.asarray)
-    frequency_slice: FrequencySlice
+    frequency_slice: AbstractVar[FrequencySlice]
 
-    is_real: ClassVar[bool] = False
-
+    @abstractmethod
     def __init__(
         self,
         fourier_density_grid: ComplexCubicVolume,
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
-        self.fourier_density_grid = fourier_density_grid
-        self.frequency_slice = frequency_slice
-        self.voxel_size = voxel_size
-
-    @property
-    def shape(self) -> tuple[int, int, int]:
-        return self.fourier_density_grid.shape
+        raise NotImplementedError
 
     @cached_property
     def frequency_slice_in_angstroms(self) -> FrequencySlice:
@@ -379,13 +363,13 @@ class FourierVoxelGrid(AbstractVoxels):
 
     @classmethod
     def from_density_grid(
-        cls: Type["FourierVoxelGrid"],
+        cls: Type["AbstractFourierVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[VolumeCoords] = None,
         pad_scale: float = 1.0,
         pad_mode: str = "constant",
-    ) -> "FourierVoxelGrid":
+    ) -> "AbstractFourierVoxelGrid":
         # Pad template
         if pad_scale < 1.0:
             raise ValueError("pad_scale must be greater than 1.0")
@@ -409,17 +393,47 @@ class FourierVoxelGrid(AbstractVoxels):
             shape=padded_density_grid.shape[-3:-1], half_space=False
         )
 
-        return cls(fourier_density_grid, frequency_slice, voxel_size)
+        return cls(
+            fourier_density_grid, frequency_slice, jnp.asarray(voxel_size)
+        )
 
 
-class FourierVoxelGridAsSpline(FourierVoxelGrid):
+class FourierVoxelGrid(AbstractFourierVoxelGrid):
+    """
+    Abstraction of a 3D electron density voxel grid
+    in fourier space.
+    """
+
+    fourier_density_grid: ComplexCubicVolume = field(converter=jnp.asarray)
+    frequency_slice: FrequencySlice
+    voxel_size: Real_ = field(converter=jnp.asarray)
+
+    is_real: ClassVar[bool] = False
+
+    @override
+    def __init__(
+        self,
+        fourier_density_grid: ComplexCubicVolume,
+        frequency_slice: FrequencySlice,
+        voxel_size: Real_,
+    ):
+        self.fourier_density_grid = fourier_density_grid
+        self.frequency_slice = frequency_slice
+        self.voxel_size = voxel_size
+
+    @property
+    def shape(self) -> tuple[int, int, int]:
+        return self.fourier_density_grid.shape
+
+
+class FourierVoxelGridAsSpline(AbstractFourierVoxelGrid):
     """
     Abstraction of a 3D electron density voxel grid
     in fourier space.
 
     Attributes
     ----------
-    weights :
+    spline_coefficients :
         3D electron density grid in fourier space.
     frequency_slice :
         Central slice of cartesian coordinate system
@@ -428,7 +442,7 @@ class FourierVoxelGridAsSpline(FourierVoxelGrid):
 
     spline_coefficients: ComplexCubicVolume = field(converter=jnp.asarray)
     frequency_slice: FrequencySlice
-    fourier_density_grid: None
+    voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = False
 
@@ -443,14 +457,13 @@ class FourierVoxelGridAsSpline(FourierVoxelGrid):
         )
         self.frequency_slice = frequency_slice
         self.voxel_size = voxel_size
-        self.fourier_density_grid = None
 
     @property
     def shape(self) -> tuple[int, int, int]:
         return tuple([s - 2 for s in self.spline_coefficients.shape])
 
 
-class RealVoxelGrid(AbstractVoxels):
+class RealVoxelGrid(AbstractVoxels, strict=True):
     """
     Abstraction of a 3D electron density voxel grid.
     The voxel grid is given in real space.
@@ -465,9 +478,11 @@ class RealVoxelGrid(AbstractVoxels):
 
     density_grid: RealVolume = field(converter=jnp.asarray)
     coordinate_grid: CoordinateGrid
+    voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = True
 
+    @override
     def __init__(
         self,
         density_grid: ComplexCubicVolume,
@@ -542,7 +557,7 @@ class RealVoxelGrid(AbstractVoxels):
         return cls(density_grid, coordinate_grid, voxel_size)
 
 
-class VoxelCloud(AbstractVoxels):
+class VoxelCloud(AbstractVoxels, strict=True):
     """
     Abstraction of a 3D electron density voxel point cloud.
 
@@ -559,6 +574,7 @@ class VoxelCloud(AbstractVoxels):
 
     density_weights: RealCloud = field(converter=jnp.asarray)
     coordinate_list: CoordinateList
+    voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = True
 

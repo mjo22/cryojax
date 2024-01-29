@@ -12,7 +12,7 @@ from ._operator import AbstractImageMultiplier
 from ...typing import RealImage, RealVolume, ImageCoords, VolumeCoords
 
 
-class AbstractMask(AbstractImageMultiplier):
+class AbstractMask(AbstractImageMultiplier, strict=True):
     """
     Base class for computing and applying an image mask.
     """
@@ -29,7 +29,7 @@ class AbstractMask(AbstractImageMultiplier):
         return image * jax.lax.stop_gradient(self.buffer)
 
 
-class CustomMask(AbstractImageMultiplier):
+class CustomMask(AbstractImageMultiplier, strict=True):
     """
     Pass a custom mask as an array.
     """
@@ -40,7 +40,7 @@ class CustomMask(AbstractImageMultiplier):
         self.buffer = mask
 
 
-class CircularMask(AbstractMask):
+class CircularMask(AbstractMask, strict=True):
     """
     Apply a circular mask to an image.
 

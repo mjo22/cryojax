@@ -21,7 +21,7 @@ from ._operator import AbstractImageOperator
 from ...typing import Real_, ImageCoords, VolumeCoords, RealImage
 
 
-class AbstractFourierOperator(AbstractImageOperator):
+class AbstractFourierOperator(AbstractImageOperator, strict=True):
     """
     The base class for all fourier-based operators.
 
@@ -45,7 +45,7 @@ class AbstractFourierOperator(AbstractImageOperator):
 FourierOperatorLike = AbstractFourierOperator | AbstractImageOperator
 
 
-class ZeroMode(AbstractFourierOperator):
+class ZeroMode(AbstractFourierOperator, strict=True):
     """
     This operator returns a constant in the zero mode.
 
@@ -82,7 +82,7 @@ class ZeroMode(AbstractFourierOperator):
             return jnp.zeros((N1, N2)).at[0, 0].set(N_modes * self.value)
 
 
-class FourierExp2D(AbstractFourierOperator):
+class FourierExp2D(AbstractFourierOperator, strict=True):
     r"""
     This operator, in real space, represents a
     function equal to an exponential decay, given by
@@ -128,7 +128,7 @@ class FourierExp2D(AbstractFourierOperator):
             return scaling
 
 
-class FourierGaussian2D(AbstractFourierOperator):
+class FourierGaussian2D(AbstractFourierOperator, strict=True):
     r"""
     This operator represents a simple gaussian.
     Specifically, this is

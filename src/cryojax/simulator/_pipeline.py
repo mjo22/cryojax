@@ -10,7 +10,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
-from equinox import Module
+from equinox import Module, AbstractVar
 
 from ._specimen import AbstractSpecimen, AbstractConformation
 from ._pose import AbstractPose
@@ -24,7 +24,7 @@ from ..image.operators import AbstractFilter, AbstractMask
 from ..typing import ComplexImage, Image
 
 
-class AbstractPipeline(Module):
+class AbstractPipeline(Module, strict=True):
     """
     Base class for an imaging model.
 
@@ -47,13 +47,13 @@ class AbstractPipeline(Module):
         A mask to apply to the image.
     """
 
-    specimen: AbstractSpecimen
-    scattering: AbstractScatteringMethod
-    instrument: Instrument
-    solvent: AbstractIce
+    specimen: AbstractVar[AbstractSpecimen]
+    scattering: AbstractVar[AbstractScatteringMethod]
+    instrument: AbstractVar[Instrument]
+    solvent: AbstractVar[AbstractIce]
 
-    filter: Optional[AbstractFilter]
-    mask: Optional[AbstractMask]
+    filter: AbstractVar[Optional[AbstractFilter]]
+    mask: AbstractVar[Optional[AbstractMask]]
 
     @abstractmethod
     def render(
@@ -192,8 +192,16 @@ class AbstractPipeline(Module):
             return irfftn(image, s=manager.padded_shape) if get_real else image
 
 
-class ImagePipeline(AbstractPipeline):
+class ImagePipeline(AbstractPipeline, strict=True):
     """Standard image formation pipeline."""
+
+    specimen: AbstractSpecimen
+    scattering: AbstractScatteringMethod
+    instrument: Instrument
+    solvent: AbstractIce
+
+    filter: Optional[AbstractFilter]
+    mask: Optional[AbstractMask]
 
     def __init__(
         self,
@@ -293,11 +301,19 @@ class ImagePipeline(AbstractPipeline):
         )
 
 
-class AssemblyPipeline(AbstractPipeline):
+class AssemblyPipeline(AbstractPipeline, strict=True):
     """
     Compute an image from a superposition of subunits in
     the ``AbstractAssembly``.
     """
+
+    specimen: AbstractSpecimen
+    scattering: AbstractScatteringMethod
+    instrument: Instrument
+    solvent: AbstractIce
+
+    filter: Optional[AbstractFilter]
+    mask: Optional[AbstractMask]
 
     def __init__(
         self,

@@ -26,7 +26,7 @@ def is_density_leaves_without_coordinates(element: Any) -> bool | PyTree[bool]:
         return False
 
 
-class AbstractElectronDensity(Module):
+class AbstractElectronDensity(Module, strict=True):
     """
     Abstraction of an electron density distribution.
 

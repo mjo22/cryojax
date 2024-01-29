@@ -19,7 +19,7 @@ from ._detector import AbstractDetector, NullDetector
 from ..typing import ComplexImage, Real_
 
 
-class Instrument(Module):
+class Instrument(Module, strict=True):
     """
     An abstraction of an electron microscope.
 

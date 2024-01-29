@@ -14,7 +14,7 @@ from ._operator import AbstractImageOperator
 from ...typing import ImageCoords, VolumeCoords, RealImage, Real_
 
 
-class AbstractRealOperator(AbstractImageOperator):
+class AbstractRealOperator(AbstractImageOperator, strict=True):
     """
     The base class for all real operators.
 
@@ -38,7 +38,7 @@ class AbstractRealOperator(AbstractImageOperator):
 RealOperatorLike = AbstractRealOperator | AbstractImageOperator
 
 
-class Gaussian2D(AbstractRealOperator):
+class Gaussian2D(AbstractRealOperator, strict=True):
     r"""
     This operator represents a simple gaussian.
     Specifically, this is
