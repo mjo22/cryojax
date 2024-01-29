@@ -375,7 +375,7 @@ class FourierVoxelGrid(AbstractVoxels):
             lambda d: d.frequency_slice,
             self,
             FrequencySlice(
-                pose.rotate(self.frequency_slice.get(), is_real=self.is_real)
+                frequency_slice=pose.rotate(self.frequency_slice.get(), is_real=self.is_real)
             ),
             is_leaf=lambda x: isinstance(x, FrequencySlice),
         )
@@ -500,7 +500,7 @@ class RealVoxelGrid(AbstractVoxels):
             lambda d: d.coordinate_grid,
             self,
             CoordinateGrid(
-                pose.rotate(self.coordinate_grid.get(), is_real=self.is_real)
+                coordinate_grid=pose.rotate(self.coordinate_grid.get(), is_real=self.is_real)
             ),
             is_leaf=lambda x: isinstance(x, CoordinateGrid),
         )
@@ -597,7 +597,7 @@ class VoxelCloud(AbstractVoxels):
             lambda d: d.coordinate_list,
             self,
             CoordinateList(
-                pose.rotate(self.coordinate_list.get(), is_real=self.is_real)
+                coordinate_list=pose.rotate(self.coordinate_list.get(), is_real=self.is_real)
             ),
             is_leaf=lambda x: isinstance(x, CoordinateList),
         )
