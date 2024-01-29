@@ -9,12 +9,7 @@ from equinox import Module, field
 
 import jax.numpy as jnp
 
-from ..coordinates import (
-    make_coordinates,
-    make_frequencies,
-    CoordinateGrid,
-    FrequencyGrid,
-)
+from ..coordinates import CoordinateGrid, FrequencyGrid
 from ..typing import Image, Real_, RealImage
 from ..image import (
     crop_to_shape,
@@ -76,15 +71,10 @@ class ImageManager(Module):
         padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
         self.padded_shape = padded_shape
         # Set coordinates
-        self.frequency_grid = FrequencyGrid(make_frequencies(self.shape))
-        self.padded_frequency_grid = FrequencyGrid(
-            make_frequencies(self.padded_shape)
-        )
-
-        self.coordinate_grid = CoordinateGrid(make_coordinates(self.shape))
-        self.padded_coordinate_grid = CoordinateGrid(
-            make_coordinates(self.padded_shape)
-        )
+        self.frequency_grid = FrequencyGrid(shape=self.shape)
+        self.padded_frequency_grid = FrequencyGrid(shape=self.padded_shape)
+        self.coordinate_grid = CoordinateGrid(shape=self.shape)
+        self.padded_coordinate_grid = CoordinateGrid(shape=self.padded_shape)
 
     @cached_property
     def coordinate_grid_in_angstroms(self) -> CoordinateGrid:

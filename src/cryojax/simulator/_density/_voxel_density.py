@@ -372,12 +372,9 @@ class FourierVoxelGrid(AbstractVoxels):
         This rotation is the inverse rotation as in real space.
         """
         return eqx.tree_at(
-            lambda d: d.frequency_slice,
+            lambda d: d.frequency_slice.coordinates,
             self,
-            FrequencySlice(
-                pose.rotate(self.frequency_slice.get(), is_real=self.is_real)
-            ),
-            is_leaf=lambda x: isinstance(x, FrequencySlice),
+            pose.rotate(self.frequency_slice.get(), is_real=self.is_real),
         )
 
     @classmethod
@@ -497,12 +494,9 @@ class RealVoxelGrid(AbstractVoxels):
         with rotated coordinates.
         """
         return eqx.tree_at(
-            lambda d: d.coordinate_grid,
+            lambda d: d.coordinate_grid.coordinates,
             self,
-            CoordinateGrid(
-                pose.rotate(self.coordinate_grid.get(), is_real=self.is_real)
-            ),
-            is_leaf=lambda x: isinstance(x, CoordinateGrid),
+            pose.rotate(self.coordinate_grid.get(), is_real=self.is_real),
         )
 
     @overload
@@ -594,12 +588,9 @@ class VoxelCloud(AbstractVoxels):
         with rotated coordinates.
         """
         return eqx.tree_at(
-            lambda d: d.coordinate_list,
+            lambda d: d.coordinate_list.coordinates,
             self,
-            CoordinateList(
-                pose.rotate(self.coordinate_list.get(), is_real=self.is_real)
-            ),
-            is_leaf=lambda x: isinstance(x, CoordinateList),
+            pose.rotate(self.coordinate_list.get(), is_real=self.is_real),
         )
 
     @classmethod

@@ -2,10 +2,8 @@
 Coordinate functionality in cryojax.
 """
 
-from abc import abstractmethod
 from jaxtyping import ArrayLike, Array, PyTree, Float
 from typing import TypeVar, Optional, Any
-from typing_extensions import overload
 from equinox import AbstractVar
 
 import equinox as eqx
@@ -22,7 +20,7 @@ from ..typing import (
 )
 
 
-_CoordinateT = TypeVar("_CoordinateT", bound="AbstractCoordinates")
+CoordinateT = TypeVar("CoordinateT", bound="AbstractCoordinates")
 """Type hint for a coordinate-like object."""
 
 
@@ -54,27 +52,31 @@ class AbstractCoordinates(eqx.Module):
     A base class that wraps a coordinate array.
     """
 
-    _coordinates: AbstractVar[Any]
+    coordinates: AbstractVar[Any]
 
     def get(self):
         """Get the coordinates."""
-        return self._coordinates
+        return self.coordinates
 
-    def __mul__(self: _CoordinateT, arr: ArrayLike) -> _CoordinateT:
-        cls = type(self)
-        return cls(self._coordinates * jnp.asarray(arr))
+    def __mul__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+        return eqx.tree_at(
+            lambda x: x.coordinates, self, self.coordinates * jnp.asarray(arr)
+        )
 
-    def __rmul__(self: _CoordinateT, arr: ArrayLike) -> _CoordinateT:
-        cls = type(self)
-        return cls(jnp.asarray(arr) * self._coordinates)
+    def __rmul__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+        return eqx.tree_at(
+            lambda x: x.coordinates, self, jnp.asarray(arr) * self.coordinates
+        )
 
-    def __truediv__(self: _CoordinateT, arr: ArrayLike) -> _CoordinateT:
-        cls = type(self)
-        return cls(self._coordinates / jnp.asarray(arr))
+    def __truediv__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+        return eqx.tree_at(
+            lambda x: x.coordinates, self, self.coordinates / jnp.asarray(arr)
+        )
 
-    def __rtruediv__(self: _CoordinateT, arr: ArrayLike) -> _CoordinateT:
-        cls = type(self)
-        return cls(jnp.asarray(arr) / self._coordinates)
+    def __rtruediv__(self: CoordinateT, arr: ArrayLike) -> CoordinateT:
+        return eqx.tree_at(
+            lambda x: x.coordinates, self, jnp.asarray(arr) / self.coordinates
+        )
 
 
 class CoordinateList(AbstractCoordinates):
@@ -82,12 +84,12 @@ class CoordinateList(AbstractCoordinates):
     A Pytree that wraps a coordinate list.
     """
 
-    _coordinates: CloudCoords3D | CloudCoords2D = eqx.field(
+    coordinates: CloudCoords3D | CloudCoords2D = eqx.field(
         converter=jnp.asarray
     )
 
     def __init__(self, coordinate_list: CloudCoords2D | CloudCoords3D):
-        self._coordinates = coordinate_list
+        self.coordinates = coordinate_list
 
 
 class CoordinateGrid(AbstractCoordinates):
@@ -95,39 +97,14 @@ class CoordinateGrid(AbstractCoordinates):
     A Pytree that wraps a coordinate grid.
     """
 
-    _coordinates: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
+    coordinates: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
 
-    @overload
     def __init__(
         self,
-        coordinate_grid: ImageCoords | VolumeCoords,
-        *,
-        shape: Optional[tuple[int, int] | tuple[int, int, int]],
-        grid_spacing: float,
-    ): ...
-
-    @overload
-    def __init__(
-        self,
-        coordinate_grid: None,
-        *,
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float = 1.0,
-    ): ...
-
-    def __init__(
-        self,
-        coordinate_grid: Optional[ImageCoords | VolumeCoords] = None,
-        *,
-        shape: Optional[tuple[int, int] | tuple[int, int, int]] = None,
-        grid_spacing: float = 1.0,
     ):
-        if coordinate_grid is not None:
-            self._coordinates = coordinate_grid
-        elif shape is not None:
-            self._coordinates = make_coordinates(shape, grid_spacing)
-        else:
-            raise ValueError("Must either pass a coordinate grid or a shape.")
+        self.coordinates = make_coordinates(shape, grid_spacing)
 
 
 class FrequencyGrid(AbstractCoordinates):
@@ -135,44 +112,17 @@ class FrequencyGrid(AbstractCoordinates):
     A Pytree that wraps a frequency grid.
     """
 
-    _coordinates: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
+    coordinates: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
 
-    @overload
     def __init__(
         self,
-        frequency_grid: ImageCoords | VolumeCoords,
-        *,
-        shape: Optional[tuple[int, int] | tuple[int, int, int]],
-        grid_spacing: float,
-        half_space: bool = True,
-    ): ...
-
-    @overload
-    def __init__(
-        self,
-        frequency_grid: None,
-        *,
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float = 1.0,
         half_space: bool = True,
-    ): ...
-
-    def __init__(
-        self,
-        frequency_grid: Optional[ImageCoords | VolumeCoords] = None,
-        *,
-        shape: Optional[tuple[int, int] | tuple[int, int, int]] = None,
-        grid_spacing: float = 1.0,
-        half_space: bool = True,
     ):
-        if frequency_grid is not None:
-            self._coordinates = frequency_grid
-        elif shape is not None:
-            self._coordinates = make_frequencies(
-                shape, grid_spacing, half_space=half_space
-            )
-        else:
-            raise ValueError("Must either pass a coordinate grid or a shape.")
+        self.coordinates = make_frequencies(
+            shape, grid_spacing, half_space=half_space
+        )
 
 
 class FrequencySlice(AbstractCoordinates):
@@ -180,62 +130,33 @@ class FrequencySlice(AbstractCoordinates):
     A Pytree that wraps a frequency grid.
     """
 
-    _coordinates: VolumeSliceCoords = eqx.field(converter=jnp.asarray)
+    coordinates: VolumeSliceCoords = eqx.field(converter=jnp.asarray)
 
-    @overload
     def __init__(
         self,
-        frequency_slice: VolumeSliceCoords,
-        *,
-        shape: Optional[tuple[int, int]],
-        grid_spacing: float,
-        half_space: bool = True,
-    ): ...
-
-    @overload
-    def __init__(
-        self,
-        frequency_slice: None,
-        *,
         shape: tuple[int, int],
-        grid_spacing: float = 1.0,
-        half_space: bool = True,
-    ): ...
-
-    def __init__(
-        self,
-        frequency_slice: Optional[VolumeSliceCoords] = None,
-        *,
-        shape: Optional[tuple[int, int]] = None,
         grid_spacing: float = 1.0,
         half_space: bool = True,
     ):
         """Create a frequency slice. If not given, by default store
         with the zero frequency component in the center."""
-        if frequency_slice is not None:
-            self._coordinates = frequency_slice
-        elif shape is not None:
-            frequency_slice = make_frequencies(
-                shape, grid_spacing, half_space=half_space
-            )
-            if half_space:
-                frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0,))
-            else:
-                frequency_slice = jnp.fft.fftshift(
-                    frequency_slice, axes=(0, 1)
-                )
-            frequency_slice = jnp.expand_dims(
-                jnp.pad(
-                    frequency_slice,
-                    ((0, 0), (0, 0), (0, 1)),
-                    mode="constant",
-                    constant_values=0.0,
-                ),
-                axis=2,
-            )
-            self._coordinates = frequency_slice
+        frequency_slice = make_frequencies(
+            shape, grid_spacing, half_space=half_space
+        )
+        if half_space:
+            frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0,))
         else:
-            raise ValueError("Must either pass a coordinate grid or a shape.")
+            frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0, 1))
+        frequency_slice = jnp.expand_dims(
+            jnp.pad(
+                frequency_slice,
+                ((0, 0), (0, 0), (0, 1)),
+                mode="constant",
+                constant_values=0.0,
+            ),
+            axis=2,
+        )
+        self.coordinates = frequency_slice
 
 
 def make_coordinates(
