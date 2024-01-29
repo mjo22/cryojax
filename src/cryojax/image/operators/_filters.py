@@ -67,16 +67,15 @@ class InverseSincFilter(AbstractFilter, strict=True):
         frequency_grid: ImageCoords | VolumeCoords,
         grid_spacing: float = 1.0,
     ):
-        ndim = len(frequency_grid.shape) - 1
+        ndim = frequency_grid.ndim - 1
         self.buffer = jax.lax.reciprocal(
             functools.reduce(
                 operator.mul,
                 [
-                    jnp.sinc(frequency_grid[:, i] * grid_spacing)
+                    jnp.sinc(frequency_grid[..., i] * grid_spacing)
                     for i in range(ndim)
                 ],
             )
-            ** 2
         )
 
 

@@ -33,6 +33,7 @@ from ...io import (
     mdtraj_load_from_file,
 )
 
+from ...image.operators import AbstractFilter
 from ...image import (
     pad_to_shape,
     crop_to_shape,
@@ -73,35 +74,12 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
 
     voxel_size: AbstractVar[Real_]
 
-    @overload
-    @classmethod
-    @abstractmethod
-    def from_density_grid(
-        cls: Type[VoxelT],
-        density_grid: RealVolume,
-        voxel_size: Real_ | float,
-        coordinate_grid: None,
-        **kwargs: Any,
-    ) -> VoxelT: ...
-
-    @overload
-    @classmethod
-    @abstractmethod
-    def from_density_grid(
-        cls: Type[VoxelT],
-        density_grid: RealVolume,
-        voxel_size: Real_ | float,
-        coordinate_grid: VolumeCoords,
-        **kwargs: Any,
-    ) -> VoxelT: ...
-
     @classmethod
     @abstractmethod
     def from_density_grid(
         cls: Type[VoxelT],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
-        coordinate_grid: Optional[VolumeCoords] = None,
         **kwargs: Any,
     ) -> VoxelT:
         """
@@ -341,6 +319,8 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         fourier_density_grid: ComplexCubicVolume,
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
+        *,
+        filter: Optional[AbstractFilter] = None,
     ):
         raise NotImplementedError
 
@@ -366,9 +346,10 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         cls: Type["AbstractFourierVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
-        coordinate_grid: Optional[VolumeCoords] = None,
+        *,
         pad_scale: float = 1.0,
         pad_mode: str = "constant",
+        filter: Optional[AbstractFilter] = None,
     ) -> "AbstractFourierVoxelGrid":
         # Pad template
         if pad_scale < 1.0:
@@ -390,11 +371,14 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         )
         # ... create in-plane frequency slice on the half space
         frequency_slice = FrequencySlice(
-            shape=padded_density_grid.shape[-3:-1], half_space=False
+            padded_density_grid.shape[-3:-1], half_space=False
         )
 
         return cls(
-            fourier_density_grid, frequency_slice, jnp.asarray(voxel_size)
+            fourier_density_grid,
+            frequency_slice,
+            jnp.asarray(voxel_size),
+            filter=filter,
         )
 
 
@@ -416,8 +400,14 @@ class FourierVoxelGrid(AbstractFourierVoxelGrid):
         fourier_density_grid: ComplexCubicVolume,
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
+        *,
+        filter: Optional[AbstractFilter] = None,
     ):
-        self.fourier_density_grid = fourier_density_grid
+        self.fourier_density_grid = (
+            fourier_density_grid
+            if filter is None
+            else filter(fourier_density_grid)
+        )
         self.frequency_slice = frequency_slice
         self.voxel_size = voxel_size
 
@@ -451,7 +441,14 @@ class FourierVoxelGridAsSpline(AbstractFourierVoxelGrid):
         fourier_density_grid: ComplexCubicVolume,
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
+        *,
+        filter: Optional[AbstractFilter] = None,
     ):
+        fourier_density_grid = (
+            fourier_density_grid
+            if filter is None
+            else filter(fourier_density_grid)
+        )
         self.spline_coefficients = compute_spline_coefficients(
             fourier_density_grid
         )
@@ -476,7 +473,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         List of coordinates for the point cloud.
     """
 
-    density_grid: RealVolume = field(converter=jnp.asarray)
+    density_grid: RealCubicVolume = field(converter=jnp.asarray)
     coordinate_grid: CoordinateGrid
     voxel_size: Real_ = field(converter=jnp.asarray)
 
@@ -485,7 +482,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
     @override
     def __init__(
         self,
-        density_grid: ComplexCubicVolume,
+        density_grid: RealCubicVolume,
         coordinate_grid: CoordinateGrid,
         voxel_size: Real_,
     ):
@@ -520,7 +517,8 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         cls: Type["RealVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float,
-        coordinate_grid: VolumeCoords,
+        *,
+        coordinate_grid: CoordinateGrid,
         crop_scale: None,
     ) -> "RealVoxelGrid": ...
 
@@ -530,6 +528,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         cls: Type["RealVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float,
+        *,
         coordinate_grid: None,
         crop_scale: Optional[float],
     ) -> "RealVoxelGrid": ...
@@ -539,7 +538,8 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         cls: Type["RealVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
-        coordinate_grid: Optional[VolumeCoords] = None,
+        *,
+        coordinate_grid: Optional[CoordinateGrid] = None,
         crop_scale: Optional[float] = None,
     ) -> "RealVoxelGrid":
         # Make coordinates if not given
@@ -552,7 +552,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
                     [int(s * crop_scale) for s in density_grid.shape[-3:]]
                 )
                 density_grid = crop_to_shape(density_grid, cropped_shape)
-            coordinate_grid = CoordinateGrid(shape=density_grid.shape[-3:])
+            coordinate_grid = CoordinateGrid(density_grid.shape[-3:])
 
         return cls(density_grid, coordinate_grid, voxel_size)
 
@@ -614,16 +614,17 @@ class VoxelCloud(AbstractVoxels, strict=True):
         cls: Type["VoxelCloud"],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
-        coordinate_grid: Optional[VolumeCoords] = None,
+        *,
+        coordinate_grid: Optional[CoordinateGrid] = None,
     ) -> "VoxelCloud":
         # Make coordinates if not given
         if coordinate_grid is None:
-            coordinate_grid = make_coordinates(density_grid.shape)
+            coordinate_grid = CoordinateGrid(density_grid.shape)
         # ... mask zeros to store smaller arrays. This
         # option is not jittable.
         nonzero = jnp.where(~jnp.isclose(density_grid, 0.0))
         flat_density = density_grid[nonzero]
-        coordinate_list = coordinate_grid[nonzero]
+        coordinate_list = coordinate_grid.get()[nonzero]
 
         return cls(flat_density, CoordinateList(coordinate_list), voxel_size)
 
