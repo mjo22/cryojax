@@ -7,11 +7,10 @@ from typing import Union, TypeVar
 from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
-from equinox import field
+from equinox import field, AbstractVar
 
 import jax
 import equinox as eqx
-import numpy as np
 import jax.numpy as jnp
 from jaxlie import SO3
 from equinox import Module
@@ -32,7 +31,7 @@ PoseT = TypeVar("PoseT", bound="AbstractPose")
 """TypeVar for the Pose base class."""
 
 
-class AbstractPose(Module):
+class AbstractPose(Module, strict=True):
     """
     Base class for the image pose.
 
@@ -54,9 +53,9 @@ class AbstractPose(Module):
         relative to the configured defocus.
     """
 
-    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_x: AbstractVar[Real_]
+    offset_y: AbstractVar[Real_]
+    offset_z: AbstractVar[Real_]
 
     def rotate(
         self,
@@ -114,7 +113,7 @@ class AbstractPose(Module):
         )
 
 
-class EulerPose(AbstractPose):
+class EulerPose(AbstractPose, strict=True):
     r"""
     An image pose using Euler angles.
 
@@ -141,6 +140,10 @@ class EulerPose(AbstractPose):
     view_psi :
         Third rotation axis, ranging :math:`(-\pi, \pi]`.
     """
+
+    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
 
     view_phi: Real_ = field(default=0.0, converter=jnp.asarray)
     view_theta: Real_ = field(default=0.0, converter=jnp.asarray)
@@ -173,14 +176,18 @@ class EulerPose(AbstractPose):
         )
 
 
-class QuaternionPose(AbstractPose):
+class QuaternionPose(AbstractPose, strict=True):
     """
     An image pose using unit Quaternions.
 
     Attributes
     ----------
-    view_wxyz :
+    wxyz :
     """
+
+    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
 
     wxyz: Float[Array, "4"] = field(
         default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray
@@ -202,7 +209,7 @@ class QuaternionPose(AbstractPose):
         return cls(wxyz=rotation.wxyz)
 
 
-class MatrixPose(AbstractPose):
+class MatrixPose(AbstractPose, strict=True):
     """
     An image pose represented by a rotation matrix.
 
@@ -211,6 +218,10 @@ class MatrixPose(AbstractPose):
     matrix :
         The rotation matrix.
     """
+
+    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
 
     matrix: _RotationMatrix3D = field(
         default_factory=lambda: jnp.eye(3), converter=jnp.asarray

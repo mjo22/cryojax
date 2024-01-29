@@ -8,13 +8,14 @@ from abc import abstractmethod
 from typing import Optional
 from jaxtyping import Array, Float
 from functools import cached_property
+from equinox import AbstractVar
 
 import jax.numpy as jnp
 import equinox as eqx
 
 from .._specimen import AbstractSpecimen, AbstractEnsemble
 from .._conformation import AbstractConformation
-from .._pose import AbstractPose, EulerPose, MatrixPose
+from .._pose import AbstractPose, MatrixPose
 
 _Positions = Float[Array, "N 3"]
 """Type hint for array where each element is a subunit coordinate."""
@@ -23,7 +24,7 @@ _Rotations = Float[Array, "N 3 3"]
 """Type hint for array where each element is a subunit rotation."""
 
 
-class AbstractAssembly(eqx.Module):
+class AbstractAssembly(eqx.Module, strict=True):
     """
     Abstraction of a biological assembly.
 
@@ -48,9 +49,9 @@ class AbstractAssembly(eqx.Module):
         The conformation of each `subunit`.
     """
 
-    subunit: AbstractSpecimen
-    pose: AbstractPose
-    conformation: Optional[AbstractConformation]
+    subunit: AbstractVar[AbstractSpecimen]
+    pose: AbstractVar[AbstractPose]
+    conformation: AbstractVar[Optional[AbstractConformation]]
 
     def __check_init__(self):
         if self.conformation is not None and not isinstance(

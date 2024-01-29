@@ -14,7 +14,7 @@ from equinox import Module, field, AbstractVar
 from ...typing import ImageCoords, VolumeCoords, Image, Volume, Real_
 
 
-class AbstractImageOperator(Module):
+class AbstractImageOperator(Module, strict=True):
     """
     The base class for image operators that contain
     model parameters and compute an ``Array`` at runtime.
@@ -69,7 +69,7 @@ class AbstractImageOperator(Module):
         return ProductImageOperator(Constant(other), self)
 
 
-class AbstractImageMultiplier(Module):
+class AbstractImageMultiplier(Module, strict=True):
     """
     Base class for computing and applying an ``Array`` to an image.
 
@@ -92,7 +92,7 @@ class AbstractImageMultiplier(Module):
         return ProductImageMultiplier(operator1=other, operator2=self)
 
 
-class Constant(AbstractImageOperator):
+class Constant(AbstractImageOperator, strict=True):
     """An operator that is a constant."""
 
     value: Real_ = field(default=1.0, converter=jnp.asarray)
@@ -106,7 +106,7 @@ class Constant(AbstractImageOperator):
         return self.value
 
 
-class Lambda(AbstractImageOperator):
+class Lambda(AbstractImageOperator, strict=True):
     """An operator that calls a custom function."""
 
     fn: Callable[[ImageCoords | VolumeCoords], Image] = field(static=True)
@@ -118,7 +118,7 @@ class Lambda(AbstractImageOperator):
         return self.fn(coords_or_freqs, **kwargs)
 
 
-class Empirical(AbstractImageOperator):
+class Empirical(AbstractImageOperator, strict=True):
     r"""
     This operator stores a measured image, rather than
     computing one from a model.
@@ -146,8 +146,10 @@ class Empirical(AbstractImageOperator):
         return self.amplitude * jax.lax.stop_gradient(self.measurement)
 
 
-class ProductImageMultiplier(AbstractImageMultiplier):
+class ProductImageMultiplier(AbstractImageMultiplier, strict=True):
     """A helper to represent the product of two operators."""
+
+    buffer: Image | Volume
 
     operator1: AbstractImageMultiplier
     operator2: AbstractImageMultiplier
@@ -165,7 +167,7 @@ class ProductImageMultiplier(AbstractImageMultiplier):
         return f"{repr(self.operator1)} * {repr(self.operator2)}"
 
 
-class SumImageOperator(AbstractImageOperator):
+class SumImageOperator(AbstractImageOperator, strict=True):
     """A helper to represent the sum of two operators."""
 
     operator1: AbstractImageOperator
@@ -185,7 +187,7 @@ class SumImageOperator(AbstractImageOperator):
         return f"{repr(self.operator1)} + {repr(self.operator2)}"
 
 
-class DiffImageOperator(AbstractImageOperator):
+class DiffImageOperator(AbstractImageOperator, strict=True):
     """A helper to represent the difference of two operators."""
 
     operator1: AbstractImageOperator
@@ -205,7 +207,7 @@ class DiffImageOperator(AbstractImageOperator):
         return f"{repr(self.operator1)} - {repr(self.operator2)}"
 
 
-class ProductImageOperator(AbstractImageOperator):
+class ProductImageOperator(AbstractImageOperator, strict=True):
     """A helper to represent the product of two operators."""
 
     operator1: AbstractImageOperator

@@ -20,7 +20,7 @@ from ..coordinates import cartesian_to_polar
 from ..typing import Real_, RealImage, Image, ComplexImage, ImageCoords
 
 
-class CTF(AbstractFourierOperator):
+class CTF(AbstractFourierOperator, strict=True):
     """
     Compute a Contrast Transfer Function (CTF).
 
@@ -65,7 +65,7 @@ class CTF(AbstractFourierOperator):
         )
 
 
-class AbstractOptics(Module):
+class AbstractOptics(Module, strict=True):
     """
     Base class for an optics model.
 
@@ -87,9 +87,9 @@ class AbstractOptics(Module):
     """
 
     ctf: AbstractVar[AbstractFourierOperator]
-    envelope: Optional[FourierOperatorLike] = field(default=None)
+    envelope: AbstractVar[Optional[FourierOperatorLike]]
 
-    normalize: bool = field(static=True, default=False)
+    normalize: AbstractVar[bool]
 
     def evaluate(
         self, freqs: ImageCoords, defocus_offset: Real_ | float = 0.0
@@ -119,13 +119,15 @@ class AbstractOptics(Module):
         raise NotImplementedError
 
 
-class NullOptics(AbstractOptics):
+class NullOptics(AbstractOptics, strict=True):
     """
     A null optics model.
     """
 
-    ctf: FourierOperatorLike
-    envelope: Optional[FourierOperatorLike] = field(default=None)
+    ctf: Constant
+    envelope: None
+
+    normalize: bool = field(static=True)
 
     def __init__(self):
         self.ctf = Constant(1.0)
@@ -141,13 +143,15 @@ class NullOptics(AbstractOptics):
         return image
 
 
-class CTFOptics(AbstractOptics):
+class CTFOptics(AbstractOptics, strict=True):
     """
     An optics model with a real-valued contrast transfer function.
     """
 
     ctf: CTF = field(default_factory=CTF)
     envelope: Optional[FourierOperatorLike] = field(default=None)
+
+    normalize: bool = field(static=True, default=False)
 
     def __call__(
         self,

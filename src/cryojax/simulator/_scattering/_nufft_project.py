@@ -8,6 +8,7 @@ from equinox import field
 
 import jax.numpy as jnp
 
+from .._manager import ImageManager
 from .._density import VoxelCloud, RealVoxelGrid
 from ._scattering_method import AbstractProjectionMethod
 from ...typing import (
@@ -18,7 +19,7 @@ from ...typing import (
 )
 
 
-class NufftProject(AbstractProjectionMethod):
+class NufftProject(AbstractProjectionMethod, strict=True):
     """
     Scatter points to image plane using a
     non-uniform FFT.
@@ -28,6 +29,8 @@ class NufftProject(AbstractProjectionMethod):
     eps : `float`
         See ``jax-finufft`` for documentation.
     """
+
+    manager: ImageManager
 
     eps: float = field(static=True, default=1e-6)
 

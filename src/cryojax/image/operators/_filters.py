@@ -27,7 +27,7 @@ from ...typing import (
 )
 
 
-class AbstractFilter(AbstractImageMultiplier):
+class AbstractFilter(AbstractImageMultiplier, strict=True):
     """
     Base class for computing and applying an image filter.
     """
@@ -44,7 +44,7 @@ class AbstractFilter(AbstractImageMultiplier):
         return image * jax.lax.stop_gradient(self.buffer)
 
 
-class CustomFilter(AbstractFilter):
+class CustomFilter(AbstractFilter, strict=True):
     """
     Pass a custom filter as an array.
     """
@@ -55,7 +55,7 @@ class CustomFilter(AbstractFilter):
         self.buffer = filter
 
 
-class InverseSincFilter(AbstractFilter):
+class InverseSincFilter(AbstractFilter, strict=True):
     """
     Apply a sinc-correction to an image.
     """
@@ -80,7 +80,7 @@ class InverseSincFilter(AbstractFilter):
         )
 
 
-class LowpassFilter(AbstractFilter):
+class LowpassFilter(AbstractFilter, strict=True):
     """
     Apply a low-pass filter to an image.
 
@@ -113,7 +113,7 @@ class LowpassFilter(AbstractFilter):
         )
 
 
-class WhiteningFilter(AbstractFilter):
+class WhiteningFilter(AbstractFilter, strict=True):
     """
     Apply a whitening filter to an image.
     """

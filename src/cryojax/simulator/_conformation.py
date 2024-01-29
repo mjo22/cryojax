@@ -13,7 +13,7 @@ from equinox import Module
 from ..typing import Int_
 
 
-class AbstractConformation(Module):
+class AbstractConformation(Module, strict=True):
     """
     A conformational variable wrapped in a Module.
     """
@@ -25,7 +25,7 @@ class AbstractConformation(Module):
         return self.value
 
 
-class DiscreteConformation(AbstractConformation):
+class DiscreteConformation(AbstractConformation, strict=True):
     """
     A conformational variable wrapped in a Module.
     """

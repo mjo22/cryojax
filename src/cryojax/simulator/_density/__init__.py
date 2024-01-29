@@ -4,6 +4,7 @@ from ._electron_density import (
 )
 from ._voxel_density import (
     AbstractVoxels as AbstractVoxels,
+    AbstractFourierVoxelGrid as AbstractFourierVoxelGrid,
     FourierVoxelGrid as FourierVoxelGrid,
     FourierVoxelGridAsSpline as FourierVoxelGridAsSpline,
     RealVoxelGrid as RealVoxelGrid,

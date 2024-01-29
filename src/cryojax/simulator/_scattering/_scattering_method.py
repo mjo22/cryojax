@@ -10,7 +10,7 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-from equinox import Module
+from equinox import Module, AbstractVar
 
 from .._specimen import AbstractSpecimen
 from .._density import AbstractElectronDensity, AbstractVoxels
@@ -20,7 +20,7 @@ from ...image import rfftn, irfftn
 from ...typing import ComplexImage
 
 
-class AbstractScatteringMethod(Module):
+class AbstractScatteringMethod(Module, strict=True):
     """
     A model of electron scattering onto the exit plane of the specimen.
 
@@ -31,7 +31,7 @@ class AbstractScatteringMethod(Module):
         utility routines.
     """
 
-    manager: ImageManager
+    manager: AbstractVar[ImageManager]
 
     @abstractmethod
     def __call__(
@@ -44,7 +44,7 @@ class AbstractScatteringMethod(Module):
         raise NotImplementedError
 
 
-class AbstractProjectionMethod(AbstractScatteringMethod):
+class AbstractProjectionMethod(AbstractScatteringMethod, strict=True):
     """
     A model for computing projections from an electron density representation.
 
@@ -58,7 +58,7 @@ class AbstractProjectionMethod(AbstractScatteringMethod):
         utility routines.
     """
 
-    manager: ImageManager
+    manager: AbstractVar[ImageManager]
 
     @abstractmethod
     def project_density(

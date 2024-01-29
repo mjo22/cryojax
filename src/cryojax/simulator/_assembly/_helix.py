@@ -22,7 +22,7 @@ _RotationMatrix3D = Float[Array, "3 3"]
 _Vector3D = Float[Array, "3"]
 
 
-class Helix(AbstractAssembly):
+class Helix(AbstractAssembly, strict=True):
     """
     Abstraction of a helical polymer.
 
@@ -60,8 +60,12 @@ class Helix(AbstractAssembly):
         degrees. By default, ``True``.
     """
 
+    subunit: AbstractSpecimen
     rise: Real_ = field(converter=jnp.asarray)
     twist: Real_ = field(converter=jnp.asarray)
+
+    pose: AbstractPose
+    conformation: Optional[AbstractConformation]
 
     n_start: int = field(static=True)
     n_subunits_per_start: int = field(static=True)

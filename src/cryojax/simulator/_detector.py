@@ -20,7 +20,7 @@ from ..image import irfftn, rfftn
 from ..typing import ComplexImage, ImageCoords, RealImage
 
 
-class AbstractDetector(AbstractStochasticModel):
+class AbstractDetector(AbstractStochasticModel, strict=True):
     """
     Base class for an electron detector.
     """
@@ -56,7 +56,7 @@ class AbstractDetector(AbstractStochasticModel):
             return self.sample(key, image, frequency_grid)
 
 
-class NullDetector(AbstractDetector):
+class NullDetector(AbstractDetector, strict=True):
     """
     A 'null' detector.
     """
@@ -73,7 +73,7 @@ class NullDetector(AbstractDetector):
         return image
 
 
-class GaussianDetector(AbstractDetector):
+class GaussianDetector(AbstractDetector, strict=True):
     """
     A detector with a gaussian noise model. By default,
     this is a white noise model.
@@ -104,7 +104,7 @@ class GaussianDetector(AbstractDetector):
         return image + noise
 
 
-class PoissonDetector(AbstractDetector):
+class PoissonDetector(AbstractDetector, strict=True):
     """
     A detector with a poisson noise model.
 

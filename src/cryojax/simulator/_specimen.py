@@ -20,7 +20,7 @@ SpecimenT = TypeVar("SpecimenT", bound="AbstractSpecimen")
 EnsembleT = TypeVar("EnsembleT", bound="AbstractEnsemble")
 
 
-class AbstractSpecimen(Module):
+class AbstractSpecimen(Module, strict=True):
     """
     Abstraction of a of biological specimen.
 
@@ -34,7 +34,7 @@ class AbstractSpecimen(Module):
     """
 
     density: AbstractVar[Any]
-    pose: AbstractPose
+    pose: AbstractVar[AbstractPose]
 
     @cached_property
     @abstractmethod
@@ -49,7 +49,7 @@ class AbstractSpecimen(Module):
         return self.density_in_com_frame.rotate_to_pose(self.pose)
 
 
-class Specimen(AbstractSpecimen):
+class Specimen(AbstractSpecimen, strict=True):
     """
     Abstraction of a of biological specimen.
 
@@ -81,7 +81,7 @@ class Specimen(AbstractSpecimen):
         return self.density
 
 
-class AbstractEnsemble(AbstractSpecimen):
+class AbstractEnsemble(AbstractSpecimen, strict=True):
     """
     Abstraction of an ensemble of a biological specimen which can
     occupy different conformations.
@@ -96,12 +96,10 @@ class AbstractEnsemble(AbstractSpecimen):
         The conformation at which to evaluate the ElectronDensity.
     """
 
-    density: AbstractVar[Any]
-    pose: AbstractPose
     conformation: AbstractVar[AbstractConformation]
 
 
-class DiscreteEnsemble(AbstractEnsemble):
+class DiscreteEnsemble(AbstractEnsemble, strict=True):
     """
     Abstraction of an ensemble with discrete conformational
     heterogeneity.

@@ -20,7 +20,7 @@ from ..image import (
 )
 
 
-class ImageManager(Module):
+class ImageManager(Module, strict=True):
     """
     Configuration and utilities for an electron microscopy image.
 
@@ -55,18 +55,31 @@ class ImageManager(Module):
     shape: tuple[int, int] = field(static=True)
     pixel_size: Real_ = field(converter=jnp.asarray)
 
-    rescale_method: str = field(static=True, default="bicubic")
-    pad_scale: float = field(static=True, default=1.0)
-    pad_mode: Union[str, Callable] = field(static=True, default="constant")
+    pad_scale: float = field(static=True)
+    pad_mode: Union[str, Callable] = field(static=True)
+    rescale_method: str = field(static=True)
 
-    padded_shape: tuple[int, int] = field(static=True, init=False)
+    padded_shape: tuple[int, int] = field(static=True)
 
-    frequency_grid: FrequencyGrid = field(init=False)
-    padded_frequency_grid: FrequencyGrid = field(init=False)
-    coordinate_grid: CoordinateGrid = field(init=False)
-    padded_coordinate_grid: CoordinateGrid = field(init=False)
+    frequency_grid: FrequencyGrid
+    padded_frequency_grid: FrequencyGrid
+    coordinate_grid: CoordinateGrid
+    padded_coordinate_grid: CoordinateGrid
 
-    def __post_init__(self):
+    def __init__(
+        self,
+        shape: tuple[int, int],
+        pixel_size: Real_,
+        *,
+        pad_scale: float = 1.0,
+        pad_mode: Union[str, Callable] = "constant",
+        rescale_method: str = "bicubic"
+    ):
+        self.shape = shape
+        self.pixel_size = pixel_size
+        self.pad_scale = pad_scale
+        self.pad_mode = pad_mode
+        self.rescale_method = rescale_method
         # Set shape after padding
         padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
         self.padded_shape = padded_shape

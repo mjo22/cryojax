@@ -11,7 +11,7 @@ from jaxtyping import PRNGKeyArray
 from ..typing import Image
 
 
-class AbstractStochasticModel(Module):
+class AbstractStochasticModel(Module, strict=True):
     """
     Base class for stochastic models.
     """

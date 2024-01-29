@@ -16,7 +16,7 @@ from ..image.operators import FourierOperatorLike, FourierExp2D
 from ..typing import ComplexImage, ImageCoords
 
 
-class AbstractIce(AbstractStochasticModel):
+class AbstractIce(AbstractStochasticModel, strict=True):
     """
     Base class for an ice model.
     """
@@ -44,7 +44,7 @@ class AbstractIce(AbstractStochasticModel):
         return ice_at_exit_plane
 
 
-class NullIce(AbstractIce):
+class NullIce(AbstractIce, strict=True):
     """
     A "null" ice model.
     """
@@ -58,7 +58,7 @@ class NullIce(AbstractIce):
         return jnp.zeros(frequency_grid_in_angstroms.shape[0:-1])
 
 
-class GaussianIce(AbstractIce):
+class GaussianIce(AbstractIce, strict=True):
     r"""
     Ice modeled as gaussian noise.
 
