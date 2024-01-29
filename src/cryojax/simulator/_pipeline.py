@@ -295,11 +295,9 @@ class ImagePipeline(AbstractPipeline):
 
 class AssemblyPipeline(AbstractPipeline):
     """
-    Compute an image from a superposition of states in
+    Compute an image from a superposition of subunits in
     the ``AbstractAssembly``.
     """
-
-    assembly: AbstractAssembly
 
     def __init__(
         self,
@@ -311,7 +309,6 @@ class AssemblyPipeline(AbstractPipeline):
         filter: Optional[AbstractFilter] = None,
         mask: Optional[AbstractMask] = None,
     ):
-        self.assembly = assembly
         self.specimen = assembly.subunits
         self.scattering = scattering
         self.instrument = instrument or Instrument()
@@ -331,7 +328,7 @@ class AssemblyPipeline(AbstractPipeline):
         """Sample the ``AbstractAssembly.subunits`` from the stochastic models."""
         if not isinstance(self.solvent, NullIce):
             raise NotImplementedError(
-                "The SuperpositionPipeline does not currently support sampling from the solvent model."
+                "The AssemblyPipeline does not currently support sampling from the solvent model."
             )
         # Get the superposition of images
         image_at_detector_plane = self.render(
@@ -360,36 +357,30 @@ class AssemblyPipeline(AbstractPipeline):
         """Render the superposition of images from the ``AbstractAssembly.subunits``."""
         # Setup vmap over the pose and conformation
         is_vmap = lambda x: isinstance(x, (AbstractPose, AbstractConformation))
-        to_vmap = jax.tree_util.tree_map(
-            is_vmap, self.specimen, is_leaf=is_vmap
-        )
-        vmap, novmap = eqx.partition(self.specimen, to_vmap)
+        to_vmap = jax.tree_util.tree_map(is_vmap, self, is_leaf=is_vmap)
+        vmap, novmap = eqx.partition(self, to_vmap)
         # Compute all images and sum
         compute_image = (
-            lambda spec, scat, ins: ins.propagate_to_detector_plane(
-                ins.scatter_to_exit_plane(spec, scat),
-                scat,
-                defocus_offset=spec,
+            lambda p: p.instrument.propagate_to_detector_plane(
+                p.instrument.scatter_to_exit_plane(p.specimen, p.scattering),
+                p.scattering,
+                defocus_offset=p.specimen.pose.offset_z,
             )
         )
         # ... vmap to compute a stack of images to superimpose
         compute_stack = jax.vmap(
-            lambda vmap, novmap, scat, ins: compute_image(
-                eqx.combine(vmap, novmap), scat, ins
-            ),
-            in_axes=(0, None, None, None),
+            lambda vmap, novmap: compute_image(eqx.combine(vmap, novmap)),
+            in_axes=(0, None),
         )
         # ... sum over the stack of images and jit
         compute_stack_and_sum = jax.jit(
-            lambda vmap, novmap, scat, ins: jnp.sum(
-                compute_stack(vmap, novmap, scat, ins),
+            lambda vmap, novmap: jnp.sum(
+                compute_stack(vmap, novmap),
                 axis=0,
             )
         )
         # ... compute the superposition
-        image = compute_stack_and_sum(
-            vmap, novmap, self.scattering, self.instrument
-        )
+        image = compute_stack_and_sum(vmap, novmap)
 
         return self._get_final_image(
             image,
