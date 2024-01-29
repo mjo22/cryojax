@@ -360,12 +360,10 @@ class AssemblyPipeline(AbstractPipeline):
         to_vmap = jax.tree_util.tree_map(is_vmap, self, is_leaf=is_vmap)
         vmap, novmap = eqx.partition(self, to_vmap)
         # Compute all images and sum
-        compute_image = (
-            lambda p: p.instrument.propagate_to_detector_plane(
-                p.instrument.scatter_to_exit_plane(p.specimen, p.scattering),
-                p.scattering,
-                defocus_offset=p.specimen.pose.offset_z,
-            )
+        compute_image = lambda p: p.instrument.propagate_to_detector_plane(
+            p.instrument.scatter_to_exit_plane(p.specimen, p.scattering),
+            p.scattering,
+            defocus_offset=p.specimen.pose.offset_z,
         )
         # ... vmap to compute a stack of images to superimpose
         compute_stack = jax.vmap(

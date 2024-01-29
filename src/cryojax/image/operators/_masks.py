@@ -2,8 +2,7 @@
 Masks to apply to images in real space.
 """
 
-from abc import abstractmethod
-from typing import overload, Any
+from typing import overload
 from equinox import field
 
 import jax
@@ -17,11 +16,6 @@ class AbstractMask(AbstractImageMultiplier):
     """
     Base class for computing and applying an image mask.
     """
-
-    @abstractmethod
-    def __init__(self, *args: Any, **kwargs: Any):
-        """Compute the filter."""
-        raise NotImplementedError
 
     @overload
     def __call__(self, image: RealImage) -> RealImage: ...
@@ -39,6 +33,8 @@ class CustomMask(AbstractImageMultiplier):
     """
     Pass a custom mask as an array.
     """
+
+    buffer: RealImage | RealVolume
 
     def __init__(self, mask: RealImage | RealVolume):
         self.buffer = mask
@@ -59,6 +55,8 @@ class CircularMask(AbstractMask):
     rolloff :
         By default, ``0.05``.
     """
+
+    buffer: RealImage | RealVolume
 
     radius: float = field(static=True)
     rolloff: float = field(static=True)

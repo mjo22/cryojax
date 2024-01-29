@@ -2,8 +2,9 @@
 Filters to apply to images in Fourier space
 """
 
-from abc import abstractmethod
-from typing import Optional, Any, overload
+import functools
+import operator
+from typing import Optional, overload
 from equinox import field
 
 import jax
@@ -29,18 +30,7 @@ from ...typing import (
 class AbstractFilter(AbstractImageMultiplier):
     """
     Base class for computing and applying an image filter.
-
-    Attributes
-    ----------
-    filter :
-        The filter. Note that this is automatically
-        computed upon instantiation.
     """
-
-    @abstractmethod
-    def __init__(self, *args: Any, **kwargs: Any):
-        """Compute the filter."""
-        raise NotImplementedError
 
     @overload
     def __call__(self, image: ComplexImage) -> ComplexImage: ...
@@ -59,8 +49,34 @@ class CustomFilter(AbstractFilter):
     Pass a custom filter as an array.
     """
 
+    buffer: Image | Volume
+
     def __init__(self, filter: Image | Volume):
         self.buffer = filter
+
+
+class InverseSincFilter(AbstractFilter):
+    """
+    Apply a sinc-correction to an image.
+    """
+
+    buffer: Image | Volume
+
+    def __init__(
+        self,
+        frequency_grid: ImageCoords | VolumeCoords,
+        grid_spacing: float = 1.0,
+    ):
+        ndim = len(frequency_grid.shape) - 1
+        self.buffer = jax.lax.rsqrt(
+            functools.reduce(
+                operator.mul,
+                [
+                    jnp.sinc(frequency_grid[:, i] * grid_spacing)
+                    for i in range(ndim)
+                ],
+            )
+        )
 
 
 class LowpassFilter(AbstractFilter):
@@ -77,6 +93,8 @@ class LowpassFilter(AbstractFilter):
         By default, ``0.05``.
     """
 
+    buffer: Image | Volume
+
     cutoff: float = field(static=True)
     rolloff: float = field(static=True)
 
@@ -86,7 +104,7 @@ class LowpassFilter(AbstractFilter):
         grid_spacing: float = 1.0,
         cutoff: float = 0.95,
         rolloff: float = 0.05,
-    ) -> None:
+    ):
         self.cutoff = cutoff
         self.rolloff = rolloff
         self.buffer = _compute_lowpass_filter(
@@ -98,6 +116,8 @@ class WhiteningFilter(AbstractFilter):
     """
     Apply a whitening filter to an image.
     """
+
+    buffer: Image | Volume
 
     def __init__(
         self,

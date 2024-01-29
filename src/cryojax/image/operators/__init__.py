@@ -2,6 +2,7 @@ from ._filters import (
     AbstractFilter as AbstractFilter,
     CustomFilter as CustomFilter,
     LowpassFilter as LowpassFilter,
+    InverseSincFilter as InverseSincFilter,
     WhiteningFilter as WhiteningFilter,
 )
 from ._masks import (

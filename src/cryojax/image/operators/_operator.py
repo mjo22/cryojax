@@ -9,7 +9,7 @@ from jaxtyping import Array
 
 import jax
 import jax.numpy as jnp
-from equinox import Module, field
+from equinox import Module, field, AbstractVar
 
 from ...typing import ImageCoords, VolumeCoords, Image, Volume, Real_
 
@@ -80,11 +80,7 @@ class AbstractImageMultiplier(Module):
         computed upon instantiation.
     """
 
-    buffer: Image | Volume
-
-    def __init__(self, buffer: Image | Volume) -> None:
-        """Compute the operator."""
-        self.buffer = buffer
+    buffer: AbstractVar[Image | Volume]
 
     def __call__(self, image: Image | Volume) -> Image | Volume:
         return image * jax.lax.stop_gradient(self.buffer)
@@ -156,7 +152,6 @@ class ProductImageMultiplier(AbstractImageMultiplier):
     operator1: AbstractImageMultiplier
     operator2: AbstractImageMultiplier
 
-    @override
     def __init__(
         self,
         operator1: AbstractImageMultiplier,
