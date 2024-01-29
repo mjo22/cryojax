@@ -18,11 +18,11 @@ class AbstractConformation(Module):
     A conformational variable wrapped in a Module.
     """
 
-    _value: AbstractVar[Any]
+    value: AbstractVar[Any]
 
     @abstractmethod
     def get(self) -> Any:
-        return self._value
+        return self.value
 
 
 class DiscreteConformation(AbstractConformation):
@@ -30,8 +30,8 @@ class DiscreteConformation(AbstractConformation):
     A conformational variable wrapped in a Module.
     """
 
-    _value: Int_ = field(converter=jnp.asarray)
+    value: Int_ = field(converter=jnp.asarray)
 
     @override
     def get(self) -> Int_:
-        return self._value
+        return self.value
