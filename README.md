@@ -37,8 +37,7 @@ The [jax-finufft](https://github.com/dfm/jax-finufft) package is an optional dep
 
 Please note that this library is currently experimental and the API is subject to change! The following is a basic workflow to generate an image with a gaussian white noise model.
 
-First, instantiate the `ScatteringModel` and its respective representation
-of an `ElectronDensity`.
+First, instantiate the electron density representation and its respective method for computing image projections.
 
 ```python
 import jax
@@ -95,7 +94,7 @@ This computes an image using the noise model of the detector. One can also compu
 image = pipeline.render()
 ```
 
-Imaging models also accept a series of `Filter`s and `Mask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
+Imaging models also accept a series of `AbstractFilter`s and `AbstractMask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
 
 ```python
 from cryojax.image import operators as op
@@ -131,7 +130,7 @@ log_likelihood = model.log_probability(observed)
 
 Note that in this example, the user must make sure `observed` is the expected shape and is in fourier space.
 
-Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `AbstractIce` model. Models for exposure to the electron beam are supported through the `Instrument`'s `Exposure` model.
+Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `AbstractIce` model. Models for exposure to the electron beam are supported through the `Instrument`'s `AbstractExposure` model.
 
 For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
 
@@ -178,14 +177,12 @@ params = dict(
 log_likelihood, grad = loss(params, model, observed)
 ```
 
-To summarize, this example creates a loss function at an updated set of `AbstractPose`, `AbstractOptics`, and `AbstractScatteringMethod` parameters. In general, any `cryojax` `Module` may contain model parameters. The exception to this is in the `ImageManager`, `Filter`, and `Mask`. These classes do computation upon initialization, so they should not be explicitly instantiated in the loss function evaluation. Another gotcha is that if the `model` is not passed as an argument to the loss, there may be long compilation times because the electron density will be treated as static. However, this may result in slight speedups.
-
-In general, there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
+To summarize, this example creates a loss function at an updated set of `AbstractPose`, `AbstractOptics`, and `AbstractScatteringMethod` parameters. In general, any `cryojax` `Module` may contain model parameters and there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
 
 ## Features
 
 - Imaging models in `cryojax` support `jax` functional transformations, such as automatic differentiation with `grad`, paralellization with `vmap` and `pmap`, and just-in-time compilation with `jit`. Models also support GPU/TPU acceleration.
-- `cryojax` is built on `equinox`. Therefore, the `equinox` ecosystem is available for usage!
+- `cryojax` is built on `equinox`. Therefore, the `equinox` ecosystem is available for usage! Learning `equinox` is strongly recommended.
 
 ## Similar libraries
 
