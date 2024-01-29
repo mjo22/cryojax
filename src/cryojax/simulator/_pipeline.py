@@ -192,7 +192,7 @@ class AbstractPipeline(Module, strict=True):
             return irfftn(image, s=manager.padded_shape) if get_real else image
 
 
-class ImagePipeline(AbstractPipeline):
+class ImagePipeline(AbstractPipeline, strict=True):
     """Standard image formation pipeline."""
 
     specimen: AbstractSpecimen
@@ -301,7 +301,7 @@ class ImagePipeline(AbstractPipeline):
         )
 
 
-class AssemblyPipeline(AbstractPipeline):
+class AssemblyPipeline(AbstractPipeline, strict=True):
     """
     Compute an image from a superposition of subunits in
     the ``AbstractAssembly``.
