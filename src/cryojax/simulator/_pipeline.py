@@ -361,8 +361,8 @@ class AssemblyPipeline(AbstractPipeline):
         vmap, novmap = eqx.partition(self, to_vmap)
         # Compute all images and sum
         compute_image = (
-            lambda p: p.propagate_to_detector_plane(
-                p.scatter_to_exit_plane(p.specimen, p.scattering),
+            lambda p: p.instrument.propagate_to_detector_plane(
+                p.instrument.scatter_to_exit_plane(p.specimen, p.scattering),
                 p.scattering,
                 defocus_offset=p.specimen.pose.offset_z,
             )
