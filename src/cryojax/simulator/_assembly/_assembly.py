@@ -47,6 +47,8 @@ class AbstractAssembly(eqx.Module, strict=True):
     pose: AbstractVar[AbstractPose]
     conformation: AbstractVar[Optional[AbstractConformation]]
 
+    n_subunits: AbstractVar[int]
+
     def __check_init__(self):
         if self.conformation is not None and not isinstance(
             self.subunit, AbstractEnsemble
@@ -65,12 +67,6 @@ class AbstractAssembly(eqx.Module, strict=True):
                 raise AttributeError(
                     f"{type(self)}.conformation must be type {type(self.subunit.conformation)} if {type(self)}.subunit is type {type(self.subunit)}."
                 )
-
-    @cached_property
-    @abstractmethod
-    def n_subunits(self) -> int:
-        """The number of subunits in the assembly"""
-        raise NotImplementedError
 
     @cached_property
     @abstractmethod

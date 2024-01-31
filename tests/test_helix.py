@@ -22,7 +22,7 @@ def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
         rise=21.8,
         twist=29.4,
         n_start=6,
-        n_subunits_per_start=n_subunits_per_start,
+        n_subunits=n_subunits_per_start * 6,
     )
 
 
@@ -50,7 +50,7 @@ def build_helix_with_conformation(
         rise=21.8,
         twist=29.4,
         n_start=n_start,
-        n_subunits_per_start=n_subunits_per_start,
+        n_subunits=n_subunits_per_start * 6,
     )
 
 

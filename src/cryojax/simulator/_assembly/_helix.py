@@ -63,8 +63,8 @@ class Helix(AbstractAssembly, strict=True):
     pose: AbstractPose
     conformation: Optional[AbstractConformation]
 
+    n_subunits: int = field(static=True)
     n_start: int = field(static=True)
-    n_subunits_per_start: int = field(static=True)
     degrees: bool = field(static=True)
 
     def __init__(
@@ -75,7 +75,7 @@ class Helix(AbstractAssembly, strict=True):
         pose: Optional[AbstractPose] = None,
         conformation: Optional[AbstractConformation] = None,
         n_start: int = 1,
-        n_subunits_per_start: int = 1,
+        n_subunits: int = 1,
         degrees: bool = True,
     ):
         self.subunit = subunit
@@ -84,13 +84,14 @@ class Helix(AbstractAssembly, strict=True):
         self.twist = twist
         self.conformation = conformation
         self.n_start = n_start
-        self.n_subunits_per_start = n_subunits_per_start
+        self.n_subunits = n_subunits
         self.degrees = degrees
 
-    @cached_property
-    def n_subunits(self) -> int:
-        """The number of subunits in the assembly"""
-        return self.n_start * self.n_subunits_per_start
+    def __check_init__(self):
+        if self.n_subunits % self.n_start != 0:
+            raise AttributeError(
+                "The number of subunits must be a multiple of the helical start number."
+            )
 
     @cached_property
     def positions(self) -> Float[Array, "n_subunits 3"]:
@@ -100,7 +101,7 @@ class Helix(AbstractAssembly, strict=True):
             self.twist,
             self.subunit.pose.offset,
             n_start=self.n_start,
-            n_subunits_per_start=self.n_subunits_per_start,
+            n_subunits_per_start=self.n_subunits // self.n_start,
             degrees=self.degrees,
         )
 
@@ -115,7 +116,7 @@ class Helix(AbstractAssembly, strict=True):
             self.twist,
             self.subunit.pose.rotation.as_matrix(),
             n_start=self.n_start,
-            n_subunits_per_start=self.n_subunits_per_start,
+            n_subunits_per_start=self.n_subunits // self.n_start,
             degrees=self.degrees,
         )
 
