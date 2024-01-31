@@ -17,12 +17,6 @@ from .._specimen import AbstractSpecimen, AbstractEnsemble
 from .._conformation import AbstractConformation
 from .._pose import AbstractPose, MatrixPose
 
-_Positions = Float[Array, "N 3"]
-"""Type hint for array where each element is a subunit coordinate."""
-
-_Rotations = Float[Array, "N 3 3"]
-"""Type hint for array where each element is a subunit rotation."""
-
 
 class AbstractAssembly(eqx.Module, strict=True):
     """
@@ -80,13 +74,13 @@ class AbstractAssembly(eqx.Module, strict=True):
 
     @cached_property
     @abstractmethod
-    def positions(self) -> _Positions:
+    def positions(self) -> Float[Array, "n_subunits 3"]:
         """The positions of each subunit."""
         raise NotImplementedError
 
     @cached_property
     @abstractmethod
-    def rotations(self) -> _Rotations:
+    def rotations(self) -> Float[Array, "n_subunits 3 3"]:
         """The relative rotations between subunits."""
         raise NotImplementedError
 
@@ -98,7 +92,8 @@ class AbstractAssembly(eqx.Module, strict=True):
         """
         # Transform the subunit positions by pose of the helix
         transformed_positions = (
-            self.pose.rotate(self.positions) + self.pose.offset
+            self.pose.rotate_coordinates(self.positions, is_real=True)
+            + self.pose.offset
         )
         # Transform the subunit rotations by the pose of the helix
         transformed_rotations = jnp.einsum(

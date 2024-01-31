@@ -13,13 +13,9 @@ import jax.numpy as jnp
 from .._specimen import AbstractSpecimen
 from .._pose import AbstractPose, EulerPose
 from .._conformation import AbstractConformation
-from ._assembly import AbstractAssembly, _Positions, _Rotations
+from ._assembly import AbstractAssembly
 
 from ...typing import Real_, RealVector
-
-_RotationMatrix3D = Float[Array, "3 3"]
-
-_Vector3D = Float[Array, "3"]
 
 
 class Helix(AbstractAssembly, strict=True):
@@ -97,7 +93,7 @@ class Helix(AbstractAssembly, strict=True):
         return self.n_start * self.n_subunits_per_start
 
     @cached_property
-    def positions(self) -> _Positions:
+    def positions(self) -> Float[Array, "n_subunits 3"]:
         """Get the helical lattice positions in the center of mass frame."""
         return compute_helical_lattice_positions(
             self.rise,
@@ -109,7 +105,7 @@ class Helix(AbstractAssembly, strict=True):
         )
 
     @cached_property
-    def rotations(self) -> _Rotations:
+    def rotations(self) -> Float[Array, "n_subunits 3 3"]:
         """
         Get the helical lattice rotations in the center of mass frame.
 
@@ -127,12 +123,12 @@ class Helix(AbstractAssembly, strict=True):
 def compute_helical_lattice_positions(
     rise: Union[Real_, RealVector],
     twist: Union[Real_, RealVector],
-    initial_displacement: _Vector3D,
+    initial_displacement: Float[Array, "3"],
     n_start: int = 1,
     n_subunits_per_start: Optional[int] = None,
     *,
     degrees: bool = True,
-) -> _Positions:
+) -> Float[Array, "n_start*n_subunits_per_start 3"]:
     """
     Compute the lattice points of a helix for a given
     rise, twist, radius, and start number.
@@ -210,12 +206,12 @@ def compute_helical_lattice_positions(
 
 def compute_helical_lattice_rotations(
     twist: Union[Real_, RealVector],
-    initial_rotation: _RotationMatrix3D,
+    initial_rotation: Float[Array, "3 3"],
     n_start: int = 1,
     n_subunits_per_start: Optional[int] = None,
     *,
     degrees: bool = True,
-) -> _Rotations:
+) -> Float[Array, "n_start*n_subunits_per_start 3"]:
     """
     Compute the relative rotations of subunits on a
     helical lattice, parameterized by the

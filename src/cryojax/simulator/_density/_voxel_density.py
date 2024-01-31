@@ -336,9 +336,11 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         This rotation is the inverse rotation as in real space.
         """
         return eqx.tree_at(
-            lambda d: d.frequency_slice.coordinates,
+            lambda d: d.frequency_slice.buffer,
             self,
-            pose.rotate(self.frequency_slice.get(), is_real=self.is_real),
+            pose.rotate_coordinates(
+                self.frequency_slice.get(), is_real=self.is_real
+            ),
         )
 
     @classmethod
@@ -387,6 +389,18 @@ class FourierVoxelGrid(AbstractFourierVoxelGrid):
     """
     Abstraction of a 3D electron density voxel grid
     in fourier space.
+
+    Please note that fourier voxel grids, as well as their frequency
+    slice coordinate systems, are loaded with the zero
+    frequency component in the center.
+
+    Attributes
+    ----------
+    fourier_density_grid :
+        3D electron density grid in fourier space.
+    frequency_slice :
+        Central slice of cartesian coordinate system
+        in fourier space.
     """
 
     fourier_density_grid: ComplexCubicVolume = field(converter=jnp.asarray)
@@ -422,10 +436,15 @@ class FourierVoxelGridAsSpline(AbstractFourierVoxelGrid):
     Abstraction of a 3D electron density voxel grid
     in fourier space.
 
+    Please note that fourier voxel grids, as well as their frequency
+    slice coordinate systems, are loaded with the zero
+    frequency component in the center.
+
     Attributes
     ----------
     spline_coefficients :
-        3D electron density grid in fourier space.
+        Spline coefficients of 3D electron density grid
+        in fourier space.
     frequency_slice :
         Central slice of cartesian coordinate system
         in fourier space.
@@ -507,9 +526,11 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         with rotated coordinates.
         """
         return eqx.tree_at(
-            lambda d: d.coordinate_grid.coordinates,
+            lambda d: d.coordinate_grid.buffer,
             self,
-            pose.rotate(self.coordinate_grid.get(), is_real=self.is_real),
+            pose.rotate_coordinates(
+                self.coordinate_grid.get(), is_real=self.is_real
+            ),
         )
 
     @overload
@@ -605,9 +626,11 @@ class VoxelCloud(AbstractVoxels, strict=True):
         with rotated coordinates.
         """
         return eqx.tree_at(
-            lambda d: d.coordinate_list.coordinates,
+            lambda d: d.coordinate_list.buffer,
             self,
-            pose.rotate(self.coordinate_list.get(), is_real=self.is_real),
+            pose.rotate_coordinates(
+                self.coordinate_list.get(), is_real=self.is_real
+            ),
         )
 
     @classmethod

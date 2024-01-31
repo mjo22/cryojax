@@ -102,7 +102,7 @@ class AbstractProjectionMethod(AbstractScatteringMethod, strict=True):
                 image_at_exit_plane,
             )
         # Apply translation through phase shifts
-        image_at_exit_plane *= specimen.pose.shifts(
+        image_at_exit_plane *= specimen.pose.compute_shifts(
             self.manager.padded_frequency_grid_in_angstroms.get()
         )
 

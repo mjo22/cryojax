@@ -9,8 +9,6 @@ from ._pose import (
     EulerPose as EulerPose,
     QuaternionPose as QuaternionPose,
     MatrixPose as MatrixPose,
-    rotate_coordinates as rotate_coordinates,
-    compute_shifts as compute_shifts,
     make_euler_rotation as make_euler_rotation,
 )
 

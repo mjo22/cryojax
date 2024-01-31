@@ -49,30 +49,30 @@ class AbstractCoordinates(eqx.Module, strict=True):
     A base class that wraps a coordinate array.
     """
 
-    coordinates: AbstractVar[Any]
+    buffer: AbstractVar[Any]
 
     def get(self):
         """Get the coordinates."""
-        return self.coordinates
+        return self.buffer
 
     def __mul__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
-            lambda x: x.coordinates, self, self.coordinates * jnp.asarray(arr)
+            lambda x: x.buffer, self, self.buffer * jnp.asarray(arr)
         )
 
     def __rmul__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
-            lambda x: x.coordinates, self, jnp.asarray(arr) * self.coordinates
+            lambda x: x.buffer, self, jnp.asarray(arr) * self.buffer
         )
 
     def __truediv__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
-            lambda x: x.coordinates, self, self.coordinates / jnp.asarray(arr)
+            lambda x: x.buffer, self, self.buffer / jnp.asarray(arr)
         )
 
     def __rtruediv__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
-            lambda x: x.coordinates, self, jnp.asarray(arr) / self.coordinates
+            lambda x: x.buffer, self, jnp.asarray(arr) / self.buffer
         )
 
 
@@ -81,12 +81,10 @@ class CoordinateList(AbstractCoordinates, strict=True):
     A Pytree that wraps a coordinate list.
     """
 
-    coordinates: CloudCoords3D | CloudCoords2D = eqx.field(
-        converter=jnp.asarray
-    )
+    buffer: CloudCoords3D | CloudCoords2D = eqx.field(converter=jnp.asarray)
 
     def __init__(self, coordinate_list: CloudCoords2D | CloudCoords3D):
-        self.coordinates = coordinate_list
+        self.buffer = coordinate_list
 
 
 class CoordinateGrid(AbstractCoordinates, strict=True):
@@ -94,14 +92,14 @@ class CoordinateGrid(AbstractCoordinates, strict=True):
     A Pytree that wraps a coordinate grid.
     """
 
-    coordinates: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
+    buffer: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
 
     def __init__(
         self,
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float | ArrayLike = 1.0,
     ):
-        self.coordinates = make_coordinates(shape, grid_spacing)
+        self.buffer = make_coordinates(shape, grid_spacing)
 
 
 class FrequencyGrid(AbstractCoordinates, strict=True):
@@ -109,7 +107,7 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
     A Pytree that wraps a frequency grid.
     """
 
-    coordinates: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
+    buffer: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
 
     def __init__(
         self,
@@ -117,17 +115,20 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
         grid_spacing: float | ArrayLike = 1.0,
         half_space: bool = True,
     ):
-        self.coordinates = make_frequencies(
+        self.buffer = make_frequencies(
             shape, grid_spacing, half_space=half_space
         )
 
 
 class FrequencySlice(AbstractCoordinates, strict=True):
     """
-    A Pytree that wraps a frequency grid.
+    A Pytree that wraps a frequency slice.
+
+    Unlike a `FrequencyGrid`, a `FrequencySlice` has the zero frequency
+    component in the center.
     """
 
-    coordinates: VolumeSliceCoords = eqx.field(converter=jnp.asarray)
+    buffer: VolumeSliceCoords = eqx.field(converter=jnp.asarray)
 
     def __init__(
         self,
@@ -153,7 +154,7 @@ class FrequencySlice(AbstractCoordinates, strict=True):
             ),
             axis=2,
         )
-        self.coordinates = frequency_slice
+        self.buffer = frequency_slice
 
 
 def make_coordinates(

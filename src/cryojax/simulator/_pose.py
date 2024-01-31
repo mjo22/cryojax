@@ -3,7 +3,7 @@ Routines that compute coordinate rotations and translations.
 """
 
 from abc import abstractmethod
-from typing import Union, TypeVar
+from typing import Union, TypeVar, overload
 from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
@@ -22,13 +22,6 @@ from ..typing import (
     CloudCoords3D,
     VolumeCoords,
 )
-
-_RotationMatrix3D = Float[Array, "3 3"]
-_Vector3D = Float[Array, "3"]
-_Vector2D = Float[Array, "2"]
-
-PoseT = TypeVar("PoseT", bound="AbstractPose")
-"""TypeVar for the Pose base class."""
 
 
 class AbstractPose(Module, strict=True):
@@ -57,11 +50,21 @@ class AbstractPose(Module, strict=True):
     offset_y: AbstractVar[Real_]
     offset_z: AbstractVar[Real_]
 
-    def rotate(
+    @overload
+    def rotate_coordinates(
+        self, volume_coordinates: VolumeCoords, is_real: bool = True
+    ) -> VolumeCoords: ...
+
+    @overload
+    def rotate_coordinates(
+        self, volume_coordinates: CloudCoords3D, is_real: bool = True
+    ) -> CloudCoords3D: ...
+
+    def rotate_coordinates(
         self,
-        coordinates: Union[VolumeCoords, CloudCoords3D],
+        volume_coordinates: VolumeCoords | CloudCoords3D,
         is_real: bool = True,
-    ) -> Union[VolumeCoords, CloudCoords3D]:
+    ) -> VolumeCoords | CloudCoords3D:
         """
         Rotate coordinates from a particular convention.
 
@@ -69,18 +72,31 @@ class AbstractPose(Module, strict=True):
         real-space.
         """
         rotation = self.rotation.inverse() if is_real else self.rotation
-        return rotate_coordinates(coordinates, rotation)
+        shape = volume_coordinates.shape
+        if isinstance(volume_coordinates, CloudCoords3D):
+            rotated_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
+        elif isinstance(volume_coordinates, VolumeCoords):
+            N1, N2, N3 = shape[:-1]
+            rotated_coordinates = jax.vmap(rotation.apply)(
+                volume_coordinates.reshape(N1 * N2 * N3, 3)
+            )
+            rotated_coordinates = rotated_coordinates.reshape((N1, N2, N3, 3))
+        else:
+            raise ValueError(
+                f"Coordinates must be a JAX array either of shape (N, 3) or (N1, N2, N3, 3). Instead, got {volume_coordinates.shape} and type {type(volume_coordinates)}."
+            )
+        return rotated_coordinates
 
-    def shifts(self, freqs: ImageCoords) -> ComplexImage:
+    def compute_shifts(self, frequency_grid: ImageCoords) -> ComplexImage:
         """
         Compute the phase shifts from the in-plane translation,
-        given a wave vector coordinate system.
+        given a frequency grid coordinate system.
         """
         xy = self.offset[0:2]
-        return compute_shifts(freqs, xy)
+        return jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(frequency_grid, xy)))
 
     @cached_property
-    def offset(self) -> _Vector3D:
+    def offset(self) -> Float[Array, "3"]:
         """The translation vector."""
         return jnp.asarray((self.offset_x, self.offset_y, self.offset_z))
 
@@ -100,7 +116,7 @@ class AbstractPose(Module, strict=True):
 
     @classmethod
     def from_rotation_and_translation(
-        cls, rotation: SO3, translation: _Vector3D
+        cls, rotation: SO3, translation: Float[Array, "3"]
     ):
         """
         Construct a ``Pose`` from a ``jaxlie.SO3`` object and a
@@ -223,7 +239,7 @@ class MatrixPose(AbstractPose, strict=True):
     offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
     offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
 
-    matrix: _RotationMatrix3D = field(
+    matrix: Float[Array, "3 3"] = field(
         default_factory=lambda: jnp.eye(3), converter=jnp.asarray
     )
 
@@ -237,60 +253,6 @@ class MatrixPose(AbstractPose, strict=True):
     @classmethod
     def from_rotation(cls, rotation: SO3):
         return cls(matrix=rotation.as_matrix())
-
-
-def rotate_coordinates(
-    coords: Union[VolumeCoords, CloudCoords3D],
-    rotation: SO3,
-) -> Union[VolumeCoords, CloudCoords3D]:
-    r"""
-    Compute a coordinate rotation.
-
-    Arguments
-    ---------
-    coords :
-        Coordinate system.
-    rotation :
-        The rotation object.
-
-    Returns
-    -------
-    transformed :
-        Rotated coordinate system.
-    """
-    shape = coords.shape
-    if len(shape) == 2:
-        transformed = jax.vmap(rotation.apply)(coords)
-    elif len(shape) == 4:
-        N1, N2, N3 = shape[0:-1]
-        transformed = jax.vmap(rotation.apply)(coords.reshape(N1 * N2 * N3, 3))
-        transformed = transformed.reshape((N1, N2, N3, 3))
-    else:
-        raise ValueError(
-            "coords must either be shape (N, 3) or (N1, N2, N3, 3)"
-        )
-
-    return transformed
-
-
-def compute_shifts(coords: ImageCoords, xy: _Vector2D) -> ComplexImage:
-    r"""
-    Compute the phase shifted density field from
-    an in-plane real space translation.
-
-    Arguments
-    ---------
-    coords :
-        Coordinate system.
-    xy :
-        In-plane translation.
-
-    Returns
-    -------
-    shifts :
-        The phase shifts
-    """
-    return jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(coords, xy)))
 
 
 def make_euler_rotation(

@@ -29,7 +29,9 @@ class AtomCloud(AbstractElectronDensity):
         return eqx.tree_at(
             lambda d: d.coordinate_list,
             self,
-            pose.rotate(self.coordinate_list, is_real=self.is_real),
+            pose.rotate_coordinates(
+                self.coordinate_list, is_real=self.is_real
+            ),
         )
 
     @classmethod

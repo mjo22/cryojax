@@ -1,6 +1,6 @@
 """
 A type hint utility module using jaxtyping. If these public type hints
-are not sufficient, add private type hints to the top of the file.
+are not sufficient, use jaxtyping directly.
 """
 
 import jaxtyping as jt
@@ -60,7 +60,7 @@ CubicVolume = RealCubicVolume | ComplexCubicVolume
 VolumeCoords = jt.Float[jt.Array, "N1 N2 N3 3"]
 """Type hint for a volume coordinate system."""
 
-VolumeSliceCoords = jt.Float[jt.Array, "N N 1 3"]
+VolumeSliceCoords = jt.Float[jt.Array, "N1 N2 1 3"]
 """Type hint for a volume slice coordinate system."""
 
 # Point cloud type hints (non-uniformly spaced points).
