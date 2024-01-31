@@ -338,9 +338,7 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         return eqx.tree_at(
             lambda d: d.frequency_slice.buffer,
             self,
-            pose.rotate_coordinates(
-                self.frequency_slice.get(), is_real=self.is_real
-            ),
+            pose.rotate_coordinates(self.frequency_slice.get(), inverse=True),
         )
 
     @classmethod
@@ -528,9 +526,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         return eqx.tree_at(
             lambda d: d.coordinate_grid.buffer,
             self,
-            pose.rotate_coordinates(
-                self.coordinate_grid.get(), is_real=self.is_real
-            ),
+            pose.rotate_coordinates(self.coordinate_grid.get(), inverse=False),
         )
 
     @overload
@@ -628,9 +624,7 @@ class VoxelCloud(AbstractVoxels, strict=True):
         return eqx.tree_at(
             lambda d: d.coordinate_list.buffer,
             self,
-            pose.rotate_coordinates(
-                self.coordinate_list.get(), is_real=self.is_real
-            ),
+            pose.rotate_coordinates(self.coordinate_list.get(), inverse=False),
         )
 
     @classmethod

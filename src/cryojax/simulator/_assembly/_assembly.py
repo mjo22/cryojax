@@ -88,12 +88,15 @@ class AbstractAssembly(eqx.Module, strict=True):
         """
         # Transform the subunit positions by pose of the helix
         transformed_positions = (
-            self.pose.rotate_coordinates(self.positions, is_real=True)
+            self.pose.rotate_coordinates(self.positions, inverse=False)
             + self.pose.offset
         )
         # Transform the subunit rotations by the pose of the helix
         transformed_rotations = jnp.einsum(
             "nij,jk->nik", self.rotations, self.pose.rotation.as_matrix()
+        )
+        transformed_rotations = jnp.transpose(
+            transformed_rotations, axes=[0, 2, 1]
         )
         return MatrixPose(
             offset_x=transformed_positions[:, 0],
