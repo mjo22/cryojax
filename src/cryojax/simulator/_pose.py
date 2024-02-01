@@ -3,7 +3,7 @@ Routines that compute coordinate rotations and translations.
 """
 
 from abc import abstractmethod
-from typing import Union, TypeVar, overload
+from typing import Union, overload
 from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
@@ -55,12 +55,14 @@ class AbstractPose(Module, strict=True):
     @overload
     def rotate_coordinates(
         self, volume_coordinates: VolumeCoords, inverse: bool = False
-    ) -> VolumeCoords: ...
+    ) -> VolumeCoords:
+        ...
 
     @overload
     def rotate_coordinates(
         self, volume_coordinates: CloudCoords3D, inverse: bool = False
-    ) -> CloudCoords3D: ...
+    ) -> CloudCoords3D:
+        ...
 
     def rotate_coordinates(
         self,
