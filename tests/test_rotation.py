@@ -32,13 +32,8 @@ def test_euler_matrix(phi, theta, psi):
     matrix[0, 2] = sin_theta * cos_phi
     matrix[1, 2] = sin_theta * sin_phi
     matrix[2, 2] = cos_theta
-    # Generate rotation
+    # Generate rotation that matches this rotation matrix
     rotation = make_euler_rotation(
-        phi,
-        theta,
-        psi,
-        convention="zyz",
-        intrinsic=True,
-        degrees=False,
+        phi, theta, psi, convention="zyz", degrees=False
     )
-    np.testing.assert_allclose(rotation.as_matrix(), matrix, atol=1e-16)
+    np.testing.assert_allclose(rotation.as_matrix(), matrix.T, atol=1e-12)

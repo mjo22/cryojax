@@ -202,7 +202,7 @@ def compute_helical_lattice_positions(
         # ... rotate the sub-helix around the screw axis to a different sub-helix
         c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
         R_n = jnp.array(
-            ((c_n, s_n, 0), (-s_n, c_n, 0), (0, 0, 1)), dtype=float
+            ((c_n, -s_n, 0), (s_n, c_n, 0), (0, 0, 1)), dtype=float
         )
         return (R_n @ r.T).T
 
@@ -291,7 +291,7 @@ def compute_helical_lattice_rotations(
         # ... rotate the sub-helix around the screw axis to a different sub-helix
         c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
         R_n = jnp.array(
-            ((c_n, s_n, 0), (-s_n, c_n, 0), (0, 0, 1)), dtype=float
+            ((c_n, -s_n, 0), (s_n, c_n, 0), (0, 0, 1)), dtype=float
         )
         return jnp.einsum("ij,njk->nik", R_n, R)
 

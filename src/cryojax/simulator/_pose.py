@@ -265,17 +265,18 @@ def make_euler_rotation(
     convention: str = "zyz",
     degrees: bool = False,
 ) -> SO3:
-    """
-    Helper routine to generate a rotation in a particular
+    """Helper routine to generate a rotation in a particular
     convention.
     """
-    # Generate sequence of rotations
-    rotations = [getattr(SO3, f"from_{axis}_radians") for axis in convention]
+    # Convert to radians.
     if degrees:
         phi = jnp.deg2rad(phi)
         theta = jnp.deg2rad(theta)
         psi = jnp.deg2rad(psi)
-    R1 = rotations[0](phi)
-    R2 = rotations[1](theta)
-    R3 = rotations[2](psi)
+    # Get sequence of rotations, converting to cryojax conventions
+    # from jaxlie
+    R1, R2, R3 = [
+        getattr(SO3, f"from_{axis}_radians")(angle).inverse()
+        for axis, angle in zip(convention, [phi, theta, psi])
+    ]
     return R3 @ R2 @ R1
