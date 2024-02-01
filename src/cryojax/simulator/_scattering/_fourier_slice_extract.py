@@ -123,7 +123,7 @@ def extract_slice(
     N = frequency_slice.shape[0]
     logical_frequency_slice = (frequency_slice * N) + N // 2
     # Convert arguments to map_coordinates convention and compute
-    k_y, k_x, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
+    k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates(
         fourier_density_grid, (k_x, k_y, k_z), interpolation_order, **kwargs
     )[:, :, 0]
@@ -162,7 +162,7 @@ def extract_slice_with_cubic_spline(
     N = frequency_slice.shape[0]
     logical_frequency_slice = (frequency_slice * N) + N // 2
     # Convert arguments to map_coordinates convention and compute
-    k_y, k_x, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
+    k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates_with_cubic_spline(
         spline_coefficients, (k_x, k_y, k_z), **kwargs
     )[:, :, 0]

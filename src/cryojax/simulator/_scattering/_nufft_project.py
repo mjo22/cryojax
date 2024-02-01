@@ -98,7 +98,7 @@ def project_with_nufft(
     image_size = jnp.asarray((M1, M2), dtype=float)
     coordinates_periodic = 2 * jnp.pi * coordinates_yx / image_size
     # Unpack and compute
-    y, x = coordinates_periodic[:, 0], coordinates_periodic[:, 1]
+    x, y = coordinates_periodic[:, 0], coordinates_periodic[:, 1]
     projection = nufft1(shape, weights, x, y, **kwargs)
     # Shift zero frequency component to corner and take upper half plane
     projection = jnp.fft.ifftshift(projection)[:, : M2 // 2 + 1]

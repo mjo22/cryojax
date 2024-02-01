@@ -158,7 +158,6 @@ class FrequencySlice(AbstractCoordinates, strict=True):
 def make_coordinates(
     shape: tuple[int, ...],
     grid_spacing: float | ArrayLike = 1.0,
-    indexing: str = "xy",
 ) -> Float[Array, "*shape len(shape)"]:
     """
     Create a real-space cartesian coordinate system on a grid.
@@ -180,7 +179,7 @@ def make_coordinates(
         Cartesian coordinate system in real space.
     """
     coordinate_grid = _make_coordinates_or_frequencies(
-        shape, grid_spacing=grid_spacing, real_space=True, indexing=indexing
+        shape, grid_spacing=grid_spacing, real_space=True, indexing="ij"
     )
     return coordinate_grid
 
@@ -189,7 +188,6 @@ def make_frequencies(
     shape: tuple[int, ...],
     grid_spacing: float | ArrayLike = 1.0,
     half_space: bool = True,
-    indexing: str = "xy",
 ) -> Float[Array, "*shape len(shape)"]:
     """
     Create a fourier-space cartesian coordinate system on a grid.
@@ -220,7 +218,7 @@ def make_frequencies(
         grid_spacing=grid_spacing,
         real_space=False,
         half_space=half_space,
-        indexing=indexing,
+        indexing="ij",
     )
     return frequency_grid
 
