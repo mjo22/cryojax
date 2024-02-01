@@ -169,7 +169,6 @@ class EulerPose(AbstractPose, strict=True):
 
     inverse: bool = field(static=True, default=False)
     convention: str = field(static=True, default="zyz")
-    intrinsic: bool = field(static=True, default=True)
     degrees: bool = field(static=True, default=True)
 
     @cached_property
@@ -182,7 +181,6 @@ class EulerPose(AbstractPose, strict=True):
             self.view_psi,
             degrees=self.degrees,
             convention=self.convention,
-            intrinsic=self.intrinsic,
         )
         return R.inverse() if self.inverse else R
 
@@ -265,7 +263,6 @@ def make_euler_rotation(
     theta: Union[float, Real_],
     psi: Union[float, Real_],
     convention: str = "zyz",
-    intrinsic: bool = True,
     degrees: bool = False,
 ) -> SO3:
     """
@@ -281,6 +278,4 @@ def make_euler_rotation(
     R1 = rotations[0](phi)
     R2 = rotations[1](theta)
     R3 = rotations[2](psi)
-    R = R1 @ R2 @ R3 if intrinsic else R3 @ R2 @ R1
-
-    return R
+    return R3 @ R2 @ R1
