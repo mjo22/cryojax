@@ -107,8 +107,7 @@ class Helix(AbstractAssembly, strict=True):
 
     @cached_property
     def rotations(self) -> Float[Array, "n_subunits 3 3"]:
-        """
-        Get the helical lattice rotations in the center of mass frame.
+        """Get the helical lattice rotations in the center of mass frame.
 
         These are rotations of the initial subunit.
         """
@@ -152,7 +151,7 @@ def compute_helical_lattice_positions(
         The number of subunits in the assembly for
         a single helix. The total number of subunits
         is really equal to ``n_start * n_subunits``.
-        By default, ``2 * jnp.pi / twist``.
+        By default, ``2 * jnp.pi / abs(twist)``.
     degrees :
         Whether or not the angular parameters
         are given in degrees or radians.
@@ -167,23 +166,24 @@ def compute_helical_lattice_positions(
         twist = jnp.deg2rad(twist)
     # If the number of subunits is not given, compute for one helical turn
     if n_subunits_per_start is None:
-        n_subunits_per_start = abs(int(2 * jnp.pi / twist))
+        n_subunits_per_start = int(2 * jnp.pi / jnp.abs(twist))
 
     # Coordinate transformation to get subunit positions in a single sub-helix
     def compute_ith_subunit_position_in_subhelix(i, theta, dz, r_0, N):
         # ... define rotation about the screw axis
         c, s = jnp.cos(i * theta), jnp.sin(i * theta)
-        R_i = jnp.array(((c, s, 0), (-s, c, 0), (0, 0, 1)), dtype=float)
-        # ... transform to the ith position
-        r_i = R_i @ r_0 + i * jnp.asarray((0, 0, dz), dtype=float)
-        # ... center positions of subunit in z
+        R_t = jnp.array(((c, -s, 0), (s, c, 0), (0, 0, 1)), dtype=float)
+        # ... transform by i rises and i twists
+        r_i = R_t @ r_0 + i * jnp.asarray((0, 0, dz), dtype=float)
+        # ... center positions of subunits in z
         return r_i - jnp.asarray(
             (0.0, 0.0, dz * jnp.asarray(N - 1, dtype=float) / 2), dtype=float
         )
 
     # ... function to get positions of all subunits
     compute_subunit_positions_in_subhelix = jax.vmap(
-        compute_ith_subunit_position_in_subhelix, in_axes=[0, None, None, None]
+        compute_ith_subunit_position_in_subhelix,
+        in_axes=[0, None, None, None, None],
     )
     # ... get indices of subunits along sub-helix
     subunit_indices = jnp.arange(n_subunits_per_start, dtype=float)
@@ -223,8 +223,8 @@ def compute_helical_lattice_positions(
 
 
 def compute_helical_lattice_rotations(
-    twist: Union[Real_, RealVector],
-    initial_rotation: Float[Array, "3 3"],
+    twist: Real_,
+    initial_rotation: Float[Array, "3 3"] = jnp.eye(3),
     n_start: int = 1,
     n_subunits_per_start: Optional[int] = None,
     *,
@@ -237,61 +237,75 @@ def compute_helical_lattice_rotations(
 
     Arguments
     ---------
-    twist : `Real_` or `RealVector`, shape `(n_subunits,)`
+    twist : `Real_`
         The helical twist.
     initial_rotation : `Array`, shape `(3, 3)`
-        The initial rotation of the first subunit.
+        The initial rotation of the first subunit. By default,
+        the identity matrix.
     n_start :
         The start number of the helix.
     n_subunits_per_start :
         The number of subunits in the assembly for
         a single helix. The total number of subunits
         is really equal to ``n_start * n_subunits``.
-        By default, ``2 * jnp.pi / twist``.
+        By default, ``2 * jnp.pi / abs(twist)``.
     degrees :
         Whether or not the angular parameters
         are given in degrees or radians.
 
     Returns
     -------
-    rotations : shape `(n_start*n_subunits_per_start, 3, 3)`
+    subunit_rotations : shape `(n_start*n_subunits_per_start, 3, 3)`
         The relative rotations between subunits
         on the helical lattice.
     """
     # Convert to radians
     if degrees:
         twist = jnp.deg2rad(twist)
-    # If the number of subunits is not given, compute for one helix
+    # If the number of subunits is not given, compute for one helical turn
     if n_subunits_per_start is None:
-        n_subunits_per_start = int(2 * jnp.pi / twist)
-    # Rotational symmetry between helices due to the start number
-    symmetry_angles = jnp.array(
-        [2 * jnp.pi * n / n_start for n in range(n_start)]
+        n_subunits_per_start = int(2 * jnp.pi / jnp.abs(twist))
+
+    # Coordinate transformation to get subunit rotations in a single sub-helix
+    def compute_ith_subunit_rotation_in_subhelix(i, theta, R_0):
+        # ... define rotation about the screw axis
+        c, s = jnp.cos(i * theta), jnp.sin(i * theta)
+        R_t = jnp.array(((c, -s, 0), (s, c, 0), (0, 0, 1)), dtype=float)
+        # ... transform to the ith position
+        return R_t @ R_0
+
+    # ... function to get rotations of all subunits
+    compute_subunit_rotations_in_subhelix = jax.vmap(
+        compute_ith_subunit_rotation_in_subhelix, in_axes=[0, None, None]
+    )
+    # ... get indices of subunits along sub-helix
+    subunit_indices = jnp.arange(n_subunits_per_start, dtype=float)
+    # ... compute rotations of subunits in sub-helix
+    subunit_rotations_in_subhelix = compute_subunit_rotations_in_subhelix(
+        subunit_indices, twist, initial_rotation
     )
 
-    def compute_helix_rotations(symmetry_angle):
-        """
-        Get  coordinates for a given helix, where
-        the x and y coordinates are rotated by an angle.
-        """
-        T_0 = initial_rotation
-        # Define rotation about the screw axis
-        c, s = jnp.cos(twist), jnp.sin(twist)
-        R = jnp.array(((c, s, 0), (-s, c, 0), (0, 0, 1)), dtype=float)
-
-        # Coordinate transformation between subunits
-        def f(carry, x):
-            y = R @ carry
-            return y, y
-
-        _, T = jax.lax.scan(f, T_0, None, length=n_subunits_per_start - 1)
-        T = jnp.insert(T, 0, T_0, axis=0)
-        # Transformation between helical strands from start-number
+    # Now, transform single sub-helix rotations into all sub-helices rotations,
+    # related by C_n symmetry
+    def compute_helix_subunit_rotations_per_start(symmetry_angle, R):
+        # ... rotate the sub-helix around the screw axis to a different sub-helix
         c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
         R_n = jnp.array(
             ((c_n, s_n, 0), (-s_n, c_n, 0), (0, 0, 1)), dtype=float
         )
-        return jnp.einsum("ij,njk->nik", R_n, T)
+        return jnp.einsum("ij,njk->nik", R_n, R)
 
-    rotations = jax.vmap(compute_helix_rotations)(symmetry_angles)
-    return rotations.reshape((n_start * n_subunits_per_start, 3, 3))
+    # ... function to rotate subunit about symmetry angle
+    compute_helix_subunit_rotations = jax.vmap(
+        compute_helix_subunit_rotations_per_start, in_axes=[0, None]
+    )
+    # ... compute symmetry angles relating first sub-helix to all other sub-helices
+    symmetry_angles = jnp.array(
+        [2 * jnp.pi * n / n_start for n in range(n_start)]
+    )
+    # ... finally, get all subunit rotations!
+    subunit_rotations = compute_helix_subunit_rotations(
+        symmetry_angles, subunit_rotations_in_subhelix
+    ).reshape((n_start * n_subunits_per_start, 3, 3))
+
+    return subunit_rotations

@@ -65,9 +65,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
 
     Attributes
     ----------
-    weights :
-        The electron density.
-    voxel_size
+    voxel_size :
         The voxel size of the electron density.
     """
 
@@ -83,7 +81,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         **kwargs: Any,
     ) -> VoxelT:
         """
-        Load a Voxels object from real-valued 3D electron
+        Load a AbstractVoxels object from real-valued 3D electron
         density map.
         """
         raise NotImplementedError
@@ -99,7 +97,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         **kwargs: Any,
     ) -> VoxelT:
         """
-        Load a Voxels object from atom positions and identities.
+        Load a AbstractVoxels object from atom positions and identities.
         """
         a_vals, b_vals = load_atoms.get_form_factor_params(
             atom_identities, form_factors
@@ -161,7 +159,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         **kwargs: Any,
     ) -> VoxelT:
         """
-        Loads a PDB file as a Voxels subclass.  Uses the Gemmi library.
+        Loads a PDB file as a AbstractVoxels subclass.  Uses the Gemmi library.
         Heavily based on a code from Frederic Poitevin, located at
 
         https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
@@ -206,7 +204,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         filename: str,
         **kwargs: Any,
     ) -> VoxelT:
-        """Load Voxels from MRC file format."""
+        """Load AbstractVoxels from MRC file format."""
         density_grid, voxel_size = load_mrc(filename)
         return cls.from_density_grid(
             jnp.asarray(density_grid), voxel_size, **kwargs
@@ -220,7 +218,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> VoxelT:
-        """Load Voxels from PDB file format."""
+        """Load AbstractVoxels from PDB file format."""
         atom_positions, atom_elements = read_atoms_from_pdb(filename)
         coordinate_grid_in_angstroms = CoordinateGrid(
             n_voxels_per_side, voxel_size
@@ -242,7 +240,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> VoxelT:
-        """Load Voxels from CIF file format."""
+        """Load AbstractVoxels from CIF file format."""
         atom_positions, atom_elements = read_atoms_from_cif(filename)
         coordinate_grid_in_angstroms = CoordinateGrid(
             n_voxels_per_side, voxel_size
@@ -266,7 +264,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         **kwargs: Any,
     ) -> VoxelT:
         """
-        Load Voxels from MDTraj trajectory.
+        Load AbstractVoxels from MDTraj trajectory.
 
         Parameters
         ----------
@@ -336,7 +334,7 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         This rotation is the inverse rotation as in real space.
         """
         return eqx.tree_at(
-            lambda d: d.frequency_slice.buffer,
+            lambda d: d.frequency_slice.array,
             self,
             pose.rotate_coordinates(self.frequency_slice.get(), inverse=True),
         )
@@ -524,7 +522,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         with rotated coordinates.
         """
         return eqx.tree_at(
-            lambda d: d.coordinate_grid.buffer,
+            lambda d: d.coordinate_grid.array,
             self,
             pose.rotate_coordinates(self.coordinate_grid.get(), inverse=False),
         )
@@ -538,7 +536,8 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         coordinate_grid: Optional[CoordinateGrid] = None,
         *,
         crop_scale: None,
-    ) -> "RealVoxelGrid": ...
+    ) -> "RealVoxelGrid":
+        ...
 
     @overload
     @classmethod
@@ -549,7 +548,8 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         coordinate_grid: None,
         *,
         crop_scale: Optional[float],
-    ) -> "RealVoxelGrid": ...
+    ) -> "RealVoxelGrid":
+        ...
 
     @classmethod
     def from_density_grid(
@@ -572,7 +572,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
                 density_grid = crop_to_shape(density_grid, cropped_shape)
             coordinate_grid = CoordinateGrid(density_grid.shape[-3:])
 
-        return cls(density_grid, coordinate_grid, voxel_size)
+        return cls(density_grid, coordinate_grid, jnp.asarray(voxel_size))
 
 
 class VoxelCloud(AbstractVoxels, strict=True):
@@ -598,7 +598,7 @@ class VoxelCloud(AbstractVoxels, strict=True):
 
     def __init__(
         self,
-        density_weights: ComplexCubicVolume,
+        density_weights: RealCloud,
         coordinate_list: CoordinateList,
         voxel_size: Real_,
     ):
@@ -622,7 +622,7 @@ class VoxelCloud(AbstractVoxels, strict=True):
         with rotated coordinates.
         """
         return eqx.tree_at(
-            lambda d: d.coordinate_list.buffer,
+            lambda d: d.coordinate_list.array,
             self,
             pose.rotate_coordinates(self.coordinate_list.get(), inverse=False),
         )
@@ -636,14 +636,14 @@ class VoxelCloud(AbstractVoxels, strict=True):
     ) -> "VoxelCloud":
         # Make coordinates if not given
         if coordinate_grid is None:
-            coordinate_grid = make_coordinates(density_grid.shape)
+            coordinate_grid = CoordinateGrid(density_grid.shape)
         # ... mask zeros to store smaller arrays. This
         # option is not jittable.
         nonzero = jnp.where(~jnp.isclose(density_grid, 0.0))
         flat_density = density_grid[nonzero]
-        coordinate_list = coordinate_grid[nonzero]
+        coordinate_list = CoordinateList(coordinate_grid.get()[nonzero])
 
-        return cls(flat_density, CoordinateList(coordinate_list), voxel_size)
+        return cls(flat_density, coordinate_list, jnp.asarray(voxel_size))
 
 
 def _eval_3d_real_space_gaussian(
