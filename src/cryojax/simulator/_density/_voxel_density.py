@@ -536,8 +536,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         coordinate_grid: Optional[CoordinateGrid] = None,
         *,
         crop_scale: None,
-    ) -> "RealVoxelGrid":
-        ...
+    ) -> "RealVoxelGrid": ...
 
     @overload
     @classmethod
@@ -548,8 +547,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         coordinate_grid: None,
         *,
         crop_scale: Optional[float],
-    ) -> "RealVoxelGrid":
-        ...
+    ) -> "RealVoxelGrid": ...
 
     @classmethod
     def from_density_grid(

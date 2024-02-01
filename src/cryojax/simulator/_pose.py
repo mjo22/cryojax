@@ -55,14 +55,12 @@ class AbstractPose(Module, strict=True):
     @overload
     def rotate_coordinates(
         self, volume_coordinates: VolumeCoords, inverse: bool = False
-    ) -> VolumeCoords:
-        ...
+    ) -> VolumeCoords: ...
 
     @overload
     def rotate_coordinates(
         self, volume_coordinates: CloudCoords3D, inverse: bool = False
-    ) -> CloudCoords3D:
-        ...
+    ) -> CloudCoords3D: ...
 
     def rotate_coordinates(
         self,
