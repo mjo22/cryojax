@@ -558,6 +558,8 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         *,
         crop_scale: Optional[float] = None,
     ) -> "RealVoxelGrid":
+        # A nasty hack to make NufftProject agree with FourierSliceExtract
+        density_grid = jnp.transpose(density_grid, axes=[1, 0, 2])
         # Make coordinates if not given
         if coordinate_grid is None:
             # Option for cropping template
@@ -634,6 +636,8 @@ class VoxelCloud(AbstractVoxels, strict=True):
         rtol: float = 1e-05,
         atol: float = 1e-08,
     ) -> "VoxelCloud":
+        # A nasty hack to make NufftProject agree with FourierSliceExtract
+        density_grid = jnp.transpose(density_grid, axes=[1, 0, 2])
         # Make coordinates if not given
         if coordinate_grid is None:
             coordinate_grid = CoordinateGrid(density_grid.shape)
