@@ -38,7 +38,11 @@ def test_VoxelGrid_agreement(sample_pdb_path):
         voxel_size=voxel_size,
     )
 
-    np.testing.assert_allclose(vg_density, vc.density_grid.ravel(), atol=1e-12)
+    np.testing.assert_allclose(
+        vg_density,
+        jnp.transpose(vc.density_grid, axes=[1, 0, 2]).ravel(),
+        atol=1e-12,
+    )
 
 
 class TestBuildRealSpaceVoxelsFromAtoms:
