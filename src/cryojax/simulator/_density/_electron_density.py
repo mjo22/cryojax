@@ -44,6 +44,9 @@ class AbstractElectronDensity(Module, strict=True):
         """
         View the electron density at a given pose.
 
+        In subclasses, fourier-space electron density representations
+        should rotate coordinates by a backrotation (the inverse rotation).
+
         Arguments
         ---------
         pose :

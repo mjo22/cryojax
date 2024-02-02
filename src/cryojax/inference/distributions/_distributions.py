@@ -10,7 +10,7 @@ import equinox as eqx
 import jax.random as jr
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
-from equinox import Module
+from equinox import Module, AbstractVar
 
 from ...image.operators import FourierOperatorLike, Constant
 from ...simulator import GaussianIce
@@ -19,12 +19,12 @@ from ...simulator import AbstractPipeline
 from ...typing import Real_, RealImage, ComplexImage, Image
 
 
-class AbstractDistribution(Module):
+class AbstractDistribution(Module, strict=True):
     """
     An imaging pipeline equipped with a probabilistic model.
     """
 
-    pipeline: AbstractPipeline
+    pipeline: AbstractVar[AbstractPipeline]
 
     @abstractmethod
     def log_probability(self, observed: Image) -> Real_:
@@ -52,7 +52,7 @@ class AbstractDistribution(Module):
         raise NotImplementedError
 
 
-class IndependentFourierGaussian(AbstractDistribution):
+class IndependentFourierGaussian(AbstractDistribution, strict=True):
     r"""
     A gaussian noise model, where each fourier mode is independent.
 
@@ -74,6 +74,7 @@ class IndependentFourierGaussian(AbstractDistribution):
         models as described above.
     """
 
+    pipeline: AbstractPipeline
     variance: FourierOperatorLike
 
     def __init__(

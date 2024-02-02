@@ -1,5 +1,5 @@
 from ._coordinates import (
-    is_not_coordinate_array as is_not_coordinate_array,
+    is_not_coordinates as is_not_coordinates,
     get_not_coordinate_filter_spec as get_not_coordinate_filter_spec,
 )
 from ._coordinates import (

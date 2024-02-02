@@ -24,8 +24,8 @@ from ..typing import (
 #
 # Filter functions
 #
-def is_not_coordinate_array(element: Any) -> bool:
-    """Returns ``False`` if ``element`` is ``Coordinates``."""
+def is_not_coordinates(element: Any) -> bool:
+    """Returns ``False`` if ``element`` is ``AbstractCoordinates``."""
     if isinstance(element, AbstractCoordinates):
         return False
     else:
@@ -38,7 +38,7 @@ def is_not_coordinate_array(element: Any) -> bool:
 def get_not_coordinate_filter_spec(pytree: PyTree) -> PyTree[bool]:
     """Filter spec that is ``True`` for all arrays that are not ``Coordinates``."""
     return jtu.tree_map(
-        is_not_coordinate_array,
+        is_not_coordinates,
         pytree,
         is_leaf=lambda x: isinstance(x, AbstractCoordinates),
     )
@@ -49,30 +49,30 @@ class AbstractCoordinates(eqx.Module, strict=True):
     A base class that wraps a coordinate array.
     """
 
-    buffer: AbstractVar[Any]
+    array: AbstractVar[Any]
 
     def get(self):
         """Get the coordinates."""
-        return self.buffer
+        return self.array
 
     def __mul__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
-            lambda x: x.buffer, self, self.buffer * jnp.asarray(arr)
+            lambda x: x.array, self, self.array * jnp.asarray(arr)
         )
 
     def __rmul__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
-            lambda x: x.buffer, self, jnp.asarray(arr) * self.buffer
+            lambda x: x.array, self, jnp.asarray(arr) * self.array
         )
 
     def __truediv__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
-            lambda x: x.buffer, self, self.buffer / jnp.asarray(arr)
+            lambda x: x.array, self, self.array / jnp.asarray(arr)
         )
 
     def __rtruediv__(self, arr: ArrayLike) -> Self:
         return eqx.tree_at(
-            lambda x: x.buffer, self, jnp.asarray(arr) / self.buffer
+            lambda x: x.array, self, jnp.asarray(arr) / self.array
         )
 
 
@@ -81,10 +81,10 @@ class CoordinateList(AbstractCoordinates, strict=True):
     A Pytree that wraps a coordinate list.
     """
 
-    buffer: CloudCoords3D | CloudCoords2D = eqx.field(converter=jnp.asarray)
+    array: CloudCoords3D | CloudCoords2D = eqx.field(converter=jnp.asarray)
 
     def __init__(self, coordinate_list: CloudCoords2D | CloudCoords3D):
-        self.buffer = coordinate_list
+        self.array = coordinate_list
 
 
 class CoordinateGrid(AbstractCoordinates, strict=True):
@@ -92,14 +92,15 @@ class CoordinateGrid(AbstractCoordinates, strict=True):
     A Pytree that wraps a coordinate grid.
     """
 
-    buffer: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
+    array: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
 
     def __init__(
         self,
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float | ArrayLike = 1.0,
+        indexing: str = "xy",
     ):
-        self.buffer = make_coordinates(shape, grid_spacing)
+        self.array = make_coordinates(shape, grid_spacing, indexing=indexing)
 
 
 class FrequencyGrid(AbstractCoordinates, strict=True):
@@ -107,16 +108,17 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
     A Pytree that wraps a frequency grid.
     """
 
-    buffer: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
+    array: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
 
     def __init__(
         self,
         shape: tuple[int, int] | tuple[int, int, int],
         grid_spacing: float | ArrayLike = 1.0,
         half_space: bool = True,
+        indexing: str = "xy",
     ):
-        self.buffer = make_frequencies(
-            shape, grid_spacing, half_space=half_space
+        self.array = make_frequencies(
+            shape, grid_spacing, half_space=half_space, indexing=indexing
         )
 
 
@@ -128,18 +130,17 @@ class FrequencySlice(AbstractCoordinates, strict=True):
     component in the center.
     """
 
-    buffer: VolumeSliceCoords = eqx.field(converter=jnp.asarray)
+    array: VolumeSliceCoords = eqx.field(converter=jnp.asarray)
 
     def __init__(
         self,
         shape: tuple[int, int],
         grid_spacing: float | ArrayLike = 1.0,
         half_space: bool = True,
+        indexing: str = "xy",
     ):
-        """Create a frequency slice. If not given, by default store
-        with the zero frequency component in the center."""
         frequency_slice = make_frequencies(
-            shape, grid_spacing, half_space=half_space
+            shape, grid_spacing, half_space=half_space, indexing=indexing
         )
         if half_space:
             frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0,))
@@ -154,7 +155,7 @@ class FrequencySlice(AbstractCoordinates, strict=True):
             ),
             axis=2,
         )
-        self.buffer = frequency_slice
+        self.array = frequency_slice
 
 
 def make_coordinates(

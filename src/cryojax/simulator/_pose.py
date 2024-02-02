@@ -3,7 +3,7 @@ Routines that compute coordinate rotations and translations.
 """
 
 from abc import abstractmethod
-from typing import Union, TypeVar, overload
+from typing import Union, overload
 from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
@@ -50,20 +50,22 @@ class AbstractPose(Module, strict=True):
     offset_y: AbstractVar[Real_]
     offset_z: AbstractVar[Real_]
 
+    inverse: AbstractVar[bool]
+
     @overload
     def rotate_coordinates(
-        self, volume_coordinates: VolumeCoords, is_real: bool = True
+        self, volume_coordinates: VolumeCoords, inverse: bool = False
     ) -> VolumeCoords: ...
 
     @overload
     def rotate_coordinates(
-        self, volume_coordinates: CloudCoords3D, is_real: bool = True
+        self, volume_coordinates: CloudCoords3D, inverse: bool = False
     ) -> CloudCoords3D: ...
 
     def rotate_coordinates(
         self,
         volume_coordinates: VolumeCoords | CloudCoords3D,
-        is_real: bool = True,
+        inverse: bool = False,
     ) -> VolumeCoords | CloudCoords3D:
         """
         Rotate coordinates from a particular convention.
@@ -71,7 +73,7 @@ class AbstractPose(Module, strict=True):
         By default, compute the inverse rotation if rotating in
         real-space.
         """
-        rotation = self.rotation.inverse() if is_real else self.rotation
+        rotation = self.rotation.inverse() if inverse else self.rotation
         shape = volume_coordinates.shape
         if isinstance(volume_coordinates, CloudCoords3D):
             rotated_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
@@ -165,9 +167,8 @@ class EulerPose(AbstractPose, strict=True):
     view_theta: Real_ = field(default=0.0, converter=jnp.asarray)
     view_psi: Real_ = field(default=0.0, converter=jnp.asarray)
 
-    convention: str = field(static=True, default="zyz")
-    intrinsic: bool = field(static=True, default=True)
     inverse: bool = field(static=True, default=False)
+    convention: str = field(static=True, default="zyz")
     degrees: bool = field(static=True, default=True)
 
     @cached_property
@@ -180,7 +181,6 @@ class EulerPose(AbstractPose, strict=True):
             self.view_psi,
             degrees=self.degrees,
             convention=self.convention,
-            intrinsic=self.intrinsic,
         )
         return R.inverse() if self.inverse else R
 
@@ -243,11 +243,14 @@ class MatrixPose(AbstractPose, strict=True):
         default_factory=lambda: jnp.eye(3), converter=jnp.asarray
     )
 
+    inverse: bool = field(static=True, default=False)
+
     @cached_property
     @override
     def rotation(self) -> SO3:
         """Generate rotation from a rotation matrix."""
-        return SO3.from_matrix(self.matrix)
+        R = SO3.from_matrix(self.matrix)
+        return R.inverse() if self.inverse else R
 
     @override
     @classmethod
@@ -256,26 +259,24 @@ class MatrixPose(AbstractPose, strict=True):
 
 
 def make_euler_rotation(
-    phi: Union[float, Real_],
-    theta: Union[float, Real_],
-    psi: Union[float, Real_],
+    phi: Real_,
+    theta: Real_,
+    psi: Real_,
     convention: str = "zyz",
-    intrinsic: bool = True,
     degrees: bool = False,
 ) -> SO3:
-    """
-    Helper routine to generate a rotation in a particular
+    """Helper routine to generate a rotation in a particular
     convention.
     """
-    # Generate sequence of rotations
-    rotations = [getattr(SO3, f"from_{axis}_radians") for axis in convention]
+    # Convert to radians.
     if degrees:
         phi = jnp.deg2rad(phi)
         theta = jnp.deg2rad(theta)
         psi = jnp.deg2rad(psi)
-    R1 = rotations[0](phi)
-    R2 = rotations[1](theta)
-    R3 = rotations[2](psi)
-    R = R1 @ R2 @ R3 if intrinsic else R3 @ R2 @ R1
-
-    return R
+    # Get sequence of rotations, converting to cryojax conventions
+    # from jaxlie
+    R1, R2, R3 = [
+        getattr(SO3, f"from_{axis}_radians")(angle).inverse()
+        for axis, angle in zip(convention, [phi, theta, psi])
+    ]
+    return R3 @ R2 @ R1
