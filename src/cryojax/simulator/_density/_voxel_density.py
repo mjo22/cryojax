@@ -427,7 +427,7 @@ class FourierVoxelGrid(AbstractFourierVoxelGrid):
         return self.fourier_density_grid.shape
 
 
-class FourierVoxelGridAsSpline(AbstractFourierVoxelGrid):
+class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
     """
     Abstraction of a 3D electron density voxel grid
     in fourier space.
@@ -438,7 +438,7 @@ class FourierVoxelGridAsSpline(AbstractFourierVoxelGrid):
 
     Attributes
     ----------
-    spline_coefficients :
+    coefficients :
         Spline coefficients of 3D electron density grid
         in fourier space.
     frequency_slice :
@@ -446,7 +446,7 @@ class FourierVoxelGridAsSpline(AbstractFourierVoxelGrid):
         in fourier space.
     """
 
-    spline_coefficients: ComplexCubicVolume = field(converter=jnp.asarray)
+    coefficients: ComplexCubicVolume = field(converter=jnp.asarray)
     frequency_slice: FrequencySlice
     voxel_size: Real_ = field(converter=jnp.asarray)
 
@@ -465,15 +465,13 @@ class FourierVoxelGridAsSpline(AbstractFourierVoxelGrid):
             if filter is None
             else filter(fourier_density_grid)
         )
-        self.spline_coefficients = compute_spline_coefficients(
-            fourier_density_grid
-        )
+        self.coefficients = compute_spline_coefficients(fourier_density_grid)
         self.frequency_slice = frequency_slice
         self.voxel_size = voxel_size
 
     @property
     def shape(self) -> tuple[int, int, int]:
-        return tuple([s - 2 for s in self.spline_coefficients.shape])
+        return tuple([s - 2 for s in self.coefficients.shape])
 
 
 class RealVoxelGrid(AbstractVoxels, strict=True):

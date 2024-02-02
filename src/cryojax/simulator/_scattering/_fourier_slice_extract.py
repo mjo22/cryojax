@@ -9,7 +9,7 @@ import jax.numpy as jnp
 
 from ._scattering_method import AbstractProjectionMethod
 from .._manager import ImageManager
-from .._density import FourierVoxelGrid, FourierVoxelGridAsSpline
+from .._density import FourierVoxelGrid, FourierVoxelGridInterpolator
 from ...image import (
     irfftn,
     rfftn,
@@ -32,7 +32,7 @@ class FourierSliceExtract(AbstractProjectionMethod, strict=True):
     interpolation_order :
         The interpolation order. This can be ``0`` (nearest-neighbor), ``1``
         (linear), or ``3`` (cubic).
-        Note that this argument is ignored if a ``FourierVoxelGridAsSpline``
+        Note that this argument is ignored if a ``FourierVoxelGridInterpolator``
         is passed.
     interpolation_mode :
         Specify how to handle out of bounds indexing.
@@ -60,9 +60,9 @@ class FourierSliceExtract(AbstractProjectionMethod, strict=True):
                 "Only cubic boxes are supported for fourier slice extraction."
             )
         # Compute the fourier projection
-        if isinstance(density, FourierVoxelGridAsSpline):
+        if isinstance(density, FourierVoxelGridInterpolator):
             fourier_projection = extract_slice_with_cubic_spline(
-                density.spline_coefficients,
+                density.coefficients,
                 frequency_slice,
                 mode=self.interpolation_mode,
                 cval=self.interpolation_cval,
@@ -77,7 +77,7 @@ class FourierSliceExtract(AbstractProjectionMethod, strict=True):
             )
         else:
             raise ValueError(
-                "Supported density representations are FourierVoxelGrid and FourierVoxelGridAsSpline."
+                "Supported density representations are FourierVoxelGrid and FourierVoxelGridInterpolator."
             )
         # Resize the image to match the ImageManager.padded_shape
         if self.manager.padded_shape == (N, N):

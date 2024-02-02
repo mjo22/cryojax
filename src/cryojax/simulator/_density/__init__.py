@@ -6,7 +6,7 @@ from ._voxel_density import (
     AbstractVoxels as AbstractVoxels,
     AbstractFourierVoxelGrid as AbstractFourierVoxelGrid,
     FourierVoxelGrid as FourierVoxelGrid,
-    FourierVoxelGridAsSpline as FourierVoxelGridAsSpline,
+    FourierVoxelGridInterpolator as FourierVoxelGridInterpolator,
     RealVoxelGrid as RealVoxelGrid,
     VoxelCloud as VoxelCloud,
 )
