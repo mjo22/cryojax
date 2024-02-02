@@ -64,7 +64,7 @@ def project_with_nufft(
     weights: RealCloud,
     coordinate_list: Union[CloudCoords2D, CloudCoords3D],
     shape: tuple[int, int],
-    **kwargs: Any,
+    eps: float = 1e-6,
 ) -> ComplexImage:
     """
     Project and interpolate 3D volume point cloud
@@ -99,7 +99,7 @@ def project_with_nufft(
     coordinates_periodic = 2 * jnp.pi * coordinates_xy / image_size
     # Unpack and compute
     x, y = coordinates_periodic[:, 0], coordinates_periodic[:, 1]
-    projection = nufft1(shape, weights, -y, -x, **kwargs)
+    projection = nufft1(shape, weights, y, x, eps=eps, iflag=-1)
     # Shift zero frequency component to corner and take upper half plane
     projection = jnp.fft.ifftshift(projection)[:, : M2 // 2 + 1]
     # Set last line of frequencies to zero if image dimension is even
