@@ -25,8 +25,8 @@ import jax.numpy as jnp
 from ._electron_density import AbstractElectronDensity
 from .._pose import AbstractPose
 from ...io import (
-    load_atoms,
-    load_mrc,
+    get_form_factor_params,
+    read_image_or_volume_with_spacing_from_mrc,
     get_atom_info_from_gemmi_model,
     read_atoms_from_pdb,
     read_atoms_from_cif,
@@ -40,12 +40,7 @@ from ...image import (
     fftn,
     compute_spline_coefficients,
 )
-from ...coordinates import (
-    make_coordinates,
-    CoordinateGrid,
-    CoordinateList,
-    FrequencySlice,
-)
+from ...coordinates import CoordinateGrid, CoordinateList, FrequencySlice
 from ...typing import (
     RealCloud,
     RealVolume,
@@ -99,9 +94,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         """
         Load a AbstractVoxels object from atom positions and identities.
         """
-        a_vals, b_vals = load_atoms.get_form_factor_params(
-            atom_identities, form_factors
-        )
+        a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
         density = _build_real_space_voxels_from_atoms(
             atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
@@ -124,9 +117,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> VoxelT:
-        a_vals, b_vals = load_atoms.get_form_factor_params(
-            atom_identities, form_factors
-        )
+        a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
         _build_real_space_voxels_from_atomic_trajectory = jax.vmap(
             _build_real_space_voxels_from_atoms, (0, None, None, None), 0
@@ -205,7 +196,9 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         **kwargs: Any,
     ) -> VoxelT:
         """Load AbstractVoxels from MRC file format."""
-        density_grid, voxel_size = load_mrc(filename)
+        density_grid, voxel_size = read_image_or_volume_with_spacing_from_mrc(
+            filename
+        )
         return cls.from_density_grid(
             jnp.asarray(density_grid), voxel_size, **kwargs
         )

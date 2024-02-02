@@ -9,6 +9,12 @@ from ._mdtraj import (
     get_atom_info_from_mdtraj as get_atom_info_from_mdtraj,
     mdtraj_load_from_file as mdtraj_load_from_file,
 )
-from ._mrc import load_mrc as load_mrc
+from ._mrc import (
+    read_image_or_volume_with_spacing_from_mrc as read_image_or_volume_with_spacing_from_mrc,
+    read_image_or_volume_from_mrc as read_image_or_volume_from_mrc,
+)
 from ._pdb import read_atoms_from_pdb as read_atoms_from_pdb
-from . import load_atoms as load_atoms
+from ._load_atoms import (
+    default_form_factor_params as default_form_factor_params,
+    get_form_factor_params as get_form_factor_params,
+)
