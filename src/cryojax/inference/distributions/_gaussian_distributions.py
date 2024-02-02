@@ -1,8 +1,7 @@
 """
-Image formation models, equipped with probabilistic models.
+Image formation models simulated from gaussian distributions.
 """
 
-from abc import abstractmethod
 from typing import Optional, Any
 from typing_extensions import override
 
@@ -10,46 +9,13 @@ import equinox as eqx
 import jax.random as jr
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
-from equinox import Module, AbstractVar
 
+from ._distribution import AbstractDistribution
 from ...image.operators import FourierOperatorLike, Constant
 from ...simulator import GaussianIce
 from ...simulator import GaussianDetector
 from ...simulator import AbstractPipeline
-from ...typing import Real_, RealImage, ComplexImage, Image
-
-
-class AbstractDistribution(Module, strict=True):
-    """
-    An imaging pipeline equipped with a probabilistic model.
-    """
-
-    pipeline: AbstractVar[AbstractPipeline]
-
-    @abstractmethod
-    def log_probability(self, observed: Image) -> Real_:
-        """
-        Evaluate the log-probability.
-
-        Parameters
-        ----------
-        observed :
-            The observed data in real or fourier space.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
-        """
-        Sample from the distribution.
-
-        Parameters
-        ----------
-        key :
-            The RNG key or key(s). See ``ImagePipeline.sample`` for
-            documentation.
-        """
-        raise NotImplementedError
+from ...typing import Real_, RealImage, ComplexImage
 
 
 class IndependentFourierGaussian(AbstractDistribution, strict=True):

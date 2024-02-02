@@ -1,6 +1,6 @@
 import pytest
 
-from cryojax.inference.distributions import _distributions as dist
+from cryojax.inference import distributions as dist
 from cryojax.image import operators as op
 import cryojax.simulator as cs
 import equinox as eqx
