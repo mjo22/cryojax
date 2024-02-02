@@ -259,9 +259,9 @@ class MatrixPose(AbstractPose, strict=True):
 
 
 def make_euler_rotation(
-    phi: Union[float, Real_],
-    theta: Union[float, Real_],
-    psi: Union[float, Real_],
+    phi: Real_,
+    theta: Real_,
+    psi: Real_,
     convention: str = "zyz",
     degrees: bool = False,
 ) -> SO3:

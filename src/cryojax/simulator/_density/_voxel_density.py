@@ -568,7 +568,10 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
                     [int(s * crop_scale) for s in density_grid.shape[-3:]]
                 )
                 density_grid = crop_to_shape(density_grid, cropped_shape)
-            coordinate_grid = CoordinateGrid(density_grid.shape[-3:])
+            # ij indexing is for jax-finufft compatibility
+            coordinate_grid = CoordinateGrid(
+                density_grid.shape[-3:], indexing="ij"
+            )
 
         return cls(density_grid, coordinate_grid, jnp.asarray(voxel_size))
 
@@ -634,7 +637,8 @@ class VoxelCloud(AbstractVoxels, strict=True):
     ) -> "VoxelCloud":
         # Make coordinates if not given
         if coordinate_grid is None:
-            coordinate_grid = CoordinateGrid(density_grid.shape)
+            # ... ij indexing is for jax-finufft
+            coordinate_grid = CoordinateGrid(density_grid.shape, indexing="ij")
         # ... mask zeros to store smaller arrays. This
         # option is not jittable.
         nonzero = jnp.where(~jnp.isclose(density_grid, 0.0))

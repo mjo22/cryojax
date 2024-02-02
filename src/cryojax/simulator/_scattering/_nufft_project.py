@@ -91,19 +91,23 @@ def project_with_nufft(
     weights, coordinate_list = jnp.asarray(weights).astype(
         complex
     ), jnp.asarray(coordinate_list)
-    # Negate x and y to convert to cryojax conventions
-    coordinates_yx = -coordinate_list[:, :2]
+    # Get x and y coordinates
+    coordinates_xy = coordinate_list[:, :2]
     # Normalize coordinates betweeen -pi and pi
     M1, M2 = shape
     image_size = jnp.asarray((M1, M2), dtype=float)
-    coordinates_periodic = 2 * jnp.pi * coordinates_yx / image_size
+    coordinates_periodic = 2 * jnp.pi * coordinates_xy / image_size
     # Unpack and compute
     x, y = coordinates_periodic[:, 0], coordinates_periodic[:, 1]
-    projection = nufft1(shape, weights, x, y, **kwargs)
+    projection = nufft1(shape, weights, -y, -x, **kwargs)
     # Shift zero frequency component to corner and take upper half plane
     projection = jnp.fft.ifftshift(projection)[:, : M2 // 2 + 1]
     # Set last line of frequencies to zero if image dimension is even
-    return projection if M2 % 2 == 1 else projection.at[:, -1].set(0.0 + 0.0j)
+    if M2 % 2 == 0:
+        projection = projection.at[:, -1].set(0.0 + 0.0j)
+    if M1 % 2 == 0:
+        projection = projection.at[M1 // 2, :].set(0.0 + 0.0j)
+    return projection
 
 
 """
