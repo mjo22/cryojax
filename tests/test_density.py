@@ -28,7 +28,7 @@ def test_voxel_electron_density_loaders():
     real_density = cs.RealVoxelGrid.from_density_grid(
         density_grid, voxel_size=voxel_size
     )
-    cloud_density = cs.VoxelCloud.from_density_grid(
+    cloud_density = cs.RealVoxelCloud.from_density_grid(
         density_grid, voxel_size=voxel_size
     )
     for density in [real_density, fourier_density, cloud_density]:

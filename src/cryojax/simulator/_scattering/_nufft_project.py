@@ -9,7 +9,7 @@ from equinox import field
 import jax.numpy as jnp
 
 from .._manager import ImageManager
-from .._density import VoxelCloud, RealVoxelGrid
+from .._density import RealVoxelCloud, RealVoxelGrid
 from ._scattering_method import AbstractProjectionMethod
 from ...typing import (
     ComplexImage,
@@ -35,7 +35,7 @@ class NufftProject(AbstractProjectionMethod, strict=True):
     eps: float = field(static=True, default=1e-6)
 
     def project_density(
-        self, density: RealVoxelGrid | VoxelCloud
+        self, density: RealVoxelGrid | RealVoxelCloud
     ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(density, RealVoxelGrid):
@@ -46,7 +46,7 @@ class NufftProject(AbstractProjectionMethod, strict=True):
                 self.manager.padded_shape,
                 eps=self.eps,
             )
-        elif isinstance(density, VoxelCloud):
+        elif isinstance(density, RealVoxelCloud):
             fourier_projection = project_with_nufft(
                 density.density_weights,
                 density.coordinate_list.get(),
