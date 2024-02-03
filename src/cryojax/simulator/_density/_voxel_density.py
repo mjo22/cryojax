@@ -72,7 +72,6 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         cls: Type[VoxelT],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
-        coordinate_grid: Optional[CoordinateGrid] = None,
         **kwargs: Any,
     ) -> VoxelT:
         """
@@ -87,7 +86,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         cls: Type[VoxelT],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
-        voxel_size: float,
+        voxel_size: Real_ | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
