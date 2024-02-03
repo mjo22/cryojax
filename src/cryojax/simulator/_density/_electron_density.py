@@ -53,15 +53,3 @@ class AbstractElectronDensity(Module, strict=True):
             The imaging pose.
         """
         raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def from_file(
-        cls: Type[ElectronDensityT],
-        filename: str,
-        **kwargs: Any,
-    ) -> ElectronDensityT:
-        """
-        Load an ElectronDensity from a file.
-        """
-        raise NotImplementedError

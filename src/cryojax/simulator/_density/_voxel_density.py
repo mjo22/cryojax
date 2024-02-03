@@ -72,7 +72,6 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         cls: Type[VoxelT],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
-        coordinate_grid: Optional[CoordinateGrid] = None,
         **kwargs: Any,
     ) -> VoxelT:
         """
@@ -82,11 +81,12 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         raise NotImplementedError
 
     @classmethod
+    @abstractmethod
     def from_atoms(
         cls: Type[VoxelT],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
-        voxel_size: float,
+        voxel_size: Real_ | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
@@ -94,18 +94,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         """
         Load a AbstractVoxels object from atom positions and identities.
         """
-        a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
-
-        density = _build_real_space_voxels_from_atoms(
-            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
-        )
-
-        return cls.from_density_grid(
-            density,
-            voxel_size,
-            coordinate_grid_in_angstroms / voxel_size,
-            **kwargs,
-        )
+        raise NotImplementedError
 
     @classmethod
     def from_trajectory(
@@ -253,7 +242,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         trajectory_path: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: Real_ | float = 1.0,
-        topology_file: str = None,
+        topology_file: Optional[str] = None,
         **kwargs: Any,
     ) -> VoxelT:
         """
@@ -337,7 +326,6 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         cls: Type["AbstractFourierVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
-        coordinate_grid: Optional[CoordinateGrid] = None,
         *,
         pad_scale: float = 1.0,
         pad_mode: str = "constant",
@@ -370,6 +358,36 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
             fourier_density_grid,
             frequency_slice,
             jnp.asarray(voxel_size),
+            filter=filter,
+        )
+
+    @classmethod
+    def from_atoms(
+        cls: Type["AbstractFourierVoxelGrid"],
+        atom_positions: Float[Array, "N 3"],
+        atom_identities: Int[Array, "N"],
+        voxel_size: Real_ | float,
+        coordinate_grid_in_angstroms: CoordinateGrid,
+        form_factors: Optional[Float[Array, "N 5"]] = None,
+        *,
+        pad_scale: float = 1.0,
+        pad_mode: str = "constant",
+        filter: Optional[AbstractFilter] = None,
+    ) -> "AbstractFourierVoxelGrid":
+        """
+        Load a AbstractFourierVoxelGrid object from atom positions and identities.
+        """
+        a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
+
+        density = _build_real_space_voxels_from_atoms(
+            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
+        )
+
+        return cls.from_density_grid(
+            density,
+            voxel_size,
+            pad_scale=pad_scale,
+            pad_mode=pad_mode,
             filter=filter,
         )
 
@@ -474,10 +492,10 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
     Attributes
     ----------
-    weights :
-        3D electron density voxel grid.
-    coordinate_list :
-        List of coordinates for the point cloud.
+    density_grid :
+        3D electron density voxel grid in real-space.
+    coordinate_grid :
+        Coordinates for the density grid.
     """
 
     density_grid: RealCubicVolume = field(converter=jnp.asarray)
@@ -486,7 +504,6 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
     is_real: ClassVar[bool] = True
 
-    @override
     def __init__(
         self,
         density_grid: RealCubicVolume,
@@ -524,7 +541,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         cls: Type["RealVoxelGrid"],
         density_grid: RealVolume,
         voxel_size: Real_ | float,
-        coordinate_grid: Optional[CoordinateGrid] = None,
+        coordinate_grid: CoordinateGrid,
         *,
         crop_scale: None,
     ) -> "RealVoxelGrid": ...
@@ -565,6 +582,33 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
         return cls(density_grid, coordinate_grid, jnp.asarray(voxel_size))
 
+    @classmethod
+    def from_atoms(
+        cls: Type["RealVoxelGrid"],
+        atom_positions: Float[Array, "N 3"],
+        atom_identities: Int[Array, "N"],
+        voxel_size: Real_ | float,
+        coordinate_grid_in_angstroms: CoordinateGrid,
+        form_factors: Optional[Float[Array, "N 5"]] = None,
+        *,
+        crop_scale: Optional[float] = None,
+    ) -> "RealVoxelGrid":
+        """
+        Load a RealVoxelGrid object from atom positions and identities.
+        """
+        a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
+
+        density = _build_real_space_voxels_from_atoms(
+            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
+        )
+
+        return cls.from_density_grid(
+            density,
+            voxel_size,
+            coordinate_grid_in_angstroms / voxel_size,
+            crop_scale=crop_scale,
+        )
+
 
 class RealVoxelCloud(AbstractVoxels, strict=True):
     """
@@ -574,7 +618,7 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
 
     Attributes
     ----------
-    weights :
+    density_weights :
         Flattened 3D electron density voxel grid into a
         point cloud.
     coordinate_list :
@@ -624,6 +668,7 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[CoordinateGrid] = None,
+        *,
         rtol: float = 1e-05,
         atol: float = 1e-08,
     ) -> "RealVoxelCloud":
@@ -641,6 +686,35 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         coordinate_list = CoordinateList(coordinate_grid.get()[nonzero])
 
         return cls(flat_density, coordinate_list, jnp.asarray(voxel_size))
+
+    @classmethod
+    def from_atoms(
+        cls: Type["RealVoxelCloud"],
+        atom_positions: Float[Array, "N 3"],
+        atom_identities: Int[Array, "N"],
+        voxel_size: Real_ | float,
+        coordinate_grid_in_angstroms: CoordinateGrid,
+        form_factors: Optional[Float[Array, "N 5"]] = None,
+        *,
+        rtol: float = 1e-05,
+        atol: float = 1e-08,
+    ) -> "RealVoxelCloud":
+        """
+        Load a RealVoxelCloud object from atom positions and identities.
+        """
+        a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
+
+        density = _build_real_space_voxels_from_atoms(
+            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
+        )
+
+        return cls.from_density_grid(
+            density,
+            voxel_size,
+            coordinate_grid_in_angstroms / voxel_size,
+            rtol=rtol,
+            atol=atol,
+        )
 
 
 def _eval_3d_real_space_gaussian(
