@@ -686,7 +686,7 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         coordinate_list = CoordinateList(coordinate_grid.get()[nonzero])
 
         return cls(flat_density, coordinate_list, jnp.asarray(voxel_size))
-                   
+
     @classmethod
     def from_atoms(
         cls: Type["RealVoxelCloud"],
