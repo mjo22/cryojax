@@ -105,7 +105,9 @@ class AbstractAssembly(eqx.Module, strict=True):
             )
         )
 
-        return make_assembly_poses(transformed_positions, transformed_rotations)
+        return make_assembly_poses(
+            transformed_positions, transformed_rotations
+        )
 
     @cached_property
     def subunits(self) -> AbstractSpecimen:
