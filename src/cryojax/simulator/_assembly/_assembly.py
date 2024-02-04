@@ -10,6 +10,7 @@ from jaxtyping import Array, Float
 from functools import cached_property
 from equinox import AbstractVar
 
+import jax
 import jax.numpy as jnp
 import equinox as eqx
 
@@ -97,13 +98,14 @@ class AbstractAssembly(eqx.Module, strict=True):
         transformed_rotations = jnp.einsum(
             "ij,njk->nik", self.pose.rotation.as_matrix(), self.rotations
         )
-
-        return MatrixPose(
-            offset_x=transformed_positions[:, 0],
-            offset_y=transformed_positions[:, 1],
-            offset_z=transformed_positions[:, 2],
-            matrix=transformed_rotations,
+        # Function to construct a MatrixPose, vmapped over leading dimension
+        make_assembly_poses = jax.vmap(
+            lambda pos, rot: MatrixPose(
+                offset_x=pos[0], offset_y=pos[1], offset_z=pos[2], matrix=rot
+            )
         )
+
+        return make_assembly_poses(transformed_positions, transformed_rotations)
 
     @cached_property
     def subunits(self) -> AbstractSpecimen:

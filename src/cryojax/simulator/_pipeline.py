@@ -30,24 +30,8 @@ class AbstractPipeline(Module, strict=True):
 
     Call an ``ImagePipeline``'s ``render`` and ``sample``,
     routines.
-
-    Attributes
-    ----------
-    specimen :
-        The ensemble from which to render images.
-    scattering :
-        The scattering model.
-    instrument :
-        The abstraction of the electron microscope.
-    solvent :
-        The solvent around the specimen.
-    filter :
-        A filter to apply to the image.
-    mask :
-        A mask to apply to the image.
     """
 
-    specimen: AbstractVar[AbstractSpecimen]
     scattering: AbstractVar[AbstractScatteringMethod]
     instrument: AbstractVar[Instrument]
     solvent: AbstractVar[AbstractIce]
@@ -193,7 +177,23 @@ class AbstractPipeline(Module, strict=True):
 
 
 class ImagePipeline(AbstractPipeline, strict=True):
-    """Standard image formation pipeline."""
+    """Standard image formation pipeline.
+
+    Attributes
+    ----------
+    specimen :
+        The ensemble from which to render images.
+    scattering :
+        The scattering model.
+    instrument :
+        The abstraction of the electron microscope.
+    solvent :
+        The solvent around the specimen.
+    filter :
+        A filter to apply to the image.
+    mask :
+        A mask to apply to the image.
+    """
 
     specimen: AbstractSpecimen
     scattering: AbstractScatteringMethod
@@ -302,12 +302,26 @@ class ImagePipeline(AbstractPipeline, strict=True):
 
 
 class AssemblyPipeline(AbstractPipeline, strict=True):
-    """
-    Compute an image from a superposition of subunits in
+    """Compute an image from a superposition of subunits in
     the ``AbstractAssembly``.
+
+    Attributes
+    ----------
+    assembly :
+        The assembly from which to render images.
+    scattering :
+        The scattering model.
+    instrument :
+        The abstraction of the electron microscope.
+    solvent :
+        The solvent around the specimen.
+    filter :
+        A filter to apply to the image.
+    mask :
+        A mask to apply to the image.
     """
 
-    specimen: AbstractSpecimen
+    assembly: AbstractAssembly
     scattering: AbstractScatteringMethod
     instrument: Instrument
     solvent: AbstractIce
@@ -325,7 +339,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         filter: Optional[AbstractFilter] = None,
         mask: Optional[AbstractMask] = None,
     ):
-        self.specimen = assembly.subunits
+        self.assembly = assembly
         self.scattering = scattering
         self.instrument = instrument or Instrument()
         self.solvent = solvent or NullIce()
@@ -370,31 +384,40 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
-        """Render the superposition of images from the ``AbstractAssembly.subunits``."""
+        """Render the superposition of images from the
+        ``AbstractAssembly.subunits``."""
+        # Get the assembly subunits
+        subunits = self.assembly.subunits
         # Setup vmap over the pose and conformation
         is_vmap = lambda x: isinstance(x, (AbstractPose, AbstractConformation))
-        to_vmap = jax.tree_util.tree_map(is_vmap, self, is_leaf=is_vmap)
-        vmap, novmap = eqx.partition(self, to_vmap)
+        to_vmap = jax.tree_util.tree_map(is_vmap, subunits, is_leaf=is_vmap)
+        vmap, novmap = eqx.partition(subunits, to_vmap)
         # Compute all images and sum
-        compute_image = lambda p: p.instrument.propagate_to_detector_plane(
-            p.instrument.scatter_to_exit_plane(p.specimen, p.scattering),
-            p.scattering,
-            defocus_offset=p.specimen.pose.offset_z,
+        compute_image = (
+            lambda spec, scat, ins: ins.propagate_to_detector_plane(
+                ins.scatter_to_exit_plane(spec, scat),
+                scat,
+                defocus_offset=spec.pose.offset_z,
+            )
         )
         # ... vmap to compute a stack of images to superimpose
         compute_stack = jax.vmap(
-            lambda vmap, novmap: compute_image(eqx.combine(vmap, novmap)),
-            in_axes=(0, None),
+            lambda vmap, novmap, scat, ins: compute_image(
+                eqx.combine(vmap, novmap), scat, ins
+            ),
+            in_axes=(0, None, None, None),
         )
         # ... sum over the stack of images and jit
         compute_stack_and_sum = jax.jit(
-            lambda vmap, novmap: jnp.sum(
-                compute_stack(vmap, novmap),
+            lambda vmap, novmap, scat, ins: jnp.sum(
+                compute_stack(vmap, novmap, scat, ins),
                 axis=0,
             )
         )
         # ... compute the superposition
-        image = compute_stack_and_sum(vmap, novmap)
+        image = compute_stack_and_sum(
+            vmap, novmap, self.scattering, self.instrument
+        )
 
         return self._get_final_image(
             image,
