@@ -28,9 +28,7 @@ def get_atom_info_from_gemmi_model(
 
     """
     atoms = extract_gemmi_atoms(model)
-    atom_positions, atom_element_names = extract_atom_positions_and_names(
-        atoms
-    )
+    atom_positions, atom_element_names = extract_atom_positions_and_names(atoms)
     return atom_positions, atom_element_names
 
 
@@ -119,7 +117,5 @@ def extract_atom_positions_and_names(
         atoms = [atoms]
 
     positions = np.array([at.pos.tolist() for ch in atoms for at in ch])
-    atomic_numbers = np.array(
-        [at.element.atomic_number for ch in atoms for at in ch]
-    )
+    atomic_numbers = np.array([at.element.atomic_number for ch in atoms for at in ch])
     return positions, atomic_numbers

@@ -281,12 +281,10 @@ class ImagePipeline(AbstractPipeline, strict=True):
             idx += 1
         else:
             # ... otherwise, just measure the specimen at the detector plane
-            image_at_detector_plane = (
-                self.instrument.propagate_to_detector_plane(
-                    image_at_exit_plane,
-                    self.scattering,
-                    defocus_offset=self.specimen.pose.offset_z,
-                )
+            image_at_detector_plane = self.instrument.propagate_to_detector_plane(
+                image_at_exit_plane,
+                self.scattering,
+                defocus_offset=self.specimen.pose.offset_z,
             )
         # Finally, measure the detector readout
         detector_readout = self.instrument.measure_detector_readout(
@@ -361,9 +359,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
                 "The AssemblyPipeline does not currently support sampling from the solvent model."
             )
         # Get the superposition of images
-        image_at_detector_plane = self.render(
-            view_cropped=False, get_real=False
-        )
+        image_at_detector_plane = self.render(view_cropped=False, get_real=False)
         # Sample from the detector model
         detector_readout = self.instrument.measure_detector_readout(
             key, image_at_detector_plane, self.scattering
@@ -393,12 +389,10 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         to_vmap = jax.tree_util.tree_map(is_vmap, subunits, is_leaf=is_vmap)
         vmap, novmap = eqx.partition(subunits, to_vmap)
         # Compute all images and sum
-        compute_image = (
-            lambda spec, scat, ins: ins.propagate_to_detector_plane(
-                ins.scatter_to_exit_plane(spec, scat),
-                scat,
-                defocus_offset=spec.pose.offset_z,
-            )
+        compute_image = lambda spec, scat, ins: ins.propagate_to_detector_plane(
+            ins.scatter_to_exit_plane(spec, scat),
+            scat,
+            defocus_offset=spec.pose.offset_z,
         )
         # ... vmap to compute a stack of images to superimpose
         compute_stack = jax.vmap(
@@ -415,9 +409,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
             )
         )
         # ... compute the superposition
-        image = compute_stack_and_sum(
-            vmap, novmap, self.scattering, self.instrument
-        )
+        image = compute_stack_and_sum(vmap, novmap, self.scattering, self.instrument)
 
         return self._get_final_image(
             image,

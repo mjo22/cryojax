@@ -47,9 +47,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         if self.is_sample_real:
             coordinate_grid = manager.padded_coordinate_grid_in_angstroms.get()
             return rfftn(
-                self.sample(
-                    key, irfftn(image, s=manager.padded_shape), coordinate_grid
-                )
+                self.sample(key, irfftn(image, s=manager.padded_shape), coordinate_grid)
             )
         else:
             frequency_grid = manager.padded_frequency_grid_in_angstroms.get()

@@ -37,6 +37,4 @@ def test_compute_with_filters_and_masks(
     # Check sample
     np.testing.assert_allclose(model_with_null_mask.sample(key), noisy_image)
     np.testing.assert_allclose(model_with_null_filter.sample(key), noisy_image)
-    np.testing.assert_allclose(
-        model_with_null_filter_and_mask.sample(key), noisy_image
-    )
+    np.testing.assert_allclose(model_with_null_filter_and_mask.sample(key), noisy_image)

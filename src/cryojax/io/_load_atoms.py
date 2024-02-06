@@ -17,10 +17,10 @@ def _load_element_form_factor_params():
     """
     Internal function to load the atomic form factor parameters.
     """
-    with pkg_resources.path("cryojax", "parameters") as path:
-        atom_form_factor_params = np.load(
-            os.path.join(path, "element_params.npy")
-        )
+    with pkg_resources.as_file(
+        pkg_resources.files("cryojax").joinpath("parameters")
+    ) as path:
+        atom_form_factor_params = np.load(os.path.join(path, "element_params.npy"))
 
     return jnp.array(atom_form_factor_params)
 

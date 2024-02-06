@@ -63,9 +63,7 @@ class Gaussian2D(AbstractRealOperator, strict=True):
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
     b_factor: Real_ = field(default=1.0, converter=jnp.asarray)
-    offset: Float[Array, "2"] = field(
-        default=(0.0, 0.0), converter=jnp.asarray
-    )
+    offset: Float[Array, "2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
 
     @override
     def __call__(self, coords: ImageCoords | None, **kwargs: Any) -> RealImage:
@@ -75,7 +73,7 @@ class Gaussian2D(AbstractRealOperator, strict=True):
             )
         else:
             r_sqr = jnp.sum((coords - self.offset) ** 2, axis=-1)
-            scaling = (
-                self.amplitude / jnp.sqrt(2 * jnp.pi * self.b_factor)
-            ) * jnp.exp(-0.5 * r_sqr / self.b_factor)
+            scaling = (self.amplitude / jnp.sqrt(2 * jnp.pi * self.b_factor)) * jnp.exp(
+                -0.5 * r_sqr / self.b_factor
+            )
             return scaling

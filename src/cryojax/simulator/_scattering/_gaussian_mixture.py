@@ -43,18 +43,14 @@ class IndependentAtomScattering(AbstractProjectionMethod):
         # will work though because padded_shape is statically typed at compile
         # time.
         assert self.manager.padded_shape[0] == self.manager.padded_shape[1]
-        pixel_grid = _build_pixel_grid(
-            self.manager.padded_shape[0], self.pixel_size
-        )
+        pixel_grid = _build_pixel_grid(self.manager.padded_shape[0], self.pixel_size)
         sq_distance = _evaluate_coord_to_grid_sq_distances(
             density.coordinates, pixel_grid
         )
 
         atom_variances = density.variances[density.identity]
         weights = density.weights[density.identity]
-        gaussian_kernel = (
-            _eval_Gaussian_kernel(sq_distance, atom_variances) * weights
-        )
+        gaussian_kernel = _eval_Gaussian_kernel(sq_distance, atom_variances) * weights
         print("after  egk")
         simulated_imgs = jnp.sum(gaussian_kernel, axis=-1)  # Sum over atoms
         if return_Fourier:

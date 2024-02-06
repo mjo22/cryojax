@@ -1,32 +1,45 @@
-[build-system]
-requires = ["setuptools>=40.6.0,<60.9.0", "wheel", "setuptools_scm"]
-build-backend = "setuptools.build_meta"
+[project]
+name = "cryojax"
+description = "Cryo-EM image simulation and analysis powered by JAX"
+authors = [{ name = "Michael O'Brien", email = "michaelobrien@g.harvard.edu" }]
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+urls = {repository = "https://github.com/mjo22/cryojax" }
+dynamic = ["version"]
+dependencies = [
+    "jax",
+    "jaxlib",
+    "equinox>=0.11.0",
+    "jaxtyping>=0.2.23",
+    "lineax",
+    "jaxlie",
+    "mrcfile",
+]
 
-[tool.setuptools_scm]
-write_to = "src/cryojax/cryojax_version.py"
+[project.optional-dependencies]
+test = ["pytest", "pycistem", "gemmi"]
+docs = []
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/cryojax/cryojax_version.py"
 
 [tool.black]
-line-length = 79
-
-[tool.isort]
-skip_glob = []
-line_length = 79
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-
-[tool.coverage.run]
-parallel = true
-branch = true
-source = ["cryojax"]
-omit = ["docs/*", "tests/*", "*/cryojax/cryojax_version.py"]
-
-[tool.coverage.paths]
-source = ["src", "*/site-packages"]
-
-[tool.coverage.report]
-show_missing = true
-
-[tool.pycln]
-all = true
+target-version = ["py310"]
+line-length = 88

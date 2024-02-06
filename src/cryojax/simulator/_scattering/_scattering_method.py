@@ -34,9 +34,7 @@ class AbstractScatteringMethod(Module, strict=True):
     manager: AbstractVar[ImageManager]
 
     @abstractmethod
-    def __call__(
-        self, specimen: AbstractSpecimen, **kwargs: Any
-    ) -> ComplexImage:
+    def __call__(self, specimen: AbstractSpecimen, **kwargs: Any) -> ComplexImage:
         """
         Compute an image at the exit plane, measured at the ScatteringMethod
         pixel size and post-processed with the ImageManager utilities.
@@ -61,9 +59,7 @@ class AbstractProjectionMethod(AbstractScatteringMethod, strict=True):
     manager: AbstractVar[ImageManager]
 
     @abstractmethod
-    def project_density(
-        self, density: AbstractElectronDensity
-    ) -> ComplexImage:
+    def project_density(self, density: AbstractElectronDensity) -> ComplexImage:
         """
         Compute the scattered wave of the electron
         density in the exit plane.
@@ -75,9 +71,7 @@ class AbstractProjectionMethod(AbstractScatteringMethod, strict=True):
         """
         raise NotImplementedError
 
-    def __call__(
-        self, specimen: AbstractSpecimen, **kwargs: Any
-    ) -> ComplexImage:
+    def __call__(self, specimen: AbstractSpecimen, **kwargs: Any) -> ComplexImage:
         """
         Compute an image at the exit plane, measured at the ScatteringModel
         pixel size and post-processed with the ImageManager utilities.

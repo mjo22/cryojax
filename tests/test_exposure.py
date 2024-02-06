@@ -18,12 +18,8 @@ def test_scale(model, request):
     exposure = Exposure(dose=op.Constant(N), radiation=op.Constant(M))
     null_exposure = NullExposure()
     # Create null model
-    rescaled_model = eqx.tree_at(
-        lambda x: x.instrument.exposure, model, exposure
-    )
-    null_model = eqx.tree_at(
-        lambda x: x.instrument.exposure, model, null_exposure
-    )
+    rescaled_model = eqx.tree_at(lambda x: x.instrument.exposure, model, exposure)
+    null_model = eqx.tree_at(lambda x: x.instrument.exposure, model, null_exposure)
     # Compute images
     null_image = null_model.render(view_cropped=False)
     rescaled_image = rescaled_model.render(view_cropped=False)

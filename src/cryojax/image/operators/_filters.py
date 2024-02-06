@@ -71,10 +71,7 @@ class InverseSincFilter(AbstractFilter, strict=True):
         self.buffer = jax.lax.reciprocal(
             functools.reduce(
                 operator.mul,
-                [
-                    jnp.sinc(frequency_grid[..., i] * grid_spacing)
-                    for i in range(ndim)
-                ],
+                [jnp.sinc(frequency_grid[..., i] * grid_spacing) for i in range(ndim)],
             )
         )
 
@@ -186,10 +183,7 @@ def _compute_lowpass_filter(
 
     rolloff_width = rolloff * k_max
     mask = 0.5 * (
-        1
-        + jnp.cos(
-            (freqs_norm - k_cut - rolloff_width) / rolloff_width * jnp.pi
-        )
+        1 + jnp.cos((freqs_norm - k_cut - rolloff_width) / rolloff_width * jnp.pi)
     )
 
     mask = jnp.where(frequencies_cut, 0.0, mask)

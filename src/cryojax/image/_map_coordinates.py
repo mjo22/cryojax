@@ -39,18 +39,12 @@ def map_coordinates(
         See https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html.
     """
     if order in [0, 1]:
-        return _map_coordinates_nn_or_linear(
-            input, coordinates, order, mode, cval
-        )
+        return _map_coordinates_nn_or_linear(input, coordinates, order, mode, cval)
     elif order == 3:
         coefficients = compute_spline_coefficients(input)
-        return _map_coordinates_with_cubic_spline(
-            coefficients, coordinates, mode, cval
-        )
+        return _map_coordinates_with_cubic_spline(coefficients, coordinates, mode, cval)
     else:
-        raise NotImplementedError(
-            f"map_coordinates does not support order={order}."
-        )
+        raise NotImplementedError(f"map_coordinates does not support order={order}.")
 
 
 def map_coordinates_with_cubic_spline(
@@ -72,9 +66,7 @@ def map_coordinates_with_cubic_spline(
         See https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ndarray.at.html.
 
     """
-    return _map_coordinates_with_cubic_spline(
-        coefficients, coordinates, mode, cval
-    )
+    return _map_coordinates_with_cubic_spline(coefficients, coordinates, mode, cval)
 
 
 @jax.jit
@@ -151,9 +143,7 @@ def _map_coordinates_with_cubic_spline(
     coords = jnp.stack([jnp.asarray(c) for c in coordinates], axis=0)
     # vmap spline evaluate over coordinates and return
     fn = lambda coord: _spline_point(coefficients, coord, mode, cval)
-    return vmap(fn)(coords.reshape(coefficients.ndim, -1).T).reshape(
-        coords.shape[1:]
-    )
+    return vmap(fn)(coords.reshape(coefficients.ndim, -1).T).reshape(coords.shape[1:])
 
 
 #
@@ -198,9 +188,7 @@ def _build_operator(
     diagonal = jnp.full((n,), diag_value, dtype=dtype)
     lower_diagonal = jnp.full((n - 1,), 1.0, dtype=dtype)
     upper_diagonal = jnp.full((n - 1,), 1.0, dtype=dtype)
-    return lx.TridiagonalLinearOperator(
-        diagonal, lower_diagonal, upper_diagonal
-    )
+    return lx.TridiagonalLinearOperator(diagonal, lower_diagonal, upper_diagonal)
 
 
 def _construct_vector(data: Array, c2: Array, cnp2: Array) -> Array:
@@ -260,7 +248,5 @@ def _spline_point(
     index_fn = lambda x: (jnp.arange(0, 4) + jnp.floor(x)).astype(int)
     index_vals = vmap(index_fn)(coordinate)
     indices = jnp.array(jnp.meshgrid(*index_vals, indexing="ij"))
-    fn = lambda index: _spline_value(
-        coefficients, coordinate, index, mode, cval
-    )
+    fn = lambda index: _spline_value(coefficients, coordinate, index, mode, cval)
     return vmap(fn)(indices.reshape(coefficients.ndim, -1).T).sum()

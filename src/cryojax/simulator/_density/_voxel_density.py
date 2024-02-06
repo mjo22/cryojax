@@ -151,9 +151,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         """
         atom_positions, atom_elements = get_atom_info_from_gemmi_model(model)
 
-        coordinate_grid_in_angstroms = CoordinateGrid(
-            n_voxels_per_side, voxel_size
-        )
+        coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
 
         return cls.from_atoms(
             atom_positions,
@@ -179,9 +177,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         elif path.suffix == ".cif":
             return cls.from_cif(filename, *args, **kwargs)
         else:
-            raise NotImplementedError(
-                f"File format {path.suffix} not supported."
-            )
+            raise NotImplementedError(f"File format {path.suffix} not supported.")
 
     @classmethod
     def from_mrc(
@@ -190,12 +186,8 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         **kwargs: Any,
     ) -> VoxelT:
         """Load AbstractVoxels from MRC file format."""
-        density_grid, voxel_size = read_image_or_volume_with_spacing_from_mrc(
-            filename
-        )
-        return cls.from_density_grid(
-            jnp.asarray(density_grid), voxel_size, **kwargs
-        )
+        density_grid, voxel_size = read_image_or_volume_with_spacing_from_mrc(filename)
+        return cls.from_density_grid(jnp.asarray(density_grid), voxel_size, **kwargs)
 
     @classmethod
     def from_pdb(
@@ -207,9 +199,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
     ) -> VoxelT:
         """Load AbstractVoxels from PDB file format."""
         atom_positions, atom_elements = read_atoms_from_pdb(filename)
-        coordinate_grid_in_angstroms = CoordinateGrid(
-            n_voxels_per_side, voxel_size
-        )
+        coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
 
         return cls.from_atoms(
             atom_positions,
@@ -229,9 +219,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
     ) -> VoxelT:
         """Load AbstractVoxels from CIF file format."""
         atom_positions, atom_elements = read_atoms_from_cif(filename)
-        coordinate_grid_in_angstroms = CoordinateGrid(
-            n_voxels_per_side, voxel_size
-        )
+        coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
 
         return cls.from_atoms(
             atom_positions,
@@ -278,9 +266,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         trajectory, atom_identities = mdtraj_load_from_file(
             trajectory_path, topology_file
         )
-        coordinate_grid_in_angstroms = CoordinateGrid(
-            n_voxels_per_side, voxel_size
-        )
+        coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
         return cls.from_trajectory(
             trajectory,
             atom_identities,
@@ -340,9 +326,7 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         # ... always pad to even size to avoid interpolation issues in
         # fourier slice extraction.
         padded_shape = tuple([int(s * pad_scale) for s in density_grid.shape])
-        padded_density_grid = pad_to_shape(
-            density_grid, padded_shape, mode=pad_mode
-        )
+        padded_density_grid = pad_to_shape(density_grid, padded_shape, mode=pad_mode)
         # Load density and coordinates. For now, do not store the
         # fourier density only on the half space. Fourier slice extraction
         # does not currently work if rfftn is used.
@@ -360,9 +344,7 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
             padded_density_grid.shape[:-1], half_space=False
         )
 
-        return cls(
-            fourier_density_grid, frequency_slice, jnp.asarray(voxel_size)
-        )
+        return cls(fourier_density_grid, frequency_slice, jnp.asarray(voxel_size))
 
     @classmethod
     def from_atoms(
@@ -669,9 +651,7 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
             coordinate_grid = CoordinateGrid(density_grid.shape)
         # ... mask zeros to store smaller arrays. This
         # option is not jittable.
-        nonzero = jnp.where(
-            ~jnp.isclose(density_grid, 0.0, rtol=rtol, atol=atol)
-        )
+        nonzero = jnp.where(~jnp.isclose(density_grid, 0.0, rtol=rtol, atol=atol))
         flat_density = density_grid[nonzero]
         coordinate_list = CoordinateList(coordinate_grid.get()[nonzero])
 
@@ -768,9 +748,7 @@ def _eval_3d_atom_potential(
     potential : `Array`, shape `(N1, N2, N3)`
         The potential of the atom evaluate on the grid.
     """
-    eval_fxn = jax.vmap(
-        _eval_3d_real_space_gaussian, in_axes=(None, None, 0, 0)
-    )
+    eval_fxn = jax.vmap(_eval_3d_real_space_gaussian, in_axes=(None, None, 0, 0))
     return jnp.sum(
         eval_fxn(coordinate_system, atom_position, atomic_as, atomic_bs),
         axis=0,

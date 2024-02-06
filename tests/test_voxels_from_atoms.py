@@ -46,9 +46,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
 
 class TestBuildRealSpaceVoxelsFromAtoms:
     @pytest.mark.parametrize("largest_atom", range(0, 3))
-    def test_maxima_are_in_right_positions(
-        self, toy_gaussian_cloud, largest_atom
-    ):
+    def test_maxima_are_in_right_positions(self, toy_gaussian_cloud, largest_atom):
         """
         Test that the maxima of the density are in the correct positions.
         """

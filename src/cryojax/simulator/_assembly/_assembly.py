@@ -58,13 +58,9 @@ class AbstractAssembly(eqx.Module, strict=True):
             raise AttributeError(
                 f"If {type(self)}.conformation is set, {type(self)}.subunit must be an AbstractEnsemble."
             )
-        if self.conformation is not None and isinstance(
-            self.subunit, AbstractEnsemble
-        ):
+        if self.conformation is not None and isinstance(self.subunit, AbstractEnsemble):
             # ... if it is an AbstractEnsemble, the AbstractConformation must be the right type
-            if not isinstance(
-                self.conformation, type(self.subunit.conformation)
-            ):
+            if not isinstance(self.conformation, type(self.subunit.conformation)):
                 raise AttributeError(
                     f"{type(self)}.conformation must be type {type(self.subunit.conformation)} if {type(self)}.subunit is type {type(self.subunit)}."
                 )
@@ -105,9 +101,7 @@ class AbstractAssembly(eqx.Module, strict=True):
             )
         )
 
-        return make_assembly_poses(
-            transformed_positions, transformed_rotations
-        )
+        return make_assembly_poses(transformed_positions, transformed_rotations)
 
     @cached_property
     def subunits(self) -> AbstractSpecimen:
@@ -115,9 +109,7 @@ class AbstractAssembly(eqx.Module, strict=True):
         # Compute a list of subunits, configured at the correct conformations
         if isinstance(self.subunit, AbstractEnsemble):
             where = lambda s: (s.conformation, s.pose)
-            return eqx.tree_at(
-                where, self.subunit, (self.conformation, self.poses)
-            )
+            return eqx.tree_at(where, self.subunit, (self.conformation, self.poses))
         else:
             where = lambda s: s.pose
             return eqx.tree_at(where, self.subunit, self.poses)

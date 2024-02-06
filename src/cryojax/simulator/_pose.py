@@ -205,9 +205,7 @@ class QuaternionPose(AbstractPose, strict=True):
     offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
     offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
 
-    wxyz: Float[Array, "4"] = field(
-        default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray
-    )
+    wxyz: Float[Array, "4"] = field(default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray)
 
     inverse: bool = field(static=True, default=False)
 
