@@ -1,15 +1,15 @@
-# Cryo-EM image simulation and analysis powered by JAX.
+<h1 align='center'>cryojax</h1>
 
 ![Tests](https://github.com/mjo22/cryojax/actions/workflows/testing.yml/badge.svg)
 ![Lint](https://github.com/mjo22/cryojax/actions/workflows/black.yml/badge.svg)
 
-This library is a modular framework for simulating forward models of cryo electron microscopy images. It is designed with 2D template matching analysis in mind, but it can be used generally. `cryojax` is, of course, built on [jax](https://github.com/google/jax). It also uses [equinox](https://github.com/patrick-kidger/equinox/) for modeling building, so `equinox` functionality is supported in `cryojax`.
+`cryojax` is a library for cryo-EM image simulation and analysis. It is built on [`jax`](https://github.com/google/jax).
 
 ## Summary
 
-The core of this package is its ability to simulate cryo-EM images. Starting with a 3D electron density map, one can simulate a scattering process onto the imaging plane with modulation by the instrument optics. Images are then sampled from models of the noise or the corresponding log-likelihood is computed.
+The core of this package is its ability to model image formation in cryo-EM. These models can be fed into standard sampling, optimization, and model building libraries in `jax`, such as [`blackjax`](https://github.com/blackjax-devs/blackjax), [`optimistix`](https://github.com/patrick-kidger/optimistix), or [`numpyro`](https://github.com/pyro-ppl/numpyro).
 
-These models can be fed into standard sampling, optimization, and model building libraries in `jax`, such as [blackjax](https://github.com/blackjax-devs/blackjax), [optax](https://github.com/google-deepmind/optax), or [numpyro](https://github.com/pyro-ppl/numpyro). The `jax` ecosystem is rich and growing fast!
+Dig a little deeper and you'll find that `cryojax` aims to be a fully extensible modeling language for cryo-EM image formation. It implements a collection of abstract interfaces, which aim to be general enough to support any level of modeling complexity—from simple linear image formation to the most realistic physical models in the field. Best of all, these interfaces are all part of the public API. Users can create their own extensions to `cryojax`, tailored to their specific use-case!
 
 ## Installation
 
@@ -29,13 +29,13 @@ cd cryojax
 python -m pip install .
 ```
 
-This will install the remaining dependencies, such as [equinox](https://github.com/patrick-kidger/equinox/) for jax-friendly dataclasses, [jaxlie](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, and [mrcfile](https://github.com/ccpem/mrcfile) for I/O.
+This will install the remaining dependencies, such as [`equinox`](https://github.com/patrick-kidger/equinox/) for jax-friendly dataclasses, [`jaxlie`](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, and [`mrcfile`](https://github.com/ccpem/mrcfile) for I/O.
 
-The [jax-finufft](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
+The [`jax-finufft`](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
 
-## Building a model
+## Simulating an image
 
-Please note that this library is currently experimental and the API is subject to change! The following is a basic workflow to generate an image with a gaussian white noise model.
+The following is a basic workflow to generate an image with a gaussian white noise model.
 
 First, instantiate the electron density representation and its respective method for computing image projections.
 
@@ -43,96 +43,76 @@ First, instantiate the electron density representation and its respective method
 import jax
 import jax.numpy as jnp
 import cryojax.simulator as cs
+from cryojax.io import read_image_or_volume_with_spacing_from_mrc
 
+# Instantiate the electron density
 filename = "example.mrc"
-density = cs.FourierVoxelGrid.from_file(filename)
-shape, pixel_size = (320, 320), density.voxel_size
+density_grid, voxel_size = read_image_or_volume_with_spacing_from_mrc(filename)
+density = cs.FourierVoxelGrid.from_density_grid(density_grid, voxel_size)
+# ... now instantiate fourier slice extraction
+shape, pixel_size = (320, 320), voxel_size
 manager = cs.ImageManager(shape, pixel_size)
 scattering = cs.FourierSliceExtract(manager, interpolation_order=1)
 ```
 
-Here, `filename` is a 3D electron density map in MRC format. This could be taken from the [EMDB](https://www.ebi.ac.uk/emdb/), or rasterized from a [PDB](https://www.rcsb.org/). [cisTEM](https://github.com/timothygrant80/cisTEM) provides an excellent rasterization tool in its image simulation program. In the above example, a voxel electron density in fourier space is loaded and the fourier-slice projection theorem is initialized. Note that we must explicitly set the pixel size of the projection image. Here, it is the same as the voxel size of the electron density. We can now instantiate the biological specimen.
+Here, the 3D electron density map stored in `filename` is loaded in fourier-space and the fourier-slice projection theorem is initialized. We can now instantiate the representation of a biological specimen, which also includes a pose.
 
 ```python
-# Translations in Angstroms, angles in degrees
+# First instantiate the pose. Translations are in Angstroms, angles are in degrees
 pose = cs.EulerPose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0, view_psi=-10.0)
-specimen = cs.Specimen(density=density, pose=pose)
+# ... now, build the biological specimen
+specimen = cs.Specimen(density, pose)
 ```
 
-Here, this holds the electron density and the model for the pose. If instead a tuple of electron density representations are loaded, this can be placed in an ensemble. A `DiscreteEnsemble` is a `Specimen` that can be evaluated at a particular discrete conformation.
-
-```python
-filenames = ...
-density = tuple([cs.FourierVoxelGrid.from_file(filename) for filename in filenames])
-conformation = cs.DiscreteConformation(0)
-specimen = cs.DiscreteEnsemble(density=density, pose=pose, conformation=conformation)
-```
-
-Next, the model for the electron microscope. Optics and detector models and their respective parameters are initialized. These are stored in the `Instrument` container.
+Next, the model for the electron microscope.
 
 ```python
 from cryojax.image import operators as op
 
+# First, initialize the CTF and its optics model
 ctf = cs.CTF(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
 optics = cs.CTFOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # defocus and b_factor in Angstroms and Angstroms^2, respectively
+# ... now, the model for the detector
 detector = cs.GaussianDetector(variance=op.Constant(1.0))
+# ... these are stored in the Instrument
 instrument = cs.Instrument(optics=optics, detector=detector)
 ```
 
 Here, the `GaussianDetector` is simply modeled by gaussian white noise. The `CTF` has all parameters used in CTFFIND4, which take their default values if not
-explicitly configured here. Finally, we can instantiate the `ImagePipeline`.
+explicitly configured here. Finally, we can instantiate the `ImagePipeline` and simulate an image.
 
 ```python
+# Build the image formation model
+pipeline = cs.ImagePipeline(specimen, scattering, instrument)
+# ... generate an RNG key and simulate
 key = jax.random.PRNGKey(seed=0)
-pipeline = cs.ImagePipeline(scattering=scattering, specimen=specimen, instrument=instrument)
 image = pipeline.sample(key)
 ```
 
 This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model.
 
 ```python
+# Compute an image without stochasticity
 image = pipeline.render()
 ```
 
-Imaging models also accept a series of `AbstractFilter`s and `AbstractMask`s. For example, one could add a `LowpassFilter`, `WhiteningFilter`, and a `CircularMask`.
-
-```python
-from cryojax.image import operators as op
-
-micrograph = ...  # A micrograph used for whitening
-freqs = manager.padded_frequency_grid_in_angstroms.get()  # Get the upsampled frequency grid
-coords = manager.padded_coordinate_grid_in_angstroms.get()  # Get the coordinate grid
-filter = op.LowpassFilter(freqs, pixel_size, cutoff=1.0)  # Cutoff modes above Nyquist frequency
-         * op.WhiteningFilter(micrograph, manager.padded_shape)
-mask = op.CircularMask(coords, radius=20 * pixel_size)  # Radius in Angstroms
-pipeline = cs.ImagePipeline(
-    scattering=scattering, specimen=specimen, instrument=instrument, filter=filter, mask=mask
-    )
-image = pipeline.sample(key)
-```
-
-`cryojax` also defines a library of distributions, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
+Alternatively to simulating from the physical model of a detector, `cryojax` also defines a library of distributions, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
 
 ```python
 from cryojax.image import rfftn
 from cryojax.inference import distributions as dist
+from cryojax.image import operators as op
 
 # Read observed data in real space
 observed = ...
 # Normalize to mean zero and standard deviation 1
 observed = manager.normalize_image(observed, is_real=True)
-# Upsample observed data in fourier space
-observed = rfftn(manager.pad_to_padded_shape(observed))
 # Instantiate distribution and compute
-model = dist.IndependentFourierGaussian(pipeline)
-log_likelihood = model.log_probability(observed)
+model = dist.IndependentFourierGaussian(pipeline, variance=op.Constant(1.0))
+log_likelihood = model.log_probability(rfftn(observed))
 ```
 
-Note that in this example, the user must make sure `observed` is the expected shape and is in fourier space.
-
-Additional components can be plugged into the image formation model. For example, modeling the solvent is supported through the `ImagePipeline`'s `AbstractIce` model. Models for exposure to the electron beam are supported through the `Instrument`'s `AbstractExposure` model.
-
-For these more advanced examples, see the tutorials section of the repository. In general, `cryojax` is designed to be very extensible and new models can easily be implemented.
+For more advanced image simulation examples and for the many additional features in this library, see the documentation (coming soon!).
 
 ## Creating a loss function
 
@@ -177,7 +157,7 @@ params = dict(
 log_likelihood, grad = loss(params, model, observed)
 ```
 
-To summarize, this example creates a loss function at an updated set of `AbstractPose`, `AbstractOptics`, and `AbstractScatteringMethod` parameters. In general, any `cryojax` `Module` may contain model parameters and there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
+To summarize, this example creates a loss function at an updated set of parameters. In general, any `cryojax` object may contain model parameters and there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
 
 ## Features
 
