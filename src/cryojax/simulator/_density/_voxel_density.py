@@ -1,12 +1,6 @@
-"""
-Voxel-based electron density representations.
-"""
-
-import pathlib
 from abc import abstractmethod
 from typing import (
     Any,
-    Tuple,
     Type,
     ClassVar,
     Optional,
@@ -23,14 +17,7 @@ import jax.numpy as jnp
 
 from ._electron_density import AbstractElectronDensity
 from .._pose import AbstractPose
-from ...io import (
-    get_form_factor_params,
-    read_image_or_volume_with_spacing_from_mrc,
-    get_atom_info_from_gemmi_model,
-    read_atoms_from_pdb,
-    read_atoms_from_cif,
-    mdtraj_load_from_file,
-)
+from ...io import get_form_factor_params
 
 from ...image.operators import AbstractFilter
 from ...image import (
@@ -67,201 +54,29 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
     @classmethod
     @abstractmethod
     def from_density_grid(
-        cls: Type["AbstractVoxels"],
+        cls: Type[Self],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> "AbstractVoxels":
-        """Load a AbstractVoxels object from real-valued 3D electron
-        density map."""
+    ) -> Self:
+        """Load an `AbstractVoxels` from real-valued 3D electron
+        density map.
+        """
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def from_atoms(
-        cls: Type["AbstractVoxels"],
+        cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
         voxel_size: Real_ | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
-    ) -> "AbstractVoxels":
-        """Load a AbstractVoxels object from atom positions and identities."""
+    ) -> Self:
+        """Load an `AbstractVoxels` from atom positions and identities."""
         raise NotImplementedError
-
-    @classmethod
-    def from_trajectory(
-        cls: Type["AbstractVoxels"],
-        trajectory: Float[Array, "M N 3"],
-        atom_identities: Int[Array, "N"],
-        voxel_size: float,
-        coordinate_grid_in_angstroms: CoordinateGrid,
-        form_factors: Optional[Float[Array, "N 5"]] = None,
-        **kwargs: Any,
-    ) -> "AbstractVoxels":
-        a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
-
-        build_real_space_voxels_from_atomic_trajectory = jax.vmap(
-            build_real_space_voxels_from_atoms, (0, None, None, None), 0
-        )
-
-        build_real_space_voxels_from_atoms(
-            trajectory[0], a_vals, b_vals, coordinate_grid_in_angstroms.get()
-        )
-
-        density = build_real_space_voxels_from_atomic_trajectory(
-            trajectory, a_vals, b_vals, coordinate_grid_in_angstroms.get()
-        )
-
-        from_density_grid_vmap = jax.vmap(
-            lambda d, vs, c: cls.from_density_grid(d, vs, c, **kwargs),
-            in_axes=[0, 0, None],
-        )
-        return from_density_grid_vmap(
-            density,
-            jnp.full(density.shape[0], voxel_size),
-            coordinate_grid_in_angstroms / voxel_size,
-        )
-
-    @classmethod
-    def from_gemmi(
-        cls: Type["AbstractVoxels"],
-        model,
-        n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: Real_ | float = 1.0,
-        **kwargs: Any,
-    ) -> "AbstractVoxels":
-        """Loads a PDB file as a AbstractVoxels subclass.  Uses the Gemmi library.
-        Heavily based on a code from Frederic Poitevin, located at
-
-        https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
-        """
-        atom_positions, atom_elements = get_atom_info_from_gemmi_model(model)
-
-        coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
-
-        return cls.from_atoms(
-            atom_positions,
-            atom_elements,
-            voxel_size,
-            coordinate_grid_in_angstroms,
-            **kwargs,
-        )
-
-    @classmethod
-    def from_file(
-        cls: Type["AbstractVoxels"],
-        filename: str,
-        *args: Any,
-        **kwargs: Any,
-    ) -> "AbstractVoxels":
-        """Load a voxel-based electron density."""
-        path = pathlib.Path(filename)
-        if path.suffix == ".mrc":
-            return cls.from_mrc(filename, *args, **kwargs)
-        elif path.suffix == ".pdb":
-            return cls.from_pdb(filename, *args, **kwargs)
-        elif path.suffix == ".cif":
-            return cls.from_cif(filename, *args, **kwargs)
-        else:
-            raise NotImplementedError(f"File format {path.suffix} not supported.")
-
-    @classmethod
-    def from_mrc(
-        cls: Type["AbstractVoxels"],
-        filename: str,
-        **kwargs: Any,
-    ) -> "AbstractVoxels":
-        """Load AbstractVoxels from MRC file format."""
-        density_grid, voxel_size = read_image_or_volume_with_spacing_from_mrc(filename)
-        return cls.from_density_grid(jnp.asarray(density_grid), voxel_size, **kwargs)
-
-    @classmethod
-    def from_pdb(
-        cls: Type["AbstractVoxels"],
-        filename: str,
-        n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: Real_ | float = 1.0,
-        **kwargs: Any,
-    ) -> "AbstractVoxels":
-        """Load AbstractVoxels from PDB file format."""
-        atom_positions, atom_elements = read_atoms_from_pdb(filename)
-        coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
-
-        return cls.from_atoms(
-            atom_positions,
-            atom_elements,
-            voxel_size,
-            coordinate_grid_in_angstroms,
-            **kwargs,
-        )
-
-    @classmethod
-    def from_cif(
-        cls: Type["AbstractVoxels"],
-        filename: str,
-        n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: Real_ | float = 1.0,
-        **kwargs: Any,
-    ) -> "AbstractVoxels":
-        """Load AbstractVoxels from CIF file format."""
-        atom_positions, atom_elements = read_atoms_from_cif(filename)
-        coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
-
-        return cls.from_atoms(
-            atom_positions,
-            atom_elements,
-            voxel_size,
-            coordinate_grid_in_angstroms,
-            **kwargs,
-        )
-
-    @classmethod
-    def from_mdtraj(
-        cls: Type["AbstractVoxels"],
-        trajectory_path: str,
-        n_voxels_per_side: Tuple[int, int, int],
-        voxel_size: Real_ | float = 1.0,
-        topology_file: Optional[str] = None,
-        **kwargs: Any,
-    ) -> "AbstractVoxels":
-        """
-        Load AbstractVoxels from MDTraj trajectory.
-
-        Parameters
-        ----------
-        trajectory_path : str
-            Path to trajectory file.
-        n_voxels_per_side : tuple of int
-            Number of voxels per side.
-        voxel_size : float
-            Size of each voxel in angstroms.
-        topology_file : str, optional
-            Path to topology file, if required to load the trajectory.
-
-        Returns
-        -------
-        AbstractVoxels
-            A subclass of Voxels.
-
-        Notes
-        -----
-        Returns a Voxel object with
-        a nontrivial indexed dimension (the first dimension): scattering or
-        otherwise using the density may require vmaps!
-        """
-        trajectory, atom_identities = mdtraj_load_from_file(
-            trajectory_path, topology_file
-        )
-        coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
-        return cls.from_trajectory(
-            trajectory,
-            atom_identities,
-            voxel_size,
-            coordinate_grid_in_angstroms,
-            None,
-        )
 
 
 class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
@@ -294,14 +109,32 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
 
     @classmethod
     def from_density_grid(
-        cls: Type["AbstractFourierVoxelGrid"],
+        cls: Type[Self],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         *,
         pad_scale: float = 1.0,
         pad_mode: str = "constant",
         filter: Optional[AbstractFilter] = None,
-    ) -> "AbstractFourierVoxelGrid":
+    ) -> Self:
+        """Load an `AbstractFourierVoxelGrid` from real-valued 3D electron
+        density map.
+
+        **Arguments:**
+
+        `density_grid`: An electron density voxel grid in real space.
+
+        `voxel_size`: The voxel size of `density_grid`.
+
+        `pad_scale`: Scale factor at which to pad `density_grid` before fourier
+                     transform. Must be a value greater than `1.0`.
+
+        `pad_mode`: Padding method. See `jax.numpy.pad` for documentation.
+
+        `filter`: A filter to apply to the result of the fourier transform of
+                  `density_grid`, i.e. `fftn(density_grid)`. Note that the zero
+                  frequency component is assumed to be in the corner.
+        """
         # Pad template
         if pad_scale < 1.0:
             raise ValueError("pad_scale must be greater than 1.0")
@@ -330,17 +163,20 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
 
     @classmethod
     def from_atoms(
-        cls: Type["AbstractFourierVoxelGrid"],
+        cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
         voxel_size: Real_ | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
-        *,
-        pad_scale: float = 1.0,
-        pad_mode: str = "constant",
-        filter: Optional[AbstractFilter] = None,
-    ) -> "AbstractFourierVoxelGrid":
+        **kwargs: Any,
+    ) -> Self:
+        """Load an `AbstractFourierVoxelGrid` from atom positions and identities.
+
+        **Arguments:**
+
+        - `**kwargs`: Passed to `AbstractFourierVoxelGrid.from_density_grid`
+        """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
         density = build_real_space_voxels_from_atoms(
@@ -350,9 +186,7 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         return cls.from_density_grid(
             density,
             voxel_size,
-            pad_scale=pad_scale,
-            pad_mode=pad_mode,
-            filter=filter,
+            **kwargs,
         )
 
 
@@ -411,9 +245,9 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
             For example,
 
             ```python
-            density = FourierVoxelGridInterpolator(fourier_density_grid, frequency_slice, voxel_size)
-            assert not hasattr(density, "fourier_density_grid")  # This does not store the `fourier_voxel_grid`
-            assert hasattr(density, "coefficients")  # Instead it computes `coefficients` upon `__init__`
+            voxels = FourierVoxelGridInterpolator(fourier_density_grid, frequency_slice, voxel_size)
+            assert not hasattr(voxels, "fourier_density_grid")  # This does not store the `fourier_voxel_grid`
+            assert hasattr(voxels, "coefficients")  # Instead it computes `coefficients` upon `__init__`
             ```
         """
         self.coefficients = compute_spline_coefficients(fourier_density_grid)
@@ -468,34 +302,57 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
     @overload
     @classmethod
     def from_density_grid(
-        cls: Type["RealVoxelGrid"],
+        cls: Type[Self],
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: CoordinateGrid,
         *,
         crop_scale: None,
-    ) -> "RealVoxelGrid": ...
+    ) -> Self: ...
 
     @overload
     @classmethod
     def from_density_grid(
-        cls: Type["RealVoxelGrid"],
+        cls: Type[Self],
         density_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: None,
         *,
         crop_scale: Optional[float],
-    ) -> "RealVoxelGrid": ...
+    ) -> Self: ...
 
     @classmethod
     def from_density_grid(
-        cls: Type["RealVoxelGrid"],
+        cls: Type[Self],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[CoordinateGrid] = None,
         *,
         crop_scale: Optional[float] = None,
-    ) -> "RealVoxelGrid":
+    ) -> Self:
+        """Load an `RealVoxelGrid` from real-valued 3D electron
+        density map.
+
+        !!! warning
+            `density_grid` is transposed upon instantiation in order to make
+            the results of `cryojax.simulator.NufftProject` agree with
+            `cryojax.simulator.FourierSliceExtract`.
+
+            ```python
+            density_grid = ...
+            voxels = RealVoxelGrid.from_density_grid(density_grid, ...)
+            assert density_grid == jnp.transpose(voxels.density_grid, axes=[1, 0, 2])
+            ```
+
+        **Arguments:**
+
+        `density_grid`: An electron density voxel grid in real space.
+
+        `voxel_size`: The voxel size of `density_grid`.
+
+        `crop_scale`: Scale factor at which to crop `density_grid`.
+                      Must be a value less than `1.0`.
+        """
         # A nasty hack to make NufftProject agree with FourierSliceExtract
         density_grid = jnp.transpose(density_grid, axes=[1, 0, 2])
         # Make coordinates if not given
@@ -514,16 +371,20 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
     @classmethod
     def from_atoms(
-        cls: Type["RealVoxelGrid"],
+        cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
         voxel_size: Real_ | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
-        *,
-        crop_scale: Optional[float] = None,
-    ) -> "RealVoxelGrid":
-        """Load a RealVoxelGrid object from atom positions and identities."""
+        **kwargs: Any,
+    ) -> Self:
+        """Load a `RealVoxelGrid` from atom positions and identities.
+
+        **Arguments:**
+
+        - `**kwargs`: Passed to `RealVoxelGrid.from_density_grid`
+        """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
         density = build_real_space_voxels_from_atoms(
@@ -534,12 +395,20 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
             density,
             voxel_size,
             coordinate_grid_in_angstroms / voxel_size,
-            crop_scale=crop_scale,
+            **kwargs,
         )
 
 
 class RealVoxelCloud(AbstractVoxels, strict=True):
-    """Abstraction of a 3D electron density voxel point cloud."""
+    """Abstraction of a 3D electron density voxel point cloud.
+
+    !!! info
+        This object is similar to the `RealVoxelGrid`. Instead
+        of storing the whole voxel grid, a `RealVoxelCloud` need
+        only store points of non-zero electron density. Therefore,
+        a `RealVoxelCloud` stores a point cloud of electron density
+        voxel values.
+    """
 
     density_weights: RealCloud = field(converter=jnp.asarray)
     """A point-cloud of voxel density values."""
@@ -578,14 +447,35 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
 
     @classmethod
     def from_density_grid(
-        cls: Type["RealVoxelCloud"],
+        cls: Type[Self],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[CoordinateGrid] = None,
         *,
         rtol: float = 1e-05,
         atol: float = 1e-08,
-    ) -> "RealVoxelCloud":
+    ) -> Self:
+        """Load an `RealVoxelCloud` from real-valued 3D electron
+        density map.
+
+        !!! warning
+            `density_grid` is transposed upon instantiation in order to make
+            the results of [`cryojax.simulator.NufftProject`][] agree with
+            [`cryojax.simulator.FourierSliceExtract`][].
+            See [`cryojax.simulator.RealVoxelGrid`][] for more detail.
+
+        **Arguments:**
+
+        `density_grid`: An electron density voxel grid in real space.
+
+        `voxel_size`: The voxel size of `density_grid`.
+
+        `rtol`: Argument passed to `jnp.isclose`, used for removing
+                points of zero electron density.
+
+        `atol`: Argument passed to `jnp.isclose`, used for removing
+                points of zero electron density.
+        """
         # A nasty hack to make NufftProject agree with FourierSliceExtract
         density_grid = jnp.transpose(density_grid, axes=[1, 0, 2])
         # Make coordinates if not given
@@ -601,16 +491,20 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
 
     @classmethod
     def from_atoms(
-        cls: Type["RealVoxelCloud"],
+        cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
         voxel_size: Real_ | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
-        *,
-        rtol: float = 1e-05,
-        atol: float = 1e-08,
-    ) -> "RealVoxelCloud":
+        **kwargs: Any,
+    ) -> Self:
+        """Load a `RealVoxelCloud` from atom positions and identities.
+
+        **Arguments:**
+
+        - `**kwargs`: Passed to `RealVoxelCloud.from_density_grid`
+        """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
         density = build_real_space_voxels_from_atoms(
@@ -621,75 +515,68 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
             density,
             voxel_size,
             coordinate_grid_in_angstroms / voxel_size,
-            rtol=rtol,
-            atol=atol,
+            **kwargs,
         )
 
 
-def _eval_3d_real_space_gaussian(
-    coordinate_system: Float[Array, "N1 N2 N3 3"],
+def evaluate_3d_real_space_gaussian(
+    coordinate_grid_in_angstroms: Float[Array, "N1 N2 N3 3"],
     atom_position: Float[Array, "3"],
     a: float,
     b: float,
 ) -> Float[Array, "N1 N2 N3"]:
-    """
-    Evaluate a gaussian on a 3D grid.
-    The naming convention for parameters follows ``Robust
+    """Evaluate a gaussian on a 3D grid.
+    The naming convention for parameters follows "Robust
     Parameterization of Elastic and Absorptive Electron Atomic Scattering
-    Factors'' by Peng et al.
+    Factors" by Peng et al.
 
-    Parameters
-    ----------
-    coordinate_system : `Array`, shape `(N1, N2, N3, 3)`
-        The coordinate_system of the grid.
-    pos : `Array`, shape `(3,)`
-        The center of the gaussian.
-    a : `float`
-        A scale factor.
-    b : `float`
-        The scale of the gaussian.
+    **Arguments:**
 
-    Returns
-    -------
-    density : `Array`, shape `(N1, N2, N3)`
-        The density of the gaussian on the grid.
+    `coordinate_grid`: The coordinate system of the grid.
+
+    `pos`: The center of the gaussian.
+
+    `a`: A scale factor.
+
+    `b`: The scale of the gaussian.
+
+    **Returns:**
+
+    `density`: The density of the gaussian on the grid.
     """
     b_inverse = 4.0 * jnp.pi / b
     sq_distances = jnp.sum(
-        b_inverse * (coordinate_system - atom_position) ** 2, axis=-1
+        b_inverse * (coordinate_grid_in_angstroms - atom_position) ** 2, axis=-1
     )
     density = jnp.exp(-jnp.pi * sq_distances) * a * b_inverse ** (3.0 / 2.0)
     return density
 
 
-def _eval_3d_atom_potential(
-    coordinate_system: Float[Array, "N1 N2 N3 3"],
+def evaluate_3d_atom_potential(
+    coordinate_grid_in_angstroms: Float[Array, "N1 N2 N3 3"],
     atom_position: Float[Array, "3"],
     atomic_as: Float[Array, "5"],
     atomic_bs: Float[Array, "5"],
 ) -> Float[Array, "N1 N2 N3"]:
-    """
-    Evaluates the electron potential of a single atom on a 3D grid.
+    """Evaluates the electron potential of a single atom on a 3D grid.
 
-    Parameters
-    ----------
-    coordinate_system : `Array`, shape `(N1, N2, N3, 3)`
-        The coordinate_system of the grid.
-    atom_position : `Array`, shape `(3,)`
-        The location of the atom.
-    atomic_as : `Array`, shape `(5,)`
-        The intensity values for each gaussian in the atom.
-    atomic_bs : `Array`, shape `(5,)`
-        The inverse scale factors for each gaussian in the atom.
+    **Arguments:**
 
-    Returns
-    -------
-    potential : `Array`, shape `(N1, N2, N3)`
-        The potential of the atom evaluate on the grid.
+    `coordinate_grid_in_angstroms`: The coordinate system of the grid.
+
+    `atom_position`: The location of the atom.
+
+    `atomic_as`: The intensity values for each gaussian in the atom.
+
+    `atomic_bs`: The inverse scale factors for each gaussian in the atom.
+
+    **Returns:**
+
+    `potential`: The potential of the atom evaluate on the grid.
     """
-    eval_fxn = jax.vmap(_eval_3d_real_space_gaussian, in_axes=(None, None, 0, 0))
+    eval_fxn = jax.vmap(evaluate_3d_real_space_gaussian, in_axes=(None, None, 0, 0))
     return jnp.sum(
-        eval_fxn(coordinate_system, atom_position, atomic_as, atomic_bs),
+        eval_fxn(coordinate_grid_in_angstroms, atom_position, atomic_as, atomic_bs),
         axis=0,
     )
 
@@ -699,34 +586,30 @@ def build_real_space_voxels_from_atoms(
     atom_positions: Float[Array, "N 3"],
     ff_a: Float[Array, "N 5"],
     ff_b: Float[Array, "N 5"],
-    coordinate_system: Float[Array, "N1 N2 N3 3"],
-) -> Tuple[RealCubicVolume, VolumeSliceCoords]:
+    coordinate_grid_in_angstroms: Float[Array, "N1 N2 N3 3"],
+) -> tuple[RealCubicVolume, VolumeSliceCoords]:
     """
     Build a voxel representation of an atomic model.
 
-    Parameters
-    ----------
-    atom_coords : `Array`, shape `(N, 3)`
-        The coordinates of the atoms.
-    ff_a : `Array`, shape `(N, 5)` or `(N, 5, 3)`
-        Intensity values for each Gaussian in the atom
-    ff_b : `Array`, shape `(N, 5)` or `(N, 5, 3)`
-        The inverse scale factors for each Gaussian in the atom
-    coordinate_system : `Array`, shape `(N1, N2, N3, 3)`
-        The coordinates of each voxel in the grid.
+    **Arguments**
 
-    Returns
-    -------
-    density :  `Array`, shape `(N1, N2, N3)`
-        The voxel representation of the atomic model.
-    z_plane_coordinates : `Array`, shape `(N1, N2, 3)`
-        The coordinates of each voxel in the z=0 plane.
+    `atom_coords`: The coordinates of the atoms.
+
+    `ff_a`: Intensity values for each Gaussian in the atom
+
+    `ff_b` : The inverse scale factors for each Gaussian in the atom
+
+    `coordinate_grid` : The coordinates of each voxel in the grid.
+
+    **Returns:**
+
+    `density`: The voxel representation of the atomic model.
     """
-    density = jnp.zeros(coordinate_system.shape[:-1])
+    density = jnp.zeros(coordinate_grid_in_angstroms.shape[:-1])
 
     def add_gaussian_to_density(i, density):
-        density += _eval_3d_atom_potential(
-            coordinate_system, atom_positions[i], ff_a[i], ff_b[i]
+        density += evaluate_3d_atom_potential(
+            coordinate_grid_in_angstroms, atom_positions[i], ff_a[i], ff_b[i]
         )
         return density
 

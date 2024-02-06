@@ -1,3 +1,4 @@
+import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -111,7 +112,10 @@ class TestBuildVoxelsFromTrajectories:
         # Build the trajectory $density
         elements = np.array([1, 1, 2, 6])
 
-        traj_voxels = RealVoxelGrid.from_trajectory(
+        make_voxel_grid_ensemble = jax.vmap(
+            RealVoxelGrid.from_atoms, in_axes=[0, None, None, None]
+        )
+        traj_voxels = make_voxel_grid_ensemble(
             traj, elements, voxel_size, coordinate_grid
         )
 
