@@ -58,8 +58,8 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
     is_real: AbstractClassVar[bool]
     """Whether or not the representation is real or fourier-space."""
 
-    @abstractmethod
     @property
+    @abstractmethod
     def shape(self) -> tuple[int, ...]:
         """The shape of electron density voxel array."""
         raise NotImplementedError
