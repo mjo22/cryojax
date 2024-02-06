@@ -3,7 +3,7 @@ The image configuration and utility manager.
 """
 
 from functools import cached_property
-from typing import Any, Union, Callable, Optional
+from typing import Any, Union, Callable, Optional, overload
 
 from equinox import Module, field
 
@@ -65,12 +65,36 @@ class ImageManager(Module, strict=True):
     coordinate_grid: CoordinateGrid
     padded_coordinate_grid: CoordinateGrid
 
+    @overload
     def __init__(
         self,
         shape: tuple[int, int],
         pixel_size: Real_,
-        pad_scale: float | tuple[float, float] = 1.0,
+        padded_shape: tuple[int, int],
         *,
+        pad_mode: Union[str, Callable] = "constant",
+        rescale_method: str = "bicubic",
+    ): ...
+
+    @overload
+    def __init__(
+        self,
+        shape: tuple[int, int],
+        pixel_size: Real_,
+        padded_shape: None = None,
+        *,
+        pad_scale: float = 1.0,
+        pad_mode: Union[str, Callable] = "constant",
+        rescale_method: str = "bicubic",
+    ): ...
+
+    def __init__(
+        self,
+        shape: tuple[int, int],
+        pixel_size: Real_,
+        padded_shape: Optional[tuple[int, int]] = None,
+        *,
+        pad_scale: float = 1.0,
         pad_mode: Union[str, Callable] = "constant",
         rescale_method: str = "bicubic",
     ):
@@ -79,12 +103,10 @@ class ImageManager(Module, strict=True):
         self.pad_mode = pad_mode
         self.rescale_method = rescale_method
         # Set shape after padding
-        scale_x, scale_y = (
-            pad_scale
-            if isinstance(pad_scale, (tuple, list))
-            else (pad_scale, pad_scale)
-        )
-        self.padded_shape = (int(scale_x * shape[0]), int(scale_y * shape[1]))
+        if padded_shape is None:
+            self.padded_shape = (int(pad_scale * shape[0]), int(pad_scale * shape[1]))
+        else:
+            self.padded_shape = padded_shape
         # Set coordinates
         self.frequency_grid = FrequencyGrid(shape=self.shape)
         self.padded_frequency_grid = FrequencyGrid(shape=self.padded_shape)
