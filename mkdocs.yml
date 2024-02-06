@@ -48,7 +48,7 @@ plugins:
               signature_crossrefs: true
               show_source: false
               members_order: source
-              heading_level: 2
+              heading_level: 4
         
 nav:
     - 'index.md'

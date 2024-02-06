@@ -75,27 +75,28 @@ html {
 }
 
 .md-typeset h1 {
-    font-size: 1.3rem;
+    font-size: 1.6rem;
 }
 
 .md-typeset h2 {
-    font-size: 1.1rem;
+    font-size: 1.5rem;
 }
 
 .md-typeset h3 {
-    font-size: 0.9rem;
+    font-size: 1.3rem;
 }
 
 .md-typeset h4 {
-    font-size: 0.8rem;
+    font-size: 1.1rem;
 }
 
 .md-typeset h5 {
-    font-size: 0.7rem;
+    font-size: 0.9rem;
+    text-transform: none;
 }
 
 .md-typeset h6 {
-    font-size: 0.6rem;
+    font-size: 0.8rem;
 }
 
 /* Bugfix: remove the superfluous parts generated when doing:
