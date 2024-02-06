@@ -1,0 +1,57 @@
+theme:
+    name: material
+    features:
+        - navigation.sections  # Sections are included in the navigation on the left.
+        - toc.integrate  # Table of contents is integrated on the left; does not appear separately on the right.
+
+site_name: cryojax
+site_description: The documentation for cryojax.
+site_author: Michael O'Brien
+site_url: https://cryojax.github.io
+
+repo_url: https://github.com/mjo22/cryojax
+repo_name: mjo22/cryojax
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+    - _static/custom_css.css
+
+markdown_extensions:
+    - pymdownx.arithmatex:
+        generic: true
+    - pymdownx.superfences  # Seems to enable syntax highlighting when used with the Material theme.
+    - pymdownx.details  # Allowing hidden expandable regions denoted by ???
+    - admonition
+    - toc:
+        permalink: "¤"  # Adds a clickable permalink to each section heading
+        toc_depth: 4
+
+plugins:
+    - autorefs  # Cross-links to headings
+    - mknotebooks  # Jupyter notebooks
+    - mkdocstrings:
+        handlers:
+          python:
+            paths: [src]  # search packages in the src folder
+            options:
+              annotations_path: full
+              group_by_category: false
+              inherited_members: true
+              show_root_heading: true
+              show_root_full_path: true
+              show_if_no_docstring: true
+              show_signature_annotations: true
+              signature_crossrefs: true
+              show_source: false
+              members_order: source
+              heading_level: 4
+        
+nav:
+    - 'index.md'
+    - Simulator API:
+        - Electron Density:
+            - 'api/simulator/electron_density.md'

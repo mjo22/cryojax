@@ -9,7 +9,6 @@ from typing import (
     Tuple,
     Type,
     ClassVar,
-    TypeVar,
     Optional,
     overload,
 )
@@ -50,67 +49,57 @@ from ...typing import (
     Real_,
 )
 
-VoxelT = TypeVar("VoxelT", bound="AbstractVoxels")
-"""TypeVar for a voxel-based electron density."""
-
 
 class AbstractVoxels(AbstractElectronDensity, strict=True):
-    """
-    Voxel-based electron density representation.
-
-    Attributes
-    ----------
-    voxel_size :
-        The voxel size of the electron density.
-    is_real :
-        Whether or not the representation is
-        real or fourier space.
-    """
+    """Abstract interface for a voxel-based electron density representation."""
 
     voxel_size: AbstractVar[Real_]
-
+    """The voxel size of the electron density."""
     is_real: AbstractClassVar[bool]
+    """Whether or not the representation is real or fourier-space."""
+
+    @property
+    @abstractmethod
+    def shape(self) -> tuple[int, ...]:
+        """The shape of electron density voxel array."""
+        raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def from_density_grid(
-        cls: Type[VoxelT],
+        cls: Type["AbstractVoxels"],
         density_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> VoxelT:
-        """
-        Load a AbstractVoxels object from real-valued 3D electron
-        density map.
-        """
+    ) -> "AbstractVoxels":
+        """Load a AbstractVoxels object from real-valued 3D electron
+        density map."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def from_atoms(
-        cls: Type[VoxelT],
+        cls: Type["AbstractVoxels"],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
         voxel_size: Real_ | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
-    ) -> VoxelT:
-        """
-        Load a AbstractVoxels object from atom positions and identities.
-        """
+    ) -> "AbstractVoxels":
+        """Load a AbstractVoxels object from atom positions and identities."""
         raise NotImplementedError
 
     @classmethod
     def from_trajectory(
-        cls: Type[VoxelT],
+        cls: Type["AbstractVoxels"],
         trajectory: Float[Array, "M N 3"],
         atom_identities: Int[Array, "N"],
         voxel_size: float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
-    ) -> VoxelT:
+    ) -> "AbstractVoxels":
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
         build_real_space_voxels_from_atomic_trajectory = jax.vmap(
@@ -137,14 +126,13 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
 
     @classmethod
     def from_gemmi(
-        cls: Type[VoxelT],
+        cls: Type["AbstractVoxels"],
         model,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> VoxelT:
-        """
-        Loads a PDB file as a AbstractVoxels subclass.  Uses the Gemmi library.
+    ) -> "AbstractVoxels":
+        """Loads a PDB file as a AbstractVoxels subclass.  Uses the Gemmi library.
         Heavily based on a code from Frederic Poitevin, located at
 
         https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
@@ -163,11 +151,11 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
 
     @classmethod
     def from_file(
-        cls: Type[VoxelT],
+        cls: Type["AbstractVoxels"],
         filename: str,
         *args: Any,
         **kwargs: Any,
-    ) -> VoxelT:
+    ) -> "AbstractVoxels":
         """Load a voxel-based electron density."""
         path = pathlib.Path(filename)
         if path.suffix == ".mrc":
@@ -181,22 +169,22 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
 
     @classmethod
     def from_mrc(
-        cls: Type[VoxelT],
+        cls: Type["AbstractVoxels"],
         filename: str,
         **kwargs: Any,
-    ) -> VoxelT:
+    ) -> "AbstractVoxels":
         """Load AbstractVoxels from MRC file format."""
         density_grid, voxel_size = read_image_or_volume_with_spacing_from_mrc(filename)
         return cls.from_density_grid(jnp.asarray(density_grid), voxel_size, **kwargs)
 
     @classmethod
     def from_pdb(
-        cls: Type[VoxelT],
+        cls: Type["AbstractVoxels"],
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> VoxelT:
+    ) -> "AbstractVoxels":
         """Load AbstractVoxels from PDB file format."""
         atom_positions, atom_elements = read_atoms_from_pdb(filename)
         coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
@@ -211,12 +199,12 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
 
     @classmethod
     def from_cif(
-        cls: Type[VoxelT],
+        cls: Type["AbstractVoxels"],
         filename: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
-    ) -> VoxelT:
+    ) -> "AbstractVoxels":
         """Load AbstractVoxels from CIF file format."""
         atom_positions, atom_elements = read_atoms_from_cif(filename)
         coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
@@ -231,13 +219,13 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
 
     @classmethod
     def from_mdtraj(
-        cls: Type[VoxelT],
+        cls: Type["AbstractVoxels"],
         trajectory_path: str,
         n_voxels_per_side: Tuple[int, int, int],
         voxel_size: Real_ | float = 1.0,
         topology_file: Optional[str] = None,
         **kwargs: Any,
-    ) -> VoxelT:
+    ) -> "AbstractVoxels":
         """
         Load AbstractVoxels from MDTraj trajectory.
 
@@ -254,7 +242,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
 
         Returns
         -------
-        VoxelT
+        AbstractVoxels
             A subclass of Voxels.
 
         Notes
@@ -277,9 +265,8 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
 
 
 class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
-    """
-    Abstract interface of a 3D electron density voxel grid
-    in fourier space.
+    """Abstract interface of a 3D electron density voxel grid
+    in fourier-space.
     """
 
     frequency_slice: AbstractVar[FrequencySlice]
@@ -295,15 +282,10 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
 
     @cached_property
     def frequency_slice_in_angstroms(self) -> FrequencySlice:
+        """The `frequency_slice` in angstroms."""
         return self.frequency_slice / self.voxel_size
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
-        """
-        Compute rotations of a central slice in fourier space
-        by an imaging pose.
-
-        This rotation is the inverse rotation as in real space.
-        """
         return eqx.tree_at(
             lambda d: d.frequency_slice.array,
             self,
@@ -359,9 +341,6 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         pad_mode: str = "constant",
         filter: Optional[AbstractFilter] = None,
     ) -> "AbstractFourierVoxelGrid":
-        """
-        Load a AbstractFourierVoxelGrid object from atom positions and identities.
-        """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
         density = build_real_space_voxels_from_atoms(
@@ -378,26 +357,14 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
 
 
 class FourierVoxelGrid(AbstractFourierVoxelGrid):
-    """
-    Abstraction of a 3D electron density voxel grid
-    in fourier space.
-
-    Please note that fourier voxel grids, as well as their frequency
-    slice coordinate systems, are loaded with the zero
-    frequency component in the center.
-
-    Attributes
-    ----------
-    fourier_density_grid :
-        3D electron density grid in fourier space.
-    frequency_slice :
-        Central slice of cartesian coordinate system
-        in fourier space.
-    """
+    """A 3D electron density voxel grid in fourier-space."""
 
     fourier_density_grid: ComplexCubicVolume = field(converter=jnp.asarray)
+    """The voxel grid in fourier space."""
     frequency_slice: FrequencySlice
+    """Frequency slice coordinate system."""
     voxel_size: Real_ = field(converter=jnp.asarray)
+    """The voxel size."""
 
     is_real: ClassVar[bool] = False
 
@@ -418,27 +385,16 @@ class FourierVoxelGrid(AbstractFourierVoxelGrid):
 
 
 class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
-    """
-    Abstraction of a 3D electron density voxel grid
-    in fourier space.
-
-    Please note that fourier voxel grids, as well as their frequency
-    slice coordinate systems, are loaded with the zero
-    frequency component in the center.
-
-    Attributes
-    ----------
-    coefficients :
-        Spline coefficients of 3D electron density grid
-        in fourier space.
-    frequency_slice :
-        Central slice of cartesian coordinate system
-        in fourier space.
+    """A 3D electron density voxel grid in fourier-space, represented
+    by spline coefficients.
     """
 
     coefficients: ComplexCubicVolume = field(converter=jnp.asarray)
+    """Cubic spline coefficients for the voxel grid."""
     frequency_slice: FrequencySlice
+    """Frequency slice coordinate system."""
     voxel_size: Real_ = field(converter=jnp.asarray)
+    """The voxel size."""
 
     is_real: ClassVar[bool] = False
 
@@ -448,6 +404,18 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
+        """
+        !!! note
+            The argument `fourier_density_grid` is used to set
+            `FourierVoxelGridInterpolator.coefficients` in the `__init__`.
+            For example,
+
+            ```python
+            density = FourierVoxelGridInterpolator(fourier_density_grid, frequency_slice, voxel_size)
+            assert not hasattr(density, "fourier_density_grid")  # This does not store the `fourier_voxel_grid`
+            assert hasattr(density, "coefficients")  # Instead it computes `coefficients` upon `__init__`
+            ```
+        """
         self.coefficients = compute_spline_coefficients(fourier_density_grid)
         self.frequency_slice = frequency_slice
         self.voxel_size = voxel_size
@@ -458,21 +426,16 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
 
 
 class RealVoxelGrid(AbstractVoxels, strict=True):
-    """
-    Abstraction of a 3D electron density voxel grid.
-    The voxel grid is given in real space.
-
-    Attributes
-    ----------
-    density_grid :
-        3D electron density voxel grid in real-space.
-    coordinate_grid :
-        Coordinates for the density grid.
+    """Abstraction of a 3D electron density voxel grid.
+    The voxel grid is given in real-space.
     """
 
     density_grid: RealCubicVolume = field(converter=jnp.asarray)
+    """A cubic voxel grid in real-space."""
     coordinate_grid: CoordinateGrid
+    """A coordinate grid."""
     voxel_size: Real_ = field(converter=jnp.asarray)
+    """The voxel size."""
 
     is_real: ClassVar[bool] = True
 
@@ -492,15 +455,10 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
     @cached_property
     def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
+        """The `coordinate_grid` in angstroms."""
         return self.voxel_size * self.coordinate_grid
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
-        """
-        Compute rotations of a point cloud by an imaging pose.
-
-        This transformation will return a new density cloud
-        with rotated coordinates.
-        """
         return eqx.tree_at(
             lambda d: d.coordinate_grid.array,
             self,
@@ -565,9 +523,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         *,
         crop_scale: Optional[float] = None,
     ) -> "RealVoxelGrid":
-        """
-        Load a RealVoxelGrid object from atom positions and identities.
-        """
+        """Load a RealVoxelGrid object from atom positions and identities."""
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
         density = build_real_space_voxels_from_atoms(
@@ -583,23 +539,14 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
 
 class RealVoxelCloud(AbstractVoxels, strict=True):
-    """
-    Abstraction of a 3D electron density voxel point cloud.
-
-    The point cloud is given in real space.
-
-    Attributes
-    ----------
-    density_weights :
-        Flattened 3D electron density voxel grid into a
-        point cloud.
-    coordinate_list :
-        List of coordinates for the point cloud.
-    """
+    """Abstraction of a 3D electron density voxel point cloud."""
 
     density_weights: RealCloud = field(converter=jnp.asarray)
+    """A point-cloud of voxel density values."""
     coordinate_list: CoordinateList
+    """Coordinate list for the `density_weights`."""
     voxel_size: Real_ = field(converter=jnp.asarray)
+    """The voxel size."""
 
     is_real: ClassVar[bool] = True
 
@@ -619,15 +566,10 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
 
     @cached_property
     def coordinate_list_in_angstroms(self) -> CoordinateList:
+        """The `coordinate_list` in angstroms."""
         return self.voxel_size * self.coordinate_list
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
-        """
-        Compute rotations of a point cloud by an imaging pose.
-
-        This transformation will return a new density cloud
-        with rotated coordinates.
-        """
         return eqx.tree_at(
             lambda d: d.coordinate_list.array,
             self,
@@ -669,9 +611,6 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         rtol: float = 1e-05,
         atol: float = 1e-08,
     ) -> "RealVoxelCloud":
-        """
-        Load a RealVoxelCloud object from atom positions and identities.
-        """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
         density = build_real_space_voxels_from_atoms(
