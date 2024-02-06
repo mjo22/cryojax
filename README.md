@@ -96,23 +96,24 @@ This computes an image using the noise model of the detector. One can also compu
 image = pipeline.render()
 ```
 
-Alternatively to simulating from the physical model of a detector, `cryojax` also defines a library of distributions, which take an `ImagePipeline` as input. For example, instantiate an `IndependentFourierGaussian` distribution to call its log likelihood function.
+Instead of simulating noise from the model of the detector, `cryojax` also defines a library of distributions. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood
 
 ```python
 from cryojax.image import rfftn
 from cryojax.inference import distributions as dist
 from cryojax.image import operators as op
 
-# Read observed data in real space
-observed = ...
-# Normalize to mean zero and standard deviation 1
-observed = manager.normalize_image(observed, is_real=True)
-# Instantiate distribution and compute
+# Passing the ImagePipeline and a variance function, instantiate the distribution
 model = dist.IndependentFourierGaussian(pipeline, variance=op.Constant(1.0))
-log_likelihood = model.log_probability(rfftn(observed))
+# ... then, either simulate an image from this distribution
+key = jax.random.PRNGKey(seed=0)
+image = model.sample(key)
+# ... or compute the likelihood
+observed = rfftn(...)  # for this example, read in observed data and take FFT
+log_likelihood = model.log_probability(observed)
 ```
 
-For more advanced image simulation examples and for the many additional features in this library, see the documentation (coming soon!).
+For more advanced image simulation examples and to understand the many features in this library, see the documentation (coming soon!).
 
 ## Creating a loss function
 
