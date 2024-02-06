@@ -2,9 +2,8 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from cryojax.simulator import FourierVoxelGrid, RealVoxelGrid
-from cryojax.simulator._density._voxel_density import (
-    _build_real_space_voxels_from_atoms,
-)
+from cryojax.simulator import build_real_space_voxels_from_atoms
+
 from cryojax.image import ifftn
 from cryojax.coordinates import CoordinateGrid
 from jax import config
@@ -64,7 +63,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
 
         # Build the density
-        density = _build_real_space_voxels_from_atoms(
+        density = build_real_space_voxels_from_atoms(
             atom_positions, ff_a, ff_b, coordinate_grid.get()
         )
 
@@ -89,7 +88,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
 
         # Build the density
-        density = _build_real_space_voxels_from_atoms(
+        density = build_real_space_voxels_from_atoms(
             atom_positions, ff_a, ff_b, coordinate_grid.get()
         )
 
