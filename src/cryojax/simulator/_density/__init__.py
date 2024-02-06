@@ -8,4 +8,5 @@ from ._voxel_density import (
     FourierVoxelGridInterpolator as FourierVoxelGridInterpolator,
     RealVoxelGrid as RealVoxelGrid,
     RealVoxelCloud as RealVoxelCloud,
+    build_real_space_voxels_from_atoms as build_real_space_voxels_from_atoms,
 )

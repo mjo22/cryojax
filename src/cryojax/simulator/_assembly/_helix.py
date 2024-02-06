@@ -99,9 +99,9 @@ class Helix(AbstractAssembly, strict=True):
         return compute_helical_lattice_positions(
             self.rise,
             self.twist,
-            self.subunit.pose.offset,
-            n_start=self.n_start,
             n_subunits_per_start=self.n_subunits // self.n_start,
+            initial_displacement=self.subunit.pose.offset,
+            n_start=self.n_start,
             degrees=self.degrees,
         )
 
@@ -113,9 +113,9 @@ class Helix(AbstractAssembly, strict=True):
         """
         return compute_helical_lattice_rotations(
             self.twist,
-            self.subunit.pose.rotation.as_matrix(),
-            n_start=self.n_start,
             n_subunits_per_start=self.n_subunits // self.n_start,
+            initial_rotation=self.subunit.pose.rotation.as_matrix(),
+            n_start=self.n_start,
             degrees=self.degrees,
         )
 
@@ -123,9 +123,9 @@ class Helix(AbstractAssembly, strict=True):
 def compute_helical_lattice_positions(
     rise: Real_,
     twist: Real_,
+    n_subunits_per_start: int,
     initial_displacement: Float[Array, "3"],
     n_start: int = 1,
-    n_subunits_per_start: Optional[int] = None,
     *,
     degrees: bool = True,
 ) -> Float[Array, "n_start*n_subunits_per_start 3"]:
@@ -139,6 +139,9 @@ def compute_helical_lattice_positions(
         The helical rise.
     twist : `Real_` or `RealVector`, shape `(n_subunits,)`
         The helical twist.
+    n_subunits_per_start :
+        The number of subunits in the assembly for
+        a single sub-helix.
     initial_displacement : `Array`, shape `(3,)`
         The initial position vector of the first subunit, in
         the center of mass frame of the helix.
@@ -147,11 +150,6 @@ def compute_helical_lattice_positions(
         first subunit's position.
     n_start :
         The start number of the helix.
-    n_subunits_per_start :
-        The number of subunits in the assembly for
-        a single helix. The total number of subunits
-        is really equal to ``n_start * n_subunits``.
-        By default, ``2 * jnp.pi / abs(twist)``.
     degrees :
         Whether or not the angular parameters
         are given in degrees or radians.
@@ -164,9 +162,6 @@ def compute_helical_lattice_positions(
     # Convert to radians
     if degrees:
         twist = jnp.deg2rad(twist)
-    # If the number of subunits is not given, compute for one helical turn
-    if n_subunits_per_start is None:
-        n_subunits_per_start = int(2 * jnp.pi / jnp.abs(twist))
 
     # Coordinate transformation to get subunit positions in a single sub-helix
     def compute_ith_subunit_position_in_subhelix(i, theta, dz, r_0, N):
@@ -224,9 +219,9 @@ def compute_helical_lattice_positions(
 
 def compute_helical_lattice_rotations(
     twist: Real_,
+    n_subunits_per_start: int,
     initial_rotation: Float[Array, "3 3"] = jnp.eye(3),
     n_start: int = 1,
-    n_subunits_per_start: Optional[int] = None,
     *,
     degrees: bool = True,
 ) -> Float[Array, "n_start*n_subunits_per_start 3"]:
@@ -239,16 +234,14 @@ def compute_helical_lattice_rotations(
     ---------
     twist : `Real_`
         The helical twist.
+    n_subunits_per_start :
+        The number of subunits in the assembly for
+        a single sub-helix.
     initial_rotation : `Array`, shape `(3, 3)`
         The initial rotation of the first subunit. By default,
         the identity matrix.
     n_start :
         The start number of the helix.
-    n_subunits_per_start :
-        The number of subunits in the assembly for
-        a single helix. The total number of subunits
-        is really equal to ``n_start * n_subunits``.
-        By default, ``2 * jnp.pi / abs(twist)``.
     degrees :
         Whether or not the angular parameters
         are given in degrees or radians.
@@ -262,9 +255,6 @@ def compute_helical_lattice_rotations(
     # Convert to radians
     if degrees:
         twist = jnp.deg2rad(twist)
-    # If the number of subunits is not given, compute for one helical turn
-    if n_subunits_per_start is None:
-        n_subunits_per_start = int(2 * jnp.pi / jnp.abs(twist))
 
     # Coordinate transformation to get subunit rotations in a single sub-helix
     def compute_ith_subunit_rotation_in_subhelix(i, theta, R_0):

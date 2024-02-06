@@ -16,7 +16,7 @@ from typing import (
 from typing_extensions import Self, override
 from jaxtyping import Float, Array, Int
 from functools import cached_property
-from equinox import field, AbstractVar
+from equinox import field, AbstractVar, AbstractClassVar
 
 import equinox as eqx
 import jax
@@ -62,9 +62,14 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
     ----------
     voxel_size :
         The voxel size of the electron density.
+    is_real :
+        Whether or not the representation is
+        real or fourier space.
     """
 
     voxel_size: AbstractVar[Real_]
+
+    is_real: AbstractClassVar[bool]
 
     @classmethod
     @abstractmethod
@@ -299,8 +304,6 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         fourier_density_grid: ComplexCubicVolume,
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
-        *,
-        filter: Optional[AbstractFilter] = None,
     ):
         raise NotImplementedError
 
@@ -336,29 +339,29 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
             raise ValueError("pad_scale must be greater than 1.0")
         # ... always pad to even size to avoid interpolation issues in
         # fourier slice extraction.
-        padded_shape = tuple(
-            [int(s * pad_scale) for s in density_grid.shape[-3:]]
-        )
+        padded_shape = tuple([int(s * pad_scale) for s in density_grid.shape])
         padded_density_grid = pad_to_shape(
             density_grid, padded_shape, mode=pad_mode
         )
         # Load density and coordinates. For now, do not store the
         # fourier density only on the half space. Fourier slice extraction
-        # does not currently work if rfftn is us
+        # does not currently work if rfftn is used.
+        fourier_density_grid_with_zero_in_corner = (
+            fftn(padded_density_grid)
+            if filter is None
+            else filter(fftn(padded_density_grid))
+        )
         # ... store the density grid with the zero frequency component in the center
         fourier_density_grid = jnp.fft.fftshift(
-            fftn(padded_density_grid, axes=(-3, -2, -1))
+            fourier_density_grid_with_zero_in_corner
         )
         # ... create in-plane frequency slice on the half space
         frequency_slice = FrequencySlice(
-            padded_density_grid.shape[-3:-1], half_space=False
+            padded_density_grid.shape[:-1], half_space=False
         )
 
         return cls(
-            fourier_density_grid,
-            frequency_slice,
-            jnp.asarray(voxel_size),
-            filter=filter,
+            fourier_density_grid, frequency_slice, jnp.asarray(voxel_size)
         )
 
     @classmethod
@@ -422,14 +425,8 @@ class FourierVoxelGrid(AbstractFourierVoxelGrid):
         fourier_density_grid: ComplexCubicVolume,
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
-        *,
-        filter: Optional[AbstractFilter] = None,
     ):
-        self.fourier_density_grid = (
-            fourier_density_grid
-            if filter is None
-            else filter(fourier_density_grid)
-        )
+        self.fourier_density_grid = fourier_density_grid
         self.frequency_slice = frequency_slice
         self.voxel_size = voxel_size
 
@@ -468,14 +465,7 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
         fourier_density_grid: ComplexCubicVolume,
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
-        *,
-        filter: Optional[AbstractFilter] = None,
     ):
-        fourier_density_grid = (
-            fourier_density_grid
-            if filter is None
-            else filter(fourier_density_grid)
-        )
         self.coefficients = compute_spline_coefficients(fourier_density_grid)
         self.frequency_slice = frequency_slice
         self.voxel_size = voxel_size
@@ -788,7 +778,7 @@ def _eval_3d_atom_potential(
 
 
 @jax.jit
-def _build_real_space_voxels_from_atoms(
+def build_real_space_voxels_from_atoms(
     atom_positions: Float[Array, "N 3"],
     ff_a: Float[Array, "N 5"],
     ff_b: Float[Array, "N 5"],

@@ -32,14 +32,15 @@ class ImageManager(Module, strict=True):
         is the size of the desired imaging plane.
     pixel_size :
         The pixel size of the image in Angstroms.
-    pad_scale :
-        The scale at which to pad (or upsample) the image
-        when computing it in the object plane. This
-        should be a floating point number greater than
-        or equal to 1. By default, it is 1 (no padding).
+    padded_shape :
+        The shape of the image affter padding. This is
+        set with the `pad_scale` variable during initialization.
     pad_mode :
-        The method of image padding. By default, ``"edge"``.
+        The method of image padding. By default, ``"constant"``.
         For all options, see ``jax.numpy.pad``.
+    rescale_method :
+        The interpolation method for pixel size rescaling. See
+        ``jax.image.scale_and_translate`` for options.
     frequency_grid :
         The fourier wavevectors in the imaging plane.
     padded_frequency_grid :
@@ -55,11 +56,9 @@ class ImageManager(Module, strict=True):
     shape: tuple[int, int] = field(static=True)
     pixel_size: Real_ = field(converter=jnp.asarray)
 
-    pad_scale: float = field(static=True)
+    padded_shape: tuple[int, int] = field(static=True)
     pad_mode: Union[str, Callable] = field(static=True)
     rescale_method: str = field(static=True)
-
-    padded_shape: tuple[int, int] = field(static=True)
 
     frequency_grid: FrequencyGrid
     padded_frequency_grid: FrequencyGrid
@@ -70,24 +69,36 @@ class ImageManager(Module, strict=True):
         self,
         shape: tuple[int, int],
         pixel_size: Real_,
+        pad_scale: float | tuple[float, float] = 1.0,
         *,
-        pad_scale: float = 1.0,
         pad_mode: Union[str, Callable] = "constant",
-        rescale_method: str = "bicubic"
+        rescale_method: str = "bicubic",
     ):
         self.shape = shape
         self.pixel_size = pixel_size
-        self.pad_scale = pad_scale
         self.pad_mode = pad_mode
         self.rescale_method = rescale_method
         # Set shape after padding
-        padded_shape = tuple([int(s * self.pad_scale) for s in self.shape])
-        self.padded_shape = padded_shape
+        scale_x, scale_y = (
+            pad_scale
+            if isinstance(pad_scale, (tuple, list))
+            else (pad_scale, pad_scale)
+        )
+        self.padded_shape = (int(scale_x * shape[0]), int(scale_y * shape[1]))
         # Set coordinates
         self.frequency_grid = FrequencyGrid(shape=self.shape)
         self.padded_frequency_grid = FrequencyGrid(shape=self.padded_shape)
         self.coordinate_grid = CoordinateGrid(shape=self.shape)
         self.padded_coordinate_grid = CoordinateGrid(shape=self.padded_shape)
+
+    def __check_init__(self):
+        if (
+            self.padded_shape[0] < self.shape[0]
+            or self.padded_shape[1] < self.shape[1]
+        ):
+            raise AttributeError(
+                f"ImageManager.padded_shape is less than ImageManager.shape in one or more dimensions."
+            )
 
     @cached_property
     def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
