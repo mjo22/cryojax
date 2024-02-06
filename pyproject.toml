@@ -28,7 +28,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest", "pycistem", "gemmi"]
-docs = []
+docs = ["mkdocs", "mkdocstrings-python", "mkdocs-material"]
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]

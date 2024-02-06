@@ -27,21 +27,14 @@ def is_density_leaves_without_coordinates(element: Any) -> bool | PyTree[bool]:
 
 
 class AbstractElectronDensity(Module, strict=True):
-    """
-    Abstraction of an electron density distribution.
-    """
+    """Abstract interface for an electron density distribution."""
 
     @abstractmethod
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
-        """
-        View the electron density at a given pose.
+        """Return a new `AbstractElectronDensity` at the given pose.
 
-        In subclasses, fourier-space electron density representations
-        should rotate coordinates by a backrotation (the inverse rotation).
+        **Arguments:**
 
-        Arguments
-        ---------
-        pose :
-            The imaging pose.
+        - `pose`: The pose at which to view the `AbstractElectronDensity`.
         """
         raise NotImplementedError

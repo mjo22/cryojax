@@ -1,14 +1,16 @@
 # Electron Density representations
 
+## Abstract interfaces
+
 ::: cryojax.simulator.AbstractElectronDensity
-    selection:
+    options:
         members:
             - rotate_to_pose
 
+---
+
 ::: cryojax.simulator.AbstractVoxels
-    selection:
+    options:
         members:
-            - voxel_size
-            - is_real
-            - from_atoms
             - from_density_grid
+            - from_atoms

@@ -55,20 +55,15 @@ VoxelT = TypeVar("VoxelT", bound="AbstractVoxels")
 
 
 class AbstractVoxels(AbstractElectronDensity, strict=True):
-    """
-    Voxel-based electron density representation.
+    """Abstract interface for a voxel-based electron density representation.
 
-    Attributes
-    ----------
-    voxel_size :
-        The voxel size of the electron density.
-    is_real :
-        Whether or not the representation is
-        real or fourier space.
+    **Attributes:**
+
+    - `voxel_size`: The voxel size of the electron density.
+    - `is_real`: Whether or not the representation is real or fourier space.
     """
 
     voxel_size: AbstractVar[Real_]
-
     is_real: AbstractClassVar[bool]
 
     @classmethod
@@ -79,8 +74,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> VoxelT:
-        """
-        Load a AbstractVoxels object from real-valued 3D electron
+        """Load a AbstractVoxels object from real-valued 3D electron
         density map.
         """
         raise NotImplementedError
@@ -96,9 +90,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> VoxelT:
-        """
-        Load a AbstractVoxels object from atom positions and identities.
-        """
+        """Load a AbstractVoxels object from atom positions and identities."""
         raise NotImplementedError
 
     @classmethod
@@ -143,8 +135,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> VoxelT:
-        """
-        Loads a PDB file as a AbstractVoxels subclass.  Uses the Gemmi library.
+        """Loads a PDB file as a AbstractVoxels subclass.  Uses the Gemmi library.
         Heavily based on a code from Frederic Poitevin, located at
 
         https://github.com/compSPI/ioSPI/blob/master/ioSPI/atomic_models.py
