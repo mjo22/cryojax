@@ -45,7 +45,5 @@ def read_atoms_from_cif(
         chain_naming = gemmi.HowToNameCopiedChain.AddNumber
         model = gemmi.make_assembly(assembly, model, chain_naming)
     atoms = extract_gemmi_atoms(model)
-    atom_positions, atom_element_names = extract_atom_positions_and_names(
-        atoms
-    )
+    atom_positions, atom_element_names = extract_atom_positions_and_names(atoms)
     return atom_positions, atom_element_names

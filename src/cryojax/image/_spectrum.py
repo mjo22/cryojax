@@ -129,7 +129,5 @@ def powerspectrum(
         )
         return spectrum_as_profile, spectrum_as_image, bins
     else:
-        spectrum_as_profile = radial_average(
-            power, radial_frequency_grid, bins
-        )
+        spectrum_as_profile = radial_average(power, radial_frequency_grid, bins)
         return spectrum_as_profile, bins

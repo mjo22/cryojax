@@ -14,9 +14,7 @@ def test_fft(model, request):
     image = model.render()
     random = jnp.asarray(np.random.randn(*image.shape))
     # Run tests with jnp.fft and random data
-    np.testing.assert_allclose(
-        random, jnp.fft.ifftn(jnp.fft.fftn(random)).real
-    )
+    np.testing.assert_allclose(random, jnp.fft.ifftn(jnp.fft.fftn(random)).real)
     np.testing.assert_allclose(
         jnp.fft.fftn(random),
         jnp.fft.fftn(jnp.fft.ifftn(jnp.fft.fftn(random)).real),

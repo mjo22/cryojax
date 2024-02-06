@@ -15,9 +15,7 @@ def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     scattering_control = cs.FourierSliceExtract(
         cs.ImageManager(control_shape, pixel_size)
     )
-    scattering_test = cs.FourierSliceExtract(
-        cs.ImageManager(shape, pixel_size)
-    )
+    scattering_test = cs.FourierSliceExtract(cs.ImageManager(shape, pixel_size))
     pipeline_control = cs.ImagePipeline(specimen, scattering_control)
     pipeline_test = cs.ImagePipeline(specimen, scattering_test)
 

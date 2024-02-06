@@ -91,17 +91,13 @@ class AbstractOptics(Module, strict=True):
 
     normalize: AbstractVar[bool]
 
-    def evaluate(
-        self, freqs: ImageCoords, defocus_offset: Real_ | float = 0.0
-    ):
+    def evaluate(self, freqs: ImageCoords, defocus_offset: Real_ | float = 0.0):
         """Evaluate the optics model. This is modeled as a contrast
         transfer function multiplied by an envelope function."""
         if self.envelope is None:
             ctf = self.ctf(freqs, defocus_offset=defocus_offset)
         else:
-            ctf = self.envelope(freqs) * self.ctf(
-                freqs, defocus_offset=defocus_offset
-            )
+            ctf = self.envelope(freqs) * self.ctf(freqs, defocus_offset=defocus_offset)
         if self.normalize:
             N1, N2 = freqs.shape[0:-1]
             ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
@@ -161,9 +157,7 @@ class CTFOptics(AbstractOptics, strict=True):
     ) -> Image:
         """Compute the optics model with an envelope."""
         frequency_grid = manager.padded_frequency_grid_in_angstroms.get()
-        return image * self.evaluate(
-            frequency_grid, defocus_offset=defocus_offset
-        )
+        return image * self.evaluate(frequency_grid, defocus_offset=defocus_offset)
 
 
 @partial(jax.jit, static_argnames=["degrees"])

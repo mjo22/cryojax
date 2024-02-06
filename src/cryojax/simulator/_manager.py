@@ -92,10 +92,7 @@ class ImageManager(Module, strict=True):
         self.padded_coordinate_grid = CoordinateGrid(shape=self.padded_shape)
 
     def __check_init__(self):
-        if (
-            self.padded_shape[0] < self.shape[0]
-            or self.padded_shape[1] < self.shape[1]
-        ):
+        if self.padded_shape[0] < self.shape[0] or self.padded_shape[1] < self.shape[1]:
             raise AttributeError(
                 f"ImageManager.padded_shape is less than ImageManager.shape in one or more dimensions."
             )
@@ -133,13 +130,9 @@ class ImageManager(Module, strict=True):
 
     def pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
         """Pad an image."""
-        return pad_to_shape(
-            image, self.padded_shape, mode=self.pad_mode, **kwargs
-        )
+        return pad_to_shape(image, self.padded_shape, mode=self.pad_mode, **kwargs)
 
-    def crop_or_pad_to_padded_shape(
-        self, image: Image, **kwargs: Any
-    ) -> Image:
+    def crop_or_pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
         """Reshape an image using cropping or padding."""
         return resize_with_crop_or_pad(
             image, self.padded_shape, mode=self.pad_mode, **kwargs

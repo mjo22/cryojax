@@ -20,7 +20,7 @@ def ifftn(
     ft: Union[Image, Volume],
     real: bool = False,
     axes: Optional[tuple[int, ...]] = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> Union[Image, Volume]:
     """
     Helper routine to match the inverse fourier transform
@@ -48,9 +48,7 @@ def ifftn(
 
 
 def fftn(
-    ift: Union[Image, Volume],
-    axes: Optional[tuple[int, ...]] = None,
-    **kwargs: Any
+    ift: Union[Image, Volume], axes: Optional[tuple[int, ...]] = None, **kwargs: Any
 ) -> Union[ComplexImage, ComplexVolume]:
     """
     Helper routine to match the fourier transform of an array
@@ -75,7 +73,7 @@ def irfftn(
     ft: Union[ComplexImage, ComplexVolume],
     s: Optional[tuple[int, ...]] = None,
     axes: Optional[tuple[int, ...]] = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> Union[RealImage, RealVolume]:
     """
     Helper routine to compute the inverse fourier transform
@@ -91,9 +89,7 @@ def irfftn(
     ift :
         Inverse fourier transform.
     """
-    ift = jnp.fft.fftshift(
-        jnp.fft.irfftn(ft, s=s, axes=axes, **kwargs), axes=axes
-    )
+    ift = jnp.fft.fftshift(jnp.fft.irfftn(ft, s=s, axes=axes, **kwargs), axes=axes)
 
     return ift
 
@@ -101,7 +97,7 @@ def irfftn(
 def rfftn(
     ift: Union[RealImage, RealVolume],
     axes: Optional[tuple[int, ...]] = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> Union[ComplexImage, ComplexVolume]:
     """
     Helper routine to compute the fourier transform of an array

@@ -196,9 +196,7 @@ def compute_helical_lattice_positions(
     def compute_helix_subunit_positions_per_start(symmetry_angle, r):
         # ... rotate the sub-helix around the screw axis to a different sub-helix
         c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
-        R_n = jnp.array(
-            ((c_n, -s_n, 0), (s_n, c_n, 0), (0, 0, 1)), dtype=float
-        )
+        R_n = jnp.array(((c_n, -s_n, 0), (s_n, c_n, 0), (0, 0, 1)), dtype=float)
         return (R_n @ r.T).T
 
     # ... function to rotate entire sub-helix around the screw axis
@@ -206,9 +204,7 @@ def compute_helical_lattice_positions(
         compute_helix_subunit_positions_per_start, in_axes=[0, None]
     )
     # ... compute symmetry angles relating first sub-helix to all other sub-helices
-    symmetry_angles = jnp.array(
-        [2 * jnp.pi * n / n_start for n in range(n_start)]
-    )
+    symmetry_angles = jnp.array([2 * jnp.pi * n / n_start for n in range(n_start)])
     # ... finally, get all subunit positions!
     subunit_positions = compute_helix_subunit_positions(
         symmetry_angles, subunit_positions_in_subhelix
@@ -280,9 +276,7 @@ def compute_helical_lattice_rotations(
     def compute_helix_subunit_rotations_per_start(symmetry_angle, R):
         # ... rotate the sub-helix around the screw axis to a different sub-helix
         c_n, s_n = jnp.cos(symmetry_angle), jnp.sin(symmetry_angle)
-        R_n = jnp.array(
-            ((c_n, -s_n, 0), (s_n, c_n, 0), (0, 0, 1)), dtype=float
-        )
+        R_n = jnp.array(((c_n, -s_n, 0), (s_n, c_n, 0), (0, 0, 1)), dtype=float)
         return jnp.einsum("ij,njk->nik", R_n, R)
 
     # ... function to rotate subunit about symmetry angle
@@ -290,9 +284,7 @@ def compute_helical_lattice_rotations(
         compute_helix_subunit_rotations_per_start, in_axes=[0, None]
     )
     # ... compute symmetry angles relating first sub-helix to all other sub-helices
-    symmetry_angles = jnp.array(
-        [2 * jnp.pi * n / n_start for n in range(n_start)]
-    )
+    symmetry_angles = jnp.array([2 * jnp.pi * n / n_start for n in range(n_start)])
     # ... finally, get all subunit rotations!
     subunit_rotations = compute_helix_subunit_rotations(
         symmetry_angles, subunit_rotations_in_subhelix

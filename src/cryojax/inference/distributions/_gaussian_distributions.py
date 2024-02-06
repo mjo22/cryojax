@@ -96,17 +96,11 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         )
         freqs = pipeline.scattering.manager.frequency_grid_in_angstroms.get()
         if observed.shape != padded_freqs.shape[:-1]:
-            raise ValueError(
-                "Shape of observed must match ImageManager.padded_shape"
-            )
+            raise ValueError("Shape of observed must match ImageManager.padded_shape")
         # Get residuals
-        residuals = (
-            pipeline.render(view_cropped=False, get_real=False) - observed
-        )
+        residuals = pipeline.render(view_cropped=False, get_real=False) - observed
         # Apply filters, crop, and mask
-        residuals = pipeline.crop_and_apply_operators(
-            residuals, get_real=False
-        )
+        residuals = pipeline.crop_and_apply_operators(residuals, get_real=False)
         # Compute loss
         loss = jnp.sum(
             (residuals * jnp.conjugate(residuals)) / (2 * self.variance(freqs))

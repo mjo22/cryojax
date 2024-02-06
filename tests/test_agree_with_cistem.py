@@ -26,9 +26,7 @@ config.update("jax_enable_x64", True)
         (12000, 3895, 45.0, 200.0, 2.7, 0.07, 2.2),
     ],
 )
-def test_ctf_with_cistem(
-    defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size
-):
+def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size):
     """Test CTF model against cisTEM.
 
     Modified from https://github.com/jojoelfe/contrasttransferfunction"""
@@ -98,9 +96,7 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
     matrix[1, 2] = sin_theta * sin_phi
     matrix[2, 2] = cos_theta
     # Generate rotation that matches this rotation matrix
-    rotation = make_euler_rotation(
-        phi, theta, psi, convention="zyz", degrees=False
-    )
+    rotation = make_euler_rotation(phi, theta, psi, convention="zyz", degrees=False)
     np.testing.assert_allclose(rotation.as_matrix(), matrix.T, atol=1e-12)
 
 
@@ -108,9 +104,7 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
     "phi, theta, psi",
     [(10, 90, 170)],
 )
-def test_compute_projection_with_cistem(
-    phi, theta, psi, sample_mrc_path, pixel_size
-):
+def test_compute_projection_with_cistem(phi, theta, psi, sample_mrc_path, pixel_size):
     # cryojax
     density = cs.FourierVoxelGrid.from_file(sample_mrc_path)
     pose = cs.EulerPose(view_phi=phi, view_theta=theta, view_psi=psi)
@@ -128,14 +122,10 @@ def test_compute_projection_with_cistem(
     pycistem_volume = _load_pycistem_template(sample_mrc_path, box_size)
     pycistem_angles = AnglesAndShifts()
     pycistem_angles.Init(phi, theta, psi, 0.0, 0.0)
-    pycistem_model = _compute_projection(
-        pycistem_volume, pycistem_angles, box_size
-    )
+    pycistem_model = _compute_projection(pycistem_volume, pycistem_angles, box_size)
     pycistem_projection = np.asarray(pycistem_model.real_values)
 
-    np.testing.assert_allclose(
-        cryojax_projection, pycistem_projection, atol=1e-5
-    )
+    np.testing.assert_allclose(cryojax_projection, pycistem_projection, atol=1e-5)
 
 
 def _load_pycistem_template(filename, box_size):

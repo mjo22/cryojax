@@ -179,9 +179,7 @@ class SumImageOperator(AbstractImageOperator, strict=True):
         coords_or_freqs: ImageCoords | VolumeCoords | None = None,
         **kwargs: Any,
     ) -> Array:
-        return self.operator1(coords_or_freqs) + self.operator2(
-            coords_or_freqs
-        )
+        return self.operator1(coords_or_freqs) + self.operator2(coords_or_freqs)
 
     def __repr__(self):
         return f"{repr(self.operator1)} + {repr(self.operator2)}"
@@ -199,9 +197,7 @@ class DiffImageOperator(AbstractImageOperator, strict=True):
         coords_or_freqs: ImageCoords | VolumeCoords | None = None,
         **kwargs: Any,
     ) -> Array:
-        return self.operator1(coords_or_freqs) - self.operator2(
-            coords_or_freqs
-        )
+        return self.operator1(coords_or_freqs) - self.operator2(coords_or_freqs)
 
     def __repr__(self):
         return f"{repr(self.operator1)} - {repr(self.operator2)}"
@@ -219,9 +215,7 @@ class ProductImageOperator(AbstractImageOperator, strict=True):
         coords_or_freqs: ImageCoords | VolumeCoords | None = None,
         **kwargs: Any,
     ) -> Array:
-        return self.operator1(coords_or_freqs) * self.operator2(
-            coords_or_freqs
-        )
+        return self.operator1(coords_or_freqs) * self.operator2(coords_or_freqs)
 
     def __repr__(self):
         return f"{repr(self.operator1)} * {repr(self.operator2)}"

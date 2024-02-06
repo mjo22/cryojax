@@ -23,9 +23,7 @@ class AbstractMask(AbstractImageMultiplier, strict=True):
     @overload
     def __call__(self, image: RealVolume) -> RealVolume: ...
 
-    def __call__(
-        self, image: RealImage | RealVolume
-    ) -> RealImage | RealVolume:
+    def __call__(self, image: RealImage | RealVolume) -> RealImage | RealVolume:
         return image * jax.lax.stop_gradient(self.buffer)
 
 
@@ -124,10 +122,7 @@ def _compute_circular_mask(
 
     rolloff_width = rolloff * coords_norm.max()
     mask = 0.5 * (
-        1
-        + jnp.cos(
-            (coords_norm - r_cut - rolloff_width) / rolloff_width * jnp.pi
-        )
+        1 + jnp.cos((coords_norm - r_cut - rolloff_width) / rolloff_width * jnp.pi)
     )
 
     mask = jnp.where(coords_cut, 0.0, mask)

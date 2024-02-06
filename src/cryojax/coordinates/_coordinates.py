@@ -56,24 +56,16 @@ class AbstractCoordinates(eqx.Module, strict=True):
         return self.array
 
     def __mul__(self, arr: ArrayLike) -> Self:
-        return eqx.tree_at(
-            lambda x: x.array, self, self.array * jnp.asarray(arr)
-        )
+        return eqx.tree_at(lambda x: x.array, self, self.array * jnp.asarray(arr))
 
     def __rmul__(self, arr: ArrayLike) -> Self:
-        return eqx.tree_at(
-            lambda x: x.array, self, jnp.asarray(arr) * self.array
-        )
+        return eqx.tree_at(lambda x: x.array, self, jnp.asarray(arr) * self.array)
 
     def __truediv__(self, arr: ArrayLike) -> Self:
-        return eqx.tree_at(
-            lambda x: x.array, self, self.array / jnp.asarray(arr)
-        )
+        return eqx.tree_at(lambda x: x.array, self, self.array / jnp.asarray(arr))
 
     def __rtruediv__(self, arr: ArrayLike) -> Self:
-        return eqx.tree_at(
-            lambda x: x.array, self, jnp.asarray(arr) / self.array
-        )
+        return eqx.tree_at(lambda x: x.array, self, jnp.asarray(arr) / self.array)
 
 
 class CoordinateList(AbstractCoordinates, strict=True):
@@ -115,9 +107,7 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
         grid_spacing: float | ArrayLike = 1.0,
         half_space: bool = True,
     ):
-        self.array = make_frequencies(
-            shape, grid_spacing, half_space=half_space
-        )
+        self.array = make_frequencies(shape, grid_spacing, half_space=half_space)
 
 
 class FrequencySlice(AbstractCoordinates, strict=True):
@@ -136,9 +126,7 @@ class FrequencySlice(AbstractCoordinates, strict=True):
         grid_spacing: float | ArrayLike = 1.0,
         half_space: bool = True,
     ):
-        frequency_slice = make_frequencies(
-            shape, grid_spacing, half_space=half_space
-        )
+        frequency_slice = make_frequencies(shape, grid_spacing, half_space=half_space)
         if half_space:
             frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0,))
         else:
@@ -216,9 +204,7 @@ def make_frequencies(
     return frequency_grid
 
 
-def cartesian_to_polar(
-    freqs: ImageCoords, square: bool = False
-) -> tuple[Image, Image]:
+def cartesian_to_polar(freqs: ImageCoords, square: bool = False) -> tuple[Image, Image]:
     """
     Convert from cartesian to polar coordinates.
 
@@ -281,14 +267,11 @@ def _make_coordinates_or_frequencies_1d(
     """One-dimensional coordinates in real or fourier space"""
     if real_space:
         make_1d = (
-            lambda size, dx: jnp.fft.fftshift(jnp.fft.fftfreq(size, 1 / dx))
-            * size
+            lambda size, dx: jnp.fft.fftshift(jnp.fft.fftfreq(size, 1 / dx)) * size
         )
     else:
         if rfftfreq is None:
-            raise ValueError(
-                "Argument rfftfreq cannot be None if real_space=False."
-            )
+            raise ValueError("Argument rfftfreq cannot be None if real_space=False.")
         else:
             fn = jnp.fft.rfftfreq if rfftfreq else jnp.fft.fftfreq
             make_1d = lambda size, dx: fn(size, grid_spacing)

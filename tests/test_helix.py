@@ -30,10 +30,7 @@ def build_helix_with_conformation(
     sample_subunit_mrc_path, n_subunits_per_start
 ) -> cs.Helix:
     subunit_density = tuple(
-        [
-            cs.FourierVoxelGrid.from_file(sample_subunit_mrc_path)
-            for _ in range(2)
-        ]
+        [cs.FourierVoxelGrid.from_file(sample_subunit_mrc_path) for _ in range(2)]
     )
     n_start = 6
     r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
@@ -63,9 +60,7 @@ def test_superposition_pipeline_without_conformation(
     stochastic_image = pipeline.sample(jax.random.PRNGKey(0))
 
 
-def test_superposition_pipeline_with_conformation(
-    sample_subunit_mrc_path, scattering
-):
+def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, scattering):
     helix = build_helix_with_conformation(sample_subunit_mrc_path, 2)
     pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
     image = pipeline.render()
@@ -89,9 +84,7 @@ def test_c6_rotation(
 
     np.testing.assert_allclose(
         compute_rotated_image(helix, scattering, cs.EulerPose()),
-        compute_rotated_image(
-            helix, scattering, cs.EulerPose(view_phi=rotation_angle)
-        ),
+        compute_rotated_image(helix, scattering, cs.EulerPose(view_phi=rotation_angle)),
     )
 
 
@@ -125,9 +118,7 @@ def test_agree_with_3j9g_assembly(
         specimen_39jg, scattering, cs.EulerPose()
     )
     assembled_image = compute_rotated_image_with_helix(helix, scattering, pose)
-    test_image = compute_rotated_image_with_3j9g(
-        specimen_39jg, scattering, pose
-    )
+    test_image = compute_rotated_image_with_3j9g(specimen_39jg, scattering, pose)
     assert np.std(assembled_image - test_image) < 10 * np.std(
         assembled_image - reference_image
     )

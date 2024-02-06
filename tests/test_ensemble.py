@@ -12,9 +12,7 @@ from cryojax.simulator import DiscreteEnsemble, DiscreteConformation
 
 def test_conformation(density, pose, scattering):
     density = tuple([density for _ in range(3)])
-    ensemble = DiscreteEnsemble(
-        density, pose, conformation=DiscreteConformation(0)
-    )
+    ensemble = DiscreteEnsemble(density, pose, conformation=DiscreteConformation(0))
     _ = scattering(ensemble)
 
 

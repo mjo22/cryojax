@@ -34,9 +34,7 @@ class NufftProject(AbstractProjectionMethod, strict=True):
 
     eps: float = field(static=True, default=1e-6)
 
-    def project_density(
-        self, density: RealVoxelGrid | RealVoxelCloud
-    ) -> ComplexImage:
+    def project_density(self, density: RealVoxelGrid | RealVoxelCloud) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(density, RealVoxelGrid):
             shape = density.shape
@@ -88,9 +86,9 @@ def project_with_nufft(
     """
     from jax_finufft import nufft1
 
-    weights, coordinate_list = jnp.asarray(weights).astype(
-        complex
-    ), jnp.asarray(coordinate_list)
+    weights, coordinate_list = jnp.asarray(weights).astype(complex), jnp.asarray(
+        coordinate_list
+    )
     # Get x and y coordinates
     coordinates_xy = coordinate_list[:, :2]
     # Normalize coordinates betweeen -pi and pi

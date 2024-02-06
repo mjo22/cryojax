@@ -14,9 +14,7 @@ config.update("jax_enable_x64", True)
 
 @pytest.fixture
 def sample_mrc_path():
-    return os.path.join(
-        os.path.dirname(__file__), "data", "3j9g_bfm1_ps4_4.mrc"
-    )
+    return os.path.join(os.path.dirname(__file__), "data", "3j9g_bfm1_ps4_4.mrc")
 
 
 @pytest.fixture
@@ -103,9 +101,7 @@ def masks(manager):
 def instrument():
     return cs.Instrument(
         optics=cs.CTFOptics(),
-        exposure=cs.Exposure(
-            dose=op.Constant(10.0), radiation=op.Constant(1.0)
-        ),
+        exposure=cs.Exposure(dose=op.Constant(10.0), radiation=op.Constant(1.0)),
         detector=cs.GaussianDetector(variance=op.Constant(1.0)),
     )
 
@@ -133,9 +129,7 @@ def solvent():
 
 @pytest.fixture
 def noiseless_model(scattering, specimen, instrument):
-    instrument = eqx.tree_at(
-        lambda ins: ins.detector, instrument, cs.NullDetector()
-    )
+    instrument = eqx.tree_at(lambda ins: ins.detector, instrument, cs.NullDetector())
     return cs.ImagePipeline(
         scattering=scattering, specimen=specimen, instrument=instrument
     )
