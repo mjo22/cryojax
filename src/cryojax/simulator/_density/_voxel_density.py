@@ -113,15 +113,15 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
     ) -> VoxelT:
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
-        _build_real_space_voxels_from_atomic_trajectory = jax.vmap(
-            _build_real_space_voxels_from_atoms, (0, None, None, None), 0
+        build_real_space_voxels_from_atomic_trajectory = jax.vmap(
+            build_real_space_voxels_from_atoms, (0, None, None, None), 0
         )
 
-        _build_real_space_voxels_from_atoms(
+        build_real_space_voxels_from_atoms(
             trajectory[0], a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
-        density = _build_real_space_voxels_from_atomic_trajectory(
+        density = build_real_space_voxels_from_atomic_trajectory(
             trajectory, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
@@ -382,7 +382,7 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
-        density = _build_real_space_voxels_from_atoms(
+        density = build_real_space_voxels_from_atoms(
             atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
@@ -588,7 +588,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
-        density = _build_real_space_voxels_from_atoms(
+        density = build_real_space_voxels_from_atoms(
             atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
@@ -694,7 +694,7 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
-        density = _build_real_space_voxels_from_atoms(
+        density = build_real_space_voxels_from_atoms(
             atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
