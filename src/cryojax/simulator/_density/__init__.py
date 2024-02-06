@@ -10,4 +10,6 @@ from ._voxel_density import (
     RealVoxelGrid as RealVoxelGrid,
     RealVoxelCloud as RealVoxelCloud,
     build_real_space_voxels_from_atoms as build_real_space_voxels_from_atoms,
+    evaluate_3d_atom_potential as evaluate_3d_atom_potential,
+    evaluate_3d_real_space_gaussian as evaluate_3d_real_space_gaussian,
 )

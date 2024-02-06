@@ -17,6 +17,7 @@
             members:
                 - is_real
                 - shape
+                - rotate_to_pose
                 - from_density_grid
                 - from_atoms
 
@@ -44,6 +45,8 @@
                 - voxel_size
                 - frequency_slice
                 - frequency_slice_in_angstroms
+                - from_density_grid
+                - from_atoms
 
 ---
 
@@ -55,6 +58,8 @@
                 - voxel_size
                 - frequency_slice
                 - frequency_slice_in_angstroms
+                - from_density_grid
+                - from_atoms
 
 ### Real-space voxel representations
 
@@ -66,6 +71,8 @@
                 - voxel_size
                 - coordinate_grid
                 - coordinate_grid_in_angstroms
+                - from_density_grid
+                - from_atoms
 
 ---
 
@@ -77,3 +84,23 @@
                 - voxel_size
                 - coordinate_list
                 - coordinate_list_in_angstroms
+                - from_density_grid
+                - from_atoms
+
+### Pure function API
+
+::: cryojax.simulator.build_real_space_voxels_from_atoms
+        options:
+            heading_level: 5
+
+---
+
+::: cryojax.simulator.evaluate_3d_atom_potential
+        options:
+            heading_level: 5
+
+---
+
+::: cryojax.simulator.evaluate_3d_real_space_gaussian
+        options:
+            heading_level: 5

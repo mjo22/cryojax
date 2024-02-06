@@ -6,6 +6,7 @@ import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
+from cryojax.io import read_image_or_volume_with_spacing_from_mrc
 from cryojax.image import operators as op
 from cryojax.image import rfftn
 
@@ -76,7 +77,12 @@ def scattering(manager):
 
 @pytest.fixture
 def density(sample_mrc_path):
-    return cs.FourierVoxelGrid.from_file(sample_mrc_path, pad_scale=1.3)
+    density_grid, voxel_size = read_image_or_volume_with_spacing_from_mrc(
+        sample_mrc_path
+    )
+    return cs.FourierVoxelGrid.from_density_grid(
+        density_grid, voxel_size, pad_scale=1.3
+    )
 
 
 @pytest.fixture
