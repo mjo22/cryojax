@@ -5,6 +5,7 @@ import pytest
 from cryojax.simulator import FourierVoxelGrid, RealVoxelGrid
 from cryojax.simulator import build_real_space_voxels_from_atoms
 
+from cryojax.io import read_atoms_from_pdb
 from cryojax.image import ifftn
 from cryojax.coordinates import CoordinateGrid
 from jax import config
@@ -21,10 +22,13 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     voxel_size = 0.5
 
     # Load the PDB file into a VoxelGrid
-    vg = FourierVoxelGrid.from_pdb(
-        sample_pdb_path,
-        n_voxels_per_side=n_voxels_per_side,
-        voxel_size=voxel_size,
+    atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
+    coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
+    vg = FourierVoxelGrid.from_atoms(
+        atom_positions,
+        atom_elements,
+        voxel_size,
+        coordinate_grid_in_angstroms,
     )
     # Since Voxelgrid is in Frequency space by default, we have to first
     # transform back into real space.
@@ -32,10 +36,11 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     # Ravel the grid
     vg_density = vg_density.ravel()
 
-    vc = RealVoxelGrid.from_pdb(
-        sample_pdb_path,
-        n_voxels_per_side=n_voxels_per_side,
-        voxel_size=voxel_size,
+    vc = RealVoxelGrid.from_atoms(
+        atom_positions,
+        atom_elements,
+        voxel_size,
+        coordinate_grid_in_angstroms,
     )
 
     np.testing.assert_allclose(
