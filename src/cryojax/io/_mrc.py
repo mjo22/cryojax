@@ -2,38 +2,41 @@
 Routines for working with MRC files.
 """
 
-import numpy as np
 import mrcfile
+import jax.numpy as jnp
+import numpy as np
+from jaxtyping import Array
+from ..typing import Real_
 
 
-def read_image_or_volume_with_spacing_from_mrc(
+def read_array_with_spacing_from_mrc(
     filename: str,
-) -> tuple[np.ndarray, float]:
-    """
-    Read MRC data to ``numpy`` array.
+) -> tuple[Array, Real_]:
+    """Read MRC data to a JAX array, including the grid spacing
+    (the voxel or pixel size).
 
-    Parameters
-    ----------
-    filename : `str`
-        Path to data.
+    !!! note
+        This function does not support grid spacing that is not
+        the same in all dimensions
 
-    Returns
-    -------
-    data : `np.ndarray`, shape `(N1, N2, N3)` or `(N1, N2)`
-        Image or volume array.
-    grid_spacing : `float`, shape `(3,)` or `(2,)`
-        The voxel or pixel size stored in the MRC file.
+    **Arguments:**
+
+    'filename' : Path to data.
+
+    **Returns:**
+
+    'data' : The array stored in the MRC file.
+
+    'grid_spacing' : The voxel size or pixel size of `data`.
     """
     # Read MRC
     with mrcfile.open(filename) as mrc:
         data = np.asarray(mrc.data, dtype=float)
         if data.ndim == 2:
-            grid_spacing = np.asarray([mrc.voxel_size.y, mrc.voxel_size.x], dtype=float)
+            grid_spacing = np.asarray([mrc.voxel_size.x, mrc.voxel_size.y], dtype=float)
         elif data.ndim == 3:
-            # Change how grid sits in box to match cisTEM
-            data = np.transpose(data, axes=[2, 1, 0])
             grid_spacing = np.asarray(
-                [mrc.voxel_size.z, mrc.voxel_size.y, mrc.voxel_size.x],
+                [mrc.voxel_size.x, mrc.voxel_size.y, mrc.voxel_size.z],
                 dtype=float,
             )
         else:
@@ -42,30 +45,24 @@ def read_image_or_volume_with_spacing_from_mrc(
     assert all(grid_spacing != np.zeros(data.ndim)), "MRC file must set the voxel size."
     assert all(
         grid_spacing == grid_spacing[0]
-    ), "Voxel size must be same in all dimensions."
+    ), "Grid spacing must be same in all dimensions."
 
-    return data, grid_spacing[0]
+    return jnp.asarray(data), jnp.asarray(grid_spacing[0])
 
 
-def read_image_or_volume_from_mrc(filename: str) -> np.ndarray:
-    """
-    Read MRC data to ``numpy`` array.
+def read_array_from_mrc(filename: str) -> Array:
+    """Read MRC data to a JAX array.
 
-    Parameters
-    ----------
-    filename : `str`
-        Path to data.
+    **Arguments:**
 
-    Returns
-    -------
-    data : `np.ndarray`, shape `(N1, N2, N3)` or `(N1, N2)`
-         Image or volume array.
+    'filename' : Path to data.
+
+    **Returns:**
+
+    'data' : The array stored in the MRC file.
     """
     # Read MRC
     with mrcfile.open(filename) as mrc:
         data = np.asarray(mrc.data, dtype=float)
-        if data.ndim == 3:
-            # Change how grid sits in box to match cisTEM
-            data = np.transpose(data, axes=[2, 1, 0])
 
-    return data
+    return jnp.asarray(data)

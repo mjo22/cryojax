@@ -10,8 +10,8 @@ from ._mdtraj import (
     mdtraj_load_from_file as mdtraj_load_from_file,
 )
 from ._mrc import (
-    read_image_or_volume_with_spacing_from_mrc as read_image_or_volume_with_spacing_from_mrc,
-    read_image_or_volume_from_mrc as read_image_or_volume_from_mrc,
+    read_array_with_spacing_from_mrc as read_array_with_spacing_from_mrc,
+    read_array_from_mrc as read_array_from_mrc,
 )
 from ._pdb import read_atoms_from_pdb as read_atoms_from_pdb
 from ._load_atoms import (

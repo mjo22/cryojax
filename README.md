@@ -43,11 +43,11 @@ First, instantiate the electron density representation and its respective method
 import jax
 import jax.numpy as jnp
 import cryojax.simulator as cs
-from cryojax.io import read_image_or_volume_with_spacing_from_mrc
+from cryojax.io import read_array_with_spacing_from_mrc
 
 # Instantiate the electron density
 filename = "example.mrc"
-density_grid, voxel_size = read_image_or_volume_with_spacing_from_mrc(filename)
+density_grid, voxel_size = read_array_with_spacing_from_mrc(filename)
 density = cs.FourierVoxelGrid.from_density_grid(density_grid, voxel_size)
 # ... now instantiate fourier slice extraction
 shape, pixel_size = (320, 320), voxel_size

@@ -5,16 +5,14 @@ import jax.numpy as jnp
 import numpy as np
 import equinox as eqx
 import cryojax.simulator as cs
-from cryojax.io import read_image_or_volume_with_spacing_from_mrc
+from cryojax.io import read_array_with_spacing_from_mrc
 from jax import config
 
 config.update("jax_enable_x64", True)
 
 
 def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
-    density_grid, voxel_size = read_image_or_volume_with_spacing_from_mrc(
-        sample_subunit_mrc_path
-    )
+    density_grid, voxel_size = read_array_with_spacing_from_mrc(sample_subunit_mrc_path)
     subunit_density = cs.FourierVoxelGrid.from_density_grid(
         density_grid, voxel_size, pad_scale=2
     )
@@ -36,7 +34,7 @@ def build_helix_with_conformation(
     subunit_density = tuple(
         [
             cs.FourierVoxelGrid.from_density_grid(
-                *read_image_or_volume_with_spacing_from_mrc(sample_subunit_mrc_path)
+                *read_array_with_spacing_from_mrc(sample_subunit_mrc_path)
             )
             for _ in range(2)
         ]
