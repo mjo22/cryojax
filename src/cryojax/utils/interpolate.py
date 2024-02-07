@@ -5,6 +5,7 @@ Interpolation routines.
 __all__ = ["interp_vec", "diff", "fill_vec"]
 
 import numpy as np
+import jax.numpy as jnp
 
 
 def diff(xyz_rot):
@@ -40,6 +41,42 @@ def diff(xyz_rot):
     dd110 = fz * fy * mfx
     dd111 = fz * fy * fx
     dd = np.array([dd000, dd001, dd010, dd011, dd100, dd101, dd110, dd111])
+    return r0, r1, dd
+
+
+def jaxy_diff(xyz_rot):
+    """Precompute for linear interpolation.
+
+    Parameters
+    ----------
+    xyz_rot : array
+        Rotated plane
+        Shape (3,n_pix**2)
+
+    Returns
+    -------
+    r0,r1 : array
+        Shape (3,n_pix**2)
+        Location to nearby grid points (r0 low, r1 high)
+    dd : array
+        Shape (8,n_pix**2)
+        Distance to 8 nearby voxels. Linear interpolation kernel.
+    """
+    r0 = jnp.floor(xyz_rot).astype(int)
+    r1 = r0 + 1
+    fr = xyz_rot - r0
+    mfr = 1 - fr
+    mfx, mfy, mfz = mfr[0], mfr[1], mfr[-1]
+    fx, fy, fz = fr[0], fr[1], fr[-1]
+    dd000 = mfz * mfy * mfx
+    dd001 = mfz * mfy * fx
+    dd010 = mfz * fy * mfx
+    dd011 = mfz * fy * fx
+    dd100 = fz * mfy * mfx
+    dd101 = fz * mfy * fx
+    dd110 = fz * fy * mfx
+    dd111 = fz * fy * fx
+    dd = jnp.array([dd000, dd001, dd010, dd011, dd100, dd101, dd110, dd111])
     return r0, r1, dd
 
 
