@@ -55,8 +55,8 @@ def test_filtered_backprojection():
     # demo filtered backprojection
     from scipy.spatial.transform import Rotation
 
-    n_slices = 1000
-    filename = "hackathon/emd-3683.mrc"
+    n_slices = 10
+    filename = "/mnt/home/gwoollard/repos/cryojax/hackathon/emd-3683.mrc"
     random_rotations = Rotation.random(n_slices).as_euler(
         "zyz", degrees=True
     )  # np.random.uniform(-180,180, size=(n_slices,3))

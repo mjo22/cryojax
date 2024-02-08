@@ -268,10 +268,53 @@ def jaxy_interp_vec(slice_2d, r0, r1, dd, n_pix):
     r0_idx_good = r0_idx[:, good_idx]
     r1_idx_good = r1_idx[:, good_idx]
 
-    map_3d_interp = fill_vec(
+    map_3d_interp = jaxy_fill_vec(
         map_3d_interp, r0_idx_good, r1_idx_good, slice_flat, dd[:, good_idx]
     )
-    count_3d_interp = fill_vec(
+    count_3d_interp = jaxy_fill_vec(
+        count_3d_interp, r0_idx_good, r1_idx_good, ones, dd[:, good_idx]
+    )
+
+    return map_3d_interp, count_3d_interp
+
+
+def jaxy_numpy_interp_vec(slice_2d, r0, r1, dd, n_pix):
+    """Linear interpolation.
+
+    Parameters
+    ----------
+    slice_2d : array
+        Slice to be interpolated
+        Shape (n_pix,n_pix)
+
+    Returns
+    -------
+    r0,r1 : array
+        Shape (3,n_pix**2)
+        Location to nearby grid points (r0 low, r1 high)
+    dd : array
+        Shape (8,n_pix**2)
+        Distance to 8 nearby voxels. Linear interpolation kernel.
+    """
+    r0_idx = r0 + n_pix // 2
+    r1_idx = r1 + n_pix // 2
+
+    under_grid_idx = jnp.any(r0_idx < 0, axis=0)
+    over_grid_idx = jnp.any(r1_idx >= n_pix, axis=0)
+    good_idx = jnp.logical_and(~under_grid_idx, ~over_grid_idx)
+
+    map_3d_interp = jnp.zeros((n_pix, n_pix, n_pix)).astype(slice_2d.dtype)
+    count_3d_interp = jnp.zeros((n_pix, n_pix, n_pix))
+    ones = jnp.ones(n_pix * n_pix)[good_idx]
+    slice_flat = slice_2d.flatten()[good_idx]
+
+    r0_idx_good = r0_idx[:, good_idx]
+    r1_idx_good = r1_idx[:, good_idx]
+
+    map_3d_interp = jaxy_fill_vec(
+        map_3d_interp, r0_idx_good, r1_idx_good, slice_flat, dd[:, good_idx]
+    )
+    count_3d_interp = jaxy_fill_vec(
         count_3d_interp, r0_idx_good, r1_idx_good, ones, dd[:, good_idx]
     )
 
