@@ -235,7 +235,7 @@ def interp_vec(slice_2d, r0, r1, dd, n_pix):
     return map_3d_interp, count_3d_interp
 
 
-def jaxy_interp_vec(slice_2d, r0, r1, dd, n_pix):
+def jaxy_numpy_interp_vec(slice_2d, r0, r1, dd, n_pix):
     """Linear interpolation.
 
     Parameters
@@ -278,7 +278,7 @@ def jaxy_interp_vec(slice_2d, r0, r1, dd, n_pix):
     return map_3d_interp, count_3d_interp
 
 
-def jaxy_numpy_interp_vec(slice_2d, r0, r1, dd, n_pix):
+def jaxy_interp_vec(slice_2d, r0, r1, dd, map_3d_interp, count_3d_interp):
     """Linear interpolation.
 
     Parameters
@@ -296,6 +296,7 @@ def jaxy_numpy_interp_vec(slice_2d, r0, r1, dd, n_pix):
         Shape (8,n_pix**2)
         Distance to 8 nearby voxels. Linear interpolation kernel.
     """
+    n_pix = len(map_3d_interp)
     r0_idx = r0 + n_pix // 2
     r1_idx = r1 + n_pix // 2
 
@@ -303,19 +304,31 @@ def jaxy_numpy_interp_vec(slice_2d, r0, r1, dd, n_pix):
     over_grid_idx = jnp.any(r1_idx >= n_pix, axis=0)
     good_idx = jnp.logical_and(~under_grid_idx, ~over_grid_idx)
 
-    map_3d_interp = jnp.zeros((n_pix, n_pix, n_pix)).astype(slice_2d.dtype)
-    count_3d_interp = jnp.zeros((n_pix, n_pix, n_pix))
-    ones = jnp.ones(n_pix * n_pix)[good_idx]
-    slice_flat = slice_2d.flatten()[good_idx]
+    fill_value = 0  # important for dd so that nothing added in that is not supposed to be
+    r0_idx_good_dense_filled = jnp.where(good_idx, r0_idx, fill_value)
+    r1_idx_good_dense_filled = jnp.where(good_idx, r1_idx, fill_value)
+    dd_dense_filled = jnp.where(good_idx, dd, fill_value)
 
-    r0_idx_good = r0_idx[:, good_idx]
-    r1_idx_good = r1_idx[:, good_idx]
+    ones_dense_filled = jnp.where(
+        good_idx, jnp.ones(n_pix * n_pix).flatten(), fill_value
+    )
+    slice_flat_dense_filled = jnp.where(
+        good_idx, slice_2d.flatten(), fill_value
+    )
 
     map_3d_interp = jaxy_fill_vec(
-        map_3d_interp, r0_idx_good, r1_idx_good, slice_flat, dd[:, good_idx]
+        map_3d_interp,
+        r0_idx_good_dense_filled,
+        r1_idx_good_dense_filled,
+        slice_flat_dense_filled,
+        dd_dense_filled,
     )
     count_3d_interp = jaxy_fill_vec(
-        count_3d_interp, r0_idx_good, r1_idx_good, ones, dd[:, good_idx]
+        count_3d_interp,
+        r0_idx_good_dense_filled,
+        r1_idx_good_dense_filled,
+        ones_dense_filled,
+        dd_dense_filled,
     )
 
     return map_3d_interp, count_3d_interp

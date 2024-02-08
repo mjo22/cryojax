@@ -5,7 +5,12 @@ Reconstruction methods for backprojection (the fourier slice theorem).
 
 from __future__ import annotations
 
-__all__ = ["WeinerFilter", "insert_slice", "_insert_slice_and_interpolate"]
+__all__ = [
+    "WeinerFilter",
+    "insert_slice",
+    "_insert_slice_and_interpolate",
+    "_jaxy_insert_slice_and_interpolate",
+]
 
 from cryojax.simulator import Filter
 from cryojax.typing import RealImage
@@ -39,6 +44,19 @@ def _insert_slice_and_interpolate(slice_real, xyz_rotated_single, n_pix):
     r0, r1, dd = interpolate.diff(xyz_rotated_single)
     map_3d_interp_slice, count_3d_interp_slice = interpolate.interp_vec(
         slice_real, r0, r1, dd, n_pix
+    )
+    inserted_slice_3d = map_3d_interp_slice.reshape((n_pix, n_pix, n_pix))
+    count_3d = count_3d_interp_slice.reshape((n_pix, n_pix, n_pix))
+    return inserted_slice_3d, count_3d
+
+
+def _jaxy_insert_slice_and_interpolate(
+    slice_real, xyz_rotated_single, map_3d_zeros, count_3d_zeros
+):
+    r0, r1, dd = interpolate.jaxy_diff(xyz_rotated_single)
+    n_pix = len(map_3d_zeros)
+    map_3d_interp_slice, count_3d_interp_slice = interpolate.jaxy_interp_vec(
+        slice_real, r0, r1, dd, map_3d_zeros, count_3d_zeros
     )
     inserted_slice_3d = map_3d_interp_slice.reshape((n_pix, n_pix, n_pix))
     count_3d = count_3d_interp_slice.reshape((n_pix, n_pix, n_pix))
@@ -115,6 +133,8 @@ def filtered_backprojection(
         make_frequencies((n_pix, n_pix), half_space=False)
     )
     freq_abs = jnp.hypot(freq_xy[:, :, 0], freq_xy[:, :, 1])
+    # vmap? race collissions. pmap. watch out for memory issues for many volumes. sum at the end (sum rediction). then hit at the top
+    # fori here for within the batch...
     for idx in range(n_slices):
         image_deconv = deconolved_images_f[idx]
         pose = poses[idx]
