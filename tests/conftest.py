@@ -1,114 +1,180 @@
 import os
 import pytest
-
-from jax import random
+import numpy as np
+import equinox as eqx
+import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
-from cryojax.io import load_fourier_grid
+from cryojax.io import read_array_with_spacing_from_mrc
+from cryojax.image import operators as op
+from cryojax.image import rfftn
 
 config.update("jax_enable_x64", True)
 
 
 @pytest.fixture
-def scattering():
-    return cs.FourierSliceScattering(shape=(81, 81))
+def sample_mrc_path():
+    return os.path.join(os.path.dirname(__file__), "data", "3j9g_bfm1_ps4_4.mrc")
 
 
 @pytest.fixture
-def density():
-    filename = os.path.join(
-        os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
+def sample_subunit_mrc_path():
+    return os.path.join(
+        os.path.dirname(__file__), "data", "3j9g_subunit_bfm1_ps4_4.mrc"
     )
-    return cs.VoxelGrid.from_file(filename)
 
 
 @pytest.fixture
-def weights_and_coordinates():
-    filename = os.path.join(
-        os.path.dirname(__file__), "data", "3jar_monomer_bfm1_ps5_28.mrc"
+def sample_pdb_path():
+    return os.path.join(os.path.dirname(__file__), "data", "1uao.pdb")
+
+
+@pytest.fixture
+def toy_gaussian_cloud():
+    atom_positions = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ]
     )
-    return load_fourier_grid(filename)
+    num_atoms = atom_positions.shape[0]
+    ff_a = np.array(
+        num_atoms
+        * [
+            [1.0, 0.5],
+        ]
+    )
+
+    ff_b = np.array(
+        num_atoms
+        * [
+            [0.3, 0.2],
+        ]
+    )
+
+    n_voxels_per_side = (128, 128, 128)
+    voxel_size = 0.05
+    return (atom_positions, ff_a, ff_b, n_voxels_per_side, voxel_size)
 
 
 @pytest.fixture
-def resolution():
-    return 5.32
+def pixel_size():
+    return 4.4
 
 
 @pytest.fixture
-def filters(scattering):
-    return [cs.LowpassFilter(scattering.padded_shape)]
-    # return []
+def config(pixel_size):
+    return cs.ImageConfig((65, 66), pixel_size, pad_scale=1.1)
 
 
 @pytest.fixture
-def masks(scattering):
-    return [cs.CircularMask(scattering.shape)]
+def scattering(config):
+    return cs.FourierSliceExtract(config, interpolation_order=1)
 
 
 @pytest.fixture
-def instrument(resolution):
+def density(sample_mrc_path):
+    density_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
+    return cs.FourierVoxelGrid.from_density_grid(
+        density_grid, voxel_size, pad_scale=1.3
+    )
+
+
+@pytest.fixture
+def stacked_density(density):
+    return density.from_list([density for _ in range(3)])
+
+
+@pytest.fixture
+def filters(config):
+    return op.LowpassFilter(config.padded_frequency_grid.get())
+
+
+@pytest.fixture
+def masks(config):
+    return op.CircularMask(
+        config.padded_coordinate_grid_in_angstroms.get(),
+        radius=20 * config.pixel_size,
+    )
+
+
+@pytest.fixture
+def instrument():
     return cs.Instrument(
         optics=cs.CTFOptics(),
-        exposure=cs.UniformExposure(N=1e5, mu=1.0),
-        detector=cs.GaussianDetector(
-            pixel_size=resolution, key=random.PRNGKey(seed=0)
-        ),
+        exposure=cs.Exposure(dose=op.Constant(10.0), radiation=op.Constant(1.0)),
+        detector=cs.GaussianDetector(variance=op.Constant(1.0)),
     )
 
 
 @pytest.fixture
-def specimen(density, resolution):
-    return cs.Specimen(
-        density=density,
-        resolution=resolution,
-        pose=cs.EulerPose(degrees=False),
+def pose():
+    return cs.EulerPose(
+        view_phi=30.0,
+        view_theta=100.0,
+        view_psi=-10.0,
+        offset_x=10.0,
+        offset_y=-5.0,
     )
+
+
+@pytest.fixture
+def specimen(density, pose):
+    return cs.Specimen(density=density, pose=pose)
 
 
 @pytest.fixture
 def solvent():
-    return cs.GaussianIce(key=random.PRNGKey(seed=0))
+    return cs.GaussianIce()
 
 
 @pytest.fixture
-def noisy_model(scattering, specimen, instrument, solvent, filters, masks):
+def noiseless_model(scattering, specimen, instrument):
+    instrument = eqx.tree_at(lambda ins: ins.detector, instrument, cs.NullDetector())
     return cs.ImagePipeline(
-        scattering=scattering,
-        specimen=specimen,
-        instrument=instrument,
-        solvent=solvent,
-        filters=filters,
-        masks=masks,
+        scattering=scattering, specimen=specimen, instrument=instrument
     )
 
 
 @pytest.fixture
-def maskless_model(scattering, specimen, instrument, solvent, filters):
+def noisy_model(scattering, specimen, instrument, solvent):
     return cs.ImagePipeline(
         scattering=scattering,
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
-        filters=filters,
+    )
+
+
+@pytest.fixture
+def filtered_model(scattering, specimen, instrument, solvent, filters):
+    return cs.ImagePipeline(
+        scattering=scattering,
+        specimen=specimen,
+        instrument=instrument,
+        solvent=solvent,
+        filter=filters,
+    )
+
+
+@pytest.fixture
+def filtered_and_masked_model(
+    scattering, specimen, instrument, solvent, filters, masks
+):
+    return cs.ImagePipeline(
+        scattering=scattering,
+        specimen=specimen,
+        instrument=instrument,
+        solvent=solvent,
+        filter=filters,
+        mask=masks,
     )
 
 
 @pytest.fixture
 def test_image(noisy_model):
-    return noisy_model()
-
-
-@pytest.fixture
-def likelihood_model(
-    scattering, specimen, instrument, solvent, filters, masks
-):
-    return cs.GaussianImage(
-        scattering=scattering,
-        specimen=specimen,
-        instrument=instrument,
-        solvent=solvent,
-        filters=filters,
-        masks=masks,
-    )
+    image = noisy_model.sample(jr.PRNGKey(1234), view_cropped=False)
+    return rfftn(image)

@@ -1,9 +1,13 @@
 # Contributor Guide
 
 Contributions to this repository are welcome and greatly appreciated! I would love
-for this package to grow and be supported by a larger community. This project is
-open-source under the GNU GPL-3.0 License and welcomes contributions in the form of bug
-reports, feature requests, and pull requests.
+for this package to grow and be supported by a larger community.
+
+## Design principles
+
+`cryojax` is built on [equinox](https://docs.kidger.site/equinox/). In short, `equinox` provides an object-oriented interface to writing parameterized functions in `jax`. The core object of these parameterized functions is called a [Module](https://docs.kidger.site/equinox/api/module/module/) (yes, this takes inspiration from pytorch). `equinox` ships with features to interact with these `Module`s, and more generally with [pytrees](https://jax.readthedocs.io/en/latest/pytrees.html) in `jax`. One of the most useful of these features, not found in `jax` itself, is a means of performing out-of-place updates on pytrees through `equinox.tree_at`.
+
+Equinox also provides a recommended pattern for writing `Module`s: https://docs.kidger.site/equinox/pattern/. We think this is a good template for code readability, so `cryojax` tries to adhere to these principles as much as possible.
 
 ## How to report a bug
 
