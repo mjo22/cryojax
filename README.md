@@ -51,8 +51,8 @@ density_grid, voxel_size = read_array_with_spacing_from_mrc(filename)
 density = cs.FourierVoxelGrid.from_density_grid(density_grid, voxel_size)
 # ... now instantiate fourier slice extraction
 shape, pixel_size = (320, 320), voxel_size
-manager = cs.ImageManager(shape, pixel_size)
-scattering = cs.FourierSliceExtract(manager, interpolation_order=1)
+config = cs.ImageConfig(shape, pixel_size)
+scattering = cs.FourierSliceExtract(config, interpolation_order=1)
 ```
 
 Here, the 3D electron density map stored in `filename` is loaded in fourier-space and the fourier-slice projection theorem is initialized. We can now instantiate the representation of a biological specimen, which also includes a pose.
@@ -129,7 +129,7 @@ def update_model(model, params):
     where = lambda model: (
         model.pipeline.specimen.pose.view_phi,
         model.pipeline.instrument.optics.ctf.defocus_u,
-        model.pipeline.scattering.manager.pixel_size
+        model.pipeline.scattering.config.pixel_size
     )
     updated_model = eqx.tree_at(
         where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"])

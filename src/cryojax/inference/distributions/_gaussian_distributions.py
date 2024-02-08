@@ -68,35 +68,27 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
     @override
     def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
         """Sample from the Gaussian noise model."""
-        freqs = (
-            self.pipeline.scattering.manager.padded_frequency_grid_in_angstroms.get()
-        )
+        freqs = self.pipeline.scattering.config.padded_frequency_grid_in_angstroms.get()
         noise = self.variance(freqs) * jr.normal(key, shape=freqs.shape[0:-1])
         image = self.pipeline.render(view_cropped=False, get_real=False)
         return self.pipeline.crop_and_apply_operators(image + noise, **kwargs)
 
     @override
     def log_probability(self, observed: ComplexImage) -> Real_:
-        """
-        Evaluate the log-likelihood of the gaussian noise model.
+        """Evaluate the log-likelihood of the gaussian noise model.
 
-        This evaluates the log probability in the super sampled
-        coordinate system. Therefore, ``observed.shape`` must
-        match ``ImageManager.padded_shape``.
+        **Arguments:**
 
-        Parameters
-        ----------
-        observed :
-           The observed data in fourier space. This must match
-           the ImageManager.padded_shape shape.
+        `observed` : The observed data in fourier space. `observed.shape`
+                     must match `ImageConfig.padded_shape`.
         """
         pipeline = self.pipeline
         padded_freqs = (
-            pipeline.scattering.manager.padded_frequency_grid_in_angstroms.get()
+            pipeline.scattering.config.padded_frequency_grid_in_angstroms.get()
         )
-        freqs = pipeline.scattering.manager.frequency_grid_in_angstroms.get()
+        freqs = pipeline.scattering.config.frequency_grid_in_angstroms.get()
         if observed.shape != padded_freqs.shape[:-1]:
-            raise ValueError("Shape of observed must match ImageManager.padded_shape")
+            raise ValueError("Shape of observed must match ImageConfig.padded_shape")
         # Get residuals
         residuals = pipeline.render(view_cropped=False, get_real=False) - observed
         # Apply filters, crop, and mask

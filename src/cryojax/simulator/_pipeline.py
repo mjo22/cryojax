@@ -19,7 +19,7 @@ from ._instrument import Instrument
 from ._detector import NullDetector
 from ._ice import AbstractIce, NullIce
 from ._assembly import AbstractAssembly
-from ..image import rfftn, irfftn
+from ..image import rfftn, irfftn, normalize_image
 from ..image.operators import AbstractFilter, AbstractMask
 from ..typing import ComplexImage, Image
 
@@ -134,27 +134,27 @@ class AbstractPipeline(Module, strict=True):
         Return an image postprocessed with filters, cropping, and masking
         in either real or fourier space.
         """
-        manager = self.scattering.manager
+        config = self.scattering.config
         # Apply filter
         if self.filter is not None:
             image = self.filter(image)
         # Crop and apply mask
-        if self.mask is None and manager.padded_shape == manager.shape:
+        if self.mask is None and config.padded_shape == config.shape:
             # ... if there are no masks and we don't need to crop,
             # minimize moving back and forth between real and fourier space
             if normalize:
-                image = manager.normalize_image(
-                    image, is_real=False, shape_in_real_space=manager.shape
+                image = normalize_image(
+                    image, is_real=False, shape_in_real_space=config.shape
                 )
-            return irfftn(image, s=manager.shape) if get_real else image
+            return irfftn(image, s=config.shape) if get_real else image
         else:
             # ... otherwise, inverse transform, mask, crop, and normalize
-            image = irfftn(image, s=manager.padded_shape)
+            image = irfftn(image, s=config.padded_shape)
             if self.mask is not None:
                 image = self.mask(image)
-            image = manager.crop_to_shape(image)
+            image = config.crop_to_shape(image)
             if normalize:
-                image = manager.normalize_image(image, is_real=True)
+                image = normalize_image(image, is_real=True)
             return image if get_real else rfftn(image)
 
     def _get_final_image(
@@ -165,7 +165,7 @@ class AbstractPipeline(Module, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
-        manager = self.scattering.manager
+        config = self.scattering.config
         if view_cropped:
             return self.crop_and_apply_operators(
                 image,
@@ -173,7 +173,7 @@ class AbstractPipeline(Module, strict=True):
                 normalize=normalize,
             )
         else:
-            return irfftn(image, s=manager.padded_shape) if get_real else image
+            return irfftn(image, s=config.padded_shape) if get_real else image
 
 
 class ImagePipeline(AbstractPipeline, strict=True):

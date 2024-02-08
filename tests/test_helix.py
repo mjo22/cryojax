@@ -134,7 +134,7 @@ def test_agree_with_3j9g_assembly(
 def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
     helix = build_helix(sample_subunit_mrc_path, 12)
     scattering = cs.FourierSliceExtract(
-        cs.ImageManager((50, 20), pixel_size, pad_scale=6)
+        cs.ImageConfig((50, 20), pixel_size, pad_scale=6)
     )
 
     @jax.jit

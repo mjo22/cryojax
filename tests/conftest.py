@@ -66,13 +66,13 @@ def pixel_size():
 
 
 @pytest.fixture
-def manager(pixel_size):
-    return cs.ImageManager((65, 66), pixel_size, pad_scale=1.1)
+def config(pixel_size):
+    return cs.ImageConfig((65, 66), pixel_size, pad_scale=1.1)
 
 
 @pytest.fixture
-def scattering(manager):
-    return cs.FourierSliceExtract(manager, interpolation_order=1)
+def scattering(config):
+    return cs.FourierSliceExtract(config, interpolation_order=1)
 
 
 @pytest.fixture
@@ -89,15 +89,15 @@ def stacked_density(density):
 
 
 @pytest.fixture
-def filters(manager):
-    return op.LowpassFilter(manager.padded_frequency_grid.get())
+def filters(config):
+    return op.LowpassFilter(config.padded_frequency_grid.get())
 
 
 @pytest.fixture
-def masks(manager):
+def masks(config):
     return op.CircularMask(
-        manager.padded_coordinate_grid_in_angstroms.get(),
-        radius=20 * manager.pixel_size,
+        config.padded_coordinate_grid_in_angstroms.get(),
+        radius=20 * config.pixel_size,
     )
 
 

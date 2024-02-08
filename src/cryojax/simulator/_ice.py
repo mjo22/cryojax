@@ -11,7 +11,7 @@ import jax.random as jr
 from jaxtyping import PRNGKeyArray
 
 from ._stochastic_model import AbstractStochasticModel
-from ._manager import ImageManager
+from ._config import ImageConfig
 from ..image.operators import FourierOperatorLike, FourierExp2D
 from ..typing import ComplexImage, ImageCoords
 
@@ -34,11 +34,11 @@ class AbstractIce(AbstractStochasticModel, strict=True):
         self,
         key: PRNGKeyArray,
         image_at_exit_plane: ComplexImage,
-        manager: ImageManager,
+        config: ImageConfig,
     ) -> ComplexImage:
         """Compute a realization of the ice surrounding a specimen."""
         ice_at_exit_plane = self.sample(
-            key, manager.padded_frequency_grid_in_angstroms.get()
+            key, config.padded_frequency_grid_in_angstroms.get()
         )
 
         return ice_at_exit_plane

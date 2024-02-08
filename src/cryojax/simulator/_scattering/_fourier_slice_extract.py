@@ -8,7 +8,7 @@ from equinox import field
 import jax.numpy as jnp
 
 from ._scattering_method import AbstractProjectionMethod
-from .._manager import ImageManager
+from .._config import ImageConfig
 from .._density import FourierVoxelGrid, FourierVoxelGridInterpolator
 from ...image import (
     irfftn,
@@ -41,7 +41,7 @@ class FourierSliceExtract(AbstractProjectionMethod, strict=True):
         ``interpolation_mode = "fill"``.
     """
 
-    manager: ImageManager
+    config: ImageConfig
 
     interpolation_order: int = field(static=True, default=1)
     interpolation_mode: str = field(static=True, default="fill")
@@ -79,12 +79,12 @@ class FourierSliceExtract(AbstractProjectionMethod, strict=True):
             raise ValueError(
                 "Supported density representations are FourierVoxelGrid and FourierVoxelGridInterpolator."
             )
-        # Resize the image to match the ImageManager.padded_shape
-        if self.manager.padded_shape == (N, N):
+        # Resize the image to match the ImageConfig.padded_shape
+        if self.config.padded_shape == (N, N):
             return fourier_projection
         else:
             return rfftn(
-                self.manager.crop_or_pad_to_padded_shape(
+                self.config.crop_or_pad_to_padded_shape(
                     irfftn(fourier_projection, s=(N, N))
                 )
             )

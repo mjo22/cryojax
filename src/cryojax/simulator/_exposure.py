@@ -5,7 +5,7 @@ due to electron exposure.
 
 from equinox import Module, field, AbstractVar
 
-from ._manager import ImageManager
+from ._config import ImageConfig
 from ..image import rfftn, irfftn
 from ..image.operators import (
     RealOperatorLike,
@@ -37,17 +37,17 @@ class AbstractExposure(Module, strict=True):
     def __call__(
         self,
         image_at_exit_plane: ComplexImage,
-        manager: ImageManager,
+        config: ImageConfig,
     ) -> ComplexImage:
         """Evaluate the electron exposure model."""
-        coordinate_grid = manager.padded_coordinate_grid_in_angstroms.get()
-        frequency_grid = manager.padded_frequency_grid_in_angstroms.get()
+        coordinate_grid = config.padded_coordinate_grid_in_angstroms.get()
+        frequency_grid = config.padded_frequency_grid_in_angstroms.get()
         if isinstance(self.dose, Constant):
             image_at_exit_plane *= self.dose(coordinate_grid)
         else:
             image_at_exit_plane = rfftn(
                 self.dose(coordinate_grid)
-                * irfftn(image_at_exit_plane, s=manager.padded_shape)
+                * irfftn(image_at_exit_plane, s=config.padded_shape)
             )
         return self.radiation(frequency_grid) * image_at_exit_plane
 

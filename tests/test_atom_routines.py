@@ -1,7 +1,7 @@
 import pytest
 import jax
 from jax import numpy as jnp
-from cryojax.simulator import ImageManager
+from cryojax.simulator import ImageConfig
 
 # from cryojax.simulator._scattering._gaussian_mixture import (
 #    _evaluate_coord_to_grid_sq_distances,

@@ -10,7 +10,7 @@ from equinox import AbstractVar, Module, field
 import jax
 import jax.numpy as jnp
 
-from ._manager import ImageManager
+from ._config import ImageConfig
 from ..image.operators import (
     FourierOperatorLike,
     AbstractFourierOperator,
@@ -108,7 +108,7 @@ class AbstractOptics(Module, strict=True):
     def __call__(
         self,
         image: ComplexImage,
-        manager: ImageManager,
+        config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
     ) -> Image:
         """Pass an image through the optics model."""
@@ -133,7 +133,7 @@ class NullOptics(AbstractOptics, strict=True):
     def __call__(
         self,
         image: ComplexImage,
-        manager: ImageManager,
+        config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
     ) -> Image:
         return image
@@ -152,11 +152,11 @@ class CTFOptics(AbstractOptics, strict=True):
     def __call__(
         self,
         image: ComplexImage,
-        manager: ImageManager,
+        config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
     ) -> Image:
         """Compute the optics model with an envelope."""
-        frequency_grid = manager.padded_frequency_grid_in_angstroms.get()
+        frequency_grid = config.padded_frequency_grid_in_angstroms.get()
         return image * self.evaluate(frequency_grid, defocus_offset=defocus_offset)
 
 

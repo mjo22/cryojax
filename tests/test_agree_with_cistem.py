@@ -114,13 +114,13 @@ def test_compute_projection_with_cistem(phi, theta, psi, sample_mrc_path, pixel_
     pose = cs.EulerPose(view_phi=phi, view_theta=theta, view_psi=psi)
     specimen = cs.Specimen(density, pose)
     box_size = density.shape[0]
-    manager = cs.ImageManager((box_size, box_size), pixel_size)
-    scattering = cs.FourierSliceExtract(manager)
+    config = cs.ImageConfig((box_size, box_size), pixel_size)
+    scattering = cs.FourierSliceExtract(config)
     pipeline = cs.ImagePipeline(specimen, scattering)
     cryojax_projection = irfftn(
         pipeline.render(get_real=False).at[0, 0].set(0.0 + 0.0j)
-        / np.sqrt(np.prod(manager.shape)),
-        s=manager.padded_shape,
+        / np.sqrt(np.prod(config.shape)),
+        s=config.padded_shape,
     )
     # pycistem
     pycistem_volume = _load_pycistem_template(sample_mrc_path, box_size)

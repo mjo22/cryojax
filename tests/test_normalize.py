@@ -25,11 +25,11 @@ def test_compute_with_filters_and_masks(model, request):
     im2 = model.sample(key, get_real=True, normalize=True)
     im3 = irfftn(
         model.render(get_real=False, normalize=True),
-        s=model.scattering.manager.shape,
+        s=model.scattering.config.shape,
     )
     im4 = irfftn(
         model.render(get_real=False, normalize=True),
-        s=model.scattering.manager.shape,
+        s=model.scattering.config.shape,
     )
     for im in [im1, im2, im3, im4]:
         np.testing.assert_allclose(jnp.std(im), jnp.asarray(1.0), rtol=1e-3)

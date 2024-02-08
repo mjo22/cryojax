@@ -2,7 +2,7 @@ from ._stochastic_model import (
     AbstractStochasticModel as AbstractStochasticModel,
 )
 
-from ._manager import ImageManager as ImageManager
+from ._config import ImageConfig as ImageConfig
 
 from ._pose import (
     AbstractPose as AbstractPose,

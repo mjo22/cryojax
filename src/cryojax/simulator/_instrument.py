@@ -47,7 +47,7 @@ class Instrument(Module, strict=True):
         # Compute the scattering image in fourier space
         image_at_exit_plane = scattering(specimen, **kwargs)
         # Pass image through the electron exposure model
-        image_at_exit_plane = self.exposure(image_at_exit_plane, scattering.manager)
+        image_at_exit_plane = self.exposure(image_at_exit_plane, scattering.config)
 
         return image_at_exit_plane
 
@@ -61,7 +61,7 @@ class Instrument(Module, strict=True):
         """Propagate the image with the optics model"""
         image_at_detector_plane = self.optics(
             image_at_exit_plane,
-            scattering.manager,
+            scattering.config,
             defocus_offset=defocus_offset,
             **kwargs,
         )
@@ -79,7 +79,7 @@ class Instrument(Module, strict=True):
     ) -> ComplexImage:
         """Propagate the image to the detector plane using the solvent model"""
         # Compute the image of the ice in the exit plane
-        ice_at_exit_plane = solvent(key, image_at_exit_plane, scattering.manager)
+        ice_at_exit_plane = solvent(key, image_at_exit_plane, scattering.config)
         # Now, propagate the image of the ice to the detector plane
         ice_at_detector_plane = self.propagate_to_detector_plane(
             ice_at_exit_plane, scattering, **kwargs
@@ -102,7 +102,7 @@ class Instrument(Module, strict=True):
     ) -> ComplexImage:
         """Measure the detector readout"""
         detector_readout = self.detector(
-            key, image_at_detector_plane, scattering.manager, **kwargs
+            key, image_at_detector_plane, scattering.config, **kwargs
         )
 
         return detector_readout

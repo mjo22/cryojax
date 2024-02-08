@@ -1,3 +1,7 @@
+"""
+Voxel-based representations of an electron density.
+"""
+
 from abc import abstractmethod
 from typing import (
     Any,
@@ -38,12 +42,17 @@ from ...typing import (
 
 
 class AbstractVoxels(AbstractElectronDensity, strict=True):
-    """Abstract interface for a voxel-based electron density representation."""
+    """Abstract interface for a voxel-based electron density representation.
+
+    **Attributes:**
+
+    `voxel_size`: The voxel size of the electron density.
+
+    `is_real`: Whether or not the representation is real or fourier-space.
+    """
 
     voxel_size: AbstractVar[Real_]
-    """The voxel size of the electron density."""
     is_real: AbstractClassVar[bool]
-    """Whether or not the representation is real or fourier-space."""
 
     @property
     @abstractmethod
@@ -191,14 +200,20 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
 
 
 class FourierVoxelGrid(AbstractFourierVoxelGrid):
-    """A 3D electron density voxel grid in fourier-space."""
+    """A 3D electron density voxel grid in fourier-space.
+
+    **Attributes:**
+
+    `fourier_density_grid`: The cubic voxel grid in fourier space.
+
+    `frequency_slice`: Frequency slice coordinate system.
+
+    `voxel_size`: The voxel size.
+    """
 
     fourier_density_grid: ComplexCubicVolume = field(converter=jnp.asarray)
-    """The voxel grid in fourier space."""
     frequency_slice: FrequencySlice
-    """Frequency slice coordinate system."""
     voxel_size: Real_ = field(converter=jnp.asarray)
-    """The voxel size."""
 
     is_real: ClassVar[bool] = False
 
@@ -221,14 +236,19 @@ class FourierVoxelGrid(AbstractFourierVoxelGrid):
 class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
     """A 3D electron density voxel grid in fourier-space, represented
     by spline coefficients.
+
+    **Attributes:**
+
+    `coefficients`: Cubic spline coefficients for the voxel grid.
+
+    `frequency_slice`: Frequency slice coordinate system.
+
+    `voxel_size`: The voxel size.
     """
 
     coefficients: ComplexCubicVolume = field(converter=jnp.asarray)
-    """Cubic spline coefficients for the voxel grid."""
     frequency_slice: FrequencySlice
-    """Frequency slice coordinate system."""
     voxel_size: Real_ = field(converter=jnp.asarray)
-    """The voxel size."""
 
     is_real: ClassVar[bool] = False
 
@@ -262,14 +282,19 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
 class RealVoxelGrid(AbstractVoxels, strict=True):
     """Abstraction of a 3D electron density voxel grid.
     The voxel grid is given in real-space.
+
+    **Attributes:**
+
+    `density_grid`: The voxel grid in fourier space.
+
+    `coordinate_grid`: A coordinate grid.
+
+    `voxel_size`: The voxel size.
     """
 
     density_grid: RealCubicVolume = field(converter=jnp.asarray)
-    """A cubic voxel grid in real-space."""
     coordinate_grid: CoordinateGrid
-    """A coordinate grid."""
     voxel_size: Real_ = field(converter=jnp.asarray)
-    """The voxel size."""
 
     is_real: ClassVar[bool] = True
 
@@ -408,14 +433,19 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         only store points of non-zero electron density. Therefore,
         a `RealVoxelCloud` stores a point cloud of electron density
         voxel values.
+
+    **Attributes:**
+
+    `density_weights`: A point-cloud of voxel density values.
+
+    `coordinate_list`: Coordinate list for the `density_weights`.
+
+    `voxel_size`: The voxel size.
     """
 
     density_weights: RealCloud = field(converter=jnp.asarray)
-    """A point-cloud of voxel density values."""
     coordinate_list: CoordinateList
-    """Coordinate list for the `density_weights`."""
     voxel_size: Real_ = field(converter=jnp.asarray)
-    """The voxel size."""
 
     is_real: ClassVar[bool] = True
 
