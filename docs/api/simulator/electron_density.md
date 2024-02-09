@@ -41,9 +41,6 @@
         options:
             members:
                 - __init__
-                - fourier_density_grid
-                - voxel_size
-                - frequency_slice
                 - frequency_slice_in_angstroms
                 - from_density_grid
                 - from_atoms
@@ -54,9 +51,6 @@
         options:
             members:
                 - __init__
-                - coefficients
-                - voxel_size
-                - frequency_slice
                 - frequency_slice_in_angstroms
                 - from_density_grid
                 - from_atoms
@@ -67,9 +61,6 @@
         options:
             members:
                 - __init__
-                - density_grid
-                - voxel_size
-                - coordinate_grid
                 - coordinate_grid_in_angstroms
                 - from_density_grid
                 - from_atoms
@@ -80,9 +71,6 @@
         options:
             members:
                 - __init__
-                - density_weights
-                - voxel_size
-                - coordinate_list
                 - coordinate_list_in_angstroms
                 - from_density_grid
                 - from_atoms
