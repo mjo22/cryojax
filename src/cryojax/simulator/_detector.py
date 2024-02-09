@@ -2,8 +2,6 @@
 Abstraction of electron detectors in a cryo-EM image.
 """
 
-__all__ = ["AbstractDetector", "NullDetector", "GaussianDetector"]
-
 from abc import abstractmethod
 from typing import ClassVar
 from typing_extensions import override
