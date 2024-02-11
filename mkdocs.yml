@@ -53,5 +53,5 @@ plugins:
 nav:
     - 'index.md'
     - Simulator API:
-        - Electron Density:
-            - 'api/simulator/electron_density.md'
+        - Scattering potential:
+            - 'api/simulator/scattering_potential.md'

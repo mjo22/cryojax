@@ -18,7 +18,7 @@
                 - is_real
                 - shape
                 - rotate_to_pose
-                - from_density_grid
+                - from_real_voxel_grid
                 - from_atoms
 
 ### Fourier-space voxel representations
@@ -31,7 +31,7 @@
                 - __init__
 
 !!! info "Fourier-space conventions"
-    - The `fourier_density_grid` and `frequency_slice` arguments to
+    - The `fourier_voxel_grid` and `frequency_slice` arguments to
     `FourierVoxelGrid.__init__` should be loaded with the zero frequency
     component in the center of the box.
     - The parameters in an `AbstractPose` represent a rotation in real-space. This means that when calling `FourierVoxelGrid.rotate_to_pose`,
@@ -42,7 +42,7 @@
             members:
                 - __init__
                 - frequency_slice_in_angstroms
-                - from_density_grid
+                - from_real_voxel_grid
                 - from_atoms
 
 ---
@@ -52,7 +52,7 @@
             members:
                 - __init__
                 - frequency_slice_in_angstroms
-                - from_density_grid
+                - from_real_voxel_grid
                 - from_atoms
 
 ### Real-space voxel representations
@@ -62,7 +62,7 @@
             members:
                 - __init__
                 - coordinate_grid_in_angstroms
-                - from_density_grid
+                - from_real_voxel_grid
                 - from_atoms
 
 ---
@@ -72,7 +72,7 @@
             members:
                 - __init__
                 - coordinate_list_in_angstroms
-                - from_density_grid
+                - from_real_voxel_grid
                 - from_atoms
 
 ### Pure function API
