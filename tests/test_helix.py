@@ -12,9 +12,11 @@ config.update("jax_enable_x64", True)
 
 
 def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
-    density_grid, voxel_size = read_array_with_spacing_from_mrc(sample_subunit_mrc_path)
-    subunit_density = cs.FourierVoxelGrid.from_density_grid(
-        density_grid, voxel_size, pad_scale=2
+    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(
+        sample_subunit_mrc_path
+    )
+    subunit_density = cs.FourierVoxelGrid.from_real_voxel_grid(
+        real_voxel_grid, voxel_size, pad_scale=2
     )
     r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
     subunit_pose = cs.EulerPose(*r_0)
@@ -33,7 +35,7 @@ def build_helix_with_conformation(
 ) -> cs.Helix:
     subunit_density = tuple(
         [
-            cs.FourierVoxelGrid.from_density_grid(
+            cs.FourierVoxelGrid.from_real_voxel_grid(
                 *read_array_with_spacing_from_mrc(sample_subunit_mrc_path)
             )
             for _ in range(2)
@@ -103,10 +105,10 @@ def test_c6_rotation(
     ],
 )
 def test_agree_with_3j9g_assembly(
-    sample_subunit_mrc_path, density, scattering, translation, euler_angles
+    sample_subunit_mrc_path, potential, scattering, translation, euler_angles
 ):
     helix = build_helix(sample_subunit_mrc_path, 2)
-    specimen_39jg = cs.Specimen(density)
+    specimen_39jg = cs.Specimen(potential)
 
     @jax.jit
     def compute_rotated_image_with_helix(helix, scattering, pose):

@@ -27,24 +27,25 @@ class AbstractIce(AbstractStochasticModel, strict=True):
         key: PRNGKeyArray,
         frequency_grid_in_angstroms: ImageCoords,
     ) -> ComplexImage:
-        """Sample a stochastic realization of the ice at the exit plane."""
+        """Sample a stochastic realization of the potential due to the ice
+        at the exit plane."""
         raise NotImplementedError
 
     def __call__(
         self,
         key: PRNGKeyArray,
-        image_at_exit_plane: ComplexImage,
+        potential_at_exit_plane: ComplexImage,
         config: ImageConfig,
     ) -> ComplexImage:
-        """Compute a realization of the ice surrounding a specimen."""
-        ice_at_exit_plane = self.sample(
+        """Compute the combined potential of the ice and the specimen, ."""
+        ice_potential_at_exit_plane = self.sample(
             key, config.padded_frequency_grid_in_angstroms.get()
         )
 
-        return ice_at_exit_plane
+        return potential_at_exit_plane + ice_potential_at_exit_plane
 
 
-class NullIce(AbstractIce, strict=True):
+class NullIce(AbstractIce):
     """
     A "null" ice model.
     """
@@ -56,6 +57,15 @@ class NullIce(AbstractIce, strict=True):
         frequency_grid_in_angstroms: ImageCoords,
     ) -> ComplexImage:
         return jnp.zeros(frequency_grid_in_angstroms.shape[0:-1])
+
+    @override
+    def __call__(
+        self,
+        key: PRNGKeyArray,
+        potential_at_exit_plane: ComplexImage,
+        config: ImageConfig,
+    ) -> ComplexImage:
+        return potential_at_exit_plane
 
 
 class GaussianIce(AbstractIce, strict=True):
@@ -78,12 +88,15 @@ class GaussianIce(AbstractIce, strict=True):
         key: PRNGKeyArray,
         frequency_grid_in_angstroms: ImageCoords,
     ) -> ComplexImage:
-        """Sample from a gaussian noise model, with the variance
-        modulated by the CTF."""
-        ice_image = self.variance(frequency_grid_in_angstroms) * jr.normal(
+        """Sample a realization of the ice potential as colored gaussian noise."""
+        ice_potential_at_exit_plane = self.variance(
+            frequency_grid_in_angstroms
+        ) * jr.normal(
             key,
             shape=frequency_grid_in_angstroms.shape[0:-1],
             dtype=complex,
         )
-        ice_image = ice_image.at[0, 0].set(0.0 + 0.0j)
-        return ice_image
+        ice_potential_at_exit_plane = ice_potential_at_exit_plane.at[0, 0].set(
+            0.0 + 0.0j
+        )
+        return ice_potential_at_exit_plane

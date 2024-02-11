@@ -5,15 +5,12 @@ Image formation models simulated from gaussian distributions.
 from typing import Optional, Any
 from typing_extensions import override
 
-import equinox as eqx
 import jax.random as jr
 import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 
 from ._distribution import AbstractDistribution
 from ...image.operators import FourierOperatorLike, Constant
-from ...simulator import GaussianIce
-from ...simulator import GaussianDetector
 from ...simulator import AbstractPipeline
 from ...typing import Real_, RealImage, ComplexImage
 
@@ -25,19 +22,10 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
     This computes the likelihood in Fourier space,
     which allows one to model an arbitrary noise power spectrum.
 
-    If no variance model is explicitly passed, the variance is computed as
-
-    .. math::
-        Var[D(q)] + CTF(q)^2 Var[I(q)]
-
-    where :math:`D(q)` and :math:`I(q)` are independent gaussian random variables in fourier
-    space for the detector and ice, respectively, for a given fourier mode :math:`q`.
-
     Attributes
     ----------
     variance :
-        The gaussian variance function. If not given, use the detector and ice noise
-        models as described above.
+        The gaussian variance function.
     """
 
     pipeline: AbstractPipeline
@@ -49,21 +37,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         variance: Optional[FourierOperatorLike] = None,
     ):
         self.pipeline = pipeline
-        if variance is None:
-            # Variance from detector
-            if isinstance(pipeline.instrument.detector, GaussianDetector):
-                variance = pipeline.instrument.detector.variance
-            else:
-                variance = Constant(0.0)
-            # Variance from ice
-            if isinstance(pipeline.solvent, GaussianIce):
-                ctf = pipeline.instrument.optics.ctf
-                variance += ctf * ctf * pipeline.solvent.variance
-            if eqx.tree_equal(variance, Constant(0.0)):
-                raise AttributeError(
-                    "If variance is not given, the ImagePipeline must have either a GaussianDetector or GaussianIce model."
-                )
-        self.variance = variance
+        self.variance = variance or Constant(1.0)
 
     @override
     def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:

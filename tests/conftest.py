@@ -76,16 +76,11 @@ def scattering(config):
 
 
 @pytest.fixture
-def density(sample_mrc_path):
-    density_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
-    return cs.FourierVoxelGrid.from_density_grid(
-        density_grid, voxel_size, pad_scale=1.3
+def potential(sample_mrc_path):
+    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
+    return cs.FourierVoxelGrid.from_real_voxel_grid(
+        real_voxel_grid, voxel_size, pad_scale=1.3
     )
-
-
-@pytest.fixture
-def stacked_density(density):
-    return density.from_list([density for _ in range(3)])
 
 
 @pytest.fixture
@@ -104,9 +99,8 @@ def masks(config):
 @pytest.fixture
 def instrument():
     return cs.Instrument(
-        optics=cs.CTFOptics(),
-        exposure=cs.Exposure(dose=op.Constant(10.0), radiation=op.Constant(1.0)),
-        detector=cs.GaussianDetector(variance=op.Constant(1.0)),
+        optics=cs.WeakPhaseOptics(),
+        detector=cs.GaussianDetector(electrons_per_angstrom=op.Constant(10.0)),
     )
 
 
@@ -122,8 +116,8 @@ def pose():
 
 
 @pytest.fixture
-def specimen(density, pose):
-    return cs.Specimen(density=density, pose=pose)
+def specimen(potential, pose):
+    return cs.Specimen(potential=potential, pose=pose)
 
 
 @pytest.fixture

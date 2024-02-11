@@ -3,8 +3,6 @@ Routines to model image formation from 3D electron density
 fields.
 """
 
-__all__ = ["AbstractScatteringMethod", "AbstractProjectionMethod"]
-
 from abc import abstractmethod
 from typing import Any
 
@@ -13,7 +11,7 @@ import jax.numpy as jnp
 from equinox import Module, AbstractVar
 
 from .._specimen import AbstractSpecimen
-from .._density import AbstractElectronDensity, AbstractVoxels
+from .._potential import AbstractScatteringPotential, AbstractVoxels
 from .._config import ImageConfig
 
 from ...image import rfftn, irfftn
@@ -39,38 +37,38 @@ class AbstractProjectionMethod(AbstractScatteringMethod, strict=True):
     config: AbstractVar[ImageConfig]
 
     @abstractmethod
-    def project_density(self, density: AbstractElectronDensity) -> ComplexImage:
-        """Compute the scattered wave of the electron density in the exit plane.
+    def project_potential(self, potential: AbstractScatteringPotential) -> ComplexImage:
+        """Compute the scattering potential in the exit plane.
 
         **Arguments:**
 
-        `density`: The electron density representation.
+        `potential`: The scattering potential representation.
         """
         raise NotImplementedError
 
     def __call__(self, specimen: AbstractSpecimen, **kwargs: Any) -> ComplexImage:
-        # Get density in the lab frame
-        density = specimen.density_in_lab_frame
+        # Get potential in the lab frame
+        potential = specimen.potential_in_lab_frame
         # Compute the fourier projection in the exit plane
-        image_at_exit_plane = self.project_density(density, **kwargs)
+        potential_at_exit_plane = self.project_potential(potential, **kwargs)
         # Rescale the pixel size if different from the voxel size
-        if isinstance(density, AbstractVoxels):
-            rescale_fn = lambda fourier_image: rfftn(
+        if isinstance(potential, AbstractVoxels):
+            rescale_fn = lambda fourier_potential: rfftn(
                 self.config.rescale_to_pixel_size(
-                    irfftn(fourier_image, s=self.config.padded_shape),
-                    density.voxel_size,
+                    irfftn(fourier_potential, s=self.config.padded_shape),
+                    potential.voxel_size,
                 )
             )
-            null_fn = lambda fourier_image: fourier_image
-            image_at_exit_plane = jax.lax.cond(
-                jnp.isclose(density.voxel_size, self.config.pixel_size),
+            null_fn = lambda fourier_potential: fourier_potential
+            potential_at_exit_plane = jax.lax.cond(
+                jnp.isclose(potential.voxel_size, self.config.pixel_size),
                 null_fn,
                 rescale_fn,
-                image_at_exit_plane,
+                potential_at_exit_plane,
             )
         # Apply translation through phase shifts
-        image_at_exit_plane *= specimen.pose.compute_shifts(
+        potential_at_exit_plane *= specimen.pose.compute_shifts(
             self.config.padded_frequency_grid_in_angstroms.get()
         )
 
-        return image_at_exit_plane
+        return potential_at_exit_plane

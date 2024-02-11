@@ -10,18 +10,18 @@ import equinox as eqx
 from cryojax.simulator import DiscreteEnsemble, DiscreteConformation
 
 
-def test_conformation(density, pose, scattering):
-    density = tuple([density for _ in range(3)])
-    ensemble = DiscreteEnsemble(density, pose, conformation=DiscreteConformation(0))
+def test_conformation(potential, pose, scattering):
+    potential = tuple([potential for _ in range(3)])
+    ensemble = DiscreteEnsemble(potential, pose, conformation=DiscreteConformation(0))
     _ = scattering(ensemble)
 
 
-def test_conformation_vmap(density, pose, scattering):
+def test_conformation_vmap(potential, pose, scattering):
     # Build Ensemble
-    cls = type(density)
-    stacked_density = tuple([density for _ in range(3)])
+    cls = type(potential)
+    stacked_potential = tuple([potential for _ in range(3)])
     ensemble = DiscreteEnsemble(
-        stacked_density,
+        stacked_potential,
         pose,
         conformation=DiscreteConformation(jnp.asarray((0, 1, 2, 1, 0))),
     )

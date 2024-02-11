@@ -9,7 +9,7 @@ import jax.numpy as jnp
 
 from ._scattering_method import AbstractProjectionMethod
 from .._config import ImageConfig
-from .._density import FourierVoxelGrid, FourierVoxelGridInterpolator
+from .._potential import FourierVoxelGrid, FourierVoxelGridInterpolator
 from ...image import (
     irfftn,
     rfftn,
@@ -47,29 +47,29 @@ class FourierSliceExtract(AbstractProjectionMethod, strict=True):
     interpolation_mode: str = field(static=True, default="fill")
     interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
 
-    def project_density(self, density: FourierVoxelGrid) -> ComplexImage:
+    def project_potential(self, potential: FourierVoxelGrid) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
         a uniform grid in the object plane.
         """
-        frequency_slice = density.frequency_slice.get()
+        frequency_slice = potential.frequency_slice.get()
         N = frequency_slice.shape[0]
-        if density.shape != (N, N, N):
+        if potential.shape != (N, N, N):
             raise AttributeError(
                 "Only cubic boxes are supported for fourier slice extraction."
             )
         # Compute the fourier projection
-        if isinstance(density, FourierVoxelGridInterpolator):
+        if isinstance(potential, FourierVoxelGridInterpolator):
             fourier_projection = extract_slice_with_cubic_spline(
-                density.coefficients,
+                potential.coefficients,
                 frequency_slice,
                 mode=self.interpolation_mode,
                 cval=self.interpolation_cval,
             )
-        elif isinstance(density, FourierVoxelGrid):
+        elif isinstance(potential, FourierVoxelGrid):
             fourier_projection = extract_slice(
-                density.fourier_density_grid,
+                potential.fourier_voxel_grid,
                 frequency_slice,
                 interpolation_order=self.interpolation_order,
                 mode=self.interpolation_mode,
@@ -91,7 +91,7 @@ class FourierSliceExtract(AbstractProjectionMethod, strict=True):
 
 
 def extract_slice(
-    fourier_density_grid: ComplexCubicVolume,
+    fourier_voxel_grid: ComplexCubicVolume,
     frequency_slice: VolumeSliceCoords,
     interpolation_order: int = 1,
     **kwargs: Any,
@@ -102,7 +102,7 @@ def extract_slice(
 
     Arguments
     ---------
-    fourier_density_grid : shape `(N, N, N)`
+    fourier_voxel_grid : shape `(N, N, N)`
         Density grid in fourier space. The zero frequency component
         should be in the center.
     frequency_slice : shape `(N, N, 1, 3)`
@@ -125,7 +125,7 @@ def extract_slice(
     # Convert arguments to map_coordinates convention and compute
     k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates(
-        fourier_density_grid, (k_x, k_y, k_z), interpolation_order, **kwargs
+        fourier_voxel_grid, (k_x, k_y, k_z), interpolation_order, **kwargs
     )[:, :, 0]
     # Shift zero frequency component to corner and take upper half plane
     projection = jnp.fft.ifftshift(projection)[:, : N // 2 + 1]

@@ -24,7 +24,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     # Load the PDB file into a VoxelGrid
     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
     coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
-    vg = FourierVoxelGrid.from_atoms(
+    fourier_potential = FourierVoxelGrid.from_atoms(
         atom_positions,
         atom_elements,
         voxel_size,
@@ -32,11 +32,11 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     )
     # Since Voxelgrid is in Frequency space by default, we have to first
     # transform back into real space.
-    vg_density = ifftn(jnp.fft.ifftshift(vg.fourier_density_grid)).real
+    fvg_real = ifftn(jnp.fft.ifftshift(fourier_potential.fourier_voxel_grid)).real
     # Ravel the grid
-    vg_density = vg_density.ravel()
+    fvg_real = fvg_real.ravel()
 
-    vc = RealVoxelGrid.from_atoms(
+    vg = RealVoxelGrid.from_atoms(
         atom_positions,
         atom_elements,
         voxel_size,
@@ -44,8 +44,8 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     )
 
     np.testing.assert_allclose(
-        vg_density,
-        jnp.transpose(vc.density_grid, axes=[1, 0, 2]).ravel(),
+        fvg_real,
+        jnp.transpose(vg.real_voxel_grid, axes=[1, 0, 2]).ravel(),
         atol=1e-12,
     )
 
@@ -54,7 +54,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
     @pytest.mark.parametrize("largest_atom", range(0, 3))
     def test_maxima_are_in_right_positions(self, toy_gaussian_cloud, largest_atom):
         """
-        Test that the maxima of the density are in the correct positions.
+        Test that the maxima of the potential are in the correct positions.
         """
         (
             atom_positions,
@@ -66,13 +66,13 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         ff_a[largest_atom] += 1.0
         coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
 
-        # Build the density
-        density = build_real_space_voxels_from_atoms(
+        # Build the potential
+        real_voxel_grid = build_real_space_voxels_from_atoms(
             atom_positions, ff_a, ff_b, coordinate_grid.get()
         )
 
         # Find the maximum
-        maximum_index = jnp.argmax(density)
+        maximum_index = jnp.argmax(real_voxel_grid)
         maximum_position = coordinate_grid.get().reshape(-1, 3)[maximum_index]
 
         # Check that the maximum is in the correct position
@@ -80,7 +80,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
 
     def test_integral_is_correct(self, toy_gaussian_cloud):
         """
-        Test that the maxima of the density are in the correct positions.
+        Test that the maxima of the potential are in the correct positions.
         """
         (
             atom_positions,
@@ -91,12 +91,12 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         ) = toy_gaussian_cloud
         coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
 
-        # Build the density
-        density = build_real_space_voxels_from_atoms(
+        # Build the potential
+        real_voxel_grid = build_real_space_voxels_from_atoms(
             atom_positions, ff_a, ff_b, coordinate_grid.get()
         )
 
-        integral = jnp.sum(density) * voxel_size**3
+        integral = jnp.sum(real_voxel_grid) * voxel_size**3
         assert jnp.isclose(integral, jnp.sum(ff_a))
 
 
@@ -133,8 +133,8 @@ class TestBuildVoxelsFromTrajectories:
         )
 
         np.testing.assert_allclose(
-            traj_voxels.density_grid[0], voxel1.density_grid, atol=1e-12
+            traj_voxels.real_voxel_grid[0], voxel1.real_voxel_grid, atol=1e-12
         )
         np.testing.assert_allclose(
-            traj_voxels.density_grid[1], voxel2.density_grid, atol=1e-12
+            traj_voxels.real_voxel_grid[1], voxel2.real_voxel_grid, atol=1e-12
         )

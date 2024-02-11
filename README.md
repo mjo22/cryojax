@@ -47,21 +47,21 @@ from cryojax.io import read_array_with_spacing_from_mrc
 
 # Instantiate the electron density
 filename = "example.mrc"
-density_grid, voxel_size = read_array_with_spacing_from_mrc(filename)
-density = cs.FourierVoxelGrid.from_density_grid(density_grid, voxel_size)
+real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(filename)
+potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
 shape, pixel_size = (320, 320), voxel_size
 config = cs.ImageConfig(shape, pixel_size)
 scattering = cs.FourierSliceExtract(config, interpolation_order=1)
 ```
 
-Here, the 3D electron density map stored in `filename` is loaded in fourier-space and the fourier-slice projection theorem is initialized. We can now instantiate the representation of a biological specimen, which also includes a pose.
+Here, the 3D scattering potential is stored in `filename` is loaded in fourier-space, and the fourier-slice projection theorem is initialized. We can now instantiate the representation of a biological specimen, which also includes a pose.
 
 ```python
 # First instantiate the pose. Translations are in Angstroms, angles are in degrees
 pose = cs.EulerPose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0, view_psi=-10.0)
 # ... now, build the biological specimen
-specimen = cs.Specimen(density, pose)
+specimen = cs.Specimen(potential, pose)
 ```
 
 Next, the model for the electron microscope.
@@ -71,11 +71,11 @@ from cryojax.image import operators as op
 
 # First, initialize the CTF and its optics model
 ctf = cs.CTF(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
-optics = cs.CTFOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # defocus and b_factor in Angstroms and Angstroms^2, respectively
+optics = cs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian2D(b_factor=5.0))  # defocus and b_factor in Angstroms and Angstroms^2, respectively
 # ... now, the model for the detector
-detector = cs.GaussianDetector(variance=op.Constant(1.0))
+detector = cs.GaussianDetector(electrons_per_squared_angstrom=op.Constant(100.0))  # Dose rate in electrons / Angstrom^2
 # ... these are stored in the Instrument
-instrument = cs.Instrument(optics=optics, detector=detector)
+instrument = cs.Instrument(optics, detector)
 ```
 
 Here, the `GaussianDetector` is simply modeled by gaussian white noise. The `CTF` has all parameters used in CTFFIND4, which take their default values if not
@@ -122,19 +122,19 @@ In `jax`, we may want to build a loss function and apply functional transformati
 ```python
 
 @jax.jit
-def update_model(model, params):
+def update_distribution(distribution, params):
     """
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
     where = lambda model: (
-        model.pipeline.specimen.pose.view_phi,
-        model.pipeline.instrument.optics.ctf.defocus_u,
-        model.pipeline.scattering.config.pixel_size
+        distribution.pipeline.specimen.pose.view_phi,
+        distribution.pipeline.instrument.optics.ctf.defocus_u,
+        distribution.pipeline.scattering.config.pixel_size
     )
-    updated_model = eqx.tree_at(
-        where, model, (params["view_phi"], params["defocus_u"], params["pixel_size"])
+    updated_distribution = eqx.tree_at(
+        where, distribution, (params["view_phi"], params["defocus_u"], params["pixel_size"])
     )
-    return updated_model
+    return updated_distribution
 ```
 
 We can now create the loss and differentiate it with respect to the parameters.
@@ -142,9 +142,9 @@ We can now create the loss and differentiate it with respect to the parameters.
 ```python
 @jax.jit
 @jax.value_and_grad
-def loss(params, model, observed):
-    model = update_model(model, params)
-    return model.log_probability(observed)
+def loss(params, distribution, observed):
+    distribution = update_distribution(distribution, params)
+    return distribution.log_probability(observed)
 ```
 
 Finally, we can evaluate an updated set of parameters.

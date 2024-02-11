@@ -9,11 +9,11 @@ from cryojax.io import read_array_with_spacing_from_mrc
 @pytest.mark.parametrize("shape", [(65, 65), (65, 64), (64, 65)])
 def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     control_shape = (64, 64)
-    density_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
-    density = cs.FourierVoxelGrid.from_density_grid(density_grid, voxel_size)
-    assert control_shape == density.fourier_density_grid.shape[0:2]
+    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
+    potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
+    assert control_shape == potential.fourier_voxel_grid.shape[0:2]
     pose = cs.EulerPose()
-    specimen = cs.Specimen(density, pose)
+    specimen = cs.Specimen(potential, pose)
     scattering_control = cs.FourierSliceExtract(
         cs.ImageConfig(control_shape, pixel_size)
     )

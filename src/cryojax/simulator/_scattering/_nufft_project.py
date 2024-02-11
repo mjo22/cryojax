@@ -3,13 +3,13 @@ Scattering methods using non-uniform FFTs.
 """
 
 import math
-from typing import Any, Union
+from typing import Union
 from equinox import field
 
 import jax.numpy as jnp
 
 from .._config import ImageConfig
-from .._density import RealVoxelCloud, RealVoxelGrid
+from .._potential import RealVoxelCloud, RealVoxelGrid
 from ._scattering_method import AbstractProjectionMethod
 from ...typing import (
     ComplexImage,
@@ -34,20 +34,22 @@ class NufftProject(AbstractProjectionMethod, strict=True):
 
     eps: float = field(static=True, default=1e-6)
 
-    def project_density(self, density: RealVoxelGrid | RealVoxelCloud) -> ComplexImage:
+    def project_potential(
+        self, potential: RealVoxelGrid | RealVoxelCloud
+    ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
-        if isinstance(density, RealVoxelGrid):
-            shape = density.shape
+        if isinstance(potential, RealVoxelGrid):
+            shape = potential.shape
             fourier_projection = project_with_nufft(
-                density.density_grid.ravel(),
-                density.coordinate_grid.get().reshape((math.prod(shape), 3)),
+                potential.real_voxel_grid.ravel(),
+                potential.coordinate_grid.get().reshape((math.prod(shape), 3)),
                 self.config.padded_shape,
                 eps=self.eps,
             )
-        elif isinstance(density, RealVoxelCloud):
+        elif isinstance(potential, RealVoxelCloud):
             fourier_projection = project_with_nufft(
-                density.density_weights,
-                density.coordinate_list.get(),
+                potential.voxel_weights,
+                potential.coordinate_list.get(),
                 self.config.padded_shape,
                 eps=self.eps,
             )

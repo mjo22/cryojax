@@ -27,7 +27,7 @@ from ._specimen import (
 
 from ._assembly import *
 
-from ._density import *
+from ._potential import *
 
 from ._scattering import *
 
@@ -40,21 +40,16 @@ from ._ice import (
 from ._optics import (
     AbstractOptics as AbstractOptics,
     NullOptics as NullOptics,
-    CTFOptics as CTFOptics,
+    WeakPhaseOptics as WeakPhaseOptics,
     CTF as CTF,
     compute_ctf as compute_ctf,
-)
-
-from ._exposure import (
-    AbstractExposure as AbstractExposure,
-    Exposure as Exposure,
-    NullExposure as NullExposure,
 )
 
 from ._detector import (
     AbstractDetector as AbstractDetector,
     NullDetector as NullDetector,
     GaussianDetector as GaussianDetector,
+    PoissonDetector as PoissonDetector,
 )
 
 from ._instrument import Instrument as Instrument

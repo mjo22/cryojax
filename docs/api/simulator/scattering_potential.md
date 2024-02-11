@@ -1,9 +1,9 @@
-# Electron Density representations
+# Scattering potential representations
 
-`cryojax` provides different options for how to represent electron density distributions in cryo-EM.
+`cryojax` provides different options for how to represent scattering potentials in cryo-EM.
 
-???+ abstract "`cryojax.simulator.AbstractElectronDensity`"
-    ::: cryojax.simulator.AbstractElectronDensity
+???+ abstract "`cryojax.simulator.AbstractScatteringPotential`"
+    ::: cryojax.simulator.AbstractScatteringPotential
         options:
             members:
                 - rotate_to_pose

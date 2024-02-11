@@ -131,7 +131,7 @@ class Empirical(AbstractImageOperator, strict=True):
         An amplitude scaling for the operator.
     """
 
-    measurement: Image | Volume
+    measurement: Image | Volume | Real_
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
     offset: Real_ = field(default=0.0, converter=jnp.asarray)

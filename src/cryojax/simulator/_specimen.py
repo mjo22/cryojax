@@ -3,7 +3,7 @@ Abstractions of biological specimen.
 """
 
 from abc import abstractmethod
-from typing import Optional, TypeVar, Any
+from typing import Optional, Any
 from functools import cached_property
 from typing_extensions import override
 from equinox import AbstractVar
@@ -11,13 +11,9 @@ from equinox import AbstractVar
 import jax
 from equinox import Module
 
-from ._density import AbstractElectronDensity
+from ._potential import AbstractScatteringPotential
 from ._pose import AbstractPose, EulerPose
 from ._conformation import AbstractConformation, DiscreteConformation
-
-
-SpecimenT = TypeVar("SpecimenT", bound="AbstractSpecimen")
-EnsembleT = TypeVar("EnsembleT", bound="AbstractEnsemble")
 
 
 class AbstractSpecimen(Module, strict=True):
@@ -26,27 +22,26 @@ class AbstractSpecimen(Module, strict=True):
 
     Attributes
     ----------
-    density :
-        The electron density representation of the
-        specimen.
+    potential :
+        The scattering potential of the specimen.
     pose :
         The pose of the specimen.
     """
 
-    density: AbstractVar[Any]
+    potential: AbstractVar[Any]
     pose: AbstractVar[AbstractPose]
 
     @cached_property
     @abstractmethod
-    def density_in_com_frame(self) -> AbstractElectronDensity:
-        """Get the electron density in the center of mass
+    def potential_in_com_frame(self) -> AbstractScatteringPotential:
+        """Get the scattering potential in the center of mass
         frame."""
         raise NotImplementedError
 
     @cached_property
-    def density_in_lab_frame(self) -> AbstractElectronDensity:
-        """Get the electron density in the lab frame."""
-        return self.density_in_com_frame.rotate_to_pose(self.pose)
+    def potential_in_lab_frame(self) -> AbstractScatteringPotential:
+        """Get the scattering potential in the lab frame."""
+        return self.potential_in_com_frame.rotate_to_pose(self.pose)
 
 
 class Specimen(AbstractSpecimen, strict=True):
@@ -55,30 +50,30 @@ class Specimen(AbstractSpecimen, strict=True):
 
     Attributes
     ----------
-    density :
-        The electron density representation of the
-        specimen as a single electron density object.
+    potential :
+        The scattering potential representation of the
+        specimen as a single scattering potential object.
     pose :
         The pose of the specimen.
     """
 
-    density: AbstractElectronDensity
+    potential: AbstractScatteringPotential
     pose: AbstractPose
 
     def __init__(
         self,
-        density: AbstractElectronDensity,
+        potential: AbstractScatteringPotential,
         pose: Optional[AbstractPose] = None,
     ):
-        self.density = density
+        self.potential = potential
         self.pose = pose or EulerPose()
 
     @cached_property
     @override
-    def density_in_com_frame(self) -> AbstractElectronDensity:
-        """Get the electron density in the center of mass
+    def potential_in_com_frame(self) -> AbstractScatteringPotential:
+        """Get the scattering potential in the center of mass
         frame."""
-        return self.density
+        return self.potential
 
 
 class AbstractEnsemble(AbstractSpecimen, strict=True):
@@ -88,12 +83,12 @@ class AbstractEnsemble(AbstractSpecimen, strict=True):
 
     Attributes
     ----------
-    density :
-        A tuple of electron density representations.
+    potential :
+        A tuple of scattering potential representations.
     pose :
         The pose of the specimen.
     conformation :
-        The conformation at which to evaluate the ElectronDensity.
+        The conformation at which to evaluate the scattering potential.
     """
 
     conformation: AbstractVar[AbstractConformation]
@@ -106,34 +101,34 @@ class DiscreteEnsemble(AbstractEnsemble, strict=True):
 
     Attributes
     ----------
-    density :
-        A tuple of electron density representations.
+    potential :
+        A tuple of scattering potential representations.
     pose :
         The pose of the specimen.
     conformation :
         A conformation with a discrete index at which to evaluate
-        the electron density tuple.
+        the scattering potential tuple.
     """
 
-    density: tuple[AbstractElectronDensity, ...]
+    potential: tuple[AbstractScatteringPotential, ...]
     pose: AbstractPose
     conformation: DiscreteConformation
 
     def __init__(
         self,
-        density: tuple[AbstractElectronDensity, ...],
+        potential: tuple[AbstractScatteringPotential, ...],
         pose: Optional[AbstractPose] = None,
         conformation: Optional[DiscreteConformation] = None,
     ):
-        self.density = density
+        self.potential = potential
         self.pose = pose or EulerPose()
         self.conformation = conformation or DiscreteConformation(0)
 
     @cached_property
     @override
-    def density_in_com_frame(self) -> AbstractElectronDensity:
-        """Get the electron density at configured conformation."""
-        funcs = [lambda i=i: self.density[i] for i in range(len(self.density))]
-        density = jax.lax.switch(self.conformation.get(), funcs)
+    def potential_in_com_frame(self) -> AbstractScatteringPotential:
+        """Get the scattering potential at configured conformation."""
+        funcs = [lambda i=i: self.potential[i] for i in range(len(self.potential))]
+        potential = jax.lax.switch(self.conformation.get(), funcs)
 
-        return density
+        return potential

@@ -19,7 +19,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 
-from ._electron_density import AbstractElectronDensity
+from ._scattering_potential import AbstractScatteringPotential
 from .._pose import AbstractPose
 from ...io import get_form_factor_params
 
@@ -41,12 +41,12 @@ from ...typing import (
 )
 
 
-class AbstractVoxels(AbstractElectronDensity, strict=True):
-    """Abstract interface for a voxel-based electron density representation.
+class AbstractVoxels(AbstractScatteringPotential, strict=True):
+    """Abstract interface for a voxel-based scattering potential representation.
 
     **Attributes:**
 
-    `voxel_size`: The voxel size of the electron density.
+    `voxel_size`: The voxel size of the scattering potential.
 
     `is_real`: Whether or not the representation is real or fourier-space.
     """
@@ -57,19 +57,19 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
     @property
     @abstractmethod
     def shape(self) -> tuple[int, ...]:
-        """The shape of electron density voxel array."""
+        """The shape of the voxel array."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def from_density_grid(
+    def from_real_voxel_grid(
         cls: Type[Self],
-        density_grid: RealVolume,
+        real_voxel_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         **kwargs: Any,
     ) -> Self:
         """Load an `AbstractVoxels` from real-valued 3D electron
-        density map.
+        scattering potential.
         """
         raise NotImplementedError
 
@@ -89,7 +89,7 @@ class AbstractVoxels(AbstractElectronDensity, strict=True):
 
 
 class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
-    """Abstract interface of a 3D electron density voxel grid
+    """Abstract interface of a 3D scattering potential voxel grid
     in fourier-space.
     """
 
@@ -98,7 +98,7 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
     @abstractmethod
     def __init__(
         self,
-        fourier_density_grid: ComplexCubicVolume,
+        fourier_voxel_grid: ComplexCubicVolume,
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
@@ -117,9 +117,9 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         )
 
     @classmethod
-    def from_density_grid(
+    def from_real_voxel_grid(
         cls: Type[Self],
-        density_grid: RealVolume,
+        real_voxel_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         *,
         pad_scale: float = 1.0,
@@ -131,17 +131,17 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
 
         **Arguments:**
 
-        `density_grid`: An electron density voxel grid in real space.
+        `real_voxel_grid`: An electron density voxel grid in real space.
 
-        `voxel_size`: The voxel size of `density_grid`.
+        `voxel_size`: The voxel size of `real_voxel_grid`.
 
-        `pad_scale`: Scale factor at which to pad `density_grid` before fourier
+        `pad_scale`: Scale factor at which to pad `real_voxel_grid` before fourier
                      transform. Must be a value greater than `1.0`.
 
         `pad_mode`: Padding method. See `jax.numpy.pad` for documentation.
 
         `filter`: A filter to apply to the result of the fourier transform of
-                  `density_grid`, i.e. `fftn(density_grid)`. Note that the zero
+                  `real_voxel_grid`, i.e. `fftn(real_voxel_grid)`. Note that the zero
                   frequency component is assumed to be in the corner.
         """
         # Pad template
@@ -149,26 +149,26 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
             raise ValueError("pad_scale must be greater than 1.0")
         # ... always pad to even size to avoid interpolation issues in
         # fourier slice extraction.
-        padded_shape = tuple([int(s * pad_scale) for s in density_grid.shape])
-        padded_density_grid = pad_to_shape(density_grid, padded_shape, mode=pad_mode)
+        padded_shape = tuple([int(s * pad_scale) for s in real_voxel_grid.shape])
+        padded_real_voxel_grid = pad_to_shape(
+            real_voxel_grid, padded_shape, mode=pad_mode
+        )
         # Load density and coordinates. For now, do not store the
         # fourier density only on the half space. Fourier slice extraction
         # does not currently work if rfftn is used.
-        fourier_density_grid_with_zero_in_corner = (
-            fftn(padded_density_grid)
+        fourier_voxel_grid_with_zero_in_corner = (
+            fftn(padded_real_voxel_grid)
             if filter is None
-            else filter(fftn(padded_density_grid))
+            else filter(fftn(padded_real_voxel_grid))
         )
         # ... store the density grid with the zero frequency component in the center
-        fourier_density_grid = jnp.fft.fftshift(
-            fourier_density_grid_with_zero_in_corner
-        )
+        fourier_voxel_grid = jnp.fft.fftshift(fourier_voxel_grid_with_zero_in_corner)
         # ... create in-plane frequency slice on the half space
         frequency_slice = FrequencySlice(
-            padded_density_grid.shape[:-1], half_space=False
+            padded_real_voxel_grid.shape[:-1], half_space=False
         )
 
-        return cls(fourier_density_grid, frequency_slice, jnp.asarray(voxel_size))
+        return cls(fourier_voxel_grid, frequency_slice, jnp.asarray(voxel_size))
 
     @classmethod
     def from_atoms(
@@ -184,7 +184,7 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
 
         **Arguments:**
 
-        - `**kwargs`: Passed to `AbstractFourierVoxelGrid.from_density_grid`
+        - `**kwargs`: Passed to `AbstractFourierVoxelGrid.from_real_voxel_grid`
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
@@ -192,7 +192,7 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
             atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
-        return cls.from_density_grid(
+        return cls.from_real_voxel_grid(
             density,
             voxel_size,
             **kwargs,
@@ -200,18 +200,18 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
 
 
 class FourierVoxelGrid(AbstractFourierVoxelGrid):
-    """A 3D electron density voxel grid in fourier-space.
+    """A 3D scattering potential voxel grid in fourier-space.
 
     **Attributes:**
 
-    `fourier_density_grid`: The cubic voxel grid in fourier space.
+    `fourier_voxel_grid`: The cubic voxel grid in fourier space.
 
     `frequency_slice`: Frequency slice coordinate system.
 
     `voxel_size`: The voxel size.
     """
 
-    fourier_density_grid: ComplexCubicVolume = field(converter=jnp.asarray)
+    fourier_voxel_grid: ComplexCubicVolume = field(converter=jnp.asarray)
     frequency_slice: FrequencySlice
     voxel_size: Real_ = field(converter=jnp.asarray)
 
@@ -220,21 +220,21 @@ class FourierVoxelGrid(AbstractFourierVoxelGrid):
     @override
     def __init__(
         self,
-        fourier_density_grid: ComplexCubicVolume,
+        fourier_voxel_grid: ComplexCubicVolume,
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
-        self.fourier_density_grid = fourier_density_grid
+        self.fourier_voxel_grid = fourier_voxel_grid
         self.frequency_slice = frequency_slice
         self.voxel_size = voxel_size
 
     @property
     def shape(self) -> tuple[int, int, int]:
-        return self.fourier_density_grid.shape
+        return self.fourier_voxel_grid.shape
 
 
 class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
-    """A 3D electron density voxel grid in fourier-space, represented
+    """A 3D scattering potential voxel grid in fourier-space, represented
     by spline coefficients.
 
     **Attributes:**
@@ -254,23 +254,23 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
 
     def __init__(
         self,
-        fourier_density_grid: ComplexCubicVolume,
+        fourier_voxel_grid: ComplexCubicVolume,
         frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
         """
         !!! note
-            The argument `fourier_density_grid` is used to set
+            The argument `fourier_voxel_grid` is used to set
             `FourierVoxelGridInterpolator.coefficients` in the `__init__`.
             For example,
 
             ```python
-            voxels = FourierVoxelGridInterpolator(fourier_density_grid, frequency_slice, voxel_size)
-            assert not hasattr(voxels, "fourier_density_grid")  # This does not store the `fourier_voxel_grid`
+            voxels = FourierVoxelGridInterpolator(fourier_voxel_grid, frequency_slice, voxel_size)
+            assert not hasattr(voxels, "fourier_voxel_grid")  # This does not store the `fourier_voxel_grid`
             assert hasattr(voxels, "coefficients")  # Instead it computes `coefficients` upon `__init__`
             ```
         """
-        self.coefficients = compute_spline_coefficients(fourier_density_grid)
+        self.coefficients = compute_spline_coefficients(fourier_voxel_grid)
         self.frequency_slice = frequency_slice
         self.voxel_size = voxel_size
 
@@ -280,19 +280,18 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
 
 
 class RealVoxelGrid(AbstractVoxels, strict=True):
-    """Abstraction of a 3D electron density voxel grid.
-    The voxel grid is given in real-space.
+    """Abstraction of a 3D scattering potential voxel grid in real-space.
 
     **Attributes:**
 
-    `density_grid`: The voxel grid in fourier space.
+    `real_voxel_grid`: The voxel grid in fourier space.
 
     `coordinate_grid`: A coordinate grid.
 
     `voxel_size`: The voxel size.
     """
 
-    density_grid: RealCubicVolume = field(converter=jnp.asarray)
+    real_voxel_grid: RealCubicVolume = field(converter=jnp.asarray)
     coordinate_grid: CoordinateGrid
     voxel_size: Real_ = field(converter=jnp.asarray)
 
@@ -300,17 +299,17 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
     def __init__(
         self,
-        density_grid: RealCubicVolume,
+        real_voxel_grid: RealCubicVolume,
         coordinate_grid: CoordinateGrid,
         voxel_size: Real_,
     ):
-        self.density_grid = density_grid
+        self.real_voxel_grid = real_voxel_grid
         self.coordinate_grid = coordinate_grid
         self.voxel_size = voxel_size
 
     @property
     def shape(self) -> tuple[int, int, int]:
-        return self.density_grid.shape
+        return self.real_voxel_grid.shape
 
     @cached_property
     def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
@@ -326,9 +325,9 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
     @overload
     @classmethod
-    def from_density_grid(
+    def from_real_voxel_grid(
         cls: Type[Self],
-        density_grid: RealVolume,
+        real_voxel_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: CoordinateGrid,
         *,
@@ -337,9 +336,9 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
     @overload
     @classmethod
-    def from_density_grid(
+    def from_real_voxel_grid(
         cls: Type[Self],
-        density_grid: RealVolume,
+        real_voxel_grid: RealVolume,
         voxel_size: Real_ | float,
         coordinate_grid: None,
         *,
@@ -347,9 +346,9 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
     ) -> Self: ...
 
     @classmethod
-    def from_density_grid(
+    def from_real_voxel_grid(
         cls: Type[Self],
-        density_grid: RealVolume,
+        real_voxel_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[CoordinateGrid] = None,
         *,
@@ -359,27 +358,27 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         density map.
 
         !!! warning
-            `density_grid` is transposed upon instantiation in order to make
+            `real_voxel_grid` is transposed upon instantiation in order to make
             the results of `cryojax.simulator.NufftProject` agree with
             `cryojax.simulator.FourierSliceExtract`.
 
             ```python
-            density_grid = ...
-            voxels = RealVoxelGrid.from_density_grid(density_grid, ...)
-            assert density_grid == jnp.transpose(voxels.density_grid, axes=[1, 0, 2])
+            real_voxel_grid = ...
+            potential = RealVoxelGrid.from_real_voxel_grid(real_voxel_grid, ...)
+            assert real_voxel_grid == jnp.transpose(potential.real_voxel_grid, axes=[1, 0, 2])
             ```
 
         **Arguments:**
 
-        `density_grid`: An electron density voxel grid in real space.
+        `real_voxel_grid`: An electron density voxel grid in real space.
 
-        `voxel_size`: The voxel size of `density_grid`.
+        `voxel_size`: The voxel size of `real_voxel_grid`.
 
-        `crop_scale`: Scale factor at which to crop `density_grid`.
+        `crop_scale`: Scale factor at which to crop `real_voxel_grid`.
                       Must be a value less than `1.0`.
         """
         # A nasty hack to make NufftProject agree with FourierSliceExtract
-        density_grid = jnp.transpose(density_grid, axes=[1, 0, 2])
+        real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 0, 2])
         # Make coordinates if not given
         if coordinate_grid is None:
             # Option for cropping template
@@ -387,12 +386,12 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
                 if crop_scale > 1.0:
                     raise ValueError("crop_scale must be less than 1.0")
                 cropped_shape = tuple(
-                    [int(s * crop_scale) for s in density_grid.shape[-3:]]
+                    [int(s * crop_scale) for s in real_voxel_grid.shape[-3:]]
                 )
-                density_grid = crop_to_shape(density_grid, cropped_shape)
-            coordinate_grid = CoordinateGrid(density_grid.shape[-3:])
+                real_voxel_grid = crop_to_shape(real_voxel_grid, cropped_shape)
+            coordinate_grid = CoordinateGrid(real_voxel_grid.shape[-3:])
 
-        return cls(density_grid, coordinate_grid, jnp.asarray(voxel_size))
+        return cls(real_voxel_grid, coordinate_grid, jnp.asarray(voxel_size))
 
     @classmethod
     def from_atoms(
@@ -408,7 +407,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
         **Arguments:**
 
-        - `**kwargs`: Passed to `RealVoxelGrid.from_density_grid`
+        - `**kwargs`: Passed to `RealVoxelGrid.from_real_voxel_grid`
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
@@ -416,7 +415,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
             atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
-        return cls.from_density_grid(
+        return cls.from_real_voxel_grid(
             density,
             voxel_size,
             coordinate_grid_in_angstroms / voxel_size,
@@ -436,14 +435,14 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
 
     **Attributes:**
 
-    `density_weights`: A point-cloud of voxel density values.
+    `voxel_weights`: A point-cloud of voxel density values.
 
-    `coordinate_list`: Coordinate list for the `density_weights`.
+    `coordinate_list`: Coordinate list for the `voxel_weights`.
 
     `voxel_size`: The voxel size.
     """
 
-    density_weights: RealCloud = field(converter=jnp.asarray)
+    voxel_weights: RealCloud = field(converter=jnp.asarray)
     coordinate_list: CoordinateList
     voxel_size: Real_ = field(converter=jnp.asarray)
 
@@ -451,17 +450,17 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
 
     def __init__(
         self,
-        density_weights: RealCloud,
+        voxel_weights: RealCloud,
         coordinate_list: CoordinateList,
         voxel_size: Real_,
     ):
-        self.density_weights = density_weights
+        self.voxel_weights = voxel_weights
         self.coordinate_list = coordinate_list
         self.voxel_size = voxel_size
 
     @property
     def shape(self) -> tuple[int, int]:
-        return self.density_weights.shape
+        return self.voxel_weights.shape
 
     @cached_property
     def coordinate_list_in_angstroms(self) -> CoordinateList:
@@ -476,9 +475,9 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         )
 
     @classmethod
-    def from_density_grid(
+    def from_real_voxel_grid(
         cls: Type[Self],
-        density_grid: RealVolume,
+        real_voxel_grid: RealVolume,
         voxel_size: Real_ | float = 1.0,
         coordinate_grid: Optional[CoordinateGrid] = None,
         *,
@@ -489,16 +488,16 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         density map.
 
         !!! warning
-            `density_grid` is transposed upon instantiation in order to make
+            `real_voxel_grid` is transposed upon instantiation in order to make
             the results of [`cryojax.simulator.NufftProject`][] agree with
             [`cryojax.simulator.FourierSliceExtract`][].
             See [`cryojax.simulator.RealVoxelGrid`][] for more detail.
 
         **Arguments:**
 
-        `density_grid`: An electron density voxel grid in real space.
+        `real_voxel_grid`: An electron density voxel grid in real space.
 
-        `voxel_size`: The voxel size of `density_grid`.
+        `voxel_size`: The voxel size of `real_voxel_grid`.
 
         `rtol`: Argument passed to `jnp.isclose`, used for removing
                 points of zero electron density.
@@ -507,14 +506,14 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
                 points of zero electron density.
         """
         # A nasty hack to make NufftProject agree with FourierSliceExtract
-        density_grid = jnp.transpose(density_grid, axes=[1, 0, 2])
+        real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 0, 2])
         # Make coordinates if not given
         if coordinate_grid is None:
-            coordinate_grid = CoordinateGrid(density_grid.shape)
+            coordinate_grid = CoordinateGrid(real_voxel_grid.shape)
         # ... mask zeros to store smaller arrays. This
         # option is not jittable.
-        nonzero = jnp.where(~jnp.isclose(density_grid, 0.0, rtol=rtol, atol=atol))
-        flat_density = density_grid[nonzero]
+        nonzero = jnp.where(~jnp.isclose(real_voxel_grid, 0.0, rtol=rtol, atol=atol))
+        flat_density = real_voxel_grid[nonzero]
         coordinate_list = CoordinateList(coordinate_grid.get()[nonzero])
 
         return cls(flat_density, coordinate_list, jnp.asarray(voxel_size))
@@ -533,7 +532,7 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
 
         **Arguments:**
 
-        - `**kwargs`: Passed to `RealVoxelCloud.from_density_grid`
+        - `**kwargs`: Passed to `RealVoxelCloud.from_real_voxel_grid`
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
@@ -541,7 +540,7 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
             atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
-        return cls.from_density_grid(
+        return cls.from_real_voxel_grid(
             density,
             voxel_size,
             coordinate_grid_in_angstroms / voxel_size,

@@ -17,7 +17,7 @@ from ..image.operators import (
     Constant,
 )
 from ..coordinates import cartesian_to_polar
-from ..typing import Real_, RealImage, Image, ComplexImage, ImageCoords
+from ..typing import Real_, RealImage, ComplexImage, ImageCoords
 
 
 class CTF(AbstractFourierOperator, strict=True):
@@ -79,43 +79,24 @@ class AbstractOptics(Module, strict=True):
     ctf :
         The contrast transfer function model.
     envelope :
-        A kernel that computes the envelope function of
-        the optics model.
-    normalize :
-        Whether to normalize the CTF so that it has norm 1 in real space.
-        Default is ``False``.
+        The envelope function of the optics model.
     """
 
     ctf: AbstractVar[AbstractFourierOperator]
     envelope: AbstractVar[Optional[FourierOperatorLike]]
 
-    normalize: AbstractVar[bool]
-
-    def evaluate(self, freqs: ImageCoords, defocus_offset: Real_ | float = 0.0):
-        """Evaluate the optics model. This is modeled as a contrast
-        transfer function multiplied by an envelope function."""
-        if self.envelope is None:
-            ctf = self.ctf(freqs, defocus_offset=defocus_offset)
-        else:
-            ctf = self.envelope(freqs) * self.ctf(freqs, defocus_offset=defocus_offset)
-        if self.normalize:
-            N1, N2 = freqs.shape[0:-1]
-            ctf = ctf / (jnp.linalg.norm(ctf) / jnp.sqrt(N1 * N2))
-
-        return ctf
-
     @abstractmethod
     def __call__(
         self,
-        image: ComplexImage,
+        fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
-    ) -> Image:
+    ) -> ComplexImage:
         """Pass an image through the optics model."""
         raise NotImplementedError
 
 
-class NullOptics(AbstractOptics, strict=True):
+class NullOptics(AbstractOptics):
     """
     A null optics model.
     """
@@ -123,41 +104,46 @@ class NullOptics(AbstractOptics, strict=True):
     ctf: Constant
     envelope: None
 
-    normalize: bool = field(static=True)
-
     def __init__(self):
         self.ctf = Constant(1.0)
         self.envelope = None
-        self.normalize = False
 
     def __call__(
         self,
-        image: ComplexImage,
+        fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
-    ) -> Image:
-        return image
+    ) -> ComplexImage:
+        return fourier_potential_in_exit_plane
 
 
-class CTFOptics(AbstractOptics, strict=True):
+class WeakPhaseOptics(AbstractOptics, strict=True):
     """
-    An optics model with a real-valued contrast transfer function.
+    An optics model in the weak-phase approximation. Here, apply the CTF
+    directly to the scattering potential.
     """
 
     ctf: CTF = field(default_factory=CTF)
     envelope: Optional[FourierOperatorLike] = field(default=None)
 
-    normalize: bool = field(static=True, default=False)
-
     def __call__(
         self,
-        image: ComplexImage,
+        fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
-    ) -> Image:
-        """Compute the optics model with an envelope."""
+    ) -> ComplexImage:
+        """Apply the CTF to the scattering potential."""
+        N1, N2 = config.padded_shape
         frequency_grid = config.padded_frequency_grid_in_angstroms.get()
-        return image * self.evaluate(frequency_grid, defocus_offset=defocus_offset)
+        # Compute the CTF
+        if self.envelope is None:
+            ctf = self.ctf(frequency_grid, defocus_offset=defocus_offset)
+        else:
+            ctf = self.envelope(frequency_grid) * self.ctf(
+                frequency_grid, defocus_offset=defocus_offset
+            )
+        # Apply the CTF directly to the scattering potential and return
+        return ctf * fourier_potential_in_exit_plane
 
 
 @partial(jax.jit, static_argnames=["degrees"])

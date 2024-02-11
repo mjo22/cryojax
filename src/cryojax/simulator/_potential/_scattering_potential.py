@@ -12,17 +12,17 @@ from .._pose import AbstractPose
 from ...coordinates import get_not_coordinate_filter_spec
 
 
-def is_density_leaves_without_coordinates(element: Any) -> bool | PyTree[bool]:
+def is_potential_leaves_without_coordinates(element: Any) -> bool | PyTree[bool]:
     """Returns a filter spec that is ``True`` at the ``ElectronDensity``
     leaves, besides its coordinates.
     """
-    if isinstance(element, AbstractElectronDensity):
+    if isinstance(element, AbstractScatteringPotential):
         return get_not_coordinate_filter_spec(element)
     else:
         return False
 
 
-class AbstractElectronDensity(Module, strict=True):
+class AbstractScatteringPotential(Module, strict=True):
     """Abstract interface for an electron density distribution."""
 
     @abstractmethod
