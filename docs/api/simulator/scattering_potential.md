@@ -8,7 +8,7 @@
             members:
                 - rotate_to_pose
 
-## Voxel-based electron densities
+## Voxel-based scattering potentials
 
 ???+ abstract "`cryojax.simulator.AbstractVoxelPotential`"
 
