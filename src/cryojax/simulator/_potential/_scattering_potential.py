@@ -1,5 +1,5 @@
 """
-Base electron density representation.
+Base scattering potential representation.
 """
 
 from abc import abstractmethod
@@ -13,7 +13,7 @@ from ...coordinates import get_not_coordinate_filter_spec
 
 
 def is_potential_leaves_without_coordinates(element: Any) -> bool | PyTree[bool]:
-    """Returns a filter spec that is ``True`` at the ``ElectronDensity``
+    """Returns a filter spec that is ``True`` at the ``AbstractScatteringPotential``
     leaves, besides its coordinates.
     """
     if isinstance(element, AbstractScatteringPotential):
@@ -23,14 +23,14 @@ def is_potential_leaves_without_coordinates(element: Any) -> bool | PyTree[bool]
 
 
 class AbstractScatteringPotential(Module, strict=True):
-    """Abstract interface for an electron density distribution."""
+    """Abstract interface for an electron scattering potential."""
 
     @abstractmethod
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
-        """Return a new `AbstractElectronDensity` at the given pose.
+        """Return a new `AbstractScatteringPotential` at the given pose.
 
         **Arguments:**
 
-        - `pose`: The pose at which to view the `AbstractElectronDensity`.
+        - `pose`: The pose at which to view the `AbstractScatteringPotential`.
         """
         raise NotImplementedError

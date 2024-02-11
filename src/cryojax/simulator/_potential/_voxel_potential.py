@@ -1,5 +1,5 @@
 """
-Voxel-based representations of an electron density.
+Voxel-based representations of the scattering potential.
 """
 
 from abc import abstractmethod
@@ -41,7 +41,7 @@ from ...typing import (
 )
 
 
-class AbstractVoxels(AbstractScatteringPotential, strict=True):
+class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     """Abstract interface for a voxel-based scattering potential representation.
 
     **Attributes:**
@@ -88,7 +88,7 @@ class AbstractVoxels(AbstractScatteringPotential, strict=True):
         raise NotImplementedError
 
 
-class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
+class AbstractFourierVoxelGrid(AbstractVoxelPotential, strict=True):
     """Abstract interface of a 3D scattering potential voxel grid
     in fourier-space.
     """
@@ -127,11 +127,11 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         filter: Optional[AbstractFilter] = None,
     ) -> Self:
         """Load an `AbstractFourierVoxelGrid` from real-valued 3D electron
-        density map.
+        scattering potential voxel grid.
 
         **Arguments:**
 
-        `real_voxel_grid`: An electron density voxel grid in real space.
+        `real_voxel_grid`: A scattering potential voxel grid in real space.
 
         `voxel_size`: The voxel size of `real_voxel_grid`.
 
@@ -153,15 +153,15 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         padded_real_voxel_grid = pad_to_shape(
             real_voxel_grid, padded_shape, mode=pad_mode
         )
-        # Load density and coordinates. For now, do not store the
-        # fourier density only on the half space. Fourier slice extraction
+        # Load potential and coordinates. For now, do not store the
+        # fourier potential only on the half space. Fourier slice extraction
         # does not currently work if rfftn is used.
         fourier_voxel_grid_with_zero_in_corner = (
             fftn(padded_real_voxel_grid)
             if filter is None
             else filter(fftn(padded_real_voxel_grid))
         )
-        # ... store the density grid with the zero frequency component in the center
+        # ... store the potential grid with the zero frequency component in the center
         fourier_voxel_grid = jnp.fft.fftshift(fourier_voxel_grid_with_zero_in_corner)
         # ... create in-plane frequency slice on the half space
         frequency_slice = FrequencySlice(
@@ -188,12 +188,12 @@ class AbstractFourierVoxelGrid(AbstractVoxels, strict=True):
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
-        density = build_real_space_voxels_from_atoms(
+        potential = build_real_space_voxels_from_atoms(
             atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
         return cls.from_real_voxel_grid(
-            density,
+            potential,
             voxel_size,
             **kwargs,
         )
@@ -279,7 +279,7 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
         return tuple([s - 2 for s in self.coefficients.shape])
 
 
-class RealVoxelGrid(AbstractVoxels, strict=True):
+class RealVoxelGrid(AbstractVoxelPotential, strict=True):
     """Abstraction of a 3D scattering potential voxel grid in real-space.
 
     **Attributes:**
@@ -354,8 +354,8 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         *,
         crop_scale: Optional[float] = None,
     ) -> Self:
-        """Load an `RealVoxelGrid` from real-valued 3D electron
-        density map.
+        """Load a `RealVoxelGrid` from a real-valued 3D electron
+        scattering potential voxel grid.
 
         !!! warning
             `real_voxel_grid` is transposed upon instantiation in order to make
@@ -370,7 +370,7 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
 
         **Arguments:**
 
-        `real_voxel_grid`: An electron density voxel grid in real space.
+        `real_voxel_grid`: An electron scattering potential voxel grid in real space.
 
         `voxel_size`: The voxel size of `real_voxel_grid`.
 
@@ -411,31 +411,31 @@ class RealVoxelGrid(AbstractVoxels, strict=True):
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
-        density = build_real_space_voxels_from_atoms(
+        real_voxel_grid = build_real_space_voxels_from_atoms(
             atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
         return cls.from_real_voxel_grid(
-            density,
+            real_voxel_grid,
             voxel_size,
             coordinate_grid_in_angstroms / voxel_size,
             **kwargs,
         )
 
 
-class RealVoxelCloud(AbstractVoxels, strict=True):
-    """Abstraction of a 3D electron density voxel point cloud.
+class RealVoxelCloud(AbstractVoxelPotential, strict=True):
+    """Abstraction of a 3D electron scattering potential voxel point cloud.
 
     !!! info
         This object is similar to the `RealVoxelGrid`. Instead
         of storing the whole voxel grid, a `RealVoxelCloud` need
-        only store points of non-zero electron density. Therefore,
-        a `RealVoxelCloud` stores a point cloud of electron density
+        only store points of non-zero scattering potential. Therefore,
+        a `RealVoxelCloud` stores a point cloud of scattering potential
         voxel values.
 
     **Attributes:**
 
-    `voxel_weights`: A point-cloud of voxel density values.
+    `voxel_weights`: A point-cloud of voxel scattering potential values.
 
     `coordinate_list`: Coordinate list for the `voxel_weights`.
 
@@ -484,26 +484,26 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         rtol: float = 1e-05,
         atol: float = 1e-08,
     ) -> Self:
-        """Load an `RealVoxelCloud` from real-valued 3D electron
-        density map.
+        """Load an `RealVoxelCloud` from a real-valued 3D electron
+        scattering potential voxel grid.
 
         !!! warning
             `real_voxel_grid` is transposed upon instantiation in order to make
-            the results of [`cryojax.simulator.NufftProject`][] agree with
-            [`cryojax.simulator.FourierSliceExtract`][].
+            the results of `cryojax.simulator.NufftProject` agree with
+            `cryojax.simulator.FourierSliceExtract`.
             See [`cryojax.simulator.RealVoxelGrid`][] for more detail.
 
         **Arguments:**
 
-        `real_voxel_grid`: An electron density voxel grid in real space.
+        `real_voxel_grid`: An electron scattering potential voxel grid in real space.
 
         `voxel_size`: The voxel size of `real_voxel_grid`.
 
         `rtol`: Argument passed to `jnp.isclose`, used for removing
-                points of zero electron density.
+                points of zero scattering potential.
 
         `atol`: Argument passed to `jnp.isclose`, used for removing
-                points of zero electron density.
+                points of zero scattering potential.
         """
         # A nasty hack to make NufftProject agree with FourierSliceExtract
         real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 0, 2])
@@ -513,10 +513,10 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         # ... mask zeros to store smaller arrays. This
         # option is not jittable.
         nonzero = jnp.where(~jnp.isclose(real_voxel_grid, 0.0, rtol=rtol, atol=atol))
-        flat_density = real_voxel_grid[nonzero]
+        flat_potential = real_voxel_grid[nonzero]
         coordinate_list = CoordinateList(coordinate_grid.get()[nonzero])
 
-        return cls(flat_density, coordinate_list, jnp.asarray(voxel_size))
+        return cls(flat_potential, coordinate_list, jnp.asarray(voxel_size))
 
     @classmethod
     def from_atoms(
@@ -536,12 +536,12 @@ class RealVoxelCloud(AbstractVoxels, strict=True):
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
-        density = build_real_space_voxels_from_atoms(
+        real_voxel_grid = build_real_space_voxels_from_atoms(
             atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
         )
 
         return cls.from_real_voxel_grid(
-            density,
+            real_voxel_grid,
             voxel_size,
             coordinate_grid_in_angstroms / voxel_size,
             **kwargs,
@@ -571,14 +571,13 @@ def evaluate_3d_real_space_gaussian(
 
     **Returns:**
 
-    `density`: The density of the gaussian on the grid.
+    The potential of the gaussian on the grid.
     """
     b_inverse = 4.0 * jnp.pi / b
     sq_distances = jnp.sum(
         b_inverse * (coordinate_grid_in_angstroms - atom_position) ** 2, axis=-1
     )
-    density = jnp.exp(-jnp.pi * sq_distances) * a * b_inverse ** (3.0 / 2.0)
-    return density
+    return jnp.exp(-jnp.pi * sq_distances) * a * b_inverse ** (3.0 / 2.0)
 
 
 def evaluate_3d_atom_potential(
@@ -601,7 +600,7 @@ def evaluate_3d_atom_potential(
 
     **Returns:**
 
-    `potential`: The potential of the atom evaluate on the grid.
+    The potential of the atom evaluated on the grid.
     """
     eval_fxn = jax.vmap(evaluate_3d_real_space_gaussian, in_axes=(None, None, 0, 0))
     return jnp.sum(
@@ -616,7 +615,7 @@ def build_real_space_voxels_from_atoms(
     ff_a: Float[Array, "N 5"],
     ff_b: Float[Array, "N 5"],
     coordinate_grid_in_angstroms: Float[Array, "N1 N2 N3 3"],
-) -> tuple[RealCubicVolume, VolumeSliceCoords]:
+) -> RealCubicVolume:
     """
     Build a voxel representation of an atomic model.
 
@@ -632,18 +631,18 @@ def build_real_space_voxels_from_atoms(
 
     **Returns:**
 
-    `density`: The voxel representation of the atomic model.
+    The voxel representation of the atomic model.
     """
-    density = jnp.zeros(coordinate_grid_in_angstroms.shape[:-1])
+    voxel_grid_buffer = jnp.zeros(coordinate_grid_in_angstroms.shape[:-1])
 
-    def add_gaussian_to_density(i, density):
-        density += evaluate_3d_atom_potential(
+    def add_gaussian_to_potential(i, potential):
+        potential += evaluate_3d_atom_potential(
             coordinate_grid_in_angstroms, atom_positions[i], ff_a[i], ff_b[i]
         )
-        return density
+        return potential
 
-    density = jax.lax.fori_loop(
-        0, atom_positions.shape[0], add_gaussian_to_density, density
+    voxel_grid = jax.lax.fori_loop(
+        0, atom_positions.shape[0], add_gaussian_to_potential, voxel_grid_buffer
     )
 
-    return density
+    return voxel_grid

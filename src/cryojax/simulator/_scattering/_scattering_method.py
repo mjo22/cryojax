@@ -11,7 +11,7 @@ import jax.numpy as jnp
 from equinox import Module, AbstractVar
 
 from .._specimen import AbstractSpecimen
-from .._potential import AbstractScatteringPotential, AbstractVoxels
+from .._potential import AbstractScatteringPotential, AbstractVoxelPotential
 from .._config import ImageConfig
 
 from ...image import rfftn, irfftn
@@ -52,7 +52,7 @@ class AbstractProjectionMethod(AbstractScatteringMethod, strict=True):
         # Compute the fourier projection in the exit plane
         potential_at_exit_plane = self.project_potential(potential, **kwargs)
         # Rescale the pixel size if different from the voxel size
-        if isinstance(potential, AbstractVoxels):
+        if isinstance(potential, AbstractVoxelPotential):
             rescale_fn = lambda fourier_potential: rfftn(
                 self.config.rescale_to_pixel_size(
                     irfftn(fourier_potential, s=self.config.padded_shape),

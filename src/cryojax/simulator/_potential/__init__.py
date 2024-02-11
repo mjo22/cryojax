@@ -3,7 +3,7 @@ from ._scattering_potential import (
     is_potential_leaves_without_coordinates as is_potential_leaves_without_coordinates,
 )
 from ._voxel_potential import (
-    AbstractVoxels as AbstractVoxels,
+    AbstractVoxelPotential as AbstractVoxelPotential,
     AbstractFourierVoxelGrid as AbstractFourierVoxelGrid,
     FourierVoxelGrid as FourierVoxelGrid,
     FourierVoxelGridInterpolator as FourierVoxelGridInterpolator,
