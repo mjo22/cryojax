@@ -73,7 +73,7 @@ from cryojax.image import operators as op
 ctf = cs.CTF(defocus_u=10000.0, defocus_v=9800.0, defocus_angle=10.0)
 optics = cs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian2D(b_factor=5.0))  # defocus and b_factor in Angstroms and Angstroms^2, respectively
 # ... now, the model for the detector
-detector = cs.GaussianDetector(electrons_per_squared_angstrom=op.Constant(100.0))  # Dose rate in electrons / Angstrom^2
+detector = cs.GaussianDetector(electrons_per_squared_angstrom_squared=op.Constant(100.0))  # Dose rate in electrons / Angstrom^2
 # ... these are stored in the Instrument
 instrument = cs.Instrument(optics, detector)
 ```

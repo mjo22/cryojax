@@ -23,7 +23,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
     Base class for an electron detector.
     """
 
-    electrons_per_angstrom: AbstractVar[RealOperatorLike]
+    electrons_per_angstrom_squared: AbstractVar[RealOperatorLike]
     dqe: AbstractVar[FourierOperatorLike]
 
     @abstractmethod
@@ -42,7 +42,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         frequency_grid = config.padded_frequency_grid_in_angstroms.get()
         # Compute the time-integrated electron flux in pixels
         electrons_per_pixel = (
-            self.electrons_per_angstrom(coordinate_grid) * config.pixel_size**2
+            self.electrons_per_angstrom_squared(coordinate_grid) * config.pixel_size**2
         )
         # Compute the squared wavefunction at the detector plane. Here, the squared
         # wavefunction is directly computed from the contrast by converting to a probability
@@ -56,7 +56,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         fourier_signal = rfftn(squared_wavefunction_at_detector_plane) * self.dqe(
             frequency_grid
         )
-        if key is None and isinstance(self.electrons_per_angstrom, Constant):
+        if key is None and isinstance(self.electrons_per_angstrom_squared, Constant):
             # If there is no key given and the dose is constant, apply the dose in fourier space and return
             return electrons_per_pixel * fourier_signal
         else:
@@ -75,11 +75,11 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
 class NullDetector(AbstractDetector):
     """A null detector model."""
 
-    electrons_per_angstrom: Constant
+    electrons_per_angstrom_squared: Constant
     dqe: Constant
 
     def __init__(self):
-        self.electrons_per_angstrom = Constant(1.0)
+        self.electrons_per_angstrom_squared = Constant(1.0)
         self.dqe = Constant(1.0)
 
     @override
@@ -103,7 +103,7 @@ class GaussianDetector(AbstractDetector, strict=True):
     of `PoissonDetector`.
     """
 
-    electrons_per_angstrom: RealOperatorLike
+    electrons_per_angstrom_squared: RealOperatorLike
     dqe: FourierOperatorLike = field(default_factory=Constant)
 
     @override
@@ -118,7 +118,7 @@ class GaussianDetector(AbstractDetector, strict=True):
 class PoissonDetector(AbstractDetector, strict=True):
     """A detector with a poisson noise model."""
 
-    electrons_per_angstrom: RealOperatorLike
+    electrons_per_angstrom_squared: RealOperatorLike
     dqe: FourierOperatorLike = field(default_factory=Constant)
 
     @override
