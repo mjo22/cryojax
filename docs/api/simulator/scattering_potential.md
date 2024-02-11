@@ -10,9 +10,9 @@
 
 ## Voxel-based electron densities
 
-???+ abstract "`cryojax.simulator.AbstractVoxels`"
+???+ abstract "`cryojax.simulator.AbstractVoxelPotential`"
 
-    ::: cryojax.simulator.AbstractVoxels
+    ::: cryojax.simulator.AbstractVoxelPotential
         options:
             members:
                 - is_real
