@@ -100,7 +100,9 @@ def masks(config):
 def instrument():
     return cs.Instrument(
         optics=cs.CTFOptics(),
-        detector=cs.GaussianDetector(electrons_per_angstrom_squared=op.Constant(1000.0)),
+        detector=cs.GaussianDetector(
+            electrons_per_angstrom_squared=op.Constant(1000.0)
+        ),
     )
 
 
