@@ -46,7 +46,10 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         )
         # Compute the squared wavefunction at the detector plane
         squared_wavefunction_at_detector_plane = (
-            jnp.abs(irfftn(fourier_wavefunction_at_detector_plane, s=config.padded_shape)) ** 2
+            jnp.abs(
+                irfftn(fourier_wavefunction_at_detector_plane, s=config.padded_shape)
+            )
+            ** 2
         )
         # Compute the noiseless signal by applying the DQE to the squared wavefunction
         fourier_signal = rfftn(squared_wavefunction_at_detector_plane) * self.dqe(
