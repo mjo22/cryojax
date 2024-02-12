@@ -84,7 +84,7 @@ class AbstractOptics(Module, strict=True):
     """
 
     ctf: AbstractVar[AbstractFourierOperator]
-    envelope: AbstractVar[Optional[FourierOperatorLike]]
+    envelope: AbstractVar[FourierOperatorLike]
 
     @abstractmethod
     def __call__(
@@ -103,11 +103,11 @@ class NullOptics(AbstractOptics):
     """
 
     ctf: Constant
-    envelope: None
+    envelope: Constant
 
     def __init__(self):
         self.ctf = Constant(1.0)
-        self.envelope = None
+        self.envelope = Constant(1.0)
 
     def __call__(
         self,
@@ -125,7 +125,7 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
     """
 
     ctf: CTF = field(default_factory=CTF)
-    envelope: Optional[FourierOperatorLike] = field(default=None)
+    envelope: FourierOperatorLike = field(default=Constant)
 
     def __call__(
         self,
@@ -137,12 +137,9 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
         N1, N2 = config.padded_shape
         frequency_grid = config.padded_frequency_grid_in_angstroms.get()
         # Compute the CTF
-        if self.envelope is None:
-            ctf = self.ctf(frequency_grid, defocus_offset=defocus_offset)
-        else:
-            ctf = self.envelope(frequency_grid) * self.ctf(
-                frequency_grid, defocus_offset=defocus_offset
-            )
+        ctf = self.envelope(frequency_grid) * self.ctf(
+            frequency_grid, defocus_offset=defocus_offset
+        )
         # ... approximate the wavefunction as the CTF multiplied by the scattering potential,
         # plus an incident wave. need to make the approximation that the zero mode of the
         # scattering potential is zero in order to approximate the wavefunction as real
