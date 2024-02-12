@@ -126,11 +126,9 @@ class Instrument(Module, strict=True):
             # Do nothing if there is no detector model
             return fourier_contrast_at_detector_plane
         if isinstance(self.optics, WeakPhaseOptics):
-            # ... approximate the squared wavefunction as the contrast around a global mean.
-            # This is based on the idea that the probability of hitting a (perfect) detector
-            # for pure vaccuum should be 1.
+            # ... compute the squared wavefunction in the weak-phase approximation
             fourier_squared_wavefunction_at_detector_plane = (
-                fourier_contrast_at_detector_plane.at[0, 0].set(1.0 * N1 * N2)
+                (2 * fourier_contrast_at_detector_plane).at[0, 0].set(1.0 * N1 * N2)
             )
             return fourier_squared_wavefunction_at_detector_plane
         else:
