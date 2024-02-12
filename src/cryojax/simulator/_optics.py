@@ -125,7 +125,7 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
     """
 
     ctf: CTF = field(default_factory=CTF)
-    envelope: FourierOperatorLike = field(default=Constant)
+    envelope: FourierOperatorLike = field(default_factory=Constant)
 
     def __call__(
         self,
