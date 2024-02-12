@@ -47,7 +47,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         # Compute the squared wavefunction at the detector plane
         squared_wavefunction_at_detector_plane = (
             jnp.abs(
-                irfftn(fourier_wavefunction_at_detector_plane, s=config.padded_shape)
+                ifftn(fourier_wavefunction_at_detector_plane, s=config.padded_shape)
             )
             ** 2
         )

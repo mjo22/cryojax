@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 
 from ._config import ImageConfig
-from ..image import irfftn, rfftn
+from ..image import irfftn, fftn
 from ..image.operators import (
     FourierOperatorLike,
     AbstractFourierOperator,
@@ -143,7 +143,11 @@ class CTFOptics(AbstractOptics, strict=True):
     ) -> ComplexImage:
         """Apply the CTF to the scattering potential."""
         N1, N2 = config.padded_shape
-        frequency_grid = config.padded_frequency_grid_in_angstroms.get()
+        frequency_grid = (
+            config.full_padded_frequency_grid_in_angstroms.get()
+            if get_wavefunction
+            else config.padded_frequency_grid_in_angstroms.get()
+        )
         # Compute the CTF
         if self.envelope is None:
             ctf = self.ctf(frequency_grid, defocus_offset=defocus_offset)
@@ -156,9 +160,10 @@ class CTFOptics(AbstractOptics, strict=True):
             wavefunction_at_exit_plane = jnp.exp(
                 1.0j * irfftn(fourier_potential_in_exit_plane, s=config.padded_shape)
             )
-            fourier_wavefunction_at_detector_plane = ctf * rfftn(
-                wavefunction_at_exit_plane.real
-            ) + 1.0j * ctf * rfftn(wavefunction_at_exit_plane.imag)
+
+            fourier_wavefunction_at_detector_plane = ctf * fftn(
+                wavefunction_at_exit_plane
+            )
 
             return fourier_wavefunction_at_detector_plane
         else:
