@@ -99,7 +99,7 @@ def masks(config):
 @pytest.fixture
 def instrument():
     return cs.Instrument(
-        optics=cs.CTFOptics(),
+        optics=cs.WeakPhaseOptics(),
         detector=cs.GaussianDetector(
             electrons_per_angstrom_squared=op.Constant(1000.0)
         ),

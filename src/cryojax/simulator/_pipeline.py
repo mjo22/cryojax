@@ -228,44 +228,27 @@ class ImagePipeline(AbstractPipeline, strict=True):
         normalize: bool = False,
     ) -> Image:
         """Render an image of a `Specimen` without any stochasticity."""
-        # Scattering the specimen to the exit plane
+        # Compute the scattering potential in the exit plane
         fourier_potential_at_exit_plane = self.instrument.scatter_to_exit_plane(
             self.specimen, self.scattering
         )
-        # Measure the image at the detector plane
-        if not isinstance(self.instrument.detector, NullDetector):
-            # If there is a detector, get the wavefunction
-            fourier_wavefunction_at_detector_plane = (
-                self.instrument.propagate_to_detector_plane(
-                    fourier_potential_at_exit_plane,
-                    self.scattering.config,
-                    defocus_offset=self.specimen.pose.offset_z,
-                    get_wavefunction=True,
-                )
+        # ... propagate the potential to the wavefunction at the detector plane
+        fourier_wavefunction_at_detector_plane = (
+            self.instrument.propagate_to_detector_plane(
+                fourier_potential_at_exit_plane,
+                self.scattering.config,
+                defocus_offset=self.specimen.pose.offset_z,
             )
-            # ... now measure the expected electron events at the detector
-            fourier_expected_electron_events = (
-                self.instrument.measure_detector_electron_events(
-                    fourier_wavefunction_at_detector_plane, self.scattering.config
-                )
+        )
+        # ... now measure the expected electron events at the detector
+        fourier_expected_electron_events = (
+            self.instrument.compute_expected_electron_events(
+                fourier_wavefunction_at_detector_plane, self.scattering.config
             )
-
-            fourier_image = fourier_expected_electron_events
-        else:
-            # ... otherwise, just get the contrast
-            fourier_contrast_at_detector_plane = (
-                self.instrument.propagate_to_detector_plane(
-                    fourier_potential_at_exit_plane,
-                    self.scattering.config,
-                    defocus_offset=self.specimen.pose.offset_z,
-                    get_wavefunction=False,
-                )
-            )
-
-            fourier_image = fourier_contrast_at_detector_plane
+        )
 
         return self._get_final_image(
-            fourier_image,
+            fourier_expected_electron_events,
             view_cropped=view_cropped,
             get_real=get_real,
             normalize=normalize,
@@ -289,7 +272,8 @@ class ImagePipeline(AbstractPipeline, strict=True):
         else:
             keys = jnp.expand_dims(key, axis=0)
         if not isinstance(self.solvent, NullIce):
-            # Scatter the specimen to the exit plane with the solvent potential
+            # Compute the scattering potential in the exit plane, including
+            # potential of the solvent
             fourier_potential_at_exit_plane = (
                 self.instrument.scatter_to_exit_plane_with_solvent(
                     keys[idx], self.specimen, self.scattering, self.solvent
@@ -297,45 +281,28 @@ class ImagePipeline(AbstractPipeline, strict=True):
             )
             idx += 1
         else:
-            # ... otherwise, scatter just the specimen to the exit plane
+            # ... otherwise, scatter just compute the potential of the specimen
             fourier_potential_at_exit_plane = self.instrument.scatter_to_exit_plane(
                 self.specimen, self.scattering
             )
 
-        # Now, measure the image at the detector plane
-        if not isinstance(self.instrument.detector, NullDetector):
-            # If there is a detector, get the wavefunction
-            fourier_wavefunction_at_detector_plane = (
-                self.instrument.propagate_to_detector_plane(
-                    fourier_potential_at_exit_plane,
-                    self.scattering.config,
-                    defocus_offset=self.specimen.pose.offset_z,
-                    get_wavefunction=True,
-                )
-            )
-            # ... now measure the expected electron events at the detector
-            fourier_detector_readout = self.instrument.measure_detector_readout(
-                keys[idx],
-                fourier_wavefunction_at_detector_plane,
+        # ... propagate the potential to the wavefunction at the detector plane
+        fourier_wavefunction_at_detector_plane = (
+            self.instrument.propagate_to_detector_plane(
+                fourier_potential_at_exit_plane,
                 self.scattering.config,
+                defocus_offset=self.specimen.pose.offset_z,
             )
-
-            fourier_image = fourier_detector_readout
-        else:
-            # ... otherwise, just get the contrast
-            fourier_contrast_at_detector_plane = (
-                self.instrument.propagate_to_detector_plane(
-                    fourier_potential_at_exit_plane,
-                    self.scattering.config,
-                    defocus_offset=self.specimen.pose.offset_z,
-                    get_wavefunction=False,
-                )
-            )
-
-            fourier_image = fourier_contrast_at_detector_plane
+        )
+        # ... now measure the detector readout
+        fourier_detector_readout = self.instrument.measure_detector_readout(
+            keys[idx],
+            fourier_wavefunction_at_detector_plane,
+            self.scattering.config,
+        )
 
         return self._get_final_image(
-            fourier_image,
+            fourier_detector_readout,
             view_cropped=view_cropped,
             get_real=get_real,
             normalize=normalize,
@@ -401,30 +368,17 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
             raise NotImplementedError(
                 "The AssemblyPipeline does not currently support sampling from the solvent model."
             )
-        # Get the contrast in the detector plane
-        fourier_wavefunction_or_contrast_at_detector_plane = (
-            self._compute_subunit_superposition()
+        # Compute the wavefunction in the detector plane
+        fourier_wavefunction_at_detector_plane = self._compute_subunit_superposition()
+        # ... measure the detector readout
+        fourier_detector_readout = self.instrument.measure_detector_readout(
+            key,
+            fourier_wavefunction_at_detector_plane,
+            self.scattering.config,
         )
-        if not isinstance(self.instrument.detector, NullDetector):
-            # If there is no detector, the final image is just the weak phase contrast
-            fourier_contrast_at_detector_plane = (
-                fourier_wavefunction_or_contrast_at_detector_plane
-            )
-            fourier_image = fourier_contrast_at_detector_plane
-        else:
-            # Otherwise, measure the detector readout
-            fourier_wavefunction_at_detector_plane = (
-                fourier_wavefunction_or_contrast_at_detector_plane
-            )
-            fourier_detector_readout = self.instrument.measure_detector_readout(
-                key,
-                fourier_wavefunction_at_detector_plane,
-                self.scattering.config,
-            )
-            fourier_image = fourier_detector_readout
 
         return self._get_final_image(
-            fourier_image,
+            fourier_detector_readout,
             view_cropped=view_cropped,
             get_real=get_real,
             normalize=normalize,
@@ -440,31 +394,18 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
     ) -> Image:
         """Render the superposition of images from the
         ``AbstractAssembly.subunits``."""
-        # Get the wavefunction or fourier contrast in the detector plane
-        fourier_wavefunction_or_contrast_at_detector_plane = (
-            self._compute_subunit_superposition()
+        # Compute the wavefunction in the detector plane
+        fourier_wavefunction_at_detector_plane = self._compute_subunit_superposition()
+        # ... compute the expected number of electron events
+        fourier_expected_electron_events = (
+            self.instrument.compute_expected_electron_events(
+                fourier_wavefunction_at_detector_plane,
+                self.scattering.config,
+            )
         )
-        if not isinstance(self.instrument.detector, NullDetector):
-            # If there is no detector, the final image is just the weak phase contrast
-            fourier_contrast_at_detector_plane = (
-                fourier_wavefunction_or_contrast_at_detector_plane
-            )
-            fourier_image = fourier_contrast_at_detector_plane
-        else:
-            # Otherwise, measure the expected electron events
-            fourier_wavefunction_at_detector_plane = (
-                fourier_wavefunction_or_contrast_at_detector_plane
-            )
-            fourier_expected_electron_events = (
-                self.instrument.measure_detector_electron_events(
-                    fourier_wavefunction_at_detector_plane,
-                    self.scattering.config,
-                )
-            )
-            fourier_image = fourier_expected_electron_events
 
         return self._get_final_image(
-            fourier_image,
+            fourier_expected_electron_events,
             view_cropped=view_cropped,
             get_real=get_real,
             normalize=normalize,
@@ -478,16 +419,14 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         to_vmap = jax.tree_util.tree_map(is_vmap, subunits, is_leaf=is_vmap)
         vmap, novmap = eqx.partition(subunits, to_vmap)
         # Compute all images and sum
-        get_wavefunction = not isinstance(self.instrument.detector, NullDetector)
-        compute_image = lambda spec, scat, ins: ins.propagate_to_detector_plane(
+        compute_wavefunction = lambda spec, scat, ins: ins.propagate_to_detector_plane(
             ins.scatter_to_exit_plane(spec, scat),
             scat.config,
             defocus_offset=spec.pose.offset_z,
-            get_wavefunction=get_wavefunction,
         )
         # ... vmap to compute a stack of images to superimpose
         compute_stack = jax.vmap(
-            lambda vmap, novmap, scat, ins: compute_image(
+            lambda vmap, novmap, scat, ins: compute_wavefunction(
                 eqx.combine(vmap, novmap), scat, ins
             ),
             in_axes=(0, None, None, None),
@@ -500,12 +439,10 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
             )
         )
         # ... compute the superposition
-        fourier_wavefunction_or_contrast_at_detector_plane = compute_stack_and_sum(
-            vmap, novmap, self.scattering, self.instrument
+        fourier_wavefunction_at_detector_plane = (
+            (compute_stack_and_sum(vmap, novmap, self.scattering, self.instrument))
+            .at[0, 0]
+            .divide(self.assembly.n_subunits)
         )
-        if get_wavefunction:
-            fourier_wavefunction_or_contrast_at_detector_plane.at[0, 0].divide(
-                jnp.sqrt(self.assembly.n_subunits)
-            )
 
-        return fourier_wavefunction_or_contrast_at_detector_plane
+        return fourier_wavefunction_at_detector_plane

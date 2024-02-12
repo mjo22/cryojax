@@ -92,7 +92,6 @@ class AbstractOptics(Module, strict=True):
         fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
-        get_wavefunction: bool = False,
     ) -> Image:
         """Pass an image through the optics model."""
         raise NotImplementedError
@@ -115,20 +114,14 @@ class NullOptics(AbstractOptics):
         fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
-        get_wavefunction: bool = False,
     ) -> Image:
-        if get_wavefunction:
-            return jnp.exp(
-                1.0j * irfftn(fourier_potential_in_exit_plane, s=config.padded_shape)
-            )
-        else:
-            return fourier_potential_in_exit_plane
+        return fourier_potential_in_exit_plane
 
 
-class CTFOptics(AbstractOptics, strict=True):
+class WeakPhaseOptics(AbstractOptics, strict=True):
     """
-    An optics model in the weak-phase approximation. Here, apply the CTF
-    directly to the scattering potential.
+    An optics model in the weak-phase approximation. Here, approximate the
+    wavefunction by applying the CTF directly to the scattering potential.
     """
 
     ctf: CTF = field(default_factory=CTF)
@@ -139,15 +132,10 @@ class CTFOptics(AbstractOptics, strict=True):
         fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
-        get_wavefunction: bool = False,
     ) -> ComplexImage:
         """Apply the CTF to the scattering potential."""
         N1, N2 = config.padded_shape
-        frequency_grid = (
-            config.full_padded_frequency_grid_in_angstroms.get()
-            if get_wavefunction
-            else config.padded_frequency_grid_in_angstroms.get()
-        )
+        frequency_grid = config.padded_frequency_grid_in_angstroms.get()
         # Compute the CTF
         if self.envelope is None:
             ctf = self.ctf(frequency_grid, defocus_offset=defocus_offset)
@@ -155,20 +143,13 @@ class CTFOptics(AbstractOptics, strict=True):
             ctf = self.envelope(frequency_grid) * self.ctf(
                 frequency_grid, defocus_offset=defocus_offset
             )
-        if get_wavefunction:
-            # Return the wavefunction
-            wavefunction_at_exit_plane = jnp.exp(
-                1.0j * irfftn(fourier_potential_in_exit_plane, s=config.padded_shape)
-            )
+        # ... approximate the wavefunction as the CTF multiplied by the scattering potential,
+        # plus an incident wave
+        fourier_wavefunction_in_detector_plane = (
+            ctf * fourier_potential_in_exit_plane.at[0, 0].add(1.0 * N1 * N2)
+        )
 
-            fourier_wavefunction_at_detector_plane = ctf * fftn(
-                wavefunction_at_exit_plane
-            )
-
-            return fourier_wavefunction_at_detector_plane
-        else:
-            # ... otherwise apply the CTF directly to the scattering potential and return
-            return ctf * fourier_potential_in_exit_plane
+        return fourier_wavefunction_in_detector_plane
 
 
 @partial(jax.jit, static_argnames=["degrees"])

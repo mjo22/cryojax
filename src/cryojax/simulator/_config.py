@@ -15,7 +15,6 @@ from ..image import (
     crop_to_shape,
     pad_to_shape,
     resize_with_crop_or_pad,
-    normalize_image,
     rescale_pixel_size,
 )
 
@@ -71,8 +70,6 @@ class ImageConfig(Module, strict=True):
     padded_frequency_grid: FrequencyGrid
     coordinate_grid: CoordinateGrid
     padded_coordinate_grid: CoordinateGrid
-    full_frequency_grid: FrequencyGrid
-    full_padded_frequency_grid: FrequencyGrid
 
     @overload
     def __init__(
@@ -127,10 +124,6 @@ class ImageConfig(Module, strict=True):
         self.padded_frequency_grid = FrequencyGrid(shape=self.padded_shape)
         self.coordinate_grid = CoordinateGrid(shape=self.shape)
         self.padded_coordinate_grid = CoordinateGrid(shape=self.padded_shape)
-        self.full_frequency_grid = FrequencyGrid(shape=self.shape, half_space=False)
-        self.full_padded_frequency_grid = FrequencyGrid(
-            shape=self.padded_shape, half_space=False
-        )
 
     def __check_init__(self):
         if self.padded_shape[0] < self.shape[0] or self.padded_shape[1] < self.shape[1]:
@@ -147,20 +140,12 @@ class ImageConfig(Module, strict=True):
         return self.frequency_grid / self.pixel_size
 
     @cached_property
-    def full_frequency_grid_in_angstroms(self) -> FrequencyGrid:
-        return self.full_frequency_grid / self.pixel_size
-
-    @cached_property
     def padded_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         return self.pixel_size * self.padded_coordinate_grid
 
     @cached_property
     def padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
         return self.padded_frequency_grid / self.pixel_size
-
-    @cached_property
-    def full_padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
-        return self.full_padded_frequency_grid / self.pixel_size
 
     def rescale_to_pixel_size(
         self, image: RealImage, current_pixel_size: Real_

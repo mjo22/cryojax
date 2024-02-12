@@ -65,17 +65,13 @@ class Instrument(Module, strict=True):
         fourier_potential_at_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
-        get_wavefunction: bool = False,
     ) -> Image:
         """Propagate the scattering potential with the optics model."""
-        fourier_wavefunction_or_contrast_at_detector_plane = self.optics(
-            fourier_potential_at_exit_plane,
-            config,
-            defocus_offset=defocus_offset,
-            get_wavefunction=get_wavefunction,
+        fourier_wavefunction_at_detector_plane = self.optics(
+            fourier_potential_at_exit_plane, config, defocus_offset=defocus_offset
         )
 
-        return fourier_wavefunction_or_contrast_at_detector_plane
+        return fourier_wavefunction_at_detector_plane
 
     def measure_detector_readout(
         self,
@@ -90,10 +86,10 @@ class Instrument(Module, strict=True):
 
         return fourier_detector_readout
 
-    def measure_detector_electron_events(
+    def compute_expected_electron_events(
         self, fourier_wavefunction_at_detector_plane: ComplexImage, config: ImageConfig
     ) -> ComplexImage:
-        """Measure the expected electron events from the detector."""
+        """Compute the expected electron events from the detector."""
         fourier_expected_electron_events = self.detector(
             fourier_wavefunction_at_detector_plane, config, key=None
         )
