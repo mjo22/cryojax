@@ -144,9 +144,10 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
                 frequency_grid, defocus_offset=defocus_offset
             )
         # ... approximate the wavefunction as the CTF multiplied by the scattering potential,
-        # plus an incident wave
+        # plus an incident wave. need to make the approximation that the zero mode of the
+        # scattering potential is zero in order to approximate the wavefunction as real
         fourier_wavefunction_in_detector_plane = (
-            ctf * fourier_potential_in_exit_plane.at[0, 0].add(1.0 * N1 * N2)
+            ctf * fourier_potential_in_exit_plane.at[0, 0].set(1.0 * N1 * N2)
         )
 
         return fourier_wavefunction_in_detector_plane
