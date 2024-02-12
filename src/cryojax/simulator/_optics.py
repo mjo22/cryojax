@@ -11,13 +11,14 @@ import jax
 import jax.numpy as jnp
 
 from ._config import ImageConfig
+from ..image import irfftn, rfftn
 from ..image.operators import (
     FourierOperatorLike,
     AbstractFourierOperator,
     Constant,
 )
-from ..coordinates import cartesian_to_polar
-from ..typing import Real_, RealImage, ComplexImage, ImageCoords
+from ..coordinates import cartesian_to_polar, make_frequencies
+from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
 class CTF(AbstractFourierOperator, strict=True):
@@ -91,7 +92,8 @@ class AbstractOptics(Module, strict=True):
         fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
-    ) -> ComplexImage:
+        get_wavefunction: bool = False,
+    ) -> Image:
         """Pass an image through the optics model."""
         raise NotImplementedError
 
@@ -113,11 +115,17 @@ class NullOptics(AbstractOptics):
         fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
-    ) -> ComplexImage:
-        return fourier_potential_in_exit_plane
+        get_wavefunction: bool = False,
+    ) -> Image:
+        if get_wavefunction:
+            return jnp.exp(
+                1.0j * irfftn(fourier_potential_in_exit_plane, s=config.padded_shape)
+            )
+        else:
+            return fourier_potential_in_exit_plane
 
 
-class WeakPhaseOptics(AbstractOptics, strict=True):
+class CTFOptics(AbstractOptics, strict=True):
     """
     An optics model in the weak-phase approximation. Here, apply the CTF
     directly to the scattering potential.
@@ -131,6 +139,7 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
         fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
+        get_wavefunction: bool = False,
     ) -> ComplexImage:
         """Apply the CTF to the scattering potential."""
         N1, N2 = config.padded_shape
@@ -142,8 +151,19 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
             ctf = self.envelope(frequency_grid) * self.ctf(
                 frequency_grid, defocus_offset=defocus_offset
             )
-        # Apply the CTF directly to the scattering potential and return
-        return ctf * fourier_potential_in_exit_plane
+        if get_wavefunction:
+            # Return the wavefunction
+            wavefunction_at_exit_plane = jnp.exp(
+                1.0j * irfftn(fourier_potential_in_exit_plane, s=config.padded_shape)
+            )
+            fourier_wavefunction_at_detector_plane = ctf * rfftn(
+                wavefunction_at_exit_plane.real
+            ) + 1.0j * ctf * rfftn(wavefunction_at_exit_plane.imag)
+
+            return fourier_wavefunction_at_detector_plane
+        else:
+            # ... otherwise apply the CTF directly to the scattering potential and return
+            return ctf * fourier_potential_in_exit_plane
 
 
 @partial(jax.jit, static_argnames=["degrees"])
@@ -208,9 +228,9 @@ def compute_ctf(
     )
     ac = jnp.arctan(amplitude_contrast / jnp.sqrt(1.0 - amplitude_contrast**2))
 
-    lam = 12.2643 / (voltage + 0.97845e-6 * voltage**2) ** 0.5
-    gamma_defocus = -0.5 * defocus * lam * k_sqr
-    gamma_sph = 0.25 * spherical_aberration * (lam**3) * (k_sqr**2)
+    wavelength = 12.2643 / (voltage + 0.97845e-6 * voltage**2) ** 0.5
+    gamma_defocus = -0.5 * defocus * wavelength * k_sqr
+    gamma_sph = 0.25 * spherical_aberration * (wavelength**3) * (k_sqr**2)
     gamma = (2 * jnp.pi) * (gamma_defocus + gamma_sph) - phase_shift - ac
     ctf = jnp.sin(gamma)
 

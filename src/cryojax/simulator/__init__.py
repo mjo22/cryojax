@@ -40,7 +40,7 @@ from ._ice import (
 from ._optics import (
     AbstractOptics as AbstractOptics,
     NullOptics as NullOptics,
-    WeakPhaseOptics as WeakPhaseOptics,
+    CTFOptics as CTFOptics,
     CTF as CTF,
     compute_ctf as compute_ctf,
 )

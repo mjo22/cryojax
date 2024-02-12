@@ -14,7 +14,7 @@ from jaxtyping import PRNGKeyArray
 from ._config import ImageConfig
 from ._stochastic_model import AbstractStochasticModel
 from ..image.operators import Constant, RealOperatorLike, FourierOperatorLike
-from ..image import irfftn, rfftn
+from ..image import irfftn, ifftn, rfftn
 from ..typing import ComplexImage, RealImage
 
 
@@ -33,7 +33,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
 
     def __call__(
         self,
-        fourier_contrast_at_detector_plane: ComplexImage,
+        fourier_wavefunction_at_detector_plane: ComplexImage,
         config: ImageConfig,
         key: Optional[PRNGKeyArray] = None,
     ) -> ComplexImage:
@@ -44,14 +44,10 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         electrons_per_pixel = (
             self.electrons_per_angstrom_squared(coordinate_grid) * config.pixel_size**2
         )
-        # Compute the squared wavefunction at the detector plane. Here, the squared
-        # wavefunction is directly computed from the contrast by converting to a probability
-        contrast_at_detector_plane = irfftn(
-            fourier_contrast_at_detector_plane, s=config.padded_shape
-        )
+        # Compute the squared wavefunction at the detector plane
         squared_wavefunction_at_detector_plane = (
-            contrast_at_detector_plane + jnp.min(contrast_at_detector_plane)
-        ) / jnp.sum(contrast_at_detector_plane)
+            jnp.abs(irfftn(fourier_wavefunction_at_detector_plane, s=config.padded_shape)) ** 2
+        )
         # Compute the noiseless signal by applying the DQE to the squared wavefunction
         fourier_signal = rfftn(squared_wavefunction_at_detector_plane) * self.dqe(
             frequency_grid

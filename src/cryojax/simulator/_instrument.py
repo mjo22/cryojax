@@ -13,7 +13,7 @@ from ._config import ImageConfig
 from ._optics import AbstractOptics, NullOptics
 from ._detector import AbstractDetector, NullDetector
 
-from ..typing import ComplexImage, Real_
+from ..typing import ComplexImage, RealImage, Image, Real_
 
 
 class Instrument(Module, strict=True):
@@ -65,39 +65,37 @@ class Instrument(Module, strict=True):
         fourier_potential_at_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
-    ) -> ComplexImage:
+        get_wavefunction: bool = False,
+    ) -> Image:
         """Propagate the scattering potential with the optics model."""
-        fourier_contrast_at_detector_plane = self.optics(
+        fourier_wavefunction_or_contrast_at_detector_plane = self.optics(
             fourier_potential_at_exit_plane,
             config,
             defocus_offset=defocus_offset,
+            get_wavefunction=get_wavefunction,
         )
 
-        return fourier_contrast_at_detector_plane
+        return fourier_wavefunction_or_contrast_at_detector_plane
 
     def measure_detector_readout(
         self,
         key: PRNGKeyArray,
-        fourier_contrast_at_detector_plane: ComplexImage,
+        fourier_wavefunction_at_detector_plane: RealImage,
         config: ImageConfig,
     ) -> ComplexImage:
         """Measure the readout from the detector."""
         fourier_detector_readout = self.detector(
-            fourier_contrast_at_detector_plane,
-            config,
-            key,
+            fourier_wavefunction_at_detector_plane, config, key
         )
 
         return fourier_detector_readout
 
     def measure_detector_electron_events(
-        self, fourier_contrast_at_detector_plane: ComplexImage, config: ImageConfig
+        self, fourier_wavefunction_at_detector_plane: ComplexImage, config: ImageConfig
     ) -> ComplexImage:
         """Measure the expected electron events from the detector."""
         fourier_expected_electron_events = self.detector(
-            fourier_contrast_at_detector_plane,
-            config,
-            key=None,
+            fourier_wavefunction_at_detector_plane, config, key=None
         )
 
         return fourier_expected_electron_events
