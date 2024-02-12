@@ -33,7 +33,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
 
     def __call__(
         self,
-        fourier_wavefunction_at_detector_plane: ComplexImage,
+        fourier_squared_wavefunction_at_detector_plane: ComplexImage,
         config: ImageConfig,
         key: Optional[PRNGKeyArray] = None,
     ) -> ComplexImage:
@@ -44,15 +44,8 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         electrons_per_pixel = (
             self.electrons_per_angstrom_squared(coordinate_grid) * config.pixel_size**2
         )
-        # Compute the squared wavefunction at the detector plane
-        squared_wavefunction_at_detector_plane = (
-            jnp.abs(
-                irfftn(fourier_wavefunction_at_detector_plane, s=config.padded_shape)
-            )
-            ** 2
-        )
         # Compute the noiseless signal by applying the DQE to the squared wavefunction
-        fourier_signal = rfftn(squared_wavefunction_at_detector_plane) * self.dqe(
+        fourier_signal = fourier_squared_wavefunction_at_detector_plane * self.dqe(
             frequency_grid
         )
         if key is None and isinstance(self.electrons_per_angstrom_squared, Constant):

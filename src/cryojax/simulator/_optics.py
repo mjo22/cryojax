@@ -11,13 +11,12 @@ import jax
 import jax.numpy as jnp
 
 from ._config import ImageConfig
-from ..image import irfftn, fftn
 from ..image.operators import (
     FourierOperatorLike,
     AbstractFourierOperator,
     Constant,
 )
-from ..coordinates import cartesian_to_polar, make_frequencies
+from ..coordinates import cartesian_to_polar
 from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
@@ -143,14 +142,10 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
             ctf = self.envelope(frequency_grid) * self.ctf(
                 frequency_grid, defocus_offset=defocus_offset
             )
-        # ... approximate the wavefunction as the CTF multiplied by the scattering potential,
-        # plus an incident wave. need to make the approximation that the zero mode of the
-        # scattering potential is zero in order to approximate the wavefunction as real
-        fourier_wavefunction_in_detector_plane = (
-            ctf * fourier_potential_in_exit_plane.at[0, 0].set(1.0 * N1 * N2)
-        )
+        # ... compute the "contrast" as the CTF multiplied by the scattering potential
+        fourier_contrast_in_detector_plane = ctf * fourier_potential_in_exit_plane
 
-        return fourier_wavefunction_in_detector_plane
+        return fourier_contrast_in_detector_plane
 
 
 @partial(jax.jit, static_argnames=["degrees"])
