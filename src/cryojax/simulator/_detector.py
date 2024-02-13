@@ -83,11 +83,11 @@ class NullDetector(AbstractDetector):
     @override
     def __call__(
         self,
-        fourier_contrast_at_detector_plane: ComplexImage,
+        fourier_squared_wavefunction_at_detector_plane: ComplexImage,
         config: ImageConfig,
         key: Optional[PRNGKeyArray] = None,
     ) -> ComplexImage:
-        return fourier_contrast_at_detector_plane
+        return fourier_squared_wavefunction_at_detector_plane
 
 
 class GaussianDetector(AbstractDetector, strict=True):
