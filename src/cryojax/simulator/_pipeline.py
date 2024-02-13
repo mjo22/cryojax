@@ -383,11 +383,14 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
                 "The AssemblyPipeline does not currently support sampling from the solvent model."
             )
         # Compute the contrast or wavefunction in the detector plane
-        fourier_contrast_or_wavefunction_at_detector_plane = self._compute_subunit_superposition()
+        fourier_contrast_or_wavefunction_at_detector_plane = (
+            self._compute_subunit_superposition()
+        )
         # ... compute the squared wavefunction
         fourier_squared_wavefunction_at_detector_plane = (
             self.instrument.compute_fourier_squared_wavefunction(
-                fourier_contrast_or_wavefunction_at_detector_plane, self.scattering.config
+                fourier_contrast_or_wavefunction_at_detector_plane,
+                self.scattering.config,
             )
         )
         # ... measure the detector readout
@@ -415,11 +418,14 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         """Render the superposition of images from the
         ``AbstractAssembly.subunits``."""
         # Compute the contrast in the detector plane
-        fourier_contrast_or_wavefunction_at_detector_plane = self._compute_subunit_superposition()
-            # ... compute the squared wavefunction
+        fourier_contrast_or_wavefunction_at_detector_plane = (
+            self._compute_subunit_superposition()
+        )
+        # ... compute the squared wavefunction
         fourier_squared_wavefunction_at_detector_plane = (
             self.instrument.compute_fourier_squared_wavefunction(
-                fourier_contrast_or_wavefunction_at_detector_plane, self.scattering.config
+                fourier_contrast_or_wavefunction_at_detector_plane,
+                self.scattering.config,
             )
         )
         # ... compute the expected number of electron events
