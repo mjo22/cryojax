@@ -42,7 +42,6 @@ from ._optics import (
     NullOptics as NullOptics,
     WeakPhaseOptics as WeakPhaseOptics,
     CTF as CTF,
-    compute_ctf as compute_ctf,
 )
 
 from ._detector import (

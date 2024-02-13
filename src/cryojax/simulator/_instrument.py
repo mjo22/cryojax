@@ -76,22 +76,50 @@ class Instrument(Module, strict=True):
         defocus_offset: Real_ | float = 0.0,
     ) -> Image:
         """Propagate the scattering potential with the optics model."""
-        fourier_contrast_at_detector_plane = self.optics(
+        fourier_contrast_or_wavefunction_at_detector_plane = self.optics(
             fourier_potential_at_exit_plane, config, defocus_offset=defocus_offset
         )
 
-        return fourier_contrast_at_detector_plane
+        return fourier_contrast_or_wavefunction_at_detector_plane
+
+    def compute_squared_wavefunction_at_detector_plane(
+        self,
+        fourier_contrast_or_wavefunction_at_detector_plane: ComplexImage,
+        config: ImageConfig,
+    ) -> ComplexImage:
+        """Compute the squared wavefunction at the detector plane, given either the
+        contrast or the wavefunction.
+        """
+        N1, N2 = config.padded_shape
+        if isinstance(self.optics, NullOptics):
+            # If there is no optics model, return the image unchanged
+            return fourier_contrast_or_wavefunction_at_detector_plane
+        elif self.optics.is_linear:
+            # ... compute the squared wavefunction directly from the image contrast
+            # as C = 1 - 2 |psi|^2 -> |psi|^2 = (1 - C) / 2
+            fourier_contrast_at_detector_plane = (
+                fourier_contrast_or_wavefunction_at_detector_plane
+            )
+            fourier_squared_wavefunction_at_detector_plane = (
+                (-fourier_contrast_at_detector_plane).at[0, 0].add(1.0 * N1 * N2)
+            ) / 2
+            return fourier_squared_wavefunction_at_detector_plane
+        else:
+            # ... otherwise, take the modulus squared
+            raise NotImplementedError(
+                "Functionality for AbstractOptics.is_linear = False not supported."
+            )
 
     def measure_detector_readout(
         self,
         key: PRNGKeyArray,
-        fourier_contrast_at_detector_plane: RealImage,
+        fourier_contrast_or_wavefunction_at_detector_plane: RealImage,
         config: ImageConfig,
     ) -> ComplexImage:
         """Measure the readout from the detector."""
         fourier_squared_wavefunction_at_detector_plane = (
-            self.compute_squared_wavefunction(
-                fourier_contrast_at_detector_plane, config
+            self.compute_squared_wavefunction_at_detector_plane(
+                fourier_contrast_or_wavefunction_at_detector_plane, config
             )
         )
         fourier_detector_readout = self.detector(
@@ -101,12 +129,14 @@ class Instrument(Module, strict=True):
         return fourier_detector_readout
 
     def compute_expected_electron_events(
-        self, fourier_contrast_at_detector_plane: ComplexImage, config: ImageConfig
+        self,
+        fourier_contrast_or_wavefunction_at_detector_plane: ComplexImage,
+        config: ImageConfig,
     ) -> ComplexImage:
         """Compute the expected electron events from the detector."""
         fourier_squared_wavefunction_at_detector_plane = (
-            self.compute_squared_wavefunction(
-                fourier_contrast_at_detector_plane, config
+            self.compute_squared_wavefunction_at_detector_plane(
+                fourier_contrast_or_wavefunction_at_detector_plane, config
             )
         )
         fourier_expected_electron_events = self.detector(
@@ -114,24 +144,3 @@ class Instrument(Module, strict=True):
         )
 
         return fourier_expected_electron_events
-
-    def compute_squared_wavefunction(
-        self, fourier_contrast_at_detector_plane: ComplexImage, config: ImageConfig
-    ) -> ComplexImage:
-        """Compute the squared wavefunction at the detector plane,
-        given
-        """
-        N1, N2 = config.padded_shape
-        if isinstance(self.detector, NullDetector):
-            # Do nothing if there is no detector model
-            return fourier_contrast_at_detector_plane
-        if isinstance(self.optics, WeakPhaseOptics):
-            # ... compute the squared wavefunction directly from the image contrast
-            # as C = 1 - 2 |psi|^2
-            fourier_squared_wavefunction_at_detector_plane = (
-                (-fourier_contrast_at_detector_plane).at[0, 0].add(1.0 * N1 * N2)
-            ) / 2
-            return fourier_squared_wavefunction_at_detector_plane
-        else:
-            # ... otherwise, pass the image through unchanged.
-            return fourier_contrast_at_detector_plane

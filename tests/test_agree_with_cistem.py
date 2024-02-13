@@ -38,10 +38,10 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
     optics = CTF(
         defocus_u=defocus1,
         defocus_v=defocus2,
-        defocus_angle=asti_angle,
-        voltage=kV,
-        spherical_aberration=cs,
-        amplitude_contrast=ac,
+        astigmatism_angle=asti_angle,
+        voltage_in_kilovolts=kV,
+        spherical_aberration_in_mm=cs,
+        amplitude_contrast_ratio=ac,
     )
     ctf = np.array(optics(freqs))
     # Compute cisTEM CTF
