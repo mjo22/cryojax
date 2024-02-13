@@ -232,18 +232,25 @@ class ImagePipeline(AbstractPipeline, strict=True):
         fourier_potential_at_exit_plane = self.instrument.scatter_to_exit_plane(
             self.specimen, self.scattering
         )
-        # ... propagate the potential to the contrast at the detector plane
-        fourier_contrast_at_detector_plane = (
+        # ... propagate the potential to the detector plane
+        fourier_contrast_or_wavefunction_at_detector_plane = (
             self.instrument.propagate_to_detector_plane(
                 fourier_potential_at_exit_plane,
                 self.scattering.config,
                 defocus_offset=self.specimen.pose.offset_z,
             )
         )
+        # ... compute the squared wavefunction
+        fourier_squared_wavefunction_at_detector_plane = (
+            self.instrument.compute_fourier_squared_wavefunction(
+                fourier_contrast_or_wavefunction_at_detector_plane,
+                self.scattering.config,
+            )
+        )
         # ... now measure the expected electron events at the detector
         fourier_expected_electron_events = (
             self.instrument.compute_expected_electron_events(
-                fourier_contrast_at_detector_plane, self.scattering.config
+                fourier_squared_wavefunction_at_detector_plane, self.scattering.config
             )
         )
 
@@ -287,17 +294,24 @@ class ImagePipeline(AbstractPipeline, strict=True):
             )
 
         # ... propagate the potential to the contrast at the detector plane
-        fourier_contrast_at_detector_plane = (
+        fourier_contrast_or_wavefunction_at_detector_plane = (
             self.instrument.propagate_to_detector_plane(
                 fourier_potential_at_exit_plane,
                 self.scattering.config,
                 defocus_offset=self.specimen.pose.offset_z,
             )
         )
+        # ... compute the squared wavefunction
+        fourier_squared_wavefunction_at_detector_plane = (
+            self.instrument.compute_fourier_squared_wavefunction(
+                fourier_contrast_or_wavefunction_at_detector_plane,
+                self.scattering.config,
+            )
+        )
         # ... now measure the detector readout
         fourier_detector_readout = self.instrument.measure_detector_readout(
             keys[idx],
-            fourier_contrast_at_detector_plane,
+            fourier_squared_wavefunction_at_detector_plane,
             self.scattering.config,
         )
 
@@ -368,12 +382,18 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
             raise NotImplementedError(
                 "The AssemblyPipeline does not currently support sampling from the solvent model."
             )
-        # Compute the contrast in the detector plane
-        fourier_contrast_at_detector_plane = self._compute_subunit_superposition()
+        # Compute the contrast or wavefunction in the detector plane
+        fourier_contrast_or_wavefunction_at_detector_plane = self._compute_subunit_superposition()
+        # ... compute the squared wavefunction
+        fourier_squared_wavefunction_at_detector_plane = (
+            self.instrument.compute_fourier_squared_wavefunction(
+                fourier_contrast_or_wavefunction_at_detector_plane, self.scattering.config
+            )
+        )
         # ... measure the detector readout
         fourier_detector_readout = self.instrument.measure_detector_readout(
             key,
-            fourier_contrast_at_detector_plane,
+            fourier_squared_wavefunction_at_detector_plane,
             self.scattering.config,
         )
 
@@ -395,11 +415,17 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         """Render the superposition of images from the
         ``AbstractAssembly.subunits``."""
         # Compute the contrast in the detector plane
-        fourier_contrast_at_detector_plane = self._compute_subunit_superposition()
+        fourier_contrast_or_wavefunction_at_detector_plane = self._compute_subunit_superposition()
+            # ... compute the squared wavefunction
+        fourier_squared_wavefunction_at_detector_plane = (
+            self.instrument.compute_fourier_squared_wavefunction(
+                fourier_contrast_or_wavefunction_at_detector_plane, self.scattering.config
+            )
+        )
         # ... compute the expected number of electron events
         fourier_expected_electron_events = (
             self.instrument.compute_expected_electron_events(
-                fourier_contrast_at_detector_plane,
+                fourier_squared_wavefunction_at_detector_plane,
                 self.scattering.config,
             )
         )

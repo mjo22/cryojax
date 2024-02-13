@@ -6,27 +6,27 @@ for the optics, detector, and beam.
 from jaxtyping import PRNGKeyArray
 from equinox import Module, field
 
-from ..image import irfftn
+import jax.numpy as jnp
+
+from ..image import rfftn, ifftn
 from ._ice import AbstractIce
 from ._specimen import AbstractSpecimen
 from ._scattering import AbstractScatteringMethod
 from ._config import ImageConfig
-from ._optics import AbstractOptics, NullOptics, WeakPhaseOptics
+from ._optics import AbstractOptics, NullOptics
 from ._detector import AbstractDetector, NullDetector
 
 from ..typing import ComplexImage, RealImage, Image, Real_
 
 
 class Instrument(Module, strict=True):
-    """
-    An abstraction of an electron microscope.
+    """An abstraction of an electron microscope.
 
-    Attributes
-    ----------
-    optics :
-        The model for the contrast transfer function.
-    detector :
-        The model of the detector.
+    **Attributes:**
+
+    `optics`: The model for the instrument optics.
+
+    `detector` : The model of the detector.
     """
 
     optics: AbstractOptics = field(default_factory=NullOptics)
@@ -82,7 +82,7 @@ class Instrument(Module, strict=True):
 
         return fourier_contrast_or_wavefunction_at_detector_plane
 
-    def compute_squared_wavefunction_at_detector_plane(
+    def compute_fourier_squared_wavefunction(
         self,
         fourier_contrast_or_wavefunction_at_detector_plane: ComplexImage,
         config: ImageConfig,
@@ -92,8 +92,12 @@ class Instrument(Module, strict=True):
         """
         N1, N2 = config.padded_shape
         if isinstance(self.optics, NullOptics):
-            # If there is no optics model, return the image unchanged
-            return fourier_contrast_or_wavefunction_at_detector_plane
+            # If there is no optics model, assume that the potential is being passed
+            # and return unchanged
+            fourier_potential_in_exit_plane = (
+                fourier_contrast_or_wavefunction_at_detector_plane
+            )
+            return fourier_potential_in_exit_plane
         elif self.optics.is_linear:
             # ... compute the squared wavefunction directly from the image contrast
             # as C = 1 - 2 |psi|^2 -> |psi|^2 = (1 - C) / 2
@@ -106,6 +110,12 @@ class Instrument(Module, strict=True):
             return fourier_squared_wavefunction_at_detector_plane
         else:
             # ... otherwise, take the modulus squared
+            fourier_wavefunction_at_detector_plane = (
+                fourier_contrast_or_wavefunction_at_detector_plane
+            )
+            fourier_squared_wavefunction_at_detector_plane = rfftn(
+                jnp.abs(ifftn(fourier_wavefunction_at_detector_plane)) ** 2
+            )
             raise NotImplementedError(
                 "Functionality for AbstractOptics.is_linear = False not supported."
             )
@@ -113,15 +123,10 @@ class Instrument(Module, strict=True):
     def measure_detector_readout(
         self,
         key: PRNGKeyArray,
-        fourier_contrast_or_wavefunction_at_detector_plane: RealImage,
+        fourier_squared_wavefunction_at_detector_plane: RealImage,
         config: ImageConfig,
     ) -> ComplexImage:
         """Measure the readout from the detector."""
-        fourier_squared_wavefunction_at_detector_plane = (
-            self.compute_squared_wavefunction_at_detector_plane(
-                fourier_contrast_or_wavefunction_at_detector_plane, config
-            )
-        )
         fourier_detector_readout = self.detector(
             fourier_squared_wavefunction_at_detector_plane, config, key
         )
@@ -130,15 +135,10 @@ class Instrument(Module, strict=True):
 
     def compute_expected_electron_events(
         self,
-        fourier_contrast_or_wavefunction_at_detector_plane: ComplexImage,
+        fourier_squared_wavefunction_at_detector_plane: ComplexImage,
         config: ImageConfig,
     ) -> ComplexImage:
         """Compute the expected electron events from the detector."""
-        fourier_squared_wavefunction_at_detector_plane = (
-            self.compute_squared_wavefunction_at_detector_plane(
-                fourier_contrast_or_wavefunction_at_detector_plane, config
-            )
-        )
         fourier_expected_electron_events = self.detector(
             fourier_squared_wavefunction_at_detector_plane, config, key=None
         )
