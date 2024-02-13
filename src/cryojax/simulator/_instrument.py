@@ -126,7 +126,8 @@ class Instrument(Module, strict=True):
             # Do nothing if there is no detector model
             return fourier_contrast_at_detector_plane
         if isinstance(self.optics, WeakPhaseOptics):
-            # ... compute the squared wavefunction in the weak-phase approximation
+            # ... compute the squared wavefunction directly from the image contrast
+            # as C = 1 - 2 |psi|^2
             fourier_squared_wavefunction_at_detector_plane = (
                 (-fourier_contrast_at_detector_plane).at[0, 0].add(1.0 * N1 * N2)
             ) / 2
