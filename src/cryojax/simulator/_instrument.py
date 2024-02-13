@@ -128,8 +128,8 @@ class Instrument(Module, strict=True):
         if isinstance(self.optics, WeakPhaseOptics):
             # ... compute the squared wavefunction in the weak-phase approximation
             fourier_squared_wavefunction_at_detector_plane = (
-                (2 * fourier_contrast_at_detector_plane).at[0, 0].set(1.0 * N1 * N2)
-            )
+                (-fourier_contrast_at_detector_plane).at[0, 0].add(1.0 * N1 * N2)
+            ) / 2
             return fourier_squared_wavefunction_at_detector_plane
         else:
             # ... otherwise, pass the image through unchanged.
