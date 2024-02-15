@@ -45,8 +45,8 @@ import jax.numpy as jnp
 import cryojax.simulator as cs
 from cryojax.io import read_array_with_spacing_from_mrc
 
-# Instantiate the electron density
-filename = "example.mrc"
+# Instantiate the scattering potential.
+filename = "example_scattering_potential.mrc"
 real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(filename)
 potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
@@ -55,7 +55,9 @@ config = cs.ImageConfig(shape, pixel_size)
 scattering = cs.FourierSliceExtract(config, interpolation_order=1)
 ```
 
-Here, the 3D scattering potential is stored in `filename` is loaded in fourier-space, and the fourier-slice projection theorem is initialized. We can now instantiate the representation of a biological specimen, which also includes a pose.
+Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGrid`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as [cisTEM](https://github.com/timothygrant80/cisTEM).
+
+We can now instantiate the representation of a biological specimen, which also includes a pose.
 
 ```python
 # First instantiate the pose. Translations are in Angstroms, angles are in degrees

@@ -4,7 +4,7 @@ Abstraction of the ice in a cryo-EM image.
 
 from abc import abstractmethod
 from typing_extensions import override
-from equinox import field
+from typing import Optional
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -12,7 +12,7 @@ from jaxtyping import PRNGKeyArray
 
 from ._stochastic_model import AbstractStochasticModel
 from ._config import ImageConfig
-from ..image.operators import FourierOperatorLike, FourierExp2D
+from ..image.operators import FourierOperatorLike, Constant
 from ..typing import ComplexImage, ImageCoords
 
 
@@ -37,7 +37,8 @@ class AbstractIce(AbstractStochasticModel, strict=True):
         potential_at_exit_plane: ComplexImage,
         config: ImageConfig,
     ) -> ComplexImage:
-        """Compute the combined potential of the ice and the specimen, ."""
+        """Compute the combined potential of the ice and the specimen."""
+        # Sample the realization of the potential due to the ice
         ice_potential_at_exit_plane = self.sample(
             key, config.padded_frequency_grid_in_angstroms.get()
         )
@@ -76,11 +77,13 @@ class GaussianIce(AbstractIce, strict=True):
     ----------
     variance :
         A kernel that computes the variance
-        of the ice, modeled as noise. By default,
-        ``FourierExp()``.
+        of the ice, modeled as noise.
     """
 
-    variance: FourierOperatorLike = field(default_factory=FourierExp2D)
+    variance: FourierOperatorLike
+
+    def __init__(self, variance: Optional[FourierOperatorLike] = None):
+        self.variance = variance or Constant(1.0)
 
     @override
     def sample(
