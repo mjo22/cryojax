@@ -19,12 +19,18 @@ from ..typing import ComplexImage, RealImage
 
 
 class AbstractDetector(AbstractStochasticModel, strict=True):
-    """
-    Base class for an electron detector.
-    """
+    """Base class for an electron detector."""
 
-    electrons_per_angstrom_squared: AbstractVar[RealOperatorLike]
-    dqe: AbstractVar[FourierOperatorLike]
+    electrons_per_angstrom_squared: RealOperatorLike
+    dqe: FourierOperatorLike
+
+    def __init__(
+        self,
+        electrons_per_angstrom_squared: RealOperatorLike,
+        dqe: Optional[FourierOperatorLike] = None,
+    ):
+        self.electrons_per_angstrom_squared = electrons_per_angstrom_squared
+        self.dqe = dqe or Constant(1.0)
 
     @abstractmethod
     def sample(self, key: PRNGKeyArray, image: RealImage) -> RealImage:
@@ -74,9 +80,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
 class NullDetector(AbstractDetector):
     """A null detector model."""
 
-    electrons_per_angstrom_squared: Constant
-    dqe: Constant
-
+    @override
     def __init__(self):
         self.electrons_per_angstrom_squared = Constant(1.0)
         self.dqe = Constant(1.0)
@@ -102,9 +106,6 @@ class GaussianDetector(AbstractDetector, strict=True):
     of `PoissonDetector`.
     """
 
-    electrons_per_angstrom_squared: RealOperatorLike
-    dqe: FourierOperatorLike = field(default_factory=Constant)
-
     @override
     def sample(
         self, key: PRNGKeyArray, expected_electron_events: RealImage
@@ -116,9 +117,6 @@ class GaussianDetector(AbstractDetector, strict=True):
 
 class PoissonDetector(AbstractDetector, strict=True):
     """A detector with a poisson noise model."""
-
-    electrons_per_angstrom_squared: RealOperatorLike
-    dqe: FourierOperatorLike = field(default_factory=Constant)
 
     @override
     def sample(

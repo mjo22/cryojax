@@ -3,7 +3,8 @@ Models of instrument optics.
 """
 
 from abc import abstractmethod
-from typing import ClassVar
+from typing import ClassVar, Optional
+from typing_extensions import override
 from equinox import AbstractClassVar, AbstractVar, Module, field
 
 import jax.numpy as jnp
@@ -89,10 +90,18 @@ class AbstractOptics(Module, strict=True):
                  the optics model computes the wavefunction.
     """
 
-    ctf: AbstractVar[CTF]
-    envelope: AbstractVar[FourierOperatorLike]
+    ctf: CTF
+    envelope: FourierOperatorLike
 
     is_linear: AbstractClassVar[bool]
+
+    def __init__(
+        self,
+        ctf: CTF,
+        envelope: Optional[FourierOperatorLike] = None,
+    ):
+        self.ctf = ctf
+        self.envelope = envelope or Constant(1.0)
 
     @property
     def wavelength_in_angstroms(self) -> Real_:
@@ -112,15 +121,14 @@ class AbstractOptics(Module, strict=True):
 class NullOptics(AbstractOptics):
     """A null optics model."""
 
-    ctf: CTF
-    envelope: Constant
-
     is_linear: ClassVar[bool] = True
 
+    @override
     def __init__(self):
         self.ctf = CTF()
         self.envelope = Constant(1.0)
 
+    @override
     def __call__(
         self,
         fourier_potential_in_exit_plane: ComplexImage,
@@ -135,18 +143,16 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
     contrast by applying the CTF directly to the scattering potential.
     """
 
-    ctf: CTF = field(default_factory=CTF)
-    envelope: FourierOperatorLike = field(default_factory=Constant)
-
     is_linear: ClassVar[bool] = True
 
+    @override
     def __call__(
         self,
         fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
         defocus_offset: Real_ | float = 0.0,
     ) -> ComplexImage:
-        """Apply the CTF to the scattering potential."""
+        """Apply the CTF directly to the scattering potential."""
         N1, N2 = config.padded_shape
         frequency_grid = config.padded_frequency_grid_in_angstroms.get()
         # Compute the CTF

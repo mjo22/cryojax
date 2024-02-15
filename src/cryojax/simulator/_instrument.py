@@ -1,10 +1,11 @@
 """
 Abstraction of the electron microscope. This includes models
-for the optics, detector, and beam.
+for the optics and detector.
 """
 
+from typing import Optional, overload
 from jaxtyping import PRNGKeyArray
-from equinox import Module, field
+from equinox import Module
 
 import jax.numpy as jnp
 
@@ -25,21 +26,34 @@ class Instrument(Module, strict=True):
 
     **Attributes:**
 
-    `optics`: The model for the instrument optics.
+    - `optics`: The model for the instrument optics.
 
-    `detector` : The model of the detector.
+    - `detector` : The model of the detector.
     """
 
-    optics: AbstractOptics = field(default_factory=NullOptics)
-    detector: AbstractDetector = field(default_factory=NullDetector)
+    optics: AbstractOptics
+    detector: AbstractDetector
 
-    def __check_init__(self):
-        if not isinstance(self.detector, NullDetector) and isinstance(
-            self.optics, NullOptics
-        ):
+    @overload
+    def __init__(self, optics: None, detector: None): ...
+
+    @overload
+    def __init__(self, optics: AbstractOptics, detector: None): ...
+
+    @overload
+    def __init__(self, optics: AbstractOptics, detector: AbstractDetector): ...
+
+    def __init__(
+        self,
+        optics: Optional[AbstractOptics] = None,
+        detector: Optional[AbstractDetector] = None,
+    ):
+        if optics is None and isinstance(detector, AbstractDetector):
             raise AttributeError(
-                "Cannot set optics model as NullOptics if the detector model is not NullDetector."
+                "Cannot set Instrument.detector without passing an optics model."
             )
+        self.optics = optics or NullOptics()
+        self.detector = detector or NullDetector()
 
     @property
     def wavelength_in_angstroms(self) -> Real_:
