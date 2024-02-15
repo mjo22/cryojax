@@ -10,7 +10,7 @@ These classes are modified from the library ``tinygp``.
 """
 
 from abc import abstractmethod
-from typing import Any, Optional
+from typing import overload
 from typing_extensions import override
 from jaxtyping import Array
 from equinox import field
@@ -18,7 +18,15 @@ from equinox import field
 import jax.numpy as jnp
 
 from ._operator import AbstractImageOperator
-from ...typing import Real_, ImageCoords, VolumeCoords, RealImage
+from ...typing import (
+    Real_,
+    ImageCoords,
+    VolumeCoords,
+    RealImage,
+    RealVolume,
+    Image,
+    Volume,
+)
 
 
 class AbstractFourierOperator(AbstractImageOperator, strict=True):
@@ -35,10 +43,16 @@ class AbstractFourierOperator(AbstractImageOperator, strict=True):
         2) Overrwrite the ``__call__`` method.
     """
 
+    @overload
     @abstractmethod
-    def __call__(
-        self, freqs: ImageCoords | VolumeCoords | None = None, **kwargs: Any
-    ) -> Array:
+    def __call__(self, freqs: ImageCoords) -> Image: ...
+
+    @overload
+    @abstractmethod
+    def __call__(self, freqs: VolumeCoords) -> Volume: ...
+
+    @abstractmethod
+    def __call__(self, freqs: ImageCoords | VolumeCoords) -> Image | Volume:
         raise NotImplementedError
 
 
@@ -58,28 +72,9 @@ class ZeroMode(AbstractFourierOperator, strict=True):
     value: Real_ = field(default=0.0, converter=jnp.asarray)
 
     @override
-    def __call__(
-        self,
-        freqs: ImageCoords | None,
-        half_space: bool = True,
-        shape_in_real_space: Optional[None] = None,
-        **kwargs: Any,
-    ) -> RealImage:
-        if freqs is None:
-            raise ValueError(
-                "The frequency grid must be given as an argument to the operator call."
-            )
-        else:
-            N1, N2 = freqs.shape[0:-1]
-            if half_space:
-                N_modes = (
-                    N1 * (2 * N2 - 1)
-                    if shape_in_real_space is None
-                    else shape_in_real_space[0] * shape_in_real_space[1]
-                )
-            else:
-                N_modes = N1 * N2
-            return jnp.zeros((N1, N2)).at[0, 0].set(N_modes * self.value)
+    def __call__(self, freqs: ImageCoords) -> RealImage:
+        N1, N2 = freqs.shape[0:-1]
+        return jnp.zeros((N1, N2)).at[0, 0].set(self.value)
 
 
 class FourierExp2D(AbstractFourierOperator, strict=True):
@@ -88,25 +83,25 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
     function equal to an exponential decay, given by
 
     .. math::
-        g(r) = \frac{\kappa}{2 \pi \xi^2} \exp(- r / \xi),
+        g(|r|) = \frac{\kappa}{2 \pi \xi^2} \exp(- |r| / \xi),
 
-    where :math:`r = \sqrt{x^2 + y^2}` is a radial coordinate.
+    where :math:`|r| = \sqrt{x^2 + y^2}` is a radial coordinate.
     Here, :math:`\xi` has dimensions of length and :math:`g(r)`
     has dimensions of inverse area. The power spectrum from such
     a correlation function (in two-dimensions) is given by its
     Hankel transform pair
 
     .. math::
-        P(k) = \frac{\kappa}{2 \pi \xi^3} \frac{1}{(\xi^{-2} + k^2)^{3/2}}.
+        P(|k|) = \frac{\kappa}{2 \pi \xi^3} \frac{1}{(\xi^{-2} + |k|^2)^{3/2}}.
 
-    Here :math:`\kappa` is a scale factor.
+    Here :math:`\kappa` is a scale factor and :math:`\xi` is a length
+    scale.
 
     Attributes
     ----------
     amplitude :
         The amplitude of the operator, equal to :math:`\kappa`
-        in the above equation. Note that this has dimensions
-        of inverse volume.
+        in the above equation.
     scale :
         The length scale of the operator, equal to :math:`\xi`
         in the above equation.
@@ -116,19 +111,51 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
     scale: Real_ = field(default=1.0, converter=jnp.asarray)
 
     @override
-    def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
-        if freqs is None:
-            raise ValueError(
-                "The frequency grid must be given as an argument to the operator call."
-            )
-        else:
-            k_sqr = jnp.sum(freqs**2, axis=-1)
-            scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
-            scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
-            return scaling
+    def __call__(self, freqs: ImageCoords) -> RealImage:
+        k_sqr = jnp.sum(freqs**2, axis=-1)
+        scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
+        scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
+        return scaling
 
 
-class FourierGaussian2D(AbstractFourierOperator, strict=True):
+class Lorenzian(AbstractFourierOperator, strict=True):
+    r"""
+    This operator is the Lorenzian, given
+
+    .. math::
+        P(|k|) = \frac{\kappa}{\xi^2} \frac{1}{(\xi^{-2} + |k|^2)}.
+
+    Here :math:`\kappa` is a scale factor and :math:`\xi` is a length
+    scale.
+
+    Attributes
+    ----------
+    amplitude :
+        The amplitude of the operator, equal to :math:`\kappa`
+        in the above equation.
+    scale :
+        The length scale of the operator, equal to :math:`\xi`
+        in the above equation.
+    """
+
+    amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
+    scale: Real_ = field(default=1.0, converter=jnp.asarray)
+
+    @overload
+    def __call__(self, freqs: ImageCoords) -> RealImage: ...
+
+    @overload
+    def __call__(self, freqs: VolumeCoords) -> RealVolume: ...
+
+    @override
+    def __call__(self, freqs: ImageCoords | VolumeCoords) -> RealImage | RealVolume:
+        k_sqr = jnp.sum(freqs**2, axis=-1)
+        scaling = 1.0 / (k_sqr + jnp.divide(1, self.scale**2))
+        scaling *= jnp.divide(self.amplitude, self.scale**2)
+        return scaling
+
+
+class FourierGaussian(AbstractFourierOperator, strict=True):
     r"""
     This operator represents a simple gaussian.
     Specifically, this is
@@ -138,7 +165,7 @@ class FourierGaussian2D(AbstractFourierOperator, strict=True):
 
     where :math:`k^2 = k_x^2 + k_y^2` is the length of the
     wave vector. Here, :math:`\beta` has dimensions of length
-    squared. The real-space version of this function is given
+    squared. In 2D, the real-space version of this function is given
     by
 
     .. math::
@@ -159,13 +186,14 @@ class FourierGaussian2D(AbstractFourierOperator, strict=True):
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
     b_factor: Real_ = field(default=1.0, converter=jnp.asarray)
 
+    @overload
+    def __call__(self, freqs: ImageCoords) -> RealImage: ...
+
+    @overload
+    def __call__(self, freqs: VolumeCoords) -> RealVolume: ...
+
     @override
-    def __call__(self, freqs: ImageCoords | None, **kwargs: Any) -> RealImage:
-        if freqs is None:
-            raise ValueError(
-                "The frequency grid must be given as an argument to the operator call."
-            )
-        else:
-            k_sqr = jnp.sum(freqs**2, axis=-1)
-            scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
-            return scaling
+    def __call__(self, freqs: ImageCoords | VolumeCoords) -> RealImage | RealVolume:
+        k_sqr = jnp.sum(freqs**2, axis=-1)
+        scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
+        return scaling

@@ -9,6 +9,7 @@ from equinox import Module, field
 import jax.numpy as jnp
 
 from ..image import rfftn, ifftn
+from ..image.operators import RealOperatorLike
 from ._ice import AbstractIce
 from ._specimen import AbstractSpecimen
 from ._scattering import AbstractScatteringMethod
@@ -39,6 +40,16 @@ class Instrument(Module, strict=True):
             raise AttributeError(
                 "Cannot set optics model as NullOptics if the detector model is not NullDetector."
             )
+
+    @property
+    def wavelength_in_angstroms(self) -> Real_:
+        """The wavelength of the incident electrons."""
+        return self.optics.wavelength_in_angstroms
+
+    @property
+    def electrons_per_angstrom_squared(self) -> RealOperatorLike:
+        """The integrated flux of the incident electrons."""
+        return self.detector.electrons_per_angstrom_squared
 
     def scatter_to_exit_plane(
         self, specimen: AbstractSpecimen, scattering: AbstractScatteringMethod

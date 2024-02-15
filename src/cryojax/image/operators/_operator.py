@@ -3,7 +3,7 @@ Base classes for image operators.
 """
 
 from abc import abstractmethod
-from typing import overload, Any, Callable
+from typing import Any, Callable
 from typing_extensions import override
 from jaxtyping import Array
 
@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 from equinox import Module, field, AbstractVar
 
-from ...typing import ImageCoords, VolumeCoords, Image, Volume, Real_
+from ...typing import Image, Volume, Real_
 
 
 class AbstractImageOperator(Module, strict=True):
@@ -20,22 +20,8 @@ class AbstractImageOperator(Module, strict=True):
     model parameters and compute an ``Array`` at runtime.
     """
 
-    @overload
     @abstractmethod
-    def __call__(
-        self, coords_or_freqs: ImageCoords | VolumeCoords, **kwargs: Any
-    ) -> Array: ...
-
-    @overload
-    @abstractmethod
-    def __call__(self, coords_or_freqs: None, **kwargs: Any) -> Array: ...
-
-    @abstractmethod
-    def __call__(
-        self,
-        coords_or_freqs: ImageCoords | VolumeCoords | None = None,
-        **kwargs: Any,
-    ) -> Array:
+    def __call__(self, *args: Any, **kwargs: Any) -> Array:
         raise NotImplementedError
 
     def __add__(self, other) -> "AbstractImageOperator":
@@ -98,24 +84,18 @@ class Constant(AbstractImageOperator, strict=True):
     value: Real_ = field(default=1.0, converter=jnp.asarray)
 
     @override
-    def __call__(
-        self,
-        coords_or_freqs: ImageCoords | VolumeCoords | None = None,
-        **kwargs: Any,
-    ) -> Real_:
+    def __call__(self, *args: Any, **kwargs: Any) -> Real_:
         return self.value
 
 
 class Lambda(AbstractImageOperator, strict=True):
     """An operator that calls a custom function."""
 
-    fn: Callable[[ImageCoords | VolumeCoords], Image] = field(static=True)
+    fn: Callable[[Array], Image | Volume] = field(static=True)
 
     @override
-    def __call__(
-        self, coords_or_freqs: ImageCoords | VolumeCoords, **kwargs: Any
-    ) -> Image:
-        return self.fn(coords_or_freqs, **kwargs)
+    def __call__(self, *args: Any, **kwargs: Any) -> Image:
+        return self.fn(*args, **kwargs)
 
 
 class Empirical(AbstractImageOperator, strict=True):
@@ -137,11 +117,7 @@ class Empirical(AbstractImageOperator, strict=True):
     offset: Real_ = field(default=0.0, converter=jnp.asarray)
 
     @override
-    def __call__(
-        self,
-        coords_or_freqs: ImageCoords | VolumeCoords | None = None,
-        **kwargs: Any,
-    ) -> Image:
+    def __call__(self, *args: Any, **kwargs: Any) -> Image:
         """Return the scaled and offset measurement."""
         return self.amplitude * jax.lax.stop_gradient(self.measurement)
 
@@ -174,12 +150,8 @@ class SumImageOperator(AbstractImageOperator, strict=True):
     operator2: AbstractImageOperator
 
     @override
-    def __call__(
-        self,
-        coords_or_freqs: ImageCoords | VolumeCoords | None = None,
-        **kwargs: Any,
-    ) -> Array:
-        return self.operator1(coords_or_freqs) + self.operator2(coords_or_freqs)
+    def __call__(self, *args: Any, **kwargs: Any) -> Array:
+        return self.operator1(*args, **kwargs) + self.operator2(*args, **kwargs)
 
     def __repr__(self):
         return f"{repr(self.operator1)} + {repr(self.operator2)}"
@@ -192,12 +164,8 @@ class DiffImageOperator(AbstractImageOperator, strict=True):
     operator2: AbstractImageOperator
 
     @override
-    def __call__(
-        self,
-        coords_or_freqs: ImageCoords | VolumeCoords | None = None,
-        **kwargs: Any,
-    ) -> Array:
-        return self.operator1(coords_or_freqs) - self.operator2(coords_or_freqs)
+    def __call__(self, *args: Any, **kwargs: Any) -> Array:
+        return self.operator1(*args, **kwargs) - self.operator2(*args, **kwargs)
 
     def __repr__(self):
         return f"{repr(self.operator1)} - {repr(self.operator2)}"
@@ -210,12 +178,8 @@ class ProductImageOperator(AbstractImageOperator, strict=True):
     operator2: AbstractImageOperator
 
     @override
-    def __call__(
-        self,
-        coords_or_freqs: ImageCoords | VolumeCoords | None = None,
-        **kwargs: Any,
-    ) -> Array:
-        return self.operator1(coords_or_freqs) * self.operator2(coords_or_freqs)
+    def __call__(self, *args: Any, **kwargs: Any) -> Array:
+        return self.operator1(*args, **kwargs) * self.operator2(*args, **kwargs)
 
     def __repr__(self):
         return f"{repr(self.operator1)} * {repr(self.operator2)}"

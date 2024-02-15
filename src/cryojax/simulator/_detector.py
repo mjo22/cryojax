@@ -38,11 +38,18 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         key: Optional[PRNGKeyArray] = None,
     ) -> ComplexImage:
         """Pass the image through the detector model."""
+        N1, N2 = config.padded_shape
         coordinate_grid = config.padded_coordinate_grid_in_angstroms.get()
         frequency_grid = config.padded_frequency_grid_in_angstroms.get()
         # Compute the time-integrated electron flux in pixels
         electrons_per_pixel = (
             self.electrons_per_angstrom_squared(coordinate_grid) * config.pixel_size**2
+        )
+        # ... now the total number of electrons over the entire image
+        electrons_per_image = N1 * N2 * electrons_per_pixel
+        # Normalize the squared wavefunction to a set of probabilities
+        fourier_squared_wavefunction_at_detector_plane /= (
+            fourier_squared_wavefunction_at_detector_plane[0, 0]
         )
         # Compute the noiseless signal by applying the DQE to the squared wavefunction
         fourier_signal = fourier_squared_wavefunction_at_detector_plane * self.dqe(
@@ -50,10 +57,10 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         )
         if key is None and isinstance(self.electrons_per_angstrom_squared, Constant):
             # If there is no key given and the dose is constant, apply the dose in fourier space and return
-            return electrons_per_pixel * fourier_signal
+            return electrons_per_image * fourier_signal
         else:
             # ... otherwise, go to real space and apply the dose
-            expected_electron_events = electrons_per_pixel * irfftn(
+            expected_electron_events = electrons_per_image * irfftn(
                 fourier_signal, s=config.padded_shape
             )
             if key is None:

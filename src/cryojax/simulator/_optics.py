@@ -53,7 +53,7 @@ class CTF(AbstractFourierOperator, strict=True):
     degrees: bool = field(static=True, default=True)
 
     @property
-    def wavelength(self):
+    def wavelength_in_angstroms(self):
         voltage_in_volts = 1000.0 * self.voltage_in_kilovolts  # kV to V
         return 12.2643 / (voltage_in_volts + 0.97845e-6 * voltage_in_volts**2) ** 0.5
 
@@ -68,7 +68,7 @@ class CTF(AbstractFourierOperator, strict=True):
             self.defocus_u + jnp.asarray(defocus_offset),
             self.defocus_v + jnp.asarray(defocus_offset),
             astigmatism_angle,
-            self.wavelength,
+            self.wavelength_in_angstroms,
             self.spherical_aberration_in_mm * 1e7,  # mm to Angstroms
             self.amplitude_contrast_ratio,
             phase_shift,
@@ -89,10 +89,14 @@ class AbstractOptics(Module, strict=True):
                  the optics model computes the wavefunction.
     """
 
-    ctf: AbstractVar[AbstractFourierOperator]
+    ctf: AbstractVar[CTF]
     envelope: AbstractVar[FourierOperatorLike]
 
     is_linear: AbstractClassVar[bool]
+
+    @property
+    def wavelength_in_angstroms(self) -> Real_:
+        return self.ctf.wavelength_in_angstroms
 
     @abstractmethod
     def __call__(
@@ -108,13 +112,13 @@ class AbstractOptics(Module, strict=True):
 class NullOptics(AbstractOptics):
     """A null optics model."""
 
-    ctf: Constant
+    ctf: CTF
     envelope: Constant
 
     is_linear: ClassVar[bool] = True
 
     def __init__(self):
-        self.ctf = Constant(1.0)
+        self.ctf = CTF()
         self.envelope = Constant(1.0)
 
     def __call__(
