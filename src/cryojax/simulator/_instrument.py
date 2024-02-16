@@ -84,15 +84,22 @@ class Instrument(Module, strict=True):
         """Scatter the specimen potential to the exit plane, including
         the potential due to the solvent."""
         # Compute the scattering potential in fourier space
-        fourier_potential_at_exit_plane = self.scatter_to_exit_plane(
+        fourier_specimen_potential_at_exit_plane = self.scatter_to_exit_plane(
             specimen, scattering
         )
-        # Add potential due to the ice to the specimen potential
-        fourier_potential_at_exit_plane_with_solvent = solvent(
-            key, fourier_potential_at_exit_plane, scattering.config
+        # Get the potential of the ice
+        fourier_solvent_potential_at_exit_plane = solvent(
+            key,
+            scattering.config,
+            fourier_specimen_potential_at_exit_plane,
+        )
+        # Add the specimen and solvent potentials
+        fourier_potential_at_exit_plane = (
+            fourier_specimen_potential_at_exit_plane
+            + fourier_solvent_potential_at_exit_plane
         )
 
-        return fourier_potential_at_exit_plane_with_solvent
+        return fourier_potential_at_exit_plane
 
     def propagate_to_detector_plane(
         self,

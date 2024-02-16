@@ -35,19 +35,19 @@ class AbstractIce(AbstractStochasticModel, strict=True):
     def __call__(
         self,
         key: PRNGKeyArray,
-        potential_at_exit_plane: ComplexImage,
         config: ImageConfig,
+        fourier_potential_at_exit_plane: Optional[ComplexImage] = None,
     ) -> ComplexImage:
         """Compute the combined potential of the ice and the specimen."""
         # Sample the realization of the potential
         # due to the ice. Then, scale up by the variance by the number
         # of pixels to make the realization independent of the number of pixels.
         N_pix = np.prod(config.padded_shape)
-        ice_potential_at_exit_plane = jnp.sqrt(N_pix) * self.sample(
+        fourier_ice_potential_at_exit_plane = jnp.sqrt(N_pix) * self.sample(
             key, config.padded_frequency_grid_in_angstroms.get()
         )
 
-        return potential_at_exit_plane + ice_potential_at_exit_plane
+        return fourier_ice_potential_at_exit_plane
 
 
 class NullIce(AbstractIce):
@@ -70,7 +70,7 @@ class NullIce(AbstractIce):
         potential_at_exit_plane: ComplexImage,
         config: ImageConfig,
     ) -> ComplexImage:
-        return potential_at_exit_plane
+        return jnp.zeros(config.padded_frequency_grid_in_angstroms.get().shape[0:-1])
 
 
 class GaussianIce(AbstractIce, strict=True):
@@ -88,7 +88,7 @@ class GaussianIce(AbstractIce, strict=True):
     variance: FourierOperatorLike
 
     def __init__(self, variance: Optional[FourierOperatorLike] = None):
-        self.variance = variance or Constant(0.001)
+        self.variance = variance or Constant(0.0001)
 
     @override
     def sample(

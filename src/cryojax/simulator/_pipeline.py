@@ -378,14 +378,29 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         normalize: bool = False,
     ) -> Image:
         """Sample the ``AbstractAssembly.subunits`` from the stochastic models."""
-        if not isinstance(self.solvent, NullIce):
-            raise NotImplementedError(
-                "The AssemblyPipeline does not currently support sampling from the solvent model."
-            )
+        idx = 0  # Keep track of number of stochastic models
+        if not isinstance(self.solvent, NullIce) and not isinstance(
+            self.instrument.detector, NullDetector
+        ):
+            keys = jax.random.split(key)
+        else:
+            keys = jnp.expand_dims(key, axis=0)
         # Compute the contrast or wavefunction in the detector plane
         fourier_contrast_or_wavefunction_at_detector_plane = (
             self._compute_subunit_superposition()
         )
+        if not isinstance(self.solvent, NullIce):
+            # Compute the solvent contrast or wavefunction in the detector plane
+            # and add to that of the specimen
+            fourier_solvent_potential_at_exit_plane = self.solvent(
+                keys[idx], self.scattering.config
+            )
+            fourier_contrast_or_wavefunction_at_detector_plane += (
+                self.instrument.propagate_to_detector_plane(
+                    fourier_solvent_potential_at_exit_plane, self.scattering.config
+                )
+            )
+            idx += 1
         # ... compute the squared wavefunction
         fourier_squared_wavefunction_at_detector_plane = (
             self.instrument.compute_fourier_squared_wavefunction(
@@ -395,7 +410,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         )
         # ... measure the detector readout
         fourier_detector_readout = self.instrument.measure_detector_readout(
-            key,
+            keys[idx],
             fourier_squared_wavefunction_at_detector_plane,
             self.scattering.config,
         )
@@ -451,14 +466,16 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         to_vmap = jax.tree_util.tree_map(is_vmap, subunits, is_leaf=is_vmap)
         vmap, novmap = eqx.partition(subunits, to_vmap)
         # Compute all images and sum
-        compute_contrast = lambda spec, scat, ins: ins.propagate_to_detector_plane(
-            ins.scatter_to_exit_plane(spec, scat),
-            scat.config,
-            defocus_offset=spec.pose.offset_z,
+        compute_contrast_or_wavefunction = (
+            lambda spec, scat, ins: ins.propagate_to_detector_plane(
+                ins.scatter_to_exit_plane(spec, scat),
+                scat.config,
+                defocus_offset=spec.pose.offset_z,
+            )
         )
         # ... vmap to compute a stack of images to superimpose
         compute_stack = jax.vmap(
-            lambda vmap, novmap, scat, ins: compute_contrast(
+            lambda vmap, novmap, scat, ins: compute_contrast_or_wavefunction(
                 eqx.combine(vmap, novmap), scat, ins
             ),
             in_axes=(0, None, None, None),
@@ -471,10 +488,10 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
             )
         )
         # ... compute the superposition
-        fourier_contrast_at_detector_plane = (
+        fourier_contrast_or_wavefunction_at_detector_plane = (
             (compute_stack_and_sum(vmap, novmap, self.scattering, self.instrument))
             .at[0, 0]
             .divide(self.assembly.n_subunits)
         )
 
-        return fourier_contrast_at_detector_plane
+        return fourier_contrast_or_wavefunction_at_detector_plane
