@@ -46,14 +46,6 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
     electrons_per_angstrom_squared: RealOperatorLike
     dqe: FourierOperatorLike
 
-    @overload
-    def __init__(self, electrons_per_angstrom_squared: RealOperatorLike): ...
-
-    @overload
-    def __init__(
-        self, electrons_per_angstrom_squared: RealOperatorLike, dqe: FourierOperatorLike
-    ): ...
-
     def __init__(
         self,
         electrons_per_angstrom_squared: RealOperatorLike,

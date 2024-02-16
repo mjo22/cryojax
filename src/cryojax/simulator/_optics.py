@@ -95,12 +95,6 @@ class AbstractOptics(Module, strict=True):
 
     is_linear: AbstractClassVar[bool]
 
-    @overload
-    def __init__(self, ctf: CTF): ...
-
-    @overload
-    def __init__(self, ctf: CTF, envelope: FourierOperatorLike): ...
-
     def __init__(
         self,
         ctf: CTF,
