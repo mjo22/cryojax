@@ -2,7 +2,7 @@
 Image formation models simulated from gaussian distributions.
 """
 
-from typing import Optional, Any, overload
+from typing import Optional, Any
 from typing_extensions import override
 from equinox import field
 
