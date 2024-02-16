@@ -2,8 +2,9 @@
 Image formation models simulated from gaussian distributions.
 """
 
-from typing import Optional, Any
+from typing import Optional, Any, overload
 from typing_extensions import override
+from equinox import field
 
 import numpy as np
 import jax.random as jr
@@ -31,14 +32,17 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
 
     pipeline: AbstractPipeline
     variance: FourierOperatorLike
+    contrast_scale: Real_ = field(converter=jnp.asarray)
 
     def __init__(
         self,
         pipeline: AbstractPipeline,
         variance: Optional[FourierOperatorLike] = None,
+        contrast_scale: Optional[Real_] = None,
     ):
         self.pipeline = pipeline
         self.variance = variance or Constant(1.0)
+        self.contrast_scale = contrast_scale or jnp.asarray(1.0)
 
     @override
     def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
@@ -48,7 +52,9 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         # Compute the zero mean variance and scale up to be independent of the number of pixels
         std = jnp.sqrt(N_pix * self.variance(freqs))
         noise = std * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0)
-        image = self.pipeline.render(view_cropped=False, get_real=False)
+        image = self.contrast_scale * self.pipeline.render(
+            view_cropped=False, get_real=False
+        )
         return self.pipeline.crop_and_apply_operators(image + noise, **kwargs)
 
     @override
@@ -68,17 +74,28 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         freqs = pipeline.scattering.config.frequency_grid_in_angstroms.get()
         if observed.shape != padded_freqs.shape[:-1]:
             raise ValueError("Shape of observed must match ImageConfig.padded_shape")
-        # Get residuals
-        residuals = pipeline.render(view_cropped=False, get_real=False) - observed
-        # Apply filters, crop, and mask
-        residuals = pipeline.crop_and_apply_operators(residuals, get_real=False)
         # Compute the variance and scale up to be independent of the number of pixels
         variance = N_pix * self.variance(freqs)
-        # Compute loss, throwing away the zero mode. Need to take care to compute the
-        # loss function in fourier space for a real-valued function.
-        log_likelihood = jnp.sum(
-            jnp.abs(residuals[1:, 0]) ** 2 / (2 * variance[1:, 0])
-        ) + 2 * jnp.sum(jnp.abs(residuals[:, 1:]) ** 2 / (2 * variance[:, 1:]))
-        loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
-        # Divide by number of pixels (parseval's theorem)
-        return log_likelihood / N_pix
+        # Get residuals
+        simulated = self.contrast_scale * pipeline.render(
+            view_cropped=False, get_real=False
+        )
+        residuals = simulated - observed
+        # Apply filters, crop, and mask
+        residuals = pipeline.crop_and_apply_operators(residuals, get_real=False)
+        # Compute standard normal random variables
+        squared_standard_normal_per_mode = jnp.abs(residuals) ** 2 / (2 * variance)
+        # Compute the log-likelihood for each fourier mode. Divide by the
+        # number of pixels so that the likelihood is a sum over pixels in
+        # real space (parseval's theorem)
+        log_likelihood_per_mode = (
+            squared_standard_normal_per_mode - jnp.log(2 * jnp.pi * variance) / 2
+        ) / N_pix
+        # Compute log-likelihood, throwing away the zero mode. Need to take care
+        # to compute the loss function in fourier space for a real-valued function.
+        log_likelihood = -1.0 * (
+            jnp.sum(log_likelihood_per_mode[1:, 0])
+            + 2 * jnp.sum(log_likelihood_per_mode[:, 1:])
+        )
+
+        return log_likelihood
