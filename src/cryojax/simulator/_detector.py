@@ -5,7 +5,6 @@ Abstraction of electron detectors in a cryo-EM image.
 from abc import abstractmethod
 from typing import Optional
 from typing_extensions import override
-from equinox import AbstractVar, field
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -13,9 +12,32 @@ from jaxtyping import PRNGKeyArray
 
 from ._config import ImageConfig
 from ._stochastic_model import AbstractStochasticModel
-from ..image.operators import Constant, RealOperatorLike, FourierOperatorLike
+from ..image.operators import (
+    Constant,
+    RealOperatorLike,
+    FourierOperatorLike,
+    AbstractFourierOperator,
+)
 from ..image import irfftn, rfftn
-from ..typing import ComplexImage, RealImage
+from ..typing import ComplexImage, RealImage, ImageCoords
+
+
+class IdealDQE(AbstractFourierOperator, strict=True):
+    r"""The model for an ideal DQE.
+
+    See Ruskin et. al. "Quantitative characterization of electron detectors for transmission electron microscopy." (2013)
+    for details.
+    """
+
+    @override
+    def __call__(self, frequency_grid_in_nyquist_units: ImageCoords) -> RealImage:
+        """**Arguments:**
+
+        `frequency_grid_in_nyquist_units`: A frequency grid given in units of nyquist.
+        """
+        # Measure spatial frequency in units of Nyquist
+        k_mag = jnp.sqrt(jnp.sum(frequency_grid_in_nyquist_units**2, axis=-1))
+        return jnp.sinc(k_mag / 2) ** 2
 
 
 class AbstractDetector(AbstractStochasticModel, strict=True):
@@ -30,7 +52,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         dqe: Optional[FourierOperatorLike] = None,
     ):
         self.electrons_per_angstrom_squared = electrons_per_angstrom_squared
-        self.dqe = dqe or Constant(1.0)
+        self.dqe = dqe or IdealDQE()
 
     @abstractmethod
     def sample(self, key: PRNGKeyArray, image: RealImage) -> RealImage:
@@ -59,7 +81,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         )
         # Compute the noiseless signal by applying the DQE to the squared wavefunction
         fourier_signal = fourier_squared_wavefunction_at_detector_plane * self.dqe(
-            frequency_grid
+            frequency_grid / (1 / (2 * config.pixel_size))
         )
         if key is None and isinstance(self.electrons_per_angstrom_squared, Constant):
             # If there is no key given and the dose is constant, apply the dose in fourier space and return

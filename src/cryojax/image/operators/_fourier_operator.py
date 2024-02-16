@@ -12,7 +12,6 @@ These classes are modified from the library ``tinygp``.
 from abc import abstractmethod
 from typing import overload
 from typing_extensions import override
-from jaxtyping import Array
 from equinox import field
 
 import jax.numpy as jnp

@@ -46,6 +46,7 @@ from ._optics import (
 
 from ._detector import (
     AbstractDetector as AbstractDetector,
+    IdealDQE as IdealDQE,
     NullDetector as NullDetector,
     GaussianDetector as GaussianDetector,
     PoissonDetector as PoissonDetector,
