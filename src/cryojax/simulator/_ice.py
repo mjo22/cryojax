@@ -87,7 +87,7 @@ class GaussianIce(AbstractIce, strict=True):
     variance: FourierOperatorLike
 
     def __init__(self, variance: Optional[FourierOperatorLike] = None):
-        self.variance = variance or Constant(0.001) 
+        self.variance = variance or Constant(0.001)
 
     @override
     def sample(
