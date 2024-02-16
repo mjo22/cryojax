@@ -3,7 +3,7 @@ Abstraction of electron detectors in a cryo-EM image.
 """
 
 from abc import abstractmethod
-from typing import Optional, overload
+from typing import Optional
 from typing_extensions import override
 
 import jax.numpy as jnp

@@ -3,7 +3,7 @@ Models of instrument optics.
 """
 
 from abc import abstractmethod
-from typing import ClassVar, Optional, overload
+from typing import ClassVar, Optional
 from typing_extensions import override
 from equinox import AbstractClassVar, Module, field
 
