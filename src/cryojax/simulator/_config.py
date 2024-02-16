@@ -75,7 +75,7 @@ class ImageConfig(Module, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        pixel_size: Real_ | float,
+        pixel_size: Real_,
         padded_shape: tuple[int, int],
         *,
         pad_mode: Union[str, Callable] = "constant",
@@ -86,8 +86,7 @@ class ImageConfig(Module, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        pixel_size: Real_ | float,
-        padded_shape: None = None,
+        pixel_size: Real_,
         *,
         pad_scale: float = 1.0,
         pad_mode: Union[str, Callable] = "constant",
@@ -97,7 +96,7 @@ class ImageConfig(Module, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        pixel_size: Real_ | float,
+        pixel_size: Real_,
         padded_shape: Optional[tuple[int, int]] = None,
         *,
         pad_scale: float = 1.0,
