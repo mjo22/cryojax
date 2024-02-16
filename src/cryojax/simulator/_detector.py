@@ -3,7 +3,7 @@ Abstraction of electron detectors in a cryo-EM image.
 """
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Optional, overload
 from typing_extensions import override
 
 import jax.numpy as jnp
@@ -45,6 +45,14 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
 
     electrons_per_angstrom_squared: RealOperatorLike
     dqe: FourierOperatorLike
+
+    @overload
+    def __init__(self, electrons_per_angstrom_squared: RealOperatorLike): ...
+
+    @overload
+    def __init__(
+        self, electrons_per_angstrom_squared: RealOperatorLike, dqe: FourierOperatorLike
+    ): ...
 
     def __init__(
         self,

@@ -45,9 +45,9 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         """Sample from the Gaussian noise model."""
         N_pix = np.prod(self.pipeline.scattering.config.padded_shape)
         freqs = self.pipeline.scattering.config.padded_frequency_grid_in_angstroms.get()
-        # Compute the variance and scale up to be independent of the number of pixels
-        variance = jnp.sqrt(N_pix) * self.variance(freqs)
-        noise = variance * jr.normal(key, shape=freqs.shape[0:-1])
+        # Compute the zero mean variance and scale up to be independent of the number of pixels
+        std = jnp.sqrt(N_pix * self.variance(freqs))
+        noise = std * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0)
         image = self.pipeline.render(view_cropped=False, get_real=False)
         return self.pipeline.crop_and_apply_operators(image + noise, **kwargs)
 
@@ -73,10 +73,12 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         # Apply filters, crop, and mask
         residuals = pipeline.crop_and_apply_operators(residuals, get_real=False)
         # Compute the variance and scale up to be independent of the number of pixels
-        variance = jnp.sqrt(N_pix) * self.variance(freqs)
-        # Compute loss
+        variance = N_pix * self.variance(freqs)
+        # Compute loss, throwing away the zero mode. Need to take care to compute the
+        # loss function in fourier space for a real-valued function.
+        log_likelihood = jnp.sum(
+            jnp.abs(residuals[1:, 0]) ** 2 / (2 * variance[1:, 0])
+        ) + 2 * jnp.sum(jnp.abs(residuals[:, 1:]) ** 2 / (2 * variance[:, 1:]))
         loss = jnp.sum((residuals * jnp.conjugate(residuals)) / (2 * variance))
-        # Divide by number of modes (parseval's theorem)
-        loss = loss.real / residuals.size
-
-        return loss
+        # Divide by number of pixels (parseval's theorem)
+        return log_likelihood / N_pix

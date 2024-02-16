@@ -3,9 +3,9 @@ Models of instrument optics.
 """
 
 from abc import abstractmethod
-from typing import ClassVar, Optional
+from typing import ClassVar, Optional, overload
 from typing_extensions import override
-from equinox import AbstractClassVar, AbstractVar, Module, field
+from equinox import AbstractClassVar, Module, field
 
 import jax.numpy as jnp
 
@@ -94,6 +94,12 @@ class AbstractOptics(Module, strict=True):
     envelope: FourierOperatorLike
 
     is_linear: AbstractClassVar[bool]
+
+    @overload
+    def __init__(self, ctf: CTF): ...
+
+    @overload
+    def __init__(self, ctf: CTF, envelope: FourierOperatorLike): ...
 
     def __init__(
         self,

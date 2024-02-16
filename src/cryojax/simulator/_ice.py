@@ -39,8 +39,9 @@ class AbstractIce(AbstractStochasticModel, strict=True):
         config: ImageConfig,
     ) -> ComplexImage:
         """Compute the combined potential of the ice and the specimen."""
-        # Sample the (dimensionless) realization of the potential
-        # due to the ice. The, scale up by the number of modes.
+        # Sample the realization of the potential
+        # due to the ice. Then, scale up by the variance by the number
+        # of pixels to make the realization independent of the number of pixels.
         N_pix = np.prod(config.padded_shape)
         ice_potential_at_exit_plane = jnp.sqrt(N_pix) * self.sample(
             key, config.padded_frequency_grid_in_angstroms.get()
@@ -96,14 +97,11 @@ class GaussianIce(AbstractIce, strict=True):
         frequency_grid_in_angstroms: ImageCoords,
     ) -> ComplexImage:
         """Sample a realization of the ice potential as colored gaussian noise."""
-        ice_potential_at_exit_plane = self.variance(
-            frequency_grid_in_angstroms
-        ) * jr.normal(
+        std = jnp.sqrt(self.variance(frequency_grid_in_angstroms))
+        ice_potential_at_exit_plane = std * jr.normal(
             key,
             shape=frequency_grid_in_angstroms.shape[0:-1],
             dtype=complex,
-        )
-        ice_potential_at_exit_plane = ice_potential_at_exit_plane.at[0, 0].set(
-            0.0 + 0.0j
-        )
+        ).at[0, 0].set(0.0)
+
         return ice_potential_at_exit_plane
