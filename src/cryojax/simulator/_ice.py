@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing_extensions import override
 from typing import Optional
 
+import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
 from jaxtyping import PRNGKeyArray
@@ -38,8 +39,10 @@ class AbstractIce(AbstractStochasticModel, strict=True):
         config: ImageConfig,
     ) -> ComplexImage:
         """Compute the combined potential of the ice and the specimen."""
-        # Sample the realization of the potential due to the ice
-        ice_potential_at_exit_plane = self.sample(
+        # Sample the (dimensionless) realization of the potential
+        # due to the ice. The, scale up by the number of modes.
+        N_pix = np.prod(config.padded_shape)
+        ice_potential_at_exit_plane = jnp.sqrt(N_pix) * self.sample(
             key, config.padded_frequency_grid_in_angstroms.get()
         )
 
@@ -73,17 +76,18 @@ class GaussianIce(AbstractIce, strict=True):
     r"""
     Ice modeled as gaussian noise.
 
-    Attributes
-    ----------
-    variance :
-        A kernel that computes the variance
-        of the ice, modeled as noise.
+    **Attributes:**
+
+    `variance` : A function that computes the variance
+                 of the ice, modeled as colored gaussian noise.
+                 The dimensions of this function are a squared
+                 phase contrast.
     """
 
     variance: FourierOperatorLike
 
     def __init__(self, variance: Optional[FourierOperatorLike] = None):
-        self.variance = variance or Constant(1.0)
+        self.variance = variance or Constant(0.001) 
 
     @override
     def sample(

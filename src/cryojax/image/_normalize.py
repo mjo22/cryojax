@@ -2,11 +2,11 @@
 Image normalization routines.
 """
 
-from typing import Any, Optional
+from typing import Optional, overload
 
 import jax.numpy as jnp
 
-from ..typing import Image
+from ..typing import Image, ComplexImage, Real_
 
 
 def normalize_image(
@@ -32,15 +32,14 @@ def normalize_image(
 
 def rescale_image(
     image: Image,
-    std: float,
-    mean: float,
+    std: float | Real_,
+    mean: float | Real_,
     *,
     is_real: bool = True,
     half_space: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
 ) -> Image:
-    """
-    Normalize so that the image is mean mu
+    """Normalize so that the image is mean mu
     and standard deviation N in real space.
 
     Parameters
@@ -79,15 +78,43 @@ def rescale_image(
             )
         else:
             N_modes = N1 * N2
-        normalized_image = image.at[0, 0].set(0.0)
-        normalizing_factor = (
-            jnp.sqrt(
-                jnp.sum(jnp.abs(normalized_image[:, 0]) ** 2)
-                + 2 * jnp.sum(jnp.abs(normalized_image[:, 1:]) ** 2)
-            )
-            if half_space
-            else jnp.linalg.norm(normalize_image)
+        _, std = compute_mean_and_std_from_fourier_image(
+            image, half_space=half_space, shape_in_real_space=shape_in_real_space
         )
-        normalized_image /= normalizing_factor / N_modes
+        normalized_image = image.at[0, 0].set(0.0) / std
         rescaled_image = (normalized_image * std).at[0, 0].set(mean * N_modes)
     return rescaled_image
+
+
+def compute_mean_and_std_from_fourier_image(
+    fourier_image: ComplexImage,
+    *,
+    half_space: bool = True,
+    shape_in_real_space: Optional[tuple[int, int]] = None,
+) -> tuple[Real_, Real_]:
+    """Compute the mean and standard deviation in real space from
+    an image in fourier space.
+    """
+    N1, N2 = fourier_image.shape
+    if half_space:
+        N_modes = (
+            N1 * (2 * N2 - 1)
+            if shape_in_real_space is None
+            else shape_in_real_space[0] * shape_in_real_space[1]
+        )
+    else:
+        N_modes = N1 * N2
+    # The mean is just the zero mode divided by the number of modes
+    mean = fourier_image[0, 0] / N_modes
+    # The standard deviation is square root norm squared of the zero mean image
+    std = (
+        jnp.sqrt(
+            jnp.sum(jnp.abs(fourier_image[:, 0]) ** 2)
+            - jnp.abs(fourier_image[0, 0]) ** 2
+            + 2 * jnp.sum(jnp.abs(fourier_image[:, 1:]) ** 2)
+        )
+        if half_space
+        else jnp.linalg.norm(fourier_image.at[0, 0].set(0.0))
+    ) / N_modes
+
+    return (mean, std)

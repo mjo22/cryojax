@@ -21,4 +21,5 @@ from ._spectrum import powerspectrum as powerspectrum
 from ._normalize import (
     rescale_image as rescale_image,
     normalize_image as normalize_image,
+    compute_mean_and_std_from_fourier_image as compute_mean_and_std_from_fourier_image,
 )
