@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing import Optional
 from typing_extensions import override
 
+import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
 from jaxtyping import PRNGKeyArray
@@ -36,8 +37,10 @@ class IdealDQE(AbstractFourierOperator, strict=True):
         `frequency_grid_in_nyquist_units`: A frequency grid given in units of nyquist.
         """
         # Measure spatial frequency in units of Nyquist
-        k_mag = jnp.sqrt(jnp.sum(frequency_grid_in_nyquist_units**2, axis=-1))
-        return jnp.sinc(k_mag / 2) ** 2
+        radial_frequency_grid_in_nyquist_units = jnp.linalg.norm(
+            frequency_grid_in_nyquist_units, axis=-1
+        )
+        return jnp.sinc(radial_frequency_grid_in_nyquist_units / 2) ** 2
 
 
 class AbstractDetector(AbstractStochasticModel, strict=True):
@@ -66,22 +69,23 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         key: Optional[PRNGKeyArray] = None,
     ) -> ComplexImage:
         """Pass the image through the detector model."""
-        N1, N2 = config.padded_shape
-        coordinate_grid = config.padded_coordinate_grid_in_angstroms.get()
-        frequency_grid = config.padded_frequency_grid_in_angstroms.get()
+        N_pix = np.prod(config.padded_shape)
+        coordinate_grid_in_angstroms = config.padded_coordinate_grid_in_angstroms.get()
+        frequency_grid_in_nyquist_units = config.padded_frequency_grid.get() / 0.5
         # Compute the time-integrated electron flux in pixels
         electrons_per_pixel = (
-            self.electrons_per_angstrom_squared(coordinate_grid) * config.pixel_size**2
+            self.electrons_per_angstrom_squared(coordinate_grid_in_angstroms)
+            * config.pixel_size**2
         )
         # ... now the total number of electrons over the entire image
-        electrons_per_image = N1 * N2 * electrons_per_pixel
+        electrons_per_image = N_pix * electrons_per_pixel
         # Normalize the squared wavefunction to a set of probabilities
         fourier_squared_wavefunction_at_detector_plane /= (
             fourier_squared_wavefunction_at_detector_plane[0, 0]
         )
         # Compute the noiseless signal by applying the DQE to the squared wavefunction
-        fourier_signal = fourier_squared_wavefunction_at_detector_plane * self.dqe(
-            frequency_grid / (1 / (2 * config.pixel_size))
+        fourier_signal = fourier_squared_wavefunction_at_detector_plane * jnp.sqrt(
+            self.dqe(frequency_grid_in_nyquist_units)
         )
         if key is None and isinstance(self.electrons_per_angstrom_squared, Constant):
             # If there is no key given and the dose is constant, apply the dose in fourier space and return

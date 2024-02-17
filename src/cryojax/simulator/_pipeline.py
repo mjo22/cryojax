@@ -392,7 +392,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         if not isinstance(self.solvent, NullIce):
             # Compute the solvent contrast or wavefunction in the detector plane
             # and add to that of the specimen
-            fourier_solvent_potential_at_exit_plane = self.solvent(
+            fourier_solvent_potential_at_exit_plane = self.solvent.sample(
                 keys[idx], self.scattering.config
             )
             fourier_contrast_or_wavefunction_at_detector_plane += (

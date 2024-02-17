@@ -14,20 +14,14 @@ from jaxtyping import PRNGKeyArray
 from ._stochastic_model import AbstractStochasticModel
 from ._config import ImageConfig
 from ..image.operators import FourierOperatorLike, Constant
-from ..typing import ComplexImage, ImageCoords
+from ..typing import ComplexImage, Image
 
 
 class AbstractIce(AbstractStochasticModel, strict=True):
-    """
-    Base class for an ice model.
-    """
+    """Base class for an ice model."""
 
     @abstractmethod
-    def sample(
-        self,
-        key: PRNGKeyArray,
-        frequency_grid_in_angstroms: ImageCoords,
-    ) -> ComplexImage:
+    def sample(self, key: PRNGKeyArray, config: ImageConfig) -> Image:
         """Sample a stochastic realization of the potential due to the ice
         at the exit plane."""
         raise NotImplementedError
@@ -35,33 +29,22 @@ class AbstractIce(AbstractStochasticModel, strict=True):
     def __call__(
         self,
         key: PRNGKeyArray,
+        fourier_potential_at_exit_plane: ComplexImage,
         config: ImageConfig,
-        fourier_potential_at_exit_plane: Optional[ComplexImage] = None,
     ) -> ComplexImage:
         """Compute the combined potential of the ice and the specimen."""
-        # Sample the realization of the potential
-        # due to the ice. Then, scale up by the variance by the number
-        # of pixels to make the realization independent of the number of pixels.
-        N_pix = np.prod(config.padded_shape)
-        fourier_ice_potential_at_exit_plane = jnp.sqrt(N_pix) * self.sample(
-            key, config.padded_frequency_grid_in_angstroms.get()
-        )
+        # Sample the realization of the potential due to the ice.
+        fourier_ice_potential_at_exit_plane = self.sample(key, config)
 
-        return fourier_ice_potential_at_exit_plane
+        return fourier_potential_at_exit_plane + fourier_ice_potential_at_exit_plane
 
 
 class NullIce(AbstractIce):
-    """
-    A "null" ice model.
-    """
+    """A "null" ice model."""
 
     @override
-    def sample(
-        self,
-        key: PRNGKeyArray,
-        frequency_grid_in_angstroms: ImageCoords,
-    ) -> ComplexImage:
-        return jnp.zeros(frequency_grid_in_angstroms.shape[0:-1])
+    def sample(self, key: PRNGKeyArray, config: ImageConfig) -> Image:
+        return jnp.zeros(config.padded_frequency_grid_in_angstroms.get().shape[0:-1])
 
     @override
     def __call__(
@@ -74,8 +57,7 @@ class NullIce(AbstractIce):
 
 
 class GaussianIce(AbstractIce, strict=True):
-    r"""
-    Ice modeled as gaussian noise.
+    r"""Ice modeled as gaussian noise.
 
     **Attributes:**
 
@@ -91,13 +73,13 @@ class GaussianIce(AbstractIce, strict=True):
         self.variance = variance or Constant(0.0001)
 
     @override
-    def sample(
-        self,
-        key: PRNGKeyArray,
-        frequency_grid_in_angstroms: ImageCoords,
-    ) -> ComplexImage:
+    def sample(self, key: PRNGKeyArray, config: ImageConfig) -> ComplexImage:
         """Sample a realization of the ice potential as colored gaussian noise."""
-        std = jnp.sqrt(self.variance(frequency_grid_in_angstroms))
+        N_pix = np.prod(config.padded_shape)
+        frequency_grid_in_angstroms = config.padded_frequency_grid_in_angstroms.get()
+        # Compute standard deviation, scaling up by the variance by the number
+        # of pixels to make the realization independent pixel-independent in real-space.
+        std = jnp.sqrt(N_pix * self.variance(frequency_grid_in_angstroms))
         ice_potential_at_exit_plane = std * jr.normal(
             key,
             shape=frequency_grid_in_angstroms.shape[0:-1],
