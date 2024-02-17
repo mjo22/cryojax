@@ -75,9 +75,9 @@ from cryojax.image import operators as op
 ctf = cs.CTF(defocus_u=10000.0, defocus_v=9800.0, astigmatism_angle=10.0, voltage_in_kilovolts=300.0)
 optics = cs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # defocus and b_factor in Angstroms and Angstroms^2, respectively
 # ... now, the model for the exposure to electrons
-dose = cs.ElectronDose(electrons_per_angstrom_squared=op.Constant(100.0))  # Integrated dose rate in electrons / Angstrom^2
+dose = cs.ElectronDose(electrons_per_angstrom_squared=100.0)  # Integrated dose rate in electrons / Angstrom^2
 # ... and finally, the detector
-detector = cs.PoissonDetector(dqe=cs.IdealDQE())
+detector = cs.PoissonDetector(dqe=cs.IdealDQE(fraction_detected_electrons=1.0))
 # ... these are stored in the Instrument
 instrument = cs.Instrument(optics, dose, detector)
 ```

@@ -46,6 +46,9 @@ class Instrument(Module, strict=True):
     def __init__(self, optics: AbstractOptics): ...
 
     @overload
+    def __init__(self, optics: AbstractOptics, dose: ElectronDose): ...
+
+    @overload
     def __init__(
         self, optics: AbstractOptics, dose: ElectronDose, detector: AbstractDetector
     ): ...
@@ -56,16 +59,12 @@ class Instrument(Module, strict=True):
         dose: Optional[ElectronDose] = None,
         detector: Optional[AbstractDetector] = None,
     ):
-        if optics is None and isinstance(detector, AbstractDetector):
+        if (optics is None or dose is None) and isinstance(detector, AbstractDetector):
             raise AttributeError(
-                "Cannot set Instrument.detector without passing an AbstractOptics."
-            )
-        if dose is None and isinstance(detector, AbstractDetector):
-            raise AttributeError(
-                "Cannot set Instrument.detector without passing an ElectronDose."
+                "Cannot set Instrument.detector without passing an AbstractOptics and an ElectronDose."
             )
         self.optics = optics or NullOptics()
-        self.dose = dose or ElectronDose(electrons_per_angstrom_squared=Constant(100.0))
+        self.dose = dose or ElectronDose(electrons_per_angstrom_squared=100.0)
         self.detector = detector or NullDetector()
 
     def scatter_to_exit_plane(

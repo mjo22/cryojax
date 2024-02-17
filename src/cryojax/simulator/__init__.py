@@ -37,7 +37,7 @@ from ._ice import (
     GaussianIce as GaussianIce,
 )
 
-from ._dose import ElectronDose
+from ._dose import ElectronDose as ElectronDose
 
 from ._optics import (
     AbstractOptics as AbstractOptics,
@@ -47,8 +47,10 @@ from ._optics import (
 )
 
 from ._detector import (
-    AbstractDetector as AbstractDetector,
+    AbstractDQE as AbstractDQE,
+    NullDQE as NullDQE,
     IdealDQE as IdealDQE,
+    AbstractDetector as AbstractDetector,
     NullDetector as NullDetector,
     GaussianDetector as GaussianDetector,
     PoissonDetector as PoissonDetector,

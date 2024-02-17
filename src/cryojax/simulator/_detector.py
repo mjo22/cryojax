@@ -5,6 +5,7 @@ Abstraction of electron detectors in a cryo-EM image.
 from abc import abstractmethod
 from typing import Optional
 from typing_extensions import override
+from equinox import field, AbstractVar
 
 import numpy as np
 import jax.numpy as jnp
@@ -14,41 +15,67 @@ from jaxtyping import PRNGKeyArray
 from ._dose import ElectronDose
 from ._config import ImageConfig
 from ._stochastic_model import AbstractStochasticModel
-from ..image.operators import (
-    Constant,
-    FourierOperatorLike,
-    AbstractFourierOperator,
-)
+from ..image.operators import AbstractFourierOperator
 from ..image import irfftn, rfftn
-from ..typing import ComplexImage, RealImage, ImageCoords
+from ..typing import ComplexImage, RealImage, ImageCoords, Real_
 
 
-class IdealDQE(AbstractFourierOperator, strict=True):
+class AbstractDQE(AbstractFourierOperator, strict=True):
+    r"""Base class for a detector DQE"""
+
+    fraction_detected_electrons: AbstractVar[Real_]
+
+    @abstractmethod
+    def __call__(
+        self, frequency_grid_in_nyquist_units: ImageCoords
+    ) -> RealImage | Real_:
+        """**Arguments:**
+
+        `frequency_grid_in_nyquist_units`: A frequency grid given in units of nyquist.
+        """
+        raise NotImplementedError
+
+
+class NullDQE(AbstractDQE, strict=True):
+    r"""A model for a null DQE."""
+
+    fraction_detected_electrons: Real_
+
+    def __init__(self):
+        self.fraction_detected_electrons = jnp.asarray(1.0)
+
+    @override
+    def __call__(self, frequency_grid_in_nyquist_units: ImageCoords) -> Real_:
+        return jnp.asarray(1.0)
+
+
+class IdealDQE(AbstractDQE, strict=True):
     r"""The model for an ideal DQE.
 
     See Ruskin et. al. "Quantitative characterization of electron detectors for transmission electron microscopy." (2013)
     for details.
     """
 
+    fraction_detected_electrons: Real_ = field(default=1.0, converter=jnp.asarray)
+
     @override
     def __call__(self, frequency_grid_in_nyquist_units: ImageCoords) -> RealImage:
-        """**Arguments:**
-
-        `frequency_grid_in_nyquist_units`: A frequency grid given in units of nyquist.
-        """
-        # Measure spatial frequency in units of Nyquist
-        radial_frequency_grid_in_nyquist_units = jnp.linalg.norm(
-            frequency_grid_in_nyquist_units, axis=-1
+        return (
+            (
+                jnp.sinc(frequency_grid_in_nyquist_units[..., 0] / 2) ** 2
+                * jnp.sinc(frequency_grid_in_nyquist_units[..., 1] / 2) ** 2
+            )
+            .at[0, 0]
+            .set(self.fraction_detected_electrons**2)
         )
-        return jnp.sinc(radial_frequency_grid_in_nyquist_units / 2) ** 2
 
 
 class AbstractDetector(AbstractStochasticModel, strict=True):
     """Base class for an electron detector."""
 
-    dqe: FourierOperatorLike
+    dqe: AbstractDQE
 
-    def __init__(self, dqe: FourierOperatorLike):
+    def __init__(self, dqe: AbstractDQE):
         self.dqe = dqe
 
     @abstractmethod
@@ -65,13 +92,9 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
     ) -> ComplexImage:
         """Pass the image through the detector model."""
         N_pix = np.prod(config.padded_shape)
-        coordinate_grid_in_angstroms = config.padded_coordinate_grid_in_angstroms.get()
         frequency_grid_in_nyquist_units = config.padded_frequency_grid.get() / 0.5
         # Compute the time-integrated electron flux in pixels
-        electrons_per_pixel = (
-            dose.electrons_per_angstrom_squared(coordinate_grid_in_angstroms)
-            * config.pixel_size**2
-        )
+        electrons_per_pixel = dose.electrons_per_angstrom_squared * config.pixel_size**2
         # ... now the total number of electrons over the entire image
         electrons_per_image = N_pix * electrons_per_pixel
         # Normalize the squared wavefunction to a set of probabilities
@@ -82,20 +105,18 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         fourier_signal = fourier_squared_wavefunction_at_detector_plane * jnp.sqrt(
             self.dqe(frequency_grid_in_nyquist_units)
         )
-        if key is None and isinstance(dose.electrons_per_angstrom_squared, Constant):
-            # If there is no key given and the dose is constant, apply the dose in fourier space and return
-            return electrons_per_image * fourier_signal
+        # Apply the dose
+        fourier_expected_electron_events = electrons_per_image * fourier_signal
+        if key is None:
+            # If there is no key given, return
+            return fourier_expected_electron_events
         else:
-            # ... otherwise, go to real space and apply the dose
-            expected_electron_events = electrons_per_image * irfftn(
-                fourier_signal, s=config.padded_shape
+            # ... otherwise, go to real space, sample, go back to fourier,
+            # and return.
+            expected_electron_events = irfftn(
+                fourier_expected_electron_events, s=config.padded_shape
             )
-            if key is None:
-                # If there is no key given, go to fourier space and return
-                return rfftn(expected_electron_events)
-            else:
-                # ... otherwise, sample from the detector noise model
-                return rfftn(self.sample(key, expected_electron_events))
+            return rfftn(self.sample(key, expected_electron_events))
 
 
 class NullDetector(AbstractDetector):
@@ -103,7 +124,7 @@ class NullDetector(AbstractDetector):
 
     @override
     def __init__(self):
-        self.dqe = Constant(1.0)
+        self.dqe = NullDQE()
 
     @override
     def sample(

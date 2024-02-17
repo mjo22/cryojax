@@ -2,9 +2,11 @@
 Models the electron dose.
 """
 
-from equinox import Module
+from equinox import Module, field
 
-from cryojax.image.operators import RealOperatorLike
+import jax.numpy as jnp
+
+from cryojax.typing import Real_
 
 
 class ElectronDose(Module, strict=True):
@@ -12,12 +14,7 @@ class ElectronDose(Module, strict=True):
 
     **Attributes:**
 
-    `electrons_per_angstrom_squared`: The integrated electron flux a function of
-                                      spatial coordinate. Typically, this
-                                      is just set to be `Constant(...)`.
+    `electrons_per_angstrom_squared`: The integrated electron flux.
     """
 
-    electrons_per_angstrom_squared: RealOperatorLike
-
-    def __init__(self, electrons_per_angstrom_squared: RealOperatorLike):
-        self.electrons_per_angstrom_squared = electrons_per_angstrom_squared
+    electrons_per_angstrom_squared: Real_ = field(converter=jnp.asarray)

@@ -100,8 +100,8 @@ def masks(config):
 def instrument():
     return cs.Instrument(
         cs.WeakPhaseOptics(cs.CTF()),
-        cs.ElectronDose(op.Constant(1000.0)),
-        cs.GaussianDetector(cs.IdealDQE()),
+        cs.ElectronDose(electrons_per_angstrom_squared=1000.0),
+        cs.GaussianDetector(cs.IdealDQE(fraction_detected_electrons=1.0)),
     )
 
 
