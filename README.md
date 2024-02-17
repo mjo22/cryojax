@@ -148,7 +148,7 @@ We can now create the loss and differentiate it with respect to the parameters.
 @jax.value_and_grad
 def loss(params, distribution, observed):
     distribution = update_distribution(distribution, params)
-    return distribution.log_probability(observed)
+    return -distribution.log_probability(observed)
 ```
 
 Finally, we can evaluate an updated set of parameters.
@@ -159,7 +159,7 @@ params = dict(
     defocus_u=jnp.asarray(9000.0),
     pixel_size=jnp.asarray(density.voxel_size+0.02),
 )
-log_likelihood, grad = loss(params, model, observed)
+negative_log_likelihood, grad = loss(params, model, observed)
 ```
 
 To summarize, this example creates a loss function at an updated set of parameters. In general, any `cryojax` object may contain model parameters and there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
