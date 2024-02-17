@@ -1,6 +1,6 @@
 """
 Abstraction of the electron microscope. This includes models
-for the optics and detector.
+for the optics, electron dose, and detector.
 """
 
 from typing import Optional, overload
@@ -9,12 +9,13 @@ from equinox import Module
 
 import jax.numpy as jnp
 
+from ..image.operators import Constant
 from ..image import rfftn, ifftn
-from ..image.operators import RealOperatorLike
 from ._ice import AbstractIce
 from ._specimen import AbstractSpecimen
 from ._scattering import AbstractScatteringMethod
 from ._config import ImageConfig
+from ._dose import ElectronDose
 from ._optics import AbstractOptics, NullOptics
 from ._detector import AbstractDetector, NullDetector
 
@@ -28,10 +29,14 @@ class Instrument(Module, strict=True):
 
     - `optics`: The model for the instrument optics.
 
+    - `dose`: The model for the exposure to electrons
+              during image formation.
+
     - `detector` : The model of the detector.
     """
 
     optics: AbstractOptics
+    dose: ElectronDose
     detector: AbstractDetector
 
     @overload
@@ -41,29 +46,27 @@ class Instrument(Module, strict=True):
     def __init__(self, optics: AbstractOptics): ...
 
     @overload
-    def __init__(self, optics: AbstractOptics, detector: AbstractDetector): ...
+    def __init__(
+        self, optics: AbstractOptics, dose: ElectronDose, detector: AbstractDetector
+    ): ...
 
     def __init__(
         self,
         optics: Optional[AbstractOptics] = None,
+        dose: Optional[ElectronDose] = None,
         detector: Optional[AbstractDetector] = None,
     ):
         if optics is None and isinstance(detector, AbstractDetector):
             raise AttributeError(
-                "Cannot set Instrument.detector without passing an optics model."
+                "Cannot set Instrument.detector without passing an AbstractOptics."
+            )
+        if dose is None and isinstance(detector, AbstractDetector):
+            raise AttributeError(
+                "Cannot set Instrument.detector without passing an ElectronDose."
             )
         self.optics = optics or NullOptics()
+        self.dose = dose or ElectronDose(electrons_per_angstrom_squared=Constant(100.0))
         self.detector = detector or NullDetector()
-
-    @property
-    def wavelength_in_angstroms(self) -> Real_:
-        """The wavelength of the incident electrons."""
-        return self.optics.wavelength_in_angstroms
-
-    @property
-    def electrons_per_angstrom_squared(self) -> RealOperatorLike:
-        """The integrated flux of the incident electrons."""
-        return self.detector.electrons_per_angstrom_squared
 
     def scatter_to_exit_plane(
         self, specimen: AbstractSpecimen, scattering: AbstractScatteringMethod
@@ -153,7 +156,7 @@ class Instrument(Module, strict=True):
     ) -> ComplexImage:
         """Measure the readout from the detector."""
         fourier_detector_readout = self.detector(
-            fourier_squared_wavefunction_at_detector_plane, config, key
+            fourier_squared_wavefunction_at_detector_plane, self.dose, config, key
         )
 
         return fourier_detector_readout
@@ -165,7 +168,7 @@ class Instrument(Module, strict=True):
     ) -> ComplexImage:
         """Compute the expected electron events from the detector."""
         fourier_expected_electron_events = self.detector(
-            fourier_squared_wavefunction_at_detector_plane, config, key=None
+            fourier_squared_wavefunction_at_detector_plane, self.dose, config, key=None
         )
 
         return fourier_expected_electron_events

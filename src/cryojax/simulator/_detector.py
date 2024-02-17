@@ -11,11 +11,11 @@ import jax.numpy as jnp
 import jax.random as jr
 from jaxtyping import PRNGKeyArray
 
+from ._dose import ElectronDose
 from ._config import ImageConfig
 from ._stochastic_model import AbstractStochasticModel
 from ..image.operators import (
     Constant,
-    RealOperatorLike,
     FourierOperatorLike,
     AbstractFourierOperator,
 )
@@ -46,16 +46,10 @@ class IdealDQE(AbstractFourierOperator, strict=True):
 class AbstractDetector(AbstractStochasticModel, strict=True):
     """Base class for an electron detector."""
 
-    electrons_per_angstrom_squared: RealOperatorLike
     dqe: FourierOperatorLike
 
-    def __init__(
-        self,
-        electrons_per_angstrom_squared: RealOperatorLike,
-        dqe: Optional[FourierOperatorLike] = None,
-    ):
-        self.electrons_per_angstrom_squared = electrons_per_angstrom_squared
-        self.dqe = dqe or IdealDQE()
+    def __init__(self, dqe: FourierOperatorLike):
+        self.dqe = dqe
 
     @abstractmethod
     def sample(self, key: PRNGKeyArray, image: RealImage) -> RealImage:
@@ -65,6 +59,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
     def __call__(
         self,
         fourier_squared_wavefunction_at_detector_plane: ComplexImage,
+        dose: ElectronDose,
         config: ImageConfig,
         key: Optional[PRNGKeyArray] = None,
     ) -> ComplexImage:
@@ -74,7 +69,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         frequency_grid_in_nyquist_units = config.padded_frequency_grid.get() / 0.5
         # Compute the time-integrated electron flux in pixels
         electrons_per_pixel = (
-            self.electrons_per_angstrom_squared(coordinate_grid_in_angstroms)
+            dose.electrons_per_angstrom_squared(coordinate_grid_in_angstroms)
             * config.pixel_size**2
         )
         # ... now the total number of electrons over the entire image
@@ -87,7 +82,7 @@ class AbstractDetector(AbstractStochasticModel, strict=True):
         fourier_signal = fourier_squared_wavefunction_at_detector_plane * jnp.sqrt(
             self.dqe(frequency_grid_in_nyquist_units)
         )
-        if key is None and isinstance(self.electrons_per_angstrom_squared, Constant):
+        if key is None and isinstance(dose.electrons_per_angstrom_squared, Constant):
             # If there is no key given and the dose is constant, apply the dose in fourier space and return
             return electrons_per_image * fourier_signal
         else:
@@ -108,7 +103,6 @@ class NullDetector(AbstractDetector):
 
     @override
     def __init__(self):
-        self.electrons_per_angstrom_squared = Constant(1.0)
         self.dqe = Constant(1.0)
 
     @override
@@ -121,6 +115,7 @@ class NullDetector(AbstractDetector):
     def __call__(
         self,
         fourier_squared_wavefunction_at_detector_plane: ComplexImage,
+        dose: ElectronDose,
         config: ImageConfig,
         key: Optional[PRNGKeyArray] = None,
     ) -> ComplexImage:

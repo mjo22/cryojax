@@ -99,10 +99,9 @@ def masks(config):
 @pytest.fixture
 def instrument():
     return cs.Instrument(
-        optics=cs.WeakPhaseOptics(cs.CTF()),
-        detector=cs.GaussianDetector(
-            electrons_per_angstrom_squared=op.Constant(1000.0)
-        ),
+        cs.WeakPhaseOptics(cs.CTF()),
+        cs.ElectronDose(op.Constant(1000.0)),
+        cs.GaussianDetector(cs.IdealDQE()),
     )
 
 
@@ -119,12 +118,12 @@ def pose():
 
 @pytest.fixture
 def specimen(potential, pose):
-    return cs.Specimen(potential=potential, pose=pose)
+    return cs.Specimen(potential, pose)
 
 
 @pytest.fixture
 def solvent():
-    return cs.GaussianIce()
+    return cs.GaussianIce(op.Constant(0.001**2))
 
 
 @pytest.fixture

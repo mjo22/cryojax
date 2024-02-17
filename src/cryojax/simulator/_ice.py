@@ -69,8 +69,8 @@ class GaussianIce(AbstractIce, strict=True):
 
     variance: FourierOperatorLike
 
-    def __init__(self, variance: Optional[FourierOperatorLike] = None):
-        self.variance = variance or Constant(0.0001)
+    def __init__(self, variance: FourierOperatorLike):
+        self.variance = variance
 
     @override
     def sample(self, key: PRNGKeyArray, config: ImageConfig) -> ComplexImage:

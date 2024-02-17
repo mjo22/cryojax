@@ -37,6 +37,8 @@ from ._ice import (
     GaussianIce as GaussianIce,
 )
 
+from ._dose import ElectronDose
+
 from ._optics import (
     AbstractOptics as AbstractOptics,
     NullOptics as NullOptics,
