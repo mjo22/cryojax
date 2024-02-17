@@ -61,12 +61,9 @@ class IdealDQE(AbstractDQE, strict=True):
     @override
     def __call__(self, frequency_grid_in_nyquist_units: ImageCoords) -> RealImage:
         return (
-            (
-                jnp.sinc(frequency_grid_in_nyquist_units[..., 0] / 2) ** 2
-                * jnp.sinc(frequency_grid_in_nyquist_units[..., 1] / 2) ** 2
-            )
-            .at[0, 0]
-            .set(self.fraction_detected_electrons**2)
+            self.fraction_detected_electrons**2
+            * jnp.sinc(frequency_grid_in_nyquist_units[..., 0] / 2) ** 2
+            * jnp.sinc(frequency_grid_in_nyquist_units[..., 1] / 2) ** 2
         )
 
 
