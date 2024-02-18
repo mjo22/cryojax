@@ -46,7 +46,9 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
     interpolation_mode: str = field(static=True, default="fill")
     interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
 
-    def integrate_potential(self, potential: FourierVoxelGrid) -> ComplexImage:
+    def integrate_potential(
+        self, potential: FourierVoxelGrid | FourierVoxelGridInterpolator
+    ) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
