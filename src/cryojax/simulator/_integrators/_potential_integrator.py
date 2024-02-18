@@ -46,14 +46,6 @@ class AbstractPotentialIntegrator(Module, strict=True):
         """
         # Compute the fourier projection in the exit plane
         fourier_potential_at_exit_plane = self.integrate_potential(potential, **kwargs)
-        # Resize the image to match the ImageConfig.padded_shape
-        N = fourier_potential_at_exit_plane.shape[0]
-        if self.config.padded_shape != (N, N):
-            fourier_potential_at_exit_plane = rfftn(
-                self.config.crop_or_pad_to_padded_shape(
-                    irfftn(fourier_potential_at_exit_plane, s=(N, N))
-                )
-            )
         # Rescale the pixel size if different from the voxel size
         if isinstance(potential, AbstractVoxelPotential):
             rescale_fn = lambda fourier_potential: rfftn(
