@@ -5,7 +5,7 @@ Abstraction of electron detectors in a cryo-EM image.
 from abc import abstractmethod
 from typing import Optional
 from typing_extensions import override
-from equinox import field, AbstractVar
+from equinox import Module, field, AbstractVar
 
 import numpy as np
 import jax.numpy as jnp
@@ -14,7 +14,6 @@ from jaxtyping import PRNGKeyArray
 
 from ._dose import ElectronDose
 from ._config import ImageConfig
-from ._stochastic_model import AbstractStochasticModel
 from ..image.operators import AbstractFourierOperator
 from ..image import irfftn, rfftn
 from ..typing import ComplexImage, RealImage, ImageCoords, Real_
@@ -67,7 +66,7 @@ class IdealDQE(AbstractDQE, strict=True):
         )
 
 
-class AbstractDetector(AbstractStochasticModel, strict=True):
+class AbstractDetector(Module, strict=True):
     """Base class for an electron detector."""
 
     dqe: AbstractDQE

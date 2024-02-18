@@ -10,13 +10,13 @@ import equinox as eqx
 from cryojax.simulator import DiscreteEnsemble, DiscreteConformation
 
 
-def test_conformation(potential, pose, scattering):
+def test_conformation(potential, pose, integrator):
     potential = tuple([potential for _ in range(3)])
     ensemble = DiscreteEnsemble(potential, pose, conformation=DiscreteConformation(0))
-    _ = scattering(ensemble)
+    _ = integrator(ensemble)
 
 
-def test_conformation_vmap(potential, pose, scattering):
+def test_conformation_vmap(potential, pose, integrator):
     # Build Ensemble
     cls = type(potential)
     stacked_potential = tuple([potential for _ in range(3)])
@@ -36,5 +36,5 @@ def test_conformation_vmap(potential, pose, scattering):
         return scattering(ensemble)
 
     # Vmap over conformations
-    image_stack = compute_conformation_stack(vmap, novmap, scattering)
+    image_stack = compute_conformation_stack(vmap, novmap, integrator)
     assert image_stack.shape[0] == ensemble.conformation.get().shape[0]

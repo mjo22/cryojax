@@ -52,7 +52,7 @@ potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size
 # ... now instantiate fourier slice extraction
 shape, pixel_size = (320, 320), voxel_size
 config = cs.ImageConfig(shape, pixel_size)
-scattering = cs.FourierSliceExtract(config, interpolation_order=1)
+integrator = cs.FourierSliceExtract(config, interpolation_order=1)
 ```
 
 Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGrid`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as [cisTEM](https://github.com/timothygrant80/cisTEM).
@@ -87,7 +87,7 @@ explicitly configured here. Finally, we can instantiate the `ImagePipeline` and 
 
 ```python
 # Build the image formation model
-pipeline = cs.ImagePipeline(specimen, scattering, instrument)
+pipeline = cs.ImagePipeline(specimen, integrator, instrument)
 # ... generate an RNG key and simulate
 key = jax.random.PRNGKey(seed=0)
 image = pipeline.sample(key)
@@ -133,7 +133,7 @@ def update_distribution(distribution, params):
     where = lambda model: (
         distribution.pipeline.specimen.pose.view_phi,
         distribution.pipeline.instrument.optics.ctf.defocus_u,
-        distribution.pipeline.scattering.config.pixel_size
+        distribution.pipeline.integrator.config.pixel_size
     )
     updated_distribution = eqx.tree_at(
         where, distribution, (params["view_phi"], params["defocus_u"], params["pixel_size"])

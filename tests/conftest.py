@@ -71,7 +71,7 @@ def config(pixel_size):
 
 
 @pytest.fixture
-def scattering(config):
+def integrator(config):
     return cs.FourierSliceExtract(config, interpolation_order=1)
 
 
@@ -127,17 +127,17 @@ def solvent():
 
 
 @pytest.fixture
-def noiseless_model(scattering, specimen, instrument):
+def noiseless_model(integrator, specimen, instrument):
     instrument = eqx.tree_at(lambda ins: ins.detector, instrument, cs.NullDetector())
     return cs.ImagePipeline(
-        scattering=scattering, specimen=specimen, instrument=instrument
+        integrator=integrator, specimen=specimen, instrument=instrument
     )
 
 
 @pytest.fixture
-def noisy_model(scattering, specimen, instrument, solvent):
+def noisy_model(integrator, specimen, instrument, solvent):
     return cs.ImagePipeline(
-        scattering=scattering,
+        integrator=integrator,
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
@@ -145,9 +145,9 @@ def noisy_model(scattering, specimen, instrument, solvent):
 
 
 @pytest.fixture
-def filtered_model(scattering, specimen, instrument, solvent, filters):
+def filtered_model(integrator, specimen, instrument, solvent, filters):
     return cs.ImagePipeline(
-        scattering=scattering,
+        integrator=integrator,
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
@@ -157,10 +157,10 @@ def filtered_model(scattering, specimen, instrument, solvent, filters):
 
 @pytest.fixture
 def filtered_and_masked_model(
-    scattering, specimen, instrument, solvent, filters, masks
+    integrator, specimen, instrument, solvent, filters, masks
 ):
     return cs.ImagePipeline(
-        scattering=scattering,
+        integrator=integrator,
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,

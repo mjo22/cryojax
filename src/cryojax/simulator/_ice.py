@@ -4,20 +4,19 @@ Abstraction of the ice in a cryo-EM image.
 
 from abc import abstractmethod
 from typing_extensions import override
-from typing import Optional
 
 import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
 from jaxtyping import PRNGKeyArray
+from equinox import Module
 
-from ._stochastic_model import AbstractStochasticModel
 from ._config import ImageConfig
-from ..image.operators import FourierOperatorLike, Constant
+from ..image.operators import FourierOperatorLike
 from ..typing import ComplexImage, Image
 
 
-class AbstractIce(AbstractStochasticModel, strict=True):
+class AbstractIce(Module, strict=True):
     """Base class for an ice model."""
 
     @abstractmethod

@@ -1,7 +1,3 @@
-from ._stochastic_model import (
-    AbstractStochasticModel as AbstractStochasticModel,
-)
-
 from ._config import ImageConfig as ImageConfig
 
 from ._pose import (
@@ -29,7 +25,7 @@ from ._assembly import *
 
 from ._potential import *
 
-from ._scattering import *
+from ._integrators import *
 
 from ._ice import (
     AbstractIce as AbstractIce,

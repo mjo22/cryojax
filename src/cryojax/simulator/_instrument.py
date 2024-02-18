@@ -9,11 +9,10 @@ from equinox import Module
 
 import jax.numpy as jnp
 
-from ..image.operators import Constant
 from ..image import rfftn, ifftn
 from ._ice import AbstractIce
 from ._specimen import AbstractSpecimen
-from ._scattering import AbstractScatteringMethod
+from ._integrators import AbstractPotentialIntegrator
 from ._config import ImageConfig
 from ._dose import ElectronDose
 from ._optics import AbstractOptics, NullOptics
@@ -68,11 +67,11 @@ class Instrument(Module, strict=True):
         self.detector = detector or NullDetector()
 
     def scatter_to_exit_plane(
-        self, specimen: AbstractSpecimen, scattering: AbstractScatteringMethod
+        self, specimen: AbstractSpecimen, integrator: AbstractPotentialIntegrator
     ) -> ComplexImage:
         """Scatter the specimen potential to the exit plane."""
         # Compute the scattering potential in fourier space
-        fourier_potential_at_exit_plane = scattering(specimen)
+        fourier_potential_at_exit_plane = integrator(specimen)
 
         return fourier_potential_at_exit_plane
 
@@ -80,18 +79,18 @@ class Instrument(Module, strict=True):
         self,
         key: PRNGKeyArray,
         specimen: AbstractSpecimen,
-        scattering: AbstractScatteringMethod,
+        integrator: AbstractPotentialIntegrator,
         solvent: AbstractIce,
     ) -> ComplexImage:
         """Scatter the specimen potential to the exit plane, including
         the potential due to the solvent."""
         # Compute the scattering potential in fourier space
         fourier_potential_at_exit_plane = self.scatter_to_exit_plane(
-            specimen, scattering
+            specimen, integrator
         )
         # Get the potential of the specimen plus the ice
         fourier_potential_at_exit_plane_with_solvent = solvent(
-            key, fourier_potential_at_exit_plane, scattering.config
+            key, fourier_potential_at_exit_plane, integrator.config
         )
 
         return fourier_potential_at_exit_plane_with_solvent

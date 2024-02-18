@@ -61,17 +61,17 @@ def build_helix_with_conformation(
 
 
 def test_superposition_pipeline_without_conformation(
-    sample_subunit_mrc_path, scattering
+    sample_subunit_mrc_path, integrator
 ):
     helix = build_helix(sample_subunit_mrc_path, 1)
-    pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
+    pipeline = cs.AssemblyPipeline(integrator=integrator, assembly=helix)
     image = pipeline.render()
     stochastic_image = pipeline.sample(jax.random.PRNGKey(0))
 
 
-def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, scattering):
+def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, integrator):
     helix = build_helix_with_conformation(sample_subunit_mrc_path, 2)
-    pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
+    pipeline = cs.AssemblyPipeline(integrator=integrator, assembly=helix)
     image = pipeline.render()
     stochastic_image = pipeline.sample(jax.random.PRNGKey(0))
 
@@ -81,19 +81,19 @@ def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, scatt
     [(360.0 / 6, 1), (2 * 360.0 / 6, 1), (360.0 / 6, 2)],
 )
 def test_c6_rotation(
-    sample_subunit_mrc_path, scattering, rotation_angle, n_subunits_per_start
+    sample_subunit_mrc_path, integrator, rotation_angle, n_subunits_per_start
 ):
     helix = build_helix(sample_subunit_mrc_path, n_subunits_per_start)
 
     @jax.jit
     def compute_rotated_image(helix, scattering, pose):
         helix = eqx.tree_at(lambda m: m.pose, helix, pose)
-        pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
+        pipeline = cs.AssemblyPipeline(integrator=scattering, assembly=helix)
         return pipeline.render(normalize=True)
 
     np.testing.assert_allclose(
-        compute_rotated_image(helix, scattering, cs.EulerPose()),
-        compute_rotated_image(helix, scattering, cs.EulerPose(view_phi=rotation_angle)),
+        compute_rotated_image(helix, integrator, cs.EulerPose()),
+        compute_rotated_image(helix, integrator, cs.EulerPose(view_phi=rotation_angle)),
     )
 
 
@@ -105,7 +105,7 @@ def test_c6_rotation(
     ],
 )
 def test_agree_with_3j9g_assembly(
-    sample_subunit_mrc_path, potential, scattering, translation, euler_angles
+    sample_subunit_mrc_path, potential, integrator, translation, euler_angles
 ):
     helix = build_helix(sample_subunit_mrc_path, 2)
     specimen_39jg = cs.Specimen(potential)
@@ -113,21 +113,21 @@ def test_agree_with_3j9g_assembly(
     @jax.jit
     def compute_rotated_image_with_helix(helix, scattering, pose):
         helix = eqx.tree_at(lambda m: m.pose, helix, pose)
-        pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
+        pipeline = cs.AssemblyPipeline(integrator=scattering, assembly=helix)
         return pipeline.render(normalize=True)
 
     @jax.jit
     def compute_rotated_image_with_3j9g(specimen, scattering, pose):
         specimen = eqx.tree_at(lambda m: m.pose, specimen, pose)
-        pipeline = cs.ImagePipeline(scattering=scattering, specimen=specimen)
+        pipeline = cs.ImagePipeline(integrator=scattering, specimen=specimen)
         return pipeline.render(normalize=True)
 
     pose = cs.EulerPose(*translation, 0.0, *euler_angles)
     reference_image = compute_rotated_image_with_3j9g(
-        specimen_39jg, scattering, cs.EulerPose()
+        specimen_39jg, integrator, cs.EulerPose()
     )
-    assembled_image = compute_rotated_image_with_helix(helix, scattering, pose)
-    test_image = compute_rotated_image_with_3j9g(specimen_39jg, scattering, pose)
+    assembled_image = compute_rotated_image_with_helix(helix, integrator, pose)
+    test_image = compute_rotated_image_with_3j9g(specimen_39jg, integrator, pose)
     assert np.std(assembled_image - test_image) < 10 * np.std(
         assembled_image - reference_image
     )
@@ -142,7 +142,7 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
     @jax.jit
     def compute_rotated_image(helix, scattering, pose):
         helix = eqx.tree_at(lambda m: m.pose, helix, pose)
-        pipeline = cs.AssemblyPipeline(scattering=scattering, assembly=helix)
+        pipeline = cs.AssemblyPipeline(integrator=scattering, assembly=helix)
         return pipeline.render(normalize=True)
 
     np.testing.assert_allclose(

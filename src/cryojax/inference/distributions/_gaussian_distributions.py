@@ -47,8 +47,8 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
     @override
     def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
         """Sample from the Gaussian noise model."""
-        N_pix = np.prod(self.pipeline.scattering.config.padded_shape)
-        freqs = self.pipeline.scattering.config.padded_frequency_grid_in_angstroms.get()
+        N_pix = np.prod(self.pipeline.integrator.config.padded_shape)
+        freqs = self.pipeline.integrator.config.padded_frequency_grid_in_angstroms.get()
         # Compute the zero mean variance and scale up to be independent of the number of pixels
         std = jnp.sqrt(N_pix * self.variance(freqs))
         noise = std * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0)
@@ -67,11 +67,11 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
                      must match `ImageConfig.padded_shape`.
         """
         pipeline = self.pipeline
-        N_pix = np.prod(self.pipeline.scattering.config.padded_shape)
+        N_pix = np.prod(self.pipeline.integrator.config.padded_shape)
         padded_freqs = (
-            pipeline.scattering.config.padded_frequency_grid_in_angstroms.get()
+            pipeline.integrator.config.padded_frequency_grid_in_angstroms.get()
         )
-        freqs = pipeline.scattering.config.frequency_grid_in_angstroms.get()
+        freqs = pipeline.integrator.config.frequency_grid_in_angstroms.get()
         if observed.shape != padded_freqs.shape[:-1]:
             raise ValueError("Shape of observed must match ImageConfig.padded_shape")
         # Compute the variance and scale up to be independent of the number of pixels

@@ -42,7 +42,7 @@ def test_voxel_electron_potential_loaders():
     assert isinstance(cloud_potential.coordinate_list.get(), CloudCoords3D)
 
 
-def test_electron_potential_vmap(potential, scattering, pose):
+def test_electron_potential_vmap(potential, integrator, pose):
     filter_spec = get_not_coordinate_filter_spec(potential)
     # Add a leading dimension to scattering potential leaves
     potential = jtu.tree_map(
@@ -59,12 +59,12 @@ def test_electron_potential_vmap(potential, scattering, pose):
         return scattering(cs.Specimen(potential, pose))
 
     # vmap over first axis
-    image_stack = compute_image_stack(vmap, novmap, scattering, pose)
+    image_stack = compute_image_stack(vmap, novmap, integrator, pose)
     assert image_stack.shape[:1] == (1,)
 
 
-def test_electron_potential_vmap_with_pipeline(potential, pose, scattering):
-    pipeline = cs.ImagePipeline(cs.Specimen(potential, pose), scattering)
+def test_electron_potential_vmap_with_pipeline(potential, pose, integrator):
+    pipeline = cs.ImagePipeline(cs.Specimen(potential, pose), integrator)
     # Get filter spec for scattering potential
     filter_spec = jtu.tree_map(
         cs.is_potential_leaves_without_coordinates,
