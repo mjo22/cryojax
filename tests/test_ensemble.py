@@ -13,7 +13,7 @@ from cryojax.simulator import DiscreteEnsemble, DiscreteConformation
 def test_conformation(potential, pose, integrator):
     potential = tuple([potential for _ in range(3)])
     ensemble = DiscreteEnsemble(potential, pose, conformation=DiscreteConformation(0))
-    _ = integrator.scatter_to_exit_plane(ensemble)
+    _ = integrator(ensemble)
 
 
 def test_conformation_vmap(potential, pose, integrator):
@@ -31,9 +31,9 @@ def test_conformation_vmap(potential, pose, integrator):
     vmap, novmap = eqx.partition(ensemble, to_vmap)
 
     @partial(jax.vmap, in_axes=[0, None, None])
-    def compute_conformation_stack(vmap, novmap, integrator):
+    def compute_conformation_stack(vmap, novmap, scattering):
         ensemble = eqx.combine(vmap, novmap)
-        return integrator.scatter_to_exit_plane(ensemble)
+        return scattering(ensemble)
 
     # Vmap over conformations
     image_stack = compute_conformation_stack(vmap, novmap, integrator)

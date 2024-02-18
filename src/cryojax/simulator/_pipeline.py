@@ -228,8 +228,8 @@ class ImagePipeline(AbstractPipeline, strict=True):
     ) -> Image:
         """Render an image of a `Specimen` without any stochasticity."""
         # Compute the scattering potential in the exit plane
-        fourier_potential_at_exit_plane = self.integrator.scatter_to_exit_plane(
-            self.specimen
+        fourier_potential_at_exit_plane = self.instrument.scatter_to_exit_plane(
+            self.specimen, self.integrator
         )
         # ... propagate the potential to the detector plane
         fourier_contrast_or_wavefunction_at_detector_plane = (
@@ -281,15 +281,15 @@ class ImagePipeline(AbstractPipeline, strict=True):
             # Compute the scattering potential in the exit plane, including
             # potential of the solvent
             fourier_potential_at_exit_plane = (
-                self.integrator.scatter_to_exit_plane_with_solvent(
-                    keys[idx], self.specimen, self.solvent
+                self.instrument.scatter_to_exit_plane_with_solvent(
+                    keys[idx], self.specimen, self.integrator, self.solvent
                 )
             )
             idx += 1
         else:
             # ... otherwise, scatter just compute the potential of the specimen
-            fourier_potential_at_exit_plane = self.integrator.scatter_to_exit_plane(
-                self.specimen
+            fourier_potential_at_exit_plane = self.instrument.scatter_to_exit_plane(
+                self.specimen, self.integrator
             )
 
         # ... propagate the potential to the contrast at the detector plane
@@ -467,7 +467,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         # Compute all images and sum
         compute_contrast_or_wavefunction = (
             lambda spec, scat, ins: ins.propagate_to_detector_plane(
-                scat.scatter_to_exit_plane(spec),
+                ins.scatter_to_exit_plane(spec, scat),
                 scat.config,
                 defocus_offset=spec.pose.offset_z,
             )
