@@ -466,9 +466,9 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         vmap, novmap = eqx.partition(subunits, to_vmap)
         # Compute all images and sum
         compute_contrast_or_wavefunction = (
-            lambda spec, scat, ins: ins.propagate_to_detector_plane(
-                ins.scatter_to_exit_plane(spec, scat),
-                scat.config,
+            lambda spec, inte, ins: ins.propagate_to_detector_plane(
+                ins.scatter_to_exit_plane(spec, inte),
+                inte.config,
                 defocus_offset=spec.pose.offset_z,
             )
         )

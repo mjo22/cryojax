@@ -54,9 +54,9 @@ def test_electron_potential_vmap(potential, integrator, pose):
     vmap, novmap = eqx.partition(potential, filter_spec)
 
     @partial(jax.vmap, in_axes=[0, None, None, None])
-    def compute_image_stack(vmap, novmap, scattering, pose):
+    def compute_image_stack(vmap, novmap, integrator, pose):
         potential = eqx.combine(vmap, novmap)
-        return scattering(cs.Specimen(potential, pose))
+        return integrator(cs.Specimen(potential, pose).potential_in_lab_frame)
 
     # vmap over first axis
     image_stack = compute_image_stack(vmap, novmap, integrator, pose)

@@ -70,8 +70,14 @@ class Instrument(Module, strict=True):
         self, specimen: AbstractSpecimen, integrator: AbstractPotentialIntegrator
     ) -> ComplexImage:
         """Scatter the specimen potential to the exit plane."""
+        # Get potential in the lab frame
+        potential = specimen.potential_in_lab_frame
         # Compute the scattering potential in fourier space
-        fourier_potential_at_exit_plane = integrator(specimen)
+        fourier_potential_at_exit_plane = integrator(potential)
+        # Apply translation through phase shifts
+        fourier_potential_at_exit_plane *= specimen.pose.compute_shifts(
+            integrator.config.padded_frequency_grid_in_angstroms.get()
+        )
 
         return fourier_potential_at_exit_plane
 

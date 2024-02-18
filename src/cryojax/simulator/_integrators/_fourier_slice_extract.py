@@ -46,7 +46,9 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
     interpolation_mode: str = field(static=True, default="fill")
     interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
 
-    def integrate_potential(self, potential: FourierVoxelGrid) -> ComplexImage:
+    def integrate_potential(
+        self, potential: FourierVoxelGrid | FourierVoxelGridInterpolator
+    ) -> ComplexImage:
         """
         Compute an image by sampling a slice in the
         rotated fourier transform and interpolating onto
@@ -78,15 +80,8 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
             raise ValueError(
                 "Supported density representations are FourierVoxelGrid and FourierVoxelGridInterpolator."
             )
-        # Resize the image to match the ImageConfig.padded_shape
-        if self.config.padded_shape == (N, N):
-            return fourier_projection
-        else:
-            return rfftn(
-                self.config.crop_or_pad_to_padded_shape(
-                    irfftn(fourier_projection, s=(N, N))
-                )
-            )
+
+        return fourier_projection
 
 
 def extract_slice(
