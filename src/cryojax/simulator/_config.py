@@ -7,6 +7,7 @@ from typing import Any, Union, Callable, Optional, overload
 
 from equinox import Module, field
 
+import jax
 import jax.numpy as jnp
 
 from ..coordinates import CoordinateGrid, FrequencyGrid
@@ -16,6 +17,8 @@ from ..image import (
     pad_to_shape,
     resize_with_crop_or_pad,
     rescale_pixel_size,
+    irfftn,
+    rfftn,
 )
 
 
@@ -147,25 +150,40 @@ class ImageConfig(Module, strict=True):
         return self.padded_frequency_grid / self.pixel_size
 
     def rescale_to_pixel_size(
-        self, image: RealImage, current_pixel_size: Real_
+        self, image: Image, current_pixel_size: Real_, is_real: bool = True
     ) -> RealImage:
-        """Rescale the image pixel size."""
-        return rescale_pixel_size(
+        """Rescale the image pixel size using real-space interpolation. Only
+        interpolate if the `pixel_size` is not the `current_pixel_size`."""
+        if is_real:
+            rescale_fn = lambda im: rescale_pixel_size(
+                im, current_pixel_size, self.pixel_size, method=self.rescale_method
+            )
+        else:
+            rescale_fn = lambda im: rfftn(
+                rescale_pixel_size(
+                    irfftn(im, s=self.padded_shape),
+                    current_pixel_size,
+                    self.pixel_size,
+                    method=self.rescale_method,
+                )
+            )
+        null_fn = lambda im: im
+        return jax.lax.cond(
+            jnp.isclose(current_pixel_size, self.pixel_size),
+            null_fn,
+            rescale_fn,
             image,
-            current_pixel_size,
-            self.pixel_size,
-            method=self.rescale_method,
         )
 
-    def crop_to_shape(self, image: Image) -> Image:
+    def crop_to_shape(self, image: RealImage) -> RealImage:
         """Crop an image."""
         return crop_to_shape(image, self.shape)
 
-    def pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
+    def pad_to_padded_shape(self, image: RealImage, **kwargs: Any) -> RealImage:
         """Pad an image."""
         return pad_to_shape(image, self.padded_shape, mode=self.pad_mode, **kwargs)
 
-    def crop_or_pad_to_padded_shape(self, image: Image, **kwargs: Any) -> Image:
+    def crop_or_pad_to_padded_shape(self, image: RealImage, **kwargs: Any) -> RealImage:
         """Reshape an image using cropping or padding."""
         return resize_with_crop_or_pad(
             image, self.padded_shape, mode=self.pad_mode, **kwargs

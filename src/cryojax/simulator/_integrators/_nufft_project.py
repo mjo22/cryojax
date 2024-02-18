@@ -33,9 +33,7 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
 
     eps: float = field(static=True, default=1e-6)
 
-    def integrate_potential(
-        self, potential: RealVoxelGrid | RealVoxelCloud
-    ) -> ComplexImage:
+    def __call__(self, potential: RealVoxelGrid | RealVoxelCloud) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(potential, RealVoxelGrid):
             shape = potential.shape
@@ -56,7 +54,10 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
             raise ValueError(
                 "Supported density representations are RealVoxelGrid and VoxelCloud."
             )
-        return fourier_projection
+        # Rescale the voxel size to the ImageConfig.pixel_size
+        return self.config.rescale_to_pixel_size(
+            fourier_projection, potential.voxel_size, is_real=False
+        )
 
 
 def project_with_nufft(

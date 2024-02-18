@@ -22,7 +22,7 @@ class IndependentAtomScattering(AbstractPotentialIntegrator):
     TODO: Typehints for atom_density_kernel
     """
 
-    def integrate_potential(
+    def __call__(
         self,
         density: AtomCloud,
         # density: RealCloud,

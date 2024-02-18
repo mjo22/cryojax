@@ -46,7 +46,7 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
     interpolation_mode: str = field(static=True, default="fill")
     interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
 
-    def integrate_potential(
+    def __call__(
         self, potential: FourierVoxelGrid | FourierVoxelGridInterpolator
     ) -> ComplexImage:
         """Compute a projection of the real-space potential by extracting
@@ -80,14 +80,16 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
             )
 
         # Resize the image to match the ImageConfig.padded_shape
-        if self.config.padded_shape == (N, N):
-            return fourier_projection
-        else:
-            return rfftn(
+        if self.config.padded_shape != (N, N):
+            fourier_projection = rfftn(
                 self.config.crop_or_pad_to_padded_shape(
                     irfftn(fourier_projection, s=(N, N))
                 )
             )
+        # Rescale the voxel size to the ImageConfig.pixel_size
+        return self.config.rescale_to_pixel_size(
+            fourier_projection, potential.voxel_size, is_real=False
+        )
 
 
 def extract_slice(
