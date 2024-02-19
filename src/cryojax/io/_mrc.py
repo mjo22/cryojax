@@ -80,7 +80,7 @@ def write_image_stack_to_mrc(
         mrc.voxel_size = (1.0, pixel_size, pixel_size)
 
 
-def write_voxel_grid_to_mrc(
+def write_volume_to_mrc(
     voxel_grid: Float[Array, "N1 N2 N3"],
     voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
     filename: str,
