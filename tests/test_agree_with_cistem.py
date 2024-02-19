@@ -108,8 +108,6 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
 def test_compute_projection_with_cistem(phi, theta, psi, sample_mrc_path, pixel_size):
     # cryojax
     real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
-    # ... transpose the grid to match cisTEM convention
-    real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[2, 1, 0])
     potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
     pose = cs.EulerPose(view_phi=phi, view_theta=theta, view_psi=psi)
     specimen = cs.Specimen(potential, pose)
