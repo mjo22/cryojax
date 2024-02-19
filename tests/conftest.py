@@ -71,21 +71,16 @@ def config(pixel_size):
 
 
 @pytest.fixture
-def scattering(config):
+def integrator(config):
     return cs.FourierSliceExtract(config, interpolation_order=1)
 
 
 @pytest.fixture
-def density(sample_mrc_path):
-    density_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
-    return cs.FourierVoxelGrid.from_density_grid(
-        density_grid, voxel_size, pad_scale=1.3
+def potential(sample_mrc_path):
+    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
+    return cs.FourierVoxelGrid.from_real_voxel_grid(
+        real_voxel_grid, voxel_size, pad_scale=1.3
     )
-
-
-@pytest.fixture
-def stacked_density(density):
-    return density.from_list([density for _ in range(3)])
 
 
 @pytest.fixture
@@ -104,9 +99,9 @@ def masks(config):
 @pytest.fixture
 def instrument():
     return cs.Instrument(
-        optics=cs.CTFOptics(),
-        exposure=cs.Exposure(dose=op.Constant(10.0), radiation=op.Constant(1.0)),
-        detector=cs.GaussianDetector(variance=op.Constant(1.0)),
+        cs.WeakPhaseOptics(cs.CTF()),
+        cs.ElectronDose(electrons_per_angstrom_squared=1000.0),
+        cs.GaussianDetector(cs.IdealDQE(fraction_detected_electrons=1.0)),
     )
 
 
@@ -122,27 +117,27 @@ def pose():
 
 
 @pytest.fixture
-def specimen(density, pose):
-    return cs.Specimen(density=density, pose=pose)
+def specimen(potential, pose):
+    return cs.Specimen(potential, pose)
 
 
 @pytest.fixture
 def solvent():
-    return cs.GaussianIce()
+    return cs.GaussianIce(op.Constant(0.001**2))
 
 
 @pytest.fixture
-def noiseless_model(scattering, specimen, instrument):
+def noiseless_model(integrator, specimen, instrument):
     instrument = eqx.tree_at(lambda ins: ins.detector, instrument, cs.NullDetector())
     return cs.ImagePipeline(
-        scattering=scattering, specimen=specimen, instrument=instrument
+        integrator=integrator, specimen=specimen, instrument=instrument
     )
 
 
 @pytest.fixture
-def noisy_model(scattering, specimen, instrument, solvent):
+def noisy_model(integrator, specimen, instrument, solvent):
     return cs.ImagePipeline(
-        scattering=scattering,
+        integrator=integrator,
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
@@ -150,9 +145,9 @@ def noisy_model(scattering, specimen, instrument, solvent):
 
 
 @pytest.fixture
-def filtered_model(scattering, specimen, instrument, solvent, filters):
+def filtered_model(integrator, specimen, instrument, solvent, filters):
     return cs.ImagePipeline(
-        scattering=scattering,
+        integrator=integrator,
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
@@ -162,10 +157,10 @@ def filtered_model(scattering, specimen, instrument, solvent, filters):
 
 @pytest.fixture
 def filtered_and_masked_model(
-    scattering, specimen, instrument, solvent, filters, masks
+    integrator, specimen, instrument, solvent, filters, masks
 ):
     return cs.ImagePipeline(
-        scattering=scattering,
+        integrator=integrator,
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,

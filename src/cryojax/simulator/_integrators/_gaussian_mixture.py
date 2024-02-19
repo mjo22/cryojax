@@ -4,8 +4,8 @@ Scattering methods for the gaussian mixtures of atoms.
 
 import jax.numpy as jnp
 
-from ._scattering_method import AbstractProjectionMethod
-from .._density._atom_density import AtomCloud
+from ._potential_integrator import AbstractPotentialIntegrator
+from .._potential._atom_potential import AtomCloud
 from ...typing import (
     Real_,
     ComplexImage,
@@ -14,7 +14,7 @@ from ...typing import (
 )
 
 
-class IndependentAtomScattering(AbstractProjectionMethod):
+class IndependentAtomScattering(AbstractPotentialIntegrator):
     """
     Projects a pointcloud of atoms onto the imaging plane.
     In contrast to the work in project_with_nufft, here each atom is
@@ -22,7 +22,7 @@ class IndependentAtomScattering(AbstractProjectionMethod):
     TODO: Typehints for atom_density_kernel
     """
 
-    def project_density(
+    def __call__(
         self,
         density: AtomCloud,
         # density: RealCloud,

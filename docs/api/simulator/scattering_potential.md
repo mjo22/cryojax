@@ -1,24 +1,24 @@
-# Electron Density representations
+# Scattering potential representations
 
-`cryojax` provides different options for how to represent electron density distributions in cryo-EM.
+`cryojax` provides different options for how to represent scattering potentials in cryo-EM.
 
-???+ abstract "`cryojax.simulator.AbstractElectronDensity`"
-    ::: cryojax.simulator.AbstractElectronDensity
+???+ abstract "`cryojax.simulator.AbstractScatteringPotential`"
+    ::: cryojax.simulator.AbstractScatteringPotential
         options:
             members:
                 - rotate_to_pose
 
-## Voxel-based electron densities
+## Voxel-based scattering potentials
 
-???+ abstract "`cryojax.simulator.AbstractVoxels`"
+???+ abstract "`cryojax.simulator.AbstractVoxelPotential`"
 
-    ::: cryojax.simulator.AbstractVoxels
+    ::: cryojax.simulator.AbstractVoxelPotential
         options:
             members:
                 - is_real
                 - shape
                 - rotate_to_pose
-                - from_density_grid
+                - from_real_voxel_grid
                 - from_atoms
 
 ### Fourier-space voxel representations
@@ -31,7 +31,7 @@
                 - __init__
 
 !!! info "Fourier-space conventions"
-    - The `fourier_density_grid` and `frequency_slice` arguments to
+    - The `fourier_voxel_grid` and `frequency_slice` arguments to
     `FourierVoxelGrid.__init__` should be loaded with the zero frequency
     component in the center of the box.
     - The parameters in an `AbstractPose` represent a rotation in real-space. This means that when calling `FourierVoxelGrid.rotate_to_pose`,
@@ -41,11 +41,8 @@
         options:
             members:
                 - __init__
-                - fourier_density_grid
-                - voxel_size
-                - frequency_slice
                 - frequency_slice_in_angstroms
-                - from_density_grid
+                - from_real_voxel_grid
                 - from_atoms
 
 ---
@@ -54,11 +51,8 @@
         options:
             members:
                 - __init__
-                - coefficients
-                - voxel_size
-                - frequency_slice
                 - frequency_slice_in_angstroms
-                - from_density_grid
+                - from_real_voxel_grid
                 - from_atoms
 
 ### Real-space voxel representations
@@ -67,11 +61,8 @@
         options:
             members:
                 - __init__
-                - density_grid
-                - voxel_size
-                - coordinate_grid
                 - coordinate_grid_in_angstroms
-                - from_density_grid
+                - from_real_voxel_grid
                 - from_atoms
 
 ---
@@ -80,11 +71,8 @@
         options:
             members:
                 - __init__
-                - density_weights
-                - voxel_size
-                - coordinate_list
                 - coordinate_list_in_angstroms
-                - from_density_grid
+                - from_real_voxel_grid
                 - from_atoms
 
 ### Pure function API

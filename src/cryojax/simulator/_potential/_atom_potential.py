@@ -9,11 +9,11 @@ import jax.numpy as jnp
 import equinox as eqx
 from jaxtyping import Array
 
-from ._electron_density import AbstractElectronDensity
+from ._scattering_potential import AbstractScatteringPotential
 from .._pose import AbstractPose
 
 
-class AtomCloud(AbstractElectronDensity):
+class AtomCloud(AbstractScatteringPotential):
     """
     Abstraction of a point cloud of atoms.
     """

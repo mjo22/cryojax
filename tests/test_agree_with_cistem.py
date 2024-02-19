@@ -38,10 +38,10 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
     optics = CTF(
         defocus_u=defocus1,
         defocus_v=defocus2,
-        defocus_angle=asti_angle,
-        voltage=kV,
-        spherical_aberration=cs,
-        amplitude_contrast=ac,
+        astigmatism_angle=asti_angle,
+        voltage_in_kilovolts=kV,
+        spherical_aberration_in_mm=cs,
+        amplitude_contrast_ratio=ac,
     )
     ctf = np.array(optics(freqs))
     # Compute cisTEM CTF
@@ -107,13 +107,13 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
 )
 def test_compute_projection_with_cistem(phi, theta, psi, sample_mrc_path, pixel_size):
     # cryojax
-    density_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
+    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
     # ... transpose the grid to match cisTEM convention
-    density_grid = jnp.transpose(density_grid, axes=[2, 1, 0])
-    density = cs.FourierVoxelGrid.from_density_grid(density_grid, voxel_size)
+    real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[2, 1, 0])
+    potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
     pose = cs.EulerPose(view_phi=phi, view_theta=theta, view_psi=psi)
-    specimen = cs.Specimen(density, pose)
-    box_size = density.shape[0]
+    specimen = cs.Specimen(potential, pose)
+    box_size = potential.shape[0]
     config = cs.ImageConfig((box_size, box_size), pixel_size)
     scattering = cs.FourierSliceExtract(config)
     pipeline = cs.ImagePipeline(specimen, scattering)

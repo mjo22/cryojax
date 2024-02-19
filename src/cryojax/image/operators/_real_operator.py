@@ -3,7 +3,7 @@ Implementation of operators on images in real-space.
 """
 
 from abc import abstractmethod
-from typing import Any
+from typing import overload
 from typing_extensions import override
 from jaxtyping import Array, Float
 from equinox import field
@@ -11,7 +11,7 @@ from equinox import field
 import jax.numpy as jnp
 
 from ._operator import AbstractImageOperator
-from ...typing import ImageCoords, VolumeCoords, RealImage, Real_
+from ...typing import ImageCoords, VolumeCoords, RealImage, RealVolume, Real_
 
 
 class AbstractRealOperator(AbstractImageOperator, strict=True):
@@ -28,10 +28,16 @@ class AbstractRealOperator(AbstractImageOperator, strict=True):
         2) Overrwrite the ``__call__`` method.
     """
 
+    @overload
     @abstractmethod
-    def __call__(
-        self, coords: ImageCoords | VolumeCoords | None = None, **kwargs: Any
-    ) -> Array:
+    def __call__(self, coords: ImageCoords) -> RealImage: ...
+
+    @overload
+    @abstractmethod
+    def __call__(self, coords: VolumeCoords) -> RealVolume: ...
+
+    @abstractmethod
+    def __call__(self, coords: ImageCoords | VolumeCoords) -> RealImage | RealVolume:
         raise NotImplementedError
 
 
@@ -66,14 +72,9 @@ class Gaussian2D(AbstractRealOperator, strict=True):
     offset: Float[Array, "2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
 
     @override
-    def __call__(self, coords: ImageCoords | None, **kwargs: Any) -> RealImage:
-        if coords is None:
-            raise ValueError(
-                "The coordinate grid must be given as an argument to the operator call."
-            )
-        else:
-            r_sqr = jnp.sum((coords - self.offset) ** 2, axis=-1)
-            scaling = (self.amplitude / jnp.sqrt(2 * jnp.pi * self.b_factor)) * jnp.exp(
-                -0.5 * r_sqr / self.b_factor
-            )
-            return scaling
+    def __call__(self, coords: ImageCoords) -> RealImage:
+        r_sqr = jnp.sum((coords - self.offset) ** 2, axis=-1)
+        scaling = (self.amplitude / jnp.sqrt(2 * jnp.pi * self.b_factor)) * jnp.exp(
+            -0.5 * r_sqr / self.b_factor
+        )
+        return scaling
