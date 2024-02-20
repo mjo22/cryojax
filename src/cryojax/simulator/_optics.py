@@ -5,7 +5,7 @@ Models of instrument optics.
 from abc import abstractmethod
 from typing import ClassVar, Optional
 from typing_extensions import override
-from equinox import AbstractClassVar, Module, field
+from equinox import AbstractClassVar, AbstractVar, Module, field
 
 import jax.numpy as jnp
 
@@ -25,9 +25,9 @@ class CTF(AbstractFourierOperator, strict=True):
 
     **Attributes:**
 
-    `defocus_u`: The major axis defocus in Angstroms.
+    `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
 
-    `defocus_v`: The minor axis defocus in Angstroms.
+    `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
 
     `astigmatism_angle`: The defocus angle.
 
@@ -43,8 +43,8 @@ class CTF(AbstractFourierOperator, strict=True):
               in degrees or radians.
     """
 
-    defocus_u: Real_ = field(default=10000.0, converter=jnp.asarray)
-    defocus_v: Real_ = field(default=10000.0, converter=jnp.asarray)
+    defocus_u_in_angstroms: Real_ = field(default=10000.0, converter=jnp.asarray)
+    defocus_v_in_angstroms: Real_ = field(default=10000.0, converter=jnp.asarray)
     astigmatism_angle: Real_ = field(default=0.0, converter=jnp.asarray)
     voltage_in_kilovolts: Real_ = field(default=300.0, converter=jnp.asarray)
     spherical_aberration_in_mm: Real_ = field(default=2.7, converter=jnp.asarray)
@@ -59,21 +59,28 @@ class CTF(AbstractFourierOperator, strict=True):
         return 12.2643 / (voltage_in_volts + 0.97845e-6 * voltage_in_volts**2) ** 0.5
 
     def __call__(
-        self, freqs: ImageCoords, defocus_offset: Real_ | float = 0.0
+        self,
+        frequency_grid_in_angstroms: ImageCoords,
+        defocus_offset: Real_ | float = 0.0,
     ) -> RealImage:
+        # Convert degrees to radians
         if self.degrees:  # degrees to radians
             phase_shift = jnp.deg2rad(self.phase_shift)
             astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
-        return _compute_ctf(
-            freqs,
-            self.defocus_u + jnp.asarray(defocus_offset),
-            self.defocus_v + jnp.asarray(defocus_offset),
+        # Convert spherical abberation coefficient to angstroms
+        spherical_aberration_in_angstroms = self.spherical_aberration_in_mm * 1e7
+        # Compute phase shifts for CTF
+        phase_shifts = _compute_phase_shifts(
+            frequency_grid_in_angstroms,
+            self.defocus_u_in_angstroms + jnp.asarray(defocus_offset),
+            self.defocus_v_in_angstroms + jnp.asarray(defocus_offset),
             astigmatism_angle,
             self.wavelength_in_angstroms,
-            self.spherical_aberration_in_mm * 1e7,  # mm to Angstroms
+            spherical_aberration_in_angstroms,
             self.amplitude_contrast_ratio,
             phase_shift,
         )
+        return jnp.sin(phase_shifts)
 
 
 class AbstractOptics(Module, strict=True):
@@ -90,18 +97,10 @@ class AbstractOptics(Module, strict=True):
                  the optics model computes the wavefunction.
     """
 
-    ctf: CTF
-    envelope: FourierOperatorLike
+    ctf: AbstractVar[CTF]
+    envelope: AbstractVar[FourierOperatorLike]
 
     is_linear: AbstractClassVar[bool]
-
-    def __init__(
-        self,
-        ctf: CTF,
-        envelope: Optional[FourierOperatorLike] = None,
-    ):
-        self.ctf = ctf
-        self.envelope = envelope or Constant(1.0)
 
     @property
     def wavelength_in_angstroms(self) -> Real_:
@@ -121,9 +120,11 @@ class AbstractOptics(Module, strict=True):
 class NullOptics(AbstractOptics):
     """A null optics model."""
 
+    ctf: CTF
+    envelope: FourierOperatorLike
+
     is_linear: ClassVar[bool] = True
 
-    @override
     def __init__(self):
         self.ctf = CTF()
         self.envelope = Constant(1.0)
@@ -143,7 +144,18 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
     contrast by applying the CTF directly to the scattering potential.
     """
 
+    ctf: CTF
+    envelope: FourierOperatorLike
+
     is_linear: ClassVar[bool] = True
+
+    def __init__(
+        self,
+        ctf: CTF,
+        envelope: Optional[FourierOperatorLike] = None,
+    ):
+        self.ctf = ctf
+        self.envelope = envelope or Constant(1.0)
 
     @override
     def __call__(
@@ -153,7 +165,6 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
         defocus_offset: Real_ | float = 0.0,
     ) -> ComplexImage:
         """Apply the CTF directly to the scattering potential."""
-        N1, N2 = config.padded_shape
         frequency_grid = config.padded_frequency_grid_in_angstroms.get()
         # Compute the CTF
         ctf = self.envelope(frequency_grid) * self.ctf(
@@ -165,28 +176,37 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
         return fourier_contrast_in_detector_plane
 
 
-def _compute_ctf(
-    freqs: ImageCoords,
-    defocus_u: Real_,
-    defocus_v: Real_,
+def _compute_phase_shifts(
+    frequency_grid_in_angstroms: ImageCoords,
+    defocus_u_in_angstroms: Real_,
+    defocus_v_in_angstroms: Real_,
     astigmatism_angle: Real_,
-    wavelength: Real_,
-    spherical_aberration: Real_,
+    wavelength_in_angstroms: Real_,
+    spherical_aberration_in_angstroms: Real_,
     amplitude_contrast_ratio: Real_,
     phase_shift: Real_,
 ) -> RealImage:
-    k_sqr, theta = cartesian_to_polar(freqs, square=True)
+    k_sqr, azimuth = cartesian_to_polar(frequency_grid_in_angstroms, square=True)
     defocus = 0.5 * (
-        defocus_u
-        + defocus_v
-        + (defocus_u - defocus_v) * jnp.cos(2.0 * (theta - astigmatism_angle))
+        defocus_u_in_angstroms
+        + defocus_v_in_angstroms
+        + (defocus_u_in_angstroms - defocus_v_in_angstroms)
+        * jnp.cos(2.0 * (azimuth - astigmatism_angle))
     )
-    ac = jnp.arctan(
+    amplitude_contrast_phase_shifts = jnp.arctan(
         amplitude_contrast_ratio / jnp.sqrt(1.0 - amplitude_contrast_ratio**2)
     )
-    gamma_defocus = -0.5 * defocus * wavelength * k_sqr
-    gamma_sph = 0.25 * spherical_aberration * (wavelength**3) * (k_sqr**2)
-    gamma = (2 * jnp.pi) * (gamma_defocus + gamma_sph) - phase_shift - ac
-    ctf = jnp.sin(gamma)
+    defocus_phase_shifts = -0.5 * defocus * wavelength_in_angstroms * k_sqr
+    aberration_phase_shifts = (
+        0.25
+        * spherical_aberration_in_angstroms
+        * (wavelength_in_angstroms**3)
+        * (k_sqr**2)
+    )
+    phase_shifts = (
+        (2 * jnp.pi) * (defocus_phase_shifts + aberration_phase_shifts)
+        - phase_shift
+        - amplitude_contrast_phase_shifts
+    )
 
-    return ctf
+    return phase_shifts

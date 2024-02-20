@@ -4,6 +4,7 @@ Routines for interfacing with mdtraj
 
 import numpy as np
 from jaxtyping import Float, Int
+from typing import Optional
 
 
 def get_atom_info_from_mdtraj(
@@ -30,7 +31,7 @@ def get_atom_info_from_mdtraj(
 
 
 def mdtraj_load_from_file(
-    path: str, top: str = None
+    path: str, top: Optional[str] = None
 ) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, "N"]]:
     """
     Loads a file using mdtraj and loads its atomic information

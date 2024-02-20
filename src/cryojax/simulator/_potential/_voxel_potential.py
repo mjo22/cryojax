@@ -18,6 +18,7 @@ from equinox import field, AbstractVar, AbstractClassVar
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from ._scattering_potential import AbstractScatteringPotential
 from .._pose import AbstractPose
@@ -36,7 +37,6 @@ from ...typing import (
     RealVolume,
     RealCubicVolume,
     ComplexCubicVolume,
-    VolumeSliceCoords,
     Real_,
 )
 
@@ -64,8 +64,8 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     @abstractmethod
     def from_real_voxel_grid(
         cls: Type[Self],
-        real_voxel_grid: RealVolume,
-        voxel_size: Real_ | float = 1.0,
+        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float = 1.0,
         **kwargs: Any,
     ) -> Self:
         """Load an `AbstractVoxels` from real-valued 3D electron
@@ -79,7 +79,7 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
         cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
-        voxel_size: Real_ | float,
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
@@ -119,8 +119,8 @@ class AbstractFourierVoxelGrid(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_real_voxel_grid(
         cls: Type[Self],
-        real_voxel_grid: RealVolume,
-        voxel_size: Real_ | float = 1.0,
+        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float = 1.0,
         *,
         pad_scale: float = 1.0,
         pad_mode: str = "constant",
@@ -144,6 +144,10 @@ class AbstractFourierVoxelGrid(AbstractVoxelPotential, strict=True):
                   `real_voxel_grid`, i.e. `fftn(real_voxel_grid)`. Note that the zero
                   frequency component is assumed to be in the corner.
         """
+        # Cast to jax array
+        real_voxel_grid, voxel_size = jnp.asarray(real_voxel_grid), jnp.asarray(
+            voxel_size
+        )
         # Pad template
         if pad_scale < 1.0:
             raise ValueError("pad_scale must be greater than 1.0")
@@ -168,14 +172,14 @@ class AbstractFourierVoxelGrid(AbstractVoxelPotential, strict=True):
             padded_real_voxel_grid.shape[:-1], half_space=False
         )
 
-        return cls(fourier_voxel_grid, frequency_slice, jnp.asarray(voxel_size))
+        return cls(fourier_voxel_grid, frequency_slice, voxel_size)
 
     @classmethod
     def from_atoms(
         cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
-        voxel_size: Real_ | float,
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
@@ -327,20 +331,17 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_real_voxel_grid(
         cls: Type[Self],
-        real_voxel_grid: RealVolume,
-        voxel_size: Real_ | float,
+        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid: CoordinateGrid,
-        *,
-        crop_scale: None,
     ) -> Self: ...
 
     @overload
     @classmethod
     def from_real_voxel_grid(
         cls: Type[Self],
-        real_voxel_grid: RealVolume,
-        voxel_size: Real_ | float,
-        coordinate_grid: None,
+        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
         crop_scale: Optional[float],
     ) -> Self: ...
@@ -348,8 +349,8 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_real_voxel_grid(
         cls: Type[Self],
-        real_voxel_grid: RealVolume,
-        voxel_size: Real_ | float = 1.0,
+        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid: Optional[CoordinateGrid] = None,
         *,
         crop_scale: Optional[float] = None,
@@ -377,6 +378,10 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
         `crop_scale`: Scale factor at which to crop `real_voxel_grid`.
                       Must be a value less than `1.0`.
         """
+        # Cast to jax array
+        real_voxel_grid, voxel_size = jnp.asarray(real_voxel_grid), jnp.asarray(
+            voxel_size
+        )
         # A nasty hack to make NufftProject agree with FourierSliceExtract
         real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 0, 2])
         # Make coordinates if not given
@@ -391,14 +396,14 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
                 real_voxel_grid = crop_to_shape(real_voxel_grid, cropped_shape)
             coordinate_grid = CoordinateGrid(real_voxel_grid.shape[-3:])
 
-        return cls(real_voxel_grid, coordinate_grid, jnp.asarray(voxel_size))
+        return cls(real_voxel_grid, coordinate_grid, voxel_size)
 
     @classmethod
     def from_atoms(
         cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
-        voxel_size: Real_ | float,
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
@@ -477,8 +482,8 @@ class RealVoxelCloud(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_real_voxel_grid(
         cls: Type[Self],
-        real_voxel_grid: RealVolume,
-        voxel_size: Real_ | float = 1.0,
+        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid: Optional[CoordinateGrid] = None,
         *,
         rtol: float = 1e-05,
@@ -505,6 +510,10 @@ class RealVoxelCloud(AbstractVoxelPotential, strict=True):
         `atol`: Argument passed to `jnp.isclose`, used for removing
                 points of zero scattering potential.
         """
+        # Cast to jax array
+        real_voxel_grid, voxel_size = jnp.asarray(real_voxel_grid), jnp.asarray(
+            voxel_size
+        )
         # A nasty hack to make NufftProject agree with FourierSliceExtract
         real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 0, 2])
         # Make coordinates if not given
@@ -516,14 +525,14 @@ class RealVoxelCloud(AbstractVoxelPotential, strict=True):
         flat_potential = real_voxel_grid[nonzero]
         coordinate_list = CoordinateList(coordinate_grid.get()[nonzero])
 
-        return cls(flat_potential, coordinate_list, jnp.asarray(voxel_size))
+        return cls(flat_potential, coordinate_list, voxel_size)
 
     @classmethod
     def from_atoms(
         cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, "N"],
-        voxel_size: Real_ | float,
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
