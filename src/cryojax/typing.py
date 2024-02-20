@@ -22,7 +22,7 @@ RealVector = jt.Float[jt.Array, "N"]
 ComplexVector = jt.Complex[jt.Array, "N"]
 """Type hint for an complex-valued vector."""
 
-Vector = RealVector | ComplexVector
+Vector = jt.Inexact[jt.Array, "N"]
 """Type hint for a vector."""
 
 # 2-d array type hints
@@ -32,7 +32,7 @@ RealImage = jt.Float[jt.Array, "N1 N2"]
 ComplexImage = jt.Complex[jt.Array, "N1 N2"]
 """Type hint for an complex-valued image."""
 
-Image = RealImage | ComplexImage
+Image = jt.Inexact[jt.Array, "N1 N2"]
 """Type hint for an image."""
 
 ImageCoords = jt.Float[jt.Array, "N1 N2 2"]
@@ -45,7 +45,7 @@ RealVolume = jt.Float[jt.Array, "N1 N2 N3"]
 ComplexVolume = jt.Complex[jt.Array, "N1 N2 N3"]
 """Type hint for an complex-valued volume."""
 
-Volume = RealVolume | ComplexVolume
+Volume = jt.Inexact[jt.Array, "N1 N2 N3"]
 """Type hint for an volume."""
 
 RealCubicVolume = jt.Float[jt.Array, "N N N"]
@@ -54,7 +54,7 @@ RealCubicVolume = jt.Float[jt.Array, "N N N"]
 ComplexCubicVolume = jt.Complex[jt.Array, "N N N"]
 """Type hint for a complex-valued cubic volume."""
 
-CubicVolume = RealCubicVolume | ComplexCubicVolume
+CubicVolume = jt.Inexact[jt.Array, "N N N"]
 """Type hint for a cubic volume."""
 
 VolumeCoords = jt.Float[jt.Array, "N1 N2 N3 3"]
@@ -69,12 +69,6 @@ RealCloud = jt.Float[jt.Array, "N"]
 
 IntCloud = jt.Int[jt.Array, "N"]
 """Type hint for an integer-valued point cloud."""
-
-ComplexCloud = jt.Complex[jt.Array, "N"]
-"""Type hint for a complex-valued point cloud."""
-
-Cloud = RealCloud | ComplexCloud
-"""Type hint for a point cloud."""
 
 CloudCoords3D = jt.Float[jt.Array, "N 3"]
 """Type hint for a 3D point cloud coordinate system."""

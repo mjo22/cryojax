@@ -3,14 +3,16 @@ Routines for loading atomic structures.
 Large amounts of the code are adapted from the ioSPI package
 """
 
-import numpy as np
-import jax
-import jax.numpy as jnp
 import os
 import importlib.resources as pkg_resources
-from ..typing import IntCloud
-from jaxtyping import Array, Float
+from typing import Optional
 from functools import partial
+from jaxtyping import Array, Float
+
+import jax
+import jax.numpy as jnp
+
+from ..typing import IntCloud
 
 
 def _load_element_form_factor_params():
@@ -20,9 +22,9 @@ def _load_element_form_factor_params():
     with pkg_resources.as_file(
         pkg_resources.files("cryojax").joinpath("parameters")
     ) as path:
-        atom_form_factor_params = np.load(os.path.join(path, "element_params.npy"))
+        atom_form_factor_params = jnp.load(os.path.join(path, "element_params.npy"))
 
-    return jnp.array(atom_form_factor_params)
+    return jnp.asarray(atom_form_factor_params)
 
 
 default_form_factor_params = _load_element_form_factor_params()
@@ -31,7 +33,7 @@ default_form_factor_params = _load_element_form_factor_params()
 @partial(jax.jit, static_argnums=(1,))
 def get_form_factor_params(
     atom_names: IntCloud,
-    form_factor_params: Float[Array, "2 N k"] = None,
+    form_factor_params: Optional[Float[Array, "2 N k"]] = None,
 ):
     """
     Gets the parameters for the form factor for each atom in atom_names.
