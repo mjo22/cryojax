@@ -72,7 +72,7 @@ Next, the model for the electron microscope.
 from cryojax.image import operators as op
 
 # First, initialize the CTF and its optics model
-ctf = cs.CTF(defocus_u=10000.0, defocus_v=9800.0, astigmatism_angle=10.0, voltage_in_kilovolts=300.0)
+ctf = cs.CTF(defocus_u_in_angstroms=10000.0, defocus_v_in_angstroms=9800.0, astigmatism_angle=10.0, voltage_in_kilovolts=300.0)
 optics = cs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # defocus and b_factor in Angstroms and Angstroms^2, respectively
 # ... now, the model for the exposure to electrons
 dose = cs.ElectronDose(electrons_per_angstrom_squared=100.0)  # Integrated dose rate in electrons / Angstrom^2
@@ -132,7 +132,7 @@ def update_distribution(distribution, params):
     """
     where = lambda model: (
         distribution.pipeline.specimen.pose.view_phi,
-        distribution.pipeline.instrument.optics.ctf.defocus_u,
+        distribution.pipeline.instrument.optics.ctf.defocus_u_in_angstroms,
         distribution.pipeline.integrator.config.pixel_size
     )
     updated_distribution = eqx.tree_at(
