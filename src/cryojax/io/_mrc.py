@@ -11,7 +11,9 @@ from pathlib import Path
 
 def read_array_with_spacing_from_mrc(
     filename: str | Path,
+    *,
     mmap: bool = False,
+    permissive: bool = False,
 ) -> tuple[Float[np.ndarray, "..."], float]:
     """Read MRC data to a numpy array, including the grid spacing
     (the voxel size or pixel size).
@@ -32,13 +34,18 @@ def read_array_with_spacing_from_mrc(
 
     'grid_spacing': The voxel size or pixel size of `data`.
     """
-    array, grid_spacing = _read_array_from_mrc(filename, get_spacing=True, mmap=mmap)
+    array, grid_spacing = _read_array_from_mrc(
+        filename, get_spacing=True, mmap=mmap, permissive=permissive
+    )
 
     return array, grid_spacing
 
 
 def read_array_from_mrc(
-    filename: str | Path, mmap: bool = False
+    filename: str | Path,
+    *,
+    mmap: bool = False,
+    permissive: bool = False,
 ) -> Float[np.ndarray, "..."]:
     """Read MRC data to a numpy array.
 
@@ -52,7 +59,9 @@ def read_array_from_mrc(
 
     'array' : The array stored in the Mrcfile.
     """
-    array = _read_array_from_mrc(filename, get_spacing=False, mmap=mmap)
+    array = _read_array_from_mrc(
+        filename, get_spacing=False, mmap=mmap, permissive=permissive
+    )
 
     return array
 
@@ -124,11 +133,11 @@ def write_volume_to_mrc(
 
 
 def _read_array_from_mrc(
-    filename: str | Path, get_spacing: bool, mmap: bool
+    filename: str | Path, get_spacing: bool, mmap: bool, permissive: bool
 ) -> Float[np.ndarray, "..."] | tuple[Float[np.ndarray, "..."], float]:
     # Read MRC
     open = mrcfile.mmap if mmap else mrcfile.open
-    with open(filename, mode="r") as mrc:
+    with open(filename, mode="r", permissive=permissive) as mrc:
         array = mrc.data
         # Convert to cryojax xyz conventions
         if mrc.is_single_image():
