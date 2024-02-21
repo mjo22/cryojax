@@ -56,9 +56,7 @@ class CustomFilter(AbstractFilter, strict=True):
 
 
 class InverseSincFilter(AbstractFilter, strict=True):
-    """
-    Apply a sinc-correction to an image.
-    """
+    """Apply sinc-correction to an image."""
 
     buffer: Image | Volume
 

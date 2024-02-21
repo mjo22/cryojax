@@ -10,18 +10,18 @@ import equinox as eqx
 from cryojax.simulator import DiscreteEnsemble, DiscreteConformation
 
 
-def test_conformation(density, pose, scattering):
-    density = tuple([density for _ in range(3)])
-    ensemble = DiscreteEnsemble(density, pose, conformation=DiscreteConformation(0))
-    _ = scattering(ensemble)
+def test_conformation(potential, pose, integrator):
+    potential = tuple([potential for _ in range(3)])
+    ensemble = DiscreteEnsemble(potential, pose, conformation=DiscreteConformation(0))
+    _ = integrator(ensemble.potential_in_lab_frame)
 
 
-def test_conformation_vmap(density, pose, scattering):
+def test_conformation_vmap(potential, pose, integrator):
     # Build Ensemble
-    cls = type(density)
-    stacked_density = tuple([density for _ in range(3)])
+    cls = type(potential)
+    stacked_potential = tuple([potential for _ in range(3)])
     ensemble = DiscreteEnsemble(
-        stacked_density,
+        stacked_potential,
         pose,
         conformation=DiscreteConformation(jnp.asarray((0, 1, 2, 1, 0))),
     )
@@ -33,8 +33,8 @@ def test_conformation_vmap(density, pose, scattering):
     @partial(jax.vmap, in_axes=[0, None, None])
     def compute_conformation_stack(vmap, novmap, scattering):
         ensemble = eqx.combine(vmap, novmap)
-        return scattering(ensemble)
+        return scattering(ensemble.potential_in_lab_frame)
 
     # Vmap over conformations
-    image_stack = compute_conformation_stack(vmap, novmap, scattering)
+    image_stack = compute_conformation_stack(vmap, novmap, integrator)
     assert image_stack.shape[0] == ensemble.conformation.get().shape[0]

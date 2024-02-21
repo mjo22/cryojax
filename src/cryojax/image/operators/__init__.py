@@ -24,7 +24,8 @@ from ._operator import (
 from ._fourier_operator import (
     AbstractFourierOperator as AbstractFourierOperator,
     FourierOperatorLike as FourierOperatorLike,
-    FourierGaussian2D as FourierGaussian2D,
+    FourierGaussian as FourierGaussian,
+    Lorenzian as Lorenzian,
     FourierExp2D as FourierExp2D,
     ZeroMode as ZeroMode,
 )

@@ -1,6 +1,5 @@
-from ._scattering_method import (
-    AbstractScatteringMethod as AbstractScatteringMethod,
-    AbstractProjectionMethod as AbstractProjectionMethod,
+from ._potential_integrator import (
+    AbstractPotentialIntegrator as AbstractPotentialIntegrator,
 )
 from ._fourier_slice_extract import (
     FourierSliceExtract as FourierSliceExtract,

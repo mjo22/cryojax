@@ -1,16 +1,16 @@
 """
-Scattering methods using non-uniform FFTs.
+Using non-uniform FFTs for computing volume projections.
 """
 
 import math
-from typing import Any, Union
+from typing import Union
 from equinox import field
 
 import jax.numpy as jnp
 
 from .._config import ImageConfig
-from .._density import RealVoxelCloud, RealVoxelGrid
-from ._scattering_method import AbstractProjectionMethod
+from .._potential import RealVoxelCloud, RealVoxelGrid
+from ._potential_integrator import AbstractPotentialIntegrator
 from ...typing import (
     ComplexImage,
     RealCloud,
@@ -19,10 +19,9 @@ from ...typing import (
 )
 
 
-class NufftProject(AbstractProjectionMethod, strict=True):
-    """
-    Scatter points to image plane using a
-    non-uniform FFT.
+class NufftProject(AbstractPotentialIntegrator, strict=True):
+    """Integrate points onto the exit plane using
+    non-uniform FFTs.
 
     Attributes
     ----------
@@ -34,20 +33,20 @@ class NufftProject(AbstractProjectionMethod, strict=True):
 
     eps: float = field(static=True, default=1e-6)
 
-    def project_density(self, density: RealVoxelGrid | RealVoxelCloud) -> ComplexImage:
+    def __call__(self, potential: RealVoxelGrid | RealVoxelCloud) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
-        if isinstance(density, RealVoxelGrid):
-            shape = density.shape
+        if isinstance(potential, RealVoxelGrid):
+            shape = potential.shape
             fourier_projection = project_with_nufft(
-                density.density_grid.ravel(),
-                density.coordinate_grid.get().reshape((math.prod(shape), 3)),
+                potential.real_voxel_grid.ravel(),
+                potential.coordinate_grid.get().reshape((math.prod(shape), 3)),
                 self.config.padded_shape,
                 eps=self.eps,
             )
-        elif isinstance(density, RealVoxelCloud):
+        elif isinstance(potential, RealVoxelCloud):
             fourier_projection = project_with_nufft(
-                density.density_weights,
-                density.coordinate_list.get(),
+                potential.voxel_weights,
+                potential.coordinate_list.get(),
                 self.config.padded_shape,
                 eps=self.eps,
             )
@@ -55,7 +54,10 @@ class NufftProject(AbstractProjectionMethod, strict=True):
             raise ValueError(
                 "Supported density representations are RealVoxelGrid and VoxelCloud."
             )
-        return fourier_projection
+        # Rescale the voxel size to the ImageConfig.pixel_size
+        return self.config.rescale_to_pixel_size(
+            fourier_projection, potential.voxel_size, is_real=False
+        )
 
 
 def project_with_nufft(
