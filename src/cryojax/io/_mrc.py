@@ -3,6 +3,7 @@ Routines for working with MRC files.
 """
 
 import mrcfile
+import pathlib
 import numpy as np
 from jaxtyping import Float, Array
 from typing import Optional
@@ -34,6 +35,7 @@ def read_array_with_spacing_from_mrc(
 
     'grid_spacing': The voxel size or pixel size of `data`.
     """
+    # Read array and its pixel or voxel size
     array, grid_spacing = _read_array_from_mrc(
         filename, get_spacing=True, mmap=mmap, permissive=permissive
     )
@@ -59,11 +61,53 @@ def read_array_from_mrc(
 
     'array' : The array stored in the Mrcfile.
     """
+    # Read array
     array = _read_array_from_mrc(
         filename, get_spacing=False, mmap=mmap, permissive=permissive
     )
 
     return array
+
+
+def write_image_to_mrc(
+    image: Float[Array, "N1 N2"],
+    pixel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
+    filename: str | Path,
+    overwrite: bool = False,
+    compression: Optional[str] = None,
+):
+    """Write an image stack to an MRC file.
+
+    **Arguments:**
+
+    `image`: The image stack, where the leading dimension indexes the image.
+
+    `pixel_size`: The pixel size of the images in `image_stack`.
+
+    `filename`: The output filename.
+
+    `overwrite`: If `True`, overwrite an existing file.
+
+    `compression`: See `mrcfile.new` for documentation.
+    """
+    # Validate filename as MRC path and get suffix
+    suffix = _validate_filename_and_return_suffix(filename)
+    if suffix != ".mrc":
+        raise IOError(
+            "The suffix for an image in MRC format must be .mrc. "
+            f"Instead, got {suffix}."
+        )
+    if image.ndim != 2:
+        raise ValueError("image.ndim must be equal to 2.")
+    # Convert image stack and pixel size to numpy arrays.
+    image = np.asarray(image)
+    pixel_size = np.asarray(pixel_size)
+    # Convert image stack to MRC xyz conventions
+    image = image.transpose(1, 0)
+    # Create new file and write
+    with mrcfile.new(filename, compression=compression, overwrite=overwrite) as mrc:
+        mrc.set_data(image)
+        mrc.voxel_size = pixel_size
 
 
 def write_image_stack_to_mrc(
@@ -87,6 +131,15 @@ def write_image_stack_to_mrc(
 
     `compression`: See `mrcfile.new` for documentation.
     """
+    # Validate filename as MRC path and get suffix
+    suffix = _validate_filename_and_return_suffix(filename)
+    if suffix != ".mrcs":
+        raise IOError(
+            "The suffix for an image stack in MRC format must be .mrcs. "
+            f"Instead, got {suffix}."
+        )
+    if image_stack.ndim != 3:
+        raise ValueError("image_stack.ndim must be equal to 3.")
     # Convert image stack and pixel size to numpy arrays.
     image_stack = np.asarray(image_stack)
     pixel_size = np.asarray(pixel_size)
@@ -120,6 +173,15 @@ def write_volume_to_mrc(
 
     `compression`: See `mrcfile.new` for documentation.
     """
+    # Validate filename as MRC path and get suffix
+    suffix = _validate_filename_and_return_suffix(filename)
+    if suffix != ".mrc":
+        raise IOError(
+            "The suffix for a volume in MRC format must be .mrc. "
+            f"Instead, got {suffix}."
+        )
+    if voxel_grid.ndim != 3:
+        raise ValueError("voxel_grid.ndim must be equal to 3.")
     # Convert volume and voxel size to numpy arrays.
     voxel_grid = np.asarray(voxel_grid)
     voxel_size = np.asarray(voxel_size)
@@ -135,28 +197,50 @@ def write_volume_to_mrc(
 def _read_array_from_mrc(
     filename: str | Path, get_spacing: bool, mmap: bool, permissive: bool
 ) -> Float[np.ndarray, "..."] | tuple[Float[np.ndarray, "..."], float]:
+    # Validate filename as MRC path and get suffix
+    suffix = _validate_filename_and_return_suffix(filename)
     # Read MRC
     open = mrcfile.mmap if mmap else mrcfile.open
     with open(filename, mode="r", permissive=permissive) as mrc:
         array = mrc.data
         # Convert to cryojax xyz conventions
         if mrc.is_single_image():
+            if suffix != ".mrc":
+                raise IOError(
+                    "The suffix for an image in MRC format must be .mrc. "
+                    f"Instead, got {suffix}."
+                )
             array = array.transpose(1, 0)
             grid_spacing_per_dimension = np.asarray(
                 [mrc.voxel_size.y, mrc.voxel_size.x], dtype=float
             )
         elif mrc.is_image_stack():
+            if suffix != ".mrcs":
+                raise IOError(
+                    "The suffix for an image stack in MRC format must be .mrcs. "
+                    f"Instead, got {suffix}."
+                )
             array = array.transpose(0, 2, 1)
             grid_spacing_per_dimension = np.asarray(
                 [mrc.voxel_size.y, mrc.voxel_size.x], dtype=float
             )
         elif mrc.is_volume():
+            if suffix != ".mrc":
+                raise IOError(
+                    "The suffix for a volume in MRC format must be .mrc. "
+                    f"Instead, got {suffix}."
+                )
             array = array.transpose(2, 1, 0)
             grid_spacing_per_dimension = np.asarray(
                 [mrc.voxel_size.z, mrc.voxel_size.y, mrc.voxel_size.x],
                 dtype=float,
             )
         elif mrc.is_volume_stack():
+            if suffix != ".mrcs":
+                raise IOError(
+                    "The suffix for a volume stack in MRC format must be .mrcs. "
+                    f"Instead, got {suffix}."
+                )
             array = array.transpose(0, 3, 2, 1)
             grid_spacing_per_dimension = np.asarray(
                 [mrc.voxel_size.z, mrc.voxel_size.y, mrc.voxel_size.x],
@@ -164,8 +248,8 @@ def _read_array_from_mrc(
             )
         else:
             raise ValueError(
-                f"Mrcfile could not be identified as an image, image stack, volume, or volume stack. "
-                "Run mrcfile.validate(...) to make sure {filename} is a valid MRC file."
+                "Mrcfile could not be identified as an image, image stack, volume, or volume stack. "
+                f"Run mrcfile.validate(...) to make sure {filename} is a valid MRC file."
             )
 
         if get_spacing:
@@ -182,3 +266,14 @@ def _read_array_from_mrc(
         else:
             # ... otherwise, just return
             return array.astype(np.float64)
+
+
+def _validate_filename_and_return_suffix(filename: str | Path):
+    # Get suffixes
+    suffixes = pathlib.Path(filename).suffixes
+    # Make sure that leading suffix is valid MRC suffix
+    if len(suffixes) == 0 or suffixes[0] not in [".mrc", ".mrcs"]:
+        raise IOError(
+            f"Filename should include .mrc or .mrcs suffix. Got filename {filename}."
+        )
+    return suffixes[0]
