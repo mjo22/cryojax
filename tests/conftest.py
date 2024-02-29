@@ -171,5 +171,5 @@ def filtered_and_masked_model(
 
 @pytest.fixture
 def test_image(noisy_model):
-    image = noisy_model.sample(jr.PRNGKey(1234), view_cropped=False)
+    image = noisy_model.sample(jr.PRNGKey(1234))
     return rfftn(image)
