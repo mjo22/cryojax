@@ -14,7 +14,7 @@ from jaxtyping import PRNGKeyArray
 from ._distribution import AbstractDistribution
 from ...image.operators import FourierOperatorLike, Constant
 from ...simulator import AbstractPipeline
-from ...typing import Real_, RealImage, ComplexImage
+from ...typing import Real_, Image, ComplexImage
 
 
 class IndependentFourierGaussian(AbstractDistribution, strict=True):
@@ -45,17 +45,26 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         self.contrast_scale = contrast_scale or jnp.asarray(1.0)
 
     @override
-    def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
+    def render(self, *, get_real: bool = True) -> Image:
+        """Render the image formation model."""
+        image = self.pipeline.render(view_cropped=False, get_real=False)
+        return self.contrast_scale * self.pipeline.crop_and_apply_operators(
+            image, normalize=True, get_real=get_real
+        )
+
+    @override
+    def sample(self, key: PRNGKeyArray, *, get_real: bool = True) -> Image:
         """Sample from the Gaussian noise model."""
         N_pix = np.prod(self.pipeline.integrator.config.padded_shape)
         freqs = self.pipeline.integrator.config.padded_frequency_grid_in_angstroms.get()
         # Compute the zero mean variance and scale up to be independent of the number of pixels
         std = jnp.sqrt(N_pix * self.variance(freqs))
-        noise = std * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0)
-        image = self.contrast_scale * self.pipeline.render(
-            view_cropped=False, get_real=False
+        noise = self.pipeline.crop_and_apply_operators(
+            std * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0),
+            get_real=get_real,
         )
-        return self.pipeline.crop_and_apply_operators(image + noise, **kwargs)
+        image = self.render(get_real=get_real)
+        return image + noise
 
     @override
     def log_probability(self, observed: ComplexImage) -> Real_:
@@ -66,23 +75,17 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         `observed` : The observed data in fourier space. `observed.shape`
                      must match `ImageConfig.padded_shape`.
         """
-        pipeline = self.pipeline
         N_pix = np.prod(self.pipeline.integrator.config.padded_shape)
         padded_freqs = (
-            pipeline.integrator.config.padded_frequency_grid_in_angstroms.get()
+            self.pipeline.integrator.config.padded_frequency_grid_in_angstroms.get()
         )
-        freqs = pipeline.integrator.config.frequency_grid_in_angstroms.get()
-        if observed.shape != padded_freqs.shape[:-1]:
-            raise ValueError("Shape of observed must match ImageConfig.padded_shape")
+        freqs = self.pipeline.integrator.config.frequency_grid_in_angstroms.get()
         # Compute the variance and scale up to be independent of the number of pixels
         variance = N_pix * self.variance(freqs)
-        # Get residuals
-        simulated = self.contrast_scale * pipeline.render(
-            view_cropped=False, get_real=False
-        )
+        # Create simulated data
+        simulated = self.render(get_real=False)
+        # Compute residuals
         residuals = simulated - observed
-        # Apply filters, crop, and mask
-        residuals = pipeline.crop_and_apply_operators(residuals, get_real=False)
         # Compute standard normal random variables
         squared_standard_normal_per_mode = jnp.abs(residuals) ** 2 / (2 * variance)
         # Compute the log-likelihood for each fourier mode. Divide by the

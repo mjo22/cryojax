@@ -9,7 +9,7 @@ from jaxtyping import PRNGKeyArray
 from equinox import Module, AbstractVar
 
 from ...simulator import AbstractPipeline
-from ...typing import Real_, RealImage, Image
+from ...typing import Real_, Image
 
 
 class AbstractDistribution(Module, strict=True):
@@ -32,7 +32,7 @@ class AbstractDistribution(Module, strict=True):
         raise NotImplementedError
 
     @abstractmethod
-    def sample(self, key: PRNGKeyArray, **kwargs: Any) -> RealImage:
+    def sample(self, key: PRNGKeyArray, *, get_real: bool = True) -> Image:
         """
         Sample from the distribution.
 
@@ -42,4 +42,9 @@ class AbstractDistribution(Module, strict=True):
             The RNG key or key(s). See ``ImagePipeline.sample`` for
             documentation.
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def render(self, *, get_real: bool = True) -> Image:
+        """Render the image formation model."""
         raise NotImplementedError
