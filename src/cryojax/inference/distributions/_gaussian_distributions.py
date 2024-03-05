@@ -47,9 +47,8 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
     @override
     def render(self, *, get_real: bool = True) -> Image:
         """Render the image formation model."""
-        image = self.pipeline.render(view_cropped=False, get_real=False)
-        return self.contrast_scale * self.pipeline.crop_and_apply_operators(
-            image, normalize=True, get_real=get_real
+        return self.contrast_scale * self.pipeline.render(
+            normalize=True, get_real=get_real
         )
 
     @override

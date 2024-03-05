@@ -80,7 +80,7 @@ class CTF(AbstractFourierOperator, strict=True):
             self.amplitude_contrast_ratio,
             phase_shift,
         )
-        return jnp.sin(phase_shifts)
+        return jnp.sin(phase_shifts).at[0, 0].set(0.0)
 
 
 class AbstractOptics(Module, strict=True):

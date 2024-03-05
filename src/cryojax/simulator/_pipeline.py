@@ -134,27 +134,46 @@ class AbstractPipeline(Module, strict=True):
         in either real or fourier space.
         """
         config = self.integrator.config
-        # Apply filter
-        if self.filter is not None:
-            image = self.filter(image)
-        # Crop and apply mask
         if self.mask is None and config.padded_shape == config.shape:
             # ... if there are no masks and we don't need to crop,
             # minimize moving back and forth between real and fourier space
+            if self.filter is not None:
+                image = self.filter(image)
             if normalize:
                 image = normalize_image(
                     image, is_real=False, shape_in_real_space=config.shape
                 )
             return irfftn(image, s=config.shape) if get_real else image
         else:
-            # ... otherwise, inverse transform, mask, crop, and normalize
+            # ... otherwise, apply filter, crop, and mask, again trying to
+            # minimize moving back and forth between real and fourier space
+            is_filter_applied = True if self.filter is None else False
+            if (
+                self.filter is not None
+                and self.filter.buffer.shape
+                == config.padded_frequency_grid.get().shape[0:2]
+            ):
+                # ... apply the filter here if it is the same size as the padded coordinates
+                is_filter_applied = True
+                image = self.filter(image)
             image = irfftn(image, s=config.padded_shape)
             if self.mask is not None:
                 image = self.mask(image)
             image = config.crop_to_shape(image)
-            if normalize:
-                image = normalize_image(image, is_real=True)
-            return image if get_real else rfftn(image)
+            if is_filter_applied or self.filter is None:
+                # ... normalize and return if the filter has already been applied
+                if normalize:
+                    image = normalize_image(image, is_real=True)
+                return image if get_real else rfftn(image)
+            else:
+                # ... otherwise, apply the filter here, normalize, and return. assume
+                # the filter is the same size as the non-padded coordinates
+                image = self.filter(rfftn(image))
+                if normalize:
+                    image = normalize_image(
+                        image, is_real=False, shape_in_real_space=config.shape
+                    )
+                return irfftn(image, s=config.shape) if get_real else image
 
     def _get_final_image(
         self,
