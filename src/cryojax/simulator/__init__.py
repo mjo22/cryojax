@@ -5,7 +5,8 @@ from ._pose import (
     EulerPose as EulerPose,
     QuaternionPose as QuaternionPose,
     MatrixPose as MatrixPose,
-    make_euler_rotation as make_euler_rotation,
+    ExponentialPose as ExponentialPose,
+    AxisAnglePose as AxisAnglePose,
 )
 
 from ._conformation import (

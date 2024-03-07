@@ -6,7 +6,7 @@ from pycistem.core import CTF as cisCTF, Image, AnglesAndShifts
 
 import cryojax.simulator as cs
 from cryojax.io import read_array_with_spacing_from_mrc
-from cryojax.simulator import CTF, make_euler_rotation
+from cryojax.simulator import CTF, EulerPose
 from cryojax.image import powerspectrum, irfftn
 from cryojax.coordinates import make_frequencies, cartesian_to_polar
 
@@ -98,8 +98,10 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
     matrix[1, 2] = sin_theta * sin_phi
     matrix[2, 2] = cos_theta
     # Generate rotation that matches this rotation matrix
-    rotation = make_euler_rotation(phi, theta, psi, convention="zyz", degrees=False)
-    np.testing.assert_allclose(rotation.as_matrix(), matrix.T, atol=1e-12)
+    pose = EulerPose(
+        view_phi=phi, view_theta=theta, view_psi=psi, convention="zyz", degrees=False
+    )
+    np.testing.assert_allclose(pose.rotation.as_matrix(), matrix.T, atol=1e-12)
 
 
 @pytest.mark.parametrize(

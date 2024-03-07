@@ -3,7 +3,7 @@ Routines that compute coordinate rotations and translations.
 """
 
 from abc import abstractmethod
-from typing import Union, overload
+from typing import overload
 from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
@@ -175,13 +175,18 @@ class EulerPose(AbstractPose, strict=True):
     @override
     def rotation(self) -> SO3:
         """Generate a rotation from a set of Euler angles."""
-        R = make_euler_rotation(
-            self.view_phi,
-            self.view_theta,
-            self.view_psi,
-            degrees=self.degrees,
-            convention=self.convention,
-        )
+        phi, theta, psi = self.view_phi, self.view_theta, self.view_psi
+        # Convert to radians.
+        if self.degrees:
+            phi = jnp.deg2rad(phi)
+            theta = jnp.deg2rad(theta)
+            psi = jnp.deg2rad(psi)
+        # Get sequence of rotations
+        R1, R2, R3 = [
+            getattr(SO3, f"from_{axis}_radians")(angle).inverse()
+            for axis, angle in zip(self.convention, [phi, theta, psi])
+        ]
+        R = R3 @ R2 @ R1
         return R.inverse() if self.inverse else R
 
     @override
@@ -199,6 +204,7 @@ class QuaternionPose(AbstractPose, strict=True):
     Attributes
     ----------
     wxyz :
+        The unit quaternion.
     """
 
     offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
@@ -212,9 +218,8 @@ class QuaternionPose(AbstractPose, strict=True):
     @cached_property
     @override
     def rotation(self) -> SO3:
-        """Generate rotation from a unit quaternion."""
-        q_norm = jnp.linalg.norm(self.wxyz)
-        R = SO3(wxyz=self.wxyz / q_norm)
+        """Generate rotation from the unit quaternion."""
+        R = SO3(wxyz=self.wxyz)
         return R.inverse() if self.inverse else R
 
     @override
@@ -237,7 +242,7 @@ class MatrixPose(AbstractPose, strict=True):
     offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
     offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
 
-    matrix: Float[Array, "3 3"] = field(
+    rotation_matrix: Float[Array, "3 3"] = field(
         default_factory=lambda: jnp.eye(3), converter=jnp.asarray
     )
 
@@ -247,34 +252,96 @@ class MatrixPose(AbstractPose, strict=True):
     @override
     def rotation(self) -> SO3:
         """Generate rotation from a rotation matrix."""
-        R = SO3.from_matrix(self.matrix)
+        R = SO3.from_matrix(self.rotation_matrix)
         return R.inverse() if self.inverse else R
 
     @override
     @classmethod
     def from_rotation(cls, rotation: SO3):
-        return cls(matrix=rotation.as_matrix())
+        return cls(rotation_matrix=rotation.as_matrix())
 
 
-def make_euler_rotation(
-    phi: Real_,
-    theta: Real_,
-    psi: Real_,
-    convention: str = "zyz",
-    degrees: bool = False,
-) -> SO3:
-    """Helper routine to generate a rotation in a particular
-    convention.
+class ExponentialPose(AbstractPose, strict=True):
     """
-    # Convert to radians.
-    if degrees:
-        phi = jnp.deg2rad(phi)
-        theta = jnp.deg2rad(theta)
-        psi = jnp.deg2rad(psi)
-    # Get sequence of rotations, converting to cryojax conventions
-    # from jaxlie
-    R1, R2, R3 = [
-        getattr(SO3, f"from_{axis}_radians")(angle).inverse()
-        for axis, angle in zip(convention, [phi, theta, psi])
-    ]
-    return R3 @ R2 @ R1
+    An image pose parameterized by exponential (tangent-space)
+    coordinates.
+
+    Attributes
+    ----------
+    tangent:
+        The tangent vector parameterization.
+    """
+
+    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
+
+    tangent: Float[Array, "3"] = field(default=(0.0, 0.0, 0.0), converter=jnp.asarray)
+
+    inverse: bool = field(static=True, default=False)
+    degrees: bool = field(static=True, default=True)
+
+    @cached_property
+    @override
+    def rotation(self) -> SO3:
+        """Generate rotation from a rotation matrix."""
+        tangent = self.tangent
+        if self.degrees:
+            tangent = jnp.deg2rad(tangent)
+        R = SO3.exp(self.tangent)
+        return R.inverse() if self.inverse else R
+
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3):
+        return cls(tangent=rotation.log())
+
+
+class AxisAnglePose(AbstractPose, strict=True):
+    """
+    An image pose parameterized by axis-angle coordinates.
+
+    Attributes
+    ----------
+    axis:
+        The axis about which to rotate.
+    angle:
+        The angle to rotate about `axis`.
+    """
+
+    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
+
+    axis: Float[Array, "3"] = field(default=(1.0, 0.0, 0.0), converter=jnp.asarray)
+    angle: Real_ = field(default=0.0, converter=jnp.asarray)
+
+    inverse: bool = field(static=True, default=False)
+    degrees: bool = field(static=True, default=True)
+
+    @cached_property
+    @override
+    def rotation(self) -> SO3:
+        """Generate rotation in the axis-angle representation."""
+        axis, angle = self.axis, self.angle
+        if self.degrees:
+            angle = jnp.deg2rad(angle)
+        n_x, n_y, n_z = axis
+        rotation_generator = jnp.asarray(
+            ((0.0, -n_z, n_y), (n_z, 0.0, -n_x), (-n_y, n_x, 0.0)), dtype=float
+        ).T
+        c, s = jnp.cos(angle / 2), jnp.sin(angle / 2)
+        rotation_matrix = (
+            jnp.eye(3)
+            + 2 * c * s * rotation_generator
+            + 2 * s * s * rotation_generator @ rotation_generator
+        )
+        R = SO3.from_matrix(rotation_matrix)
+        return R.inverse() if self.inverse else R
+
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3):
+        raise NotImplementedError(
+            "Cannot convert SO3 object to axis-angle representation."
+        )
