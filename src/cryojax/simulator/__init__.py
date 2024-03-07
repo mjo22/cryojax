@@ -7,6 +7,7 @@ from ._pose import (
     MatrixPose as MatrixPose,
     ExponentialPose as ExponentialPose,
     AxisAnglePose as AxisAnglePose,
+    SO3Pose as SO3Pose,
 )
 
 from ._conformation import (
