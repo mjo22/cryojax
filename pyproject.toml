@@ -5,6 +5,7 @@ authors = [{ name = "Michael O'Brien", email = "michaelobrien@g.harvard.edu" }]
 readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
+keywords = ["jax", "equinox", "cryo-EM", "electron-microscopy"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -29,7 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest", "pycistem", "gemmi"]
-docs = ["mkdocs", "mkdocstrings-python", "mkdocs-material"]
+docs = ["mkdocs", "mkdocstrings-python", "mknotebooks", "mkdocs-material"]
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]

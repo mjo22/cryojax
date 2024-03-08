@@ -15,13 +15,13 @@ config.update("jax_enable_x64", True)
 
 @pytest.fixture
 def sample_mrc_path():
-    return os.path.join(os.path.dirname(__file__), "data", "3j9g_bfm1_ps4_4.mrc")
+    return os.path.join(os.path.dirname(__file__), "data", "3j9g_potential_ps4_4.mrc")
 
 
 @pytest.fixture
 def sample_subunit_mrc_path():
     return os.path.join(
-        os.path.dirname(__file__), "data", "3j9g_subunit_bfm1_ps4_4.mrc"
+        os.path.dirname(__file__), "data", "3j9g_subunit_potential_ps4_4.mrc"
     )
 
 

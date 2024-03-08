@@ -4,8 +4,8 @@ theme:
         - navigation.sections  # Sections are included in the navigation on the left.
         - toc.integrate  # Table of contents is integrated on the left; does not appear separately on the right.
 
-site_name: cryojax
-site_description: The documentation for cryojax.
+site_name: CryoJAX
+site_description: The documentation for CryoJAX.
 site_author: Michael O'Brien
 site_url: https://cryojax.github.io
 
@@ -52,6 +52,10 @@ plugins:
         
 nav:
     - 'index.md'
+    - Examples:
+        - Introductory:
+            - Simulate an image: 'examples/simulate-image.ipynb'
+        - Advanced:
+            - Simulate a "micrograph": 'examples/simulate-micrograph.ipynb'
     - Simulator API:
-        - Scattering potential:
-            - 'api/simulator/scattering_potential.md'
+        - 'api/simulator/scattering_potential.md'
