@@ -52,6 +52,10 @@ plugins:
         
 nav:
     - 'index.md'
+    - Examples:
+        - Introductory:
+            - Simulate an image: 'examples/simulate-image.ipynb'
+        - Advanced:
+            - Simulate a micrograph: 'examples/simulate-micrograph.ipynb'
     - Simulator API:
-        - Scattering potential:
-            - 'api/simulator/scattering_potential.md'
+        - 'api/simulator/scattering_potential.md'
