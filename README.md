@@ -60,7 +60,9 @@ We can now instantiate the representation of a biological specimen, which also i
 
 ```python
 # First instantiate the pose. Translations are in Angstroms, angles are in degrees
-pose = cs.EulerAnglePose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0, view_psi=-10.0, degrees=True)
+pose = cs.EulerAnglePose(
+    offset_x_in_angstroms=5.0, offset_y_in_angstroms=-3.0, view_phi=20.0, view_theta=80.0, view_psi=-10.0, degrees=True
+)
 # ... now, build the biological specimen
 specimen = cs.Specimen(potential, pose)
 ```
