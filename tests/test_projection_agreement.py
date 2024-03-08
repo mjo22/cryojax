@@ -12,7 +12,7 @@ def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
     potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
     assert control_shape == potential.fourier_voxel_grid.shape[0:2]
-    pose = cs.EulerPose()
+    pose = cs.EulerAnglePose()
     specimen = cs.Specimen(potential, pose)
     scattering_control = cs.FourierSliceExtract(
         cs.ImageConfig(control_shape, pixel_size)

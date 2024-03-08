@@ -2,12 +2,11 @@ from ._config import ImageConfig as ImageConfig
 
 from ._pose import (
     AbstractPose as AbstractPose,
-    EulerPose as EulerPose,
+    EulerAnglePose as EulerAnglePose,
     QuaternionPose as QuaternionPose,
     MatrixPose as MatrixPose,
-    ExponentialPose as ExponentialPose,
     AxisAnglePose as AxisAnglePose,
-    SO3Pose as SO3Pose,
+    RotationGroupPose as RotationGroupPose,
 )
 
 from ._conformation import (

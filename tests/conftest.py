@@ -107,7 +107,7 @@ def instrument():
 
 @pytest.fixture
 def pose():
-    return cs.EulerPose(
+    return cs.EulerAnglePose(
         view_phi=30.0,
         view_theta=100.0,
         view_psi=-10.0,

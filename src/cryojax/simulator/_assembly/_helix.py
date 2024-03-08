@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 
 from .._specimen import AbstractSpecimen
-from .._pose import AbstractPose, EulerPose
+from .._pose import AbstractPose, EulerAnglePose
 from .._conformation import AbstractConformation
 from ._assembly import AbstractAssembly
 
@@ -79,7 +79,7 @@ class Helix(AbstractAssembly, strict=True):
         degrees: bool = True,
     ):
         self.subunit = subunit
-        self.pose = pose or EulerPose()
+        self.pose = pose or EulerAnglePose()
         self.rise = rise
         self.twist = twist
         self.conformation = conformation
