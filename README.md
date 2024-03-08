@@ -43,7 +43,7 @@ First, instantiate the electron density representation and its respective method
 import jax
 import jax.numpy as jnp
 import cryojax.simulator as cs
-from cryojax.io import read_array_with_spacing_from_mrc
+from cryojax.io import read_volume_with_voxel_size_from_mrc
 
 # Instantiate the scattering potential.
 filename = "example_scattering_potential.mrc"
@@ -60,7 +60,7 @@ We can now instantiate the representation of a biological specimen, which also i
 
 ```python
 # First instantiate the pose. Translations are in Angstroms, angles are in degrees
-pose = cs.EulerAnglePose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0, view_psi=-10.0)
+pose = cs.EulerAnglePose(offset_x=5.0, offset_y=-3.0, view_phi=20.0, view_theta=80.0, view_psi=-10.0, degrees=True)
 # ... now, build the biological specimen
 specimen = cs.Specimen(potential, pose)
 ```
@@ -131,13 +131,19 @@ def update_distribution(distribution, params):
     """
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
-    where = lambda model: (
-        distribution.pipeline.specimen.pose.view_phi,
-        distribution.pipeline.instrument.optics.ctf.defocus_u_in_angstroms,
-        distribution.pipeline.integrator.config.pixel_size
+    updated_pose = cs.EulerAnglePose(
+        offset_x=params["t_x"],
+        offset_y=params["t_y"],
+        view_phi=params["phi"],
+        view_theta=params["theta"],
+        view_psi=params["psi"],
+    )
+    where = lambda d: (
+        d.pipeline.specimen.pose,
+        d.pipeline.integrator.config.pixel_size
     )
     updated_distribution = eqx.tree_at(
-        where, distribution, (params["view_phi"], params["defocus_u"], params["pixel_size"])
+        where, distribution, (updated_pose, params["pixel_size"])
     )
     return updated_distribution
 ```
@@ -147,20 +153,23 @@ We can now create the loss and differentiate it with respect to the parameters.
 ```python
 @jax.jit
 def negative_log_likelihood(params, distribution, observed):
-    distribution = update_distribution(distribution, params)
-    return -distribution.log_likelihood(observed)
+    updated_distribution = update_distribution(distribution, params)
+    return -updated_distribution.log_likelihood(observed)
 ```
 
-Finally, we can evaluate an updated set of parameters.
+Finally, we can evaluate the negative log likelihood at an updated set of parameters.
 
 ```python
 params = dict(
-    view_phi=jnp.asarray(jnp.pi),
-    defocus_u=jnp.asarray(9000.0),
-    pixel_size=jnp.asarray(density.voxel_size+0.02),
+    offset_x=jnp.asarray(1.2),
+    offset_y=jnp.asarray(-2.3),
+    phi=jnp.asarray(180.0),
+    theta=jnp.asarray(30.0),
+    psi=jnp.asarray(-20.0),
+    pixel_size=jnp.asarray(potential.voxel_size+0.02),
 )
-loss = negative_log_likelihood(params, distribution, observed)
-grads = jax.grad(negative_log_likelihood)(params, distribution, observed)
+loss_fn = jax.value_and_grad(negative_log_likelihood)
+loss, gradients = loss_fn(params, distribution, observed)
 ```
 
 To summarize, this example creates a loss function at an updated set of parameters. In general, any `cryojax` object may contain model parameters and there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
