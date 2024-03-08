@@ -11,6 +11,10 @@ The core of this package is its ability to model image formation in cryo-EM. The
 
 Dig a little deeper and you'll find that `cryojax` aims to be a fully extensible modeling language for cryo-EM image formation. It implements a collection of abstract interfaces, which aim to be general enough to support any level of modeling complexity—from simple linear image formation to the most realistic physical models in the field. Best of all, these interfaces are all part of the public API. Users can create their own extensions to `cryojax`, tailored to their specific use-case!
 
+## Documentation
+
+See the documentation at [https://mjo22.github.io/cryojax/](https://mjo22.github.io/cryojax/). It is a work-in-progress, so thank you for your patience!
+
 ## Installation
 
 Installing `cryojax` is simple. To start, I recommend creating a new virtual environment. For example, you could do this with `conda`.
@@ -125,7 +129,7 @@ observed = rfftn(...)  # for this example, read in observed data and take FFT
 log_likelihood = distribution.log_likelihood(observed)
 ```
 
-For more advanced image simulation examples and to understand the many features in this library, see the documentation (coming soon!).
+For more advanced image simulation examples and to understand the many features in this library, see the [documentation](https://mjo22.github.io/cryojax/).
 
 ## Creating a loss function
 
