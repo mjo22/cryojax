@@ -7,7 +7,7 @@
 
 ## Summary
 
-The core of this package is its ability to model image formation in cryo-EM. These models can be fed into standard sampling, optimization, and model building libraries in `jax`, such as [`blackjax`](https://github.com/blackjax-devs/blackjax), [`optimistix`](https://github.com/patrick-kidger/optimistix), or [`numpyro`](https://github.com/pyro-ppl/numpyro).
+The core of this package is its ability to model image formation in cryo-EM. These models can be fed into standard sampling and optimization libraries, and model building libraries in `jax`, such as [`blackjax`](https://github.com/blackjax-devs/blackjax), [`optimistix`](https://github.com/patrick-kidger/optimistix), or [`numpyro`](https://github.com/pyro-ppl/numpyro).
 
 Dig a little deeper and you'll find that `cryojax` aims to be a fully extensible modeling language for cryo-EM image formation. It implements a collection of abstract interfaces, which aim to be general enough to support any level of modeling complexity—from simple linear image formation to the most realistic physical models in the field. Best of all, these interfaces are all part of the public API. Users can create their own extensions to `cryojax`, tailored to their specific use-case!
 

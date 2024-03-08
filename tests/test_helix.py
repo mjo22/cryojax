@@ -160,7 +160,7 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
                 view_phi=helix.twist,
                 view_theta=90.0,
                 view_psi=0.0,
-                offset_x=helix.rise,
+                offset_x_in_angstroms=helix.rise,
             ),
         ),
         atol=1e-1,

@@ -29,8 +29,8 @@ def test_translation_agreement():
     np.testing.assert_allclose(
         quat.rotation.as_matrix(), axis_angle.rotation.as_matrix()
     )
-    np.testing.assert_allclose(quat.offset, matrix.offset)
-    np.testing.assert_allclose(quat.offset, axis_angle.offset)
+    np.testing.assert_allclose(quat.offset_in_angstroms, matrix.offset_in_angstroms)
+    np.testing.assert_allclose(quat.offset_in_angstroms, axis_angle.offset_in_angstroms)
 
 
 def test_pose_conversion():

@@ -97,7 +97,10 @@ class AbstractAssembly(eqx.Module, strict=True):
         # Function to construct a MatrixPose, vmapped over leading dimension
         make_assembly_poses = jax.vmap(
             lambda pos, rot: MatrixPose(
-                offset_x=pos[0], offset_y=pos[1], offset_z=pos[2], rotation_matrix=rot
+                offset_x_in_angstroms=pos[0],
+                offset_y_in_angstroms=pos[1],
+                offset_z_in_angstroms=pos[2],
+                rotation_matrix=rot,
             )
         )
 
