@@ -86,7 +86,7 @@ class AbstractAssembly(eqx.Module, strict=True):
         # Transform the subunit positions by pose of the helix
         transformed_positions = (
             self.pose.rotate_coordinates(self.positions, inverse=False)
-            + self.pose.offset
+            + self.pose.offset_in_angstroms
         )
         # Transform the subunit rotations by the pose of the helix. This operation
         # left multiplies by the pose of the helix, taking care that first subunits

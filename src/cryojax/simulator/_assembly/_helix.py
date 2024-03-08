@@ -100,7 +100,7 @@ class Helix(AbstractAssembly, strict=True):
             self.rise,
             self.twist,
             n_subunits_per_start=self.n_subunits // self.n_start,
-            initial_displacement=self.subunit.pose.offset,
+            initial_displacement=self.subunit.pose.offset_in_angstroms,
             n_start=self.n_start,
             degrees=self.degrees,
         )

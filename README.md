@@ -132,8 +132,8 @@ def update_distribution(distribution, params):
     Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
     """
     updated_pose = cs.EulerAnglePose(
-        offset_x=params["t_x"],
-        offset_y=params["t_y"],
+        offset_x_in_angstroms=params["t_x"],
+        offset_y_in_angstroms=params["t_y"],
         view_phi=params["phi"],
         view_theta=params["theta"],
         view_psi=params["psi"],
@@ -161,8 +161,8 @@ Finally, we can evaluate the negative log likelihood at an updated set of parame
 
 ```python
 params = dict(
-    offset_x=jnp.asarray(1.2),
-    offset_y=jnp.asarray(-2.3),
+    t_x=jnp.asarray(1.2),
+    t_y=jnp.asarray(-2.3),
     phi=jnp.asarray(180.0),
     theta=jnp.asarray(30.0),
     psi=jnp.asarray(-20.0),

@@ -111,8 +111,8 @@ def pose():
         view_phi=30.0,
         view_theta=100.0,
         view_psi=-10.0,
-        offset_x=10.0,
-        offset_y=-5.0,
+        offset_x_in_angstroms=10.0,
+        offset_y_in_angstroms=-5.0,
     )
 
 
