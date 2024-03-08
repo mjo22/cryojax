@@ -5,8 +5,8 @@ from jax import config
 from pycistem.core import CTF as cisCTF, Image, AnglesAndShifts
 
 import cryojax.simulator as cs
-from cryojax.io import read_array_with_spacing_from_mrc
-from cryojax.simulator import CTF, make_euler_rotation
+from cryojax.io import read_volume_with_voxel_size_from_mrc
+from cryojax.simulator import CTF, EulerAnglePose
 from cryojax.image import powerspectrum, irfftn
 from cryojax.coordinates import make_frequencies, cartesian_to_polar
 
@@ -57,6 +57,7 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
     cisTEM_ctf = np.vectorize(
         lambda k_sqr, theta: cisTEM_optics.Evaluate(k_sqr, theta)
     )(k_sqr.ravel() * pixel_size**2, theta.ravel()).reshape(freqs.shape[0:2])
+    cisTEM_ctf[0, 0] = 0.0
 
     # Compute cryojax and cisTEM power spectrum
     radial_freqs = jnp.linalg.norm(freqs, axis=-1)
@@ -97,8 +98,10 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
     matrix[1, 2] = sin_theta * sin_phi
     matrix[2, 2] = cos_theta
     # Generate rotation that matches this rotation matrix
-    rotation = make_euler_rotation(phi, theta, psi, convention="zyz", degrees=False)
-    np.testing.assert_allclose(rotation.as_matrix(), matrix.T, atol=1e-12)
+    pose = EulerAnglePose(
+        view_phi=phi, view_theta=theta, view_psi=psi, convention="zyz", degrees=False
+    )
+    np.testing.assert_allclose(pose.rotation.as_matrix(), matrix.T, atol=1e-12)
 
 
 @pytest.mark.parametrize(
@@ -107,9 +110,9 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
 )
 def test_compute_projection_with_cistem(phi, theta, psi, sample_mrc_path, pixel_size):
     # cryojax
-    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
+    real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
     potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
-    pose = cs.EulerPose(view_phi=phi, view_theta=theta, view_psi=psi)
+    pose = cs.EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
     specimen = cs.Specimen(potential, pose)
     box_size = potential.shape[0]
     config = cs.ImageConfig((box_size, box_size), pixel_size)

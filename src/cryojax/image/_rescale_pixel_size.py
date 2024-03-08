@@ -4,6 +4,7 @@ Routines for rescaling image pixel size.
 
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate
 
@@ -16,7 +17,6 @@ def rescale_pixel_size(
     new_pixel_size: Real_,
     method: str = "bicubic",
     antialias: bool = False,
-    **kwargs: Any,
 ) -> RealImage:
     """
     Measure an image at a given pixel size using interpolation.
@@ -34,8 +34,10 @@ def rescale_pixel_size(
     method :
         Interpolation method. See ``jax.image.scale_and_translate``
         for documentation.
-    kwargs :
-        Keyword arguments passed to ``jax.image.scale_and_translate``.
+    antialias :
+        Apply an anti-aliasing filter upon downsampling. See
+        ``jax.image.scale_and_translate`` for documentation.
+
 
     Returns
     -------
@@ -60,7 +62,7 @@ def rescale_pixel_size(
         translation,
         method,
         antialias=antialias,
-        **kwargs,
+        precision=jax.lax.Precision.HIGHEST,
     )
 
     return rescaled_image

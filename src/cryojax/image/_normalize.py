@@ -78,10 +78,10 @@ def rescale_image(
             )
         else:
             N_modes = N1 * N2
-        _, std = compute_mean_and_std_from_fourier_image(
+        _, measured_std = compute_mean_and_std_from_fourier_image(
             image, half_space=half_space, shape_in_real_space=shape_in_real_space
         )
-        normalized_image = image.at[0, 0].set(0.0) / std
+        normalized_image = image.at[0, 0].set(0.0) / measured_std
         rescaled_image = (normalized_image * std).at[0, 0].set(mean * N_modes)
     return rescaled_image
 

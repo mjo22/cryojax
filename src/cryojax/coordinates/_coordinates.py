@@ -56,16 +56,24 @@ class AbstractCoordinates(eqx.Module, strict=True):
         return self.array
 
     def __mul__(self, arr: ArrayLike) -> Self:
-        return eqx.tree_at(lambda x: x.array, self, self.array * jnp.asarray(arr))
+        # The following line seems to be required for differentiability with
+        # respect to arr
+        rescaled_array = jnp.where(
+            self.array != 0.0, self.array * jnp.asarray(arr), 0.0
+        )
+        return eqx.tree_at(lambda x: x.array, self, rescaled_array)
 
     def __rmul__(self, arr: ArrayLike) -> Self:
-        return eqx.tree_at(lambda x: x.array, self, jnp.asarray(arr) * self.array)
+        rescaled_array = jnp.where(
+            self.array != 0.0, jnp.asarray(arr) * self.array, 0.0
+        )
+        return eqx.tree_at(lambda x: x.array, self, rescaled_array)
 
     def __truediv__(self, arr: ArrayLike) -> Self:
-        return eqx.tree_at(lambda x: x.array, self, self.array / jnp.asarray(arr))
-
-    def __rtruediv__(self, arr: ArrayLike) -> Self:
-        return eqx.tree_at(lambda x: x.array, self, jnp.asarray(arr) / self.array)
+        rescaled_array = jnp.where(
+            self.array != 0.0, self.array / jnp.asarray(arr), 0.0
+        )
+        return eqx.tree_at(lambda x: x.array, self, rescaled_array)
 
 
 class CoordinateList(AbstractCoordinates, strict=True):

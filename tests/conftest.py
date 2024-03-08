@@ -6,7 +6,7 @@ import jax.random as jr
 from jax import config
 
 import cryojax.simulator as cs
-from cryojax.io import read_array_with_spacing_from_mrc
+from cryojax.io import read_volume_with_voxel_size_from_mrc
 from cryojax.image import operators as op
 from cryojax.image import rfftn
 
@@ -77,7 +77,7 @@ def integrator(config):
 
 @pytest.fixture
 def potential(sample_mrc_path):
-    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
+    real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
     return cs.FourierVoxelGrid.from_real_voxel_grid(
         real_voxel_grid, voxel_size, pad_scale=1.3
     )
@@ -107,7 +107,7 @@ def instrument():
 
 @pytest.fixture
 def pose():
-    return cs.EulerPose(
+    return cs.EulerAnglePose(
         view_phi=30.0,
         view_theta=100.0,
         view_psi=-10.0,
@@ -171,5 +171,5 @@ def filtered_and_masked_model(
 
 @pytest.fixture
 def test_image(noisy_model):
-    image = noisy_model.sample(jr.PRNGKey(1234), view_cropped=False)
+    image = noisy_model.sample(jr.PRNGKey(1234))
     return rfftn(image)

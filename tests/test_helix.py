@@ -5,21 +5,21 @@ import jax.numpy as jnp
 import numpy as np
 import equinox as eqx
 import cryojax.simulator as cs
-from cryojax.io import read_array_with_spacing_from_mrc
+from cryojax.io import read_volume_with_voxel_size_from_mrc
 from jax import config
 
 config.update("jax_enable_x64", True)
 
 
 def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
-    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(
+    real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(
         sample_subunit_mrc_path
     )
     subunit_density = cs.FourierVoxelGrid.from_real_voxel_grid(
         real_voxel_grid, voxel_size, pad_scale=2
     )
     r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
-    subunit_pose = cs.EulerPose(*r_0)
+    subunit_pose = cs.EulerAnglePose(*r_0)
     subunit = cs.Specimen(subunit_density, subunit_pose)
     return cs.Helix(
         subunit,
@@ -36,14 +36,14 @@ def build_helix_with_conformation(
     subunit_density = tuple(
         [
             cs.FourierVoxelGrid.from_real_voxel_grid(
-                *read_array_with_spacing_from_mrc(sample_subunit_mrc_path)
+                *read_volume_with_voxel_size_from_mrc(sample_subunit_mrc_path)
             )
             for _ in range(2)
         ]
     )
     n_start = 6
     r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
-    subunit_pose = cs.EulerPose(*r_0)
+    subunit_pose = cs.EulerAnglePose(*r_0)
     subunit = cs.DiscreteEnsemble(
         subunit_density, subunit_pose, conformation=cs.DiscreteConformation(0)
     )
@@ -92,8 +92,10 @@ def test_c6_rotation(
         return pipeline.render(normalize=True)
 
     np.testing.assert_allclose(
-        compute_rotated_image(helix, integrator, cs.EulerPose()),
-        compute_rotated_image(helix, integrator, cs.EulerPose(view_phi=rotation_angle)),
+        compute_rotated_image(helix, integrator, cs.EulerAnglePose()),
+        compute_rotated_image(
+            helix, integrator, cs.EulerAnglePose(view_phi=rotation_angle)
+        ),
     )
 
 
@@ -122,9 +124,9 @@ def test_agree_with_3j9g_assembly(
         pipeline = cs.ImagePipeline(integrator=scattering, specimen=specimen)
         return pipeline.render(normalize=True)
 
-    pose = cs.EulerPose(*translation, 0.0, *euler_angles)
+    pose = cs.EulerAnglePose(*translation, 0.0, *euler_angles)
     reference_image = compute_rotated_image_with_3j9g(
-        specimen_39jg, integrator, cs.EulerPose()
+        specimen_39jg, integrator, cs.EulerAnglePose()
     )
     assembled_image = compute_rotated_image_with_helix(helix, integrator, pose)
     test_image = compute_rotated_image_with_3j9g(specimen_39jg, integrator, pose)
@@ -149,12 +151,12 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
         compute_rotated_image(
             helix,
             scattering,
-            cs.EulerPose(view_phi=0.0, view_theta=90.0, view_psi=0.0),
+            cs.EulerAnglePose(view_phi=0.0, view_theta=90.0, view_psi=0.0),
         ),
         compute_rotated_image(
             helix,
             scattering,
-            cs.EulerPose(
+            cs.EulerAnglePose(
                 view_phi=helix.twist,
                 view_theta=90.0,
                 view_psi=0.0,

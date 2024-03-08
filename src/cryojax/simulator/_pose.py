@@ -1,9 +1,9 @@
 """
-Routines that compute coordinate rotations and translations.
+Representations of rigid body rotations and translations of 3D coordinate systems.
 """
 
 from abc import abstractmethod
-from typing import Union, overload
+from typing import overload, Any
 from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
@@ -25,25 +25,25 @@ from ..typing import (
 
 
 class AbstractPose(Module, strict=True):
-    """
-    Base class for the image pose.
+    """Base class for the image pose.
 
     Subclasses should choose a viewing convention,
     such as with Euler angles or Quaternions. In particular,
 
-        1) Define angular coordinates.
-        2) Overwrite the ``AbstractPose.rotation`` property.
+        1. Define angular coordinates.
 
-    Attributes
-    ----------`
-    offset_x :
-        In-plane translation in x direction.
-    offset_y :
-        In-plane translation in y direction.
-    offset_z :
-        Out-of-plane translation in the z
-        direction. The translation is measured
-        relative to the configured defocus.
+        2. Overwrite the `AbstractPose.rotation` property and
+           `AbstractPose.from_rotation` class method.
+
+    **Attributes**:
+
+    - `offset_x` : In-plane translation in x direction.
+
+    - `offset_y` : In-plane translation in y direction.
+
+    - `offset_z` : Out-of-plane translation in the z
+                 direction. The translation is measured
+                 relative to the configured defocus.
     """
 
     offset_x: AbstractVar[Real_]
@@ -67,31 +67,23 @@ class AbstractPose(Module, strict=True):
         volume_coordinates: VolumeCoords | CloudCoords3D,
         inverse: bool = False,
     ) -> VolumeCoords | CloudCoords3D:
-        """
-        Rotate coordinates from a particular convention.
-
-        By default, compute the inverse rotation if rotating in
-        real-space.
-        """
+        """Rotate coordinates from a particular convention."""
         rotation = self.rotation.inverse() if inverse else self.rotation
-        shape = volume_coordinates.shape
         if isinstance(volume_coordinates, CloudCoords3D):
             rotated_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
         elif isinstance(volume_coordinates, VolumeCoords):
-            N1, N2, N3 = shape[:-1]
-            rotated_coordinates = jax.vmap(rotation.apply)(
-                volume_coordinates.reshape(N1 * N2 * N3, 3)
+            rotated_coordinates = jax.vmap(jax.vmap(jax.vmap(rotation.apply)))(
+                volume_coordinates
             )
-            rotated_coordinates = rotated_coordinates.reshape((N1, N2, N3, 3))
         else:
             raise ValueError(
-                f"Coordinates must be a JAX array either of shape (N, 3) or (N1, N2, N3, 3). Instead, got {volume_coordinates.shape} and type {type(volume_coordinates)}."
+                "Coordinates must be a JAX array either of shape (N, 3) or (N1, N2, N3, 3). "
+                f"Instead, got {volume_coordinates.shape} and type {type(volume_coordinates)}."
             )
         return rotated_coordinates
 
     def compute_shifts(self, frequency_grid: ImageCoords) -> ComplexImage:
-        """
-        Compute the phase shifts from the in-plane translation,
+        """Compute the phase shifts from the in-plane translation,
         given a frequency grid coordinate system.
         """
         xy = self.offset[0:2]
@@ -105,58 +97,54 @@ class AbstractPose(Module, strict=True):
     @cached_property
     @abstractmethod
     def rotation(self) -> SO3:
-        """Generate a rotation."""
+        """Generate a `jaxlie.SO3` matrix lie group object."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def from_rotation(cls, rotation: SO3):
-        """
-        Construct a ``Pose`` from a ``jaxlie.SO3`` object.
-        """
+    def from_rotation(cls, rotation: SO3, **kwargs: Any):
+        """Construct an `AbstractPose` from a `jaxlie.SO3` object."""
         raise NotImplementedError
 
     @classmethod
     def from_rotation_and_translation(
-        cls, rotation: SO3, translation: Float[Array, "3"]
+        cls, rotation: SO3, translation: Float[Array, "3"], **kwargs: Any
     ):
-        """
-        Construct a ``Pose`` from a ``jaxlie.SO3`` object and a
+        """Construct an `AbstractPose` from a `jaxlie.SO3` object and a
         translation vector.
         """
         return eqx.tree_at(
             lambda self: (self.offset_x, self.offset_y, self.offset_z),
-            cls.from_rotation(rotation),
+            cls.from_rotation(rotation, **kwargs),
             (translation[..., 0], translation[..., 1], translation[..., 2]),
         )
 
 
-class EulerPose(AbstractPose, strict=True):
-    r"""
-    An image pose using Euler angles.
+class EulerAnglePose(AbstractPose, strict=True):
+    r"""An `AbstractPose` represented by Euler angles.
 
-    Attributes
-    ----------
-    convention :
+    **Attributes:**
+
+    - `view_phi`:
+        Angle to rotate about first rotation axis.
+
+    - `view_theta`:
+        Angle to rotate about second rotation axis.
+
+    - `view_psi`:
+        Angle to rotate about third rotation axis.
+
+    - `convention`:
         The sequence of axes over which to apply
         rotation. This is a string of 3 characters
         of x, y, and z. By default, `zyz`.
-    intrinsic :
-        If ``True``, follow the intrinsic rotation
-        convention. If ``False``, rotation axes move with
-        each rotation.
-    inverse :
+
+    - `inverse`:
         Compute the inverse rotation of the specified
         convention. By default, ``False``. The value
         of this argument is with respect to fourier space
         rotations, so it is automatically inverted
         when rotating in real space.
-    view_phi :
-        First rotation axis, ranging :math:`(-\pi, \pi]`.
-    view_theta :
-        Second rotation axis, ranging :math:`(-\pi, \pi]`.
-    view_psi :
-        Third rotation axis, ranging :math:`(-\pi, \pi]`.
     """
 
     offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
@@ -171,34 +159,68 @@ class EulerPose(AbstractPose, strict=True):
     convention: str = field(static=True, default="zyz")
     degrees: bool = field(static=True, default=True)
 
+    def __check_init__(self):
+        if len(self.convention) != 3 or not all(
+            [axis in ["x", "y", "z"] for axis in self.convention]
+        ):
+            raise AttributeError(
+                f"`EulerPose.convention` should be a string of three characters, each "
+                f"of which is 'x', 'y', or 'z'. Instead, got {self.convention}"
+            )
+        if (
+            self.convention[0] == self.convention[1]
+            or self.convention[1] == self.convention[2]
+        ):
+            raise AttributeError(
+                f"`EulerPose.convention` cannot have axes repeating in a row. For example, "
+                f"`xxy` or `zzz` are not allowed. Got `{self.convention}`."
+            )
+
     @cached_property
     @override
     def rotation(self) -> SO3:
-        """Generate a rotation from a set of Euler angles."""
-        R = make_euler_rotation(
-            self.view_phi,
-            self.view_theta,
-            self.view_psi,
-            degrees=self.degrees,
-            convention=self.convention,
-        )
+        """Generate a `jaxlie.SO3` object from a set of Euler angles."""
+        phi, theta, psi = self.view_phi, self.view_theta, self.view_psi
+        # Convert to radians.
+        if self.degrees:
+            phi = jnp.deg2rad(phi)
+            theta = jnp.deg2rad(theta)
+            psi = jnp.deg2rad(psi)
+        # Get sequence of rotations. The inverse operation
+        # is here due to differences in cryojax and jaxlie
+        # conventions.
+        R1, R2, R3 = [
+            getattr(SO3, f"from_{axis}_radians")(angle).inverse()
+            for axis, angle in zip(self.convention, [phi, theta, psi])
+        ]
+        R = R3 @ R2 @ R1
         return R.inverse() if self.inverse else R
 
     @override
     @classmethod
-    def from_rotation(cls, rotation: SO3):
-        raise NotImplementedError(
-            "Cannot convert SO3 object to arbitrary Euler angle convention. See https://github.com/brentyi/jaxlie/issues/16"
+    def from_rotation(
+        cls, rotation: SO3, convention: str = "zyz", degrees: bool = True
+    ):
+        view_phi, view_theta, view_psi = _convert_quaternion_to_euler_angles(
+            rotation.wxyz, convention, degrees
+        )
+        return cls(
+            view_phi=view_phi,
+            view_theta=view_theta,
+            view_psi=view_psi,
+            convention=convention,
+            degrees=degrees,
         )
 
 
 class QuaternionPose(AbstractPose, strict=True):
     """
-    An image pose using unit Quaternions.
+    An `AbstractPose` represented by unit quaternions.
 
-    Attributes
-    ----------
-    wxyz :
+    **Attributes:**
+
+    - `wxyz`:
+        The unit quaternion.
     """
 
     offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
@@ -212,9 +234,9 @@ class QuaternionPose(AbstractPose, strict=True):
     @cached_property
     @override
     def rotation(self) -> SO3:
-        """Generate rotation from a unit quaternion."""
-        q_norm = jnp.linalg.norm(self.wxyz)
-        R = SO3(wxyz=self.wxyz / q_norm)
+        """Generate rotation from the unit quaternion."""
+        # Generate SO3 object from unit quaternion
+        R = SO3(wxyz=(self.wxyz / jnp.linalg.norm(self.wxyz)))
         return R.inverse() if self.inverse else R
 
     @override
@@ -224,20 +246,18 @@ class QuaternionPose(AbstractPose, strict=True):
 
 
 class MatrixPose(AbstractPose, strict=True):
-    """
-    An image pose represented by a rotation matrix.
+    """An `AbstractPose` represented by a rotation matrix.
 
-    Attributes
-    ----------
-    matrix :
-        The rotation matrix.
+    **Attributes:**
+
+    - `matrix`: The rotation matrix.
     """
 
     offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
     offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
     offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
 
-    matrix: Float[Array, "3 3"] = field(
+    rotation_matrix: Float[Array, "3 3"] = field(
         default_factory=lambda: jnp.eye(3), converter=jnp.asarray
     )
 
@@ -247,34 +267,143 @@ class MatrixPose(AbstractPose, strict=True):
     @override
     def rotation(self) -> SO3:
         """Generate rotation from a rotation matrix."""
-        R = SO3.from_matrix(self.matrix)
+        # Generate SO3 object from the rotation matrix
+        R = SO3.from_matrix(self.rotation_matrix)
+        # Normalize (this should be equivalent to making sure the
+        # rotation matrix has unit determinant)
+        R = R.normalize()
         return R.inverse() if self.inverse else R
 
     @override
     @classmethod
     def from_rotation(cls, rotation: SO3):
-        return cls(matrix=rotation.as_matrix())
+        return cls(rotation_matrix=rotation.as_matrix())
 
 
-def make_euler_rotation(
-    phi: Real_,
-    theta: Real_,
-    psi: Real_,
-    convention: str = "zyz",
-    degrees: bool = False,
-) -> SO3:
-    """Helper routine to generate a rotation in a particular
-    convention.
+class AxisAnglePose(AbstractPose, strict=True):
+    """An `AbstractPose` parameterized in the axis-angle representation.
+
+    The axis-angle representation parameterizes elements of the so3 algebra,
+    which are skew-symmetric matrices, with the euler vector. The magnitude
+    of this vector is the angle, and the unit vector is the axis.
+
+    Using `jaxlie`, the euler vector is mapped to SO3 group elements using
+    the matrix exponential.
+
+    **Attributes:**
+
+    - `euler_vector`: The axis-angle parameterization.
     """
-    # Convert to radians.
-    if degrees:
-        phi = jnp.deg2rad(phi)
-        theta = jnp.deg2rad(theta)
-        psi = jnp.deg2rad(psi)
-    # Get sequence of rotations, converting to cryojax conventions
-    # from jaxlie
-    R1, R2, R3 = [
-        getattr(SO3, f"from_{axis}_radians")(angle).inverse()
-        for axis, angle in zip(convention, [phi, theta, psi])
-    ]
-    return R3 @ R2 @ R1
+
+    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
+
+    euler_vector: Float[Array, "3"] = field(
+        default=(0.0, 0.0, 0.0), converter=jnp.asarray
+    )
+
+    inverse: bool = field(static=True, default=False)
+    degrees: bool = field(static=True, default=True)
+
+    @cached_property
+    @override
+    def rotation(self) -> SO3:
+        """Generate rotation from an euler vector using the exponential map."""
+        euler_vector = self.euler_vector
+        if self.degrees:
+            euler_vector = jnp.deg2rad(euler_vector)
+        # Project the tangent vector onto the manifold with
+        # the exponential map
+        R = SO3.exp(-euler_vector)
+        return R.inverse() if self.inverse else R
+
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3, degrees: bool = True):
+        # Compute the euler vector from the logarithmic map
+        euler_vector = -rotation.log()
+        if degrees:
+            euler_vector = jnp.rad2deg(euler_vector)
+        return cls(euler_vector=euler_vector)
+
+
+class RotationGroupPose(AbstractPose, strict=True):
+    """An `AbstractPose` represented by a `jaxlie.SO3` matrix lie
+    group.
+
+    This object can be used with the `jaxlie.manifold` submodule
+    for gradient-based optimization.
+
+    **Attributes:**
+
+    `group_element`: The group element of SO3.
+    """
+
+    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
+
+    group_element: SO3 = field(
+        default_factory=lambda: SO3(wxyz=jnp.asarray((1.0, 0.0, 0.0, 0.0)))
+    )
+
+    inverse: bool = field(static=True, default=False)
+
+    @cached_property
+    @override
+    def rotation(self) -> SO3:
+        """Get the `jaxlie.SO3` matrix lie group."""
+        R = self.group_element
+        return R.inverse() if self.inverse else R
+
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3):
+        return cls(group_element=rotation)
+
+
+def _convert_quaternion_to_euler_angles(
+    wxyz: jax.Array, convention: str, degrees: bool
+) -> jax.Array:
+    """Convert a quaternion to a sequence of euler angles.
+
+    Adapted from https://github.com/chrisflesher/jax-scipy-spatial/.
+    """
+    xyz_axis_to_array_axis = {"x": 0, "y": 1, "z": 2}
+    axes = [xyz_axis_to_array_axis[axis] for axis in convention]
+    xyzw = jnp.roll(wxyz, shift=-1)
+    angle_first = 0
+    angle_third = 2
+    i = axes[0]
+    j = axes[1]
+    k = axes[2]
+    symmetric = i == k
+    k = jnp.where(symmetric, 3 - i - j, k)
+    sign = jnp.array((i - j) * (j - k) * (k - i) // 2, dtype=xyzw.dtype)
+    eps = 1e-7
+    a = jnp.where(symmetric, xyzw[3], xyzw[3] - xyzw[j])
+    b = jnp.where(symmetric, xyzw[i], xyzw[i] + xyzw[k] * sign)
+    c = jnp.where(symmetric, xyzw[j], xyzw[j] + xyzw[3])
+    d = jnp.where(symmetric, xyzw[k] * sign, xyzw[k] * sign - xyzw[i])
+    angles = jnp.empty(3, dtype=xyzw.dtype)
+    angles = angles.at[1].set(2 * jnp.arctan2(jnp.hypot(c, d), jnp.hypot(a, b)))
+    case = jnp.where(jnp.abs(angles[1] - jnp.pi) <= eps, 2, 0)
+    case = jnp.where(jnp.abs(angles[1]) <= eps, 1, case)
+    half_sum = jnp.arctan2(b, a)
+    half_diff = jnp.arctan2(d, c)
+    angles = angles.at[0].set(
+        jnp.where(case == 1, 2 * half_sum, 2 * half_diff * -1)
+    )  # any degenerate case
+    angles = angles.at[angle_first].set(
+        jnp.where(case == 0, half_sum - half_diff, angles[angle_first])
+    )
+    angles = angles.at[angle_third].set(
+        jnp.where(case == 0, half_sum + half_diff, angles[angle_third])
+    )
+    angles = angles.at[angle_third].set(
+        jnp.where(symmetric, angles[angle_third], angles[angle_third] * sign)
+    )
+    angles = angles.at[1].set(jnp.where(symmetric, angles[1], angles[1] - jnp.pi / 2))
+    angles = (angles + jnp.pi) % (2 * jnp.pi) - jnp.pi
+    return -jnp.rad2deg(angles) if degrees else -angles

@@ -12,7 +12,7 @@ import jax
 from equinox import Module
 
 from ._potential import AbstractScatteringPotential
-from ._pose import AbstractPose, EulerPose
+from ._pose import AbstractPose, EulerAnglePose
 from ._conformation import AbstractConformation, DiscreteConformation
 
 
@@ -66,7 +66,7 @@ class Specimen(AbstractSpecimen, strict=True):
         pose: Optional[AbstractPose] = None,
     ):
         self.potential = potential
-        self.pose = pose or EulerPose()
+        self.pose = pose or EulerAnglePose()
 
     @cached_property
     @override
@@ -121,7 +121,7 @@ class DiscreteEnsemble(AbstractEnsemble, strict=True):
         conformation: Optional[DiscreteConformation] = None,
     ):
         self.potential = potential
-        self.pose = pose or EulerPose()
+        self.pose = pose or EulerAnglePose()
         self.conformation = conformation or DiscreteConformation(0)
 
     @cached_property
