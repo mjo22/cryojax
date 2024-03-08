@@ -299,26 +299,21 @@ class ExponentialPose(AbstractPose, strict=True):
     tangent: Float[Array, "3"] = field(default=(0.0, 0.0, 0.0), converter=jnp.asarray)
 
     inverse: bool = field(static=True, default=False)
-    degrees: bool = field(static=True, default=True)
 
     @cached_property
     @override
     def rotation(self) -> SO3:
         """Generate rotation from a tangent vector using the exponential map."""
         tangent = self.tangent
-        if self.degrees:
-            tangent = jnp.deg2rad(tangent)
         # Project the tangent vector onto the manifold
         R = SO3.exp(self.tangent)
         return R.inverse() if self.inverse else R
 
     @override
     @classmethod
-    def from_rotation(cls, rotation: SO3, degrees: bool = True):
+    def from_rotation(cls, rotation: SO3):
         tangent = rotation.log()
-        if degrees:
-            tangent = jnp.rad2deg(tangent)
-        return cls(tangent=tangent, degrees=degrees)
+        return cls(tangent=tangent)
 
 
 class AxisAnglePose(AbstractPose, strict=True):
@@ -397,9 +392,9 @@ class AxisAnglePose(AbstractPose, strict=True):
         # angle = 0 and angle = pi).
         axis_if_neither = jnp.asarray(
             (
-                rotation_matrix[3, 2] - rotation_matrix[2, 3],
-                rotation_matrix[1, 3] - rotation_matrix[3, 1],
-                rotation_matrix[2, 1] - rotation_matrix[1, 2],
+                rotation_matrix[1, 2] - rotation_matrix[2, 1],
+                rotation_matrix[2, 0] - rotation_matrix[0, 2],
+                rotation_matrix[0, 1] - rotation_matrix[1, 0],
             ),
             dtype=float,
         ) / (2 * jnp.sin(angle))

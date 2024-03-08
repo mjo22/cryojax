@@ -10,12 +10,41 @@ from typing import Optional
 from pathlib import Path
 
 
+def read_image_from_mrc(
+    filename: str | Path,
+    *,
+    mmap: bool = False,
+    permissive: bool = False,
+) -> Float[np.ndarray, "N1 N2"]:
+    """Read an MRC single image to a numpy array.
+
+    **Arguments:**
+
+    'filename' : Path to data.
+
+    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
+
+    **Returns:**
+
+    'image' : The image stored in the Mrcfile.
+    """
+    image = _read_array_from_mrc(
+        filename,
+        expected_data_format="image",
+        get_spacing=False,
+        mmap=mmap,
+        permissive=permissive,
+    )
+
+    return image
+
+
 def read_image_with_pixel_size_from_mrc(
     filename: str | Path,
     *,
     mmap: bool = False,
     permissive: bool = False,
-) -> tuple[Float[np.ndarray, "..."], float]:
+) -> tuple[Float[np.ndarray, "N1 N2"], float]:
     """Read an MRC image to a numpy array, including the pixel size.
 
     !!! note
@@ -45,12 +74,41 @@ def read_image_with_pixel_size_from_mrc(
     return image, pixel_size
 
 
+def read_image_stack_from_mrc(
+    filename: str | Path,
+    *,
+    mmap: bool = False,
+    permissive: bool = False,
+) -> Float[np.ndarray, "M N1 N2"]:
+    """Read an MRC image stack to a numpy array.
+
+    **Arguments:**
+
+    'filename' : Path to data.
+
+    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
+
+    **Returns:**
+
+    'image_stack' : The image stack stored in the Mrcfile.
+    """
+    image_stack = _read_array_from_mrc(
+        filename,
+        expected_data_format="image_stack",
+        get_spacing=False,
+        mmap=mmap,
+        permissive=permissive,
+    )
+
+    return image_stack
+
+
 def read_image_stack_with_pixel_size_from_mrc(
     filename: str | Path,
     *,
     mmap: bool = False,
     permissive: bool = False,
-) -> tuple[Float[np.ndarray, "..."], float]:
+) -> tuple[Float[np.ndarray, "M N1 N2"], float]:
     """Read an MRC image stack to a numpy array, including the pixel size.
 
     !!! note
@@ -80,12 +138,41 @@ def read_image_stack_with_pixel_size_from_mrc(
     return image_stack, pixel_size
 
 
+def read_volume_from_mrc(
+    filename: str | Path,
+    *,
+    mmap: bool = False,
+    permissive: bool = False,
+) -> Float[np.ndarray, "N1 N2 N3"]:
+    """Read an MRC volume to a numpy array.
+
+    **Arguments:**
+
+    'filename' : Path to data.
+
+    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
+
+    **Returns:**
+
+    'volume' : The volume stored in the Mrcfile.
+    """
+    volume = _read_array_from_mrc(
+        filename,
+        expected_data_format="volume",
+        get_spacing=False,
+        mmap=mmap,
+        permissive=permissive,
+    )
+
+    return volume
+
+
 def read_volume_with_voxel_size_from_mrc(
     filename: str | Path,
     *,
     mmap: bool = False,
     permissive: bool = False,
-) -> tuple[Float[np.ndarray, "..."], float]:
+) -> tuple[Float[np.ndarray, "N1 N2 N3"], float]:
     """Read an MRC volume to a numpy array, including the voxel size.
 
     !!! note
@@ -115,12 +202,41 @@ def read_volume_with_voxel_size_from_mrc(
     return volume, voxel_size
 
 
+def read_volume_stack_from_mrc(
+    filename: str | Path,
+    *,
+    mmap: bool = False,
+    permissive: bool = False,
+) -> Float[np.ndarray, "M N1 N2 N3"]:
+    """Read an MRC volume stack to a numpy array.
+
+    **Arguments:**
+
+    'filename' : Path to data.
+
+    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
+
+    **Returns:**
+
+    'volume_stack' : The volume stack stored in the Mrcfile.
+    """
+    volume_stack = _read_array_from_mrc(
+        filename,
+        expected_data_format="volume_stack",
+        get_spacing=False,
+        mmap=mmap,
+        permissive=permissive,
+    )
+
+    return volume_stack
+
+
 def read_volume_stack_with_voxel_size_from_mrc(
     filename: str | Path,
     *,
     mmap: bool = False,
     permissive: bool = False,
-) -> tuple[Float[np.ndarray, "..."], float]:
+) -> tuple[Float[np.ndarray, "M N1 N2 N3"], float]:
     """Read an MRC volume stack to a numpy array, including the voxel size.
 
     !!! note
@@ -148,122 +264,6 @@ def read_volume_stack_with_voxel_size_from_mrc(
     )
 
     return volume_stack, voxel_size
-
-
-def read_image_from_mrc(
-    filename: str | Path,
-    *,
-    mmap: bool = False,
-    permissive: bool = False,
-) -> Float[np.ndarray, "..."]:
-    """Read an MRC single image to a numpy array.
-
-    **Arguments:**
-
-    'filename' : Path to data.
-
-    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
-
-    **Returns:**
-
-    'image' : The image stored in the Mrcfile.
-    """
-    image = _read_array_from_mrc(
-        filename,
-        expected_data_format="image",
-        get_spacing=False,
-        mmap=mmap,
-        permissive=permissive,
-    )
-
-    return image
-
-
-def read_image_stack_from_mrc(
-    filename: str | Path,
-    *,
-    mmap: bool = False,
-    permissive: bool = False,
-) -> Float[np.ndarray, "..."]:
-    """Read an MRC image stack to a numpy array.
-
-    **Arguments:**
-
-    'filename' : Path to data.
-
-    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
-
-    **Returns:**
-
-    'image_stack' : The image stack stored in the Mrcfile.
-    """
-    image_stack = _read_array_from_mrc(
-        filename,
-        expected_data_format="image_stack",
-        get_spacing=False,
-        mmap=mmap,
-        permissive=permissive,
-    )
-
-    return image_stack
-
-
-def read_volume_from_mrc(
-    filename: str | Path,
-    *,
-    mmap: bool = False,
-    permissive: bool = False,
-) -> Float[np.ndarray, "..."]:
-    """Read an MRC volume to a numpy array.
-
-    **Arguments:**
-
-    'filename' : Path to data.
-
-    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
-
-    **Returns:**
-
-    'volume' : The volume stored in the Mrcfile.
-    """
-    volume = _read_array_from_mrc(
-        filename,
-        expected_data_format="volume",
-        get_spacing=False,
-        mmap=mmap,
-        permissive=permissive,
-    )
-
-    return volume
-
-
-def read_volume_stack_from_mrc(
-    filename: str | Path,
-    *,
-    mmap: bool = False,
-    permissive: bool = False,
-) -> Float[np.ndarray, "..."]:
-    """Read an MRC volume stack to a numpy array.
-
-    **Arguments:**
-
-    'filename' : Path to data.
-
-    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
-
-    **Returns:**
-
-    'volume_stack' : The volume stack stored in the Mrcfile.
-    """
-    volume_stack = _read_array_from_mrc(
-        filename,
-        expected_data_format="volume_stack",
-        get_spacing=False,
-        mmap=mmap,
-        permissive=permissive,
-    )
-
-    return volume_stack
 
 
 def write_image_to_mrc(
@@ -471,7 +471,7 @@ def _read_array_from_mrc(
             # Only allow the same spacing in each direction
             assert all(
                 grid_spacing_per_dimension != np.zeros(grid_spacing_per_dimension.shape)
-            ), "Mrcfile.voxel_size must be set to use cryojax.io.read_array_with_spacing_from_mrc. Try running cryojax.io.read_array_from_mrc instead."
+            ), f"Mrcfile.voxel_size must be set if reading the grid spacing. Found that Mrcfile.voxel_size = (0.0, 0.0, 0.0)"
             assert all(
                 grid_spacing_per_dimension == grid_spacing_per_dimension[0]
             ), "Mrcfile.voxel_size must be same in all dimensions."

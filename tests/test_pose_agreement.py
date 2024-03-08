@@ -39,19 +39,22 @@ def test_translation_agreement():
 
 
 def test_pose_conversion():
-    wxyz = jnp.asarray((1.0, 2.0, 3.0, 0.0))
+    wxyz = jnp.asarray((1.0, 2.0, 3.0, 0.5))
     rotation = SO3(wxyz).normalize()
     quat = cs.QuaternionPose.from_rotation(rotation)
     matrix = cs.MatrixPose.from_rotation(rotation)
     euler = cs.EulerPose.from_rotation(rotation)
-    # exponential = cs.ExponentialPose.from_rotation(rotation)
-    # axis_angle = cs.AxisAnglePose.from_rotation(rotation)
+    exponential = cs.ExponentialPose.from_rotation(rotation)
+    axis_angle = cs.AxisAnglePose.from_rotation(rotation)
+    # Test rotation matrix agreement for quaternions, euler angles, and matrix
     np.testing.assert_allclose(quat.rotation.as_matrix(), matrix.rotation.as_matrix())
-    # np.testing.assert_allclose(
-    #   quat.rotation.as_matrix(), exponential.rotation.normalize().as_matrix()
-    # )
     np.testing.assert_allclose(quat.rotation.as_matrix(), euler.rotation.as_matrix())
-    # np.testing.assert_allclose(quat.rotation.as_matrix(), axis_angle.rotation.as_matrix())
+    np.testing.assert_allclose(
+        quat.rotation.as_matrix(), exponential.rotation.as_matrix()
+    )
+    np.testing.assert_allclose(
+        quat.rotation.as_matrix(), axis_angle.rotation.as_matrix()
+    )
 
 
 def test_default_pose_images(noiseless_model):
