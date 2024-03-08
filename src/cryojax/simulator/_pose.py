@@ -30,25 +30,26 @@ class AbstractPose(Module, strict=True):
     Subclasses should choose a viewing convention,
     such as with Euler angles or Quaternions. In particular,
 
-        1. Define angular coordinates.
+        1. Define angular coordinates as dataclass fields, along
+           with other dataclass fields.
 
         2. Overwrite the `AbstractPose.rotation` property and
            `AbstractPose.from_rotation` class method.
 
     **Attributes**:
 
-    - `offset_x` : In-plane translation in x direction.
+    - `offset_x_in_angstroms` : In-plane translation in x direction.
 
-    - `offset_y` : In-plane translation in y direction.
+    - `offset_y_in_angstroms` : In-plane translation in y direction.
 
-    - `offset_z` : Out-of-plane translation in the z
-                 direction. The translation is measured
-                 relative to the configured defocus.
+    - `offset_z_in_angstroms` : Out-of-plane translation in the z
+                                direction. The translation is measured
+                                relative to the configured defocus.
     """
 
-    offset_x: AbstractVar[Real_]
-    offset_y: AbstractVar[Real_]
-    offset_z: AbstractVar[Real_]
+    offset_x_in_angstroms: AbstractVar[Real_]
+    offset_y_in_angstroms: AbstractVar[Real_]
+    offset_z_in_angstroms: AbstractVar[Real_]
 
     inverse: AbstractVar[bool]
 
@@ -70,9 +71,9 @@ class AbstractPose(Module, strict=True):
         """Rotate coordinates from a particular convention."""
         rotation = self.rotation.inverse() if inverse else self.rotation
         if isinstance(volume_coordinates, CloudCoords3D):
-            rotated_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
+            rotated_volume_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
         elif isinstance(volume_coordinates, VolumeCoords):
-            rotated_coordinates = jax.vmap(jax.vmap(jax.vmap(rotation.apply)))(
+            rotated_volume_coordinates = jax.vmap(jax.vmap(jax.vmap(rotation.apply)))(
                 volume_coordinates
             )
         else:
@@ -80,19 +81,30 @@ class AbstractPose(Module, strict=True):
                 "Coordinates must be a JAX array either of shape (N, 3) or (N1, N2, N3, 3). "
                 f"Instead, got {volume_coordinates.shape} and type {type(volume_coordinates)}."
             )
-        return rotated_coordinates
+        return rotated_volume_coordinates
 
-    def compute_shifts(self, frequency_grid: ImageCoords) -> ComplexImage:
+    def compute_shifts(self, frequency_grid_in_angstroms: ImageCoords) -> ComplexImage:
         """Compute the phase shifts from the in-plane translation,
         given a frequency grid coordinate system.
         """
-        xy = self.offset[0:2]
-        return jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(frequency_grid, xy)))
+        xy = self.offset_in_angstroms[0:2]
+        return jnp.exp(
+            -1.0j * (2 * jnp.pi * jnp.matmul(frequency_grid_in_angstroms, xy))
+        )
 
     @cached_property
-    def offset(self) -> Float[Array, "3"]:
-        """The translation vector."""
-        return jnp.asarray((self.offset_x, self.offset_y, self.offset_z))
+    def offset_in_angstroms(self) -> Float[Array, "3"]:
+        """The translation vector, relative to the center of the in-plane
+        (x, y) coordinates and relative to the configured defocus in the
+        out-of-plane z coordinate.
+        """
+        return jnp.asarray(
+            (
+                self.offset_x_in_angstroms,
+                self.offset_y_in_angstroms,
+                self.offset_z_in_angstroms,
+            )
+        )
 
     @cached_property
     @abstractmethod
@@ -108,15 +120,23 @@ class AbstractPose(Module, strict=True):
 
     @classmethod
     def from_rotation_and_translation(
-        cls, rotation: SO3, translation: Float[Array, "3"], **kwargs: Any
+        cls, rotation: SO3, offset_in_angstroms: Float[Array, "3"], **kwargs: Any
     ):
         """Construct an `AbstractPose` from a `jaxlie.SO3` object and a
         translation vector.
         """
         return eqx.tree_at(
-            lambda self: (self.offset_x, self.offset_y, self.offset_z),
+            lambda self: (
+                self.offset_x_in_angstroms,
+                self.offset_y_in_angstroms,
+                self.offset_z_in_angstroms,
+            ),
             cls.from_rotation(rotation, **kwargs),
-            (translation[..., 0], translation[..., 1], translation[..., 2]),
+            (
+                offset_in_angstroms[..., 0],
+                offset_in_angstroms[..., 1],
+                offset_in_angstroms[..., 2],
+            ),
         )
 
 
@@ -137,7 +157,7 @@ class EulerAnglePose(AbstractPose, strict=True):
     - `convention`:
         The sequence of axes over which to apply
         rotation. This is a string of 3 characters
-        of x, y, and z. By default, `zyz`.
+        of x, y, and z. By default, `'zyz'`.
 
     - `inverse`:
         Compute the inverse rotation of the specified
@@ -147,9 +167,9 @@ class EulerAnglePose(AbstractPose, strict=True):
         when rotating in real space.
     """
 
-    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
 
     view_phi: Real_ = field(default=0.0, converter=jnp.asarray)
     view_theta: Real_ = field(default=0.0, converter=jnp.asarray)
@@ -165,7 +185,7 @@ class EulerAnglePose(AbstractPose, strict=True):
         ):
             raise AttributeError(
                 f"`EulerPose.convention` should be a string of three characters, each "
-                f"of which is 'x', 'y', or 'z'. Instead, got {self.convention}"
+                f"of which is 'x', 'y', or 'z'. Instead, got '{self.convention}'"
             )
         if (
             self.convention[0] == self.convention[1]
@@ -173,7 +193,7 @@ class EulerAnglePose(AbstractPose, strict=True):
         ):
             raise AttributeError(
                 f"`EulerPose.convention` cannot have axes repeating in a row. For example, "
-                f"`xxy` or `zzz` are not allowed. Got `{self.convention}`."
+                f"'xxy' or 'zzz' are not allowed. Got '{self.convention}'."
             )
 
     @cached_property
@@ -219,13 +239,12 @@ class QuaternionPose(AbstractPose, strict=True):
 
     **Attributes:**
 
-    - `wxyz`:
-        The unit quaternion.
+    - `wxyz`: The unit quaternion.
     """
 
-    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
 
     wxyz: Float[Array, "4"] = field(default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray)
 
@@ -253,9 +272,9 @@ class MatrixPose(AbstractPose, strict=True):
     - `matrix`: The rotation matrix.
     """
 
-    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
 
     rotation_matrix: Float[Array, "3 3"] = field(
         default_factory=lambda: jnp.eye(3), converter=jnp.asarray
@@ -295,9 +314,9 @@ class AxisAnglePose(AbstractPose, strict=True):
     - `euler_vector`: The axis-angle parameterization.
     """
 
-    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
 
     euler_vector: Float[Array, "3"] = field(
         default=(0.0, 0.0, 0.0), converter=jnp.asarray
@@ -340,9 +359,9 @@ class RotationGroupPose(AbstractPose, strict=True):
     `group_element`: The group element of SO3.
     """
 
-    offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
 
     group_element: SO3 = field(
         default_factory=lambda: SO3(wxyz=jnp.asarray((1.0, 0.0, 0.0, 0.0)))

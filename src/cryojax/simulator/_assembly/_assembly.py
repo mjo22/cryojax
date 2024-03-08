@@ -86,7 +86,7 @@ class AbstractAssembly(eqx.Module, strict=True):
         # Transform the subunit positions by pose of the helix
         transformed_positions = (
             self.pose.rotate_coordinates(self.positions, inverse=False)
-            + self.pose.offset
+            + self.pose.offset_in_angstroms
         )
         # Transform the subunit rotations by the pose of the helix. This operation
         # left multiplies by the pose of the helix, taking care that first subunits
@@ -97,7 +97,10 @@ class AbstractAssembly(eqx.Module, strict=True):
         # Function to construct a MatrixPose, vmapped over leading dimension
         make_assembly_poses = jax.vmap(
             lambda pos, rot: MatrixPose(
-                offset_x=pos[0], offset_y=pos[1], offset_z=pos[2], rotation_matrix=rot
+                offset_x_in_angstroms=pos[0],
+                offset_y_in_angstroms=pos[1],
+                offset_z_in_angstroms=pos[2],
+                rotation_matrix=rot,
             )
         )
 

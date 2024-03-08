@@ -255,7 +255,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
             self.instrument.propagate_to_detector_plane(
                 fourier_potential_at_exit_plane,
                 self.integrator.config,
-                defocus_offset=self.specimen.pose.offset_z,
+                defocus_offset=self.specimen.pose.offset_z_in_angstroms,
             )
         )
         # ... compute the squared wavefunction
@@ -316,7 +316,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
             self.instrument.propagate_to_detector_plane(
                 fourier_potential_at_exit_plane,
                 self.integrator.config,
-                defocus_offset=self.specimen.pose.offset_z,
+                defocus_offset=self.specimen.pose.offset_z_in_angstroms,
             )
         )
         # ... compute the squared wavefunction
@@ -488,7 +488,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
             lambda spec, inte, ins: ins.propagate_to_detector_plane(
                 ins.scatter_to_exit_plane(spec, inte),
                 inte.config,
-                defocus_offset=spec.pose.offset_z,
+                defocus_offset=spec.pose.offset_z_in_angstroms,
             )
         )
         # ... vmap to compute a stack of images to superimpose
