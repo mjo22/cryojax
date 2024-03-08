@@ -1,9 +1,9 @@
-<h1 align='center'>CryoJAX</h1>
+<h1 align='center'>cryoJAX</h1>
 
 ![Tests](https://github.com/mjo22/cryojax/actions/workflows/testing.yml/badge.svg)
 ![Lint](https://github.com/mjo22/cryojax/actions/workflows/black.yml/badge.svg)
 
-CryoJAX is a library for cryo-EM image simulation and analysis. It is built on [`jax`](https://github.com/google/jax).
+cryoJAX is a library for cryo-EM image simulation and analysis. It is built on [`jax`](https://github.com/google/jax).
 
 ## Summary
 

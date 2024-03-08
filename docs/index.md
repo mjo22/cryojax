@@ -1,4 +1,4 @@
-# Welcome to CryoJAX!
+# Welcome to cryoJAX!
 
 `cryojax` is a library for cryo-EM image simulation and analysis. It is built on [`jax`](https://github.com/google/jax).
 
