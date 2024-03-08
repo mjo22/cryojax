@@ -42,8 +42,8 @@ class AbstractPose(Module, strict=True):
     - `offset_y` : In-plane translation in y direction.
 
     - `offset_z` : Out-of-plane translation in the z
-                 direction. The translation is measured
-                 relative to the configured defocus.
+                   direction. The translation is measured
+                   relative to the configured defocus.
     """
 
     offset_x: AbstractVar[Real_]
@@ -137,14 +137,11 @@ class EulerAnglePose(AbstractPose, strict=True):
     - `convention`:
         The sequence of axes over which to apply
         rotation. This is a string of 3 characters
-        of x, y, and z. By default, `zyz`.
+        of x, y, and z. By default, `'zyz'`.
 
     - `inverse`:
         Compute the inverse rotation of the specified
-        convention. By default, ``False``. The value
-        of this argument is with respect to fourier space
-        rotations, so it is automatically inverted
-        when rotating in real space.
+        convention. By default, `False`.
     """
 
     offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
@@ -165,7 +162,7 @@ class EulerAnglePose(AbstractPose, strict=True):
         ):
             raise AttributeError(
                 f"`EulerPose.convention` should be a string of three characters, each "
-                f"of which is 'x', 'y', or 'z'. Instead, got {self.convention}"
+                f"of which is 'x', 'y', or 'z'. Instead, got '{self.convention}'"
             )
         if (
             self.convention[0] == self.convention[1]
@@ -173,7 +170,7 @@ class EulerAnglePose(AbstractPose, strict=True):
         ):
             raise AttributeError(
                 f"`EulerPose.convention` cannot have axes repeating in a row. For example, "
-                f"`xxy` or `zzz` are not allowed. Got `{self.convention}`."
+                f"'xxy' or 'zzz' are not allowed. Got '{self.convention}'."
             )
 
     @cached_property
@@ -219,8 +216,7 @@ class QuaternionPose(AbstractPose, strict=True):
 
     **Attributes:**
 
-    - `wxyz`:
-        The unit quaternion.
+    - `wxyz`: The unit quaternion.
     """
 
     offset_x: Real_ = field(default=0.0, converter=jnp.asarray)
