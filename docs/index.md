@@ -105,7 +105,7 @@ image_without_noise = pipeline.render(get_real=True)
 
 ## Next steps
 
-There are many modeling features in `cryojax` to learn about. To learn more, see the [Examples](/docs/examples.md#examples) section of the documentation.
+There are many modeling features in `cryojax` to learn about. To learn more, see the Examples section of the documentation.
 
 ## Acknowledgements
 
