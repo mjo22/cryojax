@@ -5,7 +5,7 @@ from jax import config
 from pycistem.core import CTF as cisCTF, Image, AnglesAndShifts
 
 import cryojax.simulator as cs
-from cryojax.io import read_array_with_spacing_from_mrc
+from cryojax.io import read_volume_with_voxel_size_from_mrc
 from cryojax.simulator import CTF, EulerPose
 from cryojax.image import powerspectrum, irfftn
 from cryojax.coordinates import make_frequencies, cartesian_to_polar
@@ -110,7 +110,7 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
 )
 def test_compute_projection_with_cistem(phi, theta, psi, sample_mrc_path, pixel_size):
     # cryojax
-    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
+    real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
     potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
     pose = cs.EulerPose(view_phi=phi, view_theta=theta, view_psi=psi)
     specimen = cs.Specimen(potential, pose)

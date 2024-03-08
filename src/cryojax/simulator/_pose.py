@@ -3,7 +3,7 @@ Representations of rigid body rotations and translations of 3D coordinate system
 """
 
 from abc import abstractmethod
-from typing import overload
+from typing import overload, Any
 from typing_extensions import override
 from jaxtyping import Float, Array
 from functools import cached_property
@@ -72,12 +72,13 @@ class AbstractPose(Module, strict=True):
         if isinstance(volume_coordinates, CloudCoords3D):
             rotated_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
         elif isinstance(volume_coordinates, VolumeCoords):
-            rotated_coordinates = jax.vmap(
-                jax.vmap(jax.vmap(rotation.apply, in_axes=0), in_axes=1), in_axes=2
-            )(volume_coordinates)
+            rotated_coordinates = jax.vmap(jax.vmap(jax.vmap(rotation.apply)))(
+                volume_coordinates
+            )
         else:
             raise ValueError(
-                f"Coordinates must be a JAX array either of shape (N, 3) or (N1, N2, N3, 3). Instead, got {volume_coordinates.shape} and type {type(volume_coordinates)}."
+                "Coordinates must be a JAX array either of shape (N, 3) or (N1, N2, N3, 3). "
+                f"Instead, got {volume_coordinates.shape} and type {type(volume_coordinates)}."
             )
         return rotated_coordinates
 
@@ -101,20 +102,20 @@ class AbstractPose(Module, strict=True):
 
     @classmethod
     @abstractmethod
-    def from_rotation(cls, rotation: SO3):
+    def from_rotation(cls, rotation: SO3, **kwargs: Any):
         """Construct an `AbstractPose` from a `jaxlie.SO3` object."""
         raise NotImplementedError
 
     @classmethod
     def from_rotation_and_translation(
-        cls, rotation: SO3, translation: Float[Array, "3"]
+        cls, rotation: SO3, translation: Float[Array, "3"], **kwargs: Any
     ):
         """Construct an `AbstractPose` from a `jaxlie.SO3` object and a
         translation vector.
         """
         return eqx.tree_at(
             lambda self: (self.offset_x, self.offset_y, self.offset_z),
-            cls.from_rotation(rotation),
+            cls.from_rotation(rotation, **kwargs),
             (translation[..., 0], translation[..., 1], translation[..., 2]),
         )
 
@@ -166,6 +167,14 @@ class EulerPose(AbstractPose, strict=True):
                 f"`EulerPose.convention` should be a string of three characters, each "
                 f"of which is 'x', 'y', or 'z'. Instead, got {self.convention}"
             )
+        if (
+            self.convention[0] == self.convention[1]
+            or self.convention[1] == self.convention[2]
+        ):
+            raise AttributeError(
+                f"`EulerPose.convention` cannot have axes repeating in a row. For example, "
+                f"`xxy` or `zzz` are not allowed. Got `{self.convention}`."
+            )
 
     @cached_property
     @override
@@ -189,16 +198,18 @@ class EulerPose(AbstractPose, strict=True):
 
     @override
     @classmethod
-    def from_rotation(cls, rotation: SO3):
+    def from_rotation(
+        cls, rotation: SO3, convention: str = "zyz", degrees: bool = True
+    ):
         view_phi, view_theta, view_psi = _convert_quaternion_to_euler_angles(
-            rotation.wxyz, "zyz", True
+            rotation.wxyz, convention, degrees
         )
         return cls(
             view_phi=view_phi,
             view_theta=view_theta,
             view_psi=view_psi,
-            convention="zyz",
-            degrees=True,
+            convention=convention,
+            degrees=degrees,
         )
 
 
@@ -303,8 +314,11 @@ class ExponentialPose(AbstractPose, strict=True):
 
     @override
     @classmethod
-    def from_rotation(cls, rotation: SO3):
-        return cls(tangent=rotation.log())
+    def from_rotation(cls, rotation: SO3, degrees: bool = True):
+        tangent = rotation.log()
+        if degrees:
+            tangent = jnp.rad2deg(tangent)
+        return cls(tangent=tangent, degrees=degrees)
 
 
 class AxisAnglePose(AbstractPose, strict=True):
@@ -357,42 +371,49 @@ class AxisAnglePose(AbstractPose, strict=True):
 
     @override
     @classmethod
-    def from_rotation(cls, rotation: SO3):
+    def from_rotation(cls, rotation: SO3, degrees: bool = True):
         rotation_matrix = rotation.as_matrix()
-        # Get angle of rotation
+        # Get cosine of the angle of rotation
+        eps = jnp.finfo(rotation_matrix.dtype).eps
+        # Get the angle of rotation
         angle = jnp.arccos((jnp.trace(rotation_matrix) - 1) / 2)
-        # ... need to separately handle cases of angle = 0 and angle = pi
-        if jnp.isclose(angle, 0.0):
-            # ... make arbitrary choice to set the axis to (1, 0, 0)
-            axis = jnp.asarray((1.0, 0.0, 0.0), dtype=float)
-        elif jnp.isclose(angle, jnp.pi):
-            # ... we can analytically get the outer product matrix of the
-            # rotation axis with a taylor expansion of the exponential map.
-            # Make the arbitrary choice to fix the z component to be positive.
-            axis_outer_product = (rotation_matrix + jnp.eye(3)) / 2
-            axis = jnp.asarray(
-                (
-                    jnp.sign(axis_outer_product[0, 1])
-                    * jnp.sqrt(axis_outer_product[0, 0]),
-                    jnp.sign(axis_outer_product[1, 2])
-                    * jnp.sqrt(axis_outer_product[1, 1]),
-                    jnp.sqrt(axis_outer_product[2, 2]),
-                ),
-                dtype=float,
-            )
-        else:
-            # ... otherwise get the axis from the rotation matrix off-axis terms.
-            # This does not work for a symmetric rotation matrix (the cases of
-            # angle = 0 and angle = pi).
-            axis = jnp.asarray(
-                (
-                    rotation_matrix[3, 2] - rotation_matrix[2, 3],
-                    rotation_matrix[1, 3] - rotation_matrix[3, 1],
-                    rotation_matrix[2, 1] - rotation_matrix[1, 2],
-                ),
-                dtype=float,
-            ) / (2 * jnp.sin(angle))
-        return cls(angle=angle, axis=axis)
+        # ... need to separately handle cases of angle = 0 and angle = pi.
+        # For zero, make arbitrary choice to set the axis to (1, 0, 0)
+        axis_if_zero = jnp.asarray((1.0, 0.0, 0.0), dtype=float)
+        # ... for pi, we can analytically get the outer product matrix of the
+        # rotation axis with a taylor expansion of the exponential map.
+        # Make the arbitrary choice to fix the z component to be positive.
+        axis_outer_product = (rotation_matrix + jnp.eye(3)) / 2
+        axis_if_pi = jnp.asarray(
+            (
+                jnp.sign(axis_outer_product[0, 1]) * jnp.sqrt(axis_outer_product[0, 0]),
+                jnp.sign(axis_outer_product[1, 2]) * jnp.sqrt(axis_outer_product[1, 1]),
+                jnp.sqrt(axis_outer_product[2, 2]),
+            ),
+            dtype=float,
+        )
+        # ... otherwise get the axis from the rotation matrix off-axis terms.
+        # This does not work for a symmetric rotation matrix (the cases of
+        # angle = 0 and angle = pi).
+        axis_if_neither = jnp.asarray(
+            (
+                rotation_matrix[3, 2] - rotation_matrix[2, 3],
+                rotation_matrix[1, 3] - rotation_matrix[3, 1],
+                rotation_matrix[2, 1] - rotation_matrix[1, 2],
+            ),
+            dtype=float,
+        ) / (2 * jnp.sin(angle))
+        # Pick one of the axes based on the angle
+        axis = jnp.select(
+            [jnp.isclose(angle, 0.0, atol=eps), jnp.isclose(angle, jnp.pi, atol=eps)],
+            [axis_if_zero, axis_if_pi],
+            axis_if_neither,
+        )
+        # Convert to degrees if true
+        if degrees:
+            angle = jnp.rad2deg(angle)
+
+        return cls(angle=angle, axis=axis, degrees=degrees)
 
 
 class SO3Pose(AbstractPose, strict=True):
@@ -473,4 +494,4 @@ def _convert_quaternion_to_euler_angles(
     )
     angles = angles.at[1].set(jnp.where(symmetric, angles[1], angles[1] - jnp.pi / 2))
     angles = (angles + jnp.pi) % (2 * jnp.pi) - jnp.pi
-    return jnp.rad2deg(angles) if degrees else angles
+    return -jnp.rad2deg(angles) if degrees else -angles

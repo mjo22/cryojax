@@ -132,12 +132,12 @@ class Instrument(Module, strict=True):
             return fourier_potential_in_exit_plane
         elif self.optics.is_linear:
             # ... compute the squared wavefunction directly from the image contrast
-            # as |psi|^2 = 1 - 2C
+            # as |psi|^2 = 1 + 2C.
             fourier_contrast_at_detector_plane = (
                 fourier_contrast_or_wavefunction_at_detector_plane
             )
             fourier_squared_wavefunction_at_detector_plane = (
-                (-2 * fourier_contrast_at_detector_plane).at[0, 0].add(1.0 * N1 * N2)
+                (2 * fourier_contrast_at_detector_plane).at[0, 0].add(1.0 * N1 * N2)
             )
             return fourier_squared_wavefunction_at_detector_plane
         else:

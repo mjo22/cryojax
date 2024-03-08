@@ -30,8 +30,8 @@ def test_custom_variance(noisy_model, config, test_image):
         likelihood_model_with_custom_variance.variance(freqs),
     )
     np.testing.assert_allclose(
-        likelihood_model.log_probability(test_image),
-        likelihood_model_with_custom_variance.log_probability(test_image),
+        likelihood_model.log_likelihood(test_image),
+        likelihood_model_with_custom_variance.log_likelihood(test_image),
     )
     np.testing.assert_allclose(
         likelihood_model.sample(jr.PRNGKey(seed=0)),

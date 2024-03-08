@@ -47,11 +47,10 @@ from cryojax.io import read_array_with_spacing_from_mrc
 
 # Instantiate the scattering potential.
 filename = "example_scattering_potential.mrc"
-real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(filename)
+real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(filename)
 potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
-shape, pixel_size = (320, 320), voxel_size
-config = cs.ImageConfig(shape, pixel_size)
+config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
 integrator = cs.FourierSliceExtract(config, interpolation_order=1)
 ```
 
@@ -82,7 +81,7 @@ detector = cs.PoissonDetector(dqe=cs.IdealDQE(fraction_detected_electrons=1.0))
 instrument = cs.Instrument(optics, dose, detector)
 ```
 
-Here, the `GaussianDetector` is simply modeled by gaussian white noise. The `CTF` has all parameters used in CTFFIND4, which take their default values if not
+Here, the `PoissonDetector` counts electron events at a given `ElectronDose`, and the `IdealDQE` is the ideal detective quantum efficiency (DQE) for a counting detector. The `CTF` has all parameters used in CTFFIND4, which take their default values if not
 explicitly configured here. Finally, we can instantiate the `ImagePipeline` and simulate an image.
 
 ```python
@@ -93,14 +92,16 @@ key = jax.random.PRNGKey(seed=0)
 image = pipeline.sample(key)
 ```
 
-This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model.
+This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model, which in this case will compute the expected electron events.
 
 ```python
 # Compute an image without stochasticity
 image = pipeline.render()
 ```
 
-Instead of simulating noise from the model of the detector, `cryojax` also defines a library of distributions. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood
+Alternatively we could have completely forgotten about a model of a detector, or even an optics model. In the former case, if we set `instrument = cs.Instrument(optics)`, the `pipeline` will return the squared wavefunction in the detector plane. In the latter case, if we set set `instrument = cs.Instrument()`--or do not initialize an instrument at all–-the `pipeline` will return the scattering potential in the exit plane. 
+
+Instead of simulating noise from the stochastic parts of the `pipeline`, `cryojax` also defines a library of distributions. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood
 
 ```python
 from cryojax.image import rfftn
@@ -108,13 +109,13 @@ from cryojax.inference import distributions as dist
 from cryojax.image import operators as op
 
 # Passing the ImagePipeline and a variance function, instantiate the distribution
-model = dist.IndependentFourierGaussian(pipeline, variance=op.Constant(1.0))
+distribution = dist.IndependentFourierGaussian(pipeline, variance=op.Constant(1.0))
 # ... then, either simulate an image from this distribution
 key = jax.random.PRNGKey(seed=0)
-image = model.sample(key)
+image = distribution.sample(key)
 # ... or compute the likelihood
 observed = rfftn(...)  # for this example, read in observed data and take FFT
-log_likelihood = model.log_probability(observed)
+log_likelihood = distribution.log_likelihood(observed)
 ```
 
 For more advanced image simulation examples and to understand the many features in this library, see the documentation (coming soon!).
@@ -145,10 +146,9 @@ We can now create the loss and differentiate it with respect to the parameters.
 
 ```python
 @jax.jit
-@jax.value_and_grad
-def loss(params, distribution, observed):
+def negative_log_likelihood(params, distribution, observed):
     distribution = update_distribution(distribution, params)
-    return -distribution.log_probability(observed)
+    return -distribution.log_likelihood(observed)
 ```
 
 Finally, we can evaluate an updated set of parameters.
@@ -159,7 +159,8 @@ params = dict(
     defocus_u=jnp.asarray(9000.0),
     pixel_size=jnp.asarray(density.voxel_size+0.02),
 )
-negative_log_likelihood, grad = loss(params, model, observed)
+loss = negative_log_likelihood(params, distribution, observed)
+grads = jax.grad(negative_log_likelihood)(params, distribution, observed)
 ```
 
 To summarize, this example creates a loss function at an updated set of parameters. In general, any `cryojax` object may contain model parameters and there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.

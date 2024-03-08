@@ -1,8 +1,8 @@
 """
-Image formation models simulated from gaussian distributions.
+Image formation models simulated from gaussian noise distributions.
 """
 
-from typing import Optional, Any
+from typing import Optional
 from typing_extensions import override
 from equinox import field
 
@@ -18,16 +18,19 @@ from ...typing import Real_, Image, ComplexImage
 
 
 class IndependentFourierGaussian(AbstractDistribution, strict=True):
-    r"""
-    A gaussian noise model, where each fourier mode is independent.
+    r"""A gaussian noise model, where each fourier mode is independent.
 
     This computes the likelihood in Fourier space,
-    which allows one to model an arbitrary noise power spectrum.
+    so that the variance to be an arbitrary noise power spectrum.
 
-    Attributes
-    ----------
-    variance :
-        The gaussian variance function.
+    **Attributes:**
+
+    - `pipeline`: The image formation model.
+
+    - `variance`: The variance of each fourier mode.
+
+    - `contrast_scale`: The standard deviation of an image simulated
+                        from `pipeline`, excluding the noise.
     """
 
     pipeline: AbstractPipeline
@@ -53,7 +56,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
 
     @override
     def sample(self, key: PRNGKeyArray, *, get_real: bool = True) -> Image:
-        """Sample from the Gaussian noise model."""
+        """Sample from the gaussian noise model."""
         N_pix = np.prod(self.pipeline.integrator.config.padded_shape)
         freqs = self.pipeline.integrator.config.padded_frequency_grid_in_angstroms.get()
         # Compute the zero mean variance and scale up to be independent of the number of pixels
@@ -66,7 +69,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         return image + noise
 
     @override
-    def log_probability(self, observed: ComplexImage) -> Real_:
+    def log_likelihood(self, observed: ComplexImage) -> Real_:
         """Evaluate the log-likelihood of the gaussian noise model.
 
         **Arguments:**
