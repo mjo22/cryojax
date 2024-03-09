@@ -126,7 +126,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
         pad_mode: str = "constant",
         filter: Optional[AbstractFilter] = None,
     ) -> Self:
-        """Load an `AbstractFourierVoxelGrid` from real-valued 3D electron
+        """Load an `AbstractFourierVoxelGridPotential` from real-valued 3D electron
         scattering potential voxel grid.
 
         **Arguments:**
@@ -184,11 +184,11 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> Self:
-        """Load an `AbstractFourierVoxelGrid` from atom positions and identities.
+        """Load an `AbstractFourierVoxelGridPotential` from atom positions and identities.
 
         **Arguments:**
 
-        - `**kwargs`: Passed to `AbstractFourierVoxelGrid.from_real_voxel_grid`
+        - `**kwargs`: Passed to `AbstractFourierVoxelGridPotential.from_real_voxel_grid`
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
@@ -265,13 +265,13 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
         """
         !!! note
             The argument `fourier_voxel_grid` is used to set
-            `FourierVoxelGridInterpolator.coefficients` in the `__init__`.
-            For example,
+            `FourierVoxelGridPotentialInterpolator.coefficients` in the `__init__`,
+            but it is not stored in the class. For example,
 
             ```python
-            voxels = FourierVoxelGridInterpolator(fourier_voxel_grid, frequency_slice, voxel_size)
-            assert not hasattr(voxels, "fourier_voxel_grid")  # This does not store the `fourier_voxel_grid`
-            assert hasattr(voxels, "coefficients")  # Instead it computes `coefficients` upon `__init__`
+            voxels = FourierVoxelGridPotentialInterpolator(fourier_voxel_grid, frequency_slice, voxel_size)
+            assert hasattr(voxels, "fourier_voxel_grid")  # This will return an error
+            assert hasattr(voxels, "coefficients")  # Instead, the spline coefficients are stored
             ```
         """
         self.coefficients = compute_spline_coefficients(fourier_voxel_grid)
@@ -355,7 +355,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         *,
         crop_scale: Optional[float] = None,
     ) -> Self:
-        """Load a `RealVoxelGrid` from a real-valued 3D electron
+        """Load a `RealVoxelGridPotential` from a real-valued 3D electron
         scattering potential voxel grid.
 
         !!! warning
@@ -365,7 +365,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
             ```python
             real_voxel_grid = ...
-            potential = RealVoxelGrid.from_real_voxel_grid(real_voxel_grid, ...)
+            potential = RealVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, ...)
             assert real_voxel_grid == jnp.transpose(potential.real_voxel_grid, axes=[1, 0, 2])
             ```
 
@@ -408,11 +408,11 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> Self:
-        """Load a `RealVoxelGrid` from atom positions and identities.
+        """Load a `RealVoxelGridPotential` from atom positions and identities.
 
         **Arguments:**
 
-        - `**kwargs`: Passed to `RealVoxelGrid.from_real_voxel_grid`
+        - `**kwargs`: Passed to `RealVoxelGridPotential.from_real_voxel_grid`
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
@@ -432,10 +432,10 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     """Abstraction of a 3D electron scattering potential voxel point cloud.
 
     !!! info
-        This object is similar to the `RealVoxelGrid`. Instead
-        of storing the whole voxel grid, a `RealVoxelCloud` need
+        This object is similar to the `RealVoxelGridPotential`. Instead
+        of storing the whole voxel grid, a `RealVoxelCloudPotential` need
         only store points of non-zero scattering potential. Therefore,
-        a `RealVoxelCloud` stores a point cloud of scattering potential
+        a `RealVoxelCloudPotential` stores a point cloud of scattering potential
         voxel values.
 
     **Attributes:**
@@ -489,14 +489,14 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         rtol: float = 1e-05,
         atol: float = 1e-08,
     ) -> Self:
-        """Load an `RealVoxelCloud` from a real-valued 3D electron
+        """Load an `RealVoxelCloudPotential` from a real-valued 3D electron
         scattering potential voxel grid.
 
         !!! warning
             `real_voxel_grid` is transposed upon instantiation in order to make
             the results of `cryojax.simulator.NufftProject` agree with
             `cryojax.simulator.FourierSliceExtract`.
-            See [`cryojax.simulator.RealVoxelGrid`][] for more detail.
+            See [`cryojax.simulator.RealVoxelGridPotential`][] for more detail.
 
         **Arguments:**
 
@@ -537,11 +537,11 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> Self:
-        """Load a `RealVoxelCloud` from atom positions and identities.
+        """Load a `RealVoxelCloudPotential` from atom positions and identities.
 
         **Arguments:**
 
-        - `**kwargs`: Passed to `RealVoxelCloud.from_real_voxel_grid`
+        - `**kwargs`: Passed to `RealVoxelCloudPotential.from_real_voxel_grid`
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
