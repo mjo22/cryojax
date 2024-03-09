@@ -88,7 +88,7 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
         raise NotImplementedError
 
 
-class AbstractFourierVoxelGrid(AbstractVoxelPotential, strict=True):
+class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     """Abstract interface of a 3D scattering potential voxel grid
     in fourier-space.
     """
@@ -203,7 +203,7 @@ class AbstractFourierVoxelGrid(AbstractVoxelPotential, strict=True):
         )
 
 
-class FourierVoxelGrid(AbstractFourierVoxelGrid):
+class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
     """A 3D scattering potential voxel grid in fourier-space.
 
     **Attributes:**
@@ -237,7 +237,7 @@ class FourierVoxelGrid(AbstractFourierVoxelGrid):
         return self.fourier_voxel_grid.shape
 
 
-class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
+class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     """A 3D scattering potential voxel grid in fourier-space, represented
     by spline coefficients.
 
@@ -283,7 +283,7 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
         return tuple([s - 2 for s in self.coefficients.shape])
 
 
-class RealVoxelGrid(AbstractVoxelPotential, strict=True):
+class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     """Abstraction of a 3D scattering potential voxel grid in real-space.
 
     **Attributes:**
@@ -428,7 +428,7 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
         )
 
 
-class RealVoxelCloud(AbstractVoxelPotential, strict=True):
+class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     """Abstraction of a 3D electron scattering potential voxel point cloud.
 
     !!! info

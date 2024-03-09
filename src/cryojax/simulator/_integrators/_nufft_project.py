@@ -9,7 +9,7 @@ from equinox import field
 import jax.numpy as jnp
 
 from .._config import ImageConfig
-from .._potential import RealVoxelCloud, RealVoxelGrid
+from .._potential import RealVoxelCloudPotential, RealVoxelGridPotential
 from ._potential_integrator import AbstractPotentialIntegrator
 from ...typing import (
     ComplexImage,
@@ -33,9 +33,11 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
 
     eps: float = field(static=True, default=1e-6)
 
-    def __call__(self, potential: RealVoxelGrid | RealVoxelCloud) -> ComplexImage:
+    def __call__(
+        self, potential: RealVoxelGridPotential | RealVoxelCloudPotential
+    ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
-        if isinstance(potential, RealVoxelGrid):
+        if isinstance(potential, RealVoxelGridPotential):
             shape = potential.shape
             fourier_projection = project_with_nufft(
                 potential.real_voxel_grid.ravel(),
@@ -43,7 +45,7 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
                 self.config.padded_shape,
                 eps=self.eps,
             )
-        elif isinstance(potential, RealVoxelCloud):
+        elif isinstance(potential, RealVoxelCloudPotential):
             fourier_projection = project_with_nufft(
                 potential.voxel_weights,
                 potential.coordinate_list.get(),

@@ -43,7 +43,7 @@ from cryojax.io import read_volume_with_voxel_size_from_mrc
 # Instantiate the scattering potential.
 filename = "example_scattering_potential.mrc"
 real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(filename)
-potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
+potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
 config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
 integrator = cs.FourierSliceExtract(config, interpolation_order=1)

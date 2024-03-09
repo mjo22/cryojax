@@ -15,7 +15,7 @@ def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
     real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(
         sample_subunit_mrc_path
     )
-    subunit_density = cs.FourierVoxelGrid.from_real_voxel_grid(
+    subunit_density = cs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size, pad_scale=2
     )
     r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
@@ -35,7 +35,7 @@ def build_helix_with_conformation(
 ) -> cs.Helix:
     subunit_density = tuple(
         [
-            cs.FourierVoxelGrid.from_real_voxel_grid(
+            cs.FourierVoxelGridPotential.from_real_voxel_grid(
                 *read_volume_with_voxel_size_from_mrc(sample_subunit_mrc_path)
             )
             for _ in range(2)

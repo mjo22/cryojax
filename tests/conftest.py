@@ -78,7 +78,7 @@ def integrator(config):
 @pytest.fixture
 def potential(sample_mrc_path):
     real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
-    return cs.FourierVoxelGrid.from_real_voxel_grid(
+    return cs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size, pad_scale=1.3
     )
 

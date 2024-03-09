@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from cryojax.simulator import FourierVoxelGrid, RealVoxelGrid
+from cryojax.simulator import FourierVoxelGridPotential, RealVoxelGridPotential
 from cryojax.simulator import build_real_space_voxels_from_atoms
 
 from cryojax.io import read_atoms_from_pdb
@@ -24,7 +24,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     # Load the PDB file into a VoxelGrid
     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
     coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
-    fourier_potential = FourierVoxelGrid.from_atoms(
+    fourier_potential = FourierVoxelGridPotential.from_atoms(
         atom_positions,
         atom_elements,
         voxel_size,
@@ -36,7 +36,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     # Ravel the grid
     fvg_real = fvg_real.ravel()
 
-    vg = RealVoxelGrid.from_atoms(
+    vg = RealVoxelGridPotential.from_atoms(
         atom_positions,
         atom_elements,
         voxel_size,
@@ -118,17 +118,17 @@ class TestBuildVoxelsFromTrajectories:
         elements = np.array([1, 1, 2, 6])
 
         make_voxel_grid_ensemble = jax.vmap(
-            RealVoxelGrid.from_atoms, in_axes=[0, None, None, None]
+            RealVoxelGridPotential.from_atoms, in_axes=[0, None, None, None]
         )
         traj_voxels = make_voxel_grid_ensemble(
             traj, elements, voxel_size, coordinate_grid
         )
 
-        voxel1 = RealVoxelGrid.from_atoms(
+        voxel1 = RealVoxelGridPotential.from_atoms(
             atom_positions, elements, voxel_size, coordinate_grid
         )
 
-        voxel2 = RealVoxelGrid.from_atoms(
+        voxel2 = RealVoxelGridPotential.from_atoms(
             second_set_of_positions, elements, voxel_size, coordinate_grid
         )
 

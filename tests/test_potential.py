@@ -22,13 +22,13 @@ from cryojax.typing import VolumeSliceCoords, VolumeCoords, CloudCoords3D
 def test_voxel_electron_potential_loaders():
     real_voxel_grid = jnp.zeros((10, 10, 10), dtype=float)
     voxel_size = 1.1
-    fourier_potential = cs.FourierVoxelGrid.from_real_voxel_grid(
+    fourier_potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size=voxel_size
     )
-    real_potential = cs.RealVoxelGrid.from_real_voxel_grid(
+    real_potential = cs.RealVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size=voxel_size
     )
-    cloud_potential = cs.RealVoxelCloud.from_real_voxel_grid(
+    cloud_potential = cs.RealVoxelCloudPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size=voxel_size
     )
     for potential in [real_potential, fourier_potential, cloud_potential]:

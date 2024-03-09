@@ -23,9 +23,9 @@
 
 ### Fourier-space voxel representations
 
-??? abstract "`cryojax.simulator.AbstractFourierVoxelGrid`"
+??? abstract "`cryojax.simulator.AbstractFourierVoxelGridPotential`"
 
-    ::: cryojax.simulator.AbstractFourierVoxelGrid
+    ::: cryojax.simulator.AbstractFourierVoxelGridPotential
         options:
             members:
                 - __init__
@@ -34,10 +34,10 @@
     - The `fourier_voxel_grid` and `frequency_slice` arguments to
     `FourierVoxelGrid.__init__` should be loaded with the zero frequency
     component in the center of the box.
-    - The parameters in an `AbstractPose` represent a rotation in real-space. This means that when calling `FourierVoxelGrid.rotate_to_pose`,
+    - The parameters in an `AbstractPose` represent a rotation in real-space. This means that when calling `FourierVoxelGridPotential.rotate_to_pose`,
     frequencies are rotated by the inverse rotation as stored in the pose.
 
-::: cryojax.simulator.FourierVoxelGrid
+::: cryojax.simulator.FourierVoxelGridPotential
         options:
             members:
                 - __init__
@@ -47,7 +47,7 @@
 
 ---
 
-::: cryojax.simulator.FourierVoxelGridInterpolator
+::: cryojax.simulator.FourierVoxelGridPotentialInterpolator
         options:
             members:
                 - __init__
@@ -57,7 +57,7 @@
 
 ### Real-space voxel representations
 
-::: cryojax.simulator.RealVoxelGrid
+::: cryojax.simulator.RealVoxelGridPotential
         options:
             members:
                 - __init__
@@ -67,7 +67,7 @@
 
 ---
 
-::: cryojax.simulator.RealVoxelCloud
+::: cryojax.simulator.RealVoxelCloudPotential
         options:
             members:
                 - __init__
