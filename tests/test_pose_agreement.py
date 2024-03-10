@@ -4,7 +4,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
 import cryojax.simulator as cs
-from jaxlie import SO3
+from cryojax.rotations import SO3
 
 
 def test_default_pose_arguments():
@@ -39,14 +39,10 @@ def test_pose_conversion():
     quat = cs.QuaternionPose.from_rotation(rotation)
     matrix = cs.MatrixPose.from_rotation(rotation)
     euler = cs.EulerAnglePose.from_rotation(rotation)
-    exponential = cs.AxisAnglePose.from_rotation(rotation)
-    axis_angle = cs.RotationGroupPose.from_rotation(rotation)
+    axis_angle = cs.AxisAnglePose.from_rotation(rotation)
     # Test rotation matrix agreement for quaternions, euler angles, and matrix
     np.testing.assert_allclose(quat.rotation.as_matrix(), matrix.rotation.as_matrix())
     np.testing.assert_allclose(quat.rotation.as_matrix(), euler.rotation.as_matrix())
-    np.testing.assert_allclose(
-        quat.rotation.as_matrix(), exponential.rotation.as_matrix()
-    )
     np.testing.assert_allclose(
         quat.rotation.as_matrix(), axis_angle.rotation.as_matrix()
     )

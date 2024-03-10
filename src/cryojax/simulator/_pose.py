@@ -12,9 +12,9 @@ from equinox import field, AbstractVar
 import jax
 import equinox as eqx
 import jax.numpy as jnp
-from jaxlie import SO3
 from equinox import Module
 
+from ..rotations import SO3, AbstractRotation
 from ..typing import (
     Real_,
     ComplexImage,
@@ -108,21 +108,24 @@ class AbstractPose(Module, strict=True):
 
     @cached_property
     @abstractmethod
-    def rotation(self) -> SO3:
-        """Generate a `jaxlie.SO3` matrix lie group object."""
+    def rotation(self) -> AbstractRotation:
+        """Generate a `AbstractRotation` object."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def from_rotation(cls, rotation: SO3, **kwargs: Any):
-        """Construct an `AbstractPose` from a `jaxlie.SO3` object."""
+    def from_rotation(cls, rotation: AbstractRotation, **kwargs: Any):
+        """Construct an `AbstractPose` from a `AbstractRotation` object."""
         raise NotImplementedError
 
     @classmethod
     def from_rotation_and_translation(
-        cls, rotation: SO3, offset_in_angstroms: Float[Array, "3"], **kwargs: Any
+        cls,
+        rotation: AbstractRotation,
+        offset_in_angstroms: Float[Array, "3"],
+        **kwargs: Any,
     ):
-        """Construct an `AbstractPose` from a `jaxlie.SO3` object and a
+        """Construct an `AbstractPose` from an `AbstractRotation` object and a
         translation vector.
         """
         return eqx.tree_at(
@@ -199,18 +202,16 @@ class EulerAnglePose(AbstractPose, strict=True):
     @cached_property
     @override
     def rotation(self) -> SO3:
-        """Generate a `jaxlie.SO3` object from a set of Euler angles."""
+        """Generate a `SO3` object from a set of Euler angles."""
         phi, theta, psi = self.view_phi, self.view_theta, self.view_psi
         # Convert to radians.
         if self.degrees:
             phi = jnp.deg2rad(phi)
             theta = jnp.deg2rad(theta)
             psi = jnp.deg2rad(psi)
-        # Get sequence of rotations. The inverse operation
-        # is here due to differences in cryojax and jaxlie
-        # conventions.
+        # Get sequence of rotations.
         R1, R2, R3 = [
-            getattr(SO3, f"from_{axis}_radians")(angle).inverse()
+            getattr(SO3, f"from_{axis}_radians")(angle)
             for axis, angle in zip(self.convention, [phi, theta, psi])
         ]
         R = R3 @ R2 @ R1
@@ -306,7 +307,7 @@ class AxisAnglePose(AbstractPose, strict=True):
     which are skew-symmetric matrices, with the euler vector. The magnitude
     of this vector is the angle, and the unit vector is the axis.
 
-    Using `jaxlie`, the euler vector is mapped to SO3 group elements using
+    In a `SO3` object, the euler vector is mapped to SO3 group elements using
     the matrix exponential.
 
     **Attributes:**
@@ -334,25 +335,22 @@ class AxisAnglePose(AbstractPose, strict=True):
             euler_vector = jnp.deg2rad(euler_vector)
         # Project the tangent vector onto the manifold with
         # the exponential map
-        R = SO3.exp(-euler_vector)
+        R = SO3.exp(euler_vector)
         return R.inverse() if self.inverse else R
 
     @override
     @classmethod
     def from_rotation(cls, rotation: SO3, degrees: bool = True):
         # Compute the euler vector from the logarithmic map
-        euler_vector = -rotation.log()
+        euler_vector = rotation.log()
         if degrees:
             euler_vector = jnp.rad2deg(euler_vector)
         return cls(euler_vector=euler_vector)
 
 
-class RotationGroupPose(AbstractPose, strict=True):
-    """An `AbstractPose` represented by a `jaxlie.SO3` matrix lie
+class SO3Pose(AbstractPose, strict=True):
+    """An `AbstractPose` represented by a `SO3` matrix lie
     group.
-
-    This object can be used with the `jaxlie.manifold` submodule
-    for gradient-based optimization.
 
     **Attributes:**
 
