@@ -101,19 +101,19 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
     amplitude :
         The amplitude of the operator, equal to :math:`\kappa`
         in the above equation.
-    scale :
+    length_scale :
         The length scale of the operator, equal to :math:`\xi`
         in the above equation.
     """
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    scale: Real_ = field(default=1.0, converter=jnp.asarray)
+    length_scale: Real_ = field(default=1.0, converter=jnp.asarray)
 
     @override
     def __call__(self, freqs: ImageCoords) -> RealImage:
         k_sqr = jnp.sum(freqs**2, axis=-1)
-        scaling = 1.0 / (k_sqr + jnp.divide(1, (self.scale) ** 2)) ** 1.5
-        scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.scale**3)
+        scaling = 1.0 / (k_sqr + jnp.divide(1, (self.length_scale) ** 2)) ** 1.5
+        scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.length_scale**3)
         return scaling
 
 
@@ -132,13 +132,13 @@ class Lorenzian(AbstractFourierOperator, strict=True):
     amplitude :
         The amplitude of the operator, equal to :math:`\kappa`
         in the above equation.
-    scale :
+    length_scale :
         The length scale of the operator, equal to :math:`\xi`
         in the above equation.
     """
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    scale: Real_ = field(default=1.0, converter=jnp.asarray)
+    length_scale: Real_ = field(default=1.0, converter=jnp.asarray)
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...
@@ -149,8 +149,8 @@ class Lorenzian(AbstractFourierOperator, strict=True):
     @override
     def __call__(self, freqs: ImageCoords | VolumeCoords) -> RealImage | RealVolume:
         k_sqr = jnp.sum(freqs**2, axis=-1)
-        scaling = 1.0 / (k_sqr + jnp.divide(1, self.scale**2))
-        scaling *= jnp.divide(self.amplitude, self.scale**2)
+        scaling = 1.0 / (k_sqr + jnp.divide(1, self.length_scale**2))
+        scaling *= jnp.divide(self.amplitude, self.length_scale**2)
         return scaling
 
 
