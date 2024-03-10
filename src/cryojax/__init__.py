@@ -6,7 +6,6 @@ from . import (
     rotations as rotations,
     simulator as simulator,
     inference as inference,
-    parameters as parameters,
 )
 
 from .cryojax_version import __version__
