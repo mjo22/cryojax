@@ -119,9 +119,9 @@ class RescalingTransform(AbstractParameterTransform, strict=True):
     """
 
     rescaled_parameter: Real_
-    rescaling: Real_ = field(converter=jnp.asarray)
+    rescaling: float = field(static=True)
 
-    def __init__(self, parameter: Real_, rescaling: Real_):
+    def __init__(self, parameter: Real_, rescaling: float):
         """**Arguments:**
 
         - `parameter`: The parameter to be rescaled.
