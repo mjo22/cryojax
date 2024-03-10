@@ -68,7 +68,7 @@ class AbstractRotation(Module, strict=True):
     @classmethod
     @abstractmethod
     def sample_uniform(cls: Type[Self], key: PRNGKeyArray) -> Self:
-        """Draw a uniform sample from the group."""
+        """Draw a uniform sample."""
         raise NotImplementedError
 
 
@@ -111,9 +111,16 @@ class SO3(AbstractMatrixLieGroup, strict=True):
     """A rotation in 3D space, represented by the
     SO3 matrix lie group.
 
-    The class is largely derived from the package `jaxlie`,
-    exactly in many places. Thank you to the developers
-    for writing a great package!"""
+    The class is exactly derived from the `jaxlie.SO3`
+    object in many places. Thank you to the developers
+    for writing a great package!
+
+    **Attributes:**
+
+    `wxyz` - A quaternion 4-vector ordered as $(q_w, q_x, q_y, q_z)$.
+             This is the internal parameterization of the
+             rotation.
+    """
 
     space_dimension: ClassVar[int] = 3
 

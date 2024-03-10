@@ -8,7 +8,6 @@ parameter constraints.
 
 from abc import abstractmethod
 from equinox import Module, field
-from typing import Optional
 from jaxtyping import PyTree
 
 import jax.numpy as jnp
@@ -36,14 +35,9 @@ def _apply_transform(t, x):
     if x is None:
         return x
     else:
+        # t is a method that returns an AbstractParameterTransform
+        # instance
         return t(x)
-
-
-def _apply_transform_with_args(t, args, x):
-    if x is None:
-        return x
-    else:
-        return t(x, *args)
 
 
 def apply_inverse_transforms(pytree: PyTree):
@@ -55,22 +49,14 @@ def apply_inverse_transforms(pytree: PyTree):
 
 
 def apply_transforms(
-    pytree: PyTree, transforms: PyTree, transform_args: Optional[PyTree] = None
+    pytree: PyTree,
+    transforms: PyTree,
 ):
     """Applies a set of transformations to the jax arrays in
     a pytree. The pytree should have `None` values.
     """
     # Assumes that transforms is a prefix of pytree
-    if transform_args is None:
-        return jtu.tree_map(_apply_transform, transforms, pytree, is_leaf=_is_none)
-    else:
-        return jtu.tree_map(
-            _apply_transform_with_args,
-            transforms,
-            transform_args,
-            pytree,
-            is_leaf=_is_none,
-        )
+    return jtu.tree_map(_apply_transform, transforms, pytree, is_leaf=_is_none)
 
 
 class AbstractParameterTransform(Module, strict=True):
@@ -107,6 +93,7 @@ class ExpTransform(AbstractParameterTransform, strict=True):
         self.log_parameter = jnp.log(parameter)
 
     def get(self):
+        """The `log_parameter` transformed back with an exponential."""
         return jnp.exp(self.log_parameter)
 
 
@@ -125,9 +112,12 @@ class RescalingTransform(AbstractParameterTransform, strict=True):
         """**Arguments:**
 
         - `parameter`: The parameter to be rescaled.
+
+        - `rescaling`: The scale factor.
         """
         self.rescaled_parameter = rescaling * parameter
         self.rescaling = rescaling
 
     def get(self):
+        """The rescaled `rescaled_parameter` transformed back to the original scale."""
         return self.rescaled_parameter / self.rescaling
