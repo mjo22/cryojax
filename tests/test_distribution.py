@@ -14,13 +14,13 @@ def test_custom_variance(noisy_model, config, test_image):
     noisy_model = eqx.tree_at(
         lambda m: (m.solvent, m.instrument.detector),
         noisy_model,
-        (cs.NullIce(), cs.GaussianDetector(op.Constant(1.0))),
+        (cs.NullIce(), cs.GaussianDetector(cs.NullDQE())),
     )
     likelihood_model = dist.IndependentFourierGaussian(noisy_model)
     likelihood_model_with_custom_variance = dist.IndependentFourierGaussian(
         noisy_model, variance=op.Constant(1.0)
     )
-    freqs = config.frequency_grid_in_angstroms.get()
+    freqs = config.wrapped_frequency_grid_in_angstroms.get()
     assert eqx.tree_equal(
         likelihood_model.variance,
         likelihood_model_with_custom_variance.variance,

@@ -6,8 +6,9 @@ from ._pose import (
     QuaternionPose as QuaternionPose,
     MatrixPose as MatrixPose,
     AxisAnglePose as AxisAnglePose,
-    RotationGroupPose as RotationGroupPose,
+    SO3Pose as SO3Pose,
 )
+
 
 from ._conformation import (
     AbstractConformation as AbstractConformation,

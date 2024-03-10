@@ -41,14 +41,14 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
             shape = potential.shape
             fourier_projection = project_with_nufft(
                 potential.real_voxel_grid.ravel(),
-                potential.coordinate_grid.get().reshape((math.prod(shape), 3)),
+                potential.wrapped_coordinate_grid.get().reshape((math.prod(shape), 3)),
                 self.config.padded_shape,
                 eps=self.eps,
             )
         elif isinstance(potential, RealVoxelCloudPotential):
             fourier_projection = project_with_nufft(
                 potential.voxel_weights,
-                potential.coordinate_list.get(),
+                potential.wrapped_coordinate_list.get(),
                 self.config.padded_shape,
                 eps=self.eps,
             )

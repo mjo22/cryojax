@@ -56,7 +56,7 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
         """Compute a projection of the real-space potential by extracting
         a central slice in fourier space.
         """
-        frequency_slice = potential.frequency_slice.get()
+        frequency_slice = potential.wrapped_frequency_slice.get()
         N = frequency_slice.shape[0]
         if potential.shape != (N, N, N):
             raise AttributeError(

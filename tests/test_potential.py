@@ -34,12 +34,14 @@ def test_voxel_electron_potential_loaders():
     for potential in [real_potential, fourier_potential, cloud_potential]:
         assert potential.voxel_size == jnp.asarray(voxel_size)
 
-    assert isinstance(fourier_potential.frequency_slice, FrequencySlice)
-    assert isinstance(fourier_potential.frequency_slice.get(), VolumeSliceCoords)
-    assert isinstance(real_potential.coordinate_grid, CoordinateGrid)
-    assert isinstance(real_potential.coordinate_grid.get(), VolumeCoords)
-    assert isinstance(cloud_potential.coordinate_list, CoordinateList)
-    assert isinstance(cloud_potential.coordinate_list.get(), CloudCoords3D)
+    assert isinstance(fourier_potential.wrapped_frequency_slice, FrequencySlice)
+    assert isinstance(
+        fourier_potential.wrapped_frequency_slice.get(), VolumeSliceCoords
+    )
+    assert isinstance(real_potential.wrapped_coordinate_grid, CoordinateGrid)
+    assert isinstance(real_potential.wrapped_coordinate_grid.get(), VolumeCoords)
+    assert isinstance(cloud_potential.wrapped_coordinate_list, CoordinateList)
+    assert isinstance(cloud_potential.wrapped_coordinate_list.get(), CloudCoords3D)
 
 
 def test_electron_potential_vmap(potential, integrator, pose):
@@ -65,9 +67,16 @@ def test_electron_potential_vmap(potential, integrator, pose):
 
 def test_electron_potential_vmap_with_pipeline(potential, pose, integrator):
     pipeline = cs.ImagePipeline(cs.Specimen(potential, pose), integrator)
+
+    def is_potential_leaves_without_coordinates(element):
+        if isinstance(element, cs.AbstractScatteringPotential):
+            return get_not_coordinate_filter_spec(element)
+        else:
+            return False
+
     # Get filter spec for scattering potential
     filter_spec = jtu.tree_map(
-        cs.is_potential_leaves_without_coordinates,
+        is_potential_leaves_without_coordinates,
         pipeline,
         is_leaf=lambda x: isinstance(x, cs.AbstractScatteringPotential),
     )
