@@ -58,7 +58,9 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
     def sample(self, key: PRNGKeyArray, *, get_real: bool = True) -> Image:
         """Sample from the gaussian noise model."""
         N_pix = np.prod(self.pipeline.integrator.config.padded_shape)
-        freqs = self.pipeline.integrator.config.padded_frequency_grid_in_angstroms.get()
+        freqs = (
+            self.pipeline.integrator.config.wrapped_padded_frequency_grid_in_angstroms.get()
+        )
         # Compute the zero mean variance and scale up to be independent of the number of pixels
         std = jnp.sqrt(N_pix * self.variance(freqs))
         noise = self.pipeline.crop_and_apply_operators(
@@ -78,7 +80,9 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
                      must match `ImageConfig.padded_shape`.
         """
         N_pix = np.prod(self.pipeline.integrator.config.padded_shape)
-        freqs = self.pipeline.integrator.config.frequency_grid_in_angstroms.get()
+        freqs = (
+            self.pipeline.integrator.config.wrapped_frequency_grid_in_angstroms.get()
+        )
         # Compute the variance and scale up to be independent of the number of pixels
         variance = N_pix * self.variance(freqs)
         # Create simulated data

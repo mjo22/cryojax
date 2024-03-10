@@ -34,7 +34,6 @@ from ...image import (
 from ...coordinates import CoordinateGrid, CoordinateList, FrequencySlice
 from ...typing import (
     RealCloud,
-    RealVolume,
     RealCubicVolume,
     ComplexCubicVolume,
     Real_,
@@ -93,27 +92,27 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     in fourier-space.
     """
 
-    frequency_slice: AbstractVar[FrequencySlice]
+    wrapped_frequency_slice: AbstractVar[FrequencySlice]
 
     @abstractmethod
     def __init__(
         self,
         fourier_voxel_grid: ComplexCubicVolume,
-        frequency_slice: FrequencySlice,
+        wrapped_frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
         raise NotImplementedError
 
     @cached_property
-    def frequency_slice_in_angstroms(self) -> FrequencySlice:
-        """The `frequency_slice` in angstroms."""
-        return self.frequency_slice / self.voxel_size
+    def wrapped_frequency_slice_in_angstroms(self) -> FrequencySlice:
+        """The `wrapped_frequency_slice` in angstroms."""
+        return self.wrapped_frequency_slice / self.voxel_size
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
-            lambda d: d.frequency_slice.array,
+            lambda d: d.wrapped_frequency_slice.array,
             self,
-            pose.rotate_coordinates(self.frequency_slice.get(), inverse=True),
+            pose.rotate_coordinates(self.wrapped_frequency_slice.get(), inverse=True),
         )
 
     @classmethod
@@ -210,13 +209,14 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
 
     `fourier_voxel_grid`: The cubic voxel grid in fourier space.
 
-    `frequency_slice`: Frequency slice coordinate system.
+    `wrapped_frequency_slice`: Frequency slice coordinate system,
+                               wrapped in a `FrequencySlice` object.
 
     `voxel_size`: The voxel size.
     """
 
     fourier_voxel_grid: ComplexCubicVolume = field(converter=jnp.asarray)
-    frequency_slice: FrequencySlice
+    wrapped_frequency_slice: FrequencySlice
     voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = False
@@ -225,11 +225,11 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
     def __init__(
         self,
         fourier_voxel_grid: ComplexCubicVolume,
-        frequency_slice: FrequencySlice,
+        wrapped_frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
         self.fourier_voxel_grid = fourier_voxel_grid
-        self.frequency_slice = frequency_slice
+        self.wrapped_frequency_slice = wrapped_frequency_slice
         self.voxel_size = voxel_size
 
     @property
@@ -245,13 +245,13 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 
     `coefficients`: Cubic spline coefficients for the voxel grid.
 
-    `frequency_slice`: Frequency slice coordinate system.
+    `wrapped_frequency_slice`: Frequency slice coordinate system.
 
     `voxel_size`: The voxel size.
     """
 
     coefficients: ComplexCubicVolume = field(converter=jnp.asarray)
-    frequency_slice: FrequencySlice
+    wrapped_frequency_slice: FrequencySlice
     voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = False
@@ -259,7 +259,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     def __init__(
         self,
         fourier_voxel_grid: ComplexCubicVolume,
-        frequency_slice: FrequencySlice,
+        wrapped_frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
         """
@@ -275,7 +275,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
             ```
         """
         self.coefficients = compute_spline_coefficients(fourier_voxel_grid)
-        self.frequency_slice = frequency_slice
+        self.wrapped_frequency_slice = wrapped_frequency_slice
         self.voxel_size = voxel_size
 
     @property
@@ -290,13 +290,14 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     `real_voxel_grid`: The voxel grid in fourier space.
 
-    `coordinate_grid`: A coordinate grid.
+    `wrapped_coordinate_grid`: A coordinate grid, wrapped into a
+                               `CoordinateGrid` object.
 
     `voxel_size`: The voxel size.
     """
 
     real_voxel_grid: RealCubicVolume = field(converter=jnp.asarray)
-    coordinate_grid: CoordinateGrid
+    wrapped_coordinate_grid: CoordinateGrid
     voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = True
@@ -304,11 +305,11 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     def __init__(
         self,
         real_voxel_grid: RealCubicVolume,
-        coordinate_grid: CoordinateGrid,
+        wrapped_coordinate_grid: CoordinateGrid,
         voxel_size: Real_,
     ):
         self.real_voxel_grid = real_voxel_grid
-        self.coordinate_grid = coordinate_grid
+        self.wrapped_coordinate_grid = wrapped_coordinate_grid
         self.voxel_size = voxel_size
 
     @property
@@ -316,15 +317,15 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         return self.real_voxel_grid.shape
 
     @cached_property
-    def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
+    def wrapped_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         """The `coordinate_grid` in angstroms."""
-        return self.voxel_size * self.coordinate_grid
+        return self.voxel_size * self.wrapped_coordinate_grid
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
-            lambda d: d.coordinate_grid.array,
+            lambda d: d.wrapped_coordinate_grid.array,
             self,
-            pose.rotate_coordinates(self.coordinate_grid.get(), inverse=False),
+            pose.rotate_coordinates(self.wrapped_coordinate_grid.get(), inverse=False),
         )
 
     @overload
@@ -442,13 +443,14 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
     `voxel_weights`: A point-cloud of voxel scattering potential values.
 
-    `coordinate_list`: Coordinate list for the `voxel_weights`.
+    `wrapped_coordinate_list`: Coordinate list for the `voxel_weights`, wrapped
+                               in a `CoordinateList` object.
 
     `voxel_size`: The voxel size.
     """
 
     voxel_weights: RealCloud = field(converter=jnp.asarray)
-    coordinate_list: CoordinateList
+    wrapped_coordinate_list: CoordinateList
     voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = True
@@ -456,11 +458,11 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     def __init__(
         self,
         voxel_weights: RealCloud,
-        coordinate_list: CoordinateList,
+        wrapped_coordinate_list: CoordinateList,
         voxel_size: Real_,
     ):
         self.voxel_weights = voxel_weights
-        self.coordinate_list = coordinate_list
+        self.wrapped_coordinate_list = wrapped_coordinate_list
         self.voxel_size = voxel_size
 
     @property
@@ -470,13 +472,13 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     @cached_property
     def coordinate_list_in_angstroms(self) -> CoordinateList:
         """The `coordinate_list` in angstroms."""
-        return self.voxel_size * self.coordinate_list
+        return self.voxel_size * self.wrapped_coordinate_list
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
-            lambda d: d.coordinate_list.array,
+            lambda d: d.wrapped_coordinate_list.array,
             self,
-            pose.rotate_coordinates(self.coordinate_list.get(), inverse=False),
+            pose.rotate_coordinates(self.wrapped_coordinate_list.get(), inverse=False),
         )
 
     @classmethod

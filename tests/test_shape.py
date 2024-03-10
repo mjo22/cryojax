@@ -17,8 +17,10 @@ def test_fourier_shape(model, request):
     model = request.getfixturevalue(model)
     image = model(get_real=False)
     padded_image = model(view_cropped=False, get_real=False)
-    assert image.shape == model.integrator.config.frequency_grid.get().shape[0:2]
+    assert (
+        image.shape == model.integrator.config.wrapped_frequency_grid.get().shape[0:2]
+    )
     assert (
         padded_image.shape
-        == model.integrator.config.padded_frequency_grid.get().shape[0:2]
+        == model.integrator.config.wrapped_padded_frequency_grid.get().shape[0:2]
     )

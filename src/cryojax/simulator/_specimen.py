@@ -129,6 +129,6 @@ class DiscreteEnsemble(AbstractEnsemble, strict=True):
     def potential_in_com_frame(self) -> AbstractScatteringPotential:
         """Get the scattering potential at configured conformation."""
         funcs = [lambda i=i: self.potential[i] for i in range(len(self.potential))]
-        potential = jax.lax.switch(self.conformation.get(), funcs)
+        potential = jax.lax.switch(self.conformation.value, funcs)
 
         return potential

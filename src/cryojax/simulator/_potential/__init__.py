@@ -1,6 +1,5 @@
 from ._scattering_potential import (
     AbstractScatteringPotential as AbstractScatteringPotential,
-    is_potential_leaves_without_coordinates as is_potential_leaves_without_coordinates,
 )
 from ._voxel_potential import (
     AbstractVoxelPotential as AbstractVoxelPotential,

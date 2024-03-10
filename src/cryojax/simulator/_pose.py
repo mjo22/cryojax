@@ -14,7 +14,7 @@ import equinox as eqx
 import jax.numpy as jnp
 from equinox import Module
 
-from ..rotations import SO3, AbstractRotation
+from ..rotations import SO3
 from ..typing import (
     Real_,
     ComplexImage,
@@ -108,20 +108,20 @@ class AbstractPose(Module, strict=True):
 
     @cached_property
     @abstractmethod
-    def rotation(self) -> AbstractRotation:
-        """Generate a `AbstractRotation` object."""
+    def rotation(self) -> SO3:
+        """Generate an `SO3` object."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def from_rotation(cls, rotation: AbstractRotation, **kwargs: Any):
-        """Construct an `AbstractPose` from a `AbstractRotation` object."""
+    def from_rotation(cls, rotation: SO3, **kwargs: Any):
+        """Construct an `AbstractPose` from an `SO3` object."""
         raise NotImplementedError
 
     @classmethod
     def from_rotation_and_translation(
         cls,
-        rotation: AbstractRotation,
+        rotation: SO3,
         offset_in_angstroms: Float[Array, "3"],
         **kwargs: Any,
     ):

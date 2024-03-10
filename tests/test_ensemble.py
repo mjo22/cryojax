@@ -37,4 +37,4 @@ def test_conformation_vmap(potential, pose, integrator):
 
     # Vmap over conformations
     image_stack = compute_conformation_stack(vmap, novmap, integrator)
-    assert image_stack.shape[0] == ensemble.conformation.get().shape[0]
+    assert image_stack.shape[0] == ensemble.conformation.value.shape[0]

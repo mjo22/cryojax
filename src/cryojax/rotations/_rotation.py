@@ -117,8 +117,8 @@ class SO3(AbstractMatrixLieGroup, strict=True):
 
     **Attributes:**
 
-    `wxyz` - A quaternion 4-vector ordered as $(q_w, q_x, q_y, q_z)$.
-             This is the internal parameterization of the
+    `wxyz` - A quaternion as (q_w, q_x, q_y, q_z). This
+             is the internal parameterization of the
              rotation.
     """
 

@@ -23,6 +23,8 @@ from ._operator import (
 )
 from ._fourier_operator import (
     AbstractFourierOperator as AbstractFourierOperator,
+    AbstractFourierOperatorInAngstroms as AbstractFourierOperatorInAngstroms,
+    AbstractFourierOperatorInPixels as AbstractFourierOperatorInPixels,
     FourierOperatorLike as FourierOperatorLike,
     FourierGaussian as FourierGaussian,
     Lorenzian as Lorenzian,

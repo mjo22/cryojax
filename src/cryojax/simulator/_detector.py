@@ -14,20 +14,18 @@ from jaxtyping import PRNGKeyArray
 
 from ._dose import ElectronDose
 from ._config import ImageConfig
-from ..image.operators import AbstractFourierOperator
+from ..image.operators import AbstractFourierOperatorInPixels
 from ..image import irfftn, rfftn
 from ..typing import ComplexImage, RealImage, ImageCoords, Real_
 
 
-class AbstractDQE(AbstractFourierOperator, strict=True):
-    r"""Base class for a detector DQE"""
+class AbstractDQE(AbstractFourierOperatorInPixels, strict=True):
+    r"""Base class for a detector DQE."""
 
     fraction_detected_electrons: AbstractVar[Real_]
 
     @abstractmethod
-    def __call__(
-        self, frequency_grid_in_nyquist_units: ImageCoords
-    ) -> RealImage | Real_:
+    def __call__(self, frequency_grid: ImageCoords) -> RealImage | Real_:
         """**Arguments:**
 
         `frequency_grid_in_nyquist_units`: A frequency grid given in units of nyquist.
@@ -44,7 +42,7 @@ class NullDQE(AbstractDQE, strict=True):
         self.fraction_detected_electrons = jnp.asarray(1.0)
 
     @override
-    def __call__(self, frequency_grid_in_nyquist_units: ImageCoords) -> Real_:
+    def __call__(self, frequency_grid: ImageCoords) -> Real_:
         return jnp.asarray(1.0)
 
 
@@ -58,7 +56,8 @@ class IdealDQE(AbstractDQE, strict=True):
     fraction_detected_electrons: Real_ = field(default=1.0, converter=jnp.asarray)
 
     @override
-    def __call__(self, frequency_grid_in_nyquist_units: ImageCoords) -> RealImage:
+    def __call__(self, frequency_grid: ImageCoords) -> RealImage:
+        frequency_grid_in_nyquist_units = frequency_grid / 0.5
         return (
             self.fraction_detected_electrons**2
             * jnp.sinc(frequency_grid_in_nyquist_units[..., 0] / 2) ** 2
@@ -88,7 +87,7 @@ class AbstractDetector(Module, strict=True):
     ) -> ComplexImage:
         """Pass the image through the detector model."""
         N_pix = np.prod(config.padded_shape)
-        frequency_grid_in_nyquist_units = config.padded_frequency_grid.get() / 0.5
+        frequency_grid = config.wrapped_padded_frequency_grid.get()
         # Compute the time-integrated electron flux in pixels
         electrons_per_pixel = dose.electrons_per_angstrom_squared * config.pixel_size**2
         # ... now the total number of electrons over the entire image
@@ -99,7 +98,7 @@ class AbstractDetector(Module, strict=True):
         )
         # Compute the noiseless signal by applying the DQE to the squared wavefunction
         fourier_signal = fourier_squared_wavefunction_at_detector_plane * jnp.sqrt(
-            self.dqe(frequency_grid_in_nyquist_units)
+            self.dqe(frequency_grid)
         )
         # Apply the dose
         fourier_expected_electron_events = electrons_per_image * fourier_signal
