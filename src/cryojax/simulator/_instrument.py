@@ -76,7 +76,7 @@ class Instrument(Module, strict=True):
         fourier_potential_at_exit_plane = integrator(potential)
         # Apply translation through phase shifts
         fourier_potential_at_exit_plane *= specimen.pose.compute_shifts(
-            integrator.config.padded_frequency_grid_in_angstroms.get()
+            integrator.config.wrapped_padded_frequency_grid_in_angstroms.get()
         )
 
         return fourier_potential_at_exit_plane

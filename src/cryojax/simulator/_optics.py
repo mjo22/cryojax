@@ -12,14 +12,14 @@ import jax.numpy as jnp
 from ._config import ImageConfig
 from ..image.operators import (
     FourierOperatorLike,
-    AbstractFourierOperator,
+    AbstractFourierOperatorInAngstroms,
     Constant,
 )
 from ..coordinates import cartesian_to_polar
 from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
 
 
-class CTF(AbstractFourierOperator, strict=True):
+class CTF(AbstractFourierOperatorInAngstroms, strict=True):
     """Compute the Contrast Transfer Function (CTF) in for a weakly
     scattering specimen.
 
@@ -165,7 +165,7 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
         defocus_offset: Real_ | float = 0.0,
     ) -> ComplexImage:
         """Apply the CTF directly to the scattering potential."""
-        frequency_grid = config.padded_frequency_grid_in_angstroms.get()
+        frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
         # Compute the CTF
         ctf = self.envelope(frequency_grid) * self.ctf(
             frequency_grid, defocus_offset=defocus_offset

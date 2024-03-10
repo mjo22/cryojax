@@ -9,7 +9,10 @@ import jax.numpy as jnp
 
 from ._potential_integrator import AbstractPotentialIntegrator
 from .._config import ImageConfig
-from .._potential import FourierVoxelGrid, FourierVoxelGridInterpolator
+from .._potential import (
+    FourierVoxelGridPotential,
+    FourierVoxelGridPotentialInterpolator,
+)
 from ...image import (
     irfftn,
     rfftn,
@@ -47,26 +50,27 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
     interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
 
     def __call__(
-        self, potential: FourierVoxelGrid | FourierVoxelGridInterpolator
+        self,
+        potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
     ) -> ComplexImage:
         """Compute a projection of the real-space potential by extracting
         a central slice in fourier space.
         """
-        frequency_slice = potential.frequency_slice.get()
+        frequency_slice = potential.wrapped_frequency_slice.get()
         N = frequency_slice.shape[0]
         if potential.shape != (N, N, N):
             raise AttributeError(
                 "Only cubic boxes are supported for fourier slice extraction."
             )
         # Compute the fourier projection
-        if isinstance(potential, FourierVoxelGridInterpolator):
+        if isinstance(potential, FourierVoxelGridPotentialInterpolator):
             fourier_projection = extract_slice_with_cubic_spline(
                 potential.coefficients,
                 frequency_slice,
                 mode=self.interpolation_mode,
                 cval=self.interpolation_cval,
             )
-        elif isinstance(potential, FourierVoxelGrid):
+        elif isinstance(potential, FourierVoxelGridPotential):
             fourier_projection = extract_slice(
                 potential.fourier_voxel_grid,
                 frequency_slice,

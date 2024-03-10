@@ -1,15 +1,19 @@
-<h1 align='center'>CryoJAX</h1>
+<h1 align='center'>cryoJAX</h1>
 
 ![Tests](https://github.com/mjo22/cryojax/actions/workflows/testing.yml/badge.svg)
 ![Lint](https://github.com/mjo22/cryojax/actions/workflows/black.yml/badge.svg)
 
-CryoJAX is a library for cryo-EM image simulation and analysis. It is built on [`jax`](https://github.com/google/jax).
+cryoJAX is a library for cryo-EM image simulation and analysis. It is built on [`jax`](https://github.com/google/jax).
 
 ## Summary
 
 The core of this package is its ability to model image formation in cryo-EM. The parameters of these models can be estimated for experimental cryo-EM images using standard sampling and optimization libraries in `jax`, such as [`blackjax`](https://github.com/blackjax-devs/blackjax), [`optimistix`](https://github.com/patrick-kidger/optimistix), or [`optax`](https://github.com/google-deepmind/optax). Then, these model parameters can be exported to standard cryo-EM data formats.
 
 Dig a little deeper and you'll find that `cryojax` aims to be a fully extensible modeling language for cryo-EM image formation. It implements a collection of abstract interfaces, which aim to be general enough to support any level of modeling complexity—from simple linear image formation to the most realistic physical models in the field. Best of all, these interfaces are all part of the public API. Users can create their own extensions to `cryojax`, tailored to their specific use-case!
+
+## Documentation
+
+See the documentation at [https://mjo22.github.io/cryojax/](https://mjo22.github.io/cryojax/). It is a work-in-progress, so thank you for your patience!
 
 ## Installation
 
@@ -27,7 +31,7 @@ cd cryojax
 python -m pip install .
 ```
 
-This will install the remaining dependencies, such as [`equinox`](https://github.com/patrick-kidger/equinox/) for object-oriented model building and `cryojax` core functionality, [`jaxlie`](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, and [`mrcfile`](https://github.com/ccpem/mrcfile) for I/O.
+This will install the remaining dependencies, such as [`equinox`](https://github.com/patrick-kidger/equinox/) for object-oriented model building and `cryojax` core functionality and [`mrcfile`](https://github.com/ccpem/mrcfile) for I/O.
 
 The [`jax-finufft`](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections of real-space voxel-based scattering potential representations. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
 
@@ -46,7 +50,7 @@ from cryojax.io import read_volume_with_voxel_size_from_mrc
 # Instantiate the scattering potential.
 filename = "example_scattering_potential.mrc"
 real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(filename)
-potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
+potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
 config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
 integrator = cs.FourierSliceExtract(config, interpolation_order=1)
@@ -125,7 +129,7 @@ observed = rfftn(...)  # for this example, read in observed data and take FFT
 log_likelihood = distribution.log_likelihood(observed)
 ```
 
-For more advanced image simulation examples and to understand the many features in this library, see the documentation (coming soon!).
+For more advanced image simulation examples and to understand the many features in this library, see the [documentation](https://mjo22.github.io/cryojax/).
 
 ## Creating a loss function
 

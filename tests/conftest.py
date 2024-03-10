@@ -78,20 +78,20 @@ def integrator(config):
 @pytest.fixture
 def potential(sample_mrc_path):
     real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
-    return cs.FourierVoxelGrid.from_real_voxel_grid(
+    return cs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size, pad_scale=1.3
     )
 
 
 @pytest.fixture
 def filters(config):
-    return op.LowpassFilter(config.padded_frequency_grid.get())
+    return op.LowpassFilter(config.wrapped_padded_frequency_grid.get())
 
 
 @pytest.fixture
 def masks(config):
     return op.CircularMask(
-        config.padded_coordinate_grid_in_angstroms.get(),
+        config.wrapped_padded_coordinate_grid_in_angstroms.get(),
         radius=20 * config.pixel_size,
     )
 

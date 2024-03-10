@@ -1,4 +1,4 @@
-# Welcome to CryoJAX!
+# Welcome to cryoJAX!
 
 `cryojax` is a library for cryo-EM image simulation and analysis. It is built on [`jax`](https://github.com/google/jax).
 
@@ -24,7 +24,7 @@ cd cryojax
 python -m pip install .
 ```
 
-This will install the remaining dependencies, such as [`equinox`](https://github.com/patrick-kidger/equinox/) for object-oriented model building and `cryojax` core functionality, [`jaxlie`](https://github.com/brentyi/jaxlie) for coordinate rotations and translations, and [`mrcfile`](https://github.com/ccpem/mrcfile) for I/O.
+This will install the remaining dependencies, such as [`equinox`](https://github.com/patrick-kidger/equinox/) for object-oriented model building and `cryojax` core functionality and [`mrcfile`](https://github.com/ccpem/mrcfile) for I/O.
 
 The [`jax-finufft`](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections of real-space voxel-based scattering potential representations. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
 
@@ -43,7 +43,7 @@ from cryojax.io import read_volume_with_voxel_size_from_mrc
 # Instantiate the scattering potential.
 filename = "example_scattering_potential.mrc"
 real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(filename)
-potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
+potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
 config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
 integrator = cs.FourierSliceExtract(config, interpolation_order=1)
@@ -105,7 +105,7 @@ image_without_noise = pipeline.render(get_real=True)
 
 ## Next steps
 
-There are many modeling features in `cryojax` to learn about. To learn more, see the [Examples](/docs/examples.md#examples) section of the documentation.
+There are many modeling features in `cryojax` to learn about. To learn more, see the Examples section of the documentation.
 
 ## Acknowledgements
 

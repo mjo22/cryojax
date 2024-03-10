@@ -34,7 +34,6 @@ from ...image import (
 from ...coordinates import CoordinateGrid, CoordinateList, FrequencySlice
 from ...typing import (
     RealCloud,
-    RealVolume,
     RealCubicVolume,
     ComplexCubicVolume,
     Real_,
@@ -88,32 +87,32 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
         raise NotImplementedError
 
 
-class AbstractFourierVoxelGrid(AbstractVoxelPotential, strict=True):
+class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     """Abstract interface of a 3D scattering potential voxel grid
     in fourier-space.
     """
 
-    frequency_slice: AbstractVar[FrequencySlice]
+    wrapped_frequency_slice: AbstractVar[FrequencySlice]
 
     @abstractmethod
     def __init__(
         self,
         fourier_voxel_grid: ComplexCubicVolume,
-        frequency_slice: FrequencySlice,
+        wrapped_frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
         raise NotImplementedError
 
     @cached_property
-    def frequency_slice_in_angstroms(self) -> FrequencySlice:
-        """The `frequency_slice` in angstroms."""
-        return self.frequency_slice / self.voxel_size
+    def wrapped_frequency_slice_in_angstroms(self) -> FrequencySlice:
+        """The `wrapped_frequency_slice` in angstroms."""
+        return self.wrapped_frequency_slice / self.voxel_size
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
-            lambda d: d.frequency_slice.array,
+            lambda d: d.wrapped_frequency_slice.array,
             self,
-            pose.rotate_coordinates(self.frequency_slice.get(), inverse=True),
+            pose.rotate_coordinates(self.wrapped_frequency_slice.get(), inverse=True),
         )
 
     @classmethod
@@ -126,7 +125,7 @@ class AbstractFourierVoxelGrid(AbstractVoxelPotential, strict=True):
         pad_mode: str = "constant",
         filter: Optional[AbstractFilter] = None,
     ) -> Self:
-        """Load an `AbstractFourierVoxelGrid` from real-valued 3D electron
+        """Load an `AbstractFourierVoxelGridPotential` from real-valued 3D electron
         scattering potential voxel grid.
 
         **Arguments:**
@@ -184,11 +183,11 @@ class AbstractFourierVoxelGrid(AbstractVoxelPotential, strict=True):
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> Self:
-        """Load an `AbstractFourierVoxelGrid` from atom positions and identities.
+        """Load an `AbstractFourierVoxelGridPotential` from atom positions and identities.
 
         **Arguments:**
 
-        - `**kwargs`: Passed to `AbstractFourierVoxelGrid.from_real_voxel_grid`
+        - `**kwargs`: Passed to `AbstractFourierVoxelGridPotential.from_real_voxel_grid`
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
@@ -203,20 +202,21 @@ class AbstractFourierVoxelGrid(AbstractVoxelPotential, strict=True):
         )
 
 
-class FourierVoxelGrid(AbstractFourierVoxelGrid):
+class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
     """A 3D scattering potential voxel grid in fourier-space.
 
     **Attributes:**
 
     `fourier_voxel_grid`: The cubic voxel grid in fourier space.
 
-    `frequency_slice`: Frequency slice coordinate system.
+    `wrapped_frequency_slice`: Frequency slice coordinate system,
+                               wrapped in a `FrequencySlice` object.
 
     `voxel_size`: The voxel size.
     """
 
     fourier_voxel_grid: ComplexCubicVolume = field(converter=jnp.asarray)
-    frequency_slice: FrequencySlice
+    wrapped_frequency_slice: FrequencySlice
     voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = False
@@ -225,11 +225,11 @@ class FourierVoxelGrid(AbstractFourierVoxelGrid):
     def __init__(
         self,
         fourier_voxel_grid: ComplexCubicVolume,
-        frequency_slice: FrequencySlice,
+        wrapped_frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
         self.fourier_voxel_grid = fourier_voxel_grid
-        self.frequency_slice = frequency_slice
+        self.wrapped_frequency_slice = wrapped_frequency_slice
         self.voxel_size = voxel_size
 
     @property
@@ -237,7 +237,7 @@ class FourierVoxelGrid(AbstractFourierVoxelGrid):
         return self.fourier_voxel_grid.shape
 
 
-class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
+class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     """A 3D scattering potential voxel grid in fourier-space, represented
     by spline coefficients.
 
@@ -245,13 +245,13 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
 
     `coefficients`: Cubic spline coefficients for the voxel grid.
 
-    `frequency_slice`: Frequency slice coordinate system.
+    `wrapped_frequency_slice`: Frequency slice coordinate system.
 
     `voxel_size`: The voxel size.
     """
 
     coefficients: ComplexCubicVolume = field(converter=jnp.asarray)
-    frequency_slice: FrequencySlice
+    wrapped_frequency_slice: FrequencySlice
     voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = False
@@ -259,23 +259,23 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
     def __init__(
         self,
         fourier_voxel_grid: ComplexCubicVolume,
-        frequency_slice: FrequencySlice,
+        wrapped_frequency_slice: FrequencySlice,
         voxel_size: Real_,
     ):
         """
         !!! note
             The argument `fourier_voxel_grid` is used to set
-            `FourierVoxelGridInterpolator.coefficients` in the `__init__`.
-            For example,
+            `FourierVoxelGridPotentialInterpolator.coefficients` in the `__init__`,
+            but it is not stored in the class. For example,
 
             ```python
-            voxels = FourierVoxelGridInterpolator(fourier_voxel_grid, frequency_slice, voxel_size)
-            assert not hasattr(voxels, "fourier_voxel_grid")  # This does not store the `fourier_voxel_grid`
-            assert hasattr(voxels, "coefficients")  # Instead it computes `coefficients` upon `__init__`
+            voxels = FourierVoxelGridPotentialInterpolator(fourier_voxel_grid, frequency_slice, voxel_size)
+            assert hasattr(voxels, "fourier_voxel_grid")  # This will return an error
+            assert hasattr(voxels, "coefficients")  # Instead, the spline coefficients are stored
             ```
         """
         self.coefficients = compute_spline_coefficients(fourier_voxel_grid)
-        self.frequency_slice = frequency_slice
+        self.wrapped_frequency_slice = wrapped_frequency_slice
         self.voxel_size = voxel_size
 
     @property
@@ -283,20 +283,21 @@ class FourierVoxelGridInterpolator(AbstractFourierVoxelGrid):
         return tuple([s - 2 for s in self.coefficients.shape])
 
 
-class RealVoxelGrid(AbstractVoxelPotential, strict=True):
+class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     """Abstraction of a 3D scattering potential voxel grid in real-space.
 
     **Attributes:**
 
     `real_voxel_grid`: The voxel grid in fourier space.
 
-    `coordinate_grid`: A coordinate grid.
+    `wrapped_coordinate_grid`: A coordinate grid, wrapped into a
+                               `CoordinateGrid` object.
 
     `voxel_size`: The voxel size.
     """
 
     real_voxel_grid: RealCubicVolume = field(converter=jnp.asarray)
-    coordinate_grid: CoordinateGrid
+    wrapped_coordinate_grid: CoordinateGrid
     voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = True
@@ -304,11 +305,11 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
     def __init__(
         self,
         real_voxel_grid: RealCubicVolume,
-        coordinate_grid: CoordinateGrid,
+        wrapped_coordinate_grid: CoordinateGrid,
         voxel_size: Real_,
     ):
         self.real_voxel_grid = real_voxel_grid
-        self.coordinate_grid = coordinate_grid
+        self.wrapped_coordinate_grid = wrapped_coordinate_grid
         self.voxel_size = voxel_size
 
     @property
@@ -316,15 +317,15 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
         return self.real_voxel_grid.shape
 
     @cached_property
-    def coordinate_grid_in_angstroms(self) -> CoordinateGrid:
+    def wrapped_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         """The `coordinate_grid` in angstroms."""
-        return self.voxel_size * self.coordinate_grid
+        return self.voxel_size * self.wrapped_coordinate_grid
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
-            lambda d: d.coordinate_grid.array,
+            lambda d: d.wrapped_coordinate_grid.array,
             self,
-            pose.rotate_coordinates(self.coordinate_grid.get(), inverse=False),
+            pose.rotate_coordinates(self.wrapped_coordinate_grid.get(), inverse=False),
         )
 
     @overload
@@ -355,7 +356,7 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
         *,
         crop_scale: Optional[float] = None,
     ) -> Self:
-        """Load a `RealVoxelGrid` from a real-valued 3D electron
+        """Load a `RealVoxelGridPotential` from a real-valued 3D electron
         scattering potential voxel grid.
 
         !!! warning
@@ -365,7 +366,7 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
 
             ```python
             real_voxel_grid = ...
-            potential = RealVoxelGrid.from_real_voxel_grid(real_voxel_grid, ...)
+            potential = RealVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, ...)
             assert real_voxel_grid == jnp.transpose(potential.real_voxel_grid, axes=[1, 0, 2])
             ```
 
@@ -408,11 +409,11 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> Self:
-        """Load a `RealVoxelGrid` from atom positions and identities.
+        """Load a `RealVoxelGridPotential` from atom positions and identities.
 
         **Arguments:**
 
-        - `**kwargs`: Passed to `RealVoxelGrid.from_real_voxel_grid`
+        - `**kwargs`: Passed to `RealVoxelGridPotential.from_real_voxel_grid`
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 
@@ -428,27 +429,28 @@ class RealVoxelGrid(AbstractVoxelPotential, strict=True):
         )
 
 
-class RealVoxelCloud(AbstractVoxelPotential, strict=True):
+class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     """Abstraction of a 3D electron scattering potential voxel point cloud.
 
     !!! info
-        This object is similar to the `RealVoxelGrid`. Instead
-        of storing the whole voxel grid, a `RealVoxelCloud` need
+        This object is similar to the `RealVoxelGridPotential`. Instead
+        of storing the whole voxel grid, a `RealVoxelCloudPotential` need
         only store points of non-zero scattering potential. Therefore,
-        a `RealVoxelCloud` stores a point cloud of scattering potential
+        a `RealVoxelCloudPotential` stores a point cloud of scattering potential
         voxel values.
 
     **Attributes:**
 
     `voxel_weights`: A point-cloud of voxel scattering potential values.
 
-    `coordinate_list`: Coordinate list for the `voxel_weights`.
+    `wrapped_coordinate_list`: Coordinate list for the `voxel_weights`, wrapped
+                               in a `CoordinateList` object.
 
     `voxel_size`: The voxel size.
     """
 
     voxel_weights: RealCloud = field(converter=jnp.asarray)
-    coordinate_list: CoordinateList
+    wrapped_coordinate_list: CoordinateList
     voxel_size: Real_ = field(converter=jnp.asarray)
 
     is_real: ClassVar[bool] = True
@@ -456,11 +458,11 @@ class RealVoxelCloud(AbstractVoxelPotential, strict=True):
     def __init__(
         self,
         voxel_weights: RealCloud,
-        coordinate_list: CoordinateList,
+        wrapped_coordinate_list: CoordinateList,
         voxel_size: Real_,
     ):
         self.voxel_weights = voxel_weights
-        self.coordinate_list = coordinate_list
+        self.wrapped_coordinate_list = wrapped_coordinate_list
         self.voxel_size = voxel_size
 
     @property
@@ -470,13 +472,13 @@ class RealVoxelCloud(AbstractVoxelPotential, strict=True):
     @cached_property
     def coordinate_list_in_angstroms(self) -> CoordinateList:
         """The `coordinate_list` in angstroms."""
-        return self.voxel_size * self.coordinate_list
+        return self.voxel_size * self.wrapped_coordinate_list
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
-            lambda d: d.coordinate_list.array,
+            lambda d: d.wrapped_coordinate_list.array,
             self,
-            pose.rotate_coordinates(self.coordinate_list.get(), inverse=False),
+            pose.rotate_coordinates(self.wrapped_coordinate_list.get(), inverse=False),
         )
 
     @classmethod
@@ -489,14 +491,14 @@ class RealVoxelCloud(AbstractVoxelPotential, strict=True):
         rtol: float = 1e-05,
         atol: float = 1e-08,
     ) -> Self:
-        """Load an `RealVoxelCloud` from a real-valued 3D electron
+        """Load an `RealVoxelCloudPotential` from a real-valued 3D electron
         scattering potential voxel grid.
 
         !!! warning
             `real_voxel_grid` is transposed upon instantiation in order to make
             the results of `cryojax.simulator.NufftProject` agree with
             `cryojax.simulator.FourierSliceExtract`.
-            See [`cryojax.simulator.RealVoxelGrid`][] for more detail.
+            See [`cryojax.simulator.RealVoxelGridPotential`][] for more detail.
 
         **Arguments:**
 
@@ -537,11 +539,11 @@ class RealVoxelCloud(AbstractVoxelPotential, strict=True):
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> Self:
-        """Load a `RealVoxelCloud` from atom positions and identities.
+        """Load a `RealVoxelCloudPotential` from atom positions and identities.
 
         **Arguments:**
 
-        - `**kwargs`: Passed to `RealVoxelCloud.from_real_voxel_grid`
+        - `**kwargs`: Passed to `RealVoxelCloudPotential.from_real_voxel_grid`
         """
         a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
 

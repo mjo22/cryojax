@@ -10,7 +10,9 @@ from cryojax.io import read_volume_with_voxel_size_from_mrc
 def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     control_shape = (64, 64)
     real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
-    potential = cs.FourierVoxelGrid.from_real_voxel_grid(real_voxel_grid, voxel_size)
+    potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(
+        real_voxel_grid, voxel_size
+    )
     assert control_shape == potential.fourier_voxel_grid.shape[0:2]
     pose = cs.EulerAnglePose()
     specimen = cs.Specimen(potential, pose)

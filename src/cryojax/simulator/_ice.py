@@ -43,7 +43,9 @@ class NullIce(AbstractIce):
 
     @override
     def sample(self, key: PRNGKeyArray, config: ImageConfig) -> Image:
-        return jnp.zeros(config.padded_frequency_grid_in_angstroms.get().shape[0:-1])
+        return jnp.zeros(
+            config.wrapped_padded_frequency_grid_in_angstroms.get().shape[0:-1]
+        )
 
     @override
     def __call__(
@@ -52,7 +54,9 @@ class NullIce(AbstractIce):
         potential_at_exit_plane: ComplexImage,
         config: ImageConfig,
     ) -> ComplexImage:
-        return jnp.zeros(config.padded_frequency_grid_in_angstroms.get().shape[0:-1])
+        return jnp.zeros(
+            config.wrapped_padded_frequency_grid_in_angstroms.get().shape[0:-1]
+        )
 
 
 class GaussianIce(AbstractIce, strict=True):
@@ -75,7 +79,9 @@ class GaussianIce(AbstractIce, strict=True):
     def sample(self, key: PRNGKeyArray, config: ImageConfig) -> ComplexImage:
         """Sample a realization of the ice potential as colored gaussian noise."""
         N_pix = np.prod(config.padded_shape)
-        frequency_grid_in_angstroms = config.padded_frequency_grid_in_angstroms.get()
+        frequency_grid_in_angstroms = (
+            config.wrapped_padded_frequency_grid_in_angstroms.get()
+        )
         # Compute standard deviation, scaling up by the variance by the number
         # of pixels to make the realization independent pixel-independent in real-space.
         std = jnp.sqrt(N_pix * self.variance(frequency_grid_in_angstroms))
