@@ -4,9 +4,8 @@ Models the electron dose.
 
 from equinox import Module, field
 
-import jax.numpy as jnp
-
-from cryojax.typing import Real_
+from ..typing import Real_
+from ..core import error_if_negative
 
 
 class ElectronDose(Module, strict=True):
@@ -17,4 +16,4 @@ class ElectronDose(Module, strict=True):
     `electrons_per_angstrom_squared`: The integrated electron flux.
     """
 
-    electrons_per_angstrom_squared: Real_ = field(converter=jnp.asarray)
+    electrons_per_angstrom_squared: Real_ = field(converter=error_if_negative)

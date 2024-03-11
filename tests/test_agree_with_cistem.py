@@ -80,14 +80,16 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
 def test_euler_matrix_with_cistem(phi, theta, psi):
     """Test zyz rotation matrix"""
     # Hard code zyz rotation matrix from cisTEM convention
-    phi, theta, psi = [np.deg2rad(angle) for angle in [phi, theta, psi]]
+    phi_in_rad, theta_in_rad, psi_in_rad = [
+        np.deg2rad(angle) for angle in [phi, theta, psi]
+    ]
     matrix = np.zeros((3, 3))
-    cos_phi = np.cos(phi)
-    sin_phi = np.sin(phi)
-    cos_theta = np.cos(theta)
-    sin_theta = np.sin(theta)
-    cos_psi = np.cos(psi)
-    sin_psi = np.sin(psi)
+    cos_phi = np.cos(phi_in_rad)
+    sin_phi = np.sin(phi_in_rad)
+    cos_theta = np.cos(theta_in_rad)
+    sin_theta = np.sin(theta_in_rad)
+    cos_psi = np.cos(psi_in_rad)
+    sin_psi = np.sin(psi_in_rad)
     matrix[0, 0] = cos_phi * cos_theta * cos_psi - sin_phi * sin_psi
     matrix[1, 0] = sin_phi * cos_theta * cos_psi + cos_phi * sin_psi
     matrix[2, 0] = -sin_theta * cos_psi
@@ -99,7 +101,7 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
     matrix[2, 2] = cos_theta
     # Generate rotation that matches this rotation matrix
     pose = EulerAnglePose(
-        view_phi=phi, view_theta=theta, view_psi=psi, convention="zyz", degrees=False
+        view_phi=phi, view_theta=theta, view_psi=psi, convention="zyz"
     )
     np.testing.assert_allclose(pose.rotation.as_matrix(), matrix.T, atol=1e-12)
 

@@ -39,9 +39,6 @@ class CTF(AbstractFourierOperatorInAngstroms, strict=True):
     `amplitude_contrast_ratio`: The amplitude contrast ratio.
 
     `phase_shift`: The additional phase shift.
-
-    `degrees`: Whether or not the `astigmatism_angle` and `phase_shift` are given
-              in degrees or radians.
     """
 
     defocus_u_in_angstroms: Real_ = field(default=10000.0, converter=error_if_negative)
@@ -54,8 +51,6 @@ class CTF(AbstractFourierOperatorInAngstroms, strict=True):
     )
     phase_shift: Real_ = field(default=0.0, converter=jnp.asarray)
 
-    degrees: bool = field(static=True, default=True)
-
     @property
     def wavelength_in_angstroms(self):
         voltage_in_volts = 1000.0 * self.voltage_in_kilovolts  # kV to V
@@ -67,9 +62,8 @@ class CTF(AbstractFourierOperatorInAngstroms, strict=True):
         defocus_offset: Real_ | float = 0.0,
     ) -> RealImage:
         # Convert degrees to radians
-        if self.degrees:  # degrees to radians
-            phase_shift = jnp.deg2rad(self.phase_shift)
-            astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
+        phase_shift = jnp.deg2rad(self.phase_shift)
+        astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
         # Convert spherical abberation coefficient to angstroms
         spherical_aberration_in_angstroms = self.spherical_aberration_in_mm * 1e7
         # Compute phase shifts for CTF
