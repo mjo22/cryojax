@@ -12,63 +12,68 @@ from ._filter_specs import get_filter_spec
 
 
 def filter_grad(
-    func: Callable,
     where_or_filter_spec: Callable[[PyTree], Union[Any, Sequence[Any]]] | PyTree[bool],
     *,
     inverse: bool = False,
     has_aux: bool = False,
 ) -> Callable:
 
-    @wraps(func)
-    def wrapper(pytree: PyTree, *args: Any, **kwargs: Any):
+    def wrapper(func: Callable):
 
-        if isinstance(where_or_filter_spec, Callable):
-            where = where_or_filter_spec
-            filter_spec = get_filter_spec(pytree, where, inverse=inverse)
-        else:
-            filter_spec = where_or_filter_spec
+        @wraps(func)
+        def inner_wrapper(pytree: PyTree, *args: Any, **kwargs: Any):
 
-        @partial(eqx.filter_grad, has_aux=has_aux)
-        def recombine_fn(pytree_if_true: PyTree, pytree_if_false: PyTree):
-            pytree = eqx.combine(pytree_if_true, pytree_if_false)
-            return func(pytree, *args, **kwargs)
+            if isinstance(where_or_filter_spec, Callable):
+                where = where_or_filter_spec
+                filter_spec = get_filter_spec(pytree, where, inverse=inverse)
+            else:
+                filter_spec = where_or_filter_spec
 
-        pytree_if_true, pytree_if_false = eqx.partition(pytree, filter_spec)
-        return recombine_fn(pytree_if_true, pytree_if_false)
+            @partial(eqx.filter_grad, has_aux=has_aux)
+            def recombine_fn(pytree_if_true: PyTree, pytree_if_false: PyTree):
+                pytree = eqx.combine(pytree_if_true, pytree_if_false)
+                return func(pytree, *args, **kwargs)
+
+            pytree_if_true, pytree_if_false = eqx.partition(pytree, filter_spec)
+            return recombine_fn(pytree_if_true, pytree_if_false)
+
+        return inner_wrapper
 
     return wrapper
 
 
 def filter_value_and_grad(
-    func: Callable,
     where_or_filter_spec: Callable[[PyTree], Union[Any, Sequence[Any]]] | PyTree[bool],
     *,
     inverse: bool = False,
     has_aux: bool = False,
 ) -> Callable:
 
-    @wraps(func)
-    def wrapper(pytree: PyTree, *args: Any, **kwargs: Any):
+    def wrapper(func: Callable):
 
-        if isinstance(where_or_filter_spec, Callable):
-            where = where_or_filter_spec
-            filter_spec = get_filter_spec(pytree, where, inverse=inverse)
-        else:
-            filter_spec = where_or_filter_spec
+        @wraps(func)
+        def inner_wrapper(pytree: PyTree, *args: Any, **kwargs: Any):
 
-        @partial(eqx.filter_value_and_grad, has_aux=has_aux)
-        def recombine_fn(pytree_if_true: PyTree, pytree_if_false: PyTree):
-            pytree = eqx.combine(pytree_if_true, pytree_if_false)
-            return func(pytree, *args, **kwargs)
+            if isinstance(where_or_filter_spec, Callable):
+                where = where_or_filter_spec
+                filter_spec = get_filter_spec(pytree, where, inverse=inverse)
+            else:
+                filter_spec = where_or_filter_spec
 
-        pytree_if_true, pytree_if_false = eqx.partition(pytree, filter_spec)
-        return recombine_fn(pytree_if_true, pytree_if_false)
+            @partial(eqx.filter_value_and_grad, has_aux=has_aux)
+            def recombine_fn(pytree_if_true: PyTree, pytree_if_false: PyTree):
+                pytree = eqx.combine(pytree_if_true, pytree_if_false)
+                return func(pytree, *args, **kwargs)
+
+            pytree_if_true, pytree_if_false = eqx.partition(pytree, filter_spec)
+            return recombine_fn(pytree_if_true, pytree_if_false)
+
+        return inner_wrapper
 
     return wrapper
 
 
 def filter_vmap(
-    func: Callable,
     where_or_filter_spec: Callable[[PyTree], Union[Any, Sequence[Any]]],
     *,
     inverse: bool = False,
@@ -82,27 +87,31 @@ def filter_vmap(
     axis_size: Optional[int] = None,
 ) -> Callable:
 
-    @wraps(func)
-    def wrapper(pytree: PyTree, *args: Any, **kwargs: Any):
+    def wrapper(func: Callable):
 
-        if isinstance(where_or_filter_spec, Callable):
-            where = where_or_filter_spec
-            filter_spec = get_filter_spec(pytree, where, inverse=inverse)
-        else:
-            filter_spec = where_or_filter_spec
+        @wraps(func)
+        def inner_wrapper(pytree: PyTree, *args: Any, **kwargs: Any):
 
-        @partial(
-            eqx.filter_vmap,
-            in_axes=(in_axes, None),
-            out_axes=out_axes,
-            axis_name=axis_name,
-            axis_size=axis_size,
-        )
-        def recombine_fn(pytree_if_true: PyTree, pytree_if_false: PyTree):
-            pytree = eqx.combine(pytree_if_true, pytree_if_false)
-            return func(pytree, *args, **kwargs)
+            if isinstance(where_or_filter_spec, Callable):
+                where = where_or_filter_spec
+                filter_spec = get_filter_spec(pytree, where, inverse=inverse)
+            else:
+                filter_spec = where_or_filter_spec
 
-        pytree_if_true, pytree_if_false = eqx.partition(pytree, filter_spec)
-        return recombine_fn(pytree_if_true, pytree_if_false)
+            @partial(
+                eqx.filter_vmap,
+                in_axes=(in_axes, None),
+                out_axes=out_axes,
+                axis_name=axis_name,
+                axis_size=axis_size,
+            )
+            def recombine_fn(pytree_if_true: PyTree, pytree_if_false: PyTree):
+                pytree = eqx.combine(pytree_if_true, pytree_if_false)
+                return func(pytree, *args, **kwargs)
+
+            pytree_if_true, pytree_if_false = eqx.partition(pytree, filter_spec)
+            return recombine_fn(pytree_if_true, pytree_if_false)
+
+        return inner_wrapper
 
     return wrapper
