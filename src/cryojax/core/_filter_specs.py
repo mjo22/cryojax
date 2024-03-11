@@ -18,10 +18,10 @@ def get_filter_spec(
     if not inverse:
         false_pytree = jtu.tree_map(lambda _: False, pytree)
         return eqx.tree_at(
-            where, false_pytree, replace_fn=lambda x: True, is_leaf=is_leaf
+            where, false_pytree, replace_fn=lambda _: True, is_leaf=is_leaf
         )
     else:
         true_pytree = jtu.tree_map(lambda _: True, pytree)
         return eqx.tree_at(
-            where, true_pytree, replace_fn=lambda x: False, is_leaf=is_leaf
+            where, true_pytree, replace_fn=lambda _: False, is_leaf=is_leaf
         )
