@@ -12,6 +12,7 @@ import jax.numpy as jnp
 
 from ._operator import AbstractImageOperator
 from ...typing import ImageCoords, VolumeCoords, RealImage, RealVolume, Real_
+from ...core import error_if_negative
 
 
 class AbstractRealOperator(AbstractImageOperator, strict=True):
@@ -68,7 +69,7 @@ class Gaussian2D(AbstractRealOperator, strict=True):
     """
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    b_factor: Real_ = field(default=1.0, converter=jnp.asarray)
+    b_factor: Real_ = field(default=1.0, converter=error_if_negative)
     offset: Float[Array, "2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
 
     @override

@@ -5,10 +5,10 @@ Representations of conformational variables.
 from typing import Any
 from equinox import AbstractVar, field
 
-import jax.numpy as jnp
 from equinox import Module
 
 from ..typing import Int_
+from ..core import error_if_negative
 
 
 class AbstractConformation(Module, strict=True):
@@ -24,4 +24,4 @@ class DiscreteConformation(AbstractConformation, strict=True):
     A conformational variable wrapped in a Module.
     """
 
-    value: Int_ = field(converter=jnp.asarray)
+    value: Int_ = field(converter=error_if_negative)

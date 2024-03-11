@@ -31,7 +31,7 @@
                 - __init__
 
 !!! info "Fourier-space conventions"
-    - The `fourier_voxel_grid` and `frequency_slice` arguments to
+    - The `fourier_voxel_grid` and `wrapped_frequency_slice` arguments to
     `FourierVoxelGrid.__init__` should be loaded with the zero frequency
     component in the center of the box.
     - The parameters in an `AbstractPose` represent a rotation in real-space. This means that when calling `FourierVoxelGridPotential.rotate_to_pose`,
@@ -41,7 +41,7 @@
         options:
             members:
                 - __init__
-                - frequency_slice_in_angstroms
+                - wrapped_frequency_slice_in_angstroms
                 - from_real_voxel_grid
                 - from_atoms
 
@@ -51,7 +51,7 @@
         options:
             members:
                 - __init__
-                - frequency_slice_in_angstroms
+                - wrapped_frequency_slice_in_angstroms
                 - from_real_voxel_grid
                 - from_atoms
 
@@ -61,7 +61,7 @@
         options:
             members:
                 - __init__
-                - coordinate_grid_in_angstroms
+                - wrapped_coordinate_grid_in_angstroms
                 - from_real_voxel_grid
                 - from_atoms
 
@@ -71,7 +71,7 @@
         options:
             members:
                 - __init__
-                - coordinate_list_in_angstroms
+                - wrapped_coordinate_list_in_angstroms
                 - from_real_voxel_grid
                 - from_atoms
 

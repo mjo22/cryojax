@@ -13,7 +13,7 @@ from jaxtyping import PyTree
 import jax.numpy as jnp
 import jax.tree_util as jtu
 
-from ..typing import Real_
+from ...typing import Real_
 
 
 def _is_transformed(x):
