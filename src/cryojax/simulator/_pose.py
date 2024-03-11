@@ -51,8 +51,6 @@ class AbstractPose(Module, strict=True):
     offset_y_in_angstroms: AbstractVar[Real_]
     offset_z_in_angstroms: AbstractVar[Real_]
 
-    inverse: AbstractVar[bool]
-
     @overload
     def rotate_coordinates(
         self, volume_coordinates: VolumeCoords, inverse: bool = False
@@ -178,7 +176,6 @@ class EulerAnglePose(AbstractPose, strict=True):
     view_theta: Real_ = field(default=0.0, converter=jnp.asarray)
     view_psi: Real_ = field(default=0.0, converter=jnp.asarray)
 
-    inverse: bool = field(static=True, default=False)
     convention: str = field(static=True, default="zyz")
     degrees: bool = field(static=True, default=True)
 
@@ -214,8 +211,7 @@ class EulerAnglePose(AbstractPose, strict=True):
             getattr(SO3, f"from_{axis}_radians")(angle)
             for axis, angle in zip(self.convention, [phi, theta, psi])
         ]
-        R = R3 @ R2 @ R1
-        return R.inverse() if self.inverse else R
+        return R3 @ R2 @ R1
 
     @override
     @classmethod
@@ -249,15 +245,13 @@ class QuaternionPose(AbstractPose, strict=True):
 
     wxyz: Float[Array, "4"] = field(default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray)
 
-    inverse: bool = field(static=True, default=False)
-
     @cached_property
     @override
     def rotation(self) -> SO3:
         """Generate rotation from the unit quaternion."""
         # Generate SO3 object from unit quaternion
         R = SO3(wxyz=(self.wxyz / jnp.linalg.norm(self.wxyz)))
-        return R.inverse() if self.inverse else R
+        return R
 
     @override
     @classmethod
@@ -281,8 +275,6 @@ class MatrixPose(AbstractPose, strict=True):
         default_factory=lambda: jnp.eye(3), converter=jnp.asarray
     )
 
-    inverse: bool = field(static=True, default=False)
-
     @cached_property
     @override
     def rotation(self) -> SO3:
@@ -292,7 +284,7 @@ class MatrixPose(AbstractPose, strict=True):
         # Normalize (this should be equivalent to making sure the
         # rotation matrix has unit determinant)
         R = R.normalize()
-        return R.inverse() if self.inverse else R
+        return R
 
     @override
     @classmethod
@@ -323,7 +315,6 @@ class AxisAnglePose(AbstractPose, strict=True):
         default=(0.0, 0.0, 0.0), converter=jnp.asarray
     )
 
-    inverse: bool = field(static=True, default=False)
     degrees: bool = field(static=True, default=True)
 
     @cached_property
@@ -336,7 +327,7 @@ class AxisAnglePose(AbstractPose, strict=True):
         # Project the tangent vector onto the manifold with
         # the exponential map
         R = SO3.exp(euler_vector)
-        return R.inverse() if self.inverse else R
+        return R
 
     @override
     @classmethod
@@ -365,14 +356,12 @@ class SO3Pose(AbstractPose, strict=True):
         default_factory=lambda: SO3(wxyz=jnp.asarray((1.0, 0.0, 0.0, 0.0)))
     )
 
-    inverse: bool = field(static=True, default=False)
-
     @cached_property
     @override
     def rotation(self) -> SO3:
         """Get the `jaxlie.SO3` matrix lie group."""
         R = self.group_element
-        return R.inverse() if self.inverse else R
+        return R
 
     @override
     @classmethod
