@@ -1,6 +1,8 @@
 """
 These versions of the scipy function map_coordinates is modified from Louis Desdoigts's
-version: https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_src/scipy/ndimage.py
+version: https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_src/scipy/ndimage.py.
+
+This code was developed for the project dLux: https://louisdesdoigts.github.io/dLux/.
 """
 
 import functools
@@ -27,9 +29,10 @@ def map_coordinates(
     cval: ArrayLike = 0.0,
 ):
     """
-    Similar to scipy.map_coordinates, but diverges from the API.
+    Similar to `scipy.map_coordinates`, but diverges from the API.
 
-    Adapted from https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_src/scipy/ndimage.py.
+    Adapted from https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_src/scipy/ndimage.py,
+    which was developed for the project [dLux](https://louisdesdoigts.github.io/dLux/).
 
     Arguments
     ---------
@@ -56,7 +59,8 @@ def map_coordinates_with_cubic_spline(
     """
     Similar to scipy.map_coordinates, but takes cubic spline coefficients as input.
 
-    Adapted from https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_src/scipy/ndimage.py.
+    Adapted from https://github.com/LouisDesdoigts/jax/blob/cubic-spline-updated/jax/_src/scipy/ndimage.py,
+    which was developed for the project [dLux](https://louisdesdoigts.github.io/dLux/).
 
     Arguments
     ---------
