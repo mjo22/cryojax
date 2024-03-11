@@ -12,7 +12,6 @@ from cryojax.coordinates import (
     FrequencySlice,
     CoordinateGrid,
     CoordinateList,
-    get_not_coordinate_filter_spec,
 )
 import cryojax.simulator as cs
 
@@ -45,7 +44,11 @@ def test_voxel_electron_potential_loaders():
 
 
 def test_electron_potential_vmap(potential, integrator, pose):
-    filter_spec = get_not_coordinate_filter_spec(potential)
+    filter_spec = jtu.tree_map(
+        lambda x: not isinstance(x, AbstractCoordinates),
+        potential,
+        is_leaf=lambda x: isinstance(x, AbstractCoordinates),
+    )
     # Add a leading dimension to scattering potential leaves
     potential = jtu.tree_map(
         lambda spec, x: jnp.expand_dims(x, axis=0) if spec else x,
@@ -70,7 +73,11 @@ def test_electron_potential_vmap_with_pipeline(potential, pose, integrator):
 
     def is_potential_leaves_without_coordinates(element):
         if isinstance(element, cs.AbstractScatteringPotential):
-            return get_not_coordinate_filter_spec(element)
+            return jtu.tree_map(
+                lambda x: not isinstance(x, AbstractCoordinates),
+                potential,
+                is_leaf=lambda x: isinstance(x, AbstractCoordinates),
+            )
         else:
             return False
 

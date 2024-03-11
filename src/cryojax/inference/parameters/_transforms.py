@@ -20,43 +20,19 @@ def _is_transformed(x):
     return isinstance(x, AbstractParameterTransform)
 
 
-def _is_none(x):
-    return x is None
-
-
-def _apply_inverse_transform(x):
+def _resolve_transform(x):
     if isinstance(x, AbstractParameterTransform):
         return x.get()
     else:
         return x
 
 
-def _apply_transform(t, x):
-    if x is None:
-        return x
-    else:
-        # t is a method that returns an AbstractParameterTransform
-        # instance
-        return t(x)
-
-
-def apply_inverse_transforms(pytree: PyTree):
+def resolve_transforms(pytree: PyTree):
     """Transforms a pytree whose parameters have entries
     that are `AbstractParameterTransform`s back to its
     original parameter space.
     """
-    return jtu.tree_map(_apply_inverse_transform, pytree, is_leaf=_is_transformed)
-
-
-def apply_transforms(
-    pytree: PyTree,
-    transforms: PyTree,
-):
-    """Applies a set of transformations to the jax arrays in
-    a pytree. The pytree should have `None` values.
-    """
-    # Assumes that transforms is a prefix of pytree
-    return jtu.tree_map(_apply_transform, transforms, pytree, is_leaf=_is_none)
+    return jtu.tree_map(_resolve_transform, pytree, is_leaf=_is_transformed)
 
 
 class AbstractParameterTransform(Module, strict=True):
