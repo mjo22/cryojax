@@ -2,7 +2,7 @@
 Coordinate functionality in cryojax.
 """
 
-from jaxtyping import ArrayLike, Array, PyTree, Float
+from jaxtyping import ArrayLike, Array, Float
 from typing import Optional, Any
 from typing_extensions import Self
 from equinox import AbstractVar
@@ -19,29 +19,6 @@ from ..typing import (
     VolumeCoords,
     VolumeSliceCoords,
 )
-
-
-#
-# Filter functions
-#
-def is_not_coordinates(element: Any) -> bool:
-    """Returns ``False`` if ``element`` is ``AbstractCoordinates``."""
-    if isinstance(element, AbstractCoordinates):
-        return False
-    else:
-        return eqx.is_array(element)
-
-
-#
-# Common filter specs
-#
-def get_not_coordinate_filter_spec(pytree: PyTree) -> PyTree[bool]:
-    """Filter spec that is ``True`` for all arrays that are not ``Coordinates``."""
-    return jtu.tree_map(
-        is_not_coordinates,
-        pytree,
-        is_leaf=lambda x: isinstance(x, AbstractCoordinates),
-    )
 
 
 class AbstractCoordinates(eqx.Module, strict=True):
