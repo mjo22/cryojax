@@ -309,16 +309,18 @@ class AxisAnglePose(AbstractPose, strict=True):
     @override
     def rotation(self) -> SO3:
         """Generate rotation from an euler vector using the exponential map."""
+        # Convert degrees to radians
+        euler_vector = jnp.deg2rad(self.euler_vector)
         # Project the tangent vector onto the manifold with
         # the exponential map
-        R = SO3.exp(self.euler_vector)
+        R = SO3.exp(euler_vector)
         return R
 
     @override
     @classmethod
     def from_rotation(cls, rotation: SO3):
         # Compute the euler vector from the logarithmic map
-        euler_vector = rotation.log()
+        euler_vector = jnp.rad2deg(rotation.log())
         return cls(euler_vector=euler_vector)
 
 
