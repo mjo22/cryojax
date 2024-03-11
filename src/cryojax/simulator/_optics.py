@@ -5,7 +5,7 @@ Models of instrument optics.
 from abc import abstractmethod
 from typing import ClassVar, Optional
 from typing_extensions import override
-from equinox import AbstractClassVar, AbstractVar, Module, field
+from equinox import AbstractClassVar, AbstractVar, Module, field, error_if
 
 import jax.numpy as jnp
 
@@ -17,6 +17,7 @@ from ..image.operators import (
 )
 from ..coordinates import cartesian_to_polar
 from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
+from ..core import error_if_negative, error_if_not_fractional
 
 
 class CTF(AbstractFourierOperatorInAngstroms, strict=True):
@@ -43,12 +44,14 @@ class CTF(AbstractFourierOperatorInAngstroms, strict=True):
               in degrees or radians.
     """
 
-    defocus_u_in_angstroms: Real_ = field(default=10000.0, converter=jnp.asarray)
-    defocus_v_in_angstroms: Real_ = field(default=10000.0, converter=jnp.asarray)
+    defocus_u_in_angstroms: Real_ = field(default=10000.0, converter=error_if_negative)
+    defocus_v_in_angstroms: Real_ = field(default=10000.0, converter=error_if_negative)
     astigmatism_angle: Real_ = field(default=0.0, converter=jnp.asarray)
-    voltage_in_kilovolts: Real_ = field(default=300.0, converter=jnp.asarray)
-    spherical_aberration_in_mm: Real_ = field(default=2.7, converter=jnp.asarray)
-    amplitude_contrast_ratio: Real_ = field(default=0.1, converter=jnp.asarray)
+    voltage_in_kilovolts: Real_ = field(default=300.0, converter=error_if_negative)
+    spherical_aberration_in_mm: Real_ = field(default=2.7, converter=error_if_negative)
+    amplitude_contrast_ratio: Real_ = field(
+        default=0.1, converter=error_if_not_fractional
+    )
     phase_shift: Real_ = field(default=0.0, converter=jnp.asarray)
 
     degrees: bool = field(static=True, default=True)

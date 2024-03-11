@@ -17,6 +17,7 @@ from ._config import ImageConfig
 from ..image.operators import AbstractFourierOperatorInPixels
 from ..image import irfftn, rfftn
 from ..typing import ComplexImage, RealImage, ImageCoords, Real_
+from ..core import error_if_not_fractional
 
 
 class AbstractDQE(AbstractFourierOperatorInPixels, strict=True):
@@ -53,7 +54,9 @@ class IdealDQE(AbstractDQE, strict=True):
     for details.
     """
 
-    fraction_detected_electrons: Real_ = field(default=1.0, converter=jnp.asarray)
+    fraction_detected_electrons: Real_ = field(
+        default=1.0, converter=error_if_not_fractional
+    )
 
     @override
     def __call__(self, frequency_grid: ImageCoords) -> RealImage:

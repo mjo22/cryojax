@@ -23,6 +23,7 @@ import numpy as np
 from ._scattering_potential import AbstractScatteringPotential
 from .._pose import AbstractPose
 from ...io import get_form_factor_params
+from ...core import error_if_negative
 
 from ...image.operators import AbstractFilter
 from ...image import (
@@ -217,7 +218,7 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
 
     fourier_voxel_grid: ComplexCubicVolume = field(converter=jnp.asarray)
     wrapped_frequency_slice: FrequencySlice
-    voxel_size: Real_ = field(converter=jnp.asarray)
+    voxel_size: Real_ = field(converter=error_if_negative)
 
     is_real: ClassVar[bool] = False
 
@@ -252,7 +253,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 
     coefficients: ComplexCubicVolume = field(converter=jnp.asarray)
     wrapped_frequency_slice: FrequencySlice
-    voxel_size: Real_ = field(converter=jnp.asarray)
+    voxel_size: Real_ = field(converter=error_if_negative)
 
     is_real: ClassVar[bool] = False
 
@@ -298,7 +299,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     real_voxel_grid: RealCubicVolume = field(converter=jnp.asarray)
     wrapped_coordinate_grid: CoordinateGrid
-    voxel_size: Real_ = field(converter=jnp.asarray)
+    voxel_size: Real_ = field(converter=error_if_negative)
 
     is_real: ClassVar[bool] = True
 
@@ -451,7 +452,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
     voxel_weights: RealCloud = field(converter=jnp.asarray)
     wrapped_coordinate_list: CoordinateList
-    voxel_size: Real_ = field(converter=jnp.asarray)
+    voxel_size: Real_ = field(converter=error_if_negative)
 
     is_real: ClassVar[bool] = True
 
