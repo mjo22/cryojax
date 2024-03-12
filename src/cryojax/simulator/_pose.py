@@ -249,39 +249,6 @@ class QuaternionPose(AbstractPose, strict=True):
         return cls(wxyz=rotation.wxyz)
 
 
-class MatrixPose(AbstractPose, strict=True):
-    """An `AbstractPose` represented by a rotation matrix.
-
-    **Attributes:**
-
-    - `matrix`: The rotation matrix.
-    """
-
-    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-
-    rotation_matrix: Float[Array, "3 3"] = field(
-        default_factory=lambda: jnp.eye(3), converter=jnp.asarray
-    )
-
-    @cached_property
-    @override
-    def rotation(self) -> SO3:
-        """Generate rotation from a rotation matrix."""
-        # Generate SO3 object from the rotation matrix
-        R = SO3.from_matrix(self.rotation_matrix)
-        # Normalize (this should be equivalent to making sure the
-        # rotation matrix has unit determinant)
-        R = R.normalize()
-        return R
-
-    @override
-    @classmethod
-    def from_rotation(cls, rotation: SO3):
-        return cls(rotation_matrix=rotation.as_matrix())
-
-
 class AxisAnglePose(AbstractPose, strict=True):
     """An `AbstractPose` parameterized in the axis-angle representation.
 
@@ -322,36 +289,6 @@ class AxisAnglePose(AbstractPose, strict=True):
         # Compute the euler vector from the logarithmic map
         euler_vector = jnp.rad2deg(rotation.log())
         return cls(euler_vector=euler_vector)
-
-
-class SO3Pose(AbstractPose, strict=True):
-    """An `AbstractPose` represented by a `SO3` matrix lie
-    group.
-
-    **Attributes:**
-
-    `group_element`: The group element of SO3.
-    """
-
-    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-
-    group_element: SO3 = field(
-        default_factory=lambda: SO3(wxyz=jnp.asarray((1.0, 0.0, 0.0, 0.0)))
-    )
-
-    @cached_property
-    @override
-    def rotation(self) -> SO3:
-        """Get the `jaxlie.SO3` matrix lie group."""
-        R = self.group_element
-        return R
-
-    @override
-    @classmethod
-    def from_rotation(cls, rotation: SO3):
-        return cls(group_element=rotation)
 
 
 def _convert_quaternion_to_euler_angles(wxyz: jax.Array, convention: str) -> jax.Array:

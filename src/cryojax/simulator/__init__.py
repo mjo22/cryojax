@@ -4,9 +4,7 @@ from ._pose import (
     AbstractPose as AbstractPose,
     EulerAnglePose as EulerAnglePose,
     QuaternionPose as QuaternionPose,
-    MatrixPose as MatrixPose,
     AxisAnglePose as AxisAnglePose,
-    SO3Pose as SO3Pose,
 )
 
 

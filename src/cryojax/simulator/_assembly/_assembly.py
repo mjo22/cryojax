@@ -16,7 +16,8 @@ import equinox as eqx
 
 from .._specimen import AbstractSpecimen, AbstractEnsemble
 from .._conformation import AbstractConformation
-from .._pose import AbstractPose, MatrixPose
+from .._pose import AbstractPose
+from ...rotations import SO3
 
 
 class AbstractAssembly(eqx.Module, strict=True):
@@ -91,20 +92,20 @@ class AbstractAssembly(eqx.Module, strict=True):
         # Transform the subunit rotations by the pose of the helix. This operation
         # left multiplies by the pose of the helix, taking care that first subunits
         # are rotated to the center of mass frame, then the lab frame.
-        transformed_rotations = jnp.einsum(
+        transformed_rotation_matrices = jnp.einsum(
             "ij,njk->nik", self.pose.rotation.as_matrix(), self.rotations
         )
-        # Function to construct a MatrixPose, vmapped over leading dimension
+        # Function to construct SO3 objects vmapped over leading dimension
+        transformed_rotations = jax.vmap(lambda mat: SO3.from_matrix(mat))(
+            transformed_rotation_matrices
+        )
+        # Function to construct AbstractPoses
+        cls = type(self.pose)
         make_assembly_poses = jax.vmap(
-            lambda pos, rot: MatrixPose(
-                offset_x_in_angstroms=pos[0],
-                offset_y_in_angstroms=pos[1],
-                offset_z_in_angstroms=pos[2],
-                rotation_matrix=rot,
-            )
+            lambda rot, pos: cls.from_rotation_and_translation(rot, pos)
         )
 
-        return make_assembly_poses(transformed_positions, transformed_rotations)
+        return make_assembly_poses(transformed_rotations, transformed_positions)
 
     @cached_property
     def subunits(self) -> AbstractSpecimen:
