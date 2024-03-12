@@ -4,4 +4,5 @@ from ._transforms import (
     AbstractParameterTransform as AbstractParameterTransform,
     ExpTransform as ExpTransform,
     RescalingTransform as RescalingTransform,
+    ComposedTransform as ComposedTransform,
 )

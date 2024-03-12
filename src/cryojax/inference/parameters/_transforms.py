@@ -3,8 +3,8 @@ Transformations used for reparameterizing cryojax models.
 """
 
 from abc import abstractmethod
-from equinox import Module, field
-from jaxtyping import PyTree
+from equinox import Module, AbstractVar, field
+from jaxtyping import PyTree, Array, ArrayLike
 from typing import Callable, Union, Any, Sequence, Optional
 from typing_extensions import overload
 
@@ -14,7 +14,7 @@ import jax.tree_util as jtu
 import equinox as eqx
 
 from ...typing import Real_
-from ...core import error_if_zero
+from ...core import error_if_zero, error_if_not_positive
 
 
 def _is_transformed(x: Any) -> bool:
@@ -57,7 +57,6 @@ def insert_transforms(
 ) -> PyTree: ...
 
 
-@overload
 def insert_transforms(
     pytree: PyTree,
     wheres: (
@@ -120,6 +119,8 @@ class AbstractParameterTransform(Module, strict=True):
     the original parameter space.
     """
 
+    transformed_parameter: AbstractVar[Array]
+
     @abstractmethod
     def get(self):
         """Get the parameter in the original parameter space."""
@@ -131,10 +132,10 @@ class ExpTransform(AbstractParameterTransform, strict=True):
 
     **Attributes:**
 
-    - `log_parameter`: The parameter on a logarithmic scale.
+    - `transformed_parameter`: The parameter on a logarithmic scale.
     """
 
-    log_parameter: Real_
+    transformed_parameter: Real_
 
     def __init__(self, parameter: Real_):
         """**Arguments:**
@@ -142,34 +143,90 @@ class ExpTransform(AbstractParameterTransform, strict=True):
         - `parameter`: The parameter to be transformed to a logarithmic
                        scale.
         """
-        self.log_parameter = jnp.log(parameter)
+        self.transformed_parameter = jnp.log(error_if_not_positive(parameter))
 
     def get(self):
-        """The `log_parameter` transformed back with an exponential."""
-        return jnp.exp(self.log_parameter)
+        """The logarithmic-valued parameter transformed with an exponential."""
+        return jnp.exp(self.transformed_parameter)
 
 
 class RescalingTransform(AbstractParameterTransform, strict=True):
-    """This class transforms a parameter by a scale factor.
+    """This class transforms a parameter by a scale factor and a shift.
 
     **Attributes:**
 
-    - `rescaled_parameter`: The rescaled parameter.
+    - `transformed_parameter`: The rescaled parameter.
     """
 
-    rescaled_parameter: Real_
-    rescaling: Real_ = field(converter=error_if_zero)
+    transformed_parameter: Real_
+    scaling: Real_ = field(converter=error_if_zero)
+    shift: Real_
 
-    def __init__(self, parameter: Real_, rescaling: float):
+    def __init__(
+        self,
+        parameter: Real_ | float,
+        scaling: Real_ | float,
+        shift: Real_ | float = 0.0,
+    ):
         """**Arguments:**
 
         - `parameter`: The parameter to be rescaled.
 
-        - `rescaling`: The scale factor.
+        - `scaling`: The scale factor.
+
+        - `shift`: The shift.
         """
-        self.rescaled_parameter = jax.lax.stop_gradient(rescaling) * parameter
-        self.rescaling = rescaling
+        self.scaling = jnp.asarray(scaling)
+        self.shift = jnp.asarray(shift)
+        self.transformed_parameter = self.scaling * jnp.asarray(parameter) + self.shift
 
     def get(self):
-        """The rescaled `rescaled_parameter` transformed back to the original scale."""
-        return self.rescaled_parameter / jax.lax.stop_gradient(self.rescaling)
+        """The rescaled parameter transformed back to the original scale."""
+        return (
+            self.transformed_parameter - jax.lax.stop_gradient(self.shift)
+        ) / jax.lax.stop_gradient(self.scaling)
+
+
+class ComposedTransform(AbstractParameterTransform, strict=True):
+    """This class composes multiple `AbstractParameterTransforms`.
+
+    **Attributes:**
+
+    - `transformed_parameter`: The transformed parameter.
+
+    - `transforms`: The sequence of `AbstractParameterTransform`s.
+    """
+
+    transformed_parameter: Array
+    transforms: tuple[AbstractParameterTransform, ...]
+
+    def __init__(
+        self,
+        parameter: ArrayLike,
+        transform_fns: Sequence[Callable[[Any], "AbstractParameterTransform"]],
+    ):
+        """**Arguments:**
+
+        - `parameter`: The parameter to be transformed.
+
+        - `transform_fns`: A sequence of functions that take in
+                           a parameter and return an `AbstractParameterTransform`.
+        """
+        p = jnp.asarray(parameter)
+        transforms = []
+        for transform_fn in transform_fns:
+            transform = transform_fn(p)
+            p = transform.transformed_parameter
+            transforms.append(transform)
+        self.transformed_parameter = p
+        self.transforms = jax.lax.stop_gradient(tuple(transforms))
+
+    def get(self):
+        """Transform the `transformed_parameter` back to the original space."""
+        parameter = self.transformed_parameter
+        for transform in self.transforms[::-1]:
+            transform = eqx.tree_at(
+                lambda t: t.transformed_parameter, transform, parameter
+            )
+            parameter = transform.get()
+        return parameter
