@@ -29,6 +29,7 @@ class AbstractDQE(AbstractFourierOperator, strict=True):
     def __call__(
         self,
         frequency_grid_maybe_in_angstroms: ImageCoords,
+        *,
         pixel_size: Optional[Real_] = None,
     ) -> RealImage | Real_:
         """**Arguments:**
@@ -50,6 +51,7 @@ class NullDQE(AbstractDQE, strict=True):
     def __call__(
         self,
         frequency_grid_maybe_in_angstroms: ImageCoords,
+        *,
         pixel_size: Optional[Real_] = None,
     ) -> Real_:
         return jnp.asarray(1.0)
@@ -70,6 +72,7 @@ class IdealDQE(AbstractDQE, strict=True):
     def __call__(
         self,
         frequency_grid_maybe_in_angstroms: ImageCoords,
+        *,
         pixel_size: Optional[Real_] = None,
     ) -> RealImage:
         if pixel_size is None:

@@ -63,6 +63,7 @@ class CTF(AbstractFourierOperator, strict=True):
     def __call__(
         self,
         frequency_grid_in_angstroms: ImageCoords,
+        *,
         defocus_offset: Real_ | float = 0.0,
     ) -> RealImage:
         # Convert degrees to radians
