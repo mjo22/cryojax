@@ -9,7 +9,7 @@ from functools import wraps, partial
 from typing import Callable, Union, Any, Optional, Hashable
 
 
-def filter_grad(
+def filter_grad_with_spec(
     func: Callable,
     filter_spec: PyTree[Union[bool, Callable[[Any], bool]]],
     is_leaf: Optional[Callable[[Any], bool]] = None,
@@ -38,7 +38,7 @@ def filter_grad(
     return partition_and_recombine_fn
 
 
-def filter_value_and_grad(
+def filter_value_and_grad_with_spec(
     func: Callable,
     filter_spec: PyTree[Union[bool, Callable[[Any], bool]]],
     is_leaf: Optional[Callable[[Any], bool]] = None,
@@ -67,7 +67,7 @@ def filter_value_and_grad(
     return partition_and_recombine_fn
 
 
-def filter_vmap(
+def filter_vmap_with_spec(
     func: Callable,
     filter_spec: PyTree[Union[bool, Callable[[Any], bool]]],
     is_leaf: Optional[Callable[[Any], bool]] = None,

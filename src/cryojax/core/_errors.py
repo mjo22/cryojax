@@ -12,6 +12,13 @@ def error_if_negative(x: ArrayLike) -> Array:
     return eqx.error_if(x, x < 0, "A positive quantity was found to be negative!")
 
 
+def error_if_zero(x: ArrayLike) -> Array:
+    x = jnp.asarray(x)
+    return eqx.error_if(
+        x, jnp.isclose(x, 0.0), "A non-zero quantity was found to be zero!"
+    )
+
+
 def error_if_not_fractional(x: ArrayLike) -> Array:
     x = jnp.asarray(x)
     return eqx.error_if(
