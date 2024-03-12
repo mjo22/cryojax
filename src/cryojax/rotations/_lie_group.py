@@ -21,8 +21,9 @@ class AbstractMatrixLieGroup(AbstractRotation, strict=True):
     a matrix lie group.
 
     The class is almost exactly derived from the `jaxlie.MatrixLieGroup`
-    object. Thank you to the developers
-    for writing a great package!
+    object.
+
+    `jaxlie` was written for [Yi, Brent, et al. 2021](https://ieeexplore.ieee.org/abstract/document/9636300).
     """
 
     tangent_dimension: AbstractClassVar[int]
@@ -69,8 +70,9 @@ class SO3(AbstractMatrixLieGroup, strict=True):
     SO3 matrix lie group.
 
     The class is almost exactly derived from the `jaxlie.SO3`
-    object. Thank you to the developers
-    for writing a great package!
+    object.
+
+    `jaxlie` was written for [Yi, Brent, et al. 2021](https://ieeexplore.ieee.org/abstract/document/9636300).
 
     **Attributes:**
 

@@ -1,6 +1,7 @@
 """
 Utilities for creating equinox filtered transformations. These routines
-are modified from `zodiax`, which was created for the project dLux: https://louisdesdoigts.github.io/dLux/.
+are modified from [`zodiax`](https://github.com/LouisDesdoigts/zodiax), which 
+was created for the project [`dLux`](https://louisdesdoigts.github.io/dLux/).
 """
 
 import equinox as eqx
