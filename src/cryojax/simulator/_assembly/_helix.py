@@ -53,8 +53,8 @@ class Helix(AbstractAssembly, strict=True):
     """
 
     subunit: AbstractSpecimen
-    rise: Real_ = field(converter=jnp.asarray)
-    twist: Real_ = field(converter=jnp.asarray)
+    rise: Real_
+    twist: Real_
 
     pose: AbstractPose
     conformation: Optional[AbstractConformation]
@@ -65,8 +65,8 @@ class Helix(AbstractAssembly, strict=True):
     def __init__(
         self,
         subunit: AbstractSpecimen,
-        rise: Real_,
-        twist: Real_,
+        rise: Real_ | float,
+        twist: Real_ | float,
         pose: Optional[AbstractPose] = None,
         conformation: Optional[AbstractConformation] = None,
         n_start: int = 1,
@@ -74,8 +74,8 @@ class Helix(AbstractAssembly, strict=True):
     ):
         self.subunit = subunit
         self.pose = pose or EulerAnglePose()
-        self.rise = rise
-        self.twist = twist
+        self.rise = jnp.asarray(rise)
+        self.twist = jnp.asarray(twist)
         self.conformation = conformation
         self.n_start = n_start
         self.n_subunits = n_subunits

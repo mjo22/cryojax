@@ -12,7 +12,7 @@ import jax.numpy as jnp
 from ._config import ImageConfig
 from ..image.operators import (
     FourierOperatorLike,
-    AbstractFourierOperatorInAngstroms,
+    AbstractFourierOperator,
     Constant,
 )
 from ..coordinates import cartesian_to_polar
@@ -20,7 +20,7 @@ from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
 from ..core import error_if_negative, error_if_not_positive, error_if_not_fractional
 
 
-class CTF(AbstractFourierOperatorInAngstroms, strict=True):
+class CTF(AbstractFourierOperator, strict=True):
     """Compute the Contrast Transfer Function (CTF) in for a weakly
     scattering specimen.
 

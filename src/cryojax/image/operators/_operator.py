@@ -9,7 +9,7 @@ from jaxtyping import Array
 
 import jax
 import jax.numpy as jnp
-from equinox import Module, field, AbstractVar
+from equinox import Module, Partial, field, AbstractVar
 
 from ...typing import Image, Volume, Real_
 
@@ -25,32 +25,32 @@ class AbstractImageOperator(Module, strict=True):
         raise NotImplementedError
 
     def __add__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, AbstractImageOperator):
+        if isinstance(other, (AbstractImageOperator, Partial)):
             return SumImageOperator(self, other)
         return SumImageOperator(self, Constant(other))
 
     def __radd__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, AbstractImageOperator):
+        if isinstance(other, (AbstractImageOperator, Partial)):
             return SumImageOperator(other, self)
         return SumImageOperator(Constant(other), self)
 
     def __sub__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, AbstractImageOperator):
+        if isinstance(other, (AbstractImageOperator, Partial)):
             return DiffImageOperator(self, other)
         return DiffImageOperator(self, Constant(other))
 
     def __rsub__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, AbstractImageOperator):
+        if isinstance(other, (AbstractImageOperator, Partial)):
             return DiffImageOperator(other, self)
         return DiffImageOperator(Constant(other), self)
 
     def __mul__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, AbstractImageOperator):
+        if isinstance(other, (AbstractImageOperator, Partial)):
             return ProductImageOperator(self, other)
         return ProductImageOperator(self, Constant(other))
 
     def __rmul__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, AbstractImageOperator):
+        if isinstance(other, (AbstractImageOperator, Partial)):
             return ProductImageOperator(other, self)
         return ProductImageOperator(Constant(other), self)
 
@@ -146,8 +146,8 @@ class ProductImageMultiplier(AbstractImageMultiplier, strict=True):
 class SumImageOperator(AbstractImageOperator, strict=True):
     """A helper to represent the sum of two operators."""
 
-    operator1: AbstractImageOperator
-    operator2: AbstractImageOperator
+    operator1: AbstractImageOperator | Partial
+    operator2: AbstractImageOperator | Partial
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Array:
@@ -160,8 +160,8 @@ class SumImageOperator(AbstractImageOperator, strict=True):
 class DiffImageOperator(AbstractImageOperator, strict=True):
     """A helper to represent the difference of two operators."""
 
-    operator1: AbstractImageOperator
-    operator2: AbstractImageOperator
+    operator1: AbstractImageOperator | Partial
+    operator2: AbstractImageOperator | Partial
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Array:
@@ -174,8 +174,8 @@ class DiffImageOperator(AbstractImageOperator, strict=True):
 class ProductImageOperator(AbstractImageOperator, strict=True):
     """A helper to represent the product of two operators."""
 
-    operator1: AbstractImageOperator
-    operator2: AbstractImageOperator
+    operator1: AbstractImageOperator | Partial
+    operator2: AbstractImageOperator | Partial
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Array:
