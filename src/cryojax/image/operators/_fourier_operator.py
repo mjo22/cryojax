@@ -16,7 +16,7 @@ from equinox import field
 
 import jax.numpy as jnp
 
-from ...core import error_if_negative
+from ...core import error_if_not_positive
 from ._operator import AbstractImageOperator
 from ...typing import (
     Real_,
@@ -142,7 +142,7 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
     """
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    length_scale: Real_ = field(default=1.0, converter=error_if_negative)
+    length_scale: Real_ = field(default=1.0, converter=error_if_not_positive)
 
     @override
     def __call__(self, freqs: ImageCoords) -> RealImage:
@@ -173,7 +173,7 @@ class Lorenzian(AbstractFourierOperator, strict=True):
     """
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    length_scale: Real_ = field(default=1.0, converter=error_if_negative)
+    length_scale: Real_ = field(default=1.0, converter=error_if_not_positive)
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...
@@ -218,7 +218,7 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
     """
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    b_factor: Real_ = field(default=1.0, converter=error_if_negative)
+    b_factor: Real_ = field(default=1.0, converter=error_if_not_positive)
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...

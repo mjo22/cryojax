@@ -6,6 +6,7 @@ from ._filtered_transformations import (
 )
 from ._errors import (
     error_if_negative as error_if_negative,
+    error_if_not_positive as error_if_not_positive,
     error_if_not_fractional as error_if_not_fractional,
     error_if_zero as error_if_zero,
 )

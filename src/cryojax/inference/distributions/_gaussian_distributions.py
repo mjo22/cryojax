@@ -15,6 +15,7 @@ from ._distribution import AbstractDistribution
 from ...image.operators import FourierOperatorLike, Constant
 from ...simulator import AbstractPipeline
 from ...typing import Real_, Image, ComplexImage
+from ...core import error_if_not_positive
 
 
 class IndependentFourierGaussian(AbstractDistribution, strict=True):
@@ -35,7 +36,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
 
     pipeline: AbstractPipeline
     variance: FourierOperatorLike
-    contrast_scale: Real_ = field(converter=jnp.asarray)
+    contrast_scale: Real_ = field(converter=error_if_not_positive)
 
     def __init__(
         self,
