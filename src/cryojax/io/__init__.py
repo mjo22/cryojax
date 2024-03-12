@@ -12,10 +12,6 @@ from ._mrc import (
     write_volume_to_mrc as write_volume_to_mrc,
 )
 from ._pdb import read_atoms_from_pdb as read_atoms_from_pdb
-from ._load_atoms import (
-    default_form_factor_params as default_form_factor_params,
-    get_form_factor_params as get_form_factor_params,
-)
 from ._cif import read_atoms_from_cif as read_atoms_from_cif
 from ._gemmi import (
     clean_gemmi_structure as clean_gemmi_structure,

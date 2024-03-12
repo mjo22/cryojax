@@ -22,7 +22,7 @@ import numpy as np
 
 from ._scattering_potential import AbstractScatteringPotential
 from .._pose import AbstractPose
-from ...io import get_form_factor_params
+from ...constants import get_form_factor_params
 from ...core import error_if_not_positive
 
 from ...image.operators import AbstractFilter

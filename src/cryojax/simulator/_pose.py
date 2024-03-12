@@ -291,6 +291,35 @@ class AxisAnglePose(AbstractPose, strict=True):
         return cls(euler_vector=euler_vector)
 
 
+class SO3Pose(AbstractPose, strict=True):
+    """An `AbstractPose` represented by a `SO3` matrix lie
+    group.
+
+    **Attributes:**
+
+    - `group_element`: The group element of SO3.
+    """
+
+    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+
+    group_element: SO3 = field(
+        default_factory=lambda: SO3(wxyz=jnp.asarray((1.0, 0.0, 0.0, 0.0)))
+    )
+
+    @cached_property
+    @override
+    def rotation(self) -> SO3:
+        """Get the `jaxlie.SO3` matrix lie group."""
+        return self.group_element
+
+    @override
+    @classmethod
+    def from_rotation(cls, rotation: SO3):
+        return cls(group_element=rotation)
+
+
 def _convert_quaternion_to_euler_angles(wxyz: jax.Array, convention: str) -> jax.Array:
     """Convert a quaternion to a sequence of euler angles.
 

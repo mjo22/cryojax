@@ -1,9 +1,9 @@
 """
-Abstraction of a rotation.
+Abstraction of rotations represented by matrix lie groups.
 """
 
 from abc import abstractmethod
-from equinox import field
+from equinox import field, AbstractClassVar
 from typing import Type, ClassVar
 from typing_extensions import Self, override
 from jaxtyping import Float, Array, PRNGKeyArray
@@ -19,7 +19,13 @@ from ._rotation import AbstractRotation
 class AbstractMatrixLieGroup(AbstractRotation, strict=True):
     """Base class for a rotation that is represented by
     a matrix lie group.
+
+    The class is almost exactly derived from the `jaxlie.MatrixLieGroup`
+    object. Thank you to the developers
+    for writing a great package!
     """
+
+    tangent_dimension: AbstractClassVar[int]
 
     @classmethod
     @abstractmethod
@@ -50,23 +56,31 @@ class AbstractMatrixLieGroup(AbstractRotation, strict=True):
         """Projects onto a group element."""
         raise NotImplementedError
 
+    @abstractmethod
+    def adjoint(self) -> Array:
+        """Computes the adjoint, which transforms tangent vectors
+        between tangent spaces.
+        """
+        raise NotImplementedError
+
 
 class SO3(AbstractMatrixLieGroup, strict=True):
     """A rotation in 3D space, represented by the
     SO3 matrix lie group.
 
-    The class is exactly derived from the `jaxlie.SO3`
-    object in many places. Thank you to the developers
+    The class is almost exactly derived from the `jaxlie.SO3`
+    object. Thank you to the developers
     for writing a great package!
 
     **Attributes:**
 
-    `wxyz` - A quaternion as (q_w, q_x, q_y, q_z). This
-             is the internal parameterization of the
+    `wxyz` - A quaternion represented as $(q_w, q_x, q_y, q_z)$.
+             This is the internal parameterization of the
              rotation.
     """
 
     space_dimension: ClassVar[int] = 3
+    tangent_dimension: ClassVar[int] = 3
 
     wxyz: Float[Array, "4"] = field(converter=jnp.asarray)
 
@@ -288,6 +302,12 @@ class SO3(AbstractMatrixLieGroup, strict=True):
         )
 
         return -atan_factor * self.wxyz[1:]
+
+    def adjoint(self) -> Float[Array, "3 3"]:
+        """Computes the adjoint, which transforms tangent vectors
+        between tangent spaces.
+        """
+        return self.as_matrix()
 
     @override
     def normalize(self) -> Self:

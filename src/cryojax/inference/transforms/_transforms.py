@@ -77,7 +77,7 @@ def insert_transforms(
     """
     if isinstance(replace_fns, Callable) and isinstance(wheres, Callable):
         where, replace_fn = wheres, replace_fns
-        return _apply_transform(pytree, where, replace_fn)
+        return _apply_transform(pytree, where, replace_fn, is_leaf=is_leaf)
     elif isinstance(replace_fns, Sequence) and isinstance(wheres, Sequence):
         if len(replace_fns) != len(wheres):
             raise TypeError(
@@ -86,7 +86,9 @@ def insert_transforms(
             )
         transformed_pytree = pytree
         for where, replace_fn in zip(wheres, replace_fns):
-            transformed_pytree = _apply_transform(pytree, where, replace_fn)
+            transformed_pytree = _apply_transform(
+                pytree, where, replace_fn, is_leaf=is_leaf
+            )
         return transformed_pytree
     else:
         raise TypeError(
@@ -127,7 +129,7 @@ class AbstractParameterTransform(Module, strict=True):
         raise NotImplementedError
 
 
-class ExpTransform(AbstractParameterTransform, strict=True):
+class LogTransform(AbstractParameterTransform, strict=True):
     """This class transforms a parameter to its logarithm.
 
     **Attributes:**
@@ -219,12 +221,13 @@ class ComposedTransform(AbstractParameterTransform, strict=True):
             p = transform.transformed_parameter
             transforms.append(transform)
         self.transformed_parameter = p
-        self.transforms = jax.lax.stop_gradient(tuple(transforms))
+        self.transforms = tuple(transforms)
 
     def get(self):
         """Transform the `transformed_parameter` back to the original space."""
         parameter = self.transformed_parameter
-        for transform in self.transforms[::-1]:
+        transforms = jax.lax.stop_gradient(self.transforms)
+        for transform in transforms[::-1]:
             transform = eqx.tree_at(
                 lambda t: t.transformed_parameter, transform, parameter
             )
