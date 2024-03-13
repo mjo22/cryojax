@@ -70,12 +70,14 @@ class SO3Transform(AbstractParameterTransform, strict=True):
         - `wxyz`: A quaternion that parameterizes the SO3
                   group element.
         """
-        self.transformed_parameter = jnp.zeros(SO3.tangent_dimension, dtype=float)
+        local_tangent = jnp.zeros(3, dtype=float)
+        self.transformed_parameter = local_tangent
         self.group_element = SO3(wxyz).normalize()
 
     def get(self) -> Float[Array, "4"]:
         """An implementation of the `jaxlie.manifold.rplus`."""
+        local_tangent = self.transformed_parameter
         return (
             jax.lax.stop_gradient(self.group_element)
-            @ SO3.exp(self.transformed_parameter)
+            @ SO3.exp(local_tangent)
         ).wxyz
