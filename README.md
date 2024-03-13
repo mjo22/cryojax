@@ -111,8 +111,6 @@ This computes an image using the noise model of the detector. One can also compu
 image_without_noise = pipeline.render(get_real=True)
 ```
 
-Alternatively we could have completely forgotten about a model of a detector, or even an optics model. In the former case, if we set `instrument = cs.Instrument(optics)`, the `pipeline` will return the squared wavefunction in the detector plane. In the latter case, if we set set `instrument = cs.Instrument()`--or do not initialize an instrument at all–-the `pipeline` will return the scattering potential in the exit plane. 
-
 Instead of simulating noise from the stochastic parts of the `pipeline`, `cryojax` also defines a library of distributions. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood
 
 ```python
