@@ -124,12 +124,12 @@ class AbstractParameterTransform(Module, strict=True):
     transformed_parameter: AbstractVar[Array]
 
     @abstractmethod
-    def get(self):
+    def get(self) -> Any:
         """Get the parameter in the original parameter space."""
         raise NotImplementedError
 
 
-class LogTransform(AbstractParameterTransform, strict=True):
+class ExpTransform(AbstractParameterTransform, strict=True):
     """This class transforms a parameter to its logarithm.
 
     **Attributes:**
@@ -137,9 +137,9 @@ class LogTransform(AbstractParameterTransform, strict=True):
     - `transformed_parameter`: The parameter on a logarithmic scale.
     """
 
-    transformed_parameter: Real_
+    transformed_parameter: Array
 
-    def __init__(self, parameter: Real_):
+    def __init__(self, parameter: Array):
         """**Arguments:**
 
         - `parameter`: The parameter to be transformed to a logarithmic
@@ -147,7 +147,7 @@ class LogTransform(AbstractParameterTransform, strict=True):
         """
         self.transformed_parameter = jnp.log(error_if_not_positive(parameter))
 
-    def get(self):
+    def get(self) -> Array:
         """The logarithmic-valued parameter transformed with an exponential."""
         return jnp.exp(self.transformed_parameter)
 
@@ -160,13 +160,13 @@ class RescalingTransform(AbstractParameterTransform, strict=True):
     - `transformed_parameter`: The rescaled parameter.
     """
 
-    transformed_parameter: Real_
+    transformed_parameter: Array
     scaling: Real_ = field(converter=error_if_zero)
     shift: Real_
 
     def __init__(
         self,
-        parameter: Real_ | float,
+        parameter: Array,
         scaling: Real_ | float,
         shift: Real_ | float = 0.0,
     ):
@@ -182,7 +182,7 @@ class RescalingTransform(AbstractParameterTransform, strict=True):
         self.shift = jnp.asarray(shift)
         self.transformed_parameter = self.scaling * jnp.asarray(parameter) + self.shift
 
-    def get(self):
+    def get(self) -> Array:
         """The rescaled parameter transformed back to the original scale."""
         return (
             self.transformed_parameter - jax.lax.stop_gradient(self.shift)
@@ -199,12 +199,12 @@ class ComposedTransform(AbstractParameterTransform, strict=True):
     - `transforms`: The sequence of `AbstractParameterTransform`s.
     """
 
-    transformed_parameter: Array
+    transformed_parameter: Any
     transforms: tuple[AbstractParameterTransform, ...]
 
     def __init__(
         self,
-        parameter: ArrayLike,
+        parameter: Any,
         transform_fns: Sequence[Callable[[Any], "AbstractParameterTransform"]],
     ):
         """**Arguments:**
@@ -223,7 +223,7 @@ class ComposedTransform(AbstractParameterTransform, strict=True):
         self.transformed_parameter = p
         self.transforms = tuple(transforms)
 
-    def get(self):
+    def get(self) -> Any:
         """Transform the `transformed_parameter` back to the original space."""
         parameter = self.transformed_parameter
         transforms = jax.lax.stop_gradient(self.transforms)
