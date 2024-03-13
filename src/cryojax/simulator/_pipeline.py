@@ -459,7 +459,6 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
     def _compute_subunit_superposition(self):
         # Get the assembly subunits
         subunits = self.assembly.subunits
-        print(subunits)
         # Setup vmap over the pose and conformation
         is_vmap = lambda x: isinstance(x, (AbstractPose, AbstractConformation))
         to_vmap = jax.tree_util.tree_map(is_vmap, subunits, is_leaf=is_vmap)
