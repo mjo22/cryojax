@@ -51,8 +51,8 @@ def apply_updates_with_lie_transform(model: PyTree, updates: PyTree) -> PyTree:
 
 
 class SO3Transform(AbstractParameterTransform, strict=True):
-    """This class transforms an `AbstractMatrixLieGroup` to its local
-    tangent space.
+    """This class transforms a quaternion to the local
+    tangent space of the corresponding SO3 element.
 
     This class is based on the implementation in `jaxlie.manifold`.
 
@@ -71,7 +71,7 @@ class SO3Transform(AbstractParameterTransform, strict=True):
                   group element.
         """
         self.transformed_parameter = jnp.zeros(SO3.tangent_dimension, dtype=float)
-        self.group_element = SO3(wxyz)
+        self.group_element = SO3(wxyz).normalize()
 
     def get(self) -> Float[Array, "4"]:
         """An implementation of the `jaxlie.manifold.rplus`."""
