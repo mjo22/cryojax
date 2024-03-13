@@ -4,7 +4,7 @@ Abstraction of rotations represented by matrix lie groups.
 
 from abc import abstractmethod
 from equinox import field, AbstractClassVar
-from typing import Type, ClassVar
+from typing import Type, ClassVar, cast
 from typing_extensions import Self, override
 from jaxtyping import Float, Array, PRNGKeyArray
 
@@ -26,7 +26,9 @@ class AbstractMatrixLieGroup(AbstractRotation, strict=True):
     `jaxlie` was written for [Yi, Brent, et al. 2021](https://ieeexplore.ieee.org/abstract/document/9636300).
     """
 
+    parameter_dimension: AbstractClassVar[int]
     tangent_dimension: AbstractClassVar[int]
+    matrix_dimension: AbstractClassVar[int]
 
     @classmethod
     @abstractmethod
@@ -76,13 +78,15 @@ class SO3(AbstractMatrixLieGroup, strict=True):
 
     **Attributes:**
 
-    `wxyz` - A quaternion represented as $(q_w, q_x, q_y, q_z)$.
+    - `wxyz` - A quaternion represented as $(q_w, q_x, q_y, q_z)$.
              This is the internal parameterization of the
              rotation.
     """
 
     space_dimension: ClassVar[int] = 3
+    parameter_dimension: ClassVar[int] = 4
     tangent_dimension: ClassVar[int] = 3
+    matrix_dimension: ClassVar[int] = 3
 
     wxyz: Float[Array, "4"] = field(converter=jnp.asarray)
 
@@ -136,8 +140,6 @@ class SO3(AbstractMatrixLieGroup, strict=True):
     @override
     @classmethod
     def from_matrix(cls: Type[Self], matrix: Float[Array, "3 3"]) -> Self:
-        assert matrix.shape == (3, 3)
-
         # Modified from:
         # > "Converting a Rotation Matrix to a Quaternion" from Mike Day
         # > https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2015/01/matrix-to-quat.pdf
@@ -231,9 +233,6 @@ class SO3(AbstractMatrixLieGroup, strict=True):
     def exp(cls: Type[Self], tangent: Float[Array, "3"]) -> Self:
         # Reference:
         # > https://github.com/strasdat/Sophus/blob/a0fe89a323e20c42d3cecb590937eb7a06b8343a/sophus/so3.hpp#L583
-
-        assert tangent.shape == (3,)
-
         theta_squared = tangent @ tangent
         theta_pow_4 = theta_squared * theta_squared
         use_taylor = theta_squared < _get_epsilon(tangent.dtype)
@@ -305,6 +304,7 @@ class SO3(AbstractMatrixLieGroup, strict=True):
 
         return -atan_factor * self.wxyz[1:]
 
+    @override
     def adjoint(self) -> Float[Array, "3 3"]:
         """Computes the adjoint, which transforms tangent vectors
         between tangent spaces.
@@ -340,6 +340,180 @@ class SO3(AbstractMatrixLieGroup, strict=True):
                 ]
             )
         )
+
+
+class SE3(AbstractMatrixLieGroup, strict=True):
+    """Rigid-body transformations in 3D space, represented by the
+    SE3 matrix lie group.
+
+    The class is almost exactly derived from the `jaxlie.SE3`
+    object.
+
+    `jaxlie` was written for [Yi, Brent, et al. 2021](https://ieeexplore.ieee.org/abstract/document/9636300).
+
+    **Attributes:**
+
+    - `rotation`: An SO3 group element, represented by an `SO3` object.
+
+    - `xyz`: A 3D translation vector.
+    """
+
+    space_dimension: ClassVar[int] = 3
+    parameter_dimension: ClassVar[int] = 7
+    tangent_dimension: ClassVar[int] = 6
+    matrix_dimension: ClassVar[int] = 4
+
+    rotation: SO3
+    xyz: Float[Array, "3"]
+
+    @override
+    def apply(self, target: Float[Array, "3"]) -> Float[Array, "3"]:
+        return self.rotation @ target + self.xyz
+
+    @override
+    def compose(self, other: Self) -> Self:
+        cls = type(self)
+        return cls(
+            rotation=self.rotation @ other.rotation,
+            translation=(self.rotation @ other.xyz) + self.xyz,
+        )
+
+    @override
+    @classmethod
+    def identity(cls: Type[Self]) -> Self:
+        return cls(rotation=SO3.identity(), xyz=jnp.zeros(3, dtype=float))
+
+    @override
+    @classmethod
+    def from_matrix(matrix: Float[Array, "4 4"]) -> Self:
+        # Currently assumes bottom row is [0, 0, 0, 1].
+        return SE3(
+            rotation=SO3.from_matrix(matrix[:3, :3]),
+            translation=matrix[:3, 3],
+        )
+
+    @override
+    def as_matrix(self) -> Float[Array, "4 4"]:
+        return (
+            jnp.eye(4).at[:3, :3].set(self.rotation.as_matrix()).at[:3, 3].set(self.xyz)
+        )
+
+    @staticmethod
+    @override
+    def exp(cls: Type[Self], tangent: Float[Array, "6"]) -> Self:
+        # Reference:
+        # > https://github.com/strasdat/Sophus/blob/a0fe89a323e20c42d3cecb590937eb7a06b8343a/sophus/se3.hpp#L761
+        # assumes tangent is ordered as (x, y, z, w_x, w_y, w_z)
+        rotation = SO3.exp(tangent[3:])
+        theta_squared = tangent[3:] @ tangent[3:]
+        use_taylor = theta_squared < _get_epsilon(theta_squared.dtype)
+        # Shim to avoid NaNs in jnp.where branches, which cause failures for
+        # reverse-mode AD.
+        theta_squared_safe = cast(
+            jax.Array,
+            jnp.where(
+                use_taylor,
+                1.0,  # Any non-zero value should do here.
+                theta_squared,
+            ),
+        )
+        del theta_squared
+        theta_safe = jnp.sqrt(theta_squared_safe)
+        skew_omega = _skew(tangent[3:])
+        V = jnp.where(
+            use_taylor,
+            rotation.as_matrix(),
+            (
+                jnp.eye(3)
+                + (1.0 - jnp.cos(theta_safe)) / (theta_squared_safe) * skew_omega
+                + (theta_safe - jnp.sin(theta_safe))
+                / (theta_squared_safe * theta_safe)
+                * (skew_omega @ skew_omega)
+            ),
+        )
+
+        return cls(rotation=rotation, xyz=V @ tangent[:3])
+
+    @override
+    def log(self) -> Float[Array, "6"]:
+        # Reference:
+        # > https://github.com/strasdat/Sophus/blob/a0fe89a323e20c42d3cecb590937eb7a06b8343a/sophus/se3.hpp#L223
+        omega = self.rotation.log()
+        theta_squared = omega @ omega
+        use_taylor = theta_squared < _get_epsilon(theta_squared.dtype)
+
+        skew_omega = _skew(omega)
+
+        # Shim to avoid NaNs in jnp.where branches, which cause failures for
+        # reverse-mode AD.
+        theta_squared_safe = jnp.where(
+            use_taylor,
+            1.0,  # Any non-zero value should do here.
+            theta_squared,
+        )
+        del theta_squared
+        theta_safe = jnp.sqrt(theta_squared_safe)
+        half_theta_safe = theta_safe / 2.0
+
+        V_inv = jnp.where(
+            use_taylor,
+            jnp.eye(3) - 0.5 * skew_omega + (skew_omega @ skew_omega) / 12.0,
+            (
+                jnp.eye(3)
+                - 0.5 * skew_omega
+                + (
+                    1.0
+                    - theta_safe
+                    * jnp.cos(half_theta_safe)
+                    / (2.0 * jnp.sin(half_theta_safe))
+                )
+                / theta_squared_safe
+                * (skew_omega @ skew_omega)
+            ),
+        )
+        return jnp.concatenate([V_inv @ self.xyz, omega])
+
+    @override
+    def adjoint(self) -> Float[Array, "6 6"]:
+        R = self.rotation.as_matrix()
+        return jnp.block(
+            [
+                [R, _skew(self.xyz) @ R],
+                [jnp.zeros((3, 3)), R],
+            ]
+        )
+
+    @override
+    def normalize(self) -> Self:
+        cls = type(self)
+        return cls(rotation=self.rotation.normalize(), xyz=self.xyz)
+
+    @override
+    def inverse(self) -> Self:
+        cls = type(self)
+        inverse_rotation = self.rotation.inverse()
+        return cls(rotation=inverse_rotation, xyz=-(inverse_rotation @ self.xyz))
+
+    @override
+    @classmethod
+    def sample_uniform(cls: Type[Self], key: PRNGKeyArray) -> Self:
+        key0, key1 = jax.random.split(key)
+        return cls(
+            rotation=SO3.sample_uniform(key0),
+            xyz=jax.random.uniform(key=key1, shape=(3,), minval=-1.0, maxval=1.0),
+        )
+
+
+def _skew(omega: Float[Array, "3"]) -> Float[Array, "3 3"]:
+    """Returns the skew-symmetric form of a length-3 vector."""
+    wx, wy, wz = omega
+    return jnp.array(
+        [
+            [0.0, wz, -wy],
+            [-wz, 0.0, wx],
+            [wy, -wx, 0.0],
+        ]
+    )
 
 
 def _get_epsilon(dtype: jnp.dtype) -> float:

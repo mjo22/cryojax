@@ -29,12 +29,12 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
         See ``jax-finufft`` for documentation.
     """
 
-    config: ImageConfig
-
     eps: float = field(static=True, default=1e-6)
 
     def __call__(
-        self, potential: RealVoxelGridPotential | RealVoxelCloudPotential
+        self,
+        potential: RealVoxelGridPotential | RealVoxelCloudPotential,
+        config: ImageConfig,
     ) -> ComplexImage:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(potential, RealVoxelGridPotential):
@@ -42,14 +42,14 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
             fourier_projection = project_with_nufft(
                 potential.real_voxel_grid.ravel(),
                 potential.wrapped_coordinate_grid.get().reshape((math.prod(shape), 3)),
-                self.config.padded_shape,
+                config.padded_shape,
                 eps=self.eps,
             )
         elif isinstance(potential, RealVoxelCloudPotential):
             fourier_projection = project_with_nufft(
                 potential.voxel_weights,
                 potential.wrapped_coordinate_list.get(),
-                self.config.padded_shape,
+                config.padded_shape,
                 eps=self.eps,
             )
         else:
@@ -57,7 +57,7 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
                 "Supported density representations are RealVoxelGrid and VoxelCloud."
             )
         # Rescale the voxel size to the ImageConfig.pixel_size
-        return self.config.rescale_to_pixel_size(
+        return config.rescale_to_pixel_size(
             fourier_projection, potential.voxel_size, is_real=False
         )
 

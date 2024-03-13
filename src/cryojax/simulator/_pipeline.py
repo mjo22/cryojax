@@ -12,9 +12,9 @@ import jax.numpy as jnp
 from jaxtyping import PRNGKeyArray
 from equinox import Module, AbstractVar
 
+from ._config import ImageConfig
 from ._specimen import AbstractSpecimen, AbstractConformation
 from ._pose import AbstractPose
-from ._integrators import AbstractPotentialIntegrator
 from ._instrument import Instrument
 from ._detector import NullDetector
 from ._ice import AbstractIce, NullIce
@@ -25,17 +25,13 @@ from ..typing import ComplexImage, Image
 
 
 class AbstractPipeline(Module, strict=True):
-    """
-    Base class for an imaging model.
+    """Base class for an image formation model.
 
-    Call an ``AbstractPipeline``'s ``render`` and ``sample``,
+    Call an `AbstractPipeline`'s `render` and `sample`,
     routines.
     """
 
-    integrator: AbstractVar[AbstractPotentialIntegrator]
-    instrument: AbstractVar[Instrument]
-    solvent: AbstractVar[AbstractIce]
-
+    config: AbstractVar[ImageConfig]
     filter: AbstractVar[Optional[AbstractFilter]]
     mask: AbstractVar[Optional[AbstractMask]]
 
@@ -47,24 +43,17 @@ class AbstractPipeline(Module, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
-        """
-        Render an image of a Specimen without any stochasticity.
+        """Render an image without any stochasticity.
 
-        Namely, do not sample from the ``AbstractIce`` and ``AbstractDetector``
-        models.
+        **Arguments:**
 
-        Parameters
-        ----------
-        view_cropped : `bool`, optional
-            If ``True``, view the cropped image.
-            If ``view_cropped = False``, ``ImagePipeline.filter``,
-            ``ImagePipeline.mask``, and normalization with
-            ``normalize = True`` are not applied.
-        get_real : `bool`, optional
-            If ``True``, return the image in real space.
-        normalize : `bool`, optional
-            If ``True``, normalize the image to mean zero
-            and standard deviation 1.
+        - `view_cropped`: If `True`, view the cropped image.
+                          If `view_cropped = False`, `ImagePipeline.filter`,
+                          `ImagePipeline.mask`, and normalization with
+                          `normalize = True` are not applied.
+        - `get_real`: If `True`, return the image in real space.
+        - `normalize`: If `True`, normalize the image to mean zero
+                       and standard deviation 1.
         """
         raise NotImplementedError
 
@@ -78,23 +67,14 @@ class AbstractPipeline(Module, strict=True):
         normalize: bool = False,
     ) -> Image:
         """
-        Sample an image from a realization of the ``AbstractIce`` and
-        ``AbstractDetector`` models.
+        Sample an image from a realization of the `AbstractIce` and
+        `AbstractDetector` models.
 
-        Parameters
-        ----------
-        key :
-            The random number generator key.
-        view_cropped : `bool`, optional
-            If ``True``, view the cropped image.
-            If ``view_cropped = False``, ``ImagePipeline.filter``,
-            ``ImagePipeline.mask``, and normalization with
-            ``normalize = True`` are not applied.
-        get_real : `bool`, optional
-            If ``True``, return the image in real space.
-        normalize : `bool`, optional
-            If ``True``, normalize the image to mean zero
-            and standard deviation 1.
+        **Arguments:**
+
+        - `key`: The random number generator key.
+
+        See `ImagePipeline.render` for documentation of keyword arguments.
         """
         raise NotImplementedError
 
@@ -133,7 +113,7 @@ class AbstractPipeline(Module, strict=True):
         """Return an image postprocessed with filters, cropping, and masking
         in either real or fourier space.
         """
-        config = self.integrator.config
+        config = self.config
         if self.mask is None and config.padded_shape == config.shape:
             # ... if there are no masks and we don't need to crop,
             # minimize moving back and forth between real and fourier space
@@ -183,7 +163,7 @@ class AbstractPipeline(Module, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
-        config = self.integrator.config
+        config = self.config
         if view_cropped:
             return self.crop_and_apply_operators(
                 image,
@@ -197,24 +177,23 @@ class AbstractPipeline(Module, strict=True):
 class ImagePipeline(AbstractPipeline, strict=True):
     """Standard image formation pipeline.
 
-    Attributes
-    ----------
-    specimen :
-        The ensemble from which to render images.
-    integrator :
-        The integrator for the scattering potential.
-    instrument :
-        The abstraction of the electron microscope.
-    solvent :
-        The solvent around the specimen.
-    filter :
-        A filter to apply to the image.
-    mask :
-        A mask to apply to the image.
+    **Attributes:**
+
+    - `config`: The image configuration.
+
+    - `specimen`: The abstraction of the biological specimen.
+
+    - `instrument`: The abstraction of the electron microscope.
+
+    - `solvent: `The solvent around the specimen.
+
+    - `filter: `A filter to apply to the image.
+
+    - `mask`: A mask to apply to the image.
     """
 
+    config: ImageConfig
     specimen: AbstractSpecimen
-    integrator: AbstractPotentialIntegrator
     instrument: Instrument
     solvent: AbstractIce
 
@@ -223,16 +202,16 @@ class ImagePipeline(AbstractPipeline, strict=True):
 
     def __init__(
         self,
+        config: ImageConfig,
         specimen: AbstractSpecimen,
-        integrator: AbstractPotentialIntegrator,
         instrument: Optional[Instrument] = None,
         solvent: Optional[AbstractIce] = None,
         *,
         filter: Optional[AbstractFilter] = None,
         mask: Optional[AbstractMask] = None,
     ):
+        self.config = config
         self.specimen = specimen
-        self.integrator = integrator
         self.instrument = instrument or Instrument()
         self.solvent = solvent or NullIce()
         self.filter = filter
@@ -245,16 +224,16 @@ class ImagePipeline(AbstractPipeline, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
-        """Render an image of a `Specimen` without any stochasticity."""
+        """Render an image without any stochasticity."""
         # Compute the scattering potential in the exit plane
-        fourier_potential_at_exit_plane = self.instrument.scatter_to_exit_plane(
-            self.specimen, self.integrator
+        fourier_potential_at_exit_plane = self.specimen.scatter_to_exit_plane(
+            self.config
         )
         # ... propagate the potential to the detector plane
         fourier_contrast_or_wavefunction_at_detector_plane = (
             self.instrument.propagate_to_detector_plane(
                 fourier_potential_at_exit_plane,
-                self.integrator.config,
+                self.config,
                 defocus_offset=self.specimen.pose.offset_z_in_angstroms,
             )
         )
@@ -262,13 +241,13 @@ class ImagePipeline(AbstractPipeline, strict=True):
         fourier_squared_wavefunction_at_detector_plane = (
             self.instrument.compute_fourier_squared_wavefunction(
                 fourier_contrast_or_wavefunction_at_detector_plane,
-                self.integrator.config,
+                self.config,
             )
         )
         # ... now measure the expected electron events at the detector
         fourier_expected_electron_events = (
             self.instrument.compute_expected_electron_events(
-                fourier_squared_wavefunction_at_detector_plane, self.integrator.config
+                fourier_squared_wavefunction_at_detector_plane, self.config
             )
         )
 
@@ -287,8 +266,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
-        """Sample an image from a realization of the ``Ice`` and
-        ``Detector`` models."""
+        """Sample the assembly from the stochastic parts of the model."""
         idx = 0  # Keep track of number of stochastic models
         if not isinstance(self.solvent, NullIce) and not isinstance(
             self.instrument.detector, NullDetector
@@ -300,22 +278,22 @@ class ImagePipeline(AbstractPipeline, strict=True):
             # Compute the scattering potential in the exit plane, including
             # potential of the solvent
             fourier_potential_at_exit_plane = (
-                self.instrument.scatter_to_exit_plane_with_solvent(
-                    keys[idx], self.specimen, self.integrator, self.solvent
+                self.specimen.scatter_to_exit_plane_with_solvent(
+                    keys[idx], self.solvent, self.config
                 )
             )
             idx += 1
         else:
             # ... otherwise, scatter just compute the potential of the specimen
-            fourier_potential_at_exit_plane = self.instrument.scatter_to_exit_plane(
-                self.specimen, self.integrator
+            fourier_potential_at_exit_plane = self.specimen.scatter_to_exit_plane(
+                self.config
             )
 
         # ... propagate the potential to the contrast at the detector plane
         fourier_contrast_or_wavefunction_at_detector_plane = (
             self.instrument.propagate_to_detector_plane(
                 fourier_potential_at_exit_plane,
-                self.integrator.config,
+                self.config,
                 defocus_offset=self.specimen.pose.offset_z_in_angstroms,
             )
         )
@@ -323,14 +301,14 @@ class ImagePipeline(AbstractPipeline, strict=True):
         fourier_squared_wavefunction_at_detector_plane = (
             self.instrument.compute_fourier_squared_wavefunction(
                 fourier_contrast_or_wavefunction_at_detector_plane,
-                self.integrator.config,
+                self.config,
             )
         )
         # ... now measure the detector readout
         fourier_detector_readout = self.instrument.measure_detector_readout(
             keys[idx],
             fourier_squared_wavefunction_at_detector_plane,
-            self.integrator.config,
+            self.config,
         )
 
         return self._get_final_image(
@@ -343,26 +321,25 @@ class ImagePipeline(AbstractPipeline, strict=True):
 
 class AssemblyPipeline(AbstractPipeline, strict=True):
     """Compute an image from a superposition of subunits in
-    the ``AbstractAssembly``.
+    the `AbstractAssembly`.
 
-    Attributes
-    ----------
-    assembly :
-        The assembly from which to render images.
-    integrator :
-        The integrator for the scattering potential.
-    instrument :
-        The abstraction of the electron microscope.
-    solvent :
-        The solvent around the specimen.
-    filter :
-        A filter to apply to the image.
-    mask :
-        A mask to apply to the image.
+    **Attributes:**
+
+    - `config`: The image configuration.
+
+    - `assembly`: The assembly from which to render images.
+
+    - `instrument`: The abstraction of the electron microscope.
+
+    - `solvent: `The solvent around the specimen.
+
+    - `filter: `A filter to apply to the image.
+
+    - `mask`: A mask to apply to the image.
     """
 
+    config: ImageConfig
     assembly: AbstractAssembly
-    integrator: AbstractPotentialIntegrator
     instrument: Instrument
     solvent: AbstractIce
 
@@ -371,16 +348,16 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
 
     def __init__(
         self,
+        config: ImageConfig,
         assembly: AbstractAssembly,
-        integrator: AbstractPotentialIntegrator,
         instrument: Optional[Instrument] = None,
         solvent: Optional[AbstractIce] = None,
         *,
         filter: Optional[AbstractFilter] = None,
         mask: Optional[AbstractMask] = None,
     ):
+        self.config = config
         self.assembly = assembly
-        self.integrator = integrator
         self.instrument = instrument or Instrument()
         self.solvent = solvent or NullIce()
         self.filter = filter
@@ -395,7 +372,9 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> Image:
-        """Sample the ``AbstractAssembly.subunits`` from the stochastic models."""
+        """Sample the superposition of `AbstractAssembly.subunits` from
+        stochastic models.
+        """
         idx = 0  # Keep track of number of stochastic models
         if not isinstance(self.solvent, NullIce) and not isinstance(
             self.instrument.detector, NullDetector
@@ -411,11 +390,11 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
             # Compute the solvent contrast or wavefunction in the detector plane
             # and add to that of the specimen
             fourier_solvent_potential_at_exit_plane = self.solvent.sample(
-                keys[idx], self.integrator.config
+                keys[idx], self.config
             )
             fourier_contrast_or_wavefunction_at_detector_plane += (
                 self.instrument.propagate_to_detector_plane(
-                    fourier_solvent_potential_at_exit_plane, self.integrator.config
+                    fourier_solvent_potential_at_exit_plane, self.config
                 )
             )
             idx += 1
@@ -423,14 +402,14 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         fourier_squared_wavefunction_at_detector_plane = (
             self.instrument.compute_fourier_squared_wavefunction(
                 fourier_contrast_or_wavefunction_at_detector_plane,
-                self.integrator.config,
+                self.config,
             )
         )
         # ... measure the detector readout
         fourier_detector_readout = self.instrument.measure_detector_readout(
             keys[idx],
             fourier_squared_wavefunction_at_detector_plane,
-            self.integrator.config,
+            self.config,
         )
 
         return self._get_final_image(
@@ -449,7 +428,8 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         normalize: bool = False,
     ) -> Image:
         """Render the superposition of images from the
-        ``AbstractAssembly.subunits``."""
+        `AbstractAssembly.subunits`.
+        """
         # Compute the contrast in the detector plane
         fourier_contrast_or_wavefunction_at_detector_plane = (
             self._compute_subunit_superposition()
@@ -458,14 +438,14 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         fourier_squared_wavefunction_at_detector_plane = (
             self.instrument.compute_fourier_squared_wavefunction(
                 fourier_contrast_or_wavefunction_at_detector_plane,
-                self.integrator.config,
+                self.config,
             )
         )
         # ... compute the expected number of electron events
         fourier_expected_electron_events = (
             self.instrument.compute_expected_electron_events(
                 fourier_squared_wavefunction_at_detector_plane,
-                self.integrator.config,
+                self.config,
             )
         )
 
@@ -479,35 +459,36 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
     def _compute_subunit_superposition(self):
         # Get the assembly subunits
         subunits = self.assembly.subunits
+        print(subunits)
         # Setup vmap over the pose and conformation
         is_vmap = lambda x: isinstance(x, (AbstractPose, AbstractConformation))
         to_vmap = jax.tree_util.tree_map(is_vmap, subunits, is_leaf=is_vmap)
         vmap, novmap = eqx.partition(subunits, to_vmap)
         # Compute all images and sum
         compute_contrast_or_wavefunction = (
-            lambda spec, inte, ins: ins.propagate_to_detector_plane(
-                ins.scatter_to_exit_plane(spec, inte),
-                inte.config,
+            lambda spec, conf, ins: ins.propagate_to_detector_plane(
+                spec.scatter_to_exit_plane(conf),
+                conf,
                 defocus_offset=spec.pose.offset_z_in_angstroms,
             )
         )
         # ... vmap to compute a stack of images to superimpose
         compute_stack = jax.vmap(
-            lambda vmap, novmap, scat, ins: compute_contrast_or_wavefunction(
-                eqx.combine(vmap, novmap), scat, ins
+            lambda vmap, novmap, conf, ins: compute_contrast_or_wavefunction(
+                eqx.combine(vmap, novmap), conf, ins
             ),
             in_axes=(0, None, None, None),
         )
         # ... sum over the stack of images and jit
         compute_stack_and_sum = jax.jit(
-            lambda vmap, novmap, scat, ins: jnp.sum(
-                compute_stack(vmap, novmap, scat, ins),
+            lambda vmap, novmap, conf, ins: jnp.sum(
+                compute_stack(vmap, novmap, conf, ins),
                 axis=0,
             )
         )
         # ... compute the superposition
         fourier_contrast_or_wavefunction_at_detector_plane = (
-            (compute_stack_and_sum(vmap, novmap, self.integrator, self.instrument))
+            (compute_stack_and_sum(vmap, novmap, self.config, self.instrument))
             .at[0, 0]
             .divide(self.assembly.n_subunits)
         )

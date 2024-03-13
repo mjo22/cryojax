@@ -45,8 +45,7 @@ filename = "example_scattering_potential.mrc"
 real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(filename)
 potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
-config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
-integrator = cs.FourierSliceExtract(config, interpolation_order=1)
+integrator = cs.FourierSliceExtract(interpolation_order=1)
 ```
 
 Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGrid`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool.
@@ -64,7 +63,7 @@ pose = cs.EulerAnglePose(
     degrees=True,
 )
 # ... now, build the biological specimen
-specimen = cs.Specimen(potential, pose)
+specimen = cs.Specimen(potential, integrator, pose)
 ```
 
 Next, build the model for the electron microscope. Here, we simply include a model for the CTF in the weak-phase approximation (linear image formation theory).
@@ -88,8 +87,10 @@ The `CTF` has all parameters used in CTFFIND4, which take their default values i
 explicitly configured here. Finally, we can instantiate the `ImagePipeline` and simulate an image.
 
 ```python
+# Instantiate the image configuration
+config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
 # Build the image formation model
-pipeline = cs.ImagePipeline(specimen, integrator, instrument)
+pipeline = cs.ImagePipeline(config, specimen, instrument)
 # ... generate an RNG key
 key = jax.random.PRNGKey(seed=1234)
 # ... simulate an image and return in real-space

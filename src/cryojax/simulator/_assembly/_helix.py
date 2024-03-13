@@ -3,7 +3,7 @@ Abstraction of a helical polymer.
 """
 
 from typing import Optional
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Shaped
 from functools import cached_property
 from equinox import field
 
@@ -15,6 +15,7 @@ from .._pose import AbstractPose, EulerAnglePose
 from .._conformation import AbstractConformation
 from ._assembly import AbstractAssembly
 
+from ...rotations import SO3
 from ...typing import Real_
 
 
@@ -87,7 +88,7 @@ class Helix(AbstractAssembly, strict=True):
             )
 
     @cached_property
-    def positions(self) -> Float[Array, "n_subunits 3"]:
+    def offsets_in_angstroms(self) -> Float[Array, "n_subunits 3"]:
         """Get the helical lattice positions in the center of mass frame."""
         return compute_helical_lattice_positions(
             self.rise,
@@ -98,17 +99,22 @@ class Helix(AbstractAssembly, strict=True):
         )
 
     @cached_property
-    def rotations(self) -> Float[Array, "n_subunits 3 3"]:
+    def rotations(self) -> Shaped[SO3, "n_subunits"]:
         """Get the helical lattice rotations in the center of mass frame.
 
         These are rotations of the initial subunit.
         """
-        return compute_helical_lattice_rotations(
+        transformed_rotation_matrices = compute_helical_lattice_rotations(
             self.twist,
             n_subunits_per_start=self.n_subunits // self.n_start,
             initial_rotation=self.subunit.pose.rotation.as_matrix(),
             n_start=self.n_start,
         )
+        # Function to construct SO3 objects vmapped over leading dimension
+        transformed_rotations = jax.vmap(lambda mat: SO3.from_matrix(mat))(
+            transformed_rotation_matrices
+        )
+        return transformed_rotations
 
 
 def compute_helical_lattice_positions(

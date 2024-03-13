@@ -110,18 +110,24 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
     "phi, theta, psi",
     [(10, 90, 170)],
 )
-def test_compute_projection_with_cistem(phi, theta, psi, sample_mrc_path, pixel_size):
+def test_compute_projection_with_cistem(
+    phi,
+    theta,
+    psi,
+    sample_mrc_path,
+    pixel_size,
+):
     # cryojax
     real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
     potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size
     )
     pose = cs.EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
-    specimen = cs.Specimen(potential, pose)
+    integrator = cs.FourierSliceExtract()
+    specimen = cs.Specimen(potential, integrator, pose)
     box_size = potential.shape[0]
     config = cs.ImageConfig((box_size, box_size), pixel_size)
-    scattering = cs.FourierSliceExtract(config)
-    pipeline = cs.ImagePipeline(specimen, scattering)
+    pipeline = cs.ImagePipeline(config, specimen)
     cryojax_projection = irfftn(
         pipeline.render(get_real=False).at[0, 0].set(0.0 + 0.0j)
         / np.sqrt(np.prod(config.shape)),

@@ -10,7 +10,7 @@ Real_ = jt.Float[jt.Array, ""]
 """Type hint for a real-valued number."""
 
 Complex_ = jt.Complex[jt.Array, ""]
-"""Type hint for an integer."""
+"""Type hint for a complex-valued number."""
 
 Int_ = jt.Int[jt.Array, ""]
 """Type hint for an integer."""
