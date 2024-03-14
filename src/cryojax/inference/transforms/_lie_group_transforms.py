@@ -36,7 +36,7 @@ def _apply_update_with_lie_transform(u, p):
 
 
 def _is_none_or_lie_transform(x):
-    return x is None or isinstance(x, SO3Transform)
+    return x is None or isinstance(x, AbstractLieGroupTransform)
 
 
 def apply_updates_with_lie_transform(model: PyTree, updates: PyTree) -> PyTree:
@@ -68,6 +68,8 @@ class SO3Transform(AbstractLieGroupTransform, strict=True):
     **Attributes:**
 
     - `transformed_parameter`: The local tangent vector.
+
+    - `group_element`: The element of SO3.
     """
 
     transformed_parameter: Float[Array, "3"]
@@ -98,6 +100,8 @@ class SE3Transform(AbstractLieGroupTransform, strict=True):
     **Attributes:**
 
     - `transformed_parameter`: The local tangent vector.
+
+    - `group_element`: The element of SE3.
     """
 
     transformed_parameter: Float[Array, "6"]
@@ -112,7 +116,7 @@ class SE3Transform(AbstractLieGroupTransform, strict=True):
         local_tangent = jnp.zeros(6, dtype=float)
         self.transformed_parameter = local_tangent
         self.group_element = SE3(
-            rotation=SO3(quaternion_pose.wxyz).normalize(),
+            rotation=quaternion_pose.rotation,
             xyz=quaternion_pose.offset_in_angstroms,
         )
 
