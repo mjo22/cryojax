@@ -101,9 +101,7 @@ pipeline = cs.ImagePipeline(config, specimen, instrument)
 image_without_noise = pipeline.render(get_real=True)
 ```
 
-This computes an image using the noise model of the detector.
-
-Instead of simulating noise from the stochastic parts of the `pipeline`, `cryojax` also defines a library of distributions. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood.
+`cryojax` also defines a library of distributions from which to sample the data. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood.
 
 ```python
 from cryojax.image import rfftn
