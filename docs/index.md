@@ -48,19 +48,18 @@ potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, v
 integrator = cs.FourierSliceExtract(interpolation_order=1)
 ```
 
-Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGrid`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool.
+Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool.
 
 We can now instantiate the representation of a biological specimen, which also includes a pose.
 
 ```python
-# First instantiate the pose. Here, angles are given in degrees
+# First instantiate the pose. Angles are given in degrees
 pose = cs.EulerAnglePose(
     offset_x_in_angstroms=5.0,
     offset_y_in_angstroms=-3.0,
     view_phi=20.0,
     view_theta=80.0,
     view_psi=-10.0,
-    degrees=True,
 )
 # ... now, build the biological specimen
 specimen = cs.Specimen(potential, integrator, pose)
@@ -91,17 +90,8 @@ explicitly configured here. Finally, we can instantiate the `ImagePipeline` and 
 config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
 # Build the image formation model
 pipeline = cs.ImagePipeline(config, specimen, instrument)
-# ... generate an RNG key
-key = jax.random.PRNGKey(seed=1234)
-# ... simulate an image and return in real-space
-image_with_noise = pipeline.sample(key, get_real=True)
-```
-
-This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model.
-
-```python
-# ... simulate an image without stochasticity
-image_without_noise = pipeline.render(get_real=True)
+# ... simulate an image and return a normalized image in real-space
+image = pipeline.render(get_real=True, normalize=True)
 ```
 
 ## Next steps

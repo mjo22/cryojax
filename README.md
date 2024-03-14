@@ -55,7 +55,7 @@ potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, v
 integrator = cs.FourierSliceExtract(interpolation_order=1)
 ```
 
-Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGrid`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool.
+Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool.
 
 We can now instantiate the representation of a biological specimen, which also includes a pose.
 
@@ -67,7 +67,6 @@ pose = cs.EulerAnglePose(
     view_phi=20.0,
     view_theta=80.0,
     view_psi=-10.0,
-    degrees=True,
 )
 # ... now, build the biological specimen
 specimen = cs.Specimen(potential, integrator, pose)
@@ -90,7 +89,7 @@ optics = cs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # b
 instrument = cs.Instrument(optics)
 ```
 
-The `CTF` has all parameters used in CTFFIND4, which take their default values if not
+The `CTF` has parameters used in CTFFIND4, which take their default values if not
 explicitly configured here. Finally, we can instantiate the `ImagePipeline` and simulate an image.
 
 ```python
@@ -98,20 +97,13 @@ explicitly configured here. Finally, we can instantiate the `ImagePipeline` and 
 config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
 # Build the image formation model
 pipeline = cs.ImagePipeline(config, specimen, instrument)
-# ... generate an RNG key
-key = jax.random.PRNGKey(seed=1234)
-# ... simulate an image and return in real-space
-image_with_noise = pipeline.sample(key, get_real=True)
-```
-
-This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model.
-
-```python
-# ... simulate an image without stochasticity
+# ... simulate an image and return in real-space.
 image_without_noise = pipeline.render(get_real=True)
 ```
 
-Instead of simulating noise from the stochastic parts of the `pipeline`, `cryojax` also defines a library of distributions. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood
+This computes an image using the noise model of the detector.
+
+Instead of simulating noise from the stochastic parts of the `pipeline`, `cryojax` also defines a library of distributions. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood.
 
 ```python
 from cryojax.image import rfftn
@@ -122,7 +114,7 @@ from cryojax.image import operators as op
 distribution = dist.IndependentFourierGaussian(pipeline, variance=op.Constant(1.0))
 # ... then, either simulate an image from this distribution
 key = jax.random.PRNGKey(seed=0)
-image = distribution.sample(key)
+image_with_noise = distribution.sample(key)
 # ... or compute the likelihood
 observed = rfftn(...)  # for this example, read in observed data and take FFT
 log_likelihood = distribution.log_likelihood(observed)

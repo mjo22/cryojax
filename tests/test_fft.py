@@ -1,11 +1,11 @@
 import pytest
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 from cryojax.image import fftn, ifftn
-from jax import config
 
-config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize("model", ["noisy_model", "noiseless_model"])

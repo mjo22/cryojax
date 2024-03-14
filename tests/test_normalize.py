@@ -4,9 +4,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from cryojax.image import irfftn
-from jax import config
 
-config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize(

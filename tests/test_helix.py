@@ -6,9 +6,6 @@ import numpy as np
 import equinox as eqx
 import cryojax.simulator as cs
 from cryojax.io import read_volume_with_voxel_size_from_mrc
-from jax import config
-
-config.update("jax_enable_x64", True)
 
 
 def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
@@ -79,12 +76,13 @@ def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, confi
     _ = pipeline.sample(jax.random.PRNGKey(0))
 
 
-"""
 @pytest.mark.parametrize(
     "rotation_angle, n_subunits_per_start",
     [(360.0 / 6, 1), (2 * 360.0 / 6, 1), (360.0 / 6, 2)],
 )
-def test_c6_rotation(sample_subunit_mrc_path, rotation_angle, n_subunits_per_start):
+def test_c6_rotation(
+    sample_subunit_mrc_path, config, rotation_angle, n_subunits_per_start
+):
     helix = build_helix(sample_subunit_mrc_path, n_subunits_per_start)
 
     @jax.jit
@@ -99,7 +97,6 @@ def test_c6_rotation(sample_subunit_mrc_path, rotation_angle, n_subunits_per_sta
             config, helix, cs.EulerAnglePose(view_phi=rotation_angle)
         ),
     )
-"""
 
 
 @pytest.mark.parametrize(

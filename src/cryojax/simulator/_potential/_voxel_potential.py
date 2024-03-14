@@ -9,6 +9,7 @@ from typing import (
     ClassVar,
     Optional,
     overload,
+    cast,
 )
 from typing_extensions import Self, override
 from jaxtyping import Float, Array, Int
@@ -345,7 +346,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
-        crop_scale: Optional[float],
+        crop_scale: Optional[float] = None,
     ) -> Self: ...
 
     @classmethod

@@ -1,16 +1,16 @@
 import os
 import pytest
 import numpy as np
+import jax
 import equinox as eqx
 import jax.random as jr
-from jax import config
 
 import cryojax.simulator as cs
 from cryojax.io import read_volume_with_voxel_size_from_mrc
 from cryojax.image import operators as op
 from cryojax.image import rfftn
 
-config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 
 @pytest.fixture

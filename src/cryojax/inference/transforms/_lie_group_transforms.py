@@ -41,7 +41,7 @@ def _is_none_or_lie_transform(x):
 
 def apply_updates_with_lie_transform(model: PyTree, updates: PyTree) -> PyTree:
     """Modifed `eqx.apply_updates` to apply updates to a model
-    with `LocalTangentTransform`s.
+    with `AbstractLieGroupTransform`s.
 
     This assumes that `updates` are a prefix of `model`.
     """

@@ -1,7 +1,7 @@
 import pytest
+import jax
 import jax.numpy as jnp
 import numpy as np
-from jax import config
 from pycistem.core import CTF as cisCTF, Image, AnglesAndShifts
 
 import cryojax.simulator as cs
@@ -10,7 +10,7 @@ from cryojax.simulator import CTF, EulerAnglePose
 from cryojax.image import powerspectrum, irfftn
 from cryojax.coordinates import make_frequencies, cartesian_to_polar
 
-config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize(

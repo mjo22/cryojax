@@ -375,7 +375,7 @@ class SE3(AbstractMatrixLieGroup, strict=True):
         cls = type(self)
         return cls(
             rotation=self.rotation @ other.rotation,
-            translation=(self.rotation @ other.xyz) + self.xyz,
+            xyz=(self.rotation @ other.xyz) + self.xyz,
         )
 
     @override
@@ -385,11 +385,11 @@ class SE3(AbstractMatrixLieGroup, strict=True):
 
     @override
     @classmethod
-    def from_matrix(matrix: Float[Array, "4 4"]) -> Self:
+    def from_matrix(cls: Type[Self], matrix: Float[Array, "4 4"]) -> Self:
         # Currently assumes bottom row is [0, 0, 0, 1].
-        return SE3(
+        return cls(
             rotation=SO3.from_matrix(matrix[:3, :3]),
-            translation=matrix[:3, 3],
+            xyz=matrix[:3, 3],
         )
 
     @override
@@ -398,8 +398,8 @@ class SE3(AbstractMatrixLieGroup, strict=True):
             jnp.eye(4).at[:3, :3].set(self.rotation.as_matrix()).at[:3, 3].set(self.xyz)
         )
 
-    @staticmethod
     @override
+    @classmethod
     def exp(cls: Type[Self], tangent: Float[Array, "6"]) -> Self:
         # Reference:
         # > https://github.com/strasdat/Sophus/blob/a0fe89a323e20c42d3cecb590937eb7a06b8343a/sophus/se3.hpp#L761

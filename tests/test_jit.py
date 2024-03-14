@@ -6,11 +6,10 @@ import jax.random as jr
 import numpy as np
 import equinox as eqx
 import cryojax.simulator as cs
-from jax import config
 
 from functools import partial
 
-config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize("model", ["noisy_model"])
