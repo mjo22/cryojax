@@ -20,7 +20,7 @@ from ..image import (
     irfftn,
     rfftn,
 )
-from ..core import error_if_negative
+from ..core import error_if_not_positive
 
 
 class ImageConfig(Module, strict=True):
@@ -68,7 +68,7 @@ class ImageConfig(Module, strict=True):
     """
 
     shape: tuple[int, int] = field(static=True)
-    pixel_size: Real_ = field(converter=error_if_negative)
+    pixel_size: Real_ = field(converter=error_if_not_positive)
 
     padded_shape: tuple[int, int] = field(static=True)
     pad_mode: Union[str, Callable] = field(static=True)

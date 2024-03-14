@@ -5,22 +5,22 @@ Models of instrument optics.
 from abc import abstractmethod
 from typing import ClassVar, Optional
 from typing_extensions import override
-from equinox import AbstractClassVar, AbstractVar, Module, field, error_if
+from equinox import AbstractClassVar, AbstractVar, Module, field
 
 import jax.numpy as jnp
 
 from ._config import ImageConfig
 from ..image.operators import (
     FourierOperatorLike,
-    AbstractFourierOperatorInAngstroms,
+    AbstractFourierOperator,
     Constant,
 )
 from ..coordinates import cartesian_to_polar
 from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
-from ..core import error_if_negative, error_if_not_fractional
+from ..core import error_if_negative, error_if_not_positive, error_if_not_fractional
 
 
-class CTF(AbstractFourierOperatorInAngstroms, strict=True):
+class CTF(AbstractFourierOperator, strict=True):
     """Compute the Contrast Transfer Function (CTF) in for a weakly
     scattering specimen.
 
@@ -39,22 +39,21 @@ class CTF(AbstractFourierOperatorInAngstroms, strict=True):
     `amplitude_contrast_ratio`: The amplitude contrast ratio.
 
     `phase_shift`: The additional phase shift.
-
-    `degrees`: Whether or not the `astigmatism_angle` and `phase_shift` are given
-              in degrees or radians.
     """
 
-    defocus_u_in_angstroms: Real_ = field(default=10000.0, converter=error_if_negative)
-    defocus_v_in_angstroms: Real_ = field(default=10000.0, converter=error_if_negative)
+    defocus_u_in_angstroms: Real_ = field(
+        default=10000.0, converter=error_if_not_positive
+    )
+    defocus_v_in_angstroms: Real_ = field(
+        default=10000.0, converter=error_if_not_positive
+    )
     astigmatism_angle: Real_ = field(default=0.0, converter=jnp.asarray)
-    voltage_in_kilovolts: Real_ = field(default=300.0, converter=error_if_negative)
+    voltage_in_kilovolts: Real_ = field(default=300.0, converter=error_if_not_positive)
     spherical_aberration_in_mm: Real_ = field(default=2.7, converter=error_if_negative)
     amplitude_contrast_ratio: Real_ = field(
         default=0.1, converter=error_if_not_fractional
     )
     phase_shift: Real_ = field(default=0.0, converter=jnp.asarray)
-
-    degrees: bool = field(static=True, default=True)
 
     @property
     def wavelength_in_angstroms(self):
@@ -64,12 +63,12 @@ class CTF(AbstractFourierOperatorInAngstroms, strict=True):
     def __call__(
         self,
         frequency_grid_in_angstroms: ImageCoords,
+        *,
         defocus_offset: Real_ | float = 0.0,
     ) -> RealImage:
         # Convert degrees to radians
-        if self.degrees:  # degrees to radians
-            phase_shift = jnp.deg2rad(self.phase_shift)
-            astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
+        phase_shift = jnp.deg2rad(self.phase_shift)
+        astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
         # Convert spherical abberation coefficient to angstroms
         spherical_aberration_in_angstroms = self.spherical_aberration_in_mm * 1e7
         # Compute phase shifts for CTF

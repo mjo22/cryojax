@@ -6,42 +6,42 @@ some geometry.
 
 from abc import abstractmethod
 from typing import Optional
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Shaped
 from functools import cached_property
 from equinox import AbstractVar
 
 import jax
-import jax.numpy as jnp
 import equinox as eqx
 
 from .._specimen import AbstractSpecimen, AbstractEnsemble
 from .._conformation import AbstractConformation
-from .._pose import AbstractPose, MatrixPose
+from .._pose import AbstractPose
+from ...rotations import SO3
 
 
 class AbstractAssembly(eqx.Module, strict=True):
-    """
-    Abstraction of a biological assembly.
+    """Abstraction of a biological assembly.
 
     This class acts just like an ``AbstractSpecimen``, however
     it creates an assembly from a subunit.
 
-    To subclass an ``AbstractAssembly``,
-        1) Overwrite the ``AbstractAssembly.n_subunits``
+    To subclass an `AbstractAssembly`,
+        1) Overwrite the `AbstractAssembly.n_subunits`
            property
-        2) Overwrite the ``AbstractAssembly.positions``
-           and ``AbstractAssembly.rotations`` properties.
+        2) Overwrite the `AbstractAssembly.positions`
+           and `AbstractAssembly.rotations` properties.
 
-    Attributes
-    ----------
-    subunit :
-        The subunit. It is important to set the the initial pose
-        of the initial subunit here. The initial pose is not in
-        the lab frame, it is in the center of mass frame of the assembly.
-    pose :
-        The center of mass pose of the helix.
-    conformation :
-        The conformation of each `subunit`.
+    **Attributes:**
+
+    - `subunit`: The subunit. It is important to set the the initial pose
+                 of the initial subunit here. The initial pose is not set in
+                 the lab frame, it is in the center of mass frame of the assembly.
+
+    - `pose`: The center of mass pose of the helix.
+
+    - `conformation`: The conformation of each `subunit`.
+
+    - `n_subunits`: The number of subunits in the assembly.
     """
 
     subunit: AbstractVar[AbstractSpecimen]
@@ -67,44 +67,41 @@ class AbstractAssembly(eqx.Module, strict=True):
 
     @cached_property
     @abstractmethod
-    def positions(self) -> Float[Array, "n_subunits 3"]:
+    def offsets_in_angstroms(self) -> Float[Array, "n_subunits 3"]:
         """The positions of each subunit."""
         raise NotImplementedError
 
     @cached_property
     @abstractmethod
-    def rotations(self) -> Float[Array, "n_subunits 3 3"]:
+    def rotations(self) -> Shaped[SO3, "n_subunits"]:
         """The relative rotations between subunits."""
         raise NotImplementedError
 
     @cached_property
-    def poses(self) -> AbstractPose:
+    def poses(self) -> Shaped[AbstractPose, "n_subunits"]:
         """
         Draw the poses of the subunits in the lab frame, measured
         from the rotation relative to the first subunit.
         """
         # Transform the subunit positions by pose of the helix
         transformed_positions = (
-            self.pose.rotate_coordinates(self.positions, inverse=False)
+            self.pose.rotate_coordinates(self.offsets_in_angstroms, inverse=False)
             + self.pose.offset_in_angstroms
         )
         # Transform the subunit rotations by the pose of the helix. This operation
         # left multiplies by the pose of the helix, taking care that first subunits
         # are rotated to the center of mass frame, then the lab frame.
-        transformed_rotations = jnp.einsum(
-            "ij,njk->nik", self.pose.rotation.as_matrix(), self.rotations
-        )
-        # Function to construct a MatrixPose, vmapped over leading dimension
+        transformed_rotations = jax.vmap(
+            lambda com_rotation, subunit_rotation: com_rotation @ subunit_rotation,
+            in_axes=[None, 0],
+        )(self.pose.rotation, self.rotations)
+        # Function to construct AbstractPoses
+        cls = type(self.pose)
         make_assembly_poses = jax.vmap(
-            lambda pos, rot: MatrixPose(
-                offset_x_in_angstroms=pos[0],
-                offset_y_in_angstroms=pos[1],
-                offset_z_in_angstroms=pos[2],
-                rotation_matrix=rot,
-            )
+            lambda rot, pos: cls.from_rotation_and_translation(rot, pos)
         )
 
-        return make_assembly_poses(transformed_positions, transformed_rotations)
+        return make_assembly_poses(transformed_rotations, transformed_positions)
 
     @cached_property
     def subunits(self) -> AbstractSpecimen:

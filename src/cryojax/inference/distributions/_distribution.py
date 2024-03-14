@@ -8,14 +8,11 @@ from typing import Any
 from jaxtyping import PRNGKeyArray
 from equinox import Module, AbstractVar
 
-from ...simulator import AbstractPipeline
 from ...typing import Real_, Image
 
 
 class AbstractDistribution(Module, strict=True):
     """An image formation model equipped with a probabilistic model."""
-
-    pipeline: AbstractVar[AbstractPipeline]
 
     @abstractmethod
     def log_likelihood(self, observed: Image) -> Real_:
@@ -41,4 +38,20 @@ class AbstractDistribution(Module, strict=True):
     @abstractmethod
     def render(self, *, get_real: bool = True) -> Image:
         """Render the image formation model."""
+        raise NotImplementedError
+
+
+class AbstractMarginalDistribution(AbstractDistribution, strict=True):
+    """An image formation model equipped with a probabilistic model."""
+
+    distribution: AbstractVar[AbstractDistribution]
+
+    @abstractmethod
+    def marginal_log_likelihood(self, observed: Image) -> Real_:
+        """Evaluate the marginalized log likelihood.
+
+        **Arguments:**
+
+        - `observed` : The observed data in real or fourier space.
+        """
         raise NotImplementedError

@@ -3,9 +3,8 @@ Methods for integrating the scattering potential onto the exit plane.
 """
 
 from abc import abstractmethod
-from typing import Any
 
-from equinox import Module, AbstractVar
+from equinox import Module
 
 from .._potential import AbstractScatteringPotential
 from .._config import ImageConfig
@@ -17,15 +16,17 @@ class AbstractPotentialIntegrator(Module, strict=True):
     """Base class for a method of integrating the scattering
     potential onto the exit plane."""
 
-    config: AbstractVar[ImageConfig]
-
     @abstractmethod
-    def __call__(self, potential: AbstractScatteringPotential) -> ComplexImage:
+    def __call__(
+        self, potential: AbstractScatteringPotential, config: ImageConfig
+    ) -> ComplexImage:
         """Compute the scattering potential in the exit plane at
         the `ImageConfig` settings.
 
         **Arguments:**
 
-        `potential`: The scattering potential representation.
+        - `potential`: The scattering potential representation.
+
+        - `config`: The configuration of the resulting image.
         """
         raise NotImplementedError

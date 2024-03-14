@@ -10,10 +10,8 @@ from cryojax.rotations import SO3
 def test_default_pose_arguments():
     euler = cs.EulerAnglePose()
     quat = cs.QuaternionPose()
-    matrix = cs.MatrixPose()
     axis_angle = cs.AxisAnglePose()
     np.testing.assert_allclose(euler.rotation.as_matrix(), quat.rotation.as_matrix())
-    np.testing.assert_allclose(euler.rotation.as_matrix(), matrix.rotation.as_matrix())
     np.testing.assert_allclose(
         euler.rotation.as_matrix(), axis_angle.rotation.as_matrix()
     )
@@ -23,13 +21,10 @@ def test_translation_agreement():
     rotation = SO3(jnp.asarray((1.0, 0.0, 0.0, 0.0)))
     offset = jnp.asarray((0.0, -1.4, 4.5))
     quat = cs.QuaternionPose.from_rotation_and_translation(rotation, offset)
-    matrix = cs.MatrixPose.from_rotation_and_translation(rotation, offset)
     axis_angle = cs.AxisAnglePose.from_rotation_and_translation(rotation, offset)
-    np.testing.assert_allclose(quat.rotation.as_matrix(), matrix.rotation.as_matrix())
     np.testing.assert_allclose(
         quat.rotation.as_matrix(), axis_angle.rotation.as_matrix()
     )
-    np.testing.assert_allclose(quat.offset_in_angstroms, matrix.offset_in_angstroms)
     np.testing.assert_allclose(quat.offset_in_angstroms, axis_angle.offset_in_angstroms)
 
 
@@ -37,11 +32,8 @@ def test_pose_conversion():
     wxyz = jnp.asarray((1.0, 2.0, 3.0, 0.5))
     rotation = SO3(wxyz).normalize()
     quat = cs.QuaternionPose.from_rotation(rotation)
-    matrix = cs.MatrixPose.from_rotation(rotation)
     euler = cs.EulerAnglePose.from_rotation(rotation)
     axis_angle = cs.AxisAnglePose.from_rotation(rotation)
-    # Test rotation matrix agreement for quaternions, euler angles, and matrix
-    np.testing.assert_allclose(quat.rotation.as_matrix(), matrix.rotation.as_matrix())
     np.testing.assert_allclose(quat.rotation.as_matrix(), euler.rotation.as_matrix())
     np.testing.assert_allclose(
         quat.rotation.as_matrix(), axis_angle.rotation.as_matrix()

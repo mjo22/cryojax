@@ -43,7 +43,7 @@ def test_voxel_electron_potential_loaders():
     assert isinstance(cloud_potential.wrapped_coordinate_list.get(), CloudCoords3D)
 
 
-def test_electron_potential_vmap(potential, integrator, pose):
+def test_electron_potential_vmap(potential, integrator, config):
     filter_spec = jtu.tree_map(
         lambda x: not isinstance(x, AbstractCoordinates),
         potential,
@@ -59,17 +59,17 @@ def test_electron_potential_vmap(potential, integrator, pose):
     vmap, novmap = eqx.partition(potential, filter_spec)
 
     @partial(jax.vmap, in_axes=[0, None, None, None])
-    def compute_image_stack(vmap, novmap, integrator, pose):
+    def compute_image_stack(vmap, novmap, integrator, config):
         potential = eqx.combine(vmap, novmap)
-        return integrator(cs.Specimen(potential, pose).potential_in_lab_frame)
+        return integrator(potential, config)
 
     # vmap over first axis
-    image_stack = compute_image_stack(vmap, novmap, integrator, pose)
+    image_stack = compute_image_stack(vmap, novmap, integrator, config)
     assert image_stack.shape[:1] == (1,)
 
 
-def test_electron_potential_vmap_with_pipeline(potential, pose, integrator):
-    pipeline = cs.ImagePipeline(cs.Specimen(potential, pose), integrator)
+def test_electron_potential_vmap_with_pipeline(potential, pose, integrator, config):
+    pipeline = cs.ImagePipeline(config, cs.Specimen(potential, integrator, pose))
 
     def is_potential_leaves_without_coordinates(element):
         if isinstance(element, cs.AbstractScatteringPotential):

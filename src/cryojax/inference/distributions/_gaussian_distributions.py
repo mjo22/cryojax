@@ -15,6 +15,7 @@ from ._distribution import AbstractDistribution
 from ...image.operators import FourierOperatorLike, Constant
 from ...simulator import AbstractPipeline
 from ...typing import Real_, Image, ComplexImage
+from ...core import error_if_not_positive
 
 
 class IndependentFourierGaussian(AbstractDistribution, strict=True):
@@ -35,7 +36,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
 
     pipeline: AbstractPipeline
     variance: FourierOperatorLike
-    contrast_scale: Real_ = field(converter=jnp.asarray)
+    contrast_scale: Real_ = field(converter=error_if_not_positive)
 
     def __init__(
         self,
@@ -57,10 +58,8 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
     @override
     def sample(self, key: PRNGKeyArray, *, get_real: bool = True) -> Image:
         """Sample from the gaussian noise model."""
-        N_pix = np.prod(self.pipeline.integrator.config.padded_shape)
-        freqs = (
-            self.pipeline.integrator.config.wrapped_padded_frequency_grid_in_angstroms.get()
-        )
+        N_pix = np.prod(self.pipeline.config.padded_shape)
+        freqs = self.pipeline.config.wrapped_padded_frequency_grid_in_angstroms.get()
         # Compute the zero mean variance and scale up to be independent of the number of pixels
         std = jnp.sqrt(N_pix * self.variance(freqs))
         noise = self.pipeline.crop_and_apply_operators(
@@ -79,10 +78,8 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         `observed` : The observed data in fourier space. `observed.shape`
                      must match `ImageConfig.padded_shape`.
         """
-        N_pix = np.prod(self.pipeline.integrator.config.padded_shape)
-        freqs = (
-            self.pipeline.integrator.config.wrapped_frequency_grid_in_angstroms.get()
-        )
+        N_pix = np.prod(self.pipeline.config.padded_shape)
+        freqs = self.pipeline.config.wrapped_frequency_grid_in_angstroms.get()
         # Compute the variance and scale up to be independent of the number of pixels
         variance = N_pix * self.variance(freqs)
         # Create simulated data

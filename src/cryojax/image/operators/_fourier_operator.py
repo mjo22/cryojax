@@ -10,13 +10,13 @@ These classes are modified from the library ``tinygp``.
 """
 
 from abc import abstractmethod
-from typing import overload
+from typing import overload, Any
 from typing_extensions import override
 from equinox import field
 
 import jax.numpy as jnp
 
-from ...core import error_if_negative
+from ...core import error_if_not_positive
 from ._operator import AbstractImageOperator
 from ...typing import (
     Real_,
@@ -45,52 +45,18 @@ class AbstractFourierOperator(AbstractImageOperator, strict=True):
 
     @overload
     @abstractmethod
-    def __call__(self, freqs: ImageCoords) -> Image: ...
+    def __call__(self, freqs: ImageCoords, **kwargs) -> Image: ...
 
     @overload
     @abstractmethod
-    def __call__(self, freqs: VolumeCoords) -> Volume: ...
+    def __call__(self, freqs: VolumeCoords, **kwargs) -> Volume: ...
 
     @abstractmethod
-    def __call__(self, freqs: ImageCoords | VolumeCoords) -> Image | Volume:
+    def __call__(self, freqs: ImageCoords | VolumeCoords, **kwargs) -> Image | Volume:
         raise NotImplementedError
 
 
 FourierOperatorLike = AbstractFourierOperator | AbstractImageOperator
-
-
-class AbstractFourierOperatorInAngstroms(AbstractFourierOperator, strict=True):
-    """A Fourier operator that only accepts frequency grids in angstroms."""
-
-    @overload
-    @abstractmethod
-    def __call__(self, frequency_grid_in_angstroms: ImageCoords) -> Image: ...
-
-    @overload
-    @abstractmethod
-    def __call__(self, frequency_grid_in_angstroms: VolumeCoords) -> Volume: ...
-
-    @abstractmethod
-    def __call__(
-        self, frequency_grid_in_angstroms: ImageCoords | VolumeCoords
-    ) -> Image | Volume:
-        raise NotImplementedError
-
-
-class AbstractFourierOperatorInPixels(AbstractFourierOperator, strict=True):
-    """A Fourier operator that only accepts frequency grids in pixels."""
-
-    @overload
-    @abstractmethod
-    def __call__(self, frequency_grid: ImageCoords) -> Image: ...
-
-    @overload
-    @abstractmethod
-    def __call__(self, frequency_grid: VolumeCoords) -> Volume: ...
-
-    @abstractmethod
-    def __call__(self, frequency_grid: ImageCoords | VolumeCoords) -> Image | Volume:
-        raise NotImplementedError
 
 
 class ZeroMode(AbstractFourierOperator, strict=True):
@@ -142,7 +108,7 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
     """
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    length_scale: Real_ = field(default=1.0, converter=error_if_negative)
+    length_scale: Real_ = field(default=1.0, converter=error_if_not_positive)
 
     @override
     def __call__(self, freqs: ImageCoords) -> RealImage:
@@ -173,7 +139,7 @@ class Lorenzian(AbstractFourierOperator, strict=True):
     """
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    length_scale: Real_ = field(default=1.0, converter=error_if_negative)
+    length_scale: Real_ = field(default=1.0, converter=error_if_not_positive)
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...
@@ -218,7 +184,7 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
     """
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    b_factor: Real_ = field(default=1.0, converter=error_if_negative)
+    b_factor: Real_ = field(default=1.0, converter=error_if_not_positive)
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...

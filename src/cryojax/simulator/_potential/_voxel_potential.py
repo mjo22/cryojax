@@ -9,6 +9,7 @@ from typing import (
     ClassVar,
     Optional,
     overload,
+    cast,
 )
 from typing_extensions import Self, override
 from jaxtyping import Float, Array, Int
@@ -22,8 +23,8 @@ import numpy as np
 
 from ._scattering_potential import AbstractScatteringPotential
 from .._pose import AbstractPose
-from ...io import get_form_factor_params
-from ...core import error_if_negative
+from ...constants import get_form_factor_params
+from ...core import error_if_not_positive
 
 from ...image.operators import AbstractFilter
 from ...image import (
@@ -100,7 +101,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
         self,
         fourier_voxel_grid: ComplexCubicVolume,
         wrapped_frequency_slice: FrequencySlice,
-        voxel_size: Real_,
+        voxel_size: Real_ | float,
     ):
         raise NotImplementedError
 
@@ -216,9 +217,9 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
     `voxel_size`: The voxel size.
     """
 
-    fourier_voxel_grid: ComplexCubicVolume = field(converter=jnp.asarray)
+    fourier_voxel_grid: ComplexCubicVolume
     wrapped_frequency_slice: FrequencySlice
-    voxel_size: Real_ = field(converter=error_if_negative)
+    voxel_size: Real_ = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = False
 
@@ -227,11 +228,11 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
         self,
         fourier_voxel_grid: ComplexCubicVolume,
         wrapped_frequency_slice: FrequencySlice,
-        voxel_size: Real_,
+        voxel_size: Real_ | float,
     ):
-        self.fourier_voxel_grid = fourier_voxel_grid
+        self.fourier_voxel_grid = jnp.asarray(fourier_voxel_grid)
         self.wrapped_frequency_slice = wrapped_frequency_slice
-        self.voxel_size = voxel_size
+        self.voxel_size = jnp.asarray(voxel_size)
 
     @property
     def shape(self) -> tuple[int, int, int]:
@@ -251,9 +252,9 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     `voxel_size`: The voxel size.
     """
 
-    coefficients: ComplexCubicVolume = field(converter=jnp.asarray)
+    coefficients: ComplexCubicVolume
     wrapped_frequency_slice: FrequencySlice
-    voxel_size: Real_ = field(converter=error_if_negative)
+    voxel_size: Real_ = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = False
 
@@ -261,7 +262,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
         self,
         fourier_voxel_grid: ComplexCubicVolume,
         wrapped_frequency_slice: FrequencySlice,
-        voxel_size: Real_,
+        voxel_size: Real_ | float,
     ):
         """
         !!! note
@@ -275,9 +276,9 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
             assert hasattr(voxels, "coefficients")  # Instead, the spline coefficients are stored
             ```
         """
-        self.coefficients = compute_spline_coefficients(fourier_voxel_grid)
+        self.coefficients = compute_spline_coefficients(jnp.asarray(fourier_voxel_grid))
         self.wrapped_frequency_slice = wrapped_frequency_slice
-        self.voxel_size = voxel_size
+        self.voxel_size = jnp.asarray(voxel_size)
 
     @property
     def shape(self) -> tuple[int, int, int]:
@@ -297,9 +298,9 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     `voxel_size`: The voxel size.
     """
 
-    real_voxel_grid: RealCubicVolume = field(converter=jnp.asarray)
+    real_voxel_grid: RealCubicVolume
     wrapped_coordinate_grid: CoordinateGrid
-    voxel_size: Real_ = field(converter=error_if_negative)
+    voxel_size: Real_ = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = True
 
@@ -307,11 +308,11 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         self,
         real_voxel_grid: RealCubicVolume,
         wrapped_coordinate_grid: CoordinateGrid,
-        voxel_size: Real_,
+        voxel_size: Real_ | float,
     ):
-        self.real_voxel_grid = real_voxel_grid
+        self.real_voxel_grid = jnp.asarray(real_voxel_grid)
         self.wrapped_coordinate_grid = wrapped_coordinate_grid
-        self.voxel_size = voxel_size
+        self.voxel_size = jnp.asarray(voxel_size)
 
     @property
     def shape(self) -> tuple[int, int, int]:
@@ -345,7 +346,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
-        crop_scale: Optional[float],
+        crop_scale: Optional[float] = None,
     ) -> Self: ...
 
     @classmethod
@@ -450,9 +451,9 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     `voxel_size`: The voxel size.
     """
 
-    voxel_weights: RealCloud = field(converter=jnp.asarray)
+    voxel_weights: RealCloud
     wrapped_coordinate_list: CoordinateList
-    voxel_size: Real_ = field(converter=error_if_negative)
+    voxel_size: Real_ = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = True
 
@@ -460,11 +461,11 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         self,
         voxel_weights: RealCloud,
         wrapped_coordinate_list: CoordinateList,
-        voxel_size: Real_,
+        voxel_size: Real_ | float,
     ):
-        self.voxel_weights = voxel_weights
+        self.voxel_weights = jnp.asarray(voxel_weights)
         self.wrapped_coordinate_list = wrapped_coordinate_list
-        self.voxel_size = voxel_size
+        self.voxel_size = jnp.asarray(voxel_size)
 
     @property
     def shape(self) -> tuple[int, int]:

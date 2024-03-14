@@ -3,7 +3,7 @@ Implementation of operators on images in real-space.
 """
 
 from abc import abstractmethod
-from typing import overload
+from typing import overload, Any
 from typing_extensions import override
 from jaxtyping import Array, Float
 from equinox import field
@@ -12,7 +12,7 @@ import jax.numpy as jnp
 
 from ._operator import AbstractImageOperator
 from ...typing import ImageCoords, VolumeCoords, RealImage, RealVolume, Real_
-from ...core import error_if_negative
+from ...core import error_if_not_positive
 
 
 class AbstractRealOperator(AbstractImageOperator, strict=True):
@@ -31,14 +31,16 @@ class AbstractRealOperator(AbstractImageOperator, strict=True):
 
     @overload
     @abstractmethod
-    def __call__(self, coords: ImageCoords) -> RealImage: ...
+    def __call__(self, coords: ImageCoords, **kwargs: Any) -> RealImage: ...
 
     @overload
     @abstractmethod
-    def __call__(self, coords: VolumeCoords) -> RealVolume: ...
+    def __call__(self, coords: VolumeCoords, **kwargs: Any) -> RealVolume: ...
 
     @abstractmethod
-    def __call__(self, coords: ImageCoords | VolumeCoords) -> RealImage | RealVolume:
+    def __call__(
+        self, coords: ImageCoords | VolumeCoords, **kwargs: Any
+    ) -> RealImage | RealVolume:
         raise NotImplementedError
 
 
@@ -69,7 +71,7 @@ class Gaussian2D(AbstractRealOperator, strict=True):
     """
 
     amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    b_factor: Real_ = field(default=1.0, converter=error_if_negative)
+    b_factor: Real_ = field(default=1.0, converter=error_if_not_positive)
     offset: Float[Array, "2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
 
     @override

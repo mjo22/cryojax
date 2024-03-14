@@ -14,19 +14,24 @@ from jaxtyping import PRNGKeyArray
 
 from ._dose import ElectronDose
 from ._config import ImageConfig
-from ..image.operators import AbstractFourierOperatorInPixels
+from ..image.operators import AbstractFourierOperator
 from ..image import irfftn, rfftn
 from ..typing import ComplexImage, RealImage, ImageCoords, Real_
 from ..core import error_if_not_fractional
 
 
-class AbstractDQE(AbstractFourierOperatorInPixels, strict=True):
+class AbstractDQE(AbstractFourierOperator, strict=True):
     r"""Base class for a detector DQE."""
 
     fraction_detected_electrons: AbstractVar[Real_]
 
     @abstractmethod
-    def __call__(self, frequency_grid: ImageCoords) -> RealImage | Real_:
+    def __call__(
+        self,
+        frequency_grid_maybe_in_angstroms: ImageCoords,
+        *,
+        pixel_size: Optional[Real_] = None,
+    ) -> RealImage | Real_:
         """**Arguments:**
 
         `frequency_grid_in_nyquist_units`: A frequency grid given in units of nyquist.
@@ -43,7 +48,12 @@ class NullDQE(AbstractDQE, strict=True):
         self.fraction_detected_electrons = jnp.asarray(1.0)
 
     @override
-    def __call__(self, frequency_grid: ImageCoords) -> Real_:
+    def __call__(
+        self,
+        frequency_grid_maybe_in_angstroms: ImageCoords,
+        *,
+        pixel_size: Optional[Real_] = None,
+    ) -> Real_:
         return jnp.asarray(1.0)
 
 
@@ -59,8 +69,18 @@ class IdealDQE(AbstractDQE, strict=True):
     )
 
     @override
-    def __call__(self, frequency_grid: ImageCoords) -> RealImage:
-        frequency_grid_in_nyquist_units = frequency_grid / 0.5
+    def __call__(
+        self,
+        frequency_grid_maybe_in_angstroms: ImageCoords,
+        *,
+        pixel_size: Optional[Real_] = None,
+    ) -> RealImage:
+        if pixel_size is None:
+            frequency_grid_in_nyquist_units = frequency_grid_maybe_in_angstroms / 0.5
+        else:
+            frequency_grid_in_nyquist_units = (
+                frequency_grid_maybe_in_angstroms * pixel_size
+            ) / 0.5
         return (
             self.fraction_detected_electrons**2
             * jnp.sinc(frequency_grid_in_nyquist_units[..., 0] / 2) ** 2

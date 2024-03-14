@@ -2,9 +2,9 @@
 Abstraction of a helical polymer.
 """
 
-from typing import Union, Optional
-from jaxtyping import Array, Float
-from functools import cached_property, partial
+from typing import Optional
+from jaxtyping import Array, Float, Shaped
+from functools import cached_property
 from equinox import field
 
 import jax
@@ -15,7 +15,8 @@ from .._pose import AbstractPose, EulerAnglePose
 from .._conformation import AbstractConformation
 from ._assembly import AbstractAssembly
 
-from ...typing import Real_, RealVector
+from ...rotations import SO3
+from ...typing import Real_
 
 
 class Helix(AbstractAssembly, strict=True):
@@ -37,8 +38,7 @@ class Helix(AbstractAssembly, strict=True):
     rise :
         The helical rise. This has dimensions of length.
     twist :
-        The helical twist, given in degrees if
-        ``degrees = True`` and radians otherwise.
+        The helical twist.
     pose :
         The center of mass pose of the helix.
     conformation :
@@ -51,41 +51,35 @@ class Helix(AbstractAssembly, strict=True):
     n_subunits_per_start :
         The number of subunits each helical strand.
         By default, ``1``.
-    degrees :
-        Whether or not the helical twist is given in
-        degrees. By default, ``True``.
     """
 
     subunit: AbstractSpecimen
-    rise: Real_ = field(converter=jnp.asarray)
-    twist: Real_ = field(converter=jnp.asarray)
+    rise: Real_
+    twist: Real_
 
     pose: AbstractPose
     conformation: Optional[AbstractConformation]
 
     n_subunits: int = field(static=True)
     n_start: int = field(static=True)
-    degrees: bool = field(static=True)
 
     def __init__(
         self,
         subunit: AbstractSpecimen,
-        rise: Real_,
-        twist: Real_,
+        rise: Real_ | float,
+        twist: Real_ | float,
         pose: Optional[AbstractPose] = None,
         conformation: Optional[AbstractConformation] = None,
         n_start: int = 1,
         n_subunits: int = 1,
-        degrees: bool = True,
     ):
         self.subunit = subunit
         self.pose = pose or EulerAnglePose()
-        self.rise = rise
-        self.twist = twist
+        self.rise = jnp.asarray(rise)
+        self.twist = jnp.asarray(twist)
         self.conformation = conformation
         self.n_start = n_start
         self.n_subunits = n_subunits
-        self.degrees = degrees
 
     def __check_init__(self):
         if self.n_subunits % self.n_start != 0:
@@ -94,7 +88,7 @@ class Helix(AbstractAssembly, strict=True):
             )
 
     @cached_property
-    def positions(self) -> Float[Array, "n_subunits 3"]:
+    def offsets_in_angstroms(self) -> Float[Array, "n_subunits 3"]:
         """Get the helical lattice positions in the center of mass frame."""
         return compute_helical_lattice_positions(
             self.rise,
@@ -102,22 +96,25 @@ class Helix(AbstractAssembly, strict=True):
             n_subunits_per_start=self.n_subunits // self.n_start,
             initial_displacement=self.subunit.pose.offset_in_angstroms,
             n_start=self.n_start,
-            degrees=self.degrees,
         )
 
     @cached_property
-    def rotations(self) -> Float[Array, "n_subunits 3 3"]:
+    def rotations(self) -> Shaped[SO3, "n_subunits"]:
         """Get the helical lattice rotations in the center of mass frame.
 
         These are rotations of the initial subunit.
         """
-        return compute_helical_lattice_rotations(
+        transformed_rotation_matrices = compute_helical_lattice_rotations(
             self.twist,
             n_subunits_per_start=self.n_subunits // self.n_start,
             initial_rotation=self.subunit.pose.rotation.as_matrix(),
             n_start=self.n_start,
-            degrees=self.degrees,
         )
+        # Function to construct SO3 objects vmapped over leading dimension
+        transformed_rotations = jax.vmap(lambda mat: SO3.from_matrix(mat))(
+            transformed_rotation_matrices
+        )
+        return transformed_rotations
 
 
 def compute_helical_lattice_positions(
@@ -126,8 +123,6 @@ def compute_helical_lattice_positions(
     n_subunits_per_start: int,
     initial_displacement: Float[Array, "3"],
     n_start: int = 1,
-    *,
-    degrees: bool = True,
 ) -> Float[Array, "n_start*n_subunits_per_start 3"]:
     """
     Compute the lattice points of a helix for a given
@@ -150,9 +145,6 @@ def compute_helical_lattice_positions(
         first subunit's position.
     n_start :
         The start number of the helix.
-    degrees :
-        Whether or not the angular parameters
-        are given in degrees or radians.
 
     Returns
     -------
@@ -160,8 +152,7 @@ def compute_helical_lattice_positions(
         The helical lattice positions.
     """
     # Convert to radians
-    if degrees:
-        twist = jnp.deg2rad(twist)
+    twist = jnp.deg2rad(twist)
 
     # Coordinate transformation to get subunit positions in a single sub-helix
     def compute_ith_subunit_position_in_subhelix(i, theta, dz, r_0, N):
@@ -218,8 +209,6 @@ def compute_helical_lattice_rotations(
     n_subunits_per_start: int,
     initial_rotation: Float[Array, "3 3"] = jnp.eye(3),
     n_start: int = 1,
-    *,
-    degrees: bool = True,
 ) -> Float[Array, "n_start*n_subunits_per_start 3"]:
     """
     Compute the relative rotations of subunits on a
@@ -238,9 +227,6 @@ def compute_helical_lattice_rotations(
         the identity matrix.
     n_start :
         The start number of the helix.
-    degrees :
-        Whether or not the angular parameters
-        are given in degrees or radians.
 
     Returns
     -------
@@ -249,8 +235,7 @@ def compute_helical_lattice_rotations(
         on the helical lattice.
     """
     # Convert to radians
-    if degrees:
-        twist = jnp.deg2rad(twist)
+    twist = jnp.deg2rad(twist)
 
     # Coordinate transformation to get subunit rotations in a single sub-helix
     def compute_ith_subunit_rotation_in_subhelix(i, theta, R_0):
