@@ -9,7 +9,6 @@ from typing import (
     ClassVar,
     Optional,
     overload,
-    cast,
 )
 from typing_extensions import Self, override
 from jaxtyping import Float, Array, Int
@@ -47,9 +46,8 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
 
     **Attributes:**
 
-    `voxel_size`: The voxel size of the scattering potential.
-
-    `is_real`: Whether or not the representation is real or fourier-space.
+    - `voxel_size`: The voxel size of the scattering potential.
+    - `is_real`: Whether or not the representation is real or fourier-space.
     """
 
     voxel_size: AbstractVar[Real_]
@@ -132,16 +130,12 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
         **Arguments:**
 
-        `real_voxel_grid`: A scattering potential voxel grid in real space.
-
-        `voxel_size`: The voxel size of `real_voxel_grid`.
-
-        `pad_scale`: Scale factor at which to pad `real_voxel_grid` before fourier
+        - `real_voxel_grid`: A scattering potential voxel grid in real space.
+        - `voxel_size`: The voxel size of `real_voxel_grid`.
+        - `pad_scale`: Scale factor at which to pad `real_voxel_grid` before fourier
                      transform. Must be a value greater than `1.0`.
-
-        `pad_mode`: Padding method. See `jax.numpy.pad` for documentation.
-
-        `filter`: A filter to apply to the result of the fourier transform of
+        - `pad_mode`: Padding method. See `jax.numpy.pad` for documentation.
+        - `filter`: A filter to apply to the result of the fourier transform of
                   `real_voxel_grid`, i.e. `fftn(real_voxel_grid)`. Note that the zero
                   frequency component is assumed to be in the corner.
         """
@@ -209,12 +203,10 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
 
     **Attributes:**
 
-    `fourier_voxel_grid`: The cubic voxel grid in fourier space.
-
-    `wrapped_frequency_slice`: Frequency slice coordinate system,
+    - `fourier_voxel_grid`: The cubic voxel grid in fourier space.
+    - `wrapped_frequency_slice`: Frequency slice coordinate system,
                                wrapped in a `FrequencySlice` object.
-
-    `voxel_size`: The voxel size.
+    - `voxel_size`: The voxel size.
     """
 
     fourier_voxel_grid: ComplexCubicVolume
@@ -245,11 +237,9 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 
     **Attributes:**
 
-    `coefficients`: Cubic spline coefficients for the voxel grid.
-
-    `wrapped_frequency_slice`: Frequency slice coordinate system.
-
-    `voxel_size`: The voxel size.
+    - `coefficients`: Cubic spline coefficients for the voxel grid.
+    - `wrapped_frequency_slice`: Frequency slice coordinate system.
+    - `voxel_size`: The voxel size.
     """
 
     coefficients: ComplexCubicVolume
@@ -290,12 +280,10 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     **Attributes:**
 
-    `real_voxel_grid`: The voxel grid in fourier space.
-
-    `wrapped_coordinate_grid`: A coordinate grid, wrapped into a
+    - `real_voxel_grid`: The voxel grid in fourier space.
+    - `wrapped_coordinate_grid`: A coordinate grid, wrapped into a
                                `CoordinateGrid` object.
-
-    `voxel_size`: The voxel size.
+    - `voxel_size`: The voxel size.
     """
 
     real_voxel_grid: RealCubicVolume
@@ -374,11 +362,9 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
         **Arguments:**
 
-        `real_voxel_grid`: An electron scattering potential voxel grid in real space.
-
-        `voxel_size`: The voxel size of `real_voxel_grid`.
-
-        `crop_scale`: Scale factor at which to crop `real_voxel_grid`.
+        - `real_voxel_grid`: An electron scattering potential voxel grid in real space.
+        - `voxel_size`: The voxel size of `real_voxel_grid`.
+        - `crop_scale`: Scale factor at which to crop `real_voxel_grid`.
                       Must be a value less than `1.0`.
         """
         # Cast to jax array
@@ -443,12 +429,10 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
     **Attributes:**
 
-    `voxel_weights`: A point-cloud of voxel scattering potential values.
-
-    `wrapped_coordinate_list`: Coordinate list for the `voxel_weights`, wrapped
+    - `voxel_weights`: A point-cloud of voxel scattering potential values.
+    - `wrapped_coordinate_list`: Coordinate list for the `voxel_weights`, wrapped
                                in a `CoordinateList` object.
-
-    `voxel_size`: The voxel size.
+    - `voxel_size`: The voxel size.
     """
 
     voxel_weights: RealCloud
@@ -504,14 +488,11 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
         **Arguments:**
 
-        `real_voxel_grid`: An electron scattering potential voxel grid in real space.
-
-        `voxel_size`: The voxel size of `real_voxel_grid`.
-
-        `rtol`: Argument passed to `jnp.isclose`, used for removing
+        - `real_voxel_grid`: An electron scattering potential voxel grid in real space.
+        - `voxel_size`: The voxel size of `real_voxel_grid`.
+        - `rtol`: Argument passed to `jnp.isclose`, used for removing
                 points of zero scattering potential.
-
-        `atol`: Argument passed to `jnp.isclose`, used for removing
+        - `atol`: Argument passed to `jnp.isclose`, used for removing
                 points of zero scattering potential.
         """
         # Cast to jax array
@@ -574,13 +555,10 @@ def evaluate_3d_real_space_gaussian(
 
     **Arguments:**
 
-    `coordinate_grid`: The coordinate system of the grid.
-
-    `pos`: The center of the gaussian.
-
-    `a`: A scale factor.
-
-    `b`: The scale of the gaussian.
+    - `coordinate_grid`: The coordinate system of the grid.
+    - `pos`: The center of the gaussian.
+    - `a`: A scale factor.
+    - `b`: The scale of the gaussian.
 
     **Returns:**
 
@@ -603,13 +581,10 @@ def evaluate_3d_atom_potential(
 
     **Arguments:**
 
-    `coordinate_grid_in_angstroms`: The coordinate system of the grid.
-
-    `atom_position`: The location of the atom.
-
-    `atomic_as`: The intensity values for each gaussian in the atom.
-
-    `atomic_bs`: The inverse scale factors for each gaussian in the atom.
+    - `coordinate_grid_in_angstroms`: The coordinate system of the grid.
+    - `atom_position`: The location of the atom.
+    - `atomic_as`: The intensity values for each gaussian in the atom.
+    - `atomic_bs`: The inverse scale factors for each gaussian in the atom.
 
     **Returns:**
 
@@ -634,13 +609,10 @@ def build_real_space_voxels_from_atoms(
 
     **Arguments**
 
-    `atom_coords`: The coordinates of the atoms.
-
-    `ff_a`: Intensity values for each Gaussian in the atom
-
-    `ff_b` : The inverse scale factors for each Gaussian in the atom
-
-    `coordinate_grid` : The coordinates of each voxel in the grid.
+    - `atom_coords`: The coordinates of the atoms.
+    - `ff_a`: Intensity values for each Gaussian in the atom
+    - `ff_b` : The inverse scale factors for each Gaussian in the atom
+    - `coordinate_grid` : The coordinates of each voxel in the grid.
 
     **Returns:**
 

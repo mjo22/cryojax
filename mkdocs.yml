@@ -56,7 +56,7 @@ nav:
     - Examples:
         - Introductory:
             - Simulate an image: 'examples/simulate-image.ipynb'
+            - Simulate a batch of images: 'examples/simulate-micrograph.ipynb'
         - Advanced:
-            - Simulate a "micrograph": 'examples/simulate-micrograph.ipynb'
     - Simulator API:
         - 'api/simulator/scattering_potential.md'
