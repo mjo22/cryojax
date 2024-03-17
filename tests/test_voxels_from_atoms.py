@@ -45,7 +45,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
 
     np.testing.assert_allclose(
         fvg_real,
-        jnp.transpose(vg.real_voxel_grid, axes=[1, 0, 2]).ravel(),
+        jnp.transpose(vg.real_voxel_grid, axes=[2, 0, 1]).ravel(),
         atol=1e-12,
     )
 
