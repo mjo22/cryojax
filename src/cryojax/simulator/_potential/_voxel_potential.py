@@ -9,6 +9,7 @@ from typing import (
     ClassVar,
     Optional,
     overload,
+    cast,
 )
 from typing_extensions import Self, override
 from jaxtyping import Float, Array, Int
@@ -147,7 +148,10 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
             raise ValueError("pad_scale must be greater than 1.0")
         # ... always pad to even size to avoid interpolation issues in
         # fourier slice extraction.
-        padded_shape = tuple([int(s * pad_scale) for s in real_voxel_grid.shape])
+        padded_shape = cast(
+            tuple[int, int, int],
+            tuple([int(s * pad_scale) for s in real_voxel_grid.shape]),
+        )
         padded_real_voxel_grid = pad_to_shape(
             real_voxel_grid, padded_shape, mode=pad_mode
         )
@@ -163,7 +167,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
         fourier_voxel_grid = jnp.fft.fftshift(fourier_voxel_grid_with_zero_in_corner)
         # ... create in-plane frequency slice on the half space
         frequency_slice = FrequencySlice(
-            padded_real_voxel_grid.shape[:-1], half_space=False
+            cast(tuple[int, int], padded_real_voxel_grid.shape[:-1]), half_space=False
         )
 
         return cls(fourier_voxel_grid, frequency_slice, voxel_size)
@@ -227,7 +231,7 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
 
     @property
     def shape(self) -> tuple[int, int, int]:
-        return self.fourier_voxel_grid.shape
+        return cast(tuple[int, int, int], self.fourier_voxel_grid.shape)
 
 
 class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
@@ -271,7 +275,9 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 
     @property
     def shape(self) -> tuple[int, int, int]:
-        return tuple([s - 2 for s in self.coefficients.shape])
+        return cast(
+            tuple[int, int, int], tuple([s - 2 for s in self.coefficients.shape])
+        )
 
 
 class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
@@ -303,12 +309,12 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     @property
     def shape(self) -> tuple[int, int, int]:
-        return self.real_voxel_grid.shape
+        return cast(tuple[int, int, int], self.real_voxel_grid.shape)
 
     @cached_property
     def wrapped_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         """The `coordinate_grid` in angstroms."""
-        return self.voxel_size * self.wrapped_coordinate_grid
+        return self.voxel_size * self.wrapped_coordinate_grid  # type: ignore
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
@@ -378,8 +384,9 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
             if crop_scale is not None:
                 if crop_scale > 1.0:
                     raise ValueError("crop_scale must be less than 1.0")
-                cropped_shape = tuple(
-                    [int(s * crop_scale) for s in real_voxel_grid.shape[-3:]]
+                cropped_shape = cast(
+                    tuple[int, int, int],
+                    tuple([int(s * crop_scale) for s in real_voxel_grid.shape[-3:]]),
                 )
                 real_voxel_grid = crop_to_shape(real_voxel_grid, cropped_shape)
             coordinate_grid = CoordinateGrid(real_voxel_grid.shape[-3:])
@@ -452,12 +459,12 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
     @property
     def shape(self) -> tuple[int, int]:
-        return self.voxel_weights.shape
+        return cast(tuple[int, int], self.voxel_weights.shape)
 
     @cached_property
     def coordinate_list_in_angstroms(self) -> CoordinateList:
         """The `coordinate_list` in angstroms."""
-        return self.voxel_size * self.wrapped_coordinate_list
+        return self.voxel_size * self.wrapped_coordinate_list  # type: ignore
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
@@ -544,8 +551,8 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 def evaluate_3d_real_space_gaussian(
     coordinate_grid_in_angstroms: Float[Array, "N1 N2 N3 3"],
     atom_position: Float[Array, "3"],
-    a: float,
-    b: float,
+    a: Float[Array, ""],
+    b: Float[Array, ""],
 ) -> Float[Array, "N1 N2 N3"]:
     """Evaluate a gaussian on a 3D grid.
     The naming convention for parameters follows "Robust

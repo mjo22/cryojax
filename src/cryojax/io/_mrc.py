@@ -6,7 +6,7 @@ import mrcfile
 import pathlib
 import numpy as np
 from jaxtyping import Float, Array
-from typing import Optional
+from typing import Optional, cast
 from pathlib import Path
 
 
@@ -36,7 +36,7 @@ def read_image_from_mrc(
         permissive=permissive,
     )
 
-    return image
+    return cast(np.ndarray, image)
 
 
 def read_image_with_pixel_size_from_mrc(
@@ -100,7 +100,7 @@ def read_image_stack_from_mrc(
         permissive=permissive,
     )
 
-    return image_stack
+    return cast(np.ndarray, image_stack)
 
 
 def read_image_stack_with_pixel_size_from_mrc(
@@ -164,7 +164,7 @@ def read_volume_from_mrc(
         permissive=permissive,
     )
 
-    return volume
+    return cast(np.ndarray, volume)
 
 
 def read_volume_with_voxel_size_from_mrc(
@@ -228,7 +228,7 @@ def read_volume_stack_from_mrc(
         permissive=permissive,
     )
 
-    return volume_stack
+    return cast(np.ndarray, volume_stack)
 
 
 def read_volume_stack_with_voxel_size_from_mrc(
@@ -297,12 +297,12 @@ def write_image_to_mrc(
     if image.ndim != 2:
         raise ValueError("image.ndim must be equal to 2.")
     # Convert image stack and pixel size to numpy arrays.
-    image = np.asarray(image)
-    pixel_size = np.asarray(pixel_size)
+    image_as_numpy = np.asarray(image)
+    pixel_size_as_numpy = np.asarray(pixel_size)
     # Create new file and write
     with mrcfile.new(filename, compression=compression, overwrite=overwrite) as mrc:
-        mrc.set_data(image)
-        mrc.voxel_size = pixel_size
+        mrc.set_data(image_as_numpy)
+        mrc.voxel_size = pixel_size_as_numpy
 
 
 def write_image_stack_to_mrc(
@@ -336,13 +336,13 @@ def write_image_stack_to_mrc(
     if image_stack.ndim != 3:
         raise ValueError("image_stack.ndim must be equal to 3.")
     # Convert image stack and pixel size to numpy arrays.
-    image_stack = np.asarray(image_stack)
-    pixel_size = np.asarray(pixel_size)
+    image_stack_as_numpy = np.asarray(image_stack)
+    pixel_size_as_numpy = np.asarray(pixel_size)
     # Create new file and write
     with mrcfile.new(filename, compression=compression, overwrite=overwrite) as mrc:
-        mrc.set_data(image_stack)
+        mrc.set_data(image_stack_as_numpy)
         mrc.set_image_stack()
-        mrc.voxel_size = (1.0, pixel_size, pixel_size)
+        mrc.voxel_size = (1.0, pixel_size_as_numpy, pixel_size_as_numpy)
 
 
 def write_volume_to_mrc(
@@ -376,15 +376,13 @@ def write_volume_to_mrc(
     if voxel_grid.ndim != 3:
         raise ValueError("voxel_grid.ndim must be equal to 3.")
     # Convert volume and voxel size to numpy arrays.
-    voxel_grid = np.asarray(voxel_grid)
-    voxel_size = np.asarray(voxel_size)
-    # Convert volume to MRC xyz conventions
-    voxel_grid = voxel_grid.transpose(2, 1, 0)
+    voxel_grid_as_numpy = np.asarray(voxel_grid)
+    voxel_size_as_numpy = np.asarray(voxel_size)
     # Create new file and write
     with mrcfile.new(filename, compression=compression, overwrite=overwrite) as mrc:
-        mrc.set_data(voxel_grid)
+        mrc.set_data(voxel_grid_as_numpy)
         mrc.set_volume()
-        mrc.voxel_size = (voxel_size, voxel_size, voxel_size)
+        mrc.voxel_size = (voxel_size_as_numpy, voxel_size_as_numpy, voxel_size_as_numpy)
 
 
 def _read_array_from_mrc(
@@ -399,7 +397,7 @@ def _read_array_from_mrc(
     # Read MRC
     open = mrcfile.mmap if mmap else mrcfile.open
     with open(filename, mode="r", permissive=permissive) as mrc:
-        array = mrc.data
+        array = cast(np.ndarray, mrc.data)
         # Convert to cryojax xyz conventions
         if expected_data_format == "image":
             if suffix != ".mrc":
@@ -440,7 +438,6 @@ def _read_array_from_mrc(
                     "Tried to read a volume in MRC format, which should have ndim = 3."
                     f"Instead, the array had ndim = {array.ndim}"
                 )
-            array = array.transpose(2, 1, 0)
             grid_spacing_per_dimension = np.asarray(
                 [mrc.voxel_size.z, mrc.voxel_size.y, mrc.voxel_size.x],
                 dtype=float,
@@ -456,7 +453,6 @@ def _read_array_from_mrc(
                     "Tried to read a volume stack in MRC format, which should have ndim = 4."
                     f"Instead, the array had ndim = {array.ndim}"
                 )
-            array = array.transpose(0, 3, 2, 1)
             grid_spacing_per_dimension = np.asarray(
                 [mrc.voxel_size.z, mrc.voxel_size.y, mrc.voxel_size.x],
                 dtype=float,

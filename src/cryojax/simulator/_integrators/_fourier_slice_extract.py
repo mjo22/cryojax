@@ -56,7 +56,7 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
         a central slice in fourier space.
         """
         frequency_slice = potential.wrapped_frequency_slice.get()
-        N = frequency_slice.shape[0]
+        N = frequency_slice.shape[1]
         if potential.shape != (N, N, N):
             raise AttributeError(
                 "Only cubic boxes are supported for fourier slice extraction."
@@ -108,7 +108,7 @@ def extract_slice(
     fourier_voxel_grid : shape `(N, N, N)`
         Density grid in fourier space. The zero frequency component
         should be in the center.
-    frequency_slice : shape `(N, N, 1, 3)`
+    frequency_slice : shape `(1, N, N, 3)`
         Frequency central slice coordinate system, with the zero
         frequency component in the corner.
     interpolation_order : int
@@ -123,13 +123,13 @@ def extract_slice(
         The output image in fourier space.
     """
     # Convert to logical coordinates
-    N = frequency_slice.shape[0]
+    N = frequency_slice.shape[1]
     logical_frequency_slice = (frequency_slice * N) + N // 2
     # Convert arguments to map_coordinates convention and compute
-    k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
+    k_z, k_y, k_x = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates(
         fourier_voxel_grid, (k_x, k_y, k_z), interpolation_order, **kwargs
-    )[:, :, 0]
+    )[0, :, :]
     # Shift zero frequency component to corner and take upper half plane
     projection = jnp.fft.ifftshift(projection)[:, : N // 2 + 1]
     # Set last line of frequencies to zero if image dimension is even
@@ -152,7 +152,7 @@ def extract_slice_with_cubic_spline(
     ---------
     spline_coefficients : shape `(N+2, N+2, N+2)`
         Coefficients for cubic spline.
-    frequency_slice : shape `(N, N, 1, 3)`
+    frequency_slice : shape `(1, N, N, 3)`
         Frequency central slice coordinate system, with the zero
         frequency component in the corner.
     kwargs
@@ -164,13 +164,13 @@ def extract_slice_with_cubic_spline(
         The output image in fourier space.
     """
     # Convert to logical coordinates
-    N = frequency_slice.shape[0]
+    N = frequency_slice.shape[1]
     logical_frequency_slice = (frequency_slice * N) + N // 2
     # Convert arguments to map_coordinates convention and compute
-    k_x, k_y, k_z = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
+    k_z, k_y, k_x = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
     projection = map_coordinates_with_cubic_spline(
         spline_coefficients, (k_x, k_y, k_z), **kwargs
-    )[:, :, 0]
+    )[0, :, :]
     # Shift zero frequency component to corner and take upper half plane
     projection = jnp.fft.ifftshift(projection)[:, : N // 2 + 1]
     # Set last line of frequencies to zero if image dimension is even

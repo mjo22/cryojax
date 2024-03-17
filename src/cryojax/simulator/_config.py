@@ -140,7 +140,7 @@ class ImageConfig(Module, strict=True):
 
     @cached_property
     def wrapped_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
-        return self.pixel_size * self.wrapped_coordinate_grid
+        return self.pixel_size * self.wrapped_coordinate_grid  # type: ignore
 
     @cached_property
     def wrapped_frequency_grid_in_angstroms(self) -> FrequencyGrid:
@@ -148,7 +148,7 @@ class ImageConfig(Module, strict=True):
 
     @cached_property
     def wrapped_padded_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
-        return self.pixel_size * self.wrapped_padded_coordinate_grid
+        return self.pixel_size * self.wrapped_padded_coordinate_grid  # type: ignore
 
     @cached_property
     def wrapped_padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:

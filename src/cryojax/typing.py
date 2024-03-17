@@ -60,7 +60,7 @@ CubicVolume = jt.Inexact[jt.Array, "N N N"]
 VolumeCoords = jt.Float[jt.Array, "N1 N2 N3 3"]
 """Type hint for a volume coordinate system."""
 
-VolumeSliceCoords = jt.Float[jt.Array, "N1 N2 1 3"]
+VolumeSliceCoords = jt.Float[jt.Array, "1 N1 N2 3"]
 """Type hint for a volume slice coordinate system."""
 
 # Point cloud type hints (non-uniformly spaced points).

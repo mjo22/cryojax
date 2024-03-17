@@ -73,7 +73,7 @@ class CoordinateGrid(AbstractCoordinates, strict=True):
 
     def __init__(
         self,
-        shape: tuple[int, int] | tuple[int, int, int],
+        shape: tuple[int, ...],
         grid_spacing: float | ArrayLike = 1.0,
     ):
         self.array = make_coordinates(shape, grid_spacing)
@@ -88,7 +88,7 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
 
     def __init__(
         self,
-        shape: tuple[int, int] | tuple[int, int, int],
+        shape: tuple[int, ...],
         grid_spacing: float | ArrayLike = 1.0,
         half_space: bool = True,
     ):
@@ -123,7 +123,7 @@ class FrequencySlice(AbstractCoordinates, strict=True):
                 mode="constant",
                 constant_values=0.0,
             ),
-            axis=2,
+            axis=0,
         )
         self.array = frequency_slice
 
