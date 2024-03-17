@@ -354,17 +354,6 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         """Load a `RealVoxelGridPotential` from a real-valued 3D electron
         scattering potential voxel grid.
 
-        !!! warning
-            `real_voxel_grid` is transposed upon instantiation in order to make
-            the results of `cryojax.simulator.NufftProject` agree with
-            `cryojax.simulator.FourierSliceExtract`.
-
-            ```python
-            real_voxel_grid = ...
-            potential = RealVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, ...)
-            assert real_voxel_grid == jnp.transpose(potential.real_voxel_grid, axes=[2, 0, 1])
-            ```
-
         **Arguments:**
 
         - `real_voxel_grid`: An electron scattering potential voxel grid in real space.
@@ -376,8 +365,6 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         real_voxel_grid, voxel_size = jnp.asarray(real_voxel_grid), jnp.asarray(
             voxel_size
         )
-        # A nasty hack to make NufftProject agree with FourierSliceExtract
-        real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 2, 0])
         # Make coordinates if not given
         if coordinate_grid is None:
             # Option for cropping template
@@ -486,12 +473,6 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         """Load an `RealVoxelCloudPotential` from a real-valued 3D electron
         scattering potential voxel grid.
 
-        !!! warning
-            `real_voxel_grid` is transposed upon instantiation in order to make
-            the results of `cryojax.simulator.NufftProject` agree with
-            `cryojax.simulator.FourierSliceExtract`.
-            See [`cryojax.simulator.RealVoxelGridPotential`][] for more detail.
-
         **Arguments:**
 
         - `real_voxel_grid`: An electron scattering potential voxel grid in real space.
@@ -505,8 +486,6 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         real_voxel_grid, voxel_size = jnp.asarray(real_voxel_grid), jnp.asarray(
             voxel_size
         )
-        # A nasty hack to make NufftProject agree with FourierSliceExtract
-        real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 2, 0])
         # Make coordinates if not given
         if coordinate_grid is None:
             coordinate_grid = CoordinateGrid(real_voxel_grid.shape)

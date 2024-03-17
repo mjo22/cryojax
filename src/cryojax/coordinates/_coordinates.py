@@ -8,7 +8,6 @@ from typing_extensions import Self
 from equinox import AbstractVar
 
 import equinox as eqx
-import jax.tree_util as jtu
 import jax.numpy as jnp
 
 from ..typing import (
@@ -148,7 +147,7 @@ def make_coordinates(
         Cartesian coordinate system in real space.
     """
     coordinate_grid = _make_coordinates_or_frequencies(
-        shape, grid_spacing=grid_spacing, real_space=True, indexing="xy"
+        shape, grid_spacing=grid_spacing, real_space=True
     )
     return coordinate_grid
 
@@ -184,7 +183,6 @@ def make_frequencies(
         grid_spacing=grid_spacing,
         real_space=False,
         half_space=half_space,
-        indexing="xy",
     )
     return frequency_grid
 
@@ -216,10 +214,8 @@ def _make_coordinates_or_frequencies(
     grid_spacing: float | ArrayLike = 1.0,
     real_space: bool = False,
     half_space: bool = True,
-    indexing: str = "xy",
 ) -> Float[Array, "*shape len(shape)"]:
     ndim = len(shape)
-    shape = (*shape[:2][::-1], *shape[2:]) if indexing == "xy" else shape
     coords1D = []
     for idx in range(ndim):
         if real_space:
@@ -230,15 +226,26 @@ def _make_coordinates_or_frequencies(
             if not half_space:
                 rfftfreq = False
             else:
-                if indexing == "xy" and ndim == 2:
-                    rfftfreq = True if idx == 0 else False
-                else:
-                    rfftfreq = False if idx < ndim - 1 else True
+                rfftfreq = False if idx < ndim - 1 else True
             c1D = _make_coordinates_or_frequencies_1d(
                 shape[idx], grid_spacing, real_space, rfftfreq
             )
         coords1D.append(c1D)
-    coords = jnp.stack(jnp.meshgrid(*coords1D, indexing=indexing), axis=-1)
+    if ndim == 2:
+        y, x = coords1D
+        xv, yv = jnp.meshgrid(x, y, indexing="xy")
+        coords = jnp.stack([xv, yv], axis=-1)
+    elif ndim == 3:
+        z, y, x = coords1D
+        xv, yv, zv = jnp.meshgrid(x, y, z, indexing="xy")
+        xv, yv, zv = [
+            jnp.transpose(rv, axes=[2, 0, 1]) for rv in [xv, yv, zv]
+        ]  # Change axis ordering to [z, y, x]
+        coords = jnp.stack([xv, yv, zv], axis=-1)
+    else:
+        raise ValueError(
+            f"Only 2D and 3D coordinate grids are supported. Tried to create a grid of shape {shape}."
+        )
 
     return coords
 
