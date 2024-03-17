@@ -47,7 +47,6 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     **Attributes:**
 
     - `voxel_size`: The voxel size of the scattering potential.
-    - `is_real`: Whether or not the representation is real or fourier-space.
     """
 
     voxel_size: AbstractVar[Real_]
