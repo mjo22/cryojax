@@ -8,7 +8,7 @@ import jax.numpy as jnp
 
 from ._average import radial_average
 from ..typing import (
-    Real_,
+    RealNumber,
     RealVector,
     RealImage,
     ComplexImage,
@@ -21,10 +21,10 @@ from ..typing import (
 def powerspectrum(
     fourier_image: ComplexImage,
     radial_frequency_grid: RealImage,
-    pixel_size: Real_ | float,
+    pixel_size: RealNumber | float,
     *,
-    k_min: Optional[Real_ | float],
-    k_max: Optional[Real_ | float],
+    k_min: Optional[RealNumber | float],
+    k_max: Optional[RealNumber | float],
 ) -> tuple[RealVector, RealVector]: ...
 
 
@@ -32,10 +32,10 @@ def powerspectrum(
 def powerspectrum(
     fourier_image: ComplexVolume,
     radial_frequency_grid: RealVolume,
-    pixel_size: Real_ | float,
+    pixel_size: RealNumber | float,
     *,
-    k_min: Optional[Real_ | float],
-    k_max: Optional[Real_ | float],
+    k_min: Optional[RealNumber | float],
+    k_max: Optional[RealNumber | float],
 ) -> tuple[RealVector, RealVector]: ...
 
 
@@ -43,12 +43,12 @@ def powerspectrum(
 def powerspectrum(
     fourier_image: ComplexImage,
     radial_frequency_grid: RealImage,
-    pixel_size: Real_ | float,
+    pixel_size: RealNumber | float,
     *,
     to_grid: bool,
     interpolation_mode: str,
-    k_min: Optional[Real_ | float],
-    k_max: Optional[Real_ | float],
+    k_min: Optional[RealNumber | float],
+    k_max: Optional[RealNumber | float],
 ) -> tuple[RealVector, RealVector] | tuple[RealVector, RealImage, RealVector]: ...
 
 
@@ -56,24 +56,24 @@ def powerspectrum(
 def powerspectrum(
     fourier_image: ComplexVolume,
     radial_frequency_grid: RealVolume,
-    pixel_size: Real_ | float,
+    pixel_size: RealNumber | float,
     *,
     to_grid: bool,
     interpolation_mode: str,
-    k_min: Optional[Real_ | float],
-    k_max: Optional[Real_ | float],
+    k_min: Optional[RealNumber | float],
+    k_max: Optional[RealNumber | float],
 ) -> tuple[RealVector, RealVector] | tuple[RealVector, RealVolume, RealVector]: ...
 
 
 def powerspectrum(
     fourier_image: ComplexImage | ComplexVolume,
     radial_frequency_grid: RealImage | RealVolume,
-    pixel_size: Real_ | float = 1.0,
+    pixel_size: RealNumber | float = 1.0,
     *,
     to_grid: bool = False,
     interpolation_mode: str = "nearest",
-    k_min: Optional[Real_ | float] = None,
-    k_max: Optional[Real_ | float] = None,
+    k_min: Optional[RealNumber | float] = None,
+    k_max: Optional[RealNumber | float] = None,
 ) -> (
     tuple[RealVector, RealVector]
     | tuple[RealVector, RealImage | RealVolume, RealVector]

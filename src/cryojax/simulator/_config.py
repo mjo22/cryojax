@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 
 from ..coordinates import CoordinateGrid, FrequencyGrid
-from ..typing import Image, Real_, RealImage
+from ..typing import Image, RealNumber, RealImage
 from ..image import (
     crop_to_shape,
     pad_to_shape,
@@ -68,7 +68,7 @@ class ImageConfig(Module, strict=True):
     """
 
     shape: tuple[int, int] = field(static=True)
-    pixel_size: Real_ = field(converter=error_if_not_positive)
+    pixel_size: RealNumber = field(converter=error_if_not_positive)
 
     padded_shape: tuple[int, int] = field(static=True)
     pad_mode: Union[str, Callable] = field(static=True)
@@ -83,7 +83,7 @@ class ImageConfig(Module, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        pixel_size: Real_,
+        pixel_size: RealNumber,
         padded_shape: tuple[int, int],
         *,
         pad_mode: Union[str, Callable] = "constant",
@@ -94,7 +94,7 @@ class ImageConfig(Module, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        pixel_size: Real_,
+        pixel_size: RealNumber,
         *,
         pad_scale: float = 1.0,
         pad_mode: Union[str, Callable] = "constant",
@@ -104,7 +104,7 @@ class ImageConfig(Module, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        pixel_size: Real_,
+        pixel_size: RealNumber,
         padded_shape: Optional[tuple[int, int]] = None,
         *,
         pad_scale: float = 1.0,
@@ -155,7 +155,7 @@ class ImageConfig(Module, strict=True):
         return self.wrapped_padded_frequency_grid / self.pixel_size
 
     def rescale_to_pixel_size(
-        self, image: Image, current_pixel_size: Real_, is_real: bool = True
+        self, image: Image, current_pixel_size: RealNumber, is_real: bool = True
     ) -> RealImage:
         """Rescale the image pixel size using real-space interpolation. Only
         interpolate if the `pixel_size` is not the `current_pixel_size`."""

@@ -8,13 +8,13 @@ import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate
 
-from ..typing import RealImage, Real_
+from ..typing import RealImage, RealNumber
 
 
 def rescale_pixel_size(
     image: RealImage,
-    current_pixel_size: Real_,
-    new_pixel_size: Real_,
+    current_pixel_size: RealNumber,
+    new_pixel_size: RealNumber,
     method: str = "bicubic",
     antialias: bool = False,
 ) -> RealImage:

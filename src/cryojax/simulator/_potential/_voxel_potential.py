@@ -37,7 +37,7 @@ from ...typing import (
     RealCloud,
     RealCubicVolume,
     ComplexCubicVolume,
-    Real_,
+    RealNumber,
 )
 
 
@@ -49,7 +49,7 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     - `voxel_size`: The voxel size of the scattering potential.
     """
 
-    voxel_size: AbstractVar[Real_]
+    voxel_size: AbstractVar[RealNumber]
     is_real: AbstractClassVar[bool]
 
     @property
@@ -98,7 +98,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
         self,
         fourier_voxel_grid: ComplexCubicVolume,
         wrapped_frequency_slice: FrequencySlice,
-        voxel_size: Real_ | float,
+        voxel_size: RealNumber | float,
     ):
         raise NotImplementedError
 
@@ -210,7 +210,7 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
 
     fourier_voxel_grid: ComplexCubicVolume
     wrapped_frequency_slice: FrequencySlice
-    voxel_size: Real_ = field(converter=error_if_not_positive)
+    voxel_size: RealNumber = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = False
 
@@ -219,7 +219,7 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
         self,
         fourier_voxel_grid: ComplexCubicVolume,
         wrapped_frequency_slice: FrequencySlice,
-        voxel_size: Real_ | float,
+        voxel_size: RealNumber | float,
     ):
         self.fourier_voxel_grid = jnp.asarray(fourier_voxel_grid)
         self.wrapped_frequency_slice = wrapped_frequency_slice
@@ -243,7 +243,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 
     coefficients: ComplexCubicVolume
     wrapped_frequency_slice: FrequencySlice
-    voxel_size: Real_ = field(converter=error_if_not_positive)
+    voxel_size: RealNumber = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = False
 
@@ -251,7 +251,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
         self,
         fourier_voxel_grid: ComplexCubicVolume,
         wrapped_frequency_slice: FrequencySlice,
-        voxel_size: Real_ | float,
+        voxel_size: RealNumber | float,
     ):
         """
         !!! note
@@ -287,7 +287,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     real_voxel_grid: RealCubicVolume
     wrapped_coordinate_grid: CoordinateGrid
-    voxel_size: Real_ = field(converter=error_if_not_positive)
+    voxel_size: RealNumber = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = True
 
@@ -295,7 +295,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         self,
         real_voxel_grid: RealCubicVolume,
         wrapped_coordinate_grid: CoordinateGrid,
-        voxel_size: Real_ | float,
+        voxel_size: RealNumber | float,
     ):
         self.real_voxel_grid = jnp.asarray(real_voxel_grid)
         self.wrapped_coordinate_grid = wrapped_coordinate_grid
@@ -436,7 +436,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
     voxel_weights: RealCloud
     wrapped_coordinate_list: CoordinateList
-    voxel_size: Real_ = field(converter=error_if_not_positive)
+    voxel_size: RealNumber = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = True
 
@@ -444,7 +444,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         self,
         voxel_weights: RealCloud,
         wrapped_coordinate_list: CoordinateList,
-        voxel_size: Real_ | float,
+        voxel_size: RealNumber | float,
     ):
         self.voxel_weights = jnp.asarray(voxel_weights)
         self.wrapped_coordinate_list = wrapped_coordinate_list

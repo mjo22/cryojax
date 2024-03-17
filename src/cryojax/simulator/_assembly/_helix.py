@@ -16,7 +16,7 @@ from .._conformation import AbstractConformation
 from ._assembly import AbstractAssembly
 
 from ...rotations import SO3
-from ...typing import Real_
+from ...typing import RealNumber
 
 
 class Helix(AbstractAssembly, strict=True):
@@ -54,8 +54,8 @@ class Helix(AbstractAssembly, strict=True):
     """
 
     subunit: AbstractSpecimen
-    rise: Real_
-    twist: Real_
+    rise: RealNumber
+    twist: RealNumber
 
     pose: AbstractPose
     conformation: Optional[AbstractConformation]
@@ -66,8 +66,8 @@ class Helix(AbstractAssembly, strict=True):
     def __init__(
         self,
         subunit: AbstractSpecimen,
-        rise: Real_ | float,
-        twist: Real_ | float,
+        rise: RealNumber | float,
+        twist: RealNumber | float,
         pose: Optional[AbstractPose] = None,
         conformation: Optional[AbstractConformation] = None,
         n_start: int = 1,
@@ -118,8 +118,8 @@ class Helix(AbstractAssembly, strict=True):
 
 
 def compute_helical_lattice_positions(
-    rise: Real_,
-    twist: Real_,
+    rise: RealNumber,
+    twist: RealNumber,
     n_subunits_per_start: int,
     initial_displacement: Float[Array, "3"],
     n_start: int = 1,
@@ -205,7 +205,7 @@ def compute_helical_lattice_positions(
 
 
 def compute_helical_lattice_rotations(
-    twist: Real_,
+    twist: RealNumber,
     n_subunits_per_start: int,
     initial_rotation: Float[Array, "3 3"] = jnp.eye(3),
     n_start: int = 1,

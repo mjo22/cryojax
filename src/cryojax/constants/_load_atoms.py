@@ -12,7 +12,7 @@ from jaxtyping import Array, Float
 import jax
 import jax.numpy as jnp
 
-from ..typing import IntCloud
+from ..typing import IntegerCloud
 
 
 def _load_element_form_factor_params():
@@ -32,7 +32,7 @@ default_form_factor_params = _load_element_form_factor_params()
 
 @partial(jax.jit, static_argnums=(1,))
 def get_form_factor_params(
-    atom_names: IntCloud,
+    atom_names: IntegerCloud,
     form_factor_params: Optional[Float[Array, "2 N k"]] = None,
 ):
     """

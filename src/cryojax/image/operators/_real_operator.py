@@ -11,7 +11,7 @@ from equinox import field
 import jax.numpy as jnp
 
 from ._operator import AbstractImageOperator
-from ...typing import ImageCoords, VolumeCoords, RealImage, RealVolume, Real_
+from ...typing import ImageCoords, VolumeCoords, RealImage, RealVolume, RealNumber
 from ...core import error_if_not_positive
 
 
@@ -70,8 +70,8 @@ class Gaussian2D(AbstractRealOperator, strict=True):
         in the above equation.
     """
 
-    amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    b_factor: Real_ = field(default=1.0, converter=error_if_not_positive)
+    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
+    b_factor: RealNumber = field(default=1.0, converter=error_if_not_positive)
     offset: Float[Array, "2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
 
     @override

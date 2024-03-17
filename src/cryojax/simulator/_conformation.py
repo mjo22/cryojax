@@ -7,7 +7,7 @@ from equinox import AbstractVar, field
 
 from equinox import Module
 
-from ..typing import Int_
+from ..typing import Integer
 from ..core import error_if_negative
 
 
@@ -24,4 +24,4 @@ class DiscreteConformation(AbstractConformation, strict=True):
     A conformational variable wrapped in a Module.
     """
 
-    value: Int_ = field(converter=error_if_negative)
+    value: Integer = field(converter=error_if_negative)

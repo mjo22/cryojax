@@ -8,14 +8,14 @@ from typing import Any
 from jaxtyping import PRNGKeyArray
 from equinox import Module, AbstractVar
 
-from ...typing import Real_, Image
+from ...typing import RealNumber, Image
 
 
 class AbstractDistribution(Module, strict=True):
     """An image formation model equipped with a probabilistic model."""
 
     @abstractmethod
-    def log_likelihood(self, observed: Image) -> Real_:
+    def log_likelihood(self, observed: Image) -> RealNumber:
         """Evaluate the log likelihood.
 
         **Arguments:**
@@ -47,7 +47,7 @@ class AbstractMarginalDistribution(AbstractDistribution, strict=True):
     distribution: AbstractVar[AbstractDistribution]
 
     @abstractmethod
-    def marginal_log_likelihood(self, observed: Image) -> Real_:
+    def marginal_log_likelihood(self, observed: Image) -> RealNumber:
         """Evaluate the marginalized log likelihood.
 
         **Arguments:**

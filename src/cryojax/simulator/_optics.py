@@ -16,7 +16,7 @@ from ..image.operators import (
     Constant,
 )
 from ..coordinates import cartesian_to_polar
-from ..typing import Real_, RealImage, ComplexImage, Image, ImageCoords
+from ..typing import RealNumber, RealImage, ComplexImage, Image, ImageCoords
 from ..core import error_if_negative, error_if_not_positive, error_if_not_fractional
 
 
@@ -41,19 +41,23 @@ class CTF(AbstractFourierOperator, strict=True):
     `phase_shift`: The additional phase shift.
     """
 
-    defocus_u_in_angstroms: Real_ = field(
+    defocus_u_in_angstroms: RealNumber = field(
         default=10000.0, converter=error_if_not_positive
     )
-    defocus_v_in_angstroms: Real_ = field(
+    defocus_v_in_angstroms: RealNumber = field(
         default=10000.0, converter=error_if_not_positive
     )
-    astigmatism_angle: Real_ = field(default=0.0, converter=jnp.asarray)
-    voltage_in_kilovolts: Real_ = field(default=300.0, converter=error_if_not_positive)
-    spherical_aberration_in_mm: Real_ = field(default=2.7, converter=error_if_negative)
-    amplitude_contrast_ratio: Real_ = field(
+    astigmatism_angle: RealNumber = field(default=0.0, converter=jnp.asarray)
+    voltage_in_kilovolts: RealNumber = field(
+        default=300.0, converter=error_if_not_positive
+    )
+    spherical_aberration_in_mm: RealNumber = field(
+        default=2.7, converter=error_if_negative
+    )
+    amplitude_contrast_ratio: RealNumber = field(
         default=0.1, converter=error_if_not_fractional
     )
-    phase_shift: Real_ = field(default=0.0, converter=jnp.asarray)
+    phase_shift: RealNumber = field(default=0.0, converter=jnp.asarray)
 
     @property
     def wavelength_in_angstroms(self):
@@ -64,7 +68,7 @@ class CTF(AbstractFourierOperator, strict=True):
         self,
         frequency_grid_in_angstroms: ImageCoords,
         *,
-        defocus_offset: Real_ | float = 0.0,
+        defocus_offset: RealNumber | float = 0.0,
     ) -> RealImage:
         # Convert degrees to radians
         phase_shift = jnp.deg2rad(self.phase_shift)
@@ -105,7 +109,7 @@ class AbstractOptics(Module, strict=True):
     is_linear: AbstractClassVar[bool]
 
     @property
-    def wavelength_in_angstroms(self) -> Real_:
+    def wavelength_in_angstroms(self) -> RealNumber:
         return self.ctf.wavelength_in_angstroms
 
     @abstractmethod
@@ -113,7 +117,7 @@ class AbstractOptics(Module, strict=True):
         self,
         fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
-        defocus_offset: Real_ | float = 0.0,
+        defocus_offset: RealNumber | float = 0.0,
     ) -> Image:
         """Pass an image through the optics model."""
         raise NotImplementedError
@@ -136,7 +140,7 @@ class NullOptics(AbstractOptics):
         self,
         fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
-        defocus_offset: Real_ | float = 0.0,
+        defocus_offset: RealNumber | float = 0.0,
     ) -> Image:
         return fourier_potential_in_exit_plane
 
@@ -164,7 +168,7 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
         self,
         fourier_potential_in_exit_plane: ComplexImage,
         config: ImageConfig,
-        defocus_offset: Real_ | float = 0.0,
+        defocus_offset: RealNumber | float = 0.0,
     ) -> ComplexImage:
         """Apply the CTF directly to the scattering potential."""
         frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
@@ -180,13 +184,13 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
 
 def _compute_phase_shifts(
     frequency_grid_in_angstroms: ImageCoords,
-    defocus_u_in_angstroms: Real_,
-    defocus_v_in_angstroms: Real_,
-    astigmatism_angle: Real_,
-    wavelength_in_angstroms: Real_,
-    spherical_aberration_in_angstroms: Real_,
-    amplitude_contrast_ratio: Real_,
-    phase_shift: Real_,
+    defocus_u_in_angstroms: RealNumber,
+    defocus_v_in_angstroms: RealNumber,
+    astigmatism_angle: RealNumber,
+    wavelength_in_angstroms: RealNumber,
+    spherical_aberration_in_angstroms: RealNumber,
+    amplitude_contrast_ratio: RealNumber,
+    phase_shift: RealNumber,
 ) -> RealImage:
     k_sqr, azimuth = cartesian_to_polar(frequency_grid_in_angstroms, square=True)
     defocus = 0.5 * (

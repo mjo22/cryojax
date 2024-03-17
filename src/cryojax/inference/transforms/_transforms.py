@@ -13,7 +13,7 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 import equinox as eqx
 
-from ...typing import Real_
+from ...typing import RealNumber
 from ...core import error_if_zero, error_if_not_positive
 
 
@@ -161,14 +161,14 @@ class RescalingTransform(AbstractParameterTransform, strict=True):
     """
 
     transformed_parameter: Array
-    scaling: Real_ = field(converter=error_if_zero)
-    shift: Real_
+    scaling: RealNumber = field(converter=error_if_zero)
+    shift: RealNumber
 
     def __init__(
         self,
         parameter: Array,
-        scaling: Real_ | float,
-        shift: Real_ | float = 0.0,
+        scaling: RealNumber | float,
+        shift: RealNumber | float = 0.0,
     ):
         """**Arguments:**
 

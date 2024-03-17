@@ -15,7 +15,7 @@ from ._dose import ElectronDose
 from ._optics import AbstractOptics, NullOptics
 from ._detector import AbstractDetector, NullDetector
 
-from ..typing import ComplexImage, RealImage, Image, Real_
+from ..typing import ComplexImage, RealImage, Image, RealNumber
 
 
 class Instrument(Module, strict=True):
@@ -67,7 +67,7 @@ class Instrument(Module, strict=True):
         self,
         fourier_potential_at_exit_plane: ComplexImage,
         config: ImageConfig,
-        defocus_offset: Real_ | float = 0.0,
+        defocus_offset: RealNumber | float = 0.0,
     ) -> Image:
         """Propagate the scattering potential with the optics model."""
         fourier_contrast_or_wavefunction_at_detector_plane = self.optics(

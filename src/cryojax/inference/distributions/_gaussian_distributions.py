@@ -14,7 +14,7 @@ from jaxtyping import PRNGKeyArray
 from ._distribution import AbstractDistribution
 from ...image.operators import FourierOperatorLike, Constant
 from ...simulator import AbstractPipeline
-from ...typing import Real_, Image, ComplexImage
+from ...typing import RealNumber, Image, ComplexImage
 from ...core import error_if_not_positive
 
 
@@ -36,13 +36,13 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
 
     pipeline: AbstractPipeline
     variance: FourierOperatorLike
-    contrast_scale: Real_ = field(converter=error_if_not_positive)
+    contrast_scale: RealNumber = field(converter=error_if_not_positive)
 
     def __init__(
         self,
         pipeline: AbstractPipeline,
         variance: Optional[FourierOperatorLike] = None,
-        contrast_scale: Optional[Real_] = None,
+        contrast_scale: Optional[RealNumber] = None,
     ):
         self.pipeline = pipeline
         self.variance = variance or Constant(1.0)
@@ -70,7 +70,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         return image + noise
 
     @override
-    def log_likelihood(self, observed: ComplexImage) -> Real_:
+    def log_likelihood(self, observed: ComplexImage) -> RealNumber:
         """Evaluate the log-likelihood of the gaussian noise model.
 
         **Arguments:**

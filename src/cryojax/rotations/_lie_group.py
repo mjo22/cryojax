@@ -12,7 +12,7 @@ import jax
 import equinox as eqx
 import jax.numpy as jnp
 
-from ..typing import Real_
+from ..typing import RealNumber
 from ._rotation import AbstractRotation
 
 
@@ -118,17 +118,17 @@ class SO3(AbstractMatrixLieGroup, strict=True):
         )
 
     @classmethod
-    def from_x_radians(cls: Type[Self], angle: Real_) -> Self:
+    def from_x_radians(cls: Type[Self], angle: RealNumber) -> Self:
         """Generates a x-axis rotation."""
         return cls.exp(jnp.asarray([angle, 0.0, 0.0]))
 
     @classmethod
-    def from_y_radians(cls: Type[Self], angle: Real_) -> Self:
+    def from_y_radians(cls: Type[Self], angle: RealNumber) -> Self:
         """Generates a x-axis rotation."""
         return cls.exp(jnp.asarray([0.0, angle, 0.0]))
 
     @classmethod
-    def from_z_radians(cls: Type[Self], angle: Real_) -> Self:
+    def from_z_radians(cls: Type[Self], angle: RealNumber) -> Self:
         """Generates a x-axis rotation."""
         return cls.exp(jnp.asarray([0.0, 0.0, angle]))
 

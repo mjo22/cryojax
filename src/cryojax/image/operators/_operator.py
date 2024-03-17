@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 from equinox import Module, Partial, field, AbstractVar
 
-from ...typing import Image, Volume, Real_
+from ...typing import Image, Volume, RealNumber
 
 
 class AbstractImageOperator(Module, strict=True):
@@ -81,10 +81,10 @@ class AbstractImageMultiplier(Module, strict=True):
 class Constant(AbstractImageOperator, strict=True):
     """An operator that is a constant."""
 
-    value: Real_ = field(default=1.0, converter=jnp.asarray)
+    value: RealNumber = field(default=1.0, converter=jnp.asarray)
 
     @override
-    def __call__(self, *args: Any, **kwargs: Any) -> Real_:
+    def __call__(self, *args: Any, **kwargs: Any) -> RealNumber:
         return self.value
 
 
@@ -111,10 +111,10 @@ class Empirical(AbstractImageOperator, strict=True):
         An amplitude scaling for the operator.
     """
 
-    measurement: Image | Volume | Real_
+    measurement: Image | Volume | RealNumber
 
-    amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    offset: Real_ = field(default=0.0, converter=jnp.asarray)
+    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
+    offset: RealNumber = field(default=0.0, converter=jnp.asarray)
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Image:
