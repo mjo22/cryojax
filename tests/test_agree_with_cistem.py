@@ -1,7 +1,7 @@
 import pytest
+import jax
 import jax.numpy as jnp
 import numpy as np
-from jax import config
 from pycistem.core import CTF as cisCTF, Image, AnglesAndShifts
 
 import cryojax.simulator as cs
@@ -10,7 +10,7 @@ from cryojax.simulator import CTF, EulerAnglePose
 from cryojax.image import powerspectrum, irfftn
 from cryojax.coordinates import make_frequencies, cartesian_to_polar
 
-config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize(
@@ -110,18 +110,24 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
     "phi, theta, psi",
     [(10, 90, 170)],
 )
-def test_compute_projection_with_cistem(phi, theta, psi, sample_mrc_path, pixel_size):
+def test_compute_projection_with_cistem(
+    phi,
+    theta,
+    psi,
+    sample_mrc_path,
+    pixel_size,
+):
     # cryojax
     real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
     potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size
     )
     pose = cs.EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
-    specimen = cs.Specimen(potential, pose)
+    integrator = cs.FourierSliceExtract()
+    specimen = cs.Specimen(potential, integrator, pose)
     box_size = potential.shape[0]
     config = cs.ImageConfig((box_size, box_size), pixel_size)
-    scattering = cs.FourierSliceExtract(config)
-    pipeline = cs.ImagePipeline(specimen, scattering)
+    pipeline = cs.ImagePipeline(config, specimen)
     cryojax_projection = irfftn(
         pipeline.render(get_real=False).at[0, 0].set(0.0 + 0.0j)
         / np.sqrt(np.prod(config.shape)),

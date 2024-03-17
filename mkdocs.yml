@@ -40,14 +40,15 @@ plugins:
             paths: [src]  # search packages in the src folder
             options:
               annotations_path: full
-              group_by_category: false
+              group_by_category: true
               inherited_members: true
               show_root_heading: true
+              show_root_members_full_path: true
               show_root_full_path: true
               show_if_no_docstring: true
               show_signature_annotations: true
               signature_crossrefs: true
-              show_source: false
+              show_source: true
               members_order: source
               heading_level: 4
         
@@ -56,7 +57,7 @@ nav:
     - Examples:
         - Introductory:
             - Simulate an image: 'examples/simulate-image.ipynb'
-        - Advanced:
-            - Simulate a "micrograph": 'examples/simulate-micrograph.ipynb'
+        - Intermediate:
+            - Simulate a batch of images: 'examples/simulate-micrograph.ipynb'
     - Simulator API:
         - 'api/simulator/scattering_potential.md'

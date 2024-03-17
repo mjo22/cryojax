@@ -19,7 +19,7 @@ import jax.numpy as jnp
 from ...core import error_if_not_positive
 from ._operator import AbstractImageOperator
 from ...typing import (
-    Real_,
+    RealNumber,
     ImageCoords,
     VolumeCoords,
     RealImage,
@@ -69,7 +69,7 @@ class ZeroMode(AbstractFourierOperator, strict=True):
         The value of the zero mode.
     """
 
-    value: Real_ = field(default=0.0, converter=jnp.asarray)
+    value: RealNumber = field(default=0.0, converter=jnp.asarray)
 
     @override
     def __call__(self, freqs: ImageCoords) -> RealImage:
@@ -107,8 +107,8 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
         in the above equation.
     """
 
-    amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    length_scale: Real_ = field(default=1.0, converter=error_if_not_positive)
+    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
+    length_scale: RealNumber = field(default=1.0, converter=error_if_not_positive)
 
     @override
     def __call__(self, freqs: ImageCoords) -> RealImage:
@@ -138,8 +138,8 @@ class Lorenzian(AbstractFourierOperator, strict=True):
         in the above equation.
     """
 
-    amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    length_scale: Real_ = field(default=1.0, converter=error_if_not_positive)
+    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
+    length_scale: RealNumber = field(default=1.0, converter=error_if_not_positive)
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...
@@ -183,8 +183,8 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
         in the above equation.
     """
 
-    amplitude: Real_ = field(default=1.0, converter=jnp.asarray)
-    b_factor: Real_ = field(default=1.0, converter=error_if_not_positive)
+    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
+    b_factor: RealNumber = field(default=1.0, converter=error_if_not_positive)
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...

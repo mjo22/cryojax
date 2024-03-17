@@ -16,7 +16,7 @@ from equinox import Module
 
 from ..rotations import SO3
 from ..typing import (
-    Real_,
+    RealNumber,
     ComplexImage,
     ImageCoords,
     CloudCoords3D,
@@ -47,9 +47,9 @@ class AbstractPose(Module, strict=True):
                                 relative to the configured defocus.
     """
 
-    offset_x_in_angstroms: AbstractVar[Real_]
-    offset_y_in_angstroms: AbstractVar[Real_]
-    offset_z_in_angstroms: AbstractVar[Real_]
+    offset_x_in_angstroms: AbstractVar[RealNumber]
+    offset_y_in_angstroms: AbstractVar[RealNumber]
+    offset_z_in_angstroms: AbstractVar[RealNumber]
 
     @overload
     def rotate_coordinates(
@@ -162,13 +162,13 @@ class EulerAnglePose(AbstractPose, strict=True):
         of x, y, and z. By default, `'zyz'`.
     """
 
-    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
 
-    view_phi: Real_ = field(default=0.0, converter=jnp.asarray)
-    view_theta: Real_ = field(default=0.0, converter=jnp.asarray)
-    view_psi: Real_ = field(default=0.0, converter=jnp.asarray)
+    view_phi: RealNumber = field(default=0.0, converter=jnp.asarray)
+    view_theta: RealNumber = field(default=0.0, converter=jnp.asarray)
+    view_psi: RealNumber = field(default=0.0, converter=jnp.asarray)
 
     convention: str = field(static=True, default="zyz")
 
@@ -229,9 +229,9 @@ class QuaternionPose(AbstractPose, strict=True):
     - `wxyz`: The unit quaternion.
     """
 
-    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
 
     wxyz: Float[Array, "4"] = field(default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray)
 
@@ -264,9 +264,9 @@ class AxisAnglePose(AbstractPose, strict=True):
     - `euler_vector`: The axis-angle parameterization.
     """
 
-    offset_x_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: Real_ = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
 
     euler_vector: Float[Array, "3"] = field(
         default=(0.0, 0.0, 0.0), converter=jnp.asarray

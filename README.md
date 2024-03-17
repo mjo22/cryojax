@@ -52,11 +52,10 @@ filename = "example_scattering_potential.mrc"
 real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(filename)
 potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
-config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
-integrator = cs.FourierSliceExtract(config, interpolation_order=1)
+integrator = cs.FourierSliceExtract(interpolation_order=1)
 ```
 
-Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGrid`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool.
+Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool.
 
 We can now instantiate the representation of a biological specimen, which also includes a pose.
 
@@ -68,10 +67,9 @@ pose = cs.EulerAnglePose(
     view_phi=20.0,
     view_theta=80.0,
     view_psi=-10.0,
-    degrees=True,
 )
 # ... now, build the biological specimen
-specimen = cs.Specimen(potential, pose)
+specimen = cs.Specimen(potential, integrator, pose)
 ```
 
 Next, build the model for the electron microscope. Here, we simply include a model for the CTF in the weak-phase approximation (linear image formation theory).
@@ -91,28 +89,19 @@ optics = cs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # b
 instrument = cs.Instrument(optics)
 ```
 
-The `CTF` has all parameters used in CTFFIND4, which take their default values if not
+The `CTF` has parameters used in CTFFIND4, which take their default values if not
 explicitly configured here. Finally, we can instantiate the `ImagePipeline` and simulate an image.
 
 ```python
+# Instantiate the image configuration
+config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
 # Build the image formation model
-pipeline = cs.ImagePipeline(specimen, integrator, instrument)
-# ... generate an RNG key
-key = jax.random.PRNGKey(seed=1234)
-# ... simulate an image and return in real-space
-image_with_noise = pipeline.sample(key, get_real=True)
-```
-
-This computes an image using the noise model of the detector. One can also compute an image without the stochastic part of the model.
-
-```python
-# ... simulate an image without stochasticity
+pipeline = cs.ImagePipeline(config, specimen, instrument)
+# ... simulate an image and return in real-space.
 image_without_noise = pipeline.render(get_real=True)
 ```
 
-Alternatively we could have completely forgotten about a model of a detector, or even an optics model. In the former case, if we set `instrument = cs.Instrument(optics)`, the `pipeline` will return the squared wavefunction in the detector plane. In the latter case, if we set set `instrument = cs.Instrument()`--or do not initialize an instrument at all–-the `pipeline` will return the scattering potential in the exit plane. 
-
-Instead of simulating noise from the stochastic parts of the `pipeline`, `cryojax` also defines a library of distributions. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood
+`cryojax` also defines a library of distributions from which to sample the data. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood.
 
 ```python
 from cryojax.image import rfftn
@@ -123,7 +112,7 @@ from cryojax.image import operators as op
 distribution = dist.IndependentFourierGaussian(pipeline, variance=op.Constant(1.0))
 # ... then, either simulate an image from this distribution
 key = jax.random.PRNGKey(seed=0)
-image = distribution.sample(key)
+image_with_noise = distribution.sample(key)
 # ... or compute the likelihood
 observed = rfftn(...)  # for this example, read in observed data and take FFT
 log_likelihood = distribution.log_likelihood(observed)
@@ -151,7 +140,7 @@ def update_distribution(distribution, params):
     )
     where = lambda d: (
         d.pipeline.specimen.pose,
-        d.pipeline.integrator.config.pixel_size
+        d.pipeline.config.pixel_size
     )
     updated_distribution = eqx.tree_at(
         where, distribution, (updated_pose, params["pixel_size"])

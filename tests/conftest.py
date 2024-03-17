@@ -1,16 +1,16 @@
 import os
 import pytest
 import numpy as np
+import jax
 import equinox as eqx
 import jax.random as jr
-from jax import config
 
 import cryojax.simulator as cs
 from cryojax.io import read_volume_with_voxel_size_from_mrc
 from cryojax.image import operators as op
 from cryojax.image import rfftn
 
-config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 
 @pytest.fixture
@@ -71,8 +71,8 @@ def config(pixel_size):
 
 
 @pytest.fixture
-def integrator(config):
-    return cs.FourierSliceExtract(config, interpolation_order=1)
+def integrator():
+    return cs.FourierSliceExtract(interpolation_order=1)
 
 
 @pytest.fixture
@@ -117,8 +117,8 @@ def pose():
 
 
 @pytest.fixture
-def specimen(potential, pose):
-    return cs.Specimen(potential, pose)
+def specimen(potential, integrator, pose):
+    return cs.Specimen(potential, integrator, pose)
 
 
 @pytest.fixture
@@ -127,17 +127,15 @@ def solvent():
 
 
 @pytest.fixture
-def noiseless_model(integrator, specimen, instrument):
+def noiseless_model(config, specimen, instrument):
     instrument = eqx.tree_at(lambda ins: ins.detector, instrument, cs.NullDetector())
-    return cs.ImagePipeline(
-        integrator=integrator, specimen=specimen, instrument=instrument
-    )
+    return cs.ImagePipeline(config=config, specimen=specimen, instrument=instrument)
 
 
 @pytest.fixture
-def noisy_model(integrator, specimen, instrument, solvent):
+def noisy_model(config, specimen, instrument, solvent):
     return cs.ImagePipeline(
-        integrator=integrator,
+        config=config,
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
@@ -145,9 +143,9 @@ def noisy_model(integrator, specimen, instrument, solvent):
 
 
 @pytest.fixture
-def filtered_model(integrator, specimen, instrument, solvent, filters):
+def filtered_model(config, specimen, instrument, solvent, filters):
     return cs.ImagePipeline(
-        integrator=integrator,
+        config=config,
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,
@@ -156,11 +154,9 @@ def filtered_model(integrator, specimen, instrument, solvent, filters):
 
 
 @pytest.fixture
-def filtered_and_masked_model(
-    integrator, specimen, instrument, solvent, filters, masks
-):
+def filtered_and_masked_model(config, specimen, instrument, solvent, filters, masks):
     return cs.ImagePipeline(
-        integrator=integrator,
+        config=config,
         specimen=specimen,
         instrument=instrument,
         solvent=solvent,

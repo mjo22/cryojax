@@ -6,13 +6,13 @@ are not sufficient, use jaxtyping directly.
 import jaxtyping as jt
 
 # 0-d array type hints
-Real_ = jt.Float[jt.Array, ""]
+RealNumber = jt.Float[jt.Array, ""]
 """Type hint for a real-valued number."""
 
-Complex_ = jt.Complex[jt.Array, ""]
-"""Type hint for an integer."""
+ComplexNumber = jt.Complex[jt.Array, ""]
+"""Type hint for a complex-valued number."""
 
-Int_ = jt.Int[jt.Array, ""]
+Integer = jt.Int[jt.Array, ""]
 """Type hint for an integer."""
 
 # 1-d array type hints
@@ -67,7 +67,7 @@ VolumeSliceCoords = jt.Float[jt.Array, "N1 N2 1 3"]
 RealCloud = jt.Float[jt.Array, "N"]
 """Type hint for a real-valued point cloud."""
 
-IntCloud = jt.Int[jt.Array, "N"]
+IntegerCloud = jt.Int[jt.Array, "N"]
 """Type hint for an integer-valued point cloud."""
 
 CloudCoords3D = jt.Float[jt.Array, "N 3"]

@@ -7,7 +7,7 @@ import jax.numpy as jnp
 from ._potential_integrator import AbstractPotentialIntegrator
 from .._potential._atom_potential import AtomCloud
 from ...typing import (
-    Real_,
+    RealNumber,
     ComplexImage,
     ImageCoords,
     CloudCoords2D,
@@ -96,7 +96,7 @@ def _eval_Gaussian_kernel(sq_distances, atom_variances) -> ImageCoords:
 # Erik: Happy to change this, I just didn't know abouc cryojax.utils.coordinates could do this:
 # The call to fftfreq mislead me into thinking it only did Fourier-space.
 def _build_pixel_grid(
-    npixels_per_side: int, pixel_size: Real_
+    npixels_per_side: int, pixel_size: RealNumber
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     """
     Calculates the coordinates of each pixel in the image.  The center of the image  is taken to be (0, 0).

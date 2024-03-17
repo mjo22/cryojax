@@ -16,22 +16,22 @@ from ._dose import ElectronDose
 from ._config import ImageConfig
 from ..image.operators import AbstractFourierOperator
 from ..image import irfftn, rfftn
-from ..typing import ComplexImage, RealImage, ImageCoords, Real_
+from ..typing import ComplexImage, RealImage, ImageCoords, RealNumber
 from ..core import error_if_not_fractional
 
 
 class AbstractDQE(AbstractFourierOperator, strict=True):
     r"""Base class for a detector DQE."""
 
-    fraction_detected_electrons: AbstractVar[Real_]
+    fraction_detected_electrons: AbstractVar[RealNumber]
 
     @abstractmethod
     def __call__(
         self,
         frequency_grid_maybe_in_angstroms: ImageCoords,
         *,
-        pixel_size: Optional[Real_] = None,
-    ) -> RealImage | Real_:
+        pixel_size: Optional[RealNumber] = None,
+    ) -> RealImage | RealNumber:
         """**Arguments:**
 
         `frequency_grid_in_nyquist_units`: A frequency grid given in units of nyquist.
@@ -42,7 +42,7 @@ class AbstractDQE(AbstractFourierOperator, strict=True):
 class NullDQE(AbstractDQE, strict=True):
     r"""A model for a null DQE."""
 
-    fraction_detected_electrons: Real_
+    fraction_detected_electrons: RealNumber
 
     def __init__(self):
         self.fraction_detected_electrons = jnp.asarray(1.0)
@@ -52,8 +52,8 @@ class NullDQE(AbstractDQE, strict=True):
         self,
         frequency_grid_maybe_in_angstroms: ImageCoords,
         *,
-        pixel_size: Optional[Real_] = None,
-    ) -> Real_:
+        pixel_size: Optional[RealNumber] = None,
+    ) -> RealNumber:
         return jnp.asarray(1.0)
 
 
@@ -64,7 +64,7 @@ class IdealDQE(AbstractDQE, strict=True):
     for details.
     """
 
-    fraction_detected_electrons: Real_ = field(
+    fraction_detected_electrons: RealNumber = field(
         default=1.0, converter=error_if_not_fractional
     )
 
@@ -73,7 +73,7 @@ class IdealDQE(AbstractDQE, strict=True):
         self,
         frequency_grid_maybe_in_angstroms: ImageCoords,
         *,
-        pixel_size: Optional[Real_] = None,
+        pixel_size: Optional[RealNumber] = None,
     ) -> RealImage:
         if pixel_size is None:
             frequency_grid_in_nyquist_units = frequency_grid_maybe_in_angstroms / 0.5
