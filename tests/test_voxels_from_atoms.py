@@ -41,11 +41,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
         coordinate_grid_in_angstroms,
     )
 
-    np.testing.assert_allclose(
-        fvg_real,
-        vg.real_voxel_grid,
-        atol=1e-12
-    )
+    np.testing.assert_allclose(fvg_real, vg.real_voxel_grid, atol=1e-12)
 
 
 class TestBuildRealSpaceVoxelsFromAtoms:
