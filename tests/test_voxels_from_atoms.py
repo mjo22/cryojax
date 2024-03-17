@@ -33,8 +33,6 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     # Since Voxelgrid is in Frequency space by default, we have to first
     # transform back into real space.
     fvg_real = ifftn(jnp.fft.ifftshift(fourier_potential.fourier_voxel_grid)).real
-    # Ravel the grid
-    fvg_real = fvg_real.ravel()
 
     vg = RealVoxelGridPotential.from_atoms(
         atom_positions,
@@ -46,7 +44,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     np.testing.assert_allclose(
         fvg_real,
         vg.real_voxel_grid,
-        atol=1e-12,
+        atol=1e-12
     )
 
 
