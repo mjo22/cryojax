@@ -362,7 +362,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
             ```python
             real_voxel_grid = ...
             potential = RealVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, ...)
-            assert real_voxel_grid == jnp.transpose(potential.real_voxel_grid, axes=[1, 0, 2])
+            assert real_voxel_grid == jnp.transpose(potential.real_voxel_grid, axes=[2, 0, 1])
             ```
 
         **Arguments:**
@@ -377,7 +377,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
             voxel_size
         )
         # A nasty hack to make NufftProject agree with FourierSliceExtract
-        real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 0, 2])
+        real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 2, 0])
         # Make coordinates if not given
         if coordinate_grid is None:
             # Option for cropping template
@@ -506,7 +506,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
             voxel_size
         )
         # A nasty hack to make NufftProject agree with FourierSliceExtract
-        real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 0, 2])
+        real_voxel_grid = jnp.transpose(real_voxel_grid, axes=[1, 2, 0])
         # Make coordinates if not given
         if coordinate_grid is None:
             coordinate_grid = CoordinateGrid(real_voxel_grid.shape)
