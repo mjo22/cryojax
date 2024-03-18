@@ -1,9 +1,12 @@
 import pytest
 
+import jax
 import numpy as np
 import cryojax.simulator as cs
 from cryojax.image import crop_to_shape
 from cryojax.io import read_volume_with_voxel_size_from_mrc
+
+jax.config.update("jax_enable_x64", False)
 
 
 @pytest.mark.parametrize("shape", [(65, 65), (65, 64), (64, 65)])
@@ -23,6 +26,6 @@ def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     pipeline_test = cs.ImagePipeline(config_test, specimen)
 
     np.testing.assert_allclose(
-        pipeline_control.render(),
         crop_to_shape(pipeline_test.render(), control_shape),
+        pipeline_control.render(),
     )

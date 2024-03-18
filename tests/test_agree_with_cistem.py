@@ -100,9 +100,7 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
     matrix[1, 2] = sin_theta * sin_phi
     matrix[2, 2] = cos_theta
     # Generate rotation that matches this rotation matrix
-    pose = EulerAnglePose(
-        view_phi=phi, view_theta=theta, view_psi=psi, convention="zyz"
-    )
+    pose = EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
     np.testing.assert_allclose(pose.rotation.as_matrix(), matrix.T, atol=1e-12)
 
 
