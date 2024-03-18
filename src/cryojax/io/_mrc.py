@@ -206,6 +206,9 @@ def _read_array_from_mrc(
                 f"Run mrcfile.validate(...) to make sure {filename} is a valid MRC file."
             )
 
+        if not mmap:
+            array = array.astype(np.float64)
+
         if get_spacing:
             # Only allow the same spacing in each direction
             assert all(

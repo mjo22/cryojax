@@ -6,7 +6,7 @@ import cryojax.simulator as cs
 from cryojax.image import crop_to_shape
 from cryojax.io import read_array_with_spacing_from_mrc
 
-jax.config.update("jax_enable_x64", False)
+jax.config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize("shape", [(65, 65), (65, 64), (64, 65)])

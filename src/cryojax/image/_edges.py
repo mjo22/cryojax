@@ -1,5 +1,5 @@
 """
-Routines for dealing with image edges.
+Routines for dealing with image cropping and padding.
 """
 
 import warnings
