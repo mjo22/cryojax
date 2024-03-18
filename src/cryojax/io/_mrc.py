@@ -20,13 +20,12 @@ def read_image_from_mrc(
 
     **Arguments:**
 
-    'filename' : Path to data.
-
-    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
+    - 'filename' : Path to data.
+    - `mmap`: Whether or not to open the data as a `numpy.memmap` array.
 
     **Returns:**
 
-    'image' : The image stored in the Mrcfile.
+    - 'image' : The image stored in the Mrcfile.
     """
     image = _read_array_from_mrc(
         filename,
@@ -53,15 +52,13 @@ def read_image_with_pixel_size_from_mrc(
 
     **Arguments:**
 
-    'filename': Path to data.
-
-    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
+    - 'filename': Path to data.
+    - `mmap`: Whether or not to open the data as a `numpy.memmap` array.
 
     **Returns:**
 
-    'image': The image stored in the Mrcfile.
-
-    'pixel_size': The pixel size of `image`.
+    - 'image': The image stored in the Mrcfile.
+    - 'pixel_size': The pixel size of `image`.
     """
     image, pixel_size = _read_array_from_mrc(
         filename,
@@ -84,13 +81,12 @@ def read_image_stack_from_mrc(
 
     **Arguments:**
 
-    'filename' : Path to data.
-
-    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
+    - 'filename' : Path to data.
+    - `mmap`: Whether or not to open the data as a `numpy.memmap` array.
 
     **Returns:**
 
-    'image_stack' : The image stack stored in the Mrcfile.
+    - 'image_stack' : The image stack stored in the Mrcfile.
     """
     image_stack = _read_array_from_mrc(
         filename,
@@ -117,15 +113,13 @@ def read_image_stack_with_pixel_size_from_mrc(
 
     **Arguments:**
 
-    'filename': Path to data.
-
-    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
+    - 'filename': Path to data.
+    - `mmap`: Whether or not to open the data as a `numpy.memmap` array.
 
     **Returns:**
 
-    'image_stack': The image stored in the Mrcfile.
-
-    'pixel_size': The pixel size of `image_stack`.
+    - 'image_stack': The image stored in the Mrcfile.
+    - 'pixel_size': The pixel size of `image_stack`.
     """
     image_stack, pixel_size = _read_array_from_mrc(
         filename,
@@ -148,13 +142,12 @@ def read_volume_from_mrc(
 
     **Arguments:**
 
-    'filename' : Path to data.
-
-    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
+    - 'filename' : Path to data.
+    - `mmap`: Whether or not to open the data as a `numpy.memmap` array.
 
     **Returns:**
 
-    'volume' : The volume stored in the Mrcfile.
+    - 'volume' : The volume stored in the Mrcfile.
     """
     volume = _read_array_from_mrc(
         filename,
@@ -181,15 +174,13 @@ def read_volume_with_voxel_size_from_mrc(
 
     **Arguments:**
 
-    'filename': Path to data.
-
-    `mmap`: Whether or not to open the data as a `numpy.memmap` array.
+    - 'filename': Path to data.
+    - `mmap`: Whether or not to open the data as a `numpy.memmap` array.
 
     **Returns:**
 
-    'volume': The volume stored in the Mrcfile.
-
-    'voxel_size': The voxel size of `volume`.
+    - 'volume': The volume stored in the Mrcfile.
+    - 'voxel_size': The voxel size of `volume`.
     """
     volume, voxel_size = _read_array_from_mrc(
         filename,
@@ -277,15 +268,11 @@ def write_image_to_mrc(
 
     **Arguments:**
 
-    `image`: The image stack, where the leading dimension indexes the image.
-
-    `pixel_size`: The pixel size of the images in `image_stack`.
-
-    `filename`: The output filename.
-
-    `overwrite`: If `True`, overwrite an existing file.
-
-    `compression`: See `mrcfile.new` for documentation.
+    - `image`: The image stack, where the leading dimension indexes the image.
+    - `pixel_size`: The pixel size of the images in `image_stack`.
+    - `filename`: The output filename.
+    - `overwrite`: If `True`, overwrite an existing file.
+    - `compression`: See `mrcfile.new` for documentation.
     """
     # Validate filename as MRC path and get suffix
     suffix = _validate_filename_and_return_suffix(filename)
@@ -316,15 +303,11 @@ def write_image_stack_to_mrc(
 
     **Arguments:**
 
-    `image_stack`: The image stack, where the leading dimension indexes the image.
-
-    `pixel_size`: The pixel size of the images in `image_stack`.
-
-    `filename`: The output filename.
-
-    `overwrite`: If `True`, overwrite an existing file.
-
-    `compression`: See `mrcfile.new` for documentation.
+    - `image_stack`: The image stack, where the leading dimension indexes the image.
+    - `pixel_size`: The pixel size of the images in `image_stack`.
+    - `filename`: The output filename.
+    - `overwrite`: If `True`, overwrite an existing file.
+    - `compression`: See `mrcfile.new` for documentation.
     """
     # Validate filename as MRC path and get suffix
     suffix = _validate_filename_and_return_suffix(filename)
@@ -356,15 +339,11 @@ def write_volume_to_mrc(
 
     **Arguments:**
 
-    `voxel_grid`: The voxel grid as a JAX array.
-
-    `voxel_size`: The voxel size of the `voxel_grid`.
-
-    `filename`: The output filename.
-
-    `overwrite`: If `True`, overwrite an existing file.
-
-    `compression`: See `mrcfile.new` for documentation.
+    - `voxel_grid`: The voxel grid as a JAX array.
+    - `voxel_size`: The voxel size of the `voxel_grid`.
+    - `filename`: The output filename.
+    - `overwrite`: If `True`, overwrite an existing file.
+    - `compression`: See `mrcfile.new` for documentation.
     """
     # Validate filename as MRC path and get suffix
     suffix = _validate_filename_and_return_suffix(filename)
@@ -398,7 +377,6 @@ def _read_array_from_mrc(
     open = mrcfile.mmap if mmap else mrcfile.open
     with open(filename, mode="r", permissive=permissive) as mrc:
         array = cast(np.ndarray, mrc.data)
-        # Convert to cryojax xyz conventions
         if expected_data_format == "image":
             if suffix != ".mrc":
                 raise IOError(
@@ -473,10 +451,10 @@ def _read_array_from_mrc(
             ), "Mrcfile.voxel_size must be same in all dimensions."
             grid_spacing = grid_spacing_per_dimension[0]
 
-            return array.astype(np.float64), float(grid_spacing)
+            return array, float(grid_spacing)
         else:
             # ... otherwise, just return
-            return array.astype(np.float64)
+            return array
 
 
 def _validate_filename_and_return_suffix(filename: str | Path):

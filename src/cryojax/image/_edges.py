@@ -2,86 +2,158 @@
 Routines for dealing with image edges.
 """
 
+from typing import overload
+
 import jax.numpy as jnp
-from jaxtyping import Shaped
 
 from ..typing import Image, Volume
 
 
+@overload
 def crop_to_shape(
-    image: Shaped[Image, "..."] | Shaped[Volume, "..."],
-    shape: tuple[int, int] | tuple[int, int, int],
-) -> Shaped[Image, "..."] | Shaped[Volume, "..."]:
-    """
-    Crop an image to a new shape.
+    image_or_volume: Image,
+    shape: tuple[int, int],
+) -> Image: ...
 
-    The input image or volume may have leading axes. Only
-    the last axes are padded.
+
+@overload
+def crop_to_shape(
+    image_or_volume: Volume,
+    shape: tuple[int, int, int],
+) -> Volume: ...
+
+
+def crop_to_shape(
+    image_or_volume: Image | Volume,
+    shape: tuple[int, int] | tuple[int, int, int],
+) -> Image | Volume:
+    """Crop an image or volume to a new shape around its
+    center.
     """
+    if image_or_volume.ndim not in [2, 3]:
+        raise ValueError(
+            f"crop_to_shape can only crop images and volumes. Got array shape of {image_or_volume.shape}."
+        )
+    if len(shape) != len(image_or_volume.shape):
+        raise ValueError(
+            "Mismatch between ndim of desired crop shape and "
+            f"array shape. Got a crop shape of {shape} and "
+            f"an array shape of {image_or_volume.shape}."
+        )
     if len(shape) == 2:
-        M1, M2 = image.shape
-        xc, yc = M1 // 2, M2 // 2
-        w, h = shape
+        image = image_or_volume
+        Ny, Nx = image.shape
+        xc, yc = Nx // 2, Ny // 2
+        h, w = shape
         cropped = image[
-            ...,
-            xc - w // 2 : xc + w // 2 + w % 2,
             yc - h // 2 : yc + h // 2 + h % 2,
+            xc - w // 2 : xc + w // 2 + w % 2,
         ]
     elif len(shape) == 3:
-        M1, M2, M3 = image.shape
-        xc, yc, zc = M1 // 2, M2 // 2, M3 // 2
-        w, h, d = shape
-        cropped = image[
-            ...,
-            xc - w // 2 : xc + w // 2 + w % 2,
-            yc - h // 2 : yc + h // 2 + h % 2,
+        volume = image_or_volume
+        Nz, Ny, Nx = volume.shape
+        xc, yc, zc = Nx // 2, Ny // 2, Nz // 2
+        d, h, w = shape
+        cropped = volume[
             zc - d // 2 : zc + d // 2 + d % 2,
+            yc - h // 2 : yc + h // 2 + h % 2,
+            xc - w // 2 : xc + w // 2 + w % 2,
         ]
     else:
-        raise NotImplementedError(f"Cannot crop arrays with ndim={len(shape)}")
+        raise ValueError(
+            f"crop_to_shape can only crop images and volumes. Got desired crop shape of {shape}."
+        )
     return cropped
 
 
+def crop_to_shape_with_center(
+    image: Image,
+    shape: tuple[int, int],
+    center: tuple[int, int],
+) -> Image:
+    """Crop an image to a new shape, given a center."""
+    if image.ndim != 2:
+        raise ValueError(
+            f"crop_to_shape_with_center can only crop images. Got array shape of {image.shape}."
+        )
+    if len(shape) == 2:
+        xc, yc = center
+        h, w = shape
+        x0, y0 = max(xc - w // 2, 0), max(yc - h // 2, 0)
+        xn, yn = min(yc + h // 2 + h % 2, image.shape[1] - 1), min(
+            xc + w // 2 + w % 2, image.shape[0] - 1
+        )
+        cropped = image[y0:yn, x0:xn]
+    else:
+        raise ValueError(
+            f"crop_to_shape_with_center can only crop images. Got desired crop shape of {shape}."
+        )
+    return cropped
+
+
+@overload
 def pad_to_shape(
-    image: Shaped[Image, "..."] | Shaped[Volume, "..."],
+    image_or_volume: Image,
+    shape: tuple[int, int],
+) -> Image: ...
+
+
+@overload
+def pad_to_shape(
+    image_or_volume: Volume,
+    shape: tuple[int, int, int],
+) -> Volume: ...
+
+
+def pad_to_shape(
+    image_or_volume: Image | Volume,
     shape: tuple[int, int] | tuple[int, int, int],
     **kwargs,
-) -> Shaped[Image, "..."] | Shaped[Volume, "..."]:
-    """
-    Pad an image or volume to a new shape.
-
-    The input image or volume may have leading axes. Only
-    the last axes are padded.
-    """
-    n_extra_dims = image.ndim - len(shape)
-    extra_padding = tuple([(0, 0) for _ in range(n_extra_dims)])
+) -> Image | Volume:
+    """Pad an image or volume to a new shape."""
+    if image_or_volume.ndim not in [2, 3]:
+        raise ValueError(
+            "pad_to_shape can only pad images and volumes. Got array shape "
+            f"of {image_or_volume.shape}."
+        )
+    if len(shape) != len(image_or_volume.shape):
+        raise ValueError(
+            "Mismatch between ndim of desired shape and "
+            f"array shape. Got a shape of {shape} after padding and "
+            f"an array shape of {image_or_volume.shape}."
+        )
     if len(shape) == 2:
-        x_pad = shape[0] - image.shape[0]
-        y_pad = shape[1] - image.shape[1]
+        image = image_or_volume
+        y_pad = shape[0] - image.shape[0]
+        x_pad = shape[1] - image.shape[1]
         padding = (
-            (x_pad // 2, x_pad // 2 + x_pad % 2),
             (y_pad // 2, y_pad // 2 + y_pad % 2),
+            (x_pad // 2, x_pad // 2 + x_pad % 2),
         )
     elif len(shape) == 3:
-        x_pad = shape[0] - image.shape[0]
-        y_pad = shape[1] - image.shape[1]
-        z_pad = shape[2] - image.shape[2]
+        volume = image_or_volume
+        z_pad = shape[0] - volume.shape[0]
+        y_pad = shape[1] - volume.shape[1]
+        x_pad = shape[2] - volume.shape[2]
         padding = (
-            (x_pad // 2, x_pad // 2 + x_pad % 2),
-            (y_pad // 2, y_pad // 2 + y_pad % 2),
             (z_pad // 2, z_pad // 2 + z_pad % 2),
+            (y_pad // 2, y_pad // 2 + y_pad % 2),
+            (x_pad // 2, x_pad // 2 + x_pad % 2),
         )
     else:
-        raise NotImplementedError(f"Cannot pad arrays with ndim={len(shape)}")
-    return jnp.pad(image, (*extra_padding, *padding), **kwargs)
+        raise ValueError(
+            f"pad_to_shape can only pad images and volumes. Got desired shape of {shape}."
+        )
+    return jnp.pad(image_or_volume, padding, **kwargs)
 
 
-def resize_with_crop_or_pad(
-    image: Shaped[Image, "..."], shape: tuple[int, int], **kwargs
-) -> Shaped[Image, "..."]:
-    """
-    Resize an image to a new shape using padding and cropping
-    """
+def resize_with_crop_or_pad(image: Image, shape: tuple[int, int], **kwargs) -> Image:
+    """Resize an image to a new shape using padding and cropping."""
+    if image.ndim != 2 or len(shape) != 2:
+        raise ValueError(
+            "resize_with_crop_or_pad can only resize images. Got array shape "
+            f"of {image.shape} and desired shape {shape}."
+        )
     N1, N2 = image.shape
     M1, M2 = shape
     if N1 >= M1 and N2 >= M2:
