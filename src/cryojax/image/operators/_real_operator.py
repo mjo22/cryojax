@@ -11,7 +11,13 @@ from equinox import field
 import jax.numpy as jnp
 
 from ._operator import AbstractImageOperator
-from ...typing import ImageCoords, VolumeCoords, RealImage, RealVolume, RealNumber
+from ...typing import (
+    ImageCoords,
+    VolumeCoords,
+    RealImage,
+    RealVolume,
+    RealNumber,
+)
 from ...core import error_if_not_positive
 
 

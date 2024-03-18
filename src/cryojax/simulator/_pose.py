@@ -19,7 +19,7 @@ from ..typing import (
     RealNumber,
     ComplexImage,
     ImageCoords,
-    CloudCoords3D,
+    PointCloudCoords3D,
     VolumeCoords,
 )
 
@@ -58,17 +58,17 @@ class AbstractPose(Module, strict=True):
 
     @overload
     def rotate_coordinates(
-        self, volume_coordinates: CloudCoords3D, inverse: bool = False
-    ) -> CloudCoords3D: ...
+        self, volume_coordinates: PointCloudCoords3D, inverse: bool = False
+    ) -> PointCloudCoords3D: ...
 
     def rotate_coordinates(
         self,
-        volume_coordinates: VolumeCoords | CloudCoords3D,
+        volume_coordinates: VolumeCoords | PointCloudCoords3D,
         inverse: bool = False,
-    ) -> VolumeCoords | CloudCoords3D:
+    ) -> VolumeCoords | PointCloudCoords3D:
         """Rotate coordinates from a particular convention."""
         rotation = self.rotation.inverse() if inverse else self.rotation
-        if isinstance(volume_coordinates, CloudCoords3D):
+        if isinstance(volume_coordinates, PointCloudCoords3D):
             rotated_volume_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
         elif isinstance(volume_coordinates, VolumeCoords):
             rotated_volume_coordinates = jax.vmap(jax.vmap(jax.vmap(rotation.apply)))(

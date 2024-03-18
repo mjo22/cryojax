@@ -48,7 +48,9 @@ def ifftn(
 
 
 def fftn(
-    ift: Union[Image, Volume], axes: Optional[tuple[int, ...]] = None, **kwargs: Any
+    ift: Union[Image, Volume],
+    axes: Optional[tuple[int, ...]] = None,
+    **kwargs: Any,
 ) -> Union[ComplexImage, ComplexVolume]:
     """
     Helper routine to match the fourier transform of an array
