@@ -5,7 +5,7 @@ import numpy as np
 from pycistem.core import CTF as cisCTF, Image, AnglesAndShifts
 
 import cryojax.simulator as cs
-from cryojax.io import read_volume_with_voxel_size_from_mrc
+from cryojax.io import read_array_with_spacing_from_mrc
 from cryojax.simulator import CTF, EulerAnglePose
 from cryojax.image import powerspectrum, irfftn
 from cryojax.coordinates import make_frequencies, cartesian_to_polar
@@ -116,7 +116,7 @@ def test_compute_projection_with_cistem(
     pixel_size,
 ):
     # cryojax
-    real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
+    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
     potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size
     )

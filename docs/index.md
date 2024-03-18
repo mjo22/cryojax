@@ -38,11 +38,11 @@ First, instantiate the scattering potential representation and its respective me
 import jax
 import jax.numpy as jnp
 import cryojax.simulator as cs
-from cryojax.io import read_volume_with_voxel_size_from_mrc
+from cryojax.io import read_array_with_spacing_from_mrc
 
 # Instantiate the scattering potential.
 filename = "example_scattering_potential.mrc"
-real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(filename)
+real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(filename)
 potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
 integrator = cs.FourierSliceExtract(interpolation_order=1)
