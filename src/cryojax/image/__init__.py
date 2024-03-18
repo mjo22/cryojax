@@ -2,6 +2,7 @@ from . import operators as operators
 from ._average import radial_average as radial_average
 from ._edges import (
     crop_to_shape as crop_to_shape,
+    crop_to_shape_with_center as crop_to_shape_with_center,
     pad_to_shape as pad_to_shape,
     resize_with_crop_or_pad as resize_with_crop_or_pad,
 )
