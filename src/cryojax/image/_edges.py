@@ -3,7 +3,7 @@ Routines for dealing with image cropping and padding.
 """
 
 import warnings
-from typing import overload
+from typing import overload, Any
 
 import jax.numpy as jnp
 
@@ -101,6 +101,7 @@ def crop_to_shape_with_center(
 def pad_to_shape(
     image_or_volume: Image,
     shape: tuple[int, int],
+    **kwargs: Any,
 ) -> Image: ...
 
 
@@ -108,13 +109,14 @@ def pad_to_shape(
 def pad_to_shape(
     image_or_volume: Volume,
     shape: tuple[int, int, int],
+    **kwargs: Any,
 ) -> Volume: ...
 
 
 def pad_to_shape(
     image_or_volume: Image | Volume,
     shape: tuple[int, int] | tuple[int, int, int],
-    **kwargs,
+    **kwargs: Any,
 ) -> Image | Volume:
     """Pad an image or volume to a new shape."""
     if image_or_volume.ndim not in [2, 3]:
