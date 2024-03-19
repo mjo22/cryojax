@@ -35,14 +35,6 @@ class AbstractPose(Module, strict=True):
 
         2. Overwrite the `AbstractPose.rotation` property and
            `AbstractPose.from_rotation` class method.
-
-    **Attributes**:
-
-    - `offset_x_in_angstroms` : In-plane translation in x direction.
-    - `offset_y_in_angstroms` : In-plane translation in y direction.
-    - `offset_z_in_angstroms` : Out-of-plane translation in the z
-                                direction. The translation is measured
-                                relative to the configured defocus.
     """
 
     offset_x_in_angstroms: AbstractVar[RealNumber]
@@ -143,12 +135,6 @@ class EulerAnglePose(AbstractPose, strict=True):
     r"""An `AbstractPose` represented by Euler angles.
     Angles are given in degrees, and the sequence of rotations is
     given by a zyz extrinsic rotations.
-
-    **Attributes:**
-
-    - `view_phi`: Angle to rotate about first rotation axis, which is the z axis.
-    - `view_theta`: Angle to rotate about second rotation axis, which is the y axis.
-    - `view_psi`: Angle to rotate about third rotation axis, which is the z axis.
     """
 
     offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
@@ -186,14 +172,21 @@ class EulerAnglePose(AbstractPose, strict=True):
         return cls(view_phi=view_phi, view_theta=view_theta, view_psi=view_psi)
 
 
+EulerAnglePose.__init__.__doc__ = """**Arguments:**
+
+- `offset_x_in_angstroms` : In-plane translation in x direction.
+- `offset_y_in_angstroms` : In-plane translation in y direction.
+- `offset_z_in_angstroms` : Out-of-plane translation in the z
+                            direction. The translation is measured
+                            relative to the configured defocus.
+- `view_phi`: Angle to rotate about first rotation axis, which is the z axis.
+- `view_theta`: Angle to rotate about second rotation axis, which is the y axis.
+- `view_psi`: Angle to rotate about third rotation axis, which is the z axis.
+"""
+
+
 class QuaternionPose(AbstractPose, strict=True):
-    """
-    An `AbstractPose` represented by unit quaternions.
-
-    **Attributes:**
-
-    - `wxyz`: The unit quaternion.
-    """
+    """An `AbstractPose` represented by unit quaternions."""
 
     offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
     offset_y_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
@@ -215,6 +208,17 @@ class QuaternionPose(AbstractPose, strict=True):
         return cls(wxyz=rotation.wxyz)
 
 
+QuaternionPose.__init__.__doc__ = r"""**Arguments:**
+
+- `offset_x_in_angstroms` : In-plane translation in x direction.
+- `offset_y_in_angstroms` : In-plane translation in y direction.
+- `offset_z_in_angstroms` : Out-of-plane translation in the z
+                            direction. The translation is measured
+                            relative to the configured defocus.
+- `wxyz`: The quaternion, represented as a vector $\mathbf{q} = (q_w, q_x, q_y, q_z)$.
+"""
+
+
 class AxisAnglePose(AbstractPose, strict=True):
     """An `AbstractPose` parameterized in the axis-angle representation.
 
@@ -224,10 +228,6 @@ class AxisAnglePose(AbstractPose, strict=True):
 
     In a `SO3` object, the euler vector is mapped to SO3 group elements using
     the matrix exponential.
-
-    **Attributes:**
-
-    - `euler_vector`: The axis-angle parameterization.
     """
 
     offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
@@ -255,6 +255,18 @@ class AxisAnglePose(AbstractPose, strict=True):
         # Compute the euler vector from the logarithmic map
         euler_vector = jnp.rad2deg(rotation.log())
         return cls(euler_vector=euler_vector)
+
+
+AxisAnglePose.__init__.__doc__ = r"""**Arguments:**
+
+- `offset_x_in_angstroms` : In-plane translation in x direction.
+- `offset_y_in_angstroms` : In-plane translation in y direction.
+- `offset_z_in_angstroms` : Out-of-plane translation in the z
+                            direction. The translation is measured
+                            relative to the configured defocus.
+- `euler_vector`: The axis-angle parameterization, represented as a
+                  vector $\boldsymbol{\omega} = (\omega_x, \omega_y, \omega_z)$.
+"""
 
 
 def _convert_quaternion_to_euler_angles(

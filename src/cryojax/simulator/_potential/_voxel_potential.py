@@ -43,12 +43,7 @@ from ...typing import (
 
 
 class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
-    """Abstract interface for a voxel-based scattering potential representation.
-
-    **Attributes:**
-
-    - `voxel_size`: The voxel size of the scattering potential.
-    """
+    """Abstract interface for a voxel-based scattering potential representation."""
 
     voxel_size: AbstractVar[RealNumber]
     is_real: AbstractClassVar[bool]
@@ -202,15 +197,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
 
 class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
-    """A 3D scattering potential voxel grid in fourier-space.
-
-    **Attributes:**
-
-    - `fourier_voxel_grid`: The cubic voxel grid in fourier space.
-    - `wrapped_frequency_slice`: Frequency slice coordinate system,
-                               wrapped in a `FrequencySlice` object.
-    - `voxel_size`: The voxel size.
-    """
+    """A 3D scattering potential voxel grid in fourier-space."""
 
     fourier_voxel_grid: ComplexCubicVolume
     wrapped_frequency_slice: FrequencySlice
@@ -225,6 +212,13 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
         wrapped_frequency_slice: FrequencySlice,
         voxel_size: RealNumber | float,
     ):
+        """**Arguments:**
+
+        - `fourier_voxel_grid`: The cubic voxel grid in fourier space.
+        - `wrapped_frequency_slice`: Frequency slice coordinate system,
+                                     wrapped in a `FrequencySlice` object.
+        - `voxel_size`: The voxel size.
+        """
         self.fourier_voxel_grid = jnp.asarray(fourier_voxel_grid)
         self.wrapped_frequency_slice = wrapped_frequency_slice
         self.voxel_size = jnp.asarray(voxel_size)
@@ -237,12 +231,6 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
 class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     """A 3D scattering potential voxel grid in fourier-space, represented
     by spline coefficients.
-
-    **Attributes:**
-
-    - `coefficients`: Cubic spline coefficients for the voxel grid.
-    - `wrapped_frequency_slice`: Frequency slice coordinate system.
-    - `voxel_size`: The voxel size.
     """
 
     coefficients: ComplexCubicVolume
@@ -268,6 +256,13 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
             assert hasattr(voxels, "fourier_voxel_grid")  # This will return an error
             assert hasattr(voxels, "coefficients")  # Instead, the spline coefficients are stored
             ```
+
+        **Arguments:**
+
+        - `fourier_voxel_grid`: The cubic voxel grid in fourier space.
+        - `wrapped_frequency_slice`: Frequency slice coordinate system,
+                                     wrapped in a `FrequencySlice` object.
+        - `voxel_size`: The voxel size.
         """
         self.coefficients = compute_spline_coefficients(jnp.asarray(fourier_voxel_grid))
         self.wrapped_frequency_slice = wrapped_frequency_slice
@@ -281,15 +276,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 
 
 class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
-    """Abstraction of a 3D scattering potential voxel grid in real-space.
-
-    **Attributes:**
-
-    - `real_voxel_grid`: The voxel grid in fourier space.
-    - `wrapped_coordinate_grid`: A coordinate grid, wrapped into a
-                               `CoordinateGrid` object.
-    - `voxel_size`: The voxel size.
-    """
+    """Abstraction of a 3D scattering potential voxel grid in real-space."""
 
     real_voxel_grid: RealCubicVolume
     wrapped_coordinate_grid: CoordinateGrid
@@ -303,6 +290,13 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         wrapped_coordinate_grid: CoordinateGrid,
         voxel_size: RealNumber | float,
     ):
+        """**Arguments:**
+
+        - `real_voxel_grid`: The voxel grid in fourier space.
+        - `wrapped_coordinate_grid`: A coordinate grid, wrapped into a
+                                     `CoordinateGrid` object.
+        - `voxel_size`: The voxel size.
+        """
         self.real_voxel_grid = jnp.asarray(real_voxel_grid)
         self.wrapped_coordinate_grid = wrapped_coordinate_grid
         self.voxel_size = jnp.asarray(voxel_size)
@@ -419,13 +413,6 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         only store points of non-zero scattering potential. Therefore,
         a `RealVoxelCloudPotential` stores a point cloud of scattering potential
         voxel values.
-
-    **Attributes:**
-
-    - `voxel_weights`: A point-cloud of voxel scattering potential values.
-    - `wrapped_coordinate_list`: Coordinate list for the `voxel_weights`, wrapped
-                               in a `CoordinateList` object.
-    - `voxel_size`: The voxel size.
     """
 
     voxel_weights: RealPointCloud
@@ -440,6 +427,13 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         wrapped_coordinate_list: CoordinateList,
         voxel_size: RealNumber | float,
     ):
+        """**Arguments:**
+
+        - `voxel_weights`: A point-cloud of voxel scattering potential values.
+        - `wrapped_coordinate_list`: Coordinate list for the `voxel_weights`, wrapped
+                                     in a `CoordinateList` object.
+        - `voxel_size`: The voxel size.
+        """
         self.voxel_weights = jnp.asarray(voxel_weights)
         self.wrapped_coordinate_list = wrapped_coordinate_list
         self.voxel_size = jnp.asarray(voxel_size)

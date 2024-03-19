@@ -29,16 +29,6 @@ from ..core import error_if_negative, error_if_not_positive, error_if_not_fracti
 class CTF(AbstractFourierOperator, strict=True):
     """Compute the Contrast Transfer Function (CTF) in for a weakly
     scattering specimen.
-
-    **Attributes:**
-
-    - `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
-    - `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
-    - `astigmatism_angle`: The defocus angle.
-    - `voltage_in_kilovolts`: The accelerating voltage in kV.
-    - `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
-    - `amplitude_contrast_ratio`: The amplitude contrast ratio.
-    - `phase_shift`: The additional phase shift.
     """
 
     defocus_u_in_angstroms: RealNumber = field(
@@ -89,19 +79,20 @@ class CTF(AbstractFourierOperator, strict=True):
         return jnp.sin(phase_shifts).at[0, 0].set(0.0)
 
 
+CTF.__init__.__doc__ = """**Arguments:**
+
+- `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
+- `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
+- `astigmatism_angle`: The defocus angle.
+- `voltage_in_kilovolts`: The accelerating voltage in kV.
+- `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
+- `amplitude_contrast_ratio`: The amplitude contrast ratio.
+- `phase_shift`: The additional phase shift.
+"""
+
+
 class AbstractOptics(Module, strict=True):
-    """Base class for an optics model.
-
-    **Attributes:**
-
-    `ctf`: The contrast transfer function model.
-
-    `envelope`: The envelope function of the optics model.
-
-    `is_linear`: If `True`, the optics model directly computes
-                 the image contrast from the potential. If `False`,
-                 the optics model computes the wavefunction.
-    """
+    """Base class for an optics model."""
 
     ctf: AbstractVar[CTF]
     envelope: AbstractVar[FourierOperatorLike]
@@ -145,6 +136,16 @@ class NullOptics(AbstractOptics):
         return fourier_potential_in_exit_plane
 
 
+NullOptics.__init__.__doc__ = """**Arguments:**
+
+- `ctf`: The contrast transfer function model.
+- `envelope`: The envelope function of the optics model.
+- `is_linear`: If `True`, the optics model directly computes
+               the image contrast from the potential. If `False`,
+               the optics model computes the wavefunction.
+"""
+
+
 class WeakPhaseOptics(AbstractOptics, strict=True):
     """An optics model in the weak-phase approximation. Here, compute the image
     contrast by applying the CTF directly to the scattering potential.
@@ -180,6 +181,16 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
         fourier_contrast_in_detector_plane = ctf * fourier_potential_in_exit_plane
 
         return fourier_contrast_in_detector_plane
+
+
+WeakPhaseOptics.__init__.__doc__ = """**Arguments:**
+
+- `ctf`: The contrast transfer function model.
+- `envelope`: The envelope function of the optics model.
+- `is_linear`: If `True`, the optics model directly computes
+               the image contrast from the potential. If `False`,
+               the optics model computes the wavefunction.
+"""
 
 
 def _compute_phase_shifts(

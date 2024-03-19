@@ -25,6 +25,7 @@ dependencies = [
     "lineax",
     "mrcfile",
     "starfile",
+    "pandas",
 ]
 
 [project.optional-dependencies]

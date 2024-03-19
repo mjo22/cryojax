@@ -17,3 +17,4 @@ from ._mdtraj import (
     get_atom_info_from_mdtraj as get_atom_info_from_mdtraj,
     mdtraj_load_from_file as mdtraj_load_from_file,
 )
+from ._starfile import read_and_validate_starfile as read_and_validate_starfile

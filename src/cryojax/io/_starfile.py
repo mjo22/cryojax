@@ -3,21 +3,23 @@ Routines for starfile serialization and deserialization.
 """
 
 import starfile
-from pathlib import Path
+import pathlib
+from typing import Any
+from os import PathLike
 
-from ..simulator import ImageConfig, CTF, EulerAnglePose
 
-
-def read_detection_from_starfile(filename: str | Path):
+def read_and_validate_starfile(filename: PathLike, **kwargs: Any):
     """Read a particle detection from a starfile."""
-    filename = Path(filename)
     # Make sure filename is valid starfile
     _validate_filename(filename)
     # Read starfile
-    star = starfile.read(filename)
+    return starfile.read(filename, **kwargs)
 
 
-def _validate_filename(filename: Path):
-    suffixes = filename.suffixes
+def _validate_filename(filename: PathLike):
+    suffixes = pathlib.Path(filename).suffixes
     if not (len(suffixes) == 1 and suffixes[0] == ".star"):
-        raise IOError(f"Filename should include .star suffix. Got filename {filename}.")
+        raise IOError(
+            "Tried to read STAR file, but the filename does not include a .star suffix."
+            f"Got filename {filename}."
+        )
