@@ -4,6 +4,7 @@ import pandas as pd
 import mrcfile
 import dataclasses
 from jaxtyping import Shaped
+from typing import final
 from os import PathLike
 
 from ..io import read_and_validate_starfile
@@ -46,6 +47,7 @@ class RelionDataset(AbstractDataset):
 
     starfile_dataframe: pd.DataFrame
 
+    @final
     def __init__(self, path_to_starfile: PathLike):
         """**Arguments:**
 
@@ -55,8 +57,10 @@ class RelionDataset(AbstractDataset):
             self, "starfile_dataframe", read_and_validate_starfile(path_to_starfile)
         )
 
+    @final
     def __getitem__(self, index) -> RelionParticleStack:
         return RelionParticleStack(None, None, None, None)
 
+    @final
     def __len__(self) -> int:
         return 0

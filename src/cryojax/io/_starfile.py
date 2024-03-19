@@ -20,6 +20,6 @@ def _validate_filename(filename: PathLike):
     suffixes = pathlib.Path(filename).suffixes
     if not (len(suffixes) == 1 and suffixes[0] == ".star"):
         raise IOError(
-            "Tried to read STAR file, but the filename does not include a .star suffix."
-            f"Got filename {filename}."
+            "Tried to read STAR file, but the filename does not include a .star suffix. "
+            f"Got filename '{filename}'."
         )
