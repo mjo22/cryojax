@@ -3,18 +3,21 @@ Helper routines to compute power spectra.
 """
 
 from typing import Optional, overload
+from jaxtyping import Float, Array
 
 import jax.numpy as jnp
 
 from ._average import radial_average
 from ..typing import (
     RealNumber,
-    RealVector,
     RealImage,
     ComplexImage,
     RealVolume,
     ComplexVolume,
 )
+
+
+RealVector = Float[Array, "N"]
 
 
 @overload

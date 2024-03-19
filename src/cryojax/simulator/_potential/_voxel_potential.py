@@ -35,7 +35,7 @@ from ...image import (
 )
 from ...coordinates import CoordinateGrid, CoordinateList, FrequencySlice
 from ...typing import (
-    RealCloud,
+    RealPointCloud,
     RealCubicVolume,
     ComplexCubicVolume,
     RealNumber,
@@ -428,7 +428,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     - `voxel_size`: The voxel size.
     """
 
-    voxel_weights: RealCloud
+    voxel_weights: RealPointCloud
     wrapped_coordinate_list: CoordinateList
     voxel_size: RealNumber = field(converter=error_if_not_positive)
 
@@ -436,7 +436,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
     def __init__(
         self,
-        voxel_weights: RealCloud,
+        voxel_weights: RealPointCloud,
         wrapped_coordinate_list: CoordinateList,
         voxel_size: RealNumber | float,
     ):

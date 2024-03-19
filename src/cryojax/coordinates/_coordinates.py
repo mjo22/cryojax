@@ -12,8 +12,8 @@ import jax.numpy as jnp
 
 from ..typing import (
     Image,
-    CloudCoords3D,
-    CloudCoords2D,
+    PointCloudCoords3D,
+    PointCloudCoords2D,
     ImageCoords,
     VolumeCoords,
     VolumeSliceCoords,
@@ -57,9 +57,9 @@ class CoordinateList(AbstractCoordinates, strict=True):
     A Pytree that wraps a coordinate list.
     """
 
-    array: CloudCoords3D | CloudCoords2D = eqx.field(converter=jnp.asarray)
+    array: PointCloudCoords3D | PointCloudCoords2D = eqx.field(converter=jnp.asarray)
 
-    def __init__(self, coordinate_list: CloudCoords2D | CloudCoords3D):
+    def __init__(self, coordinate_list: PointCloudCoords2D | PointCloudCoords3D):
         self.array = coordinate_list
 
 

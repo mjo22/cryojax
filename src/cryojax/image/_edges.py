@@ -1,7 +1,8 @@
 """
-Routines for dealing with image edges.
+Routines for dealing with image cropping and padding.
 """
 
+import warnings
 from typing import overload
 
 import jax.numpy as jnp
@@ -87,6 +88,11 @@ def crop_to_shape_with_center(
     else:
         raise ValueError(
             f"crop_to_shape_with_center can only crop images. Got desired crop shape of {shape}."
+        )
+    if cropped.shape != shape:
+        warnings.warn(
+            "The cropped shape is not equal to the desired shape in crop_to_shape_with_center. "
+            "Usually, this happens because the crop was near the image edges."
         )
     return cropped
 

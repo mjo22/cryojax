@@ -19,7 +19,7 @@ from ..typing import (
     RealNumber,
     ComplexImage,
     ImageCoords,
-    CloudCoords3D,
+    PointCloudCoords3D,
     VolumeCoords,
 )
 
@@ -56,17 +56,17 @@ class AbstractPose(Module, strict=True):
 
     @overload
     def rotate_coordinates(
-        self, volume_coordinates: CloudCoords3D, inverse: bool = False
-    ) -> CloudCoords3D: ...
+        self, volume_coordinates: PointCloudCoords3D, inverse: bool = False
+    ) -> PointCloudCoords3D: ...
 
     def rotate_coordinates(
         self,
-        volume_coordinates: VolumeCoords | CloudCoords3D,
+        volume_coordinates: VolumeCoords | PointCloudCoords3D,
         inverse: bool = False,
-    ) -> VolumeCoords | CloudCoords3D:
+    ) -> VolumeCoords | PointCloudCoords3D:
         """Rotate coordinates from a particular convention."""
         rotation = self.rotation.inverse() if inverse else self.rotation
-        if isinstance(volume_coordinates, CloudCoords3D):
+        if isinstance(volume_coordinates, PointCloudCoords3D):
             rotated_volume_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
         elif isinstance(volume_coordinates, VolumeCoords):
             rotated_volume_coordinates = jax.vmap(jax.vmap(jax.vmap(rotation.apply)))(
@@ -141,16 +141,14 @@ class AbstractPose(Module, strict=True):
 
 class EulerAnglePose(AbstractPose, strict=True):
     r"""An `AbstractPose` represented by Euler angles.
-    Angles are given in degrees.
+    Angles are given in degrees, and the sequence of rotations is
+    given by a zyz extrinsic rotations.
 
     **Attributes:**
 
-    - `view_phi`:
-        Angle to rotate about first rotation axis.
-    - `view_theta`:
-        Angle to rotate about second rotation axis.
-    - `view_psi`:
-        Angle to rotate about third rotation axis.
+    - `view_phi`: Angle to rotate about first rotation axis, which is the z axis.
+    - `view_theta`: Angle to rotate about second rotation axis, which is the y axis.
+    - `view_psi`: Angle to rotate about third rotation axis, which is the z axis.
     """
 
     offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
@@ -160,25 +158,6 @@ class EulerAnglePose(AbstractPose, strict=True):
     view_phi: RealNumber = field(default=0.0, converter=jnp.asarray)
     view_theta: RealNumber = field(default=0.0, converter=jnp.asarray)
     view_psi: RealNumber = field(default=0.0, converter=jnp.asarray)
-
-    convention: str = field(static=True, default="zyz")
-
-    def __check_init__(self):
-        if len(self.convention) != 3 or not all(
-            [axis in ["x", "y", "z"] for axis in self.convention]
-        ):
-            raise AttributeError(
-                f"`EulerPose.convention` should be a string of three characters, each "
-                f"of which is 'x', 'y', or 'z'. Instead, got '{self.convention}'"
-            )
-        if (
-            self.convention[0] == self.convention[1]
-            or self.convention[1] == self.convention[2]
-        ):
-            raise AttributeError(
-                f"`EulerPose.convention` cannot have axes repeating in a row. For example, "
-                f"'xxy' or 'zzz' are not allowed. Got '{self.convention}'."
-            )
 
     @cached_property
     @override
@@ -190,25 +169,21 @@ class EulerAnglePose(AbstractPose, strict=True):
         theta = jnp.deg2rad(theta)
         psi = jnp.deg2rad(psi)
         # Get sequence of rotations.
-        R1, R2, R3 = [
-            getattr(SO3, f"from_{axis}_radians")(angle)
-            for axis, angle in zip(self.convention, [phi, theta, psi])
-        ]
+        R1, R2, R3 = (
+            SO3.from_z_radians(phi),
+            SO3.from_y_radians(theta),
+            SO3.from_z_radians(psi),
+        )
         return R3 @ R2 @ R1
 
     @override
     @classmethod
-    def from_rotation(cls, rotation: SO3, convention: str = "zyz"):
+    def from_rotation(cls, rotation: SO3):
         view_phi, view_theta, view_psi = _convert_quaternion_to_euler_angles(
             rotation.wxyz,
-            convention,
+            "zyz",
         )
-        return cls(
-            view_phi=view_phi,
-            view_theta=view_theta,
-            view_psi=view_psi,
-            convention=convention,
-        )
+        return cls(view_phi=view_phi, view_theta=view_theta, view_psi=view_psi)
 
 
 class QuaternionPose(AbstractPose, strict=True):
@@ -231,7 +206,7 @@ class QuaternionPose(AbstractPose, strict=True):
     def rotation(self) -> SO3:
         """Generate rotation from the unit quaternion."""
         # Generate SO3 object from unit quaternion
-        R = SO3(wxyz=(self.wxyz / jnp.linalg.norm(self.wxyz)))
+        R = SO3(wxyz=self.wxyz).normalize()
         return R
 
     @override
@@ -282,11 +257,26 @@ class AxisAnglePose(AbstractPose, strict=True):
         return cls(euler_vector=euler_vector)
 
 
-def _convert_quaternion_to_euler_angles(wxyz: jax.Array, convention: str) -> jax.Array:
-    """Convert a quaternion to a sequence of euler angles.
+def _convert_quaternion_to_euler_angles(
+    wxyz: jax.Array, convention: str = "zyz"
+) -> jax.Array:
+    """Convert a quaternion to a sequence of euler angles about an extrinsic
+    coordinate system.
 
     Adapted from https://github.com/chrisflesher/jax-scipy-spatial/.
     """
+    if len(convention) != 3 or not all(
+        [axis in ["x", "y", "z"] for axis in convention]
+    ):
+        raise ValueError(
+            f"`convention` should be a string of three characters, each "
+            f"of which is 'x', 'y', or 'z'. Instead, got '{convention}'"
+        )
+    if convention[0] == convention[1] or convention[1] == convention[2]:
+        raise ValueError(
+            f"`convention` cannot have axes repeating in a row. For example, "
+            f"'xxy' or 'zzz' are not allowed. Got '{convention}'."
+        )
     xyz_axis_to_array_axis = {"x": 0, "y": 1, "z": 2}
     axes = [xyz_axis_to_array_axis[axis] for axis in convention]
     xyzw = jnp.roll(wxyz, shift=-1)

@@ -9,7 +9,12 @@ import jax
 import jax.numpy as jnp
 
 from ._operator import AbstractImageMultiplier
-from ...typing import RealImage, RealVolume, ImageCoords, VolumeCoords
+from ...typing import (
+    RealImage,
+    RealVolume,
+    ImageCoords,
+    VolumeCoords,
+)
 
 
 class AbstractMask(AbstractImageMultiplier, strict=True):

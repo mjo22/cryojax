@@ -6,7 +6,7 @@ import equinox as eqx
 import jax.random as jr
 
 import cryojax.simulator as cs
-from cryojax.io import read_volume_with_voxel_size_from_mrc
+from cryojax.io import read_array_with_spacing_from_mrc
 from cryojax.image import operators as op
 from cryojax.image import rfftn
 
@@ -77,7 +77,7 @@ def integrator():
 
 @pytest.fixture
 def potential(sample_mrc_path):
-    real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(sample_mrc_path)
+    real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
     return cs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size, pad_scale=1.3
     )

@@ -15,7 +15,7 @@ from cryojax.coordinates import (
 )
 import cryojax.simulator as cs
 
-from cryojax.typing import VolumeSliceCoords, VolumeCoords, CloudCoords3D
+from cryojax.typing import VolumeSliceCoords, VolumeCoords, PointCloudCoords3D
 
 
 def test_voxel_electron_potential_loaders():
@@ -40,7 +40,7 @@ def test_voxel_electron_potential_loaders():
     assert isinstance(real_potential.wrapped_coordinate_grid, CoordinateGrid)
     assert isinstance(real_potential.wrapped_coordinate_grid.get(), VolumeCoords)
     assert isinstance(cloud_potential.wrapped_coordinate_list, CoordinateList)
-    assert isinstance(cloud_potential.wrapped_coordinate_list.get(), CloudCoords3D)
+    assert isinstance(cloud_potential.wrapped_coordinate_list.get(), PointCloudCoords3D)
 
 
 def test_electron_potential_vmap(potential, integrator, config):

@@ -13,9 +13,9 @@ from .._potential import RealVoxelCloudPotential, RealVoxelGridPotential
 from ._potential_integrator import AbstractPotentialIntegrator
 from ...typing import (
     ComplexImage,
-    RealCloud,
-    CloudCoords2D,
-    CloudCoords3D,
+    RealPointCloud,
+    PointCloudCoords2D,
+    PointCloudCoords3D,
 )
 
 
@@ -63,8 +63,8 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
 
 
 def project_with_nufft(
-    weights: RealCloud,
-    coordinate_list: Union[CloudCoords2D, CloudCoords3D],
+    weights: RealPointCloud,
+    coordinate_list: Union[PointCloudCoords2D, PointCloudCoords3D],
     shape: tuple[int, int],
     eps: float = 1e-6,
 ) -> ComplexImage:

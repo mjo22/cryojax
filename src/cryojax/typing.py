@@ -1,79 +1,69 @@
 """
-A type hint utility module using jaxtyping. If these public type hints
-are not sufficient, use jaxtyping directly.
+A type hint utility module using jaxtyping. This module is primarily used to
+enforce / communicate conventions across `cryojax`.
 """
 
 import jaxtyping as jt
 
 # 0-d array type hints
 RealNumber = jt.Float[jt.Array, ""]
-"""Type hint for a real-valued number."""
+"""Type alias for `jaxtyping.Float[jax.Array, ""]`."""
 
 ComplexNumber = jt.Complex[jt.Array, ""]
-"""Type hint for a complex-valued number."""
+"""Type alias for `jaxtyping.Complex[jax.Array, ""]`."""
 
 Integer = jt.Int[jt.Array, ""]
-"""Type hint for an integer."""
-
-# 1-d array type hints
-RealVector = jt.Float[jt.Array, "N"]
-"""Type hint for a real-valued vector."""
-
-ComplexVector = jt.Complex[jt.Array, "N"]
-"""Type hint for an complex-valued vector."""
-
-Vector = jt.Inexact[jt.Array, "N"]
-"""Type hint for a vector."""
+"""Type alias for `jaxtyping.Int[jax.Array, ""]`."""
 
 # 2-d array type hints
-RealImage = jt.Float[jt.Array, "N1 N2"]
-"""Type hint for an real-valued image."""
+RealImage = jt.Float[jt.Array, "Ny Nx"]
+"""Type alias for `jaxtyping.Float[jax.Array, "Ny Nx"]`."""
 
-ComplexImage = jt.Complex[jt.Array, "N1 N2"]
-"""Type hint for an complex-valued image."""
+ComplexImage = jt.Complex[jt.Array, "Ny Nx"]
+"""Type alias for `jaxtyping.Complex[jax.Array, "Ny Nx"]`."""
 
-Image = jt.Inexact[jt.Array, "N1 N2"]
-"""Type hint for an image."""
+Image = jt.Inexact[jt.Array, "Ny Nx"]
+"""Type alias for `jaxtyping.Complex[jax.Array, "Ny Nx"]`."""
 
-ImageCoords = jt.Float[jt.Array, "N1 N2 2"]
-"""Type hint for a coordinate system."""
+ImageCoords = jt.Float[jt.Array, "Ny Nx 2"]
+"""Type alias for `jaxtyping.Float[jax.Array, "Ny Nx 2"]`."""
 
 # 3-d array type hints
-RealVolume = jt.Float[jt.Array, "N1 N2 N3"]
-"""Type hint for an real-valued volume."""
+RealVolume = jt.Float[jt.Array, "Nz Ny Nx"]
+"""Type alias for `jaxtyping.Float[jax.Array, "Nz Ny Nx"]`."""
 
-ComplexVolume = jt.Complex[jt.Array, "N1 N2 N3"]
-"""Type hint for an complex-valued volume."""
+ComplexVolume = jt.Complex[jt.Array, "Nz Ny Nx"]
+"""Type alias for `jaxtyping.Complex[jax.Array, "Nz Ny Nx"]`."""
 
-Volume = jt.Inexact[jt.Array, "N1 N2 N3"]
-"""Type hint for an volume."""
+Volume = jt.Inexact[jt.Array, "Nz Ny Nx"]
+"""Type alias for `jaxtyping.Inexact[jax.Array, "Nz Ny Nx"]`."""
 
 RealCubicVolume = jt.Float[jt.Array, "N N N"]
-"""Type hint for a real-valued cubic volume."""
+"""Type alias for `jaxtyping.Float[jax.Array, "N N N"]`."""
 
 ComplexCubicVolume = jt.Complex[jt.Array, "N N N"]
-"""Type hint for a complex-valued cubic volume."""
+"""Type alias for `jaxtyping.Complex[jax.Array, "N N N"]`."""
 
 CubicVolume = jt.Inexact[jt.Array, "N N N"]
-"""Type hint for a cubic volume."""
+"""Type alias for `jaxtyping.Inexact[jax.Array, "N N N"]`."""
 
-VolumeCoords = jt.Float[jt.Array, "N1 N2 N3 3"]
-"""Type hint for a volume coordinate system."""
+VolumeCoords = jt.Float[jt.Array, "Nz Ny Nx 3"]
+"""Type alias for `jaxtyping.Float[jax.Array, "Nz Ny Nx 3"]`."""
 
-VolumeSliceCoords = jt.Float[jt.Array, "1 N1 N2 3"]
-"""Type hint for a volume slice coordinate system."""
+VolumeSliceCoords = jt.Float[jt.Array, "1 Ny Nx 3"]
+"""Type alias for `jaxtyping.Float[jax.Array, "1 Ny Nx 3"]`."""
 
 # Point cloud type hints (non-uniformly spaced points).
-RealCloud = jt.Float[jt.Array, "N"]
-"""Type hint for a real-valued point cloud."""
+RealPointCloud = jt.Float[jt.Array, "N"]
+"""Type alias for `jaxtyping.Float[jax.Array, "N"]`."""
 
-IntegerCloud = jt.Int[jt.Array, "N"]
-"""Type hint for an integer-valued point cloud."""
+IntegerPointCloud = jt.Int[jt.Array, "N"]
+"""Type alias for `jaxtyping.Int[jax.Array, "N"]`."""
 
-CloudCoords3D = jt.Float[jt.Array, "N 3"]
-"""Type hint for a 3D point cloud coordinate system."""
+PointCloudCoords3D = jt.Float[jt.Array, "N 3"]
+"""Type alias for `jaxtyping.Float[jax.Array, "N 3"]`."""
 
-CloudCoords2D = jt.Float[jt.Array, "N 2"]
-"""Type hint for a 2D point cloud coordinate system."""
+PointCloudCoords2D = jt.Float[jt.Array, "N 2"]
+"""Type alias for `jaxtyping.Float[jax.Array, "N 2"]`."""
 
 del jt
