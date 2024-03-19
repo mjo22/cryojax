@@ -39,9 +39,7 @@ class AbstractPose(Module, strict=True):
     **Attributes**:
 
     - `offset_x_in_angstroms` : In-plane translation in x direction.
-
     - `offset_y_in_angstroms` : In-plane translation in y direction.
-
     - `offset_z_in_angstroms` : Out-of-plane translation in the z
                                 direction. The translation is measured
                                 relative to the configured defocus.
@@ -149,17 +147,10 @@ class EulerAnglePose(AbstractPose, strict=True):
 
     - `view_phi`:
         Angle to rotate about first rotation axis.
-
     - `view_theta`:
         Angle to rotate about second rotation axis.
-
     - `view_psi`:
         Angle to rotate about third rotation axis.
-
-    - `convention`:
-        The sequence of axes over which to apply
-        rotation. This is a string of 3 characters
-        of x, y, and z. By default, `'zyz'`.
     """
 
     offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)

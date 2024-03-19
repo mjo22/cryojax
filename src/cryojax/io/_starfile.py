@@ -3,10 +3,9 @@ Routines for starfile serialization and deserialization.
 """
 
 import starfile
-import numpy as np
 from pathlib import Path
 
-from ._mrc import read_array_from_mrc
+from ..simulator import ImageConfig, CTF, EulerAnglePose
 
 
 def read_detection_from_starfile(filename: str | Path):

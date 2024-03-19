@@ -24,10 +24,8 @@ class Instrument(Module, strict=True):
     **Attributes:**
 
     - `optics`: The model for the instrument optics.
-
     - `dose`: The model for the exposure to electrons
               during image formation.
-
     - `detector` : The model of the detector.
     """
 

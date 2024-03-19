@@ -28,40 +28,32 @@ class ImageConfig(Module, strict=True):
 
     **Attributes:**
 
-    `shape`:
+    - `shape`:
         Shape of the imaging plane in pixels.
         ``width, height = shape[0], shape[1]``
         is the size of the desired imaging plane.
-
-    `pixel_size`:
+    - `pixel_size`:
         The pixel size of the image in Angstroms.
-
-    `padded_shape`:
+    - `padded_shape`:
         The shape of the image affter padding. This is
         set with the `pad_scale` variable during initialization.
-
-    `pad_mode`:
+    - `pad_mode`:
         The method of image padding. By default, ``"constant"``.
         For all options, see ``jax.numpy.pad``.
-
-    `rescale_method`:
+    - `rescale_method`:
         The interpolation method for pixel size rescaling. See
         ``jax.image.scale_and_translate`` for options.
-
-    `wrapped_frequency_grid`:
+    - `wrapped_frequency_grid`:
         The fourier wavevectors in the imaging plane, wrapped in
         a `FrequencyGrid` object.
-
-    `wrapped_padded_frequency_grid`:
+    - `wrapped_padded_frequency_grid`:
         The fourier wavevectors in the imaging plane
         in the padded coordinate system, wrapped in
         a `FrequencyGrid` object.
-
-    `wrapped_coordinate_grid`:
+    - `wrapped_coordinate_grid`:
         The coordinates in the imaging plane, wrapped
         in a `CoordinateGrid` object.
-
-    `wrapped_padded_coordinate_grid`:
+    - `wrapped_padded_coordinate_grid`:
         The coordinates in the imaging plane
         in the padded coordinate system, wrapped in a
         `CoordinateGrid` object.

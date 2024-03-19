@@ -64,7 +64,7 @@ class GaussianIce(AbstractIce, strict=True):
 
     **Attributes:**
 
-    `variance` : A function that computes the variance
+    - `variance` : A function that computes the variance
                  of the ice, modeled as colored gaussian noise.
                  The dimensions of this function are a squared
                  phase contrast.

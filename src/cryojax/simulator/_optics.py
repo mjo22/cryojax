@@ -26,19 +26,13 @@ class CTF(AbstractFourierOperator, strict=True):
 
     **Attributes:**
 
-    `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
-
-    `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
-
-    `astigmatism_angle`: The defocus angle.
-
-    `voltage_in_kv`: The accelerating voltage in kV.
-
-    `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
-
-    `amplitude_contrast_ratio`: The amplitude contrast ratio.
-
-    `phase_shift`: The additional phase shift.
+    - `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
+    - `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
+    - `astigmatism_angle`: The defocus angle.
+    - `voltage_in_kilovolts`: The accelerating voltage in kV.
+    - `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
+    - `amplitude_contrast_ratio`: The amplitude contrast ratio.
+    - `phase_shift`: The additional phase shift.
     """
 
     defocus_u_in_angstroms: RealNumber = field(

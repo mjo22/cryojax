@@ -180,15 +180,10 @@ class ImagePipeline(AbstractPipeline, strict=True):
     **Attributes:**
 
     - `config`: The image configuration.
-
     - `specimen`: The abstraction of the biological specimen.
-
     - `instrument`: The abstraction of the electron microscope.
-
     - `solvent: `The solvent around the specimen.
-
     - `filter: `A filter to apply to the image.
-
     - `mask`: A mask to apply to the image.
     """
 
