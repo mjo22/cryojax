@@ -71,32 +71,10 @@ class ImageConfig(Module, strict=True):
     wrapped_coordinate_grid: CoordinateGrid
     wrapped_padded_coordinate_grid: CoordinateGrid
 
-    @overload
     def __init__(
         self,
         shape: tuple[int, int],
-        pixel_size: RealNumber,
-        padded_shape: tuple[int, int],
-        *,
-        pad_mode: Union[str, Callable] = "constant",
-        rescale_method: str = "bicubic",
-    ): ...
-
-    @overload
-    def __init__(
-        self,
-        shape: tuple[int, int],
-        pixel_size: RealNumber,
-        *,
-        pad_scale: float = 1.0,
-        pad_mode: Union[str, Callable] = "constant",
-        rescale_method: str = "bicubic",
-    ): ...
-
-    def __init__(
-        self,
-        shape: tuple[int, int],
-        pixel_size: RealNumber,
+        pixel_size: float | RealNumber,
         padded_shape: Optional[tuple[int, int]] = None,
         *,
         pad_scale: float = 1.0,
@@ -105,12 +83,13 @@ class ImageConfig(Module, strict=True):
     ):
         """**Arguments:**
 
-        `pad_scale`: A scale factor at which to pad the image. This is
-                     optionally used to set `padded_shape` and must be
-                     greater than `1`.
+        - `pad_scale`: A scale factor at which to pad the image. This is
+                       optionally used to set `padded_shape` and must be
+                       greater than `1`. If `padded_shape` is set, this
+                       argument is ignored.
         """
         self.shape = shape
-        self.pixel_size = pixel_size
+        self.pixel_size = jnp.asarray(pixel_size)
         self.pad_mode = pad_mode
         self.rescale_method = rescale_method
         # Set shape after padding
