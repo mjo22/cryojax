@@ -4,19 +4,21 @@ Routines for starfile serialization and deserialization.
 
 import starfile
 import pathlib
-from typing import Any
-from os import PathLike
+import pandas as pd
+from typing import Any, cast
 
 
-def read_and_validate_starfile(filename: PathLike, **kwargs: Any):
+def read_and_validate_starfile(filename: str | pathlib.Path) -> dict[str, pd.DataFrame]:
     """Read a particle detection from a starfile."""
     # Make sure filename is valid starfile
     _validate_filename(filename)
     # Read starfile
-    return starfile.read(filename, **kwargs)
+    return cast(
+        dict[str, pd.DataFrame], starfile.read(pathlib.Path(filename), always_dict=True)
+    )
 
 
-def _validate_filename(filename: PathLike):
+def _validate_filename(filename: str | pathlib.Path):
     suffixes = pathlib.Path(filename).suffixes
     if not (len(suffixes) == 1 and suffixes[0] == ".star"):
         raise IOError(

@@ -75,12 +75,6 @@ class SO3(AbstractMatrixLieGroup, strict=True):
     object.
 
     `jaxlie` was written for [Yi, Brent, et al. 2021](https://ieeexplore.ieee.org/abstract/document/9636300).
-
-    **Attributes:**
-
-    - `wxyz` - A quaternion represented as $(q_w, q_x, q_y, q_z)$.
-             This is the internal parameterization of the
-             rotation.
     """
 
     space_dimension: ClassVar[int] = 3
@@ -342,6 +336,14 @@ class SO3(AbstractMatrixLieGroup, strict=True):
         )
 
 
+SO3.__init__.__doc__ = """**Arguments:**
+
+- `wxyz` - A quaternion represented as $(q_w, q_x, q_y, q_z)$.
+            This is the internal parameterization of the
+            rotation.
+"""
+
+
 class SE3(AbstractMatrixLieGroup, strict=True):
     """Rigid-body transformations in 3D space, represented by the
     SE3 matrix lie group.
@@ -350,12 +352,6 @@ class SE3(AbstractMatrixLieGroup, strict=True):
     object.
 
     `jaxlie` was written for [Yi, Brent, et al. 2021](https://ieeexplore.ieee.org/abstract/document/9636300).
-
-    **Attributes:**
-
-    - `rotation`: An SO3 group element, represented by an `SO3` object.
-
-    - `xyz`: A 3D translation vector.
     """
 
     space_dimension: ClassVar[int] = 3
@@ -502,6 +498,13 @@ class SE3(AbstractMatrixLieGroup, strict=True):
             rotation=SO3.sample_uniform(key0),
             xyz=jax.random.uniform(key=key1, shape=(3,), minval=-1.0, maxval=1.0),
         )
+
+
+SE3.__init__.__doc__ = """**Arguments:**
+
+- `rotation`: An SO3 group element, represented by an `SO3` object.
+- `xyz`: A 3D translation vector.
+"""
 
 
 def _skew(omega: Float[Array, "3"]) -> Float[Array, "3 3"]:

@@ -7,11 +7,10 @@ import pathlib
 import numpy as np
 from jaxtyping import Float, Array
 from typing import Optional, cast
-from os import PathLike
 
 
 def read_array_from_mrc(
-    filename: PathLike,
+    filename: str | pathlib.Path,
     *,
     mmap: bool = False,
     permissive: bool = False,
@@ -35,7 +34,7 @@ def read_array_from_mrc(
 
 
 def read_array_with_spacing_from_mrc(
-    filename: PathLike,
+    filename: str | pathlib.Path,
     *,
     mmap: bool = False,
     permissive: bool = False,
@@ -66,7 +65,7 @@ def read_array_with_spacing_from_mrc(
 def write_image_to_mrc(
     image: Float[Array, "N1 N2"],
     pixel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
-    filename: PathLike,
+    filename: str | pathlib.Path,
     overwrite: bool = False,
     compression: Optional[str] = None,
 ):
@@ -101,7 +100,7 @@ def write_image_to_mrc(
 def write_image_stack_to_mrc(
     image_stack: Float[Array, "M N1 N2"],
     pixel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
-    filename: PathLike,
+    filename: str | pathlib.Path,
     overwrite: bool = False,
     compression: Optional[str] = None,
 ):
@@ -137,7 +136,7 @@ def write_image_stack_to_mrc(
 def write_volume_to_mrc(
     voxel_grid: Float[Array, "N1 N2 N3"],
     voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
-    filename: PathLike,
+    filename: str | pathlib.Path,
     overwrite: bool = False,
     compression: Optional[str] = None,
 ):
@@ -171,7 +170,7 @@ def write_volume_to_mrc(
 
 
 def _read_array_from_mrc(
-    filename: PathLike,
+    filename: str | pathlib.Path,
     get_spacing: bool,
     mmap: bool,
     permissive: bool,
@@ -225,7 +224,7 @@ def _read_array_from_mrc(
             return array
 
 
-def _validate_filename_and_return_suffix(filename: PathLike):
+def _validate_filename_and_return_suffix(filename: str | pathlib.Path):
     # Get suffixes
     suffixes = pathlib.Path(filename).suffixes
     # Make sure that leading suffix is valid MRC suffix

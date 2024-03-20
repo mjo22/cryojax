@@ -4,6 +4,7 @@ Image formation models simulated from gaussian noise distributions.
 
 from typing_extensions import override
 from equinox import field
+from typing import Optional
 
 import numpy as np
 import jax.random as jr
@@ -31,7 +32,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
     def __init__(
         self,
         pipeline: AbstractPipeline,
-        variance: FourierOperatorLike = Constant(1.0),
+        variance: Optional[FourierOperatorLike] = None,
         contrast_scale: float | RealNumber = 1.0,
     ):
         """**Arguments:**
@@ -44,7 +45,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
                             `1.0`.
         """
         self.pipeline = pipeline
-        self.variance = variance
+        self.variance = variance or Constant(1.0)
         self.contrast_scale = jnp.asarray(contrast_scale)
 
     @override
