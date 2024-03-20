@@ -2,7 +2,6 @@
 Image formation models simulated from gaussian noise distributions.
 """
 
-from typing import Optional
 from typing_extensions import override
 from equinox import field
 
@@ -23,15 +22,6 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
 
     This computes the likelihood in Fourier space,
     so that the variance to be an arbitrary noise power spectrum.
-
-    **Attributes:**
-
-    - `pipeline`: The image formation model.
-
-    - `variance`: The variance of each fourier mode.
-
-    - `contrast_scale`: The standard deviation of an image simulated
-                        from `pipeline`, excluding the noise.
     """
 
     pipeline: AbstractPipeline
@@ -41,12 +31,21 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
     def __init__(
         self,
         pipeline: AbstractPipeline,
-        variance: Optional[FourierOperatorLike] = None,
-        contrast_scale: Optional[RealNumber] = None,
+        variance: FourierOperatorLike = Constant(1.0),
+        contrast_scale: float | RealNumber = 1.0,
     ):
+        """**Arguments:**
+
+        - `pipeline`: The image formation model.
+        - `variance`: The variance of each fourier mode. By default,
+                      `cryojax.image.operators.Constant(1.0)`.
+        - `contrast_scale`: The standard deviation of an image simulated
+                            from `pipeline`, excluding the noise. By default,
+                            `1.0`.
+        """
         self.pipeline = pipeline
-        self.variance = variance or Constant(1.0)
-        self.contrast_scale = contrast_scale or jnp.asarray(1.0)
+        self.variance = variance
+        self.contrast_scale = jnp.asarray(contrast_scale)
 
     @override
     def render(self, *, get_real: bool = True) -> Image:
@@ -75,10 +74,9 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
 
         **Arguments:**
 
-        `observed` : The observed data in fourier space. `observed.shape`
-                     must match `ImageConfig.padded_shape`.
+        - `observed` : The observed data in fourier space.
         """
-        N_pix = np.prod(self.pipeline.config.padded_shape)
+        N_pix = np.prod(self.pipeline.config.shape)
         freqs = self.pipeline.config.wrapped_frequency_grid_in_angstroms.get()
         # Compute the variance and scale up to be independent of the number of pixels
         variance = N_pix * self.variance(freqs)

@@ -4,7 +4,7 @@ Transformations used for reparameterizing cryojax models.
 
 from abc import abstractmethod
 from equinox import Module, AbstractVar, field
-from jaxtyping import PyTree, Array, ArrayLike
+from jaxtyping import PyTree, Array
 from typing import Callable, Union, Any, Sequence, Optional
 from typing_extensions import overload
 

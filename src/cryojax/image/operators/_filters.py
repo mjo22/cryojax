@@ -231,7 +231,7 @@ def _compute_whitening_filter(
         to_grid=True,
         interpolation_mode=interpolation_mode,
         k_max=jnp.sqrt(2) / 2.0,
-    )
+    )  # type: ignore
     if shape is not None:
         spectrum = rfftn(
             resize_with_crop_or_pad(

@@ -58,9 +58,9 @@ class AbstractPose(Module, strict=True):
     ) -> VolumeCoords | PointCloudCoords3D:
         """Rotate coordinates from a particular convention."""
         rotation = self.rotation.inverse() if inverse else self.rotation
-        if isinstance(volume_coordinates, PointCloudCoords3D):
+        if isinstance(volume_coordinates, PointCloudCoords3D):  # type: ignore
             rotated_volume_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
-        elif isinstance(volume_coordinates, VolumeCoords):
+        elif isinstance(volume_coordinates, VolumeCoords):  # type: ignore
             rotated_volume_coordinates = jax.vmap(jax.vmap(jax.vmap(rotation.apply)))(
                 volume_coordinates
             )

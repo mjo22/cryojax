@@ -11,7 +11,6 @@ import operator
 from typing import List, Sequence, Tuple
 
 import lineax as lx
-from numpy.typing import DTypeLike
 
 import jax
 from jax import util
@@ -187,7 +186,7 @@ def _linear_indices_and_weights(
 # Spline interpolation utilities
 #
 def _build_operator(
-    n: int, dtype: DTypeLike | None = None, diag_value: float = 4
+    n: int, dtype: jnp.dtype | None = None, diag_value: float = 4.0
 ) -> lx.TridiagonalLinearOperator:
     diagonal = jnp.full((n,), diag_value, dtype=dtype)
     lower_diagonal = jnp.full((n - 1,), 1.0, dtype=dtype)
@@ -227,7 +226,7 @@ def _spline_basis(t: Array) -> Array:
     fn1 = lambda t: (2 - t) ** 3
     fn2 = lambda t: 4 - 6 * t**2 + 3 * t**3
     return jnp.where(
-        at >= 1, jnp.where(at <= 2, fn1(at), 0), jnp.where(at <= 1, fn2(at), 0)
+        at >= 1, jnp.where(at <= 2, fn1(at), 0), jnp.where(at <= 1, fn2(at), 0)  # type: ignore
     )
 
 

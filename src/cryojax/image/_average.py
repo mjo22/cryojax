@@ -42,8 +42,8 @@ def radial_average(
     radial_grid: RealImage,
     bins: RealVector,
     *,
-    to_grid: bool,
-    interpolation_mode: str,
+    to_grid: bool = False,
+    interpolation_mode: str = "nearest",
 ) -> tuple[Vector, Image]: ...
 
 
@@ -53,8 +53,8 @@ def radial_average(
     radial_grid: RealVolume,
     bins: RealVector,
     *,
-    to_grid: bool,
-    interpolation_mode: str,
+    to_grid: bool = False,
+    interpolation_mode: str = "nearest",
 ) -> tuple[Vector, Volume]: ...
 
 
