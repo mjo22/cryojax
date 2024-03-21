@@ -10,7 +10,7 @@ from equinox import Module, field, AbstractVar
 import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
-from jaxtyping import PRNGKeyArray
+from jaxtyping import PRNGKeyArray, Shaped
 
 from ._dose import ElectronDose
 from ._config import ImageConfig
@@ -23,7 +23,7 @@ from ..core import error_if_not_fractional
 class AbstractDQE(AbstractFourierOperator, strict=True):
     r"""Base class for a detector DQE."""
 
-    fraction_detected_electrons: AbstractVar[RealNumber]
+    fraction_detected_electrons: AbstractVar[Shaped[RealNumber, "..."]]
 
     @abstractmethod
     def __call__(
@@ -42,7 +42,7 @@ class AbstractDQE(AbstractFourierOperator, strict=True):
 class NullDQE(AbstractDQE, strict=True):
     r"""A model for a null DQE."""
 
-    fraction_detected_electrons: RealNumber
+    fraction_detected_electrons: Shaped[RealNumber, "..."]
 
     def __init__(self):
         self.fraction_detected_electrons = jnp.asarray(1.0)
@@ -64,7 +64,7 @@ class IdealDQE(AbstractDQE, strict=True):
     for details.
     """
 
-    fraction_detected_electrons: RealNumber = field(
+    fraction_detected_electrons: Shaped[RealNumber, "..."] = field(
         default=1.0, converter=error_if_not_fractional
     )
 

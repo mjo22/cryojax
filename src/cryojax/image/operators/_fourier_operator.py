@@ -10,9 +10,10 @@ These classes are modified from the library ``tinygp``.
 """
 
 from abc import abstractmethod
-from typing import overload, Any
+from typing import overload
 from typing_extensions import override
 from equinox import field
+from jaxtyping import Shaped
 
 import jax.numpy as jnp
 
@@ -69,7 +70,7 @@ class ZeroMode(AbstractFourierOperator, strict=True):
         The value of the zero mode.
     """
 
-    value: RealNumber = field(default=0.0, converter=jnp.asarray)
+    value: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
 
     @override
     def __call__(self, freqs: ImageCoords) -> RealImage:
@@ -107,8 +108,10 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
         in the above equation.
     """
 
-    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
-    length_scale: RealNumber = field(default=1.0, converter=error_if_not_positive)
+    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    length_scale: Shaped[RealNumber, "..."] = field(
+        default=1.0, converter=error_if_not_positive
+    )
 
     @override
     def __call__(self, freqs: ImageCoords) -> RealImage:
@@ -138,8 +141,10 @@ class Lorenzian(AbstractFourierOperator, strict=True):
         in the above equation.
     """
 
-    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
-    length_scale: RealNumber = field(default=1.0, converter=error_if_not_positive)
+    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    length_scale: Shaped[RealNumber, "..."] = field(
+        default=1.0, converter=error_if_not_positive
+    )
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...
@@ -183,8 +188,10 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
         in the above equation.
     """
 
-    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
-    b_factor: RealNumber = field(default=1.0, converter=error_if_not_positive)
+    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    b_factor: Shaped[RealNumber, "..."] = field(
+        default=1.0, converter=error_if_not_positive
+    )
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...

@@ -5,7 +5,7 @@ Base classes for image operators.
 from abc import abstractmethod
 from typing import Any, Callable
 from typing_extensions import override
-from jaxtyping import Array
+from jaxtyping import Array, Shaped
 
 import jax
 import jax.numpy as jnp
@@ -81,7 +81,7 @@ class AbstractImageMultiplier(Module, strict=True):
 class Constant(AbstractImageOperator, strict=True):
     """An operator that is a constant."""
 
-    value: RealNumber = field(default=1.0, converter=jnp.asarray)
+    value: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> RealNumber:
@@ -94,7 +94,7 @@ class Lambda(AbstractImageOperator, strict=True):
     fn: Callable[[Array], Image | Volume] = field(static=True)
 
     @override
-    def __call__(self, *args: Any, **kwargs: Any) -> Image:
+    def __call__(self, *args: Any, **kwargs: Any) -> Image | Volume:
         return self.fn(*args, **kwargs)
 
 
@@ -111,10 +111,12 @@ class Empirical(AbstractImageOperator, strict=True):
         An amplitude scaling for the operator.
     """
 
-    measurement: Image | Volume | RealNumber
+    measurement: (
+        Shaped[Image, "..."] | Shaped[Volume, "..."] | Shaped[RealNumber, "..."]
+    )
 
-    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
-    offset: RealNumber = field(default=0.0, converter=jnp.asarray)
+    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    offset: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Image:

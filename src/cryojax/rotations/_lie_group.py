@@ -82,7 +82,7 @@ class SO3(AbstractMatrixLieGroup, strict=True):
     tangent_dimension: ClassVar[int] = 3
     matrix_dimension: ClassVar[int] = 3
 
-    wxyz: Float[Array, "4"] = field(converter=jnp.asarray)
+    wxyz: Float[Array, "... 4"] = field(converter=jnp.asarray)
 
     @override
     def apply(self, vector: Float[Array, "3"]) -> Float[Array, "3"]:
@@ -360,7 +360,7 @@ class SE3(AbstractMatrixLieGroup, strict=True):
     matrix_dimension: ClassVar[int] = 4
 
     rotation: SO3
-    xyz: Float[Array, "3"]
+    xyz: Float[Array, "... 3"]
 
     @override
     def apply(self, target: Float[Array, "3"]) -> Float[Array, "3"]:

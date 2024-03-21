@@ -17,13 +17,13 @@ class AbstractParticleStack(Module, strict=True):
     image formation model, typically represented with `cryojax` objects.
     """
 
-    image_stack: AbstractVar[Shaped[Image, "batch_dim"]]
+    image_stack: AbstractVar[Shaped[Image, "..."]]
 
 
 class CryojaxParticleStack(AbstractParticleStack, strict=True):
     """The standard particle stack supported by `cryojax`."""
 
-    image_stack: Shaped[Image, "batch_dim"] = field(converter=jnp.asarray)
+    image_stack: Shaped[Image, "..."] = field(converter=jnp.asarray)
     distribution: AbstractDistribution
 
 

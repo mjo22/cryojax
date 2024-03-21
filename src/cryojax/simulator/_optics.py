@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing import ClassVar, Optional
 from typing_extensions import override
 from equinox import AbstractClassVar, AbstractVar, Module, field
+from jaxtyping import Shaped
 
 import jax.numpy as jnp
 
@@ -31,23 +32,25 @@ class CTF(AbstractFourierOperator, strict=True):
     scattering specimen.
     """
 
-    defocus_u_in_angstroms: RealNumber = field(
+    defocus_u_in_angstroms: Shaped[RealNumber, "..."] = field(
         default=10000.0, converter=error_if_not_positive
     )
-    defocus_v_in_angstroms: RealNumber = field(
+    defocus_v_in_angstroms: Shaped[RealNumber, "..."] = field(
         default=10000.0, converter=error_if_not_positive
     )
-    astigmatism_angle: RealNumber = field(default=0.0, converter=jnp.asarray)
-    voltage_in_kilovolts: RealNumber = field(
+    astigmatism_angle: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    voltage_in_kilovolts: Shaped[RealNumber, "..."] = field(
         default=300.0, converter=error_if_not_positive
     )
-    spherical_aberration_in_mm: RealNumber = field(
+    spherical_aberration_in_mm: Shaped[RealNumber, "..."] = field(
         default=2.7, converter=error_if_negative
     )
-    amplitude_contrast_ratio: RealNumber = field(
+    amplitude_contrast_ratio: Shaped[RealNumber, "..."] = field(
         default=0.1, converter=error_if_not_fractional
     )
-    phase_shift: RealNumber = field(default=0.0, converter=jnp.asarray)
+    phase_shift: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
 
     @property
     def wavelength_in_angstroms(self):

@@ -9,7 +9,7 @@ from typing import Optional
 import numpy as np
 import jax.random as jr
 import jax.numpy as jnp
-from jaxtyping import PRNGKeyArray
+from jaxtyping import PRNGKeyArray, Shaped
 
 from ._distribution import AbstractDistribution
 from ...image.operators import FourierOperatorLike, Constant
@@ -27,7 +27,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
 
     pipeline: AbstractPipeline
     variance: FourierOperatorLike
-    contrast_scale: RealNumber = field(converter=error_if_not_positive)
+    contrast_scale: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
 
     def __init__(
         self,

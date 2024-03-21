@@ -12,7 +12,7 @@ from typing import (
     cast,
 )
 from typing_extensions import Self, override
-from jaxtyping import Float, Array, Int
+from jaxtyping import Float, Array, Int, Shaped
 from functools import cached_property
 from equinox import field, AbstractVar, AbstractClassVar
 
@@ -45,7 +45,7 @@ from ...typing import (
 class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     """Abstract interface for a voxel-based scattering potential representation."""
 
-    voxel_size: AbstractVar[RealNumber]
+    voxel_size: AbstractVar[Shaped[RealNumber, "..."]]
     is_real: AbstractClassVar[bool]
 
     @property
@@ -92,9 +92,9 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @abstractmethod
     def __init__(
         self,
-        fourier_voxel_grid: ComplexCubicVolume,
+        fourier_voxel_grid: Shaped[ComplexCubicVolume, "..."],
         wrapped_frequency_slice: FrequencySlice,
-        voxel_size: RealNumber | float,
+        voxel_size: Shaped[RealNumber, "..."] | float,
     ):
         raise NotImplementedError
 
@@ -199,18 +199,18 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
     """A 3D scattering potential voxel grid in fourier-space."""
 
-    fourier_voxel_grid: ComplexCubicVolume
+    fourier_voxel_grid: Shaped[ComplexCubicVolume, "..."]
     wrapped_frequency_slice: FrequencySlice
-    voxel_size: RealNumber = field(converter=error_if_not_positive)
+    voxel_size: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = False
 
     @override
     def __init__(
         self,
-        fourier_voxel_grid: ComplexCubicVolume,
+        fourier_voxel_grid: Shaped[ComplexCubicVolume, "..."],
         wrapped_frequency_slice: FrequencySlice,
-        voxel_size: RealNumber | float,
+        voxel_size: Shaped[RealNumber, "..."] | float,
     ):
         """**Arguments:**
 
@@ -233,17 +233,17 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     by spline coefficients.
     """
 
-    coefficients: ComplexCubicVolume
+    coefficients: Shaped[ComplexCubicVolume, "..."]
     wrapped_frequency_slice: FrequencySlice
-    voxel_size: RealNumber = field(converter=error_if_not_positive)
+    voxel_size: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = False
 
     def __init__(
         self,
-        fourier_voxel_grid: ComplexCubicVolume,
+        fourier_voxel_grid: Shaped[ComplexCubicVolume, "..."],
         wrapped_frequency_slice: FrequencySlice,
-        voxel_size: RealNumber | float,
+        voxel_size: Shaped[RealNumber, "..."] | float,
     ):
         """
         !!! note
@@ -264,7 +264,13 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
                                      wrapped in a `FrequencySlice` object.
         - `voxel_size`: The voxel size.
         """
-        self.coefficients = compute_spline_coefficients(jnp.asarray(fourier_voxel_grid))
+        n_batch_dims = fourier_voxel_grid.ndim - 3
+        compute_spline_coefficients_3d = compute_spline_coefficients
+        for _ in range(n_batch_dims):
+            compute_spline_coefficients_3d = jax.vmap(compute_spline_coefficients_3d)
+        self.coefficients = compute_spline_coefficients_3d(
+            jnp.asarray(fourier_voxel_grid)
+        )
         self.wrapped_frequency_slice = wrapped_frequency_slice
         self.voxel_size = jnp.asarray(voxel_size)
 
@@ -278,17 +284,17 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     """Abstraction of a 3D scattering potential voxel grid in real-space."""
 
-    real_voxel_grid: RealCubicVolume
+    real_voxel_grid: Shaped[RealCubicVolume, "..."]
     wrapped_coordinate_grid: CoordinateGrid
-    voxel_size: RealNumber = field(converter=error_if_not_positive)
+    voxel_size: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = True
 
     def __init__(
         self,
-        real_voxel_grid: RealCubicVolume,
+        real_voxel_grid: Shaped[RealCubicVolume, "..."],
         wrapped_coordinate_grid: CoordinateGrid,
-        voxel_size: RealNumber | float,
+        voxel_size: Shaped[RealNumber, "..."] | float,
     ):
         """**Arguments:**
 
@@ -415,17 +421,17 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         voxel values.
     """
 
-    voxel_weights: RealPointCloud
+    voxel_weights: Shaped[RealPointCloud, "..."]
     wrapped_coordinate_list: CoordinateList
-    voxel_size: RealNumber = field(converter=error_if_not_positive)
+    voxel_size: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = True
 
     def __init__(
         self,
-        voxel_weights: RealPointCloud,
+        voxel_weights: Shaped[RealPointCloud, "..."],
         wrapped_coordinate_list: CoordinateList,
-        voxel_size: RealNumber | float,
+        voxel_size: Shaped[RealNumber, "..."] | float,
     ):
         """**Arguments:**
 

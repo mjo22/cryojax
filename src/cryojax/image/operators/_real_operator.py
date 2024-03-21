@@ -5,7 +5,7 @@ Implementation of operators on images in real-space.
 from abc import abstractmethod
 from typing import overload, Any
 from typing_extensions import override
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Shaped
 from equinox import field
 
 import jax.numpy as jnp
@@ -76,9 +76,11 @@ class Gaussian2D(AbstractRealOperator, strict=True):
         in the above equation.
     """
 
-    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
-    b_factor: RealNumber = field(default=1.0, converter=error_if_not_positive)
-    offset: Float[Array, "2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
+    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    b_factor: Shaped[RealNumber, "..."] = field(
+        default=1.0, converter=error_if_not_positive
+    )
+    offset: Float[Array, "... 2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
 
     @override
     def __call__(self, coords: ImageCoords) -> RealImage:

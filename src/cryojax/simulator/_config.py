@@ -3,9 +3,10 @@ The image configuration and utility manager.
 """
 
 from functools import cached_property
-from typing import Any, Union, Callable, Optional, overload
+from typing import Any, Union, Callable, Optional
 
 from equinox import Module, field
+from jaxtyping import Shaped
 
 import jax
 import jax.numpy as jnp
@@ -60,7 +61,7 @@ class ImageConfig(Module, strict=True):
     """
 
     shape: tuple[int, int] = field(static=True)
-    pixel_size: RealNumber = field(converter=error_if_not_positive)
+    pixel_size: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
 
     padded_shape: tuple[int, int] = field(static=True)
     pad_mode: Union[str, Callable] = field(static=True)
@@ -74,7 +75,7 @@ class ImageConfig(Module, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        pixel_size: float | RealNumber,
+        pixel_size: float | Shaped[RealNumber, "..."],
         padded_shape: Optional[tuple[int, int]] = None,
         *,
         pad_scale: float = 1.0,

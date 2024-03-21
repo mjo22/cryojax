@@ -5,7 +5,7 @@ Representations of rigid body rotations and translations of 3D coordinate system
 from abc import abstractmethod
 from typing import overload, Any
 from typing_extensions import override
-from jaxtyping import Float, Array
+from jaxtyping import Float, Array, Shaped
 from functools import cached_property
 from equinox import field, AbstractVar
 
@@ -37,9 +37,9 @@ class AbstractPose(Module, strict=True):
            `AbstractPose.from_rotation` class method.
     """
 
-    offset_x_in_angstroms: AbstractVar[RealNumber]
-    offset_y_in_angstroms: AbstractVar[RealNumber]
-    offset_z_in_angstroms: AbstractVar[RealNumber]
+    offset_x_in_angstroms: AbstractVar[Shaped[RealNumber, "..."]]
+    offset_y_in_angstroms: AbstractVar[Shaped[RealNumber, "..."]]
+    offset_z_in_angstroms: AbstractVar[Shaped[RealNumber, "..."]]
 
     @overload
     def rotate_coordinates(
@@ -137,13 +137,19 @@ class EulerAnglePose(AbstractPose, strict=True):
     given by a zyz extrinsic rotations.
     """
 
-    offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_y_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_z_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
 
-    view_phi: RealNumber = field(default=0.0, converter=jnp.asarray)
-    view_theta: RealNumber = field(default=0.0, converter=jnp.asarray)
-    view_psi: RealNumber = field(default=0.0, converter=jnp.asarray)
+    view_phi: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
+    view_theta: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
+    view_psi: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
 
     @cached_property
     @override
@@ -188,11 +194,19 @@ EulerAnglePose.__init__.__doc__ = """**Arguments:**
 class QuaternionPose(AbstractPose, strict=True):
     """An `AbstractPose` represented by unit quaternions."""
 
-    offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_y_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_z_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
 
-    wxyz: Float[Array, "4"] = field(default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray)
+    wxyz: Float[Array, "... 4"] = field(
+        default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray
+    )
 
     @cached_property
     @override
@@ -230,11 +244,17 @@ class AxisAnglePose(AbstractPose, strict=True):
     the matrix exponential.
     """
 
-    offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_y_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_z_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
 
-    euler_vector: Float[Array, "3"] = field(
+    euler_vector: Float[Array, "... 3"] = field(
         default=(0.0, 0.0, 0.0), converter=jnp.asarray
     )
 

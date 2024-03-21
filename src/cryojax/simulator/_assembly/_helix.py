@@ -54,8 +54,8 @@ class Helix(AbstractAssembly, strict=True):
     """
 
     subunit: AbstractSpecimen
-    rise: RealNumber
-    twist: RealNumber
+    rise: Shaped[RealNumber, "..."]
+    twist: Shaped[RealNumber, "..."]
 
     pose: AbstractPose
     conformation: Optional[AbstractConformation]
@@ -66,8 +66,8 @@ class Helix(AbstractAssembly, strict=True):
     def __init__(
         self,
         subunit: AbstractSpecimen,
-        rise: RealNumber | float,
-        twist: RealNumber | float,
+        rise: Shaped[RealNumber, "..."] | float,
+        twist: Shaped[RealNumber, "..."] | float,
         pose: Optional[AbstractPose] = None,
         conformation: Optional[AbstractConformation] = None,
         n_start: int = 1,

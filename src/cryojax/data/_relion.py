@@ -4,7 +4,7 @@ import pandas as pd
 import mrcfile
 import dataclasses
 import pathlib
-from jaxtyping import Shaped
+from jaxtyping import Shaped, Float
 from typing import final, Callable, Any
 
 import equinox as eqx
@@ -39,22 +39,20 @@ class RelionParticleStack(AbstractParticleStack):
     [RELION](https://relion.readthedocs.io/en/release-5.0/).
     """
 
-    image_stack: RealImage | Shaped[RealImage, "batch_dim"] = eqx.field(
-        converter=jnp.asarray
-    )
+    image_stack: Shaped[RealImage, "..."]
     config: ImageConfig
     pose: EulerAnglePose
     ctf: CTF
 
     def __init__(
         self,
-        image_stack: RealImage | Shaped[RealImage, "batch_dim"],
+        image_stack: Shaped[RealImage, "..."] | Float[np.ndarray, "... Ny Nx"],
         config: ImageConfig,
         pose: EulerAnglePose,
         ctf: CTF,
     ):
         # Set image stack and config as is
-        self.image_stack = image_stack
+        self.image_stack = jnp.asarray(image_stack)
         self.config = config
         # Set CTF using the defocus offset in the EulerAnglePose
         self.ctf = eqx.tree_at(
@@ -89,9 +87,9 @@ RelionParticleStack.__init__.__doc__ = """**Arguments:**
 
 
 def default_relion_make_config(
-    shape: tuple[int, int], pixel_size: float, **kwargs: Any
+    shape: tuple[int, int], pixel_size: float | Float[np.ndarray, "..."], **kwargs: Any
 ):
-    return ImageConfig(shape, pixel_size, **kwargs)
+    return ImageConfig(shape, jnp.asarray(pixel_size), **kwargs)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -103,7 +101,9 @@ class RelionDataset(AbstractDataset):
     path_to_relion_project: pathlib.Path
     data_blocks: dict[str, pd.DataFrame]
 
-    make_config: Callable[[tuple[int, int], float], ImageConfig]
+    make_config: Callable[
+        [tuple[int, int], float | Float[np.ndarray, "..."]], ImageConfig
+    ]
 
     @final
     def __init__(
@@ -111,7 +111,7 @@ class RelionDataset(AbstractDataset):
         path_to_starfile: str | pathlib.Path,
         path_to_relion_project: str | pathlib.Path,
         make_config: Callable[
-            [tuple[int, int], float], ImageConfig
+            [tuple[int, int], float | Float[np.ndarray, "..."]], ImageConfig
         ] = default_relion_make_config,
     ):
         """**Arguments:**
