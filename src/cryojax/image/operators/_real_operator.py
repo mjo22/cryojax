@@ -58,22 +58,9 @@ class Gaussian2D(AbstractRealOperator, strict=True):
     This operator represents a simple gaussian.
     Specifically, this is
 
-    .. math::
-        g(r) = \frac{\kappa}{2\pi \beta} \exp(- (r - r_0)^2 / (2 \beta)),
+    $$g(r) = \frac{\kappa}{2\pi \beta} \exp(- (r - r_0)^2 / (2 \beta))$$
 
-    where :math:`r^2 = x^2 + y^2`.
-
-    Attributes
-    ----------
-    amplitude :
-        The amplitude of the operator, equal to :math:`\kappa`
-        in the above equation.
-    b_factor :
-        The length scale of the operator, equal to :math:`\beta`
-        in the above equation.
-    offset :
-        An offset to the origin, equal to :math:`r_0`
-        in the above equation.
+    where $r^2 = x^2 + y^2$.
     """
 
     amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
@@ -89,3 +76,14 @@ class Gaussian2D(AbstractRealOperator, strict=True):
             -0.5 * r_sqr / self.b_factor
         )
         return scaling
+
+
+Gaussian2D.__init__.__doc__ = """**Arguments:**
+
+- `amplitude`: The amplitude of the operator, equal to $\\kappa$
+               in the above equation.
+- `b_factor`: The variance of the gaussian, equal to $\\beta$
+              in the above equation.
+- `offset`: An offset to the origin, equal to $r_0$
+            in the above equation.
+"""

@@ -88,6 +88,12 @@ class Constant(AbstractImageOperator, strict=True):
         return self.value
 
 
+Constant.__init__.__doc__ = """**Arguments:**
+
+- `value`: The value of the constant 
+"""
+
+
 class Lambda(AbstractImageOperator, strict=True):
     """An operator that calls a custom function."""
 
@@ -98,30 +104,31 @@ class Lambda(AbstractImageOperator, strict=True):
         return self.fn(*args, **kwargs)
 
 
-class Empirical(AbstractImageOperator, strict=True):
-    r"""
-    This operator stores a measured image, rather than
-    computing one from a model.
+Lambda.__init__.__doc__ = """**Arguments:**
 
-    Attributes
-    ----------
-    measurement :
-        The measured image.
-    amplitude :
-        An amplitude scaling for the operator.
+- `fn`: The `Callable` wrapped into a `AbstractImageOperator`. 
+"""
+
+
+class Empirical(AbstractImageOperator, strict=True):
+    """This operator stores and returns an array, rather than
+    computing one from a model.
     """
 
-    measurement: (
-        Shaped[Image, "..."] | Shaped[Volume, "..."] | Shaped[RealNumber, "..."]
-    )
-
+    array: Shaped[Image, "..."] | Shaped[Volume, "..."] | Shaped[RealNumber, "..."]
     amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
-    offset: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Image:
         """Return the scaled and offset measurement."""
-        return self.amplitude * jax.lax.stop_gradient(self.measurement)
+        return self.amplitude * jax.lax.stop_gradient(self.array)
+
+
+Empirical.__init__.__doc__ = """**Arguments:**
+
+- `array`: The array to be returned upon calling `Empirical`.
+- `amplitude`: An amplitude scaling for `array`.
+"""
 
 
 class ProductImageMultiplier(AbstractImageMultiplier, strict=True):

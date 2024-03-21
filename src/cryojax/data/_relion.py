@@ -277,6 +277,34 @@ class RelionDataset(AbstractDataset):
         return len(self.data_blocks["particles"])
 
 
+@dataclasses.dataclass(frozen=True)
+class HelicalRelionDataset(AbstractDataset):
+    """A wrapped `RelionDataset` to read helical parameters."""
+
+    dataset: RelionDataset
+
+    @final
+    def __init__(
+        self,
+        dataset: RelionDataset,
+    ):
+        """**Arguments:**
+
+        - `dataset`: The wrappped `RelionDataset`. This will be slightly
+                     modified to read helical parameters.
+        """
+        object.__setattr__(self, "dataset", dataset)
+
+    @final
+    def __getitem__(self, index: int | slice) -> RelionParticleStack:
+        dataset = self.dataset[index]
+        return dataset
+
+    @final
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+
 def _validate_relion_data_blocks(data_blocks: dict[str, pd.DataFrame]):
     if "particles" not in data_blocks.keys():
         raise ValueError("Missing key 'particles' in `starfile.read` output.")
