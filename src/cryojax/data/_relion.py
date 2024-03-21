@@ -296,7 +296,9 @@ class HelicalRelionDataset(AbstractDataset):
         object.__setattr__(self, "dataset", dataset)
 
     @final
-    def __getitem__(self, index: int | slice) -> RelionParticleStack:
+    def __getitem__(
+        self, index: int | slice | tuple[int, int] | tuple[slice, slice]
+    ) -> RelionParticleStack:
         dataset = self.dataset[index]
         return dataset
 

@@ -5,6 +5,7 @@ from ._particle_stack import (
 from ._dataset import AbstractDataset as AbstractDataset
 from ._relion import (
     RelionDataset as RelionDataset,
+    HelicalRelionDataset as HelicalRelionDataset,
     RelionParticleStack as RelionParticleStack,
     default_relion_make_config as default_relion_make_config,
 )
