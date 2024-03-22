@@ -120,8 +120,6 @@ log_likelihood = distribution.log_likelihood(observed)
 
 For more advanced image simulation examples and to understand the many features in this library, see the [documentation](https://mjo22.github.io/cryojax/).
 
-```
-
 ## Acknowledgements
 
 - `cryojax` has been greatly informed by the open-source cryo-EM softwares [`cisTEM`](https://github.com/timothygrant80/cisTEM) and [`BioEM`](https://github.com/bio-phys/BioEM).
