@@ -26,7 +26,7 @@ See the documentation at [https://mjo22.github.io/cryojax/](https://mjo22.github
 Installing `cryojax` is simple. To start, I recommend creating a new virtual environment. For example, you could do this with `conda`.
 
 ```bash
-conda create -n cryojax-env -c conda-forge python=3.10
+conda create -n cryojax-env -c conda-forge python=3.11
 ```
 
 Note that `python>=3.10` is required. After creating a new environment, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support. Then, install `cryojax`. For now, only a source build is supported.
