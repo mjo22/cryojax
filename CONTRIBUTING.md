@@ -9,6 +9,10 @@ for this package to grow and be supported by a larger community.
 
 Equinox also provides a recommended pattern for writing `Module`s: https://docs.kidger.site/equinox/pattern/. We think this is a good template for code readability, so `cryojax` tries to adhere to these principles as much as possible.
 
+## Running tests and building the documentation
+
+Both the tests and documentation use files stored remotely with git [LFS](https://git-lfs.com/). You will need to install `git lfs` locally in order to get these files.
+
 ## How to report a bug
 
 Report bugs on the [Issue Tracker](https://github.com/mjo22/cryojax/issues).
