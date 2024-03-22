@@ -1,8 +1,14 @@
 # Welcome to cryoJAX!
 
-`cryojax` is a library for cryo-EM image simulation and analysis. It is built on [`jax`](https://github.com/google/jax).
+cryoJAX is a library that provides tools for simulating and analyzing cryo-electron microscopy (cryo-EM) images. It is built on [`jax`](https://jax.readthedocs.io/en/latest/) 
 
-The core of this package is its ability to model image formation in cryo-EM. The parameters of these models can be estimated for experimental cryo-EM images using standard sampling and optimization libraries in `jax`, such as [`blackjax`](https://github.com/blackjax-devs/blackjax), [`optimistix`](https://github.com/patrick-kidger/optimistix), or [`optax`](https://github.com/google-deepmind/optax). Then, these model parameters can be exported to standard cryo-EM data formats.
+Specifically, cryoJAX aims to provide three things in the cryo-EM image-to-structure pipeline.
+
+1. *Physical modeling of image formation*
+2. *Statistical modeling of the distributions from which images are drawn*
+3. *Easy-to-use utilities for working with real data*
+
+With these tools, `cryojax` aims to appeal to two different communities. It tries to be a tool for experimentalists interface with JAX to push the boundaries of what they can extract from their data. It also aims to be a framework for building a research project for those would like to create novel methods for cryo-EM structure determination. These two aims are possible because `cryojax` is written to be fully interoperable with anything else in the JAX ecosystem.
 
 Dig a little deeper and you'll find that `cryojax` aims to be a fully extensible modeling language for cryo-EM image formation. It implements a collection of abstract interfaces, which aim to be general enough to support any level of modeling complexity—from simple linear image formation to the most realistic physical models in the field. Best of all, these interfaces are all part of the public API. Users can create their own extensions to `cryojax`, tailored to their specific use-case!
 
