@@ -120,59 +120,7 @@ log_likelihood = distribution.log_likelihood(observed)
 
 For more advanced image simulation examples and to understand the many features in this library, see the [documentation](https://mjo22.github.io/cryojax/).
 
-## Creating a loss function
-
-In `jax`, we may want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must update the model.
-
-```python
-
-@jax.jit
-def update_distribution(distribution, params):
-    """
-    Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
-    """
-    updated_pose = cs.EulerAnglePose(
-        offset_x_in_angstroms=params["t_x"],
-        offset_y_in_angstroms=params["t_y"],
-        view_phi=params["phi"],
-        view_theta=params["theta"],
-        view_psi=params["psi"],
-    )
-    where = lambda d: (
-        d.pipeline.specimen.pose,
-        d.pipeline.config.pixel_size
-    )
-    updated_distribution = eqx.tree_at(
-        where, distribution, (updated_pose, params["pixel_size"])
-    )
-    return updated_distribution
 ```
-
-We can now create the loss and differentiate it with respect to the parameters.
-
-```python
-@jax.jit
-def negative_log_likelihood(params, distribution, observed):
-    updated_distribution = update_distribution(distribution, params)
-    return -updated_distribution.log_likelihood(observed)
-```
-
-Finally, we can evaluate the negative log likelihood at an updated set of parameters.
-
-```python
-params = dict(
-    t_x=jnp.asarray(1.2),
-    t_y=jnp.asarray(-2.3),
-    phi=jnp.asarray(180.0),
-    theta=jnp.asarray(30.0),
-    psi=jnp.asarray(-20.0),
-    pixel_size=jnp.asarray(potential.voxel_size+0.02),
-)
-loss_fn = jax.value_and_grad(negative_log_likelihood)
-loss, gradients = loss_fn(params, distribution, observed)
-```
-
-To summarize, this example creates a loss function at an updated set of parameters. In general, any `cryojax` object may contain model parameters and there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
 
 ## Acknowledgements
 
