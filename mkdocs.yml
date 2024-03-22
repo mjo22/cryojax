@@ -57,7 +57,7 @@ nav:
     - Examples:
         - Introductory:
             - Simulate an image: 'examples/simulate-image.ipynb'
-            - Read a Dataset: 'examples/read-dataset.ipynb'
+            - Read a particle stack: 'examples/read-dataset.ipynb'
         - Intermediate:
             - Simulate a batch of images: 'examples/simulate-micrograph.ipynb'
     - Simulator API:
