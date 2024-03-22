@@ -1,6 +1,6 @@
 # Welcome to cryoJAX!
 
-cryoJAX is a library that provides tools for simulating and analyzing cryo-electron microscopy (cryo-EM) images. It is built on [`jax`](https://jax.readthedocs.io/en/latest/) 
+cryoJAX is a library that provides tools for simulating and analyzing cryo-electron microscopy (cryo-EM) images. It is built on [`jax`](https://jax.readthedocs.io/en/latest/).
 
 Specifically, cryoJAX aims to provide three things in the cryo-EM image-to-structure pipeline.
 
@@ -8,7 +8,7 @@ Specifically, cryoJAX aims to provide three things in the cryo-EM image-to-struc
 2. *Statistical modeling of the distributions from which images are drawn*
 3. *Easy-to-use utilities for working with real data*
 
-With these tools, `cryojax` aims to appeal to two different communities. It tries to be a tool for experimentalists interface with JAX to push the boundaries of what they can extract from their data. It also aims to be a framework for building a research project for those would like to create novel methods for cryo-EM structure determination. These two aims are possible because `cryojax` is written to be fully interoperable with anything else in the JAX ecosystem.
+With these tools, `cryojax` aims to appeal to two different communities. It tries to be a tool for experimentalists to interface with JAX to push the boundaries of what they can extract from their data. It also aims to be a framework for building a research project for those would like to create novel methods for cryo-EM structure determination. These two aims are possible because `cryojax` is written to be fully interoperable with anything else in the JAX ecosystem.
 
 Dig a little deeper and you'll find that `cryojax` aims to be a fully extensible modeling language for cryo-EM image formation. It implements a collection of abstract interfaces, which aim to be general enough to support any level of modeling complexity—from simple linear image formation to the most realistic physical models in the field. Best of all, these interfaces are all part of the public API. Users can create their own extensions to `cryojax`, tailored to their specific use-case!
 
