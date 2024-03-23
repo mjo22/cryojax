@@ -31,7 +31,6 @@ jobs:
           pip install mkdocs-pymdownx-material-extras
           pip install mkdocs-autorefs  
           pip install mkdocs-simple-plugin
-          pip install mknotebooks
           pip install mkdocstrings-python
           pip install mkdocs-material
 
