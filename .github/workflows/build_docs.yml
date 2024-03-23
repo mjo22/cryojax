@@ -6,22 +6,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        python-version: [ "3.10" ]
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
+  deploy-book:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
@@ -36,5 +30,14 @@ jobs:
           pip install mkdocstrings-python
           pip install mkdocs-material
 
-      - name: Deploy documentation
-        run: mkdocs gh-deploy
+      # Build the book
+      - name: Build the book
+        run: |
+          mkdocs build
+
+      # Push the site to github-pages
+      - name: GitHub Pages action
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          publish_dir: ./site
+          github_token: ${{ secrets.GITHUB_TOKEN }}
