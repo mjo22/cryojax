@@ -2,18 +2,39 @@ name: Publish to PyPI
 
 on: workflow_dispatch
 
-#on:
-#  release:
-#    types: [published]
-
-jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Release
-        uses: patrick-kidger/action_update_python_project@v3
+      - uses: actions/checkout@v4
         with:
-            python-version: "3.11"
-            pypi-token: ${{ secrets.pypi_token }}
-            github-user: mjo22
-            github-token: ${{ github.token }}  # automatically created token
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        name: Install Python
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          python -m pip install -U build twine
+      - name: Build the distribution
+        run: python -m build .
+      - name: Check the distribution
+        run: python -m twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          path: dist/*
+
+  publish:
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tinygp
+    permissions:
+      id-token: write
+    needs: [tests, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: artifact
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@v1.8.12
