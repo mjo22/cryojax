@@ -10,29 +10,4 @@
          <lastmod>2024-03-23</lastmod>
          <changefreq>daily</changefreq>
     </url>
-    <url>
-         <loc>https://mjo22.github.io/cryojax/examples/read-dataset/</loc>
-         <lastmod>2024-03-23</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://mjo22.github.io/cryojax/examples/simulate-helix/</loc>
-         <lastmod>2024-03-23</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://mjo22.github.io/cryojax/examples/simulate-image/</loc>
-         <lastmod>2024-03-23</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://mjo22.github.io/cryojax/examples/simulate-micrograph/</loc>
-         <lastmod>2024-03-23</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://mjo22.github.io/cryojax/examples/test-multiatom/</loc>
-         <lastmod>2024-03-23</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
 </urlset>
