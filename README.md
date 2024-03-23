@@ -1,7 +1,7 @@
 <h1 align='center'>cryoJAX</h1>
 
 ![Tests](https://github.com/mjo22/cryojax/actions/workflows/testing.yml/badge.svg)
-![Lint](https://github.com/mjo22/cryojax/actions/workflows/black.yml/badge.svg)
+![Lint](https://github.com/mjo22/cryojax/actions/workflows/ruff.yml/badge.svg)
 
 cryoJAX is a library that provides tools for simulating and analyzing cryo-electron microscopy (cryo-EM) images. It is built on [`jax`](https://jax.readthedocs.io/en/latest/).
 
