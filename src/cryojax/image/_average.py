@@ -2,13 +2,23 @@
 Routines to compute radial averages of images.
 """
 
-from typing import overload
 from functools import partial
+from typing import overload
 
 import jax
 import jax.numpy as jnp
+from jaxtyping import Array, Float, Inexact
 
-from ..typing import RealVector, Vector, Image, RealImage, Volume, RealVolume
+from ..typing import (
+    Image,
+    RealImage,
+    RealVolume,
+    Volume,
+)
+
+
+Vector = Inexact[Array, "N"]
+RealVector = Float[Array, "N"]
 
 
 @overload
@@ -33,8 +43,8 @@ def radial_average(
     radial_grid: RealImage,
     bins: RealVector,
     *,
-    to_grid: bool,
-    interpolation_mode: str,
+    to_grid: bool = False,
+    interpolation_mode: str = "nearest",
 ) -> tuple[Vector, Image]: ...
 
 
@@ -44,8 +54,8 @@ def radial_average(
     radial_grid: RealVolume,
     bins: RealVector,
     *,
-    to_grid: bool,
-    interpolation_mode: str,
+    to_grid: bool = False,
+    interpolation_mode: str = "nearest",
 ) -> tuple[Vector, Volume]: ...
 
 

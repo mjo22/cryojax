@@ -2,14 +2,15 @@
 Routines for converting Gemmi structures into voxel densities.
 """
 
-import numpy as np
 import itertools
+
+import numpy as np
 from jaxtyping import Float, Int
 
 
 def get_atom_info_from_gemmi_model(
     model,
-) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, "N"]]:
+) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, " N"]]:
     """
     Gets the atomic positions and element names from a Gemmi model.
 
@@ -93,7 +94,7 @@ def extract_gemmi_atoms(model, chains=None, split_chains=False):
 
 def extract_atom_positions_and_names(
     atoms,
-) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, "N"]]:
+) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, " N"]]:
     """
     Interpret Gemmi atoms and extract a single parameter type.
 

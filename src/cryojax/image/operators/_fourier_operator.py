@@ -1,5 +1,4 @@
-"""
-Implementation of an AbstractFourierOperator. Put simply, these are
+"""Implementation of an AbstractFourierOperator. Put simply, these are
 functions commonly applied to images in fourier space.
 
 Opposed to a AbstractFilter, a AbstractFourierOperator is computed at
@@ -10,23 +9,24 @@ These classes are modified from the library ``tinygp``.
 """
 
 from abc import abstractmethod
-from typing import overload, Any
+from typing import overload
 from typing_extensions import override
-from equinox import field
 
 import jax.numpy as jnp
+from equinox import field
+from jaxtyping import Shaped
 
 from ...core import error_if_not_positive
-from ._operator import AbstractImageOperator
 from ...typing import (
-    RealNumber,
-    ImageCoords,
-    VolumeCoords,
-    RealImage,
-    RealVolume,
     Image,
+    ImageCoords,
+    RealImage,
+    RealNumber,
+    RealVolume,
     Volume,
+    VolumeCoords,
 )
+from ._operator import AbstractImageOperator
 
 
 class AbstractFourierOperator(AbstractImageOperator, strict=True):
@@ -45,14 +45,16 @@ class AbstractFourierOperator(AbstractImageOperator, strict=True):
 
     @overload
     @abstractmethod
-    def __call__(self, freqs: ImageCoords, **kwargs) -> Image: ...
+    def __call__(self, freqs: ImageCoords) -> Image: ...
 
     @overload
     @abstractmethod
-    def __call__(self, freqs: VolumeCoords, **kwargs) -> Volume: ...
+    def __call__(self, freqs: VolumeCoords) -> Volume: ...
 
     @abstractmethod
-    def __call__(self, freqs: ImageCoords | VolumeCoords, **kwargs) -> Image | Volume:
+    def __call__(  # pyright: ignore
+        self, freqs: ImageCoords | VolumeCoords
+    ) -> Image | Volume:
         raise NotImplementedError
 
 
@@ -60,16 +62,9 @@ FourierOperatorLike = AbstractFourierOperator | AbstractImageOperator
 
 
 class ZeroMode(AbstractFourierOperator, strict=True):
-    """
-    This operator returns a constant in the zero mode.
+    """This operator returns a constant in the zero mode."""
 
-    Attributes
-    ----------
-    value :
-        The value of the zero mode.
-    """
-
-    value: RealNumber = field(default=0.0, converter=jnp.asarray)
+    value: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
 
     @override
     def __call__(self, freqs: ImageCoords) -> RealImage:
@@ -77,9 +72,14 @@ class ZeroMode(AbstractFourierOperator, strict=True):
         return jnp.zeros((N1, N2)).at[0, 0].set(self.value)
 
 
+ZeroMode.__init__.__doc__ = """**Arguments:**
+
+- `value`: The value of the zero mode.
+"""
+
+
 class FourierExp2D(AbstractFourierOperator, strict=True):
-    r"""
-    This operator, in real space, represents a
+    r"""This operator, in real space, represents a
     function equal to an exponential decay, given by
 
     .. math::
@@ -96,19 +96,12 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
 
     Here :math:`\kappa` is a scale factor and :math:`\xi` is a length
     scale.
-
-    Attributes
-    ----------
-    amplitude :
-        The amplitude of the operator, equal to :math:`\kappa`
-        in the above equation.
-    length_scale :
-        The length scale of the operator, equal to :math:`\xi`
-        in the above equation.
     """
 
-    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
-    length_scale: RealNumber = field(default=1.0, converter=error_if_not_positive)
+    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    length_scale: Shaped[RealNumber, "..."] = field(
+        default=1.0, converter=error_if_not_positive
+    )
 
     @override
     def __call__(self, freqs: ImageCoords) -> RealImage:
@@ -118,28 +111,29 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
         return scaling
 
 
+FourierExp2D.__init__.__doc__ = """**Arguments:**
+
+- `amplitude`: The amplitude of the operator, equal to $\\kappa$
+           in the above equation.
+- `length_scale`: The length scale of the operator, equal to $\\xi$
+              in the above equation.
+"""
+
+
 class Lorenzian(AbstractFourierOperator, strict=True):
-    r"""
-    This operator is the Lorenzian, given
+    r"""This operator is the Lorenzian, given
 
     .. math::
         P(|k|) = \frac{\kappa}{\xi^2} \frac{1}{(\xi^{-2} + |k|^2)}.
 
     Here :math:`\kappa` is a scale factor and :math:`\xi` is a length
     scale.
-
-    Attributes
-    ----------
-    amplitude :
-        The amplitude of the operator, equal to :math:`\kappa`
-        in the above equation.
-    length_scale :
-        The length scale of the operator, equal to :math:`\xi`
-        in the above equation.
     """
 
-    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
-    length_scale: RealNumber = field(default=1.0, converter=error_if_not_positive)
+    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    length_scale: Shaped[RealNumber, "..."] = field(
+        default=1.0, converter=error_if_not_positive
+    )
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...
@@ -155,9 +149,17 @@ class Lorenzian(AbstractFourierOperator, strict=True):
         return scaling
 
 
+Lorenzian.__init__.__doc__ = """**Arguments:**
+
+- `amplitude`: The amplitude of the operator, equal to $\\kappa$
+           in the above equation.
+- `length_scale`: The length scale of the operator, equal to $\\xi$
+              in the above equation.
+"""
+
+
 class FourierGaussian(AbstractFourierOperator, strict=True):
-    r"""
-    This operator represents a simple gaussian.
+    r"""This operator represents a simple gaussian.
     Specifically, this is
 
     .. math::
@@ -172,19 +174,12 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
         g(r) = \frac{\kappa}{2\pi \beta} \exp(- r^2 / (2 \beta)),
 
     where :math:`r^2 = x^2 + y^2`.
-
-    Attributes
-    ----------
-    amplitude :
-        The amplitude of the operator, equal to :math:`\kappa`
-        in the above equation.
-    b_factor :
-        The length scale of the operator, equal to :math:`\beta`
-        in the above equation.
     """
 
-    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
-    b_factor: RealNumber = field(default=1.0, converter=error_if_not_positive)
+    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    b_factor: Shaped[RealNumber, "..."] = field(
+        default=1.0, converter=error_if_not_positive
+    )
 
     @overload
     def __call__(self, freqs: ImageCoords) -> RealImage: ...
@@ -197,3 +192,12 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
         k_sqr = jnp.sum(freqs**2, axis=-1)
         scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
         return scaling
+
+
+FourierGaussian.__init__.__doc__ = """**Arguments:**
+
+- `amplitude`: The amplitude of the operator, equal to $\\kappa$
+           in the above equation.
+- `b_factor`: The variance of the real-space gaussian, equal to $\\beta$
+              in the above equation.
+"""

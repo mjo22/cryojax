@@ -9,6 +9,7 @@ theme:
 site_name: cryoJAX
 site_description: The documentation for cryoJAX.
 site_author: Michael O'Brien
+site_url: https://mjo22.github.io/cryojax/
 
 repo_url: https://github.com/mjo22/cryojax
 repo_name: mjo22/cryojax
@@ -48,7 +49,7 @@ plugins:
               show_if_no_docstring: true
               show_signature_annotations: true
               signature_crossrefs: true
-              show_source: true
+              show_source: false
               members_order: source
               heading_level: 4
         
@@ -57,6 +58,7 @@ nav:
     - Examples:
         - Introductory:
             - Simulate an image: 'examples/simulate-image.ipynb'
+            - Read a particle stack: 'examples/read-dataset.ipynb'
         - Intermediate:
             - Simulate a batch of images: 'examples/simulate-micrograph.ipynb'
     - Simulator API:

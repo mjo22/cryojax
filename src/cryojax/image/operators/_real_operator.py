@@ -3,16 +3,22 @@ Implementation of operators on images in real-space.
 """
 
 from abc import abstractmethod
-from typing import overload, Any
+from typing import overload
 from typing_extensions import override
-from jaxtyping import Array, Float
-from equinox import field
 
 import jax.numpy as jnp
+from equinox import field
+from jaxtyping import Array, Float, Shaped
 
-from ._operator import AbstractImageOperator
-from ...typing import ImageCoords, VolumeCoords, RealImage, RealVolume, RealNumber
 from ...core import error_if_not_positive
+from ...typing import (
+    ImageCoords,
+    RealImage,
+    RealNumber,
+    RealVolume,
+    VolumeCoords,
+)
+from ._operator import AbstractImageOperator
 
 
 class AbstractRealOperator(AbstractImageOperator, strict=True):
@@ -31,15 +37,15 @@ class AbstractRealOperator(AbstractImageOperator, strict=True):
 
     @overload
     @abstractmethod
-    def __call__(self, coords: ImageCoords, **kwargs: Any) -> RealImage: ...
+    def __call__(self, coords: ImageCoords) -> RealImage: ...
 
     @overload
     @abstractmethod
-    def __call__(self, coords: VolumeCoords, **kwargs: Any) -> RealVolume: ...
+    def __call__(self, coords: VolumeCoords) -> RealVolume: ...
 
     @abstractmethod
-    def __call__(
-        self, coords: ImageCoords | VolumeCoords, **kwargs: Any
+    def __call__(  # pyright: ignore
+        self, coords: ImageCoords | VolumeCoords
     ) -> RealImage | RealVolume:
         raise NotImplementedError
 
@@ -52,27 +58,16 @@ class Gaussian2D(AbstractRealOperator, strict=True):
     This operator represents a simple gaussian.
     Specifically, this is
 
-    .. math::
-        g(r) = \frac{\kappa}{2\pi \beta} \exp(- (r - r_0)^2 / (2 \beta)),
+    $$g(r) = \frac{\kappa}{2\pi \beta} \exp(- (r - r_0)^2 / (2 \beta))$$
 
-    where :math:`r^2 = x^2 + y^2`.
-
-    Attributes
-    ----------
-    amplitude :
-        The amplitude of the operator, equal to :math:`\kappa`
-        in the above equation.
-    b_factor :
-        The length scale of the operator, equal to :math:`\beta`
-        in the above equation.
-    offset :
-        An offset to the origin, equal to :math:`r_0`
-        in the above equation.
+    where $r^2 = x^2 + y^2$.
     """
 
-    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
-    b_factor: RealNumber = field(default=1.0, converter=error_if_not_positive)
-    offset: Float[Array, "2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
+    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    b_factor: Shaped[RealNumber, "..."] = field(
+        default=1.0, converter=error_if_not_positive
+    )
+    offset: Float[Array, "... 2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
 
     @override
     def __call__(self, coords: ImageCoords) -> RealImage:
@@ -81,3 +76,14 @@ class Gaussian2D(AbstractRealOperator, strict=True):
             -0.5 * r_sqr / self.b_factor
         )
         return scaling
+
+
+Gaussian2D.__init__.__doc__ = """**Arguments:**
+
+- `amplitude`: The amplitude of the operator, equal to $\\kappa$
+               in the above equation.
+- `b_factor`: The variance of the gaussian, equal to $\\beta$
+              in the above equation.
+- `offset`: An offset to the origin, equal to $r_0$
+            in the above equation.
+"""

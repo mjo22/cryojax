@@ -3,12 +3,11 @@ Base class for a cryojax distribution.
 """
 
 from abc import abstractmethod
-from typing import Any
 
+from equinox import AbstractVar, Module
 from jaxtyping import PRNGKeyArray
-from equinox import Module, AbstractVar
 
-from ...typing import RealNumber, Image
+from ...typing import Image, RealNumber
 
 
 class AbstractDistribution(Module, strict=True):

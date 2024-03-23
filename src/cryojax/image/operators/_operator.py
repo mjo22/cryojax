@@ -5,13 +5,13 @@ Base classes for image operators.
 from abc import abstractmethod
 from typing import Any, Callable
 from typing_extensions import override
-from jaxtyping import Array
 
 import jax
 import jax.numpy as jnp
-from equinox import Module, Partial, field, AbstractVar
+from equinox import AbstractVar, field, Module, Partial
+from jaxtyping import Array, Shaped
 
-from ...typing import Image, Volume, RealNumber
+from ...typing import Image, RealNumber, Volume
 
 
 class AbstractImageOperator(Module, strict=True):
@@ -81,11 +81,17 @@ class AbstractImageMultiplier(Module, strict=True):
 class Constant(AbstractImageOperator, strict=True):
     """An operator that is a constant."""
 
-    value: RealNumber = field(default=1.0, converter=jnp.asarray)
+    value: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> RealNumber:
         return self.value
+
+
+Constant.__init__.__doc__ = """**Arguments:**
+
+- `value`: The value of the constant
+"""
 
 
 class Lambda(AbstractImageOperator, strict=True):
@@ -94,32 +100,35 @@ class Lambda(AbstractImageOperator, strict=True):
     fn: Callable[[Array], Image | Volume] = field(static=True)
 
     @override
-    def __call__(self, *args: Any, **kwargs: Any) -> Image:
+    def __call__(self, *args: Any, **kwargs: Any) -> Image | Volume:
         return self.fn(*args, **kwargs)
 
 
-class Empirical(AbstractImageOperator, strict=True):
-    r"""
-    This operator stores a measured image, rather than
-    computing one from a model.
+Lambda.__init__.__doc__ = """**Arguments:**
 
-    Attributes
-    ----------
-    measurement :
-        The measured image.
-    amplitude :
-        An amplitude scaling for the operator.
+- `fn`: The `Callable` wrapped into a `AbstractImageOperator`.
+"""
+
+
+class Empirical(AbstractImageOperator, strict=True):
+    """This operator stores and returns an array, rather than
+    computing one from a model.
     """
 
-    measurement: Image | Volume | RealNumber
-
-    amplitude: RealNumber = field(default=1.0, converter=jnp.asarray)
-    offset: RealNumber = field(default=0.0, converter=jnp.asarray)
+    array: Shaped[Image, "..."] | Shaped[Volume, "..."] | Shaped[RealNumber, "..."]
+    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Image:
         """Return the scaled and offset measurement."""
-        return self.amplitude * jax.lax.stop_gradient(self.measurement)
+        return self.amplitude * jax.lax.stop_gradient(self.array)
+
+
+Empirical.__init__.__doc__ = """**Arguments:**
+
+- `array`: The array to be returned upon calling `Empirical`.
+- `amplitude`: An amplitude scaling for `array`.
+"""
 
 
 class ProductImageMultiplier(AbstractImageMultiplier, strict=True):

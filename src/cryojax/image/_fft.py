@@ -2,16 +2,16 @@
 Routines to compute FFTs, in cryojax conventions.
 """
 
-from typing import Any, Union, Optional
+from typing import Any, Optional, Union
 
 import jax.numpy as jnp
 
 from ..typing import (
-    RealImage,
-    RealVolume,
     ComplexImage,
     ComplexVolume,
     Image,
+    RealImage,
+    RealVolume,
     Volume,
 )
 
@@ -48,7 +48,9 @@ def ifftn(
 
 
 def fftn(
-    ift: Union[Image, Volume], axes: Optional[tuple[int, ...]] = None, **kwargs: Any
+    ift: Union[Image, Volume],
+    axes: Optional[tuple[int, ...]] = None,
+    **kwargs: Any,
 ) -> Union[ComplexImage, ComplexVolume]:
     """
     Helper routine to match the fourier transform of an array

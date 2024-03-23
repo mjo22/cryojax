@@ -2,8 +2,6 @@
 Routines for rescaling image pixel size.
 """
 
-from typing import Any
-
 import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate

@@ -2,20 +2,21 @@
 Coordinate functionality in cryojax.
 """
 
-from jaxtyping import ArrayLike, Array, Float
-from typing import Optional, Any
+from abc import abstractmethod
+from typing import Any, Optional
 from typing_extensions import Self
-from equinox import AbstractVar
 
 import equinox as eqx
-import jax.tree_util as jtu
+import jax
 import jax.numpy as jnp
+from equinox import AbstractVar
+from jaxtyping import Array, ArrayLike, Float
 
 from ..typing import (
     Image,
-    CloudCoords3D,
-    CloudCoords2D,
     ImageCoords,
+    PointCloudCoords2D,
+    PointCloudCoords3D,
     VolumeCoords,
     VolumeSliceCoords,
 )
@@ -28,9 +29,10 @@ class AbstractCoordinates(eqx.Module, strict=True):
 
     array: AbstractVar[Any]
 
-    def get(self):
+    @abstractmethod
+    def get(self) -> Any:
         """Get the coordinates."""
-        return self.array
+        raise NotImplementedError
 
     def __mul__(self, arr: ArrayLike) -> Self:
         # The following line seems to be required for differentiability with
@@ -58,10 +60,13 @@ class CoordinateList(AbstractCoordinates, strict=True):
     A Pytree that wraps a coordinate list.
     """
 
-    array: CloudCoords3D | CloudCoords2D = eqx.field(converter=jnp.asarray)
+    array: PointCloudCoords3D | PointCloudCoords2D = eqx.field(converter=jnp.asarray)
 
-    def __init__(self, coordinate_list: CloudCoords2D | CloudCoords3D):
+    def __init__(self, coordinate_list: PointCloudCoords2D | PointCloudCoords3D):
         self.array = coordinate_list
+
+    def get(self) -> PointCloudCoords3D | PointCloudCoords2D:
+        return self.array
 
 
 class CoordinateGrid(AbstractCoordinates, strict=True):
@@ -73,10 +78,13 @@ class CoordinateGrid(AbstractCoordinates, strict=True):
 
     def __init__(
         self,
-        shape: tuple[int, int] | tuple[int, int, int],
+        shape: tuple[int, ...],
         grid_spacing: float | ArrayLike = 1.0,
     ):
         self.array = make_coordinates(shape, grid_spacing)
+
+    def get(self) -> ImageCoords | VolumeCoords:
+        return jax.lax.stop_gradient(self.array)
 
 
 class FrequencyGrid(AbstractCoordinates, strict=True):
@@ -88,11 +96,14 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
 
     def __init__(
         self,
-        shape: tuple[int, int] | tuple[int, int, int],
+        shape: tuple[int, ...],
         grid_spacing: float | ArrayLike = 1.0,
         half_space: bool = True,
     ):
         self.array = make_frequencies(shape, grid_spacing, half_space=half_space)
+
+    def get(self) -> ImageCoords | VolumeCoords:
+        return jax.lax.stop_gradient(self.array)
 
 
 class FrequencySlice(AbstractCoordinates, strict=True):
@@ -123,9 +134,12 @@ class FrequencySlice(AbstractCoordinates, strict=True):
                 mode="constant",
                 constant_values=0.0,
             ),
-            axis=2,
+            axis=0,
         )
         self.array = frequency_slice
+
+    def get(self) -> VolumeSliceCoords:
+        return jax.lax.stop_gradient(self.array)
 
 
 def make_coordinates(
@@ -148,7 +162,7 @@ def make_coordinates(
         Cartesian coordinate system in real space.
     """
     coordinate_grid = _make_coordinates_or_frequencies(
-        shape, grid_spacing=grid_spacing, real_space=True, indexing="xy"
+        shape, grid_spacing=grid_spacing, real_space=True
     )
     return coordinate_grid
 
@@ -184,7 +198,6 @@ def make_frequencies(
         grid_spacing=grid_spacing,
         real_space=False,
         half_space=half_space,
-        indexing="xy",
     )
     return frequency_grid
 
@@ -216,10 +229,8 @@ def _make_coordinates_or_frequencies(
     grid_spacing: float | ArrayLike = 1.0,
     real_space: bool = False,
     half_space: bool = True,
-    indexing: str = "xy",
 ) -> Float[Array, "*shape len(shape)"]:
     ndim = len(shape)
-    shape = (*shape[:2][::-1], *shape[2:]) if indexing == "xy" else shape
     coords1D = []
     for idx in range(ndim):
         if real_space:
@@ -230,15 +241,27 @@ def _make_coordinates_or_frequencies(
             if not half_space:
                 rfftfreq = False
             else:
-                if indexing == "xy" and ndim == 2:
-                    rfftfreq = True if idx == 0 else False
-                else:
-                    rfftfreq = False if idx < ndim - 1 else True
+                rfftfreq = False if idx < ndim - 1 else True
             c1D = _make_coordinates_or_frequencies_1d(
                 shape[idx], grid_spacing, real_space, rfftfreq
             )
         coords1D.append(c1D)
-    coords = jnp.stack(jnp.meshgrid(*coords1D, indexing=indexing), axis=-1)
+    if ndim == 2:
+        y, x = coords1D
+        xv, yv = jnp.meshgrid(x, y, indexing="xy")
+        coords = jnp.stack([xv, yv], axis=-1)
+    elif ndim == 3:
+        z, y, x = coords1D
+        xv, yv, zv = jnp.meshgrid(x, y, z, indexing="xy")
+        xv, yv, zv = [
+            jnp.transpose(rv, axes=[2, 0, 1]) for rv in [xv, yv, zv]
+        ]  # Change axis ordering to [z, y, x]
+        coords = jnp.stack([xv, yv, zv], axis=-1)
+    else:
+        raise ValueError(
+            "Only 2D and 3D coordinate grids are supported. "
+            f"Tried to create a grid of shape {shape}."
+        )
 
     return coords
 
@@ -248,7 +271,7 @@ def _make_coordinates_or_frequencies_1d(
     grid_spacing: float | ArrayLike,
     real_space: bool = False,
     rfftfreq: Optional[bool] = None,
-) -> Float[Array, "size"]:
+) -> Float[Array, " size"]:
     """One-dimensional coordinates in real or fourier space"""
     if real_space:
         make_1d = (

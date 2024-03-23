@@ -5,16 +5,17 @@ Large amounts of the code are adapted from the ioSPI package
 
 import numpy as np
 from jaxtyping import Float, Int
+
 from ._gemmi import (
     clean_gemmi_structure,
-    extract_gemmi_atoms,
     extract_atom_positions_and_names,
+    extract_gemmi_atoms,
 )
 
 
 def read_atoms_from_pdb(
     path: str, i_model: int = 0, clean: bool = True, assemble: bool = True
-) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, "N"]]:
+) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, " N"]]:
     """Read atomic information from a PDB file using Gemmi
 
     Parameters

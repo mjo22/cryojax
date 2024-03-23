@@ -3,23 +3,22 @@ Representations of rigid body rotations and translations of 3D coordinate system
 """
 
 from abc import abstractmethod
-from typing import overload, Any
-from typing_extensions import override
-from jaxtyping import Float, Array
 from functools import cached_property
-from equinox import field, AbstractVar
+from typing import overload
+from typing_extensions import override
 
-import jax
 import equinox as eqx
+import jax
 import jax.numpy as jnp
-from equinox import Module
+from equinox import AbstractVar, field, Module
+from jaxtyping import Array, Float, Shaped
 
 from ..rotations import SO3
 from ..typing import (
-    RealNumber,
     ComplexImage,
     ImageCoords,
-    CloudCoords3D,
+    PointCloudCoords3D,
+    RealNumber,
     VolumeCoords,
 )
 
@@ -35,21 +34,11 @@ class AbstractPose(Module, strict=True):
 
         2. Overwrite the `AbstractPose.rotation` property and
            `AbstractPose.from_rotation` class method.
-
-    **Attributes**:
-
-    - `offset_x_in_angstroms` : In-plane translation in x direction.
-
-    - `offset_y_in_angstroms` : In-plane translation in y direction.
-
-    - `offset_z_in_angstroms` : Out-of-plane translation in the z
-                                direction. The translation is measured
-                                relative to the configured defocus.
     """
 
-    offset_x_in_angstroms: AbstractVar[RealNumber]
-    offset_y_in_angstroms: AbstractVar[RealNumber]
-    offset_z_in_angstroms: AbstractVar[RealNumber]
+    offset_x_in_angstroms: AbstractVar[Shaped[RealNumber, "..."]]
+    offset_y_in_angstroms: AbstractVar[Shaped[RealNumber, "..."]]
+    offset_z_in_angstroms: AbstractVar[Shaped[RealNumber, "..."]]
 
     @overload
     def rotate_coordinates(
@@ -58,26 +47,27 @@ class AbstractPose(Module, strict=True):
 
     @overload
     def rotate_coordinates(
-        self, volume_coordinates: CloudCoords3D, inverse: bool = False
-    ) -> CloudCoords3D: ...
+        self, volume_coordinates: PointCloudCoords3D, inverse: bool = False
+    ) -> PointCloudCoords3D: ...
 
     def rotate_coordinates(
         self,
-        volume_coordinates: VolumeCoords | CloudCoords3D,
+        volume_coordinates: VolumeCoords | PointCloudCoords3D,
         inverse: bool = False,
-    ) -> VolumeCoords | CloudCoords3D:
+    ) -> VolumeCoords | PointCloudCoords3D:
         """Rotate coordinates from a particular convention."""
         rotation = self.rotation.inverse() if inverse else self.rotation
-        if isinstance(volume_coordinates, CloudCoords3D):
+        if isinstance(volume_coordinates, PointCloudCoords3D):  # type: ignore
             rotated_volume_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
-        elif isinstance(volume_coordinates, VolumeCoords):
+        elif isinstance(volume_coordinates, VolumeCoords):  # type: ignore
             rotated_volume_coordinates = jax.vmap(jax.vmap(jax.vmap(rotation.apply)))(
                 volume_coordinates
             )
         else:
             raise ValueError(
-                "Coordinates must be a JAX array either of shape (N, 3) or (N1, N2, N3, 3). "
-                f"Instead, got {volume_coordinates.shape} and type {type(volume_coordinates)}."
+                "Coordinates must be a JAX array either of shape (N, 3) or "
+                f"(N1, N2, N3, 3). Instead, got {volume_coordinates.shape} and type "
+                f"{type(volume_coordinates)}."
             )
         return rotated_volume_coordinates
 
@@ -112,7 +102,7 @@ class AbstractPose(Module, strict=True):
 
     @classmethod
     @abstractmethod
-    def from_rotation(cls, rotation: SO3, **kwargs: Any):
+    def from_rotation(cls, rotation: SO3):
         """Construct an `AbstractPose` from an `SO3` object."""
         raise NotImplementedError
 
@@ -121,7 +111,6 @@ class AbstractPose(Module, strict=True):
         cls,
         rotation: SO3,
         offset_in_angstroms: Float[Array, "3"],
-        **kwargs: Any,
     ):
         """Construct an `AbstractPose` from an `AbstractRotation` object and a
         translation vector.
@@ -132,7 +121,7 @@ class AbstractPose(Module, strict=True):
                 self.offset_y_in_angstroms,
                 self.offset_z_in_angstroms,
             ),
-            cls.from_rotation(rotation, **kwargs),
+            cls.from_rotation(rotation),
             (
                 offset_in_angstroms[..., 0],
                 offset_in_angstroms[..., 1],
@@ -143,51 +132,23 @@ class AbstractPose(Module, strict=True):
 
 class EulerAnglePose(AbstractPose, strict=True):
     r"""An `AbstractPose` represented by Euler angles.
-    Angles are given in degrees.
-
-    **Attributes:**
-
-    - `view_phi`:
-        Angle to rotate about first rotation axis.
-
-    - `view_theta`:
-        Angle to rotate about second rotation axis.
-
-    - `view_psi`:
-        Angle to rotate about third rotation axis.
-
-    - `convention`:
-        The sequence of axes over which to apply
-        rotation. This is a string of 3 characters
-        of x, y, and z. By default, `'zyz'`.
+    Angles are given in degrees, and the sequence of rotations is
+    given by a zyz extrinsic rotations.
     """
 
-    offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_y_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_z_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
 
-    view_phi: RealNumber = field(default=0.0, converter=jnp.asarray)
-    view_theta: RealNumber = field(default=0.0, converter=jnp.asarray)
-    view_psi: RealNumber = field(default=0.0, converter=jnp.asarray)
-
-    convention: str = field(static=True, default="zyz")
-
-    def __check_init__(self):
-        if len(self.convention) != 3 or not all(
-            [axis in ["x", "y", "z"] for axis in self.convention]
-        ):
-            raise AttributeError(
-                f"`EulerPose.convention` should be a string of three characters, each "
-                f"of which is 'x', 'y', or 'z'. Instead, got '{self.convention}'"
-            )
-        if (
-            self.convention[0] == self.convention[1]
-            or self.convention[1] == self.convention[2]
-        ):
-            raise AttributeError(
-                f"`EulerPose.convention` cannot have axes repeating in a row. For example, "
-                f"'xxy' or 'zzz' are not allowed. Got '{self.convention}'."
-            )
+    view_phi: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
+    view_theta: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
+    view_psi: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
 
     @cached_property
     @override
@@ -199,54 +160,76 @@ class EulerAnglePose(AbstractPose, strict=True):
         theta = jnp.deg2rad(theta)
         psi = jnp.deg2rad(psi)
         # Get sequence of rotations.
-        R1, R2, R3 = [
-            getattr(SO3, f"from_{axis}_radians")(angle)
-            for axis, angle in zip(self.convention, [phi, theta, psi])
-        ]
+        R1, R2, R3 = (
+            SO3.from_z_radians(phi),
+            SO3.from_y_radians(theta),
+            SO3.from_z_radians(psi),
+        )
         return R3 @ R2 @ R1
 
     @override
     @classmethod
-    def from_rotation(cls, rotation: SO3, convention: str = "zyz"):
+    def from_rotation(cls, rotation: SO3):
         view_phi, view_theta, view_psi = _convert_quaternion_to_euler_angles(
             rotation.wxyz,
-            convention,
+            "zyz",
         )
-        return cls(
-            view_phi=view_phi,
-            view_theta=view_theta,
-            view_psi=view_psi,
-            convention=convention,
-        )
+        return cls(view_phi=view_phi, view_theta=view_theta, view_psi=view_psi)
+
+
+EulerAnglePose.__init__.__doc__ = """**Arguments:**
+
+- `offset_x_in_angstroms` : In-plane translation in x direction.
+- `offset_y_in_angstroms` : In-plane translation in y direction.
+- `offset_z_in_angstroms` : Out-of-plane translation in the z
+                            direction. The translation is measured
+                            relative to the configured defocus.
+- `view_phi`: Angle to rotate about first rotation axis, which is the z axis.
+- `view_theta`: Angle to rotate about second rotation axis, which is the y axis.
+- `view_psi`: Angle to rotate about third rotation axis, which is the z axis.
+"""
 
 
 class QuaternionPose(AbstractPose, strict=True):
-    """
-    An `AbstractPose` represented by unit quaternions.
+    """An `AbstractPose` represented by unit quaternions."""
 
-    **Attributes:**
+    offset_x_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_y_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_z_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
 
-    - `wxyz`: The unit quaternion.
-    """
-
-    offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-
-    wxyz: Float[Array, "4"] = field(default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray)
+    wxyz: Float[Array, "... 4"] = field(
+        default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray
+    )
 
     @cached_property
     @override
     def rotation(self) -> SO3:
         """Generate rotation from the unit quaternion."""
         # Generate SO3 object from unit quaternion
-        R = SO3(wxyz=(self.wxyz / jnp.linalg.norm(self.wxyz)))
+        R = SO3(wxyz=self.wxyz).normalize()
         return R
 
     @override
     @classmethod
     def from_rotation(cls, rotation: SO3):
         return cls(wxyz=rotation.wxyz)
+
+
+QuaternionPose.__init__.__doc__ = r"""**Arguments:**
+
+- `offset_x_in_angstroms` : In-plane translation in x direction.
+- `offset_y_in_angstroms` : In-plane translation in y direction.
+- `offset_z_in_angstroms` : Out-of-plane translation in the z
+                            direction. The translation is measured
+                            relative to the configured defocus.
+- `wxyz`: The quaternion, represented as a vector $\mathbf{q} = (q_w, q_x, q_y, q_z)$.
+"""
 
 
 class AxisAnglePose(AbstractPose, strict=True):
@@ -258,17 +241,19 @@ class AxisAnglePose(AbstractPose, strict=True):
 
     In a `SO3` object, the euler vector is mapped to SO3 group elements using
     the matrix exponential.
-
-    **Attributes:**
-
-    - `euler_vector`: The axis-angle parameterization.
     """
 
-    offset_x_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: RealNumber = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_y_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    offset_z_in_angstroms: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
 
-    euler_vector: Float[Array, "3"] = field(
+    euler_vector: Float[Array, "... 3"] = field(
         default=(0.0, 0.0, 0.0), converter=jnp.asarray
     )
 
@@ -291,11 +276,38 @@ class AxisAnglePose(AbstractPose, strict=True):
         return cls(euler_vector=euler_vector)
 
 
-def _convert_quaternion_to_euler_angles(wxyz: jax.Array, convention: str) -> jax.Array:
-    """Convert a quaternion to a sequence of euler angles.
+AxisAnglePose.__init__.__doc__ = r"""**Arguments:**
+
+- `offset_x_in_angstroms` : In-plane translation in x direction.
+- `offset_y_in_angstroms` : In-plane translation in y direction.
+- `offset_z_in_angstroms` : Out-of-plane translation in the z
+                            direction. The translation is measured
+                            relative to the configured defocus.
+- `euler_vector`: The axis-angle parameterization, represented as a
+                  vector $\boldsymbol{\omega} = (\omega_x, \omega_y, \omega_z)$.
+"""
+
+
+def _convert_quaternion_to_euler_angles(
+    wxyz: jax.Array, convention: str = "zyz"
+) -> jax.Array:
+    """Convert a quaternion to a sequence of euler angles about an extrinsic
+    coordinate system.
 
     Adapted from https://github.com/chrisflesher/jax-scipy-spatial/.
     """
+    if len(convention) != 3 or not all(
+        [axis in ["x", "y", "z"] for axis in convention]
+    ):
+        raise ValueError(
+            f"`convention` should be a string of three characters, each "
+            f"of which is 'x', 'y', or 'z'. Instead, got '{convention}'"
+        )
+    if convention[0] == convention[1] or convention[1] == convention[2]:
+        raise ValueError(
+            f"`convention` cannot have axes repeating in a row. For example, "
+            f"'xxy' or 'zzz' are not allowed. Got '{convention}'."
+        )
     xyz_axis_to_array_axis = {"x": 0, "y": 1, "z": 2}
     axes = [xyz_axis_to_array_axis[axis] for axis in convention]
     xyzw = jnp.roll(wxyz, shift=-1)

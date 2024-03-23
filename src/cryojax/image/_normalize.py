@@ -2,11 +2,11 @@
 Image normalization routines.
 """
 
-from typing import Optional, overload
+from typing import Optional
 
 import jax.numpy as jnp
 
-from ..typing import Image, ComplexImage, RealNumber
+from ..typing import ComplexImage, Image, RealNumber
 
 
 def normalize_image(

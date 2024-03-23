@@ -3,22 +3,21 @@ Abstractions of biological specimen.
 """
 
 from abc import abstractmethod
-from typing import Optional, Any
 from functools import cached_property
+from typing import Any, Optional
 from typing_extensions import override
+
+import jax
 from equinox import AbstractVar, Module
 from jaxtyping import PRNGKeyArray
 
-import jax
-from equinox import Module
-
+from ..typing import ComplexImage
 from ._config import ImageConfig
-from ._potential import AbstractScatteringPotential
-from ._integrators import AbstractPotentialIntegrator
-from ._pose import AbstractPose, EulerAnglePose
 from ._conformation import AbstractConformation, DiscreteConformation
 from ._ice import AbstractIce
-from ..typing import ComplexImage
+from ._integrators import AbstractPotentialIntegrator
+from ._pose import AbstractPose, EulerAnglePose
+from ._potential import AbstractScatteringPotential
 
 
 class AbstractSpecimen(Module, strict=True):
@@ -27,12 +26,10 @@ class AbstractSpecimen(Module, strict=True):
 
     **Attributes:**
 
-    `potential`: The scattering potential of the specimen.
-
-    `integrator`: A method of integrating the `potential` onto the exit
-                  plane of the specimen.
-
-    `pose`: The pose of the specimen.
+    - `potential`: The scattering potential of the specimen.
+    - `integrator`: A method of integrating the `potential` onto the exit
+                    plane of the specimen.
+    - `pose`: The pose of the specimen.
     """
 
     potential: AbstractVar[Any]
@@ -121,7 +118,7 @@ class AbstractEnsemble(AbstractSpecimen, strict=True):
 
     **Attributes:**
 
-    `conformation`: The conformation at which to evaluate the scattering potential.
+    - `conformation`: The conformation at which to evaluate the scattering potential.
     """
 
     conformation: AbstractVar[AbstractConformation]
@@ -135,9 +132,7 @@ class DiscreteEnsemble(AbstractEnsemble, strict=True):
     **Attributes:**
 
     - `potential`: A tuple of scattering potential representations.
-
     - `pose`: The pose of the specimen.
-
     - `conformation`: A conformation with a discrete index at which to evaluate
                       the scattering potential tuple.
     """

@@ -2,13 +2,17 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from cryojax.simulator import FourierVoxelGridPotential, RealVoxelGridPotential
-from cryojax.simulator import build_real_space_voxels_from_atoms
-
-from cryojax.io import read_atoms_from_pdb
-from cryojax.image import ifftn
-from cryojax.coordinates import CoordinateGrid
 from jax import config
+
+from cryojax.coordinates import CoordinateGrid
+from cryojax.image import ifftn
+from cryojax.io import read_atoms_from_pdb
+from cryojax.simulator import (
+    build_real_space_voxels_from_atoms,
+    FourierVoxelGridPotential,
+    RealVoxelGridPotential,
+)
+
 
 config.update("jax_enable_x64", True)
 
@@ -33,8 +37,6 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     # Since Voxelgrid is in Frequency space by default, we have to first
     # transform back into real space.
     fvg_real = ifftn(jnp.fft.ifftshift(fourier_potential.fourier_voxel_grid)).real
-    # Ravel the grid
-    fvg_real = fvg_real.ravel()
 
     vg = RealVoxelGridPotential.from_atoms(
         atom_positions,
@@ -43,11 +45,7 @@ def test_VoxelGrid_agreement(sample_pdb_path):
         coordinate_grid_in_angstroms,
     )
 
-    np.testing.assert_allclose(
-        fvg_real,
-        jnp.transpose(vg.real_voxel_grid, axes=[1, 0, 2]).ravel(),
-        atol=1e-12,
-    )
+    np.testing.assert_allclose(fvg_real, vg.real_voxel_grid, atol=1e-12)
 
 
 class TestBuildRealSpaceVoxelsFromAtoms:

@@ -5,59 +5,52 @@ Models of instrument optics.
 from abc import abstractmethod
 from typing import ClassVar, Optional
 from typing_extensions import override
-from equinox import AbstractClassVar, AbstractVar, Module, field
 
 import jax.numpy as jnp
+from equinox import AbstractClassVar, AbstractVar, field, Module
+from jaxtyping import Shaped
 
-from ._config import ImageConfig
+from ..coordinates import cartesian_to_polar
+from ..core import error_if_negative, error_if_not_fractional, error_if_not_positive
 from ..image.operators import (
-    FourierOperatorLike,
     AbstractFourierOperator,
     Constant,
+    FourierOperatorLike,
 )
-from ..coordinates import cartesian_to_polar
-from ..typing import RealNumber, RealImage, ComplexImage, Image, ImageCoords
-from ..core import error_if_negative, error_if_not_positive, error_if_not_fractional
+from ..typing import (
+    ComplexImage,
+    Image,
+    ImageCoords,
+    RealImage,
+    RealNumber,
+)
+from ._config import ImageConfig
 
 
 class CTF(AbstractFourierOperator, strict=True):
     """Compute the Contrast Transfer Function (CTF) in for a weakly
     scattering specimen.
-
-    **Attributes:**
-
-    `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
-
-    `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
-
-    `astigmatism_angle`: The defocus angle.
-
-    `voltage_in_kv`: The accelerating voltage in kV.
-
-    `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
-
-    `amplitude_contrast_ratio`: The amplitude contrast ratio.
-
-    `phase_shift`: The additional phase shift.
     """
 
-    defocus_u_in_angstroms: RealNumber = field(
+    defocus_u_in_angstroms: Shaped[RealNumber, "..."] = field(
         default=10000.0, converter=error_if_not_positive
     )
-    defocus_v_in_angstroms: RealNumber = field(
+    defocus_v_in_angstroms: Shaped[RealNumber, "..."] = field(
         default=10000.0, converter=error_if_not_positive
     )
-    astigmatism_angle: RealNumber = field(default=0.0, converter=jnp.asarray)
-    voltage_in_kilovolts: RealNumber = field(
+    astigmatism_angle: Shaped[RealNumber, "..."] = field(
+        default=0.0, converter=jnp.asarray
+    )
+    voltage_in_kilovolts: Shaped[RealNumber, "..."] = field(
         default=300.0, converter=error_if_not_positive
     )
-    spherical_aberration_in_mm: RealNumber = field(
+    spherical_aberration_in_mm: Shaped[RealNumber, "..."] = field(
         default=2.7, converter=error_if_negative
     )
-    amplitude_contrast_ratio: RealNumber = field(
+    amplitude_contrast_ratio: Shaped[RealNumber, "..."] = field(
         default=0.1, converter=error_if_not_fractional
     )
-    phase_shift: RealNumber = field(default=0.0, converter=jnp.asarray)
+    phase_shift: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
 
     @property
     def wavelength_in_angstroms(self):
@@ -89,19 +82,20 @@ class CTF(AbstractFourierOperator, strict=True):
         return jnp.sin(phase_shifts).at[0, 0].set(0.0)
 
 
+CTF.__init__.__doc__ = """**Arguments:**
+
+- `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
+- `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
+- `astigmatism_angle`: The defocus angle.
+- `voltage_in_kilovolts`: The accelerating voltage in kV.
+- `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
+- `amplitude_contrast_ratio`: The amplitude contrast ratio.
+- `phase_shift`: The additional phase shift.
+"""
+
+
 class AbstractOptics(Module, strict=True):
-    """Base class for an optics model.
-
-    **Attributes:**
-
-    `ctf`: The contrast transfer function model.
-
-    `envelope`: The envelope function of the optics model.
-
-    `is_linear`: If `True`, the optics model directly computes
-                 the image contrast from the potential. If `False`,
-                 the optics model computes the wavefunction.
-    """
+    """Base class for an optics model."""
 
     ctf: AbstractVar[CTF]
     envelope: AbstractVar[FourierOperatorLike]
@@ -145,6 +139,16 @@ class NullOptics(AbstractOptics):
         return fourier_potential_in_exit_plane
 
 
+NullOptics.__init__.__doc__ = """**Arguments:**
+
+- `ctf`: The contrast transfer function model.
+- `envelope`: The envelope function of the optics model.
+- `is_linear`: If `True`, the optics model directly computes
+               the image contrast from the potential. If `False`,
+               the optics model computes the wavefunction.
+"""
+
+
 class WeakPhaseOptics(AbstractOptics, strict=True):
     """An optics model in the weak-phase approximation. Here, compute the image
     contrast by applying the CTF directly to the scattering potential.
@@ -180,6 +184,16 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
         fourier_contrast_in_detector_plane = ctf * fourier_potential_in_exit_plane
 
         return fourier_contrast_in_detector_plane
+
+
+WeakPhaseOptics.__init__.__doc__ = """**Arguments:**
+
+- `ctf`: The contrast transfer function model.
+- `envelope`: The envelope function of the optics model.
+- `is_linear`: If `True`, the optics model directly computes
+               the image contrast from the potential. If `False`,
+               the optics model computes the wavefunction.
+"""
 
 
 def _compute_phase_shifts(

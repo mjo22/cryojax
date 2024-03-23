@@ -15,6 +15,7 @@
     ::: cryojax.simulator.AbstractVoxelPotential
         options:
             members:
+                - voxel_size
                 - is_real
                 - shape
                 - rotate_to_pose

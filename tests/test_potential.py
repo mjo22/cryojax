@@ -1,21 +1,18 @@
-import pytest
-
 from functools import partial
 
-import jax
-import jax.tree_util as jtu
-import jax.numpy as jnp
-import numpy as np
 import equinox as eqx
+import jax
+import jax.numpy as jnp
+import jax.tree_util as jtu
+
+import cryojax.simulator as cs
 from cryojax.coordinates import (
     AbstractCoordinates,
-    FrequencySlice,
     CoordinateGrid,
     CoordinateList,
+    FrequencySlice,
 )
-import cryojax.simulator as cs
-
-from cryojax.typing import VolumeSliceCoords, VolumeCoords, CloudCoords3D
+from cryojax.typing import PointCloudCoords3D, VolumeCoords, VolumeSliceCoords
 
 
 def test_voxel_electron_potential_loaders():
@@ -40,7 +37,7 @@ def test_voxel_electron_potential_loaders():
     assert isinstance(real_potential.wrapped_coordinate_grid, CoordinateGrid)
     assert isinstance(real_potential.wrapped_coordinate_grid.get(), VolumeCoords)
     assert isinstance(cloud_potential.wrapped_coordinate_list, CoordinateList)
-    assert isinstance(cloud_potential.wrapped_coordinate_list.get(), CloudCoords3D)
+    assert isinstance(cloud_potential.wrapped_coordinate_list.get(), PointCloudCoords3D)
 
 
 def test_electron_potential_vmap(potential, integrator, config):

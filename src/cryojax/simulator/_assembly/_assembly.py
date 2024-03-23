@@ -5,18 +5,18 @@ some geometry.
 """
 
 from abc import abstractmethod
-from typing import Optional
-from jaxtyping import Array, Float, Shaped
 from functools import cached_property
-from equinox import AbstractVar
+from typing import Optional
 
-import jax
 import equinox as eqx
+import jax
+from equinox import AbstractVar
+from jaxtyping import Array, Float, Shaped
 
-from .._specimen import AbstractSpecimen, AbstractEnsemble
+from ...rotations import SO3
 from .._conformation import AbstractConformation
 from .._pose import AbstractPose
-from ...rotations import SO3
+from .._specimen import AbstractEnsemble, AbstractSpecimen
 
 
 class AbstractAssembly(eqx.Module, strict=True):
@@ -30,18 +30,6 @@ class AbstractAssembly(eqx.Module, strict=True):
            property
         2) Overwrite the `AbstractAssembly.positions`
            and `AbstractAssembly.rotations` properties.
-
-    **Attributes:**
-
-    - `subunit`: The subunit. It is important to set the the initial pose
-                 of the initial subunit here. The initial pose is not set in
-                 the lab frame, it is in the center of mass frame of the assembly.
-
-    - `pose`: The center of mass pose of the helix.
-
-    - `conformation`: The conformation of each `subunit`.
-
-    - `n_subunits`: The number of subunits in the assembly.
     """
 
     subunit: AbstractVar[AbstractSpecimen]
@@ -56,13 +44,17 @@ class AbstractAssembly(eqx.Module, strict=True):
         ):
             # Make sure that if conformation is set, subunit is an AbstractEnsemble
             raise AttributeError(
-                f"If {type(self)}.conformation is set, {type(self)}.subunit must be an AbstractEnsemble."
+                f"If {type(self)}.conformation is set, {type(self)}.subunit must be an "
+                "AbstractEnsemble."
             )
         if self.conformation is not None and isinstance(self.subunit, AbstractEnsemble):
-            # ... if it is an AbstractEnsemble, the AbstractConformation must be the right type
+            # ... if it is an AbstractEnsemble, the AbstractConformation must be the
+            #  right type
             if not isinstance(self.conformation, type(self.subunit.conformation)):
                 raise AttributeError(
-                    f"{type(self)}.conformation must be type {type(self.subunit.conformation)} if {type(self)}.subunit is type {type(self.subunit)}."
+                    f"{type(self)}.conformation must be type "
+                    f" {type(self.subunit.conformation)} if {type(self)}.subunit is "
+                    f"type {type(self.subunit)}."
                 )
 
     @cached_property
@@ -73,12 +65,12 @@ class AbstractAssembly(eqx.Module, strict=True):
 
     @cached_property
     @abstractmethod
-    def rotations(self) -> Shaped[SO3, "n_subunits"]:
+    def rotations(self) -> Shaped[SO3, " n_subunits"]:
         """The relative rotations between subunits."""
         raise NotImplementedError
 
     @cached_property
-    def poses(self) -> Shaped[AbstractPose, "n_subunits"]:
+    def poses(self) -> Shaped[AbstractPose, " n_subunits"]:
         """
         Draw the poses of the subunits in the lab frame, measured
         from the rotation relative to the first subunit.

@@ -4,6 +4,7 @@ Base scattering potential representation.
 
 from abc import abstractmethod
 from typing_extensions import Self
+
 from equinox import Module
 
 from .._pose import AbstractPose

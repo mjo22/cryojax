@@ -1,2 +1,1 @@
-from . import distributions as distributions
-from . import transforms as transforms
+from . import distributions as distributions, transforms as transforms

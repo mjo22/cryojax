@@ -2,23 +2,27 @@
 Routines for starfile serialization and deserialization.
 """
 
+import pathlib
+from typing import cast
+
+import pandas as pd
 import starfile
-import numpy as np
-from pathlib import Path
-
-from ._mrc import read_array_from_mrc
 
 
-def read_detection_from_starfile(filename: str | Path):
+def read_and_validate_starfile(filename: str | pathlib.Path) -> dict[str, pd.DataFrame]:
     """Read a particle detection from a starfile."""
-    filename = Path(filename)
     # Make sure filename is valid starfile
     _validate_filename(filename)
     # Read starfile
-    star = starfile.read(filename)
+    return cast(
+        dict[str, pd.DataFrame], starfile.read(pathlib.Path(filename), always_dict=True)
+    )
 
 
-def _validate_filename(filename: Path):
-    suffixes = filename.suffixes
+def _validate_filename(filename: str | pathlib.Path):
+    suffixes = pathlib.Path(filename).suffixes
     if not (len(suffixes) == 1 and suffixes[0] == ".star"):
-        raise IOError(f"Filename should include .star suffix. Got filename {filename}.")
+        raise IOError(
+            "Tried to read STAR file, but the filename does not include a .star "
+            f"suffix. Got filename '{filename}'."
+        )

@@ -3,9 +3,10 @@ Abstraction of a rotation.
 """
 
 from abc import abstractmethod
-from equinox import Module, AbstractClassVar
 from typing import overload, Type
 from typing_extensions import Self
+
+from equinox import AbstractClassVar, Module
 from jaxtyping import Array, PRNGKeyArray
 
 
@@ -30,7 +31,7 @@ class AbstractRotation(Module, strict=True):
             return self.apply(other)
         elif isinstance(other, AbstractRotation):
             if not self.space_dimension == other.space_dimension:
-                raise ValueError(f"Cannot compose rotations of different types.")
+                raise ValueError("Cannot compose rotations of different types.")
             return self.compose(other)
         else:
             raise ValueError(

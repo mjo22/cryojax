@@ -2,21 +2,20 @@
 Abstraction of a helical polymer.
 """
 
-from typing import Optional
-from jaxtyping import Array, Float, Shaped
 from functools import cached_property
-from equinox import field
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
-
-from .._specimen import AbstractSpecimen
-from .._pose import AbstractPose, EulerAnglePose
-from .._conformation import AbstractConformation
-from ._assembly import AbstractAssembly
+from equinox import field
+from jaxtyping import Array, Float, Shaped
 
 from ...rotations import SO3
 from ...typing import RealNumber
+from .._conformation import AbstractConformation
+from .._pose import AbstractPose, EulerAnglePose
+from .._specimen import AbstractSpecimen
+from ._assembly import AbstractAssembly
 
 
 class Helix(AbstractAssembly, strict=True):
@@ -28,34 +27,11 @@ class Helix(AbstractAssembly, strict=True):
 
     The screw axis is taken to be in the center of the
     image, pointing out-of-plane (i.e. along the z direction).
-
-    Attributes
-    ----------
-    subunit :
-        The helical subunit. It is important to set the the initial pose
-        of the initial subunit here. This is in the center of mass frame
-        of the helix with the screw axis pointing in the z-direction.
-    rise :
-        The helical rise. This has dimensions of length.
-    twist :
-        The helical twist.
-    pose :
-        The center of mass pose of the helix.
-    conformation :
-        The conformation of `subunit` at each lattice site.
-        This can either be a fixed set of conformations or a function
-        that computes conformations based on the lattice positions.
-        In either case, the `Array` should be shape `(n_start*n_subunits_per_start,)`.
-    n_start :
-        The start number of the helix. By default, ``1``.
-    n_subunits_per_start :
-        The number of subunits each helical strand.
-        By default, ``1``.
     """
 
     subunit: AbstractSpecimen
-    rise: RealNumber
-    twist: RealNumber
+    rise: Shaped[RealNumber, "..."]
+    twist: Shaped[RealNumber, "..."]
 
     pose: AbstractPose
     conformation: Optional[AbstractConformation]
@@ -66,13 +42,36 @@ class Helix(AbstractAssembly, strict=True):
     def __init__(
         self,
         subunit: AbstractSpecimen,
-        rise: RealNumber | float,
-        twist: RealNumber | float,
+        rise: Shaped[RealNumber, "..."] | float,
+        twist: Shaped[RealNumber, "..."] | float,
         pose: Optional[AbstractPose] = None,
         conformation: Optional[AbstractConformation] = None,
         n_start: int = 1,
         n_subunits: int = 1,
     ):
+        """**Arguments:**
+        - `subunit`:
+            The helical subunit. It is important to set the the initial pose
+            of the initial subunit here. This is in the center of mass frame
+            of the helix with the screw axis pointing in the z-direction.
+        - `rise`:
+            The helical rise. This has dimensions of length.
+        - `twist`:
+            The helical twist.
+        - `pose`:
+            The center of mass pose of the helix.
+        - `conformation`:
+            The conformation of `subunit` at each lattice site.
+            This can either be a fixed set of conformations or a function
+            that computes conformations based on the lattice positions.
+            In either case, the `Array` should be shape
+            `(n_start*n_subunits_per_start,)`.
+        - `n_start`:
+            The start number of the helix. By default, ``1``.
+        - `n_subunits_per_start`:
+            The number of subunits each helical strand.
+            By default, ``1``.
+        """
         self.subunit = subunit
         self.pose = pose or EulerAnglePose()
         self.rise = jnp.asarray(rise)

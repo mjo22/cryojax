@@ -3,18 +3,18 @@ Transformations used for reparameterizing cryojax models.
 """
 
 from abc import abstractmethod
-from equinox import Module, AbstractVar, field
-from jaxtyping import PyTree, Array, ArrayLike
-from typing import Callable, Union, Any, Sequence, Optional
+from typing import Any, Callable, Optional, Sequence, Union
 from typing_extensions import overload
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
-import equinox as eqx
+from equinox import AbstractVar, field, Module
+from jaxtyping import Array, PyTree
 
+from ...core import error_if_not_positive, error_if_zero
 from ...typing import RealNumber
-from ...core import error_if_zero, error_if_not_positive
 
 
 def _is_transformed(x: Any) -> bool:
@@ -72,8 +72,8 @@ def insert_transforms(
 ) -> PyTree:
     """Applies an `AbstractParameterTransform` to pytree node(s).
 
-    This function performs a sequence of `equinox.tree_at` calls to apply each `replace_fn`
-    in `replace_fns` to each `where` in `wheres`.
+    This function performs a sequence of `equinox.tree_at` calls to apply each
+    `replace_fn` in `replace_fns` to each `where` in `wheres`.
     """
     if isinstance(replace_fns, Callable) and isinstance(wheres, Callable):
         where, replace_fn = wheres, replace_fns
@@ -82,7 +82,8 @@ def insert_transforms(
         if len(replace_fns) != len(wheres):
             raise TypeError(
                 "If arguments `wheres` and `replace_fns` are sequences, they "
-                f"must be sequences of the same length. Got `wheres, replace_fns = {wheres}, {replace_fns}`."
+                "must be sequences of the same length. Got "
+                f"`wheres, replace_fns = {wheres}, {replace_fns}`."
             )
         transformed_pytree = pytree
         for where, replace_fn in zip(wheres, replace_fns):

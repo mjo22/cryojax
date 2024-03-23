@@ -2,10 +2,11 @@
 Utilities for creating equinox filter_specs.
 """
 
+from typing import Any, Callable, Optional, Sequence, Union
+
 import equinox as eqx
 import jax.tree_util as jtu
 from jaxtyping import PyTree
-from typing import Callable, Optional, Union, Sequence, Any
 
 
 def get_filter_spec(

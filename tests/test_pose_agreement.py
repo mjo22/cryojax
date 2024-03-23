@@ -1,8 +1,7 @@
-import pytest
-
 import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
+
 import cryojax.simulator as cs
 from cryojax.rotations import SO3
 
@@ -51,26 +50,22 @@ def test_default_pose_images(noiseless_model):
 
 def test_axis_angle_euler_agreement():
     angle = 2.0
-    euler_x = cs.EulerAnglePose(view_phi=angle, convention="xyz")
-    euler_y = cs.EulerAnglePose(view_theta=angle, convention="xyz")
-    euler_z = cs.EulerAnglePose(view_psi=angle, convention="xyz")
+    angle_in_radians = jnp.deg2rad(angle)
+    rotation_x = SO3.from_x_radians(angle_in_radians)
+    rotation_y = SO3.from_y_radians(angle_in_radians)
+    rotation_z = SO3.from_z_radians(angle_in_radians)
     aa_x = cs.AxisAnglePose(euler_vector=(angle, 0.0, 0.0))
     aa_y = cs.AxisAnglePose(euler_vector=(0.0, angle, 0.0))
     aa_z = cs.AxisAnglePose(euler_vector=(0.0, 0.0, angle))
-    np.testing.assert_allclose(euler_x.rotation.as_matrix(), aa_x.rotation.as_matrix())
-    np.testing.assert_allclose(euler_y.rotation.as_matrix(), aa_y.rotation.as_matrix())
-    np.testing.assert_allclose(euler_z.rotation.as_matrix(), aa_z.rotation.as_matrix())
+    np.testing.assert_allclose(rotation_x.as_matrix(), aa_x.rotation.as_matrix())
+    np.testing.assert_allclose(rotation_y.as_matrix(), aa_y.rotation.as_matrix())
+    np.testing.assert_allclose(rotation_z.as_matrix(), aa_z.rotation.as_matrix())
 
 
-@pytest.mark.parametrize("convention", ["zyz", "zyx", "zxz", "xyz"])
-def test_euler_angle_conversion(convention):
+def test_euler_angle_conversion():
     phi, theta, psi = 2.0, -15.0, 40.0
-    pose = cs.EulerAnglePose(
-        view_phi=phi, view_theta=theta, view_psi=psi, convention=convention
-    )
-    converted_pose = cs.EulerAnglePose.from_rotation(
-        pose.rotation, convention=convention
-    )
+    pose = cs.EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
+    converted_pose = cs.EulerAnglePose.from_rotation(pose.rotation)
     np.testing.assert_allclose(
         np.asarray((phi, theta, psi)),
         np.asarray(

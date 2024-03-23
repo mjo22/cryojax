@@ -3,11 +3,17 @@
 ![Tests](https://github.com/mjo22/cryojax/actions/workflows/testing.yml/badge.svg)
 ![Lint](https://github.com/mjo22/cryojax/actions/workflows/black.yml/badge.svg)
 
-cryoJAX is a library for cryo-EM image simulation and analysis. It is built on [`jax`](https://github.com/google/jax).
+cryoJAX is a library that provides tools for simulating and analyzing cryo-electron microscopy (cryo-EM) images. It is built on [`jax`](https://jax.readthedocs.io/en/latest/).
 
 ## Summary
 
-The core of this package is its ability to model image formation in cryo-EM. The parameters of these models can be estimated for experimental cryo-EM images using standard sampling and optimization libraries in `jax`, such as [`blackjax`](https://github.com/blackjax-devs/blackjax), [`optimistix`](https://github.com/patrick-kidger/optimistix), or [`optax`](https://github.com/google-deepmind/optax). Then, these model parameters can be exported to standard cryo-EM data formats.
+Specifically, cryoJAX aims to provide three things in the cryo-EM image-to-structure pipeline.
+
+1. *Physical modeling of image formation*
+2. *Statistical modeling of the distributions from which images are drawn*
+3. *Easy-to-use utilities for working with real data*
+
+With these tools, `cryojax` aims to appeal to two different communities. Experimentalists can use `cryojax` in order to push the boundaries of what they can extract from their data by interfacing with the `jax` scientific computing ecosystem. Additionally, method developers may use `cryojax` as a backend for an algorithmic research project, such as in cryo-EM structure determination. These two aims are possible because `cryojax` is written to be fully interoperable with anything else in the JAX ecosystem.
 
 Dig a little deeper and you'll find that `cryojax` aims to be a fully extensible modeling language for cryo-EM image formation. It implements a collection of abstract interfaces, which aim to be general enough to support any level of modeling complexity—from simple linear image formation to the most realistic physical models in the field. Best of all, these interfaces are all part of the public API. Users can create their own extensions to `cryojax`, tailored to their specific use-case!
 
@@ -20,18 +26,22 @@ See the documentation at [https://mjo22.github.io/cryojax/](https://mjo22.github
 Installing `cryojax` is simple. To start, I recommend creating a new virtual environment. For example, you could do this with `conda`.
 
 ```bash
-conda create -n cryojax-env -c conda-forge python=3.10
+conda create -n cryojax-env -c conda-forge python=3.11
 ```
 
-Note that `python>=3.10` is required. After creating a new environment, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support. Then, install `cryojax`. For now, only a source build is supported.
+Note that `python>=3.10` is required. After creating a new environment, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support. Then, install `cryojax`. For the latest stable release, install using `pip`.
+
+```bash
+python -m pip install cryojax
+```
+
+To install the latest commit, you can build the repository directly.
 
 ```bash
 git clone https://github.com/mjo22/cryojax
 cd cryojax
 python -m pip install .
 ```
-
-This will install the remaining dependencies, such as [`equinox`](https://github.com/patrick-kidger/equinox/) for object-oriented model building and `cryojax` core functionality and [`mrcfile`](https://github.com/ccpem/mrcfile) for I/O.
 
 The [`jax-finufft`](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections of real-space voxel-based scattering potential representations. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
 
@@ -45,11 +55,11 @@ First, instantiate the scattering potential representation and its respective me
 import jax
 import jax.numpy as jnp
 import cryojax.simulator as cs
-from cryojax.io import read_volume_with_voxel_size_from_mrc
+from cryojax.io import read_array_with_spacing_from_mrc
 
 # Instantiate the scattering potential.
 filename = "example_scattering_potential.mrc"
-real_voxel_grid, voxel_size = read_volume_with_voxel_size_from_mrc(filename)
+real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(filename)
 potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
 integrator = cs.FourierSliceExtract(interpolation_order=1)
@@ -119,60 +129,6 @@ log_likelihood = distribution.log_likelihood(observed)
 ```
 
 For more advanced image simulation examples and to understand the many features in this library, see the [documentation](https://mjo22.github.io/cryojax/).
-
-## Creating a loss function
-
-In `jax`, we may want to build a loss function and apply functional transformations to it. Assuming we have already globally configured our model components at our desired initial state, the below creates a loss function at an updated set of parameters. First, we must update the model.
-
-```python
-
-@jax.jit
-def update_distribution(distribution, params):
-    """
-    Update the model with equinox.tree_at (https://docs.kidger.site/equinox/api/manipulation/#equinox.tree_at).
-    """
-    updated_pose = cs.EulerAnglePose(
-        offset_x_in_angstroms=params["t_x"],
-        offset_y_in_angstroms=params["t_y"],
-        view_phi=params["phi"],
-        view_theta=params["theta"],
-        view_psi=params["psi"],
-    )
-    where = lambda d: (
-        d.pipeline.specimen.pose,
-        d.pipeline.config.pixel_size
-    )
-    updated_distribution = eqx.tree_at(
-        where, distribution, (updated_pose, params["pixel_size"])
-    )
-    return updated_distribution
-```
-
-We can now create the loss and differentiate it with respect to the parameters.
-
-```python
-@jax.jit
-def negative_log_likelihood(params, distribution, observed):
-    updated_distribution = update_distribution(distribution, params)
-    return -updated_distribution.log_likelihood(observed)
-```
-
-Finally, we can evaluate the negative log likelihood at an updated set of parameters.
-
-```python
-params = dict(
-    t_x=jnp.asarray(1.2),
-    t_y=jnp.asarray(-2.3),
-    phi=jnp.asarray(180.0),
-    theta=jnp.asarray(30.0),
-    psi=jnp.asarray(-20.0),
-    pixel_size=jnp.asarray(potential.voxel_size+0.02),
-)
-loss_fn = jax.value_and_grad(negative_log_likelihood)
-loss, gradients = loss_fn(params, distribution, observed)
-```
-
-To summarize, this example creates a loss function at an updated set of parameters. In general, any `cryojax` object may contain model parameters and there are many ways to write loss functions. See the [equinox](https://github.com/patrick-kidger/equinox/) documentation for more use cases.
 
 ## Acknowledgements
 
