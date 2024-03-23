@@ -4,7 +4,7 @@ import pandas as pd
 import mrcfile
 import dataclasses
 import pathlib
-from jaxtyping import Shaped, Float
+from jaxtyping import Shaped, Float, Int
 from typing import final, Callable, Any
 
 import equinox as eqx
@@ -128,9 +128,40 @@ class RelionDataset(AbstractDataset):
         object.__setattr__(self, "make_config", make_config)
 
     @final
-    def __getitem__(self, index: int | slice) -> RelionParticleStack:
+    def __getitem__(
+        self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, "N"]
+    ) -> RelionParticleStack:
         # Load particle data and optics group
-        particle_blocks = self.data_blocks["particles"].iloc[index]
+        n_rows = self.data_blocks["particles"].shape[0]
+        index_error_msg = lambda idx: (
+            "The index at which the `RelionDataset` was accessed was out of bounds! "
+            f"The number of rows in the dataset is {n_rows}, but you tried to "
+            f"access the index {idx}."
+        )
+        # pandas has bad error messages for its indexing
+        if isinstance(index, (int, Int[np.ndarray, ""])):
+            if index > n_rows - 1:
+                raise IndexError(index_error_msg(index))
+        elif isinstance(index, slice):
+            if index.start > n_rows - 1:
+                raise IndexError(index_error_msg(index.start))
+        elif isinstance(index, np.ndarray):
+            pass  # catch exceptions later
+        else:
+            raise IndexError(
+                f"Indexing with the type {type(index)} is not supported by "
+                "`RelionDataset`. Indexing by integers is supported, one-dimensional "
+                "fancy indexing is supported, and numpy-array indexing is supported. For example, "
+                "like `particle = dataset[0]`, `particle_stack = dataset[0:5]`, or "
+                "`particle_stack = dataset[np.array([1, 4, 3, 2])]`."
+            )
+        try:
+            particle_blocks = self.data_blocks["particles"].iloc[index]
+        except Exception:
+            raise IndexError(
+                "Error when indexing the `pandas.Dataframe` for the particle stack "
+                "from the `starfile.read` output."
+            )
         optics_group = self.data_blocks["optics"].iloc[0]
         # Load particle image stack rlnImageName
         image_stack_index_and_name_series_or_str = particle_blocks["rlnImageName"]
@@ -175,7 +206,8 @@ class RelionDataset(AbstractDataset):
                 )
             # ... create full path to the image stack
             path_to_image_stack = pathlib.Path(
-                self.path_to_relion_project, image_stack_filename[0]
+                self.path_to_relion_project,
+                np.asarray(image_stack_filename, dtype=object)[0],
             )
             # ... relion convention starts indexing at 1, not 0
             particle_index = (
@@ -232,6 +264,10 @@ class RelionDataset(AbstractDataset):
             pose_parameter_names_and_values.append(
                 ("view_theta", particle_blocks["rlnAngleTilt"])
             )
+        elif "rlnAngleTiltPrior" in particle_keys:  # support for helices
+            pose_parameter_names_and_values.append(
+                ("view_theta", particle_blocks["rlnAngleTiltPrior"])
+            )
         if "rlnAnglePsi" in particle_keys:
             # Relion uses -999.0 as a placeholder for an un-estimated in-plane
             # rotation
@@ -259,6 +295,10 @@ class RelionDataset(AbstractDataset):
             pose_parameter_names_and_values.append(
                 ("view_psi", particle_blocks_for_psi)
             )
+        elif "rlnAnglePsiPrior" in particle_keys:  # support for helices
+            pose_parameter_names_and_values.append(
+                ("view_psi", particle_blocks["rlnAnglePsiPrior"])
+            )
         pose_parameter_names, pose_parameter_values = tuple(
             zip(*pose_parameter_names_and_values)
         )
@@ -279,7 +319,26 @@ class RelionDataset(AbstractDataset):
 
 @dataclasses.dataclass(frozen=True)
 class HelicalRelionDataset(AbstractDataset):
-    """A wrapped `RelionDataset` to read helical parameters."""
+    """A wrapped `RelionDataset` to read helical tubes.
+
+    In particular, a `HelicalRelionDataset` indexes one
+    helical filament at a time. For example, after manual
+    particle picking in RELION, we can index a particular filament
+    with
+
+    ```python
+    # Read in a STAR file particle stack
+    dataset = RelionDataset(...)
+    helical_dataset = HelicalRelionDataset(dataset)
+    # ... get a particle stack for a filament
+    particle_stack_for_a_filament = helical_dataset[0]
+    # ... get a particle stack for another filament
+    particle_stack_for_another_filament = helical_dataset[1]
+    ```
+
+    Unlike a `RelionDataset`, a `HelicalRelionDataset` does not
+    support fancy indexing.
+    """
 
     dataset: RelionDataset
 
@@ -291,15 +350,38 @@ class HelicalRelionDataset(AbstractDataset):
         """**Arguments:**
 
         - `dataset`: The wrappped `RelionDataset`. This will be slightly
-                     modified to read helical parameters.
+                     modified to read one helix at a time.
         """
+        _validate_helical_relion_data_blocks(dataset.data_blocks)
         object.__setattr__(self, "dataset", dataset)
 
     @final
     def __getitem__(
-        self, index: int | slice | tuple[int, int] | tuple[slice, slice]
+        self, filament_index: int | Int[np.ndarray, ""]
     ) -> RelionParticleStack:
-        dataset = self.dataset[index]
+        if not isinstance(filament_index, (int, Int[np.ndarray, ""])):
+            raise IndexError(
+                "When indexing a `HelicalRelionDataset`, only "
+                f"python or numpy-like integer indices are supported, such as "
+                "`helical_particle_stack = helical_dataset[3]`. "
+                f"Got index {filament_index} of type {type(filament_index)}."
+            )
+        # Read all images at a particular rlnHelicalTubeID
+        particle_dataframe = self.dataset.data_blocks["particles"]
+        # ... make sure the index is not out of bounds
+        n_filaments = particle_dataframe["rlnHelicalTubeID"].max()
+        if filament_index + 1 > n_filaments:
+            raise ValueError(
+                "The index at which the `HelicalRelionDataset` was accessed was out of bounds! "
+                f"The number of filaments in the dataset is {n_filaments}, but you tried to "
+                f"access the index {filament_index}."
+            )
+        # .. get the indices for a filament
+        particle_indices = np.squeeze(
+            np.argwhere(particle_dataframe["rlnHelicalTubeID"] == filament_index + 1)
+        )
+        # ... access the particle stack at these indices
+        dataset = self.dataset[particle_indices]
         return dataset
 
     @final
@@ -328,3 +410,12 @@ def _validate_relion_data_blocks(data_blocks: dict[str, pd.DataFrame]):
                 "Missing required keys in starfile 'optics' group. "
                 f"Required keys are {RELION_REQUIRED_OPTICS_KEYS}."
             )
+
+
+def _validate_helical_relion_data_blocks(data_blocks: dict[str, pd.DataFrame]):
+    particle_data_blocks = data_blocks["particles"]
+    if "rlnHelicalTubeID" not in particle_data_blocks.columns:
+        raise ValueError(
+            "Missing column 'rlnHelicalTubeID' in `starfile.read` output. "
+            "This column must be present when using a `HelicalRelionDataset`."
+        )
