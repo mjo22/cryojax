@@ -30,14 +30,14 @@ jobs:
           pip install mkdocstrings-python
           pip install mkdocs-material
 
-      # Build the book
-      - name: Build the book
+      # Build
+      - name: Build
         run: |
-          mkdocs build
+          mkdocs build --verbose --clean --strict
 
       # Push the site to github-pages
       - name: GitHub Pages action
         uses: peaceiris/actions-gh-pages@v3
         with:
-          publish_dir: ./site
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
