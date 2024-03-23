@@ -29,7 +29,13 @@ Installing `cryojax` is simple. To start, I recommend creating a new virtual env
 conda create -n cryojax-env -c conda-forge python=3.11
 ```
 
-Note that `python>=3.10` is required. After creating a new environment, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support. Then, install `cryojax`. For now, only a source build is supported.
+Note that `python>=3.10` is required. After creating a new environment, [install JAX](https://github.com/google/jax#installation) with either CPU or GPU support. Then, install `cryojax`. For the latest stable release, install using `pip`.
+
+```bash
+python -m pip install cryojax
+```
+
+To install the latest commit, you can build the repository directly.
 
 ```bash
 git clone https://github.com/mjo22/cryojax
@@ -37,7 +43,7 @@ cd cryojax
 python -m pip install .
 ```
 
-This will install the remaining dependencies, such as [`equinox`](https://github.com/patrick-kidger/equinox/) for object-oriented model building and `cryojax` core functionality and [`mrcfile`](https://github.com/ccpem/mrcfile) for I/O.
+This will install the remaining dependencies, such as [`equinox`](https://github.com/patrick-kidger/equinox/) for `cryojax` core functionality and [`mrcfile`](https://github.com/ccpem/mrcfile) for I/O.
 
 The [`jax-finufft`](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections of real-space voxel-based scattering potential representations. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
 

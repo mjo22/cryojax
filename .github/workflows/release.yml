@@ -1,0 +1,17 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release
+        uses: patrick-kidger/action_update_python_project@v2
+        with:
+            python-version: "3.10"
+            pypi-token: ${{ secrets.pypi_token }}
+            github-user: mjo22
+            github-token: ${{ github.token }}  # automatically created token
