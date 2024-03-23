@@ -43,8 +43,6 @@ cd cryojax
 python -m pip install .
 ```
 
-This will install the remaining dependencies, such as [`equinox`](https://github.com/patrick-kidger/equinox/) for `cryojax` core functionality and [`mrcfile`](https://github.com/ccpem/mrcfile) for I/O.
-
 The [`jax-finufft`](https://github.com/dfm/jax-finufft) package is an optional dependency used for non-uniform fast fourier transforms. These are included as an option for computing image projections of real-space voxel-based scattering potential representations. In this case, we recommend first following the `jax_finufft` installation instructions and then installing `cryojax`.
 
 ## Simulating an image
