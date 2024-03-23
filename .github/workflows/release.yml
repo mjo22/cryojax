@@ -2,6 +2,7 @@ name: Publish to PyPI
 
 on: workflow_dispatch
 
+jobs:
   build:
     runs-on: ubuntu-latest
     steps:
@@ -27,10 +28,10 @@ on: workflow_dispatch
   publish:
     environment:
       name: pypi
-      url: https://pypi.org/p/tinygp
+      url: https://pypi.org/p/cryojax
     permissions:
       id-token: write
-    needs: [tests, build]
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
