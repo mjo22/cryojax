@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy-book:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -31,7 +31,6 @@ jobs:
           pip install mknotebooks
           pip install mkdocs-material
 
-      # Build
       - name: Build
         run: |
           mkdocs build
