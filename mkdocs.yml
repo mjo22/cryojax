@@ -37,7 +37,7 @@ markdown_extensions:
 
 plugins:
     - autorefs  # Cross-links to headings
-    - mknotebooks  # Jupyter notebooks
+    # - mkdocs-jupyter
     - mkdocstrings:
         handlers:
           python:
