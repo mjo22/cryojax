@@ -42,10 +42,22 @@ from ._scattering_potential import AbstractScatteringPotential
 
 
 class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
-    """Abstract interface for a voxel-based scattering potential representation."""
+    """Abstract interface for a voxel-based scattering potential representation.
+
+    !!! info
+        Arrays stored in the `AbstractVoxelPotential` are treated as
+        [*buffers*](https://docs.kidger.site/equinox/faq/#how-to-mark-arrays-as-non-trainable-like-pytorchs-buffers).
+        Namely, upon accessing an array,
+        [jax.lax.stop_gradient](https://jax.readthedocs.io/en/latest/_autosummary/jax.lax.stop_gradient.html)
+        is automatically run.
+    """
 
     voxel_size: AbstractVar[Shaped[RealNumber, "..."]]
     is_real: AbstractClassVar[bool]
+
+    def __getattribute__(self, item):
+        value = super().__getattribute__(item)
+        return jax.lax.stop_gradient(value)
 
     @property
     @abstractmethod

@@ -2,10 +2,12 @@
 Coordinate functionality in cryojax.
 """
 
+from abc import abstractmethod
 from typing import Any, Optional
 from typing_extensions import Self
 
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 from equinox import AbstractVar
 from jaxtyping import Array, ArrayLike, Float
@@ -27,9 +29,10 @@ class AbstractCoordinates(eqx.Module, strict=True):
 
     array: AbstractVar[Any]
 
-    def get(self):
+    @abstractmethod
+    def get(self) -> Any:
         """Get the coordinates."""
-        return self.array
+        raise NotImplementedError
 
     def __mul__(self, arr: ArrayLike) -> Self:
         # The following line seems to be required for differentiability with
@@ -62,6 +65,9 @@ class CoordinateList(AbstractCoordinates, strict=True):
     def __init__(self, coordinate_list: PointCloudCoords2D | PointCloudCoords3D):
         self.array = coordinate_list
 
+    def get(self) -> PointCloudCoords3D | PointCloudCoords2D:
+        return self.array
+
 
 class CoordinateGrid(AbstractCoordinates, strict=True):
     """
@@ -76,6 +82,9 @@ class CoordinateGrid(AbstractCoordinates, strict=True):
         grid_spacing: float | ArrayLike = 1.0,
     ):
         self.array = make_coordinates(shape, grid_spacing)
+
+    def get(self) -> ImageCoords | VolumeCoords:
+        return jax.lax.stop_gradient(self.array)
 
 
 class FrequencyGrid(AbstractCoordinates, strict=True):
@@ -92,6 +101,9 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
         half_space: bool = True,
     ):
         self.array = make_frequencies(shape, grid_spacing, half_space=half_space)
+
+    def get(self) -> ImageCoords | VolumeCoords:
+        return jax.lax.stop_gradient(self.array)
 
 
 class FrequencySlice(AbstractCoordinates, strict=True):
@@ -125,6 +137,9 @@ class FrequencySlice(AbstractCoordinates, strict=True):
             axis=0,
         )
         self.array = frequency_slice
+
+    def get(self) -> VolumeSliceCoords:
+        return jax.lax.stop_gradient(self.array)
 
 
 def make_coordinates(
