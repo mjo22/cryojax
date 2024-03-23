@@ -3,14 +3,14 @@ Abstraction of rotations represented by matrix lie groups.
 """
 
 from abc import abstractmethod
-from equinox import field, AbstractClassVar
-from typing import Type, ClassVar, cast
-from typing_extensions import Self, override
-from jaxtyping import Float, Array, PRNGKeyArray
+from typing import cast, ClassVar, Type
+from typing_extensions import override, Self
 
-import jax
 import equinox as eqx
+import jax
 import jax.numpy as jnp
+from equinox import AbstractClassVar, field
+from jaxtyping import Array, Float, PRNGKeyArray
 
 from ..typing import RealNumber
 from ._rotation import AbstractRotation

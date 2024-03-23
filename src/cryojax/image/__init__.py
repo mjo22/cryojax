@@ -9,18 +9,18 @@ from ._edges import (
 from ._fft import (
     fftn as fftn,
     ifftn as ifftn,
-    rfftn as rfftn,
     irfftn as irfftn,
+    rfftn as rfftn,
 )
 from ._map_coordinates import (
+    compute_spline_coefficients as compute_spline_coefficients,
     map_coordinates as map_coordinates,
     map_coordinates_with_cubic_spline as map_coordinates_with_cubic_spline,
-    compute_spline_coefficients as compute_spline_coefficients,
+)
+from ._normalize import (
+    compute_mean_and_std_from_fourier_image as compute_mean_and_std_from_fourier_image,
+    normalize_image as normalize_image,
+    rescale_image as rescale_image,
 )
 from ._rescale_pixel_size import rescale_pixel_size as rescale_pixel_size
 from ._spectrum import powerspectrum as powerspectrum
-from ._normalize import (
-    rescale_image as rescale_image,
-    normalize_image as normalize_image,
-    compute_mean_and_std_from_fourier_image as compute_mean_and_std_from_fourier_image,
-)

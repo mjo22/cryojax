@@ -8,16 +8,16 @@ transformations, using `equinox`. The `jaxlie.manifold.grad` and
 wrappers for gradient transformations.
 """
 
-import jax
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from equinox import AbstractVar
-from jaxtyping import PyTree, Array, Float
+from jaxtyping import Array, Float, PyTree
 
-from ._transforms import AbstractParameterTransform
+from ...rotations import AbstractMatrixLieGroup, SE3, SO3
 from ...simulator import QuaternionPose
-from ...rotations import SO3, SE3, AbstractMatrixLieGroup
+from ._transforms import AbstractParameterTransform
 
 
 def _apply_update_with_lie_transform(u, p):

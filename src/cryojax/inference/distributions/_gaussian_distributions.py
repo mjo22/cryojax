@@ -2,20 +2,20 @@
 Image formation models simulated from gaussian noise distributions.
 """
 
-from typing_extensions import override
-from equinox import field
 from typing import Optional
+from typing_extensions import override
 
-import numpy as np
-import jax.random as jr
 import jax.numpy as jnp
+import jax.random as jr
+import numpy as np
+from equinox import field
 from jaxtyping import PRNGKeyArray, Shaped
 
-from ._distribution import AbstractDistribution
-from ...image.operators import FourierOperatorLike, Constant
-from ...simulator import AbstractPipeline
-from ...typing import RealNumber, Image, ComplexImage
 from ...core import error_if_not_positive
+from ...image.operators import Constant, FourierOperatorLike
+from ...simulator import AbstractPipeline
+from ...typing import ComplexImage, Image, RealNumber
+from ._distribution import AbstractDistribution
 
 
 class IndependentFourierGaussian(AbstractDistribution, strict=True):
@@ -60,7 +60,8 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         """Sample from the gaussian noise model."""
         N_pix = np.prod(self.pipeline.config.padded_shape)
         freqs = self.pipeline.config.wrapped_padded_frequency_grid_in_angstroms.get()
-        # Compute the zero mean variance and scale up to be independent of the number of pixels
+        # Compute the zero mean variance and scale up to be independent of the number of
+        # pixels
         std = jnp.sqrt(N_pix * self.variance(freqs))
         noise = self.pipeline.crop_and_apply_operators(
             std * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0),

@@ -1,14 +1,15 @@
-import pytest
 import jax
 import jax.numpy as jnp
 import numpy as np
-from pycistem.core import CTF as cisCTF, Image, AnglesAndShifts
+import pytest
+from pycistem.core import AnglesAndShifts, CTF as cisCTF, Image
 
 import cryojax.simulator as cs
+from cryojax.coordinates import cartesian_to_polar, make_frequencies
+from cryojax.image import irfftn, powerspectrum
 from cryojax.io import read_array_with_spacing_from_mrc
 from cryojax.simulator import CTF, EulerAnglePose
-from cryojax.image import powerspectrum, irfftn
-from cryojax.coordinates import make_frequencies, cartesian_to_polar
+
 
 jax.config.update("jax_enable_x64", True)
 

@@ -3,23 +3,22 @@ Representations of rigid body rotations and translations of 3D coordinate system
 """
 
 from abc import abstractmethod
-from typing import overload, Any
-from typing_extensions import override
-from jaxtyping import Float, Array, Shaped
 from functools import cached_property
-from equinox import field, AbstractVar
+from typing import overload
+from typing_extensions import override
 
-import jax
 import equinox as eqx
+import jax
 import jax.numpy as jnp
-from equinox import Module
+from equinox import AbstractVar, field, Module
+from jaxtyping import Array, Float, Shaped
 
 from ..rotations import SO3
 from ..typing import (
-    RealNumber,
     ComplexImage,
     ImageCoords,
     PointCloudCoords3D,
+    RealNumber,
     VolumeCoords,
 )
 
@@ -66,8 +65,9 @@ class AbstractPose(Module, strict=True):
             )
         else:
             raise ValueError(
-                "Coordinates must be a JAX array either of shape (N, 3) or (N1, N2, N3, 3). "
-                f"Instead, got {volume_coordinates.shape} and type {type(volume_coordinates)}."
+                "Coordinates must be a JAX array either of shape (N, 3) or "
+                f"(N1, N2, N3, 3). Instead, got {volume_coordinates.shape} and type "
+                f"{type(volume_coordinates)}."
             )
         return rotated_volume_coordinates
 
@@ -102,7 +102,7 @@ class AbstractPose(Module, strict=True):
 
     @classmethod
     @abstractmethod
-    def from_rotation(cls, rotation: SO3, **kwargs: Any):
+    def from_rotation(cls, rotation: SO3):
         """Construct an `AbstractPose` from an `SO3` object."""
         raise NotImplementedError
 
@@ -111,7 +111,6 @@ class AbstractPose(Module, strict=True):
         cls,
         rotation: SO3,
         offset_in_angstroms: Float[Array, "3"],
-        **kwargs: Any,
     ):
         """Construct an `AbstractPose` from an `AbstractRotation` object and a
         translation vector.
@@ -122,7 +121,7 @@ class AbstractPose(Module, strict=True):
                 self.offset_y_in_angstroms,
                 self.offset_z_in_angstroms,
             ),
-            cls.from_rotation(rotation, **kwargs),
+            cls.from_rotation(rotation),
             (
                 offset_in_angstroms[..., 0],
                 offset_in_angstroms[..., 1],

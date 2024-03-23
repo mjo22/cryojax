@@ -1,8 +1,7 @@
-import pytest
-
 import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
+
 import cryojax.simulator as cs
 from cryojax.rotations import SO3
 

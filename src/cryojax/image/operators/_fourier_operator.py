@@ -11,22 +11,22 @@ These classes are modified from the library ``tinygp``.
 from abc import abstractmethod
 from typing import overload
 from typing_extensions import override
+
+import jax.numpy as jnp
 from equinox import field
 from jaxtyping import Shaped
 
-import jax.numpy as jnp
-
 from ...core import error_if_not_positive
-from ._operator import AbstractImageOperator
 from ...typing import (
-    RealNumber,
-    ImageCoords,
-    VolumeCoords,
-    RealImage,
-    RealVolume,
     Image,
+    ImageCoords,
+    RealImage,
+    RealNumber,
+    RealVolume,
     Volume,
+    VolumeCoords,
 )
+from ._operator import AbstractImageOperator
 
 
 class AbstractFourierOperator(AbstractImageOperator, strict=True):
@@ -45,14 +45,16 @@ class AbstractFourierOperator(AbstractImageOperator, strict=True):
 
     @overload
     @abstractmethod
-    def __call__(self, freqs: ImageCoords, **kwargs) -> Image: ...
+    def __call__(self, freqs: ImageCoords) -> Image: ...
 
     @overload
     @abstractmethod
-    def __call__(self, freqs: VolumeCoords, **kwargs) -> Volume: ...
+    def __call__(self, freqs: VolumeCoords) -> Volume: ...
 
     @abstractmethod
-    def __call__(self, freqs: ImageCoords | VolumeCoords, **kwargs) -> Image | Volume:
+    def __call__(  # pyright: ignore
+        self, freqs: ImageCoords | VolumeCoords
+    ) -> Image | Volume:
         raise NotImplementedError
 
 

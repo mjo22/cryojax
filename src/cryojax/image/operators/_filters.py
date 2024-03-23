@@ -5,26 +5,26 @@ Filters to apply to images in Fourier space
 import functools
 import operator
 from typing import Optional, overload
-from equinox import field
 
 import jax
 import jax.numpy as jnp
+from equinox import field
 
-from .._edges import resize_with_crop_or_pad
-from ._operator import AbstractImageMultiplier
-from .._spectrum import powerspectrum
-from .._fft import rfftn, irfftn
 from ...coordinates import make_frequencies
 from ...typing import (
-    Image,
     ComplexImage,
-    RealImage,
-    Volume,
     ComplexVolume,
-    RealVolume,
+    Image,
     ImageCoords,
+    RealImage,
+    RealVolume,
+    Volume,
     VolumeCoords,
 )
+from .._edges import resize_with_crop_or_pad
+from .._fft import irfftn, rfftn
+from .._spectrum import powerspectrum
+from ._operator import AbstractImageMultiplier
 
 
 class AbstractFilter(AbstractImageMultiplier, strict=True):

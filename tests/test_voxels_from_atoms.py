@@ -2,13 +2,17 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from cryojax.simulator import FourierVoxelGridPotential, RealVoxelGridPotential
-from cryojax.simulator import build_real_space_voxels_from_atoms
-
-from cryojax.io import read_atoms_from_pdb
-from cryojax.image import ifftn
-from cryojax.coordinates import CoordinateGrid
 from jax import config
+
+from cryojax.coordinates import CoordinateGrid
+from cryojax.image import ifftn
+from cryojax.io import read_atoms_from_pdb
+from cryojax.simulator import (
+    build_real_space_voxels_from_atoms,
+    FourierVoxelGridPotential,
+    RealVoxelGridPotential,
+)
+
 
 config.update("jax_enable_x64", True)
 

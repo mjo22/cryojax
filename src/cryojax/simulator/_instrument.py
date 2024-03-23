@@ -4,18 +4,17 @@ for the optics, electron dose, and detector.
 """
 
 from typing import Optional, overload
-from jaxtyping import PRNGKeyArray
-from equinox import Module
 
 import jax.numpy as jnp
+from equinox import Module
+from jaxtyping import PRNGKeyArray
 
-from ..image import rfftn, ifftn
+from ..image import ifftn, rfftn
+from ..typing import ComplexImage, Image, RealImage, RealNumber
 from ._config import ImageConfig
+from ._detector import AbstractDetector, NullDetector
 from ._dose import ElectronDose
 from ._optics import AbstractOptics, NullOptics
-from ._detector import AbstractDetector, NullDetector
-
-from ..typing import ComplexImage, RealImage, Image, RealNumber
 
 
 class Instrument(Module, strict=True):
@@ -55,7 +54,8 @@ class Instrument(Module, strict=True):
     ):
         if (optics is None or dose is None) and isinstance(detector, AbstractDetector):
             raise AttributeError(
-                "Cannot set Instrument.detector without passing an AbstractOptics and an ElectronDose."
+                "Cannot set Instrument.detector without passing an AbstractOptics and "
+                "an ElectronDose."
             )
         self.optics = optics or NullOptics()
         self.dose = dose or ElectronDose(electrons_per_angstrom_squared=100.0)

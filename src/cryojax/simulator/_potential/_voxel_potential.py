@@ -3,43 +3,42 @@ Voxel-based representations of the scattering potential.
 """
 
 from abc import abstractmethod
+from functools import cached_property
 from typing import (
     Any,
-    Type,
+    cast,
     ClassVar,
     Optional,
     overload,
-    cast,
+    Type,
 )
-from typing_extensions import Self, override
-from jaxtyping import Float, Array, Int, Shaped
-from functools import cached_property
-from equinox import field, AbstractVar, AbstractClassVar
+from typing_extensions import override, Self
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
+from equinox import AbstractClassVar, AbstractVar, field
+from jaxtyping import Array, Float, Int, Shaped
 
-from ._scattering_potential import AbstractScatteringPotential
-from .._pose import AbstractPose
 from ...constants import get_form_factor_params
+from ...coordinates import CoordinateGrid, CoordinateList, FrequencySlice
 from ...core import error_if_not_positive
-
-from ...image.operators import AbstractFilter
 from ...image import (
-    pad_to_shape,
+    compute_spline_coefficients,
     crop_to_shape,
     fftn,
-    compute_spline_coefficients,
+    pad_to_shape,
 )
-from ...coordinates import CoordinateGrid, CoordinateList, FrequencySlice
+from ...image.operators import AbstractFilter
 from ...typing import (
-    RealPointCloud,
-    RealCubicVolume,
     ComplexCubicVolume,
+    RealCubicVolume,
     RealNumber,
+    RealPointCloud,
 )
+from .._pose import AbstractPose
+from ._scattering_potential import AbstractScatteringPotential
 
 
 class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
@@ -59,8 +58,7 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     def from_real_voxel_grid(
         cls: Type[Self],
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
-        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float = 1.0,
-        **kwargs: Any,
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
     ) -> Self:
         """Load an `AbstractVoxels` from real-valued 3D electron
         scattering potential.
@@ -72,7 +70,7 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     def from_atoms(
         cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
-        atom_identities: Int[Array, "N"],
+        atom_identities: Int[Array, " N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
@@ -114,7 +112,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     def from_real_voxel_grid(
         cls: Type[Self],
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
-        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float = 1.0,
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
         pad_scale: float = 1.0,
         pad_mode: str = "constant",
@@ -135,8 +133,9 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
                   frequency component is assumed to be in the corner.
         """
         # Cast to jax array
-        real_voxel_grid, voxel_size = jnp.asarray(real_voxel_grid), jnp.asarray(
-            voxel_size
+        real_voxel_grid, voxel_size = (
+            jnp.asarray(real_voxel_grid),
+            jnp.asarray(voxel_size),
         )
         # Pad template
         if pad_scale < 1.0:
@@ -171,13 +170,14 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     def from_atoms(
         cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
-        atom_identities: Int[Array, "N"],
+        atom_identities: Int[Array, " N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
         **kwargs: Any,
     ) -> Self:
-        """Load an `AbstractFourierVoxelGridPotential` from atom positions and identities.
+        """Load an `AbstractFourierVoxelGridPotential` from atom positions and
+        identities.
 
         **Arguments:**
 
@@ -252,9 +252,11 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
             but it is not stored in the class. For example,
 
             ```python
-            voxels = FourierVoxelGridPotentialInterpolator(fourier_voxel_grid, frequency_slice, voxel_size)
+            voxels = FourierVoxelGridPotentialInterpolator(
+                fourier_voxel_grid, frequency_slice, voxel_size
+            )
             assert hasattr(voxels, "fourier_voxel_grid")  # This will return an error
-            assert hasattr(voxels, "coefficients")  # Instead, the spline coefficients are stored
+            assert hasattr(voxels, "coefficients")  # Instead, store spline coefficients
             ```
 
         **Arguments:**
@@ -329,7 +331,8 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         cls: Type[Self],
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
-        coordinate_grid: CoordinateGrid,
+        *,
+        coordinate_grid: Optional[CoordinateGrid] = None,
     ) -> Self: ...
 
     @overload
@@ -347,8 +350,8 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         cls: Type[Self],
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
-        coordinate_grid: Optional[CoordinateGrid] = None,
         *,
+        coordinate_grid: Optional[CoordinateGrid] = None,
         crop_scale: Optional[float] = None,
     ) -> Self:
         """Load a `RealVoxelGridPotential` from a real-valued 3D electron
@@ -362,8 +365,9 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
                       Must be a value less than `1.0`.
         """
         # Cast to jax array
-        real_voxel_grid, voxel_size = jnp.asarray(real_voxel_grid), jnp.asarray(
-            voxel_size
+        real_voxel_grid, voxel_size = (
+            jnp.asarray(real_voxel_grid),
+            jnp.asarray(voxel_size),
         )
         # Make coordinates if not given
         if coordinate_grid is None:
@@ -384,7 +388,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     def from_atoms(
         cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
-        atom_identities: Int[Array, "N"],
+        atom_identities: Int[Array, " N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
@@ -405,7 +409,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         return cls.from_real_voxel_grid(
             real_voxel_grid,
             voxel_size,
-            coordinate_grid_in_angstroms / voxel_size,
+            coordinate_grid=coordinate_grid_in_angstroms / voxel_size,
             **kwargs,
         )
 
@@ -465,8 +469,8 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         cls: Type[Self],
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
-        coordinate_grid: Optional[CoordinateGrid] = None,
         *,
+        coordinate_grid: Optional[CoordinateGrid] = None,
         rtol: float = 1e-05,
         atol: float = 1e-08,
     ) -> Self:
@@ -483,8 +487,9 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
                 points of zero scattering potential.
         """
         # Cast to jax array
-        real_voxel_grid, voxel_size = jnp.asarray(real_voxel_grid), jnp.asarray(
-            voxel_size
+        real_voxel_grid, voxel_size = (
+            jnp.asarray(real_voxel_grid),
+            jnp.asarray(voxel_size),
         )
         # Make coordinates if not given
         if coordinate_grid is None:
@@ -501,7 +506,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     def from_atoms(
         cls: Type[Self],
         atom_positions: Float[Array, "N 3"],
-        atom_identities: Int[Array, "N"],
+        atom_identities: Int[Array, " N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
         form_factors: Optional[Float[Array, "N 5"]] = None,
@@ -522,7 +527,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         return cls.from_real_voxel_grid(
             real_voxel_grid,
             voxel_size,
-            coordinate_grid_in_angstroms / voxel_size,
+            coordinate_grid=coordinate_grid_in_angstroms / voxel_size,
             **kwargs,
         )
 

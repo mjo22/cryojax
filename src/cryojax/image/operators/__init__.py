@@ -1,36 +1,36 @@
 from ._filters import (
     AbstractFilter as AbstractFilter,
     CustomFilter as CustomFilter,
-    LowpassFilter as LowpassFilter,
     InverseSincFilter as InverseSincFilter,
+    LowpassFilter as LowpassFilter,
     WhiteningFilter as WhiteningFilter,
-)
-from ._masks import (
-    AbstractMask as AbstractMask,
-    CustomMask as CustomMask,
-    CircularMask as CircularMask,
-)
-from ._operator import (
-    Constant as Constant,
-    Empirical as Empirical,
-    Lambda as Lambda,
-    AbstractImageOperator as AbstractImageOperator,
-    ProductImageOperator as ProductImageOperator,
-    SumImageOperator as SumImageOperator,
-    DiffImageOperator as DiffImageOperator,
-    AbstractImageMultiplier as AbstractImageMultiplier,
-    ProductImageMultiplier as ProductImageMultiplier,
 )
 from ._fourier_operator import (
     AbstractFourierOperator as AbstractFourierOperator,
-    FourierOperatorLike as FourierOperatorLike,
-    FourierGaussian as FourierGaussian,
-    Lorenzian as Lorenzian,
     FourierExp2D as FourierExp2D,
+    FourierGaussian as FourierGaussian,
+    FourierOperatorLike as FourierOperatorLike,
+    Lorenzian as Lorenzian,
     ZeroMode as ZeroMode,
+)
+from ._masks import (
+    AbstractMask as AbstractMask,
+    CircularMask as CircularMask,
+    CustomMask as CustomMask,
+)
+from ._operator import (
+    AbstractImageMultiplier as AbstractImageMultiplier,
+    AbstractImageOperator as AbstractImageOperator,
+    Constant as Constant,
+    DiffImageOperator as DiffImageOperator,
+    Empirical as Empirical,
+    Lambda as Lambda,
+    ProductImageMultiplier as ProductImageMultiplier,
+    ProductImageOperator as ProductImageOperator,
+    SumImageOperator as SumImageOperator,
 )
 from ._real_operator import (
     AbstractRealOperator as AbstractRealOperator,
-    RealOperatorLike as RealOperatorLike,
     Gaussian2D as Gaussian2D,
+    RealOperatorLike as RealOperatorLike,
 )

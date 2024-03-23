@@ -1,13 +1,8 @@
-import pytest
-
 import jax
-import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
-import equinox as eqx
-import cryojax.simulator as cs
+import pytest
 
-from functools import partial
 
 jax.config.update("jax_enable_x64", True)
 

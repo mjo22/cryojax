@@ -3,14 +3,14 @@ Routines for loading atomic structures.
 Large amounts of the code are adapted from the ioSPI package
 """
 
-import os
 import importlib.resources as pkg_resources
-from typing import Optional
+import os
 from functools import partial
-from jaxtyping import Array, Float
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
+from jaxtyping import Array, Float
 
 from ..typing import IntegerPointCloud
 

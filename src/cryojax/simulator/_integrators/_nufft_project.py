@@ -4,19 +4,19 @@ Using non-uniform FFTs for computing volume projections.
 
 import math
 from typing import Union
-from equinox import field
 
 import jax.numpy as jnp
+from equinox import field
 
+from ...typing import (
+    ComplexImage,
+    PointCloudCoords2D,
+    PointCloudCoords3D,
+    RealPointCloud,
+)
 from .._config import ImageConfig
 from .._potential import RealVoxelCloudPotential, RealVoxelGridPotential
 from ._potential_integrator import AbstractPotentialIntegrator
-from ...typing import (
-    ComplexImage,
-    RealPointCloud,
-    PointCloudCoords2D,
-    PointCloudCoords3D,
-)
 
 
 class NufftProject(AbstractPotentialIntegrator, strict=True):
@@ -90,8 +90,9 @@ def project_with_nufft(
     """
     from jax_finufft import nufft1
 
-    weights, coordinate_list = jnp.asarray(weights).astype(complex), jnp.asarray(
-        coordinate_list
+    weights, coordinate_list = (
+        jnp.asarray(weights).astype(complex),
+        jnp.asarray(coordinate_list),
     )
     # Get x and y coordinates
     coordinates_xy = coordinate_list[:, :2]

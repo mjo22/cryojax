@@ -2,11 +2,12 @@
 Routines for working with MRC files.
 """
 
-import mrcfile
 import pathlib
+from typing import cast, Optional
+
+import mrcfile
 import numpy as np
-from jaxtyping import Float, Array
-from typing import Optional, cast
+from jaxtyping import Array, Float
 
 
 def read_array_from_mrc(
@@ -201,8 +202,9 @@ def _read_array_from_mrc(
             )
         else:
             raise ValueError(
-                "Mrcfile could not be identified as an image, image stack, volume, or volume stack. "
-                f"Run mrcfile.validate(...) to make sure {filename} is a valid MRC file."
+                "Mrcfile could not be identified as an image, image stack, volume, or "
+                f"volume stack. Run mrcfile.validate(...) to make sure {filename} is a "
+                "valid MRC file."
             )
 
         if not mmap:
@@ -212,7 +214,8 @@ def _read_array_from_mrc(
             # Only allow the same spacing in each direction
             assert all(
                 grid_spacing_per_dimension != np.zeros(grid_spacing_per_dimension.shape)
-            ), f"Mrcfile.voxel_size must be set if reading the grid spacing. Found that Mrcfile.voxel_size = (0.0, 0.0, 0.0)"
+            ), "Mrcfile.voxel_size must be set if reading the grid spacing. Found that "
+            "Mrcfile.voxel_size = (0.0, 0.0, 0.0)"
             assert all(
                 grid_spacing_per_dimension == grid_spacing_per_dimension[0]
             ), "Mrcfile.voxel_size must be same in all dimensions."

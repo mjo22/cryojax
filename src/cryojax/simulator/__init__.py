@@ -1,61 +1,70 @@
-from ._config import ImageConfig as ImageConfig
-
-from ._pose import (
-    AbstractPose as AbstractPose,
-    EulerAnglePose as EulerAnglePose,
-    QuaternionPose as QuaternionPose,
-    AxisAnglePose as AxisAnglePose,
+from ._assembly import (
+    AbstractAssembly as AbstractAssembly,
+    compute_helical_lattice_positions as compute_helical_lattice_positions,
+    compute_helical_lattice_rotations as compute_helical_lattice_rotations,
+    Helix as Helix,
 )
-
-
+from ._config import ImageConfig as ImageConfig
 from ._conformation import (
     AbstractConformation as AbstractConformation,
     DiscreteConformation as DiscreteConformation,
 )
-
-from ._specimen import (
-    AbstractSpecimen as AbstractSpecimen,
-    Specimen as Specimen,
-    AbstractEnsemble as AbstractEnsemble,
-    DiscreteEnsemble as DiscreteEnsemble,
-)
-
-
-from ._assembly import *
-
-from ._potential import *
-
-from ._integrators import *
-
-from ._ice import (
-    AbstractIce as AbstractIce,
-    NullIce as NullIce,
-    GaussianIce as GaussianIce,
-)
-
-from ._dose import ElectronDose as ElectronDose
-
-from ._optics import (
-    AbstractOptics as AbstractOptics,
-    NullOptics as NullOptics,
-    WeakPhaseOptics as WeakPhaseOptics,
-    CTF as CTF,
-)
-
 from ._detector import (
-    AbstractDQE as AbstractDQE,
-    NullDQE as NullDQE,
-    IdealDQE as IdealDQE,
     AbstractDetector as AbstractDetector,
-    NullDetector as NullDetector,
+    AbstractDQE as AbstractDQE,
     GaussianDetector as GaussianDetector,
+    IdealDQE as IdealDQE,
+    NullDetector as NullDetector,
+    NullDQE as NullDQE,
     PoissonDetector as PoissonDetector,
 )
-
+from ._dose import ElectronDose as ElectronDose
+from ._ice import (
+    AbstractIce as AbstractIce,
+    GaussianIce as GaussianIce,
+    NullIce as NullIce,
+)
 from ._instrument import Instrument as Instrument
-
+from ._integrators import (
+    AbstractPotentialIntegrator as AbstractPotentialIntegrator,
+    extract_slice as extract_slice,
+    extract_slice_with_cubic_spline as extract_slice_with_cubic_spline,
+    FourierSliceExtract as FourierSliceExtract,
+    NufftProject as NufftProject,
+    project_with_nufft as project_with_nufft,
+)
+from ._optics import (
+    AbstractOptics as AbstractOptics,
+    CTF as CTF,
+    NullOptics as NullOptics,
+    WeakPhaseOptics as WeakPhaseOptics,
+)
 from ._pipeline import (
     AbstractPipeline as AbstractPipeline,
-    ImagePipeline as ImagePipeline,
     AssemblyPipeline as AssemblyPipeline,
+    ImagePipeline as ImagePipeline,
+)
+from ._pose import (
+    AbstractPose as AbstractPose,
+    AxisAnglePose as AxisAnglePose,
+    EulerAnglePose as EulerAnglePose,
+    QuaternionPose as QuaternionPose,
+)
+from ._potential import (
+    AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
+    AbstractScatteringPotential as AbstractScatteringPotential,
+    AbstractVoxelPotential as AbstractVoxelPotential,
+    build_real_space_voxels_from_atoms as build_real_space_voxels_from_atoms,
+    evaluate_3d_atom_potential as evaluate_3d_atom_potential,
+    evaluate_3d_real_space_gaussian as evaluate_3d_real_space_gaussian,
+    FourierVoxelGridPotential as FourierVoxelGridPotential,
+    FourierVoxelGridPotentialInterpolator as FourierVoxelGridPotentialInterpolator,
+    RealVoxelCloudPotential as RealVoxelCloudPotential,
+    RealVoxelGridPotential as RealVoxelGridPotential,
+)
+from ._specimen import (
+    AbstractEnsemble as AbstractEnsemble,
+    AbstractSpecimen as AbstractSpecimen,
+    DiscreteEnsemble as DiscreteEnsemble,
+    Specimen as Specimen,
 )

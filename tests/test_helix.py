@@ -1,9 +1,9 @@
-import pytest
-
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
-import equinox as eqx
+import pytest
+
 import cryojax.simulator as cs
 from cryojax.io import read_array_with_spacing_from_mrc
 
@@ -66,7 +66,7 @@ def test_superposition_pipeline_without_conformation(sample_subunit_mrc_path, co
     helix = build_helix(sample_subunit_mrc_path, 1)
     pipeline = cs.AssemblyPipeline(config=config, assembly=helix)
     _ = pipeline.render()
-    a = pipeline.sample(jax.random.PRNGKey(0))
+    _ = pipeline.sample(jax.random.PRNGKey(0))
 
 
 def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, config):

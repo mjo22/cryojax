@@ -1,21 +1,21 @@
 """Cryojax compatibility with [RELION](https://relion.readthedocs.io/en/release-5.0/)."""
 
-import pandas as pd
-import mrcfile
 import dataclasses
 import pathlib
-from jaxtyping import Shaped, Float, Int
-from typing import final, Callable, Any
+from typing import Any, Callable, final
 
 import equinox as eqx
-import numpy as np
 import jax.numpy as jnp
+import mrcfile
+import numpy as np
+import pandas as pd
+from jaxtyping import Float, Int, Shaped
 
 from ..io import read_and_validate_starfile
-from ..simulator import ImageConfig, EulerAnglePose, CTF
+from ..simulator import CTF, EulerAnglePose, ImageConfig
 from ..typing import RealImage
-from ._particle_stack import AbstractParticleStack
 from ._dataset import AbstractDataset
+from ._particle_stack import AbstractParticleStack
 
 
 RELION_REQUIRED_OPTICS_KEYS = [
@@ -129,7 +129,7 @@ class RelionDataset(AbstractDataset):
 
     @final
     def __getitem__(
-        self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, "N"]
+        self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
     ) -> RelionParticleStack:
         # Load particle data and optics group
         n_rows = self.data_blocks["particles"].shape[0]
@@ -151,9 +151,10 @@ class RelionDataset(AbstractDataset):
             raise IndexError(
                 f"Indexing with the type {type(index)} is not supported by "
                 "`RelionDataset`. Indexing by integers is supported, one-dimensional "
-                "fancy indexing is supported, and numpy-array indexing is supported. For example, "
-                "like `particle = dataset[0]`, `particle_stack = dataset[0:5]`, or "
-                "`particle_stack = dataset[np.array([1, 4, 3, 2])]`."
+                "fancy indexing is supported, and numpy-array indexing is supported. "
+                "For example, like `particle = dataset[0]`, "
+                "`particle_stack = dataset[0:5]`, "
+                "or `particle_stack = dataset[np.array([1, 4, 3, 2])]`."
             )
         try:
             particle_blocks = self.data_blocks["particles"].iloc[index]
@@ -183,8 +184,8 @@ class RelionDataset(AbstractDataset):
             # In this block, the user most likely used fancy indexing, like
             # `dataset = RelionDataset(...); particle_stack = dataset[1:10]`
             image_stack_index_and_name_series = image_stack_index_and_name_series_or_str
-            # ... split the pandas.Series into a pandas.DataFrame with two columns: one for
-            # the image index and another for the filename
+            # ... split the pandas.Series into a pandas.DataFrame with two columns:
+            # one for the image index and another for the filename
             image_stack_index_and_name_dataframe = (
                 image_stack_index_and_name_series.str.split("@", expand=True)
             )
@@ -201,8 +202,9 @@ class RelionDataset(AbstractDataset):
                     "STAR file rows. This is most likely because you tried to "
                     "use fancy indexing with multiple image stack filenames "
                     "in the same STAR file. If a STAR file refers to multiple image "
-                    "stack filenames, fancy indexing is not supported. For example, this will "
-                    "raise an error: `dataset = RelionDataset(...); particle_stack = dataset[1:10]`."
+                    "stack filenames, fancy indexing is not supported. For example, "
+                    "this will raise an error: `dataset = RelionDataset(...); "
+                    "particle_stack = dataset[1:10]`."
                 )
             # ... create full path to the image stack
             path_to_image_stack = pathlib.Path(
@@ -303,7 +305,8 @@ class RelionDataset(AbstractDataset):
             zip(*pose_parameter_names_and_values)
         )
         # ... fill the EulerAnglePose will keys that are present. if they are not
-        # present, keep the default values in the `pose = EulerAnglePose()` instantiation
+        # present, keep the default values in the `pose = EulerAnglePose()`
+        # instantiation
         pose = eqx.tree_at(
             lambda p: tuple([getattr(p, name) for name in pose_parameter_names]),
             pose,
@@ -372,9 +375,9 @@ class HelicalRelionDataset(AbstractDataset):
         n_filaments = particle_dataframe["rlnHelicalTubeID"].max()
         if filament_index + 1 > n_filaments:
             raise ValueError(
-                "The index at which the `HelicalRelionDataset` was accessed was out of bounds! "
-                f"The number of filaments in the dataset is {n_filaments}, but you tried to "
-                f"access the index {filament_index}."
+                "The index at which the `HelicalRelionDataset` was accessed was out of "
+                f"bounds! The number of filaments in the dataset is {n_filaments}, but "
+                f"you tried to access the index {filament_index}."
             )
         # .. get the indices for a filament
         particle_indices = np.squeeze(

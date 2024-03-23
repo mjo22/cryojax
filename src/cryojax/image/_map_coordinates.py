@@ -10,14 +10,11 @@ import itertools
 import operator
 from typing import List, Sequence, Tuple
 
-import lineax as lx
-
 import jax
-from jax import util
-from jax import lax, vmap
-
 import jax.numpy as jnp
-from jaxtyping import ArrayLike, Array
+import lineax as lx
+from jax import lax, util, vmap
+from jaxtyping import Array, ArrayLike
 
 
 def map_coordinates(
@@ -226,7 +223,9 @@ def _spline_basis(t: Array) -> Array:
     fn1 = lambda t: (2 - t) ** 3
     fn2 = lambda t: 4 - 6 * t**2 + 3 * t**3
     return jnp.where(
-        at >= 1, jnp.where(at <= 2, fn1(at), 0), jnp.where(at <= 1, fn2(at), 0)  # type: ignore
+        at >= 1,
+        jnp.where(at <= 2, fn1(at), 0),
+        jnp.where(at <= 1, fn2(at), 0),  # type: ignore
     )
 
 

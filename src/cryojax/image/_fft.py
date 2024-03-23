@@ -2,16 +2,16 @@
 Routines to compute FFTs, in cryojax conventions.
 """
 
-from typing import Any, Union, Optional
+from typing import Any, Optional, Union
 
 import jax.numpy as jnp
 
 from ..typing import (
-    RealImage,
-    RealVolume,
     ComplexImage,
     ComplexVolume,
     Image,
+    RealImage,
+    RealVolume,
     Volume,
 )
 

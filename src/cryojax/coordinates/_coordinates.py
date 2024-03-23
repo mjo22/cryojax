@@ -2,19 +2,19 @@
 Coordinate functionality in cryojax.
 """
 
-from jaxtyping import ArrayLike, Array, Float
-from typing import Optional, Any
+from typing import Any, Optional
 from typing_extensions import Self
-from equinox import AbstractVar
 
 import equinox as eqx
 import jax.numpy as jnp
+from equinox import AbstractVar
+from jaxtyping import Array, ArrayLike, Float
 
 from ..typing import (
     Image,
-    PointCloudCoords3D,
-    PointCloudCoords2D,
     ImageCoords,
+    PointCloudCoords2D,
+    PointCloudCoords3D,
     VolumeCoords,
     VolumeSliceCoords,
 )
@@ -244,7 +244,8 @@ def _make_coordinates_or_frequencies(
         coords = jnp.stack([xv, yv, zv], axis=-1)
     else:
         raise ValueError(
-            f"Only 2D and 3D coordinate grids are supported. Tried to create a grid of shape {shape}."
+            "Only 2D and 3D coordinate grids are supported. "
+            f"Tried to create a grid of shape {shape}."
         )
 
     return coords
@@ -255,7 +256,7 @@ def _make_coordinates_or_frequencies_1d(
     grid_spacing: float | ArrayLike,
     real_space: bool = False,
     rfftfreq: Optional[bool] = None,
-) -> Float[Array, "size"]:
+) -> Float[Array, " size"]:
     """One-dimensional coordinates in real or fourier space"""
     if real_space:
         make_1d = (

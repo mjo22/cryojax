@@ -5,6 +5,7 @@ enforce / communicate conventions across `cryojax`.
 
 import jaxtyping as jt
 
+
 # 0-d array type hints
 RealNumber = jt.Float[jt.Array, ""]
 """Type alias for `jaxtyping.Float[jax.Array, ""]`."""
@@ -54,11 +55,11 @@ VolumeSliceCoords = jt.Float[jt.Array, "1 Ny Nx 3"]
 """Type alias for `jaxtyping.Float[jax.Array, "1 Ny Nx 3"]`."""
 
 # Point cloud type hints (non-uniformly spaced points).
-RealPointCloud = jt.Float[jt.Array, "N"]
-"""Type alias for `jaxtyping.Float[jax.Array, "N"]`."""
+RealPointCloud = jt.Float[jt.Array, " N"]
+"""Type alias for `jaxtyping.Float[jax.Array, " N"]`."""
 
-IntegerPointCloud = jt.Int[jt.Array, "N"]
-"""Type alias for `jaxtyping.Int[jax.Array, "N"]`."""
+IntegerPointCloud = jt.Int[jt.Array, " N"]
+"""Type alias for `jaxtyping.Int[jax.Array, " N"]`."""
 
 PointCloudCoords3D = jt.Float[jt.Array, "N 3"]
 """Type alias for `jaxtyping.Float[jax.Array, "N 3"]`."""

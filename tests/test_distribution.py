@@ -1,13 +1,10 @@
-import pytest
-
-from cryojax.inference import distributions as dist
-from cryojax.image import operators as op
-import cryojax.simulator as cs
-import equinox as eqx
-import numpy as np
-import jax.numpy as jnp
 import equinox as eqx
 import jax.random as jr
+import numpy as np
+
+import cryojax.simulator as cs
+from cryojax.image import operators as op
+from cryojax.inference import distributions as dist
 
 
 def test_custom_variance(noisy_model, config, test_image):

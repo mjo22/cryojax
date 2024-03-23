@@ -1,14 +1,15 @@
 import os
-import pytest
-import numpy as np
-import jax
+
 import equinox as eqx
+import jax
 import jax.random as jr
+import numpy as np
+import pytest
 
 import cryojax.simulator as cs
+from cryojax.image import operators as op, rfftn
 from cryojax.io import read_array_with_spacing_from_mrc
-from cryojax.image import operators as op
-from cryojax.image import rfftn
+
 
 jax.config.update("jax_enable_x64", True)
 

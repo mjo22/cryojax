@@ -3,22 +3,22 @@ Implementation of operators on images in real-space.
 """
 
 from abc import abstractmethod
-from typing import overload, Any
+from typing import overload
 from typing_extensions import override
-from jaxtyping import Array, Float, Shaped
-from equinox import field
 
 import jax.numpy as jnp
+from equinox import field
+from jaxtyping import Array, Float, Shaped
 
-from ._operator import AbstractImageOperator
+from ...core import error_if_not_positive
 from ...typing import (
     ImageCoords,
-    VolumeCoords,
     RealImage,
-    RealVolume,
     RealNumber,
+    RealVolume,
+    VolumeCoords,
 )
-from ...core import error_if_not_positive
+from ._operator import AbstractImageOperator
 
 
 class AbstractRealOperator(AbstractImageOperator, strict=True):
@@ -37,15 +37,15 @@ class AbstractRealOperator(AbstractImageOperator, strict=True):
 
     @overload
     @abstractmethod
-    def __call__(self, coords: ImageCoords, **kwargs: Any) -> RealImage: ...
+    def __call__(self, coords: ImageCoords) -> RealImage: ...
 
     @overload
     @abstractmethod
-    def __call__(self, coords: VolumeCoords, **kwargs: Any) -> RealVolume: ...
+    def __call__(self, coords: VolumeCoords) -> RealVolume: ...
 
     @abstractmethod
-    def __call__(
-        self, coords: ImageCoords | VolumeCoords, **kwargs: Any
+    def __call__(  # pyright: ignore
+        self, coords: ImageCoords | VolumeCoords
     ) -> RealImage | RealVolume:
         raise NotImplementedError
 

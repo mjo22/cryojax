@@ -2,10 +2,11 @@
 Routines for starfile serialization and deserialization.
 """
 
-import starfile
 import pathlib
+from typing import cast
+
 import pandas as pd
-from typing import Any, cast
+import starfile
 
 
 def read_and_validate_starfile(filename: str | pathlib.Path) -> dict[str, pd.DataFrame]:
@@ -22,6 +23,6 @@ def _validate_filename(filename: str | pathlib.Path):
     suffixes = pathlib.Path(filename).suffixes
     if not (len(suffixes) == 1 and suffixes[0] == ".star"):
         raise IOError(
-            "Tried to read STAR file, but the filename does not include a .star suffix. "
-            f"Got filename '{filename}'."
+            "Tried to read STAR file, but the filename does not include a .star "
+            f"suffix. Got filename '{filename}'."
         )

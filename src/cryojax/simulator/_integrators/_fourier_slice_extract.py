@@ -3,23 +3,23 @@ Using the fourier slice theorem for computing volume projections.
 """
 
 from typing import Any
-from equinox import field
 
 import jax.numpy as jnp
+from equinox import field
 
-from ._potential_integrator import AbstractPotentialIntegrator
+from ...image import (
+    irfftn,
+    map_coordinates,
+    map_coordinates_with_cubic_spline,
+    rfftn,
+)
+from ...typing import ComplexCubicVolume, ComplexImage, VolumeSliceCoords
 from .._config import ImageConfig
 from .._potential import (
     FourierVoxelGridPotential,
     FourierVoxelGridPotentialInterpolator,
 )
-from ...image import (
-    irfftn,
-    rfftn,
-    map_coordinates,
-    map_coordinates_with_cubic_spline,
-)
-from ...typing import ComplexImage, ComplexCubicVolume, VolumeSliceCoords
+from ._potential_integrator import AbstractPotentialIntegrator
 
 
 class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
@@ -79,7 +79,8 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
             )
         else:
             raise ValueError(
-                "Supported density representations are FourierVoxelGrid and FourierVoxelGridInterpolator."
+                "Supported density representations are FourierVoxelGrid and "
+                "FourierVoxelGridInterpolator."
             )
 
         # Resize the image to match the ImageConfig.padded_shape

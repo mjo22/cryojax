@@ -1,13 +1,11 @@
-import pytest
-
 from functools import partial
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
-import equinox as eqx
 
-from cryojax.simulator import DiscreteEnsemble, DiscreteConformation
+from cryojax.simulator import DiscreteConformation, DiscreteEnsemble
 
 
 def test_conformation(potential, pose, integrator, config):

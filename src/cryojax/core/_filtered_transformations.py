@@ -1,13 +1,14 @@
 """
 Utilities for creating equinox filtered transformations. These routines
-are modified from [`zodiax`](https://github.com/LouisDesdoigts/zodiax), which 
+are modified from [`zodiax`](https://github.com/LouisDesdoigts/zodiax), which
 was created for the project [`dLux`](https://louisdesdoigts.github.io/dLux/).
 """
 
+from functools import partial, wraps
+from typing import Any, Callable, Hashable, Optional, Union
+
 import equinox as eqx
 from jaxtyping import PyTree
-from functools import wraps, partial
-from typing import Callable, Union, Any, Optional, Hashable
 
 
 def filter_grad_with_spec(
@@ -17,10 +18,8 @@ def filter_grad_with_spec(
     *,
     has_aux: bool = False,
 ) -> Callable:
-
     @wraps(func)
     def partition_and_recombine_fn(pytree: PyTree, *args: Any, **kwargs: Any):
-
         @partial(
             eqx.filter_grad,
             has_aux=has_aux,
@@ -46,10 +45,8 @@ def filter_value_and_grad_with_spec(
     *,
     has_aux: bool = False,
 ) -> Callable:
-
     @wraps(func)
     def partition_and_recombine_fn(pytree: PyTree, *args: Any, **kwargs: Any):
-
         @partial(
             eqx.filter_value_and_grad,
             has_aux=has_aux,
@@ -82,10 +79,8 @@ def filter_vmap_with_spec(
     axis_name: Hashable = None,
     axis_size: Optional[int] = None,
 ) -> Callable:
-
     @wraps(func)
     def partition_and_recombine_fn(pytree: PyTree, *args: Any):
-
         @partial(
             eqx.filter_vmap,
             in_axes=(in_axes, None),

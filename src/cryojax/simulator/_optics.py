@@ -5,26 +5,26 @@ Models of instrument optics.
 from abc import abstractmethod
 from typing import ClassVar, Optional
 from typing_extensions import override
-from equinox import AbstractClassVar, AbstractVar, Module, field
-from jaxtyping import Shaped
 
 import jax.numpy as jnp
+from equinox import AbstractClassVar, AbstractVar, field, Module
+from jaxtyping import Shaped
 
-from ._config import ImageConfig
+from ..coordinates import cartesian_to_polar
+from ..core import error_if_negative, error_if_not_fractional, error_if_not_positive
 from ..image.operators import (
-    FourierOperatorLike,
     AbstractFourierOperator,
     Constant,
+    FourierOperatorLike,
 )
-from ..coordinates import cartesian_to_polar
 from ..typing import (
-    RealNumber,
-    RealImage,
     ComplexImage,
     Image,
     ImageCoords,
+    RealImage,
+    RealNumber,
 )
-from ..core import error_if_negative, error_if_not_positive, error_if_not_fractional
+from ._config import ImageConfig
 
 
 class CTF(AbstractFourierOperator, strict=True):

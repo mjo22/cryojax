@@ -1,13 +1,12 @@
 from . import (
-    typing as typing,
-    io as io,
-    data as data,
-    core as core,
-    image as image,
     coordinates as coordinates,
+    core as core,
+    data as data,
+    image as image,
+    inference as inference,
+    io as io,
     rotations as rotations,
     simulator as simulator,
-    inference as inference,
+    typing as typing,
 )
-
-from .cryojax_version import __version__
+from .cryojax_version import __version__ as __version__

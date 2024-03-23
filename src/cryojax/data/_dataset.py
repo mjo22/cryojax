@@ -56,7 +56,7 @@ class AbstractDataset(metaclass=abc.ABCMeta):
             def __init__(self, a: int):
                 self.a = a
 
-        BuggyFrozenDataclass(10)  # This will raise the FrozenInstanceError
+        BuggyFrozenDataclass(10)  # Will raise the FrozenInstanceError
         ```
 
         As of the time of writing this, frozen dataclasses must use the following
@@ -73,7 +73,7 @@ class AbstractDataset(metaclass=abc.ABCMeta):
             def __init__(self, a: int):
                 object.__setattr__(self, "a", a)
 
-        example = CorrectFrozenDataclass(10)  # This will not raise a FrozenInstanceError
+        example = CorrectFrozenDataclass(10)  # Will not raise a FrozenInstanceError
         print(example.a)  # This will print a, which here was 10
         ```
     """

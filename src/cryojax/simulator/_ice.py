@@ -5,15 +5,15 @@ Abstraction of the ice in a cryo-EM image.
 from abc import abstractmethod
 from typing_extensions import override
 
-import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
-from jaxtyping import PRNGKeyArray
+import numpy as np
 from equinox import Module
+from jaxtyping import PRNGKeyArray
 
-from ._config import ImageConfig
 from ..image.operators import FourierOperatorLike
 from ..typing import ComplexImage, Image
+from ._config import ImageConfig
 
 
 class AbstractIce(Module, strict=True):

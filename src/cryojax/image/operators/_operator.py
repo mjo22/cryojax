@@ -5,13 +5,13 @@ Base classes for image operators.
 from abc import abstractmethod
 from typing import Any, Callable
 from typing_extensions import override
-from jaxtyping import Array, Shaped
 
 import jax
 import jax.numpy as jnp
-from equinox import Module, Partial, field, AbstractVar
+from equinox import AbstractVar, field, Module, Partial
+from jaxtyping import Array, Shaped
 
-from ...typing import Image, Volume, RealNumber
+from ...typing import Image, RealNumber, Volume
 
 
 class AbstractImageOperator(Module, strict=True):
@@ -90,7 +90,7 @@ class Constant(AbstractImageOperator, strict=True):
 
 Constant.__init__.__doc__ = """**Arguments:**
 
-- `value`: The value of the constant 
+- `value`: The value of the constant
 """
 
 
@@ -106,7 +106,7 @@ class Lambda(AbstractImageOperator, strict=True):
 
 Lambda.__init__.__doc__ = """**Arguments:**
 
-- `fn`: The `Callable` wrapped into a `AbstractImageOperator`. 
+- `fn`: The `Callable` wrapped into a `AbstractImageOperator`.
 """
 
 

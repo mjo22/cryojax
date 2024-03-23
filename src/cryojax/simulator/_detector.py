@@ -5,19 +5,19 @@ Abstraction of electron detectors in a cryo-EM image.
 from abc import abstractmethod
 from typing import Optional
 from typing_extensions import override
-from equinox import Module, field, AbstractVar
 
-import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
+import numpy as np
+from equinox import AbstractVar, field, Module
 from jaxtyping import PRNGKeyArray, Shaped
 
-from ._dose import ElectronDose
-from ._config import ImageConfig
-from ..image.operators import AbstractFourierOperator
-from ..image import irfftn, rfftn
-from ..typing import ComplexImage, RealImage, ImageCoords, RealNumber
 from ..core import error_if_not_fractional
+from ..image import irfftn, rfftn
+from ..image.operators import AbstractFourierOperator
+from ..typing import ComplexImage, ImageCoords, RealImage, RealNumber
+from ._config import ImageConfig
+from ._dose import ElectronDose
 
 
 class AbstractDQE(AbstractFourierOperator, strict=True):
@@ -34,7 +34,8 @@ class AbstractDQE(AbstractFourierOperator, strict=True):
     ) -> RealImage | RealNumber:
         """**Arguments:**
 
-        `frequency_grid_in_nyquist_units`: A frequency grid given in units of nyquist.
+        - `frequency_grid_maybe_in_angstroms`: A frequency grid given in units of
+                                               nyquist.
         """
         raise NotImplementedError
 
@@ -60,8 +61,8 @@ class NullDQE(AbstractDQE, strict=True):
 class IdealDQE(AbstractDQE, strict=True):
     r"""The model for an ideal DQE.
 
-    See Ruskin et. al. "Quantitative characterization of electron detectors for transmission electron microscopy." (2013)
-    for details.
+    See Ruskin et. al. "Quantitative characterization of electron detectors for
+    transmission electron microscopy." (2013) for details.
     """
 
     fraction_detected_electrons: Shaped[RealNumber, "..."] = field(
@@ -97,7 +98,9 @@ class AbstractDetector(Module, strict=True):
         self.dqe = dqe
 
     @abstractmethod
-    def sample(self, key: PRNGKeyArray, image: RealImage) -> RealImage:
+    def sample(
+        self, key: PRNGKeyArray, expected_electron_events: RealImage
+    ) -> RealImage:
         """Sample a realization from the detector noise model."""
         raise NotImplementedError
 

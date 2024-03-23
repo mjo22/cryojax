@@ -9,19 +9,19 @@ from typing_extensions import override
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+from equinox import AbstractVar, Module
 from jaxtyping import PRNGKeyArray
-from equinox import Module, AbstractVar
 
-from ._config import ImageConfig
-from ._specimen import AbstractSpecimen, AbstractConformation
-from ._pose import AbstractPose
-from ._instrument import Instrument
-from ._detector import NullDetector
-from ._ice import AbstractIce, NullIce
-from ._assembly import AbstractAssembly
-from ..image import rfftn, irfftn, normalize_image
+from ..image import irfftn, normalize_image, rfftn
 from ..image.operators import AbstractFilter, AbstractMask
 from ..typing import ComplexImage, Image
+from ._assembly import AbstractAssembly
+from ._config import ImageConfig
+from ._detector import NullDetector
+from ._ice import AbstractIce, NullIce
+from ._instrument import Instrument
+from ._pose import AbstractPose
+from ._specimen import AbstractConformation, AbstractSpecimen
 
 
 class AbstractPipeline(Module, strict=True):
@@ -133,7 +133,8 @@ class AbstractPipeline(Module, strict=True):
                 and self.filter.buffer.shape
                 == config.wrapped_padded_frequency_grid.get().shape[0:2]
             ):
-                # ... apply the filter here if it is the same size as the padded coordinates
+                # ... apply the filter here if it is the same size as the padded
+                # coordinates
                 is_filter_applied = True
                 image = self.filter(image)
             image = irfftn(image, s=config.padded_shape)

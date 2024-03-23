@@ -2,19 +2,20 @@
 Routines to compute radial averages of images.
 """
 
-from typing import overload
 from functools import partial
-from jaxtyping import Inexact, Float, Array
+from typing import overload
 
 import jax
 import jax.numpy as jnp
+from jaxtyping import Array, Float, Inexact
 
 from ..typing import (
     Image,
     RealImage,
-    Volume,
     RealVolume,
+    Volume,
 )
+
 
 Vector = Inexact[Array, "N"]
 RealVector = Float[Array, "N"]

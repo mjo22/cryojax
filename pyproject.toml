@@ -26,11 +26,12 @@ dependencies = [
     "mrcfile",
     "starfile",
     "pandas",
+    "typing_extensions>=4.5.0",
 ]
 
 [project.optional-dependencies]
 test = ["pytest", "pycistem", "gemmi"]
-docs = ["mkdocs", "mkdocstrings-python", "mknotebooks", "mkdocs-material"]
+docs = ["matplotlib", "mkdocs", "mkdocstrings-python", "mknotebooks", "mkdocs-material"]
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
@@ -42,6 +43,21 @@ source = "vcs"
 [tool.hatch.build.hooks.vcs]
 version-file = "src/cryojax/cryojax_version.py"
 
-[tool.black]
-target-version = ["py310"]
-line-length = 88
+[tool.ruff]
+extend-include = ["*.ipynb"]
+lint.fixable = ["I001", "F401"]
+lint.ignore = ["E402", "E721", "E731", "E741", "F722"]
+lint.ignore-init-module-imports = true
+lint.select = ["E", "F", "I001"]
+src = ["src"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+extra-standard-library = ["typing_extensions"]
+lines-after-imports = 2
+order-by-type = false
+
+[tool.pyright]
+reportIncompatibleMethodOverride = true
+reportIncompatibleVariableOverride = false  # Incompatible with eqx.AbstractVar
+include = ["cryojax", "tests"]

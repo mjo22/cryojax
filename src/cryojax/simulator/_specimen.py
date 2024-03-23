@@ -3,22 +3,21 @@ Abstractions of biological specimen.
 """
 
 from abc import abstractmethod
-from typing import Optional, Any
 from functools import cached_property
+from typing import Any, Optional
 from typing_extensions import override
+
+import jax
 from equinox import AbstractVar, Module
 from jaxtyping import PRNGKeyArray
 
-import jax
-from equinox import Module
-
+from ..typing import ComplexImage
 from ._config import ImageConfig
-from ._potential import AbstractScatteringPotential
-from ._integrators import AbstractPotentialIntegrator
-from ._pose import AbstractPose, EulerAnglePose
 from ._conformation import AbstractConformation, DiscreteConformation
 from ._ice import AbstractIce
-from ..typing import ComplexImage
+from ._integrators import AbstractPotentialIntegrator
+from ._pose import AbstractPose, EulerAnglePose
+from ._potential import AbstractScatteringPotential
 
 
 class AbstractSpecimen(Module, strict=True):

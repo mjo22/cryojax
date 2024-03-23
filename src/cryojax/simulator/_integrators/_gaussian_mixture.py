@@ -4,14 +4,14 @@ Scattering methods for the gaussian mixtures of atoms.
 
 import jax.numpy as jnp
 
-from ._potential_integrator import AbstractPotentialIntegrator
-from .._potential._atom_potential import AtomCloud
 from ...typing import (
-    RealNumber,
     ComplexImage,
     ImageCoords,
     PointCloudCoords2D,
+    RealNumber,
 )
+from .._potential._atom_potential import AtomCloud
+from ._potential_integrator import AbstractPotentialIntegrator
 
 
 class IndependentAtomScattering(AbstractPotentialIntegrator):
@@ -29,7 +29,8 @@ class IndependentAtomScattering(AbstractPotentialIntegrator):
         # coordinates: CloudCoords,
         # identity: IntCloud,
         # variances: IntCloud,  # WHAT SHOULD THE TYPE BE HERE?
-        return_Fourier: bool = True,  # Michael: Conventionally I've been using "real" for the fourier option (see Pose.rotate and ElectronDensity.real).
+        return_Fourier: bool = True,  # Michael: Conventionally I've been using "real"
+        # for the fourier option (see Pose.rotate and ElectronDensity.real).
         # ... I suppose bools maybe should be called things like "is_real" though.
     ) -> ComplexImage:
         """
@@ -83,8 +84,10 @@ def _eval_Gaussian_kernel(sq_distances, atom_variances) -> ImageCoords:
     return jnp.exp(-sq_distances / (2 * atom_variances))
 
 
-# Michael: similarly here. However in general, I try to avoid computing coordinate systems as much
-# as possible. It can get very confusing having multiple coordinate systems around I think.
+# Michael: similarly here. However in general, I try to avoid computing coordinate
+# systems as much
+# as possible. It can get very confusing having multiple coordinate systems around
+# I think.
 # To address this
 # 1) For 2D coordinates I'm using ScatteringConfig.coords and ScatteringConfig.freqs
 #    (also padded_coords and padded_freqs) and generally pass them as arguments. Could
@@ -93,13 +96,15 @@ def _eval_Gaussian_kernel(sq_distances, atom_variances) -> ImageCoords:
 #          but identical coordinate systems. To make sure no messiness happens, I use
 #          the same functions from cryojax.utils.coordinates.
 # 2) For 3D coordinates I also load from cryojax.utils.coordinates.
-# Erik: Happy to change this, I just didn't know abouc cryojax.utils.coordinates could do this:
+# Erik: Happy to change this, I just didn't know abouc cryojax.utils.coordinates could
+# do this:
 # The call to fftfreq mislead me into thinking it only did Fourier-space.
 def _build_pixel_grid(
     npixels_per_side: int, pixel_size: RealNumber
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     """
-    Calculates the coordinates of each pixel in the image.  The center of the image  is taken to be (0, 0).
+    Calculates the coordinates of each pixel in the image.  The center of the image
+    is taken to be (0, 0).
 
     Args:
         npixels_per_side (float): Number of pixels on each side of the square miage

@@ -3,22 +3,27 @@ Methods for integrating the scattering potential onto the exit plane.
 """
 
 from abc import abstractmethod
+from typing import Generic, TypeVar
 
 from equinox import Module
 
-from .._potential import AbstractScatteringPotential
-from .._config import ImageConfig
-
 from ...typing import ComplexImage
+from .._config import ImageConfig
+from .._potential import AbstractScatteringPotential
 
 
-class AbstractPotentialIntegrator(Module, strict=True):
+ScatteringPotentialT = TypeVar(
+    "ScatteringPotentialT", bound="AbstractScatteringPotential"
+)
+
+
+class AbstractPotentialIntegrator(Module, Generic[ScatteringPotentialT], strict=True):
     """Base class for a method of integrating the scattering
     potential onto the exit plane."""
 
     @abstractmethod
     def __call__(
-        self, potential: AbstractScatteringPotential, config: ImageConfig
+        self, potential: ScatteringPotentialT, config: ImageConfig
     ) -> ComplexImage:
         """Compute the scattering potential in the exit plane at
         the `ImageConfig` settings.

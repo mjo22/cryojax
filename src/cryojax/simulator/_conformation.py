@@ -3,11 +3,12 @@ Representations of conformational variables.
 """
 
 from typing import Any
-from jaxtyping import Shaped
-from equinox import Module, AbstractVar, field
 
-from ..typing import Integer
+from equinox import AbstractVar, field, Module
+from jaxtyping import Shaped
+
 from ..core import error_if_negative
+from ..typing import Integer
 
 
 class AbstractConformation(Module, strict=True):

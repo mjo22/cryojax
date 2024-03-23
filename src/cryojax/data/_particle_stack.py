@@ -1,9 +1,8 @@
 """Pytrees that represent particle stacks."""
 
-from equinox import Module, AbstractVar, field
-from jaxtyping import Shaped
-
 import jax.numpy as jnp
+from equinox import AbstractVar, field, Module
+from jaxtyping import Shaped
 
 from ..inference.distributions import AbstractDistribution
 from ..typing import Image

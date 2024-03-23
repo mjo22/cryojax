@@ -3,25 +3,24 @@ The image configuration and utility manager.
 """
 
 from functools import cached_property
-from typing import Any, Union, Callable, Optional
-
-from equinox import Module, field
-from jaxtyping import Shaped
+from typing import Any, Callable, Optional, Union
 
 import jax
 import jax.numpy as jnp
+from equinox import field, Module
+from jaxtyping import Shaped
 
 from ..coordinates import CoordinateGrid, FrequencyGrid
-from ..typing import Image, RealNumber, RealImage
+from ..core import error_if_not_positive
 from ..image import (
     crop_to_shape,
-    pad_to_shape,
-    resize_with_crop_or_pad,
-    rescale_pixel_size,
     irfftn,
+    pad_to_shape,
+    rescale_pixel_size,
+    resize_with_crop_or_pad,
     rfftn,
 )
-from ..core import error_if_not_positive
+from ..typing import Image, RealImage, RealNumber
 
 
 class ImageConfig(Module, strict=True):
@@ -107,7 +106,8 @@ class ImageConfig(Module, strict=True):
     def __check_init__(self):
         if self.padded_shape[0] < self.shape[0] or self.padded_shape[1] < self.shape[1]:
             raise AttributeError(
-                f"ImageConfig.padded_shape is less than ImageConfig.shape in one or more dimensions."
+                "ImageConfig.padded_shape is less than ImageConfig.shape in one or "
+                "more dimensions."
             )
 
     @cached_property

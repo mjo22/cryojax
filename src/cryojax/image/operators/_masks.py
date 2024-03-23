@@ -3,18 +3,18 @@ Masks to apply to images in real space.
 """
 
 from typing import overload
-from equinox import field
 
 import jax
 import jax.numpy as jnp
+from equinox import field
 
-from ._operator import AbstractImageMultiplier
 from ...typing import (
+    ImageCoords,
     RealImage,
     RealVolume,
-    ImageCoords,
     VolumeCoords,
 )
+from ._operator import AbstractImageMultiplier
 
 
 class AbstractMask(AbstractImageMultiplier, strict=True):

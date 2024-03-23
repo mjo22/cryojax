@@ -3,7 +3,7 @@ Routines for dealing with image cropping and padding.
 """
 
 import warnings
-from typing import overload, Any
+from typing import Any, overload
 
 import jax.numpy as jnp
 
@@ -33,7 +33,8 @@ def crop_to_shape(
     """
     if image_or_volume.ndim not in [2, 3]:
         raise ValueError(
-            f"crop_to_shape can only crop images and volumes. Got array shape of {image_or_volume.shape}."
+            "crop_to_shape can only crop images and volumes. Got array shape of "
+            f"{image_or_volume.shape}."
         )
     if len(shape) != len(image_or_volume.shape):
         raise ValueError(
@@ -62,7 +63,8 @@ def crop_to_shape(
         ]
     else:
         raise ValueError(
-            f"crop_to_shape can only crop images and volumes. Got desired crop shape of {shape}."
+            "crop_to_shape can only crop images and volumes. Got desired crop shape of "
+            f"of {shape}."
         )
     return cropped
 
@@ -75,24 +77,28 @@ def crop_to_shape_with_center(
     """Crop an image to a new shape, given a center."""
     if image.ndim != 2:
         raise ValueError(
-            f"crop_to_shape_with_center can only crop images. Got array shape of {image.shape}."
+            "crop_to_shape_with_center can only crop images. Got array shape of "
+            f"{image.shape}."
         )
     if len(shape) == 2:
         xc, yc = center
         h, w = shape
         x0, y0 = max(xc - w // 2, 0), max(yc - h // 2, 0)
-        xn, yn = min(yc + h // 2 + h % 2, image.shape[1] - 1), min(
-            xc + w // 2 + w % 2, image.shape[0] - 1
+        xn, yn = (
+            min(yc + h // 2 + h % 2, image.shape[1] - 1),
+            min(xc + w // 2 + w % 2, image.shape[0] - 1),
         )
         cropped = image[y0:yn, x0:xn]
     else:
         raise ValueError(
-            f"crop_to_shape_with_center can only crop images. Got desired crop shape of {shape}."
+            "crop_to_shape_with_center can only crop images. Got desired crop shape of "
+            f"{shape}."
         )
     if cropped.shape != shape:
         warnings.warn(
-            "The cropped shape is not equal to the desired shape in crop_to_shape_with_center. "
-            "Usually, this happens because the crop was near the image edges."
+            "The cropped shape is not equal to the desired shape in "
+            "crop_to_shape_with_center. Usually, this happens because the crop was "
+            "near the image edges."
         )
     return cropped
 
@@ -150,7 +156,8 @@ def pad_to_shape(
         )
     else:
         raise ValueError(
-            f"pad_to_shape can only pad images and volumes. Got desired shape of {shape}."
+            "pad_to_shape can only pad images and volumes. Got desired shape of "
+            f"{shape}."
         )
     return jnp.pad(image_or_volume, padding, **kwargs)
 

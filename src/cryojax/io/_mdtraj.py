@@ -2,14 +2,15 @@
 Routines for interfacing with mdtraj
 """
 
+from typing import Optional
+
 import numpy as np
 from jaxtyping import Float, Int
-from typing import Optional
 
 
 def get_atom_info_from_mdtraj(
     traj,
-) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, "N"]]:
+) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, " N"]]:
     """
     Gets the atomic information from an mdtraj trajectory.
 
@@ -32,7 +33,7 @@ def get_atom_info_from_mdtraj(
 
 def mdtraj_load_from_file(
     path: str, top: Optional[str] = None
-) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, "N"]]:
+) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, " N"]]:
     """
     Loads a file using mdtraj and loads its atomic information
     """

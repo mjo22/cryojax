@@ -2,11 +2,11 @@
 Models the electron dose.
 """
 
-from equinox import Module, field
+from equinox import field, Module
 from jaxtyping import Shaped
 
-from ..typing import RealNumber
 from ..core import error_if_not_positive
+from ..typing import RealNumber
 
 
 class ElectronDose(Module, strict=True):
