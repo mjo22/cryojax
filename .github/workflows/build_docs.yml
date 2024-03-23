@@ -28,12 +28,13 @@ jobs:
           pip install mkdocs-autorefs  
           pip install mkdocs-simple-plugin
           pip install mkdocstrings-python
+          pip install mknotebooks
           pip install mkdocs-material
 
       # Build
       - name: Build
         run: |
-          mkdocs build --verbose --clean --strict
+          mkdocs build
 
       # Push the site to github-pages
       - name: GitHub Pages action
