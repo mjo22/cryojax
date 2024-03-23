@@ -25,7 +25,9 @@ jobs:
 
       - name: Install dependencies
         run: |
+          pip install --upgrade pip
           pip install mkdocs
+          pip install mkdocs-gen-files
           pip install mkdocs-same-dir
           pip install pymdown-extensions
           pip install mkdocs-pymdownx-material-extras
@@ -35,4 +37,4 @@ jobs:
           pip install mkdocs-material
 
       - name: Deploy documentation
-        run: mkdocs gh-deploy -d https://mjo22.github.io/cryojax
+        run: mkdocs gh-deploy
