@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install -U pip
-          python -m pip install -U build twine
+          python -m pip install -U pkginfo build twine
       - name: Build the distribution
         run: python -m build .
       - name: Check the distribution
