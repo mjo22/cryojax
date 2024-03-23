@@ -25,5 +25,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install .[docs]
 
-      - name: Build and deploy documentation
-        run: mkdocs gh-deploy
+      - name: Build docs
+        run: |
+          mkdocs build
+          mkdocs build
+
+      - name: Upload docs
+        uses: actions/upload-artifact@v2
+        with:
+          name: docs
+          path: site  # where `mkdocs build` puts the built site
