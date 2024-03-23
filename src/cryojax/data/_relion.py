@@ -230,7 +230,7 @@ class RelionDataset(AbstractDataset):
         image_size = np.asarray(optics_group["rlnImageSize"])
         pixel_size = np.asarray(optics_group["rlnImagePixelSize"])
         voltage_in_kilovolts = np.asarray(optics_group["rlnVoltage"])
-        spherical_aberration_in_mm = np.asarray(optics_group["rlnVoltage"])
+        spherical_aberration_in_mm = np.asarray(optics_group["rlnSphericalAberration"])
         amplitude_contrast_ratio = np.asarray(optics_group["rlnAmplitudeContrast"])
         # ... create cryojax objects
         config = self.make_config((int(image_size), int(image_size)), pixel_size)
