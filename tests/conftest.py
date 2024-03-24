@@ -12,7 +12,7 @@ from cryojax.io import read_array_with_spacing_from_mrc
 
 
 # jax.config.update("jax_numpy_dtype_promotion", "strict")
-jax.config.update("jax_numpy_rank_promotion", "raise")
+# jax.config.update("jax_numpy_rank_promotion", "raise")
 jax.config.update("jax_enable_x64", True)
 
 
