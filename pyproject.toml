@@ -31,7 +31,6 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest", "pycistem", "gemmi"]
-docs = ["matplotlib", "mkdocs", "mkdocstrings-python", "mknotebooks", "mkdocs-material"]
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]

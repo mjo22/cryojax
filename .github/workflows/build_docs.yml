@@ -1,31 +1,43 @@
 name: Build docs
 
-on: workflow_dispatch
-
-#on:
-#  release:
-#    types: [published]
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        python-version: [ "3.10" ]
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
+  deploy:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install .[docs]
+          pip install --upgrade pip
+          pip install mkdocs
+          pip install mkdocs-gen-files
+          pip install mkdocs-same-dir
+          pip install pymdown-extensions
+          pip install mkdocs-pymdownx-material-extras
+          pip install mkdocs-autorefs  
+          pip install mkdocs-simple-plugin
+          pip install mkdocstrings-python
+          pip install mknotebooks
+          pip install mkdocs-material
 
-      - name: Deploy documentation
-        run: mkdocs gh-deploy -d https://mjo22.github.io/cryojax
+      - name: Build
+        run: |
+          mkdocs build
+
+      # Push the site to github-pages
+      - name: GitHub Pages action
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
