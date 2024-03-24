@@ -10,11 +10,10 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 from equinox import AbstractVar, Module
-from jaxtyping import PRNGKeyArray
+from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..image import irfftn, normalize_image, rfftn
 from ..image.operators import AbstractFilter, AbstractMask
-from ..typing import ComplexImage, Image
 from ._assembly import AbstractAssembly
 from ._config import ImageConfig
 from ._detector import NullDetector
@@ -42,7 +41,14 @@ class AbstractPipeline(Module, strict=True):
         view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
-    ) -> Image:
+    ) -> (
+        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
+        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
+        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
+        | Complex[
+            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+        ]
+    ):
         """Render an image without any stochasticity.
 
         **Arguments:**
@@ -65,7 +71,14 @@ class AbstractPipeline(Module, strict=True):
         view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
-    ) -> Image:
+    ) -> (
+        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
+        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
+        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
+        | Complex[
+            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+        ]
+    ):
         """
         Sample an image from a realization of the `AbstractIce` and
         `AbstractDetector` models.
@@ -78,38 +91,18 @@ class AbstractPipeline(Module, strict=True):
         """
         raise NotImplementedError
 
-    def __call__(
-        self,
-        key: Optional[PRNGKeyArray] = None,
-        *,
-        view_cropped: bool = True,
-        get_real: bool = True,
-        normalize: bool = False,
-    ) -> Image:
-        """Sample an image with the noise models or render an image
-        without them.
-        """
-        if key is None:
-            return self.render(
-                view_cropped=view_cropped,
-                get_real=get_real,
-                normalize=normalize,
-            )
-        else:
-            return self.sample(
-                key,
-                view_cropped=view_cropped,
-                get_real=get_real,
-                normalize=normalize,
-            )
-
     def crop_and_apply_operators(
         self,
-        image: ComplexImage,
+        image: Complex[
+            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+        ],
         *,
         get_real: bool = True,
         normalize: bool = False,
-    ) -> Image:
+    ) -> (
+        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
+        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
+    ):
         """Return an image postprocessed with filters, cropping, and masking
         in either real or fourier space.
         """
@@ -158,12 +151,21 @@ class AbstractPipeline(Module, strict=True):
 
     def _get_final_image(
         self,
-        image: ComplexImage,
+        image: Complex[
+            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+        ],
         *,
         view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
-    ) -> Image:
+    ) -> (
+        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
+        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
+        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
+        | Complex[
+            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+        ]
+    ):
         config = self.config
         if view_cropped:
             return self.crop_and_apply_operators(
@@ -219,7 +221,14 @@ class ImagePipeline(AbstractPipeline, strict=True):
         view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
-    ) -> Image:
+    ) -> (
+        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
+        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
+        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
+        | Complex[
+            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+        ]
+    ):
         """Render an image without any stochasticity."""
         # Compute the scattering potential in the exit plane
         fourier_potential_at_exit_plane = self.specimen.scatter_to_exit_plane(
@@ -261,7 +270,14 @@ class ImagePipeline(AbstractPipeline, strict=True):
         view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
-    ) -> Image:
+    ) -> (
+        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
+        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
+        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
+        | Complex[
+            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+        ]
+    ):
         """Sample the assembly from the stochastic parts of the model."""
         idx = 0  # Keep track of number of stochastic models
         if not isinstance(self.solvent, NullIce) and not isinstance(
@@ -367,7 +383,14 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
-    ) -> Image:
+    ) -> (
+        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
+        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
+        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
+        | Complex[
+            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+        ]
+    ):
         """Sample the superposition of `AbstractAssembly.subunits` from
         stochastic models.
         """
@@ -422,7 +445,14 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
-    ) -> Image:
+    ) -> (
+        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
+        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
+        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
+        | Complex[
+            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+        ]
+    ):
         """Render the superposition of images from the
         `AbstractAssembly.subunits`.
         """

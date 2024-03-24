@@ -30,7 +30,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "pycistem", "gemmi"]
+test = ["pytest", "pycistem", "gemmi", "typeguard"]
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]

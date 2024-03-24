@@ -9,12 +9,12 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 from equinox import field
-from jaxtyping import PRNGKeyArray, Shaped
+from jaxtyping import Array, Complex, Float, PRNGKeyArray, Shaped
 
 from ...core import error_if_not_positive
 from ...image.operators import Constant, FourierOperatorLike
 from ...simulator import AbstractPipeline
-from ...typing import ComplexImage, Image, RealNumber
+from ...typing import RealNumber
 from ._distribution import AbstractDistribution
 
 
@@ -49,14 +49,24 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         self.contrast_scale = jnp.asarray(contrast_scale)
 
     @override
-    def render(self, *, get_real: bool = True) -> Image:
+    def render(
+        self, *, get_real: bool = True
+    ) -> (
+        Float[Array, "{self.pipeline.config.shape[0]} {self.pipeline.config.shape[1]}"]
+        | Complex[Array, "{self.pipeline.config.shape[0]} {self.config.shape[1]//2+1}"]
+    ):
         """Render the image formation model."""
         return self.contrast_scale * self.pipeline.render(
             normalize=True, get_real=get_real
         )
 
     @override
-    def sample(self, key: PRNGKeyArray, *, get_real: bool = True) -> Image:
+    def sample(
+        self, key: PRNGKeyArray, *, get_real: bool = True
+    ) -> (
+        Float[Array, "{self.pipeline.config.shape[0]} {self.pipeline.config.shape[1]}"]
+        | Complex[Array, "{self.pipeline.config.shape[0]} {self.config.shape[1]//2+1}"]
+    ):
         """Sample from the gaussian noise model."""
         N_pix = np.prod(self.pipeline.config.padded_shape)
         freqs = self.pipeline.config.wrapped_padded_frequency_grid_in_angstroms.get()
@@ -71,7 +81,13 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         return image + noise
 
     @override
-    def log_likelihood(self, observed: ComplexImage) -> RealNumber:
+    def log_likelihood(
+        self,
+        observed: Complex[
+            Array,
+            "{self.pipeline.config.shape[0]} {self.pipeline.config.shape[1]//2+1}",
+        ],
+    ) -> RealNumber:
         """Evaluate the log-likelihood of the gaussian noise model.
 
         **Arguments:**
