@@ -51,7 +51,7 @@ CubicVolume = jt.Inexact[jt.Array, "N N N"]
 VolumeCoords = jt.Float[jt.Array, "Nz Ny Nx 3"]
 """Type alias for `jaxtyping.Float[jax.Array, "Nz Ny Nx 3"]`."""
 
-VolumeSliceCoords = jt.Float[jt.Array, "1 Ny Nx 3"]
+VolumeSliceCoords = jt.Float[jt.Array, "1 N N 3"]
 """Type alias for `jaxtyping.Float[jax.Array, "1 Ny Nx 3"]`."""
 
 # Point cloud type hints (non-uniformly spaced points).

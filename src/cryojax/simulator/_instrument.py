@@ -10,7 +10,7 @@ from equinox import Module
 from jaxtyping import PRNGKeyArray
 
 from ..image import ifftn, rfftn
-from ..typing import ComplexImage, Image, RealImage, RealNumber
+from ..typing import ComplexImage, Image, RealNumber
 from ._config import ImageConfig
 from ._detector import AbstractDetector, NullDetector
 from ._dose import ElectronDose
@@ -127,7 +127,7 @@ class Instrument(Module, strict=True):
     def measure_detector_readout(
         self,
         key: PRNGKeyArray,
-        fourier_squared_wavefunction_at_detector_plane: RealImage,
+        fourier_squared_wavefunction_at_detector_plane: ComplexImage,
         config: ImageConfig,
     ) -> ComplexImage:
         """Measure the readout from the detector."""

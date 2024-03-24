@@ -9,8 +9,9 @@ from typing_extensions import Self
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import numpy as np
 from equinox import AbstractVar
-from jaxtyping import Array, ArrayLike, Float
+from jaxtyping import Array, Float
 
 from ..typing import (
     Image,
@@ -34,23 +35,29 @@ class AbstractCoordinates(eqx.Module, strict=True):
         """Get the coordinates."""
         raise NotImplementedError
 
-    def __mul__(self, arr: ArrayLike) -> Self:
+    def __mul__(
+        self, real_number: float | Float[np.ndarray, ""] | Float[Array, ""]
+    ) -> Self:
         # The following line seems to be required for differentiability with
         # respect to arr
         rescaled_array = jnp.where(
-            self.array != 0.0, self.array * jnp.asarray(arr), 0.0
+            self.array != 0.0, self.array * jnp.asarray(real_number), 0.0
         )
         return eqx.tree_at(lambda x: x.array, self, rescaled_array)
 
-    def __rmul__(self, arr: ArrayLike) -> Self:
+    def __rmul__(
+        self, real_number: float | Float[np.ndarray, ""] | Float[Array, ""]
+    ) -> Self:
         rescaled_array = jnp.where(
-            self.array != 0.0, jnp.asarray(arr) * self.array, 0.0
+            self.array != 0.0, jnp.asarray(real_number) * self.array, 0.0
         )
         return eqx.tree_at(lambda x: x.array, self, rescaled_array)
 
-    def __truediv__(self, arr: ArrayLike) -> Self:
+    def __truediv__(
+        self, real_number: float | Float[np.ndarray, ""] | Float[Array, ""]
+    ) -> Self:
         rescaled_array = jnp.where(
-            self.array != 0.0, self.array / jnp.asarray(arr), 0.0
+            self.array != 0.0, self.array / jnp.asarray(real_number), 0.0
         )
         return eqx.tree_at(lambda x: x.array, self, rescaled_array)
 
@@ -79,7 +86,7 @@ class CoordinateGrid(AbstractCoordinates, strict=True):
     def __init__(
         self,
         shape: tuple[int, ...],
-        grid_spacing: float | ArrayLike = 1.0,
+        grid_spacing: float | Float[np.ndarray, ""] = 1.0,
     ):
         self.array = make_coordinates(shape, grid_spacing)
 
@@ -97,7 +104,7 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
     def __init__(
         self,
         shape: tuple[int, ...],
-        grid_spacing: float | ArrayLike = 1.0,
+        grid_spacing: float | Float[np.ndarray, ""] = 1.0,
         half_space: bool = True,
     ):
         self.array = make_frequencies(shape, grid_spacing, half_space=half_space)
@@ -119,7 +126,7 @@ class FrequencySlice(AbstractCoordinates, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        grid_spacing: float | ArrayLike = 1.0,
+        grid_spacing: float | Float[np.ndarray, ""] = 1.0,
         half_space: bool = True,
     ):
         frequency_slice = make_frequencies(shape, grid_spacing, half_space=half_space)
@@ -143,8 +150,8 @@ class FrequencySlice(AbstractCoordinates, strict=True):
 
 
 def make_coordinates(
-    shape: tuple[int, ...], grid_spacing: float | ArrayLike = 1.0
-) -> Float[Array, "*shape len(shape)"]:
+    shape: tuple[int, ...], grid_spacing: float | Float[np.ndarray, ""] = 1.0
+) -> Float[Array, "*shape ndim"]:
     """
     Create a real-space cartesian coordinate system on a grid.
 
@@ -169,9 +176,9 @@ def make_coordinates(
 
 def make_frequencies(
     shape: tuple[int, ...],
-    grid_spacing: float | ArrayLike = 1.0,
+    grid_spacing: float | Float[np.ndarray, ""] = 1.0,
     half_space: bool = True,
-) -> Float[Array, "*shape len(shape)"]:
+) -> Float[Array, "*shape ndim"]:
     """
     Create a fourier-space cartesian coordinate system on a grid.
     The zero-frequency component is in the beginning.
@@ -226,10 +233,10 @@ def cartesian_to_polar(freqs: ImageCoords, square: bool = False) -> tuple[Image,
 
 def _make_coordinates_or_frequencies(
     shape: tuple[int, ...],
-    grid_spacing: float | ArrayLike = 1.0,
+    grid_spacing: float | Float[np.ndarray, ""] = 1.0,
     real_space: bool = False,
     half_space: bool = True,
-) -> Float[Array, "*shape len(shape)"]:
+) -> Float[Array, "*shape ndim"]:
     ndim = len(shape)
     coords1D = []
     for idx in range(ndim):
@@ -268,7 +275,7 @@ def _make_coordinates_or_frequencies(
 
 def _make_coordinates_or_frequencies_1d(
     size: int,
-    grid_spacing: float | ArrayLike,
+    grid_spacing: float | Float[np.ndarray, ""],
     real_space: bool = False,
     rfftfreq: Optional[bool] = None,
 ) -> Float[Array, " size"]:

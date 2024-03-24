@@ -6,6 +6,7 @@ from typing import Any
 
 import jax.numpy as jnp
 from equinox import field
+from jaxtyping import Array, Complex, Float
 
 from ...image import (
     irfftn,
@@ -13,7 +14,7 @@ from ...image import (
     map_coordinates_with_cubic_spline,
     rfftn,
 )
-from ...typing import ComplexCubicVolume, ComplexImage, VolumeSliceCoords
+from ...typing import ComplexImage
 from .._config import ImageConfig
 from .._potential import (
     FourierVoxelGridPotential,
@@ -95,11 +96,11 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
 
 
 def extract_slice(
-    fourier_voxel_grid: ComplexCubicVolume,
-    frequency_slice: VolumeSliceCoords,
+    fourier_voxel_grid: Complex[Array, "N N N"],
+    frequency_slice: Float[Array, "1 N N 3"],
     interpolation_order: int = 1,
     **kwargs: Any,
-) -> ComplexImage:
+) -> Complex[Array, "N N//2+1"]:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using the fourier slice theorem.
@@ -140,10 +141,10 @@ def extract_slice(
 
 
 def extract_slice_with_cubic_spline(
-    spline_coefficients: ComplexCubicVolume,
-    frequency_slice: VolumeSliceCoords,
+    spline_coefficients: Complex[Array, "N+2 N+2 N+2"],
+    frequency_slice: Float[Array, "1 N N 3"],
     **kwargs: Any,
-) -> ComplexImage:
+) -> Complex[Array, "N N//2+1"]:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using the fourier slice theorem, using cubic

@@ -6,6 +6,7 @@ import warnings
 from typing import Any, overload
 
 import jax.numpy as jnp
+from jaxtyping import Array, Inexact
 
 from ..typing import Image, Volume
 
@@ -14,20 +15,20 @@ from ..typing import Image, Volume
 def crop_to_shape(
     image_or_volume: Image,
     shape: tuple[int, int],
-) -> Image: ...
+) -> Inexact[Array, " *shape"]: ...
 
 
 @overload
 def crop_to_shape(
     image_or_volume: Volume,
     shape: tuple[int, int, int],
-) -> Volume: ...
+) -> Inexact[Array, " *shape"]: ...
 
 
 def crop_to_shape(
     image_or_volume: Image | Volume,
     shape: tuple[int, int] | tuple[int, int, int],
-) -> Image | Volume:
+) -> Inexact[Array, " *shape"]:
     """Crop an image or volume to a new shape around its
     center.
     """
@@ -73,7 +74,7 @@ def crop_to_shape_with_center(
     image: Image,
     shape: tuple[int, int],
     center: tuple[int, int],
-) -> Image:
+) -> Inexact[Array, " *shape"]:
     """Crop an image to a new shape, given a center."""
     if image.ndim != 2:
         raise ValueError(
@@ -108,7 +109,7 @@ def pad_to_shape(
     image_or_volume: Image,
     shape: tuple[int, int],
     **kwargs: Any,
-) -> Image: ...
+) -> Inexact[Array, " *shape"]: ...
 
 
 @overload
@@ -116,14 +117,14 @@ def pad_to_shape(
     image_or_volume: Volume,
     shape: tuple[int, int, int],
     **kwargs: Any,
-) -> Volume: ...
+) -> Inexact[Array, " *shape"]: ...
 
 
 def pad_to_shape(
     image_or_volume: Image | Volume,
     shape: tuple[int, int] | tuple[int, int, int],
     **kwargs: Any,
-) -> Image | Volume:
+) -> Inexact[Array, " *shape"]:
     """Pad an image or volume to a new shape."""
     if image_or_volume.ndim not in [2, 3]:
         raise ValueError(
@@ -162,7 +163,9 @@ def pad_to_shape(
     return jnp.pad(image_or_volume, padding, **kwargs)
 
 
-def resize_with_crop_or_pad(image: Image, shape: tuple[int, int], **kwargs) -> Image:
+def resize_with_crop_or_pad(
+    image: Image, shape: tuple[int, int], **kwargs
+) -> Inexact[Array, " *shape"]:
     """Resize an image to a new shape using padding and cropping."""
     if image.ndim != 2 or len(shape) != 2:
         raise ValueError(

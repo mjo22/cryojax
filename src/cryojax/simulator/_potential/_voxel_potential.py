@@ -10,7 +10,6 @@ from typing import (
     ClassVar,
     Optional,
     overload,
-    Type,
 )
 from typing_extensions import override, Self
 
@@ -56,7 +55,7 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     @classmethod
     @abstractmethod
     def from_real_voxel_grid(
-        cls: Type[Self],
+        cls,
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
     ) -> Self:
@@ -68,7 +67,7 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     @classmethod
     @abstractmethod
     def from_atoms(
-        cls: Type[Self],
+        cls,
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, " N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
@@ -110,7 +109,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     @classmethod
     def from_real_voxel_grid(
-        cls: Type[Self],
+        cls,
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
@@ -168,7 +167,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     @classmethod
     def from_atoms(
-        cls: Type[Self],
+        cls,
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, " N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
@@ -328,7 +327,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @overload
     @classmethod
     def from_real_voxel_grid(
-        cls: Type[Self],
+        cls,
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
@@ -338,7 +337,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @overload
     @classmethod
     def from_real_voxel_grid(
-        cls: Type[Self],
+        cls,
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
@@ -347,7 +346,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     @classmethod
     def from_real_voxel_grid(
-        cls: Type[Self],
+        cls,
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
@@ -386,7 +385,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     @classmethod
     def from_atoms(
-        cls: Type[Self],
+        cls,
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, " N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
@@ -466,7 +465,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
     @classmethod
     def from_real_voxel_grid(
-        cls: Type[Self],
+        cls,
         real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
@@ -504,7 +503,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
     @classmethod
     def from_atoms(
-        cls: Type[Self],
+        cls,
         atom_positions: Float[Array, "N 3"],
         atom_identities: Int[Array, " N"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,

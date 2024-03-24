@@ -3,7 +3,7 @@ Abstraction of rotations represented by matrix lie groups.
 """
 
 from abc import abstractmethod
-from typing import cast, ClassVar, Type
+from typing import cast, ClassVar
 from typing_extensions import override, Self
 
 import equinox as eqx
@@ -32,7 +32,7 @@ class AbstractMatrixLieGroup(AbstractRotation, strict=True):
 
     @classmethod
     @abstractmethod
-    def exp(cls: Type[Self], tangent: Array) -> Self:
+    def exp(cls, tangent: Array) -> Self:
         """Computes the exponential map of an element of the
         lie algebra.
         """
@@ -45,7 +45,7 @@ class AbstractMatrixLieGroup(AbstractRotation, strict=True):
 
     @classmethod
     @abstractmethod
-    def from_matrix(cls: Type[Self], matrix: Array) -> Self:
+    def from_matrix(cls, matrix: Array) -> Self:
         """Computes the group element from a rotation matrix."""
         raise NotImplementedError
 
@@ -85,9 +85,9 @@ class SO3(AbstractMatrixLieGroup, strict=True):
     wxyz: Float[Array, "... 4"] = field(converter=jnp.asarray)
 
     @override
-    def apply(self, vector: Float[Array, "3"]) -> Float[Array, "3"]:
+    def apply(self, target: Float[Array, "3"]) -> Float[Array, "3"]:
         # Compute using quaternion multiplys.
-        padded_target = jnp.concatenate([jnp.zeros(1), vector])
+        padded_target = jnp.concatenate([jnp.zeros(1), target])
         return (self @ SO3(wxyz=padded_target) @ self.inverse()).wxyz[1:]
 
     @override
@@ -112,17 +112,17 @@ class SO3(AbstractMatrixLieGroup, strict=True):
         )
 
     @classmethod
-    def from_x_radians(cls: Type[Self], angle: RealNumber) -> Self:
+    def from_x_radians(cls, angle: RealNumber) -> Self:
         """Generates a x-axis rotation."""
         return cls.exp(jnp.asarray([angle, 0.0, 0.0]))
 
     @classmethod
-    def from_y_radians(cls: Type[Self], angle: RealNumber) -> Self:
+    def from_y_radians(cls, angle: RealNumber) -> Self:
         """Generates a x-axis rotation."""
         return cls.exp(jnp.asarray([0.0, angle, 0.0]))
 
     @classmethod
-    def from_z_radians(cls: Type[Self], angle: RealNumber) -> Self:
+    def from_z_radians(cls, angle: RealNumber) -> Self:
         """Generates a x-axis rotation."""
         return cls.exp(jnp.asarray([0.0, 0.0, angle]))
 
@@ -133,7 +133,7 @@ class SO3(AbstractMatrixLieGroup, strict=True):
 
     @override
     @classmethod
-    def from_matrix(cls: Type[Self], matrix: Float[Array, "3 3"]) -> Self:
+    def from_matrix(cls, matrix: Float[Array, "3 3"]) -> Self:
         # Modified from:
         # > "Converting a Rotation Matrix to a Quaternion" from Mike Day
         # > https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2015/01/matrix-to-quat.pdf
@@ -224,7 +224,7 @@ class SO3(AbstractMatrixLieGroup, strict=True):
         )
 
     @classmethod
-    def exp(cls: Type[Self], tangent: Float[Array, "3"]) -> Self:
+    def exp(cls, tangent: Float[Array, "3"]) -> Self:
         # Reference:
         # > https://github.com/strasdat/Sophus/blob/a0fe89a323e20c42d3cecb590937eb7a06b8343a/sophus/so3.hpp#L583
         theta_squared = tangent @ tangent
@@ -312,7 +312,7 @@ class SO3(AbstractMatrixLieGroup, strict=True):
         )
 
     @classmethod
-    def sample_uniform(cls: Type[Self], key: PRNGKeyArray) -> Self:
+    def sample_uniform(cls, key: PRNGKeyArray) -> Self:
         # Uniformly sample over S^3.
         # > Reference: http://planning.cs.uiuc.edu/node198.html
         u1, u2, u3 = jax.random.uniform(
@@ -376,12 +376,12 @@ class SE3(AbstractMatrixLieGroup, strict=True):
 
     @override
     @classmethod
-    def identity(cls: Type[Self]) -> Self:
+    def identity(cls) -> Self:
         return cls(rotation=SO3.identity(), xyz=jnp.zeros(3, dtype=float))
 
     @override
     @classmethod
-    def from_matrix(cls: Type[Self], matrix: Float[Array, "4 4"]) -> Self:
+    def from_matrix(cls, matrix: Float[Array, "4 4"]) -> Self:
         # Currently assumes bottom row is [0, 0, 0, 1].
         return cls(
             rotation=SO3.from_matrix(matrix[:3, :3]),
@@ -396,7 +396,7 @@ class SE3(AbstractMatrixLieGroup, strict=True):
 
     @override
     @classmethod
-    def exp(cls: Type[Self], tangent: Float[Array, "6"]) -> Self:
+    def exp(cls, tangent: Float[Array, "6"]) -> Self:
         # Reference:
         # > https://github.com/strasdat/Sophus/blob/a0fe89a323e20c42d3cecb590937eb7a06b8343a/sophus/se3.hpp#L761
         # assumes tangent is ordered as (x, y, z, w_x, w_y, w_z)
@@ -492,7 +492,7 @@ class SE3(AbstractMatrixLieGroup, strict=True):
 
     @override
     @classmethod
-    def sample_uniform(cls: Type[Self], key: PRNGKeyArray) -> Self:
+    def sample_uniform(cls, key: PRNGKeyArray) -> Self:
         key0, key1 = jax.random.split(key)
         return cls(
             rotation=SO3.sample_uniform(key0),
