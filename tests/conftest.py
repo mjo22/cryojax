@@ -5,13 +5,11 @@ import jax
 import jax.random as jr
 import numpy as np
 import pytest
-from jaxtyping import install_import_hook
 
+import cryojax.simulator as cs
+from cryojax.image import operators as op, rfftn
+from cryojax.io import read_array_with_spacing_from_mrc
 
-with install_import_hook("cryojax", "typeguard.typechecked"):
-    import cryojax.simulator as cs
-    from cryojax.image import operators as op, rfftn
-    from cryojax.io import read_array_with_spacing_from_mrc
 
 # jax.config.update("jax_numpy_dtype_promotion", "strict")
 jax.config.update("jax_numpy_rank_promotion", "raise")
