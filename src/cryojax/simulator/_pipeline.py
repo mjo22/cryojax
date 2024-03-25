@@ -120,7 +120,7 @@ class AbstractPipeline(Module, strict=True):
             if (
                 self.filter is not None
                 and self.filter.buffer.shape
-                == config.wrapped_padded_frequency_grid.get().shape[0:2]
+                == config.wrapped_padded_frequency_grid_in_pixels.get().shape[0:2]
             ):
                 # ... apply the filter here if it is the same size as the padded
                 # coordinates

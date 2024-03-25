@@ -30,14 +30,20 @@ def test_voxel_electron_potential_loaders():
     for potential in [real_potential, fourier_potential, cloud_potential]:
         assert potential.voxel_size == jnp.asarray(voxel_size)
 
-    assert isinstance(fourier_potential.wrapped_frequency_slice, FrequencySlice)
     assert isinstance(
-        fourier_potential.wrapped_frequency_slice.get(), VolumeSliceCoords
+        fourier_potential.wrapped_frequency_slice_in_pixels, FrequencySlice
     )
-    assert isinstance(real_potential.wrapped_coordinate_grid, CoordinateGrid)
-    assert isinstance(real_potential.wrapped_coordinate_grid.get(), VolumeCoords)
-    assert isinstance(cloud_potential.wrapped_coordinate_list, CoordinateList)
-    assert isinstance(cloud_potential.wrapped_coordinate_list.get(), PointCloudCoords3D)
+    assert isinstance(
+        fourier_potential.wrapped_frequency_slice_in_pixels.get(), VolumeSliceCoords
+    )
+    assert isinstance(real_potential.wrapped_coordinate_grid_in_pixels, CoordinateGrid)
+    assert isinstance(
+        real_potential.wrapped_coordinate_grid_in_pixels.get(), VolumeCoords
+    )
+    assert isinstance(cloud_potential.wrapped_coordinate_list_in_pixels, CoordinateList)
+    assert isinstance(
+        cloud_potential.wrapped_coordinate_list_in_pixels.get(), PointCloudCoords3D
+    )
 
 
 def test_electron_potential_vmap(potential, integrator, config):

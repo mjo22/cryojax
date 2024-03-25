@@ -28,14 +28,18 @@ class AbstractDQE(AbstractFourierOperator, strict=True):
     @abstractmethod
     def __call__(
         self,
-        frequency_grid_maybe_in_angstroms: ImageCoords,
+        frequency_grid_in_angstroms_or_pixels: ImageCoords,
         *,
         pixel_size: Optional[RealNumber] = None,
     ) -> RealImage | RealNumber:
         """**Arguments:**
 
-        - `frequency_grid_maybe_in_angstroms`: A frequency grid given in units of
-                                               nyquist.
+        - `frequency_grid_in_angstroms_or_pixels`: A frequency grid
+                                                   given in angstroms
+                                                   or pixels. If given
+                                                   in angstroms, `pixel_size`
+                                                   must be passed
+        - `pixel_size`: The pixel size of `frequency_grid_in_angstroms_or_pixels`.
         """
         raise NotImplementedError
 
@@ -51,7 +55,7 @@ class NullDQE(AbstractDQE, strict=True):
     @override
     def __call__(
         self,
-        frequency_grid_maybe_in_angstroms: ImageCoords,
+        frequency_grid_in_angstroms_or_pixels: ImageCoords,
         *,
         pixel_size: Optional[RealNumber] = None,
     ) -> RealNumber:
@@ -72,15 +76,17 @@ class IdealDQE(AbstractDQE, strict=True):
     @override
     def __call__(
         self,
-        frequency_grid_maybe_in_angstroms: ImageCoords,
+        frequency_grid_in_angstroms_or_pixels: ImageCoords,
         *,
         pixel_size: Optional[RealNumber] = None,
     ) -> RealImage:
         if pixel_size is None:
-            frequency_grid_in_nyquist_units = frequency_grid_maybe_in_angstroms / 0.5
+            frequency_grid_in_nyquist_units = (
+                frequency_grid_in_angstroms_or_pixels / 0.5
+            )
         else:
             frequency_grid_in_nyquist_units = (
-                frequency_grid_maybe_in_angstroms * pixel_size
+                frequency_grid_in_angstroms_or_pixels * pixel_size
             ) / 0.5
         return (
             self.fraction_detected_electrons**2
@@ -115,7 +121,7 @@ class AbstractDetector(Module, strict=True):
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Pass the image through the detector model."""
         N_pix = np.prod(config.padded_shape)
-        frequency_grid = config.wrapped_padded_frequency_grid.get()
+        frequency_grid = config.wrapped_padded_frequency_grid_in_pixels.get()
         # Compute the time-integrated electron flux in pixels
         electrons_per_pixel = dose.electrons_per_angstrom_squared * config.pixel_size**2
         # ... now the total number of electrons over the entire image

@@ -54,8 +54,7 @@ RealOperatorLike = AbstractRealOperator | AbstractImageOperator
 
 
 class Gaussian2D(AbstractRealOperator, strict=True):
-    r"""
-    This operator represents a simple gaussian.
+    r"""This operator represents a simple gaussian.
     Specifically, this is
 
     $$g(r) = \frac{\kappa}{2\pi \beta} \exp(- (r - r_0)^2 / (2 \beta))$$
