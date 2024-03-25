@@ -42,12 +42,10 @@ class AbstractPipeline(Module, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> (
-        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
-        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
-        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
-        | Complex[
-            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
-        ]
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
         """Render an image without any stochasticity.
 
@@ -72,12 +70,10 @@ class AbstractPipeline(Module, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> (
-        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
-        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
-        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
-        | Complex[
-            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
-        ]
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
         """
         Sample an image from a realization of the `AbstractIce` and
@@ -94,14 +90,14 @@ class AbstractPipeline(Module, strict=True):
     def crop_and_apply_operators(
         self,
         image: Complex[
-            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+            Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"
         ],
         *,
         get_real: bool = True,
         normalize: bool = False,
     ) -> (
-        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
-        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
     ):
         """Return an image postprocessed with filters, cropping, and masking
         in either real or fourier space.
@@ -152,19 +148,17 @@ class AbstractPipeline(Module, strict=True):
     def _get_final_image(
         self,
         image: Complex[
-            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
+            Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"
         ],
         *,
         view_cropped: bool = True,
         get_real: bool = True,
         normalize: bool = False,
     ) -> (
-        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
-        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
-        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
-        | Complex[
-            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
-        ]
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
         config = self.config
         if view_cropped:
@@ -222,12 +216,10 @@ class ImagePipeline(AbstractPipeline, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> (
-        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
-        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
-        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
-        | Complex[
-            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
-        ]
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
         """Render an image without any stochasticity."""
         # Compute the scattering potential in the exit plane
@@ -271,12 +263,10 @@ class ImagePipeline(AbstractPipeline, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> (
-        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
-        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
-        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
-        | Complex[
-            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
-        ]
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
         """Sample the assembly from the stochastic parts of the model."""
         idx = 0  # Keep track of number of stochastic models
@@ -384,12 +374,10 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> (
-        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
-        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
-        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
-        | Complex[
-            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
-        ]
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
         """Sample the superposition of `AbstractAssembly.subunits` from
         stochastic models.
@@ -446,12 +434,10 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         get_real: bool = True,
         normalize: bool = False,
     ) -> (
-        Float[Array, "{self.config.shape[0]} {self.config.shape[1]}"]
-        | Float[Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]}"]
-        | Complex[Array, "{self.config.shape[0]} {self.config.shape[1]//2+1}"]
-        | Complex[
-            Array, "{self.config.padded_shape[0]} {self.config.padded_shape[1]//2+1}"
-        ]
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
         """Render the superposition of images from the
         `AbstractAssembly.subunits`.

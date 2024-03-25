@@ -87,7 +87,7 @@ class Helix(AbstractAssembly, strict=True):
             )
 
     @cached_property
-    def offsets_in_angstroms(self) -> Float[Array, "n_subunits 3"]:
+    def offsets_in_angstroms(self) -> Float[Array, "{self.n_subunits} 3"]:
         """Get the helical lattice positions in the center of mass frame."""
         return compute_helical_lattice_positions(
             self.rise,
@@ -98,7 +98,7 @@ class Helix(AbstractAssembly, strict=True):
         )
 
     @cached_property
-    def rotations(self) -> Shaped[SO3, "n_subunits"]:
+    def rotations(self) -> SO3:
         """Get the helical lattice rotations in the center of mass frame.
 
         These are rotations of the initial subunit.
@@ -122,7 +122,7 @@ def compute_helical_lattice_positions(
     n_subunits_per_start: int,
     initial_displacement: Float[Array, "3"],
     n_start: int = 1,
-) -> Float[Array, "n_start*n_subunits_per_start 3"]:
+) -> Float[Array, "{n_start*n_subunits_per_start} 3"]:
     """
     Compute the lattice points of a helix for a given
     rise, twist, radius, and start number.
@@ -208,7 +208,7 @@ def compute_helical_lattice_rotations(
     n_subunits_per_start: int,
     initial_rotation: Float[Array, "3 3"] = jnp.eye(3),
     n_start: int = 1,
-) -> Float[Array, "n_start*n_subunits_per_start 3"]:
+) -> Float[Array, "{n_start*n_subunits_per_start} 3 3"]:
     """
     Compute the relative rotations of subunits on a
     helical lattice, parameterized by the

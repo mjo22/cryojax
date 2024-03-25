@@ -52,8 +52,8 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
     def render(
         self, *, get_real: bool = True
     ) -> (
-        Float[Array, "{self.pipeline.config.shape[0]} {self.pipeline.config.shape[1]}"]
-        | Complex[Array, "{self.pipeline.config.shape[0]} {self.config.shape[1]//2+1}"]
+        Float[Array, "{self.pipeline.config.y_dim} {self.pipeline.config.x_dim}"]
+        | Complex[Array, "{self.pipeline.config.y_dim} {self.config.x_dim//2+1}"]
     ):
         """Render the image formation model."""
         return self.contrast_scale * self.pipeline.render(
@@ -64,8 +64,8 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
     def sample(
         self, key: PRNGKeyArray, *, get_real: bool = True
     ) -> (
-        Float[Array, "{self.pipeline.config.shape[0]} {self.pipeline.config.shape[1]}"]
-        | Complex[Array, "{self.pipeline.config.shape[0]} {self.config.shape[1]//2+1}"]
+        Float[Array, "{self.pipeline.config.y_dim} {self.pipeline.config.x_dim}"]
+        | Complex[Array, "{self.pipeline.config.y_dim} {self.config.x_dim//2+1}"]
     ):
         """Sample from the gaussian noise model."""
         N_pix = np.prod(self.pipeline.config.padded_shape)
@@ -85,7 +85,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
         self,
         observed: Complex[
             Array,
-            "{self.pipeline.config.shape[0]} {self.pipeline.config.shape[1]//2+1}",
+            "{self.pipeline.config.y_dim} {self.pipeline.config.x_dim//2+1}",
         ],
     ) -> RealNumber:
         """Evaluate the log-likelihood of the gaussian noise model.

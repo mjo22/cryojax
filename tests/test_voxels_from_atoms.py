@@ -61,7 +61,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
             n_voxels_per_side,
             voxel_size,
         ) = toy_gaussian_cloud
-        ff_a[largest_atom] += 1.0
+        ff_a = ff_a.at[largest_atom].add(1.0)
         coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
 
         # Build the potential
@@ -108,12 +108,12 @@ class TestBuildVoxelsFromTrajectories:
             voxel_size,
         ) = toy_gaussian_cloud
         second_set_of_positions = atom_positions + 1.0
-        traj = np.stack([atom_positions, second_set_of_positions], axis=0)
+        traj = jnp.stack([atom_positions, second_set_of_positions], axis=0)
 
         coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
 
         # Build the trajectory $density
-        elements = np.array([1, 1, 2, 6])
+        elements = jnp.array([1, 1, 2, 6])
 
         make_voxel_grid_ensemble = jax.vmap(
             RealVoxelGridPotential.from_atoms, in_axes=[0, None, None, None]

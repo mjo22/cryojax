@@ -9,9 +9,8 @@ from typing_extensions import override
 
 import jax
 from equinox import AbstractVar, Module
-from jaxtyping import PRNGKeyArray
+from jaxtyping import Array, Complex, PRNGKeyArray
 
-from ..typing import ComplexImage
 from ._config import ImageConfig
 from ._conformation import AbstractConformation, DiscreteConformation
 from ._ice import AbstractIce
@@ -48,7 +47,9 @@ class AbstractSpecimen(Module, strict=True):
         """Get the scattering potential in the lab frame."""
         return self.potential_in_com_frame.rotate_to_pose(self.pose)
 
-    def scatter_to_exit_plane(self, config: ImageConfig) -> ComplexImage:
+    def scatter_to_exit_plane(
+        self, config: ImageConfig
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Scatter the specimen potential to the exit plane."""
         # Get potential in the lab frame
         potential = self.potential_in_lab_frame
@@ -66,7 +67,7 @@ class AbstractSpecimen(Module, strict=True):
         key: PRNGKeyArray,
         solvent: AbstractIce,
         config: ImageConfig,
-    ) -> ComplexImage:
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Scatter the specimen potential to the exit plane, including
         the potential due to the solvent."""
         # Compute the scattering potential in fourier space

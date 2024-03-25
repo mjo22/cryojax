@@ -68,11 +68,14 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     @abstractmethod
     def from_atoms(
         cls,
-        atom_positions: Float[Array, "N 3"],
-        atom_identities: Int[Array, " N"],
+        atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
+        atom_identities: Int[Array, " n_atoms"] | Int[np.ndarray, " n_atoms"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
-        form_factors: Optional[Float[Array, "N 5"]] = None,
+        form_factors: Optional[
+            Float[Array, "n_atoms n_form_factors"]
+            | Float[np.ndarray, "n_atoms n_form_factors"]
+        ] = None,
         **kwargs: Any,
     ) -> Self:
         """Load an `AbstractVoxels` from atom positions and identities."""
@@ -168,11 +171,14 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_atoms(
         cls,
-        atom_positions: Float[Array, "N 3"],
-        atom_identities: Int[Array, " N"],
+        atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
+        atom_identities: Int[Array, " n_atoms"] | Int[np.ndarray, " n_atoms"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
-        form_factors: Optional[Float[Array, "N 5"]] = None,
+        form_factors: Optional[
+            Float[Array, "n_atoms n_form_factors"]
+            | Float[np.ndarray, "n_atoms n_form_factors"]
+        ] = None,
         **kwargs: Any,
     ) -> Self:
         """Load an `AbstractFourierVoxelGridPotential` from atom positions and
@@ -182,10 +188,16 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
         - `**kwargs`: Passed to `AbstractFourierVoxelGridPotential.from_real_voxel_grid`
         """
-        a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
+        form_factors = form_factors or jnp.asarray(form_factors)
+        a_vals, b_vals = get_form_factor_params(
+            jnp.asarray(atom_identities), form_factors
+        )
 
         potential = build_real_space_voxels_from_atoms(
-            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
+            jnp.asarray(atom_positions),
+            a_vals,
+            b_vals,
+            coordinate_grid_in_angstroms.get(),
         )
 
         return cls.from_real_voxel_grid(
@@ -386,11 +398,14 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_atoms(
         cls,
-        atom_positions: Float[Array, "N 3"],
-        atom_identities: Int[Array, " N"],
+        atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
+        atom_identities: Int[Array, " n_atoms"] | Int[np.ndarray, " n_atoms"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
-        form_factors: Optional[Float[Array, "N 5"]] = None,
+        form_factors: Optional[
+            Float[Array, "n_atoms n_form_factors"]
+            | Float[np.ndarray, "n_atoms n_form_factors"]
+        ] = None,
         **kwargs: Any,
     ) -> Self:
         """Load a `RealVoxelGridPotential` from atom positions and identities.
@@ -399,10 +414,16 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
         - `**kwargs`: Passed to `RealVoxelGridPotential.from_real_voxel_grid`
         """
-        a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
+        form_factors = form_factors or jnp.asarray(form_factors)
+        a_vals, b_vals = get_form_factor_params(
+            jnp.asarray(atom_identities), form_factors
+        )
 
         real_voxel_grid = build_real_space_voxels_from_atoms(
-            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
+            jnp.asarray(atom_positions),
+            a_vals,
+            b_vals,
+            coordinate_grid_in_angstroms.get(),
         )
 
         return cls.from_real_voxel_grid(
@@ -504,11 +525,14 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_atoms(
         cls,
-        atom_positions: Float[Array, "N 3"],
-        atom_identities: Int[Array, " N"],
+        atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
+        atom_identities: Int[Array, " n_atoms"] | Int[np.ndarray, " n_atoms"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         coordinate_grid_in_angstroms: CoordinateGrid,
-        form_factors: Optional[Float[Array, "N 5"]] = None,
+        form_factors: Optional[
+            Float[Array, "n_atoms n_form_factors"]
+            | Float[np.ndarray, "n_atoms n_form_factors"]
+        ] = None,
         **kwargs: Any,
     ) -> Self:
         """Load a `RealVoxelCloudPotential` from atom positions and identities.
@@ -517,10 +541,16 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
         - `**kwargs`: Passed to `RealVoxelCloudPotential.from_real_voxel_grid`
         """
-        a_vals, b_vals = get_form_factor_params(atom_identities, form_factors)
+        form_factors = form_factors or jnp.asarray(form_factors)
+        a_vals, b_vals = get_form_factor_params(
+            jnp.asarray(atom_identities), form_factors
+        )
 
         real_voxel_grid = build_real_space_voxels_from_atoms(
-            atom_positions, a_vals, b_vals, coordinate_grid_in_angstroms.get()
+            jnp.asarray(atom_positions),
+            a_vals,
+            b_vals,
+            coordinate_grid_in_angstroms.get(),
         )
 
         return cls.from_real_voxel_grid(
@@ -563,8 +593,8 @@ def evaluate_3d_real_space_gaussian(
 def evaluate_3d_atom_potential(
     coordinate_grid_in_angstroms: Float[Array, "N1 N2 N3 3"],
     atom_position: Float[Array, "3"],
-    atomic_as: Float[Array, "5"],
-    atomic_bs: Float[Array, "5"],
+    atomic_as: Float[Array, " n_form_factors"],
+    atomic_bs: Float[Array, " n_form_factors"],
 ) -> Float[Array, "N1 N2 N3"]:
     """Evaluates the electron potential of a single atom on a 3D grid.
 
@@ -588,11 +618,11 @@ def evaluate_3d_atom_potential(
 
 @jax.jit
 def build_real_space_voxels_from_atoms(
-    atom_positions: Float[Array, "N 3"],
-    ff_a: Float[Array, "N 5"],
-    ff_b: Float[Array, "N 5"],
-    coordinate_grid_in_angstroms: Float[Array, "N1 N2 N3 3"],
-) -> RealCubicVolume:
+    atom_positions: Float[Array, "n_atoms 3"],
+    ff_a: Float[Array, "n_atoms n_form_factors"],
+    ff_b: Float[Array, "n_atoms n_form_factors"],
+    coordinate_grid_in_angstroms: Float[Array, "N N N 3"],
+) -> Float[Array, "N N N"]:
     """
     Build a voxel representation of an atomic model.
 

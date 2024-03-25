@@ -11,7 +11,7 @@ from typing import Optional
 import equinox as eqx
 import jax
 from equinox import AbstractVar
-from jaxtyping import Array, Float, Shaped
+from jaxtyping import Array, Float
 
 from ...rotations import SO3
 from .._conformation import AbstractConformation
@@ -59,18 +59,18 @@ class AbstractAssembly(eqx.Module, strict=True):
 
     @cached_property
     @abstractmethod
-    def offsets_in_angstroms(self) -> Float[Array, "n_subunits 3"]:
+    def offsets_in_angstroms(self) -> Float[Array, "{n_subunits} 3"]:
         """The positions of each subunit."""
         raise NotImplementedError
 
     @cached_property
     @abstractmethod
-    def rotations(self) -> Shaped[SO3, " n_subunits"]:
+    def rotations(self) -> SO3:
         """The relative rotations between subunits."""
         raise NotImplementedError
 
     @cached_property
-    def poses(self) -> Shaped[AbstractPose, " n_subunits"]:
+    def poses(self) -> AbstractPose:
         """
         Draw the poses of the subunits in the lab frame, measured
         from the rotation relative to the first subunit.

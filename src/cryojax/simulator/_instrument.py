@@ -7,10 +7,10 @@ from typing import Optional, overload
 
 import jax.numpy as jnp
 from equinox import Module
-from jaxtyping import PRNGKeyArray
+from jaxtyping import Array, Complex, PRNGKeyArray
 
 from ..image import ifftn, rfftn
-from ..typing import ComplexImage, Image, RealNumber
+from ..typing import RealNumber
 from ._config import ImageConfig
 from ._detector import AbstractDetector, NullDetector
 from ._dose import ElectronDose
@@ -63,10 +63,15 @@ class Instrument(Module, strict=True):
 
     def propagate_to_detector_plane(
         self,
-        fourier_potential_at_exit_plane: ComplexImage,
+        fourier_potential_at_exit_plane: Complex[
+            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+        ],
         config: ImageConfig,
         defocus_offset: RealNumber | float = 0.0,
-    ) -> Image:
+    ) -> (
+        Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
+        | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
+    ):
         """Propagate the scattering potential with the optics model."""
         fourier_contrast_or_wavefunction_at_detector_plane = self.optics(
             fourier_potential_at_exit_plane, config, defocus_offset=defocus_offset
@@ -76,9 +81,12 @@ class Instrument(Module, strict=True):
 
     def compute_fourier_squared_wavefunction(
         self,
-        fourier_contrast_or_wavefunction_at_detector_plane: ComplexImage,
+        fourier_contrast_or_wavefunction_at_detector_plane: (
+            Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
+            | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
+        ),
         config: ImageConfig,
-    ) -> ComplexImage:
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute the squared wavefunction at the detector plane, given either the
         contrast or the wavefunction.
         """
@@ -114,9 +122,11 @@ class Instrument(Module, strict=True):
 
     def compute_expected_electron_events(
         self,
-        fourier_squared_wavefunction_at_detector_plane: ComplexImage,
+        fourier_squared_wavefunction_at_detector_plane: Complex[
+            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+        ],
         config: ImageConfig,
-    ) -> ComplexImage:
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute the expected electron events from the detector."""
         fourier_expected_electron_events = self.detector(
             fourier_squared_wavefunction_at_detector_plane, self.dose, config, key=None
@@ -127,9 +137,11 @@ class Instrument(Module, strict=True):
     def measure_detector_readout(
         self,
         key: PRNGKeyArray,
-        fourier_squared_wavefunction_at_detector_plane: ComplexImage,
+        fourier_squared_wavefunction_at_detector_plane: Complex[
+            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+        ],
         config: ImageConfig,
-    ) -> ComplexImage:
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Measure the readout from the detector."""
         fourier_detector_readout = self.detector(
             fourier_squared_wavefunction_at_detector_plane, self.dose, config, key
