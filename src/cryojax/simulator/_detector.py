@@ -121,7 +121,7 @@ class AbstractDetector(Module, strict=True):
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Pass the image through the detector model."""
         N_pix = np.prod(config.padded_shape)
-        frequency_grid = config.wrapped_padded_frequency_grid.get()
+        frequency_grid = config.wrapped_padded_frequency_grid_in_pixels.get()
         # Compute the time-integrated electron flux in pixels
         electrons_per_pixel = dose.electrons_per_angstrom_squared * config.pixel_size**2
         # ... now the total number of electrons over the entire image
