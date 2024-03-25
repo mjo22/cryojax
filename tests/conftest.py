@@ -92,7 +92,7 @@ def potential(sample_mrc_path):
 
 @pytest.fixture
 def filters(config):
-    return op.LowpassFilter(config.wrapped_padded_frequency_grid.get())
+    return op.LowpassFilter(config.wrapped_padded_frequency_grid_in_pixels.get())
 
 
 @pytest.fixture

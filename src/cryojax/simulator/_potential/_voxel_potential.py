@@ -105,7 +105,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
-            lambda d: d.wrapped_frequency_slice.array,
+            lambda d: d.wrapped_frequency_slice_in_pixels.array,
             self,
             pose.rotate_coordinates(
                 self.wrapped_frequency_slice_in_pixels.get(), inverse=True
@@ -335,7 +335,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
-            lambda d: d.wrapped_coordinate_grid.array,
+            lambda d: d.wrapped_coordinate_grid_in_pixels.array,
             self,
             pose.rotate_coordinates(
                 self.wrapped_coordinate_grid_in_pixels.get(), inverse=False
@@ -487,7 +487,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
         return eqx.tree_at(
-            lambda d: d.wrapped_coordinate_list.array,
+            lambda d: d.wrapped_coordinate_list_in_pixels.array,
             self,
             pose.rotate_coordinates(
                 self.wrapped_coordinate_list_in_pixels.get(), inverse=False
