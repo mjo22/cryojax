@@ -14,7 +14,6 @@ from ...image import (
     map_coordinates_with_cubic_spline,
     rfftn,
 )
-from ...typing import ComplexImage
 from .._config import ImageConfig
 from .._potential import (
     FourierVoxelGridPotential,
@@ -52,7 +51,7 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
         self,
         potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
         config: ImageConfig,
-    ) -> ComplexImage:
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute a projection of the real-space potential by extracting
         a central slice in fourier space.
         """

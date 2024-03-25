@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 from equinox import AbstractVar, field, Module
-from jaxtyping import PRNGKeyArray, Shaped
+from jaxtyping import Array, Complex, PRNGKeyArray, Shaped
 
 from ..core import error_if_not_fractional
 from ..image import irfftn, rfftn
@@ -106,11 +106,13 @@ class AbstractDetector(Module, strict=True):
 
     def __call__(
         self,
-        fourier_squared_wavefunction_at_detector_plane: ComplexImage,
+        fourier_squared_wavefunction_at_detector_plane: Complex[
+            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+        ],
         dose: ElectronDose,
         config: ImageConfig,
         key: Optional[PRNGKeyArray] = None,
-    ) -> ComplexImage:
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Pass the image through the detector model."""
         N_pix = np.prod(config.padded_shape)
         frequency_grid = config.wrapped_padded_frequency_grid.get()

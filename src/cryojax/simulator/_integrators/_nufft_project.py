@@ -7,9 +7,9 @@ from typing import Union
 
 import jax.numpy as jnp
 from equinox import field
+from jaxtyping import Array, Complex
 
 from ...typing import (
-    ComplexImage,
     PointCloudCoords2D,
     PointCloudCoords3D,
     RealPointCloud,
@@ -35,7 +35,7 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
         self,
         potential: RealVoxelGridPotential | RealVoxelCloudPotential,
         config: ImageConfig,
-    ) -> ComplexImage:
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(potential, RealVoxelGridPotential):
             shape = potential.shape
@@ -67,7 +67,7 @@ def project_with_nufft(
     coordinate_list: Union[PointCloudCoords2D, PointCloudCoords3D],
     shape: tuple[int, int],
     eps: float = 1e-6,
-) -> ComplexImage:
+) -> Complex[Array, "{shape[0]} {shape[1]}"]:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using a non-uniform FFT.

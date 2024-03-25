@@ -2,6 +2,7 @@
 The image configuration and utility manager.
 """
 
+import math
 from functools import cached_property
 from typing import Any, Callable, Optional, Union
 
@@ -129,12 +130,12 @@ class ImageConfig(Module, strict=True):
     def rescale_to_pixel_size(
         self,
         real_or_fourier_image: (
-            Float[Array, "{self.padded_shape[0]} {self.padded_shape[1]}"]
-            | Complex[Array, "{self.padded_shape[0]} {self.padded_shape[1]//2+1}"]
+            Float[Array, "{self.padded_y_dim} {self.padded_x_dim}"]
+            | Complex[Array, "{self.padded_y_dim} {self.padded_x_dim//2+1}"]
         ),
         current_pixel_size: RealNumber,
         is_real: bool = True,
-    ) -> Complex[Array, "{self.padded_shape[0]} {self.padded_shape[1]//2+1}"]:
+    ) -> Complex[Array, "{self.padded_y_dim} {self.padded_x_dim//2+1}"]:
         """Rescale the image pixel size using real-space interpolation. Only
         interpolate if the `pixel_size` is not the `current_pixel_size`."""
         if is_real:
@@ -160,20 +161,44 @@ class ImageConfig(Module, strict=True):
 
     def crop_to_shape(
         self, image: RealImage
-    ) -> Float[Array, "{self.shape[0]} {self.shape[1]}"]:
+    ) -> Float[Array, "{self.y_dim} {self.x_dim}"]:
         """Crop an image."""
         return crop_to_shape(image, self.shape)
 
     def pad_to_padded_shape(
         self, image: RealImage, **kwargs: Any
-    ) -> Float[Array, "{self.padded_shape[0]} {self.padded_shape[1]}"]:
+    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim}"]:
         """Pad an image."""
         return pad_to_shape(image, self.padded_shape, mode=self.pad_mode, **kwargs)
 
     def crop_or_pad_to_padded_shape(
         self, image: RealImage, **kwargs: Any
-    ) -> Float[Array, "{self.padded_shape[0]} {self.padded_shape[1]}"]:
+    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim}"]:
         """Reshape an image using cropping or padding."""
         return resize_with_crop_or_pad(
             image, self.padded_shape, mode=self.pad_mode, **kwargs
         )
+
+    @property
+    def n_pix(self) -> int:
+        return math.prod(self.shape)
+
+    @property
+    def y_dim(self) -> int:
+        return self.shape[0]
+
+    @property
+    def x_dim(self) -> int:
+        return self.shape[1]
+
+    @property
+    def padded_y_dim(self) -> int:
+        return self.padded_shape[0]
+
+    @property
+    def padded_x_dim(self) -> int:
+        return self.padded_shape[1]
+
+    @property
+    def padded_n_pix(self) -> int:
+        return math.prod(self.padded_shape)

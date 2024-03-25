@@ -2,13 +2,17 @@ import os
 
 import equinox as eqx
 import jax
+import jax.numpy as jnp
 import jax.random as jr
-import numpy as np
 import pytest
+from jaxtyping import install_import_hook
 
-import cryojax.simulator as cs
-from cryojax.image import operators as op, rfftn
-from cryojax.io import read_array_with_spacing_from_mrc
+
+with install_import_hook("cryojax", "typeguard.typechecked"):
+    import cryojax as cryojax
+    import cryojax.simulator as cs
+    from cryojax.image import operators as op, rfftn
+    from cryojax.io import read_array_with_spacing_from_mrc
 
 
 # jax.config.update("jax_numpy_dtype_promotion", "strict")
@@ -35,7 +39,7 @@ def sample_pdb_path():
 
 @pytest.fixture
 def toy_gaussian_cloud():
-    atom_positions = np.array(
+    atom_positions = jnp.array(
         [
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 1.0],
@@ -44,14 +48,14 @@ def toy_gaussian_cloud():
         ]
     )
     num_atoms = atom_positions.shape[0]
-    ff_a = np.array(
+    ff_a = jnp.array(
         num_atoms
         * [
             [1.0, 0.5],
         ]
     )
 
-    ff_b = np.array(
+    ff_b = jnp.array(
         num_atoms
         * [
             [0.3, 0.2],
@@ -95,7 +99,7 @@ def filters(config):
 def masks(config):
     return op.CircularMask(
         config.wrapped_padded_coordinate_grid_in_angstroms.get(),
-        radius=20 * config.pixel_size,
+        radius=20 * float(config.pixel_size),
     )
 
 

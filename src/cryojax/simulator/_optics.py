@@ -8,7 +8,7 @@ from typing_extensions import override
 
 import jax.numpy as jnp
 from equinox import AbstractClassVar, AbstractVar, field, Module
-from jaxtyping import Shaped
+from jaxtyping import Array, Complex, Shaped
 
 from ..coordinates import cartesian_to_polar
 from ..core import error_if_negative, error_if_not_fractional, error_if_not_positive
@@ -17,13 +17,7 @@ from ..image.operators import (
     Constant,
     FourierOperatorLike,
 )
-from ..typing import (
-    ComplexImage,
-    Image,
-    ImageCoords,
-    RealImage,
-    RealNumber,
-)
+from ..typing import ImageCoords, RealImage, RealNumber
 from ._config import ImageConfig
 
 
@@ -109,10 +103,15 @@ class AbstractOptics(Module, strict=True):
     @abstractmethod
     def __call__(
         self,
-        fourier_potential_in_exit_plane: ComplexImage,
+        fourier_potential_in_exit_plane: Complex[
+            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+        ],
         config: ImageConfig,
         defocus_offset: RealNumber | float = 0.0,
-    ) -> Image:
+    ) -> (
+        Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
+        | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
+    ):
         """Pass an image through the optics model."""
         raise NotImplementedError
 
@@ -132,10 +131,12 @@ class NullOptics(AbstractOptics):
     @override
     def __call__(
         self,
-        fourier_potential_in_exit_plane: ComplexImage,
+        fourier_potential_in_exit_plane: Complex[
+            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+        ],
         config: ImageConfig,
         defocus_offset: RealNumber | float = 0.0,
-    ) -> Image:
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         return fourier_potential_in_exit_plane
 
 
@@ -170,10 +171,12 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
     @override
     def __call__(
         self,
-        fourier_potential_in_exit_plane: ComplexImage,
+        fourier_potential_in_exit_plane: Complex[
+            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+        ],
         config: ImageConfig,
         defocus_offset: RealNumber | float = 0.0,
-    ) -> ComplexImage:
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Apply the CTF directly to the scattering potential."""
         frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
         # Compute the CTF
