@@ -6,7 +6,7 @@ from typing import Optional
 
 import jax.numpy as jnp
 
-from ..typing import ComplexImage, Image, RealNumber
+from ..typing import ComplexImage, ComplexNumber, Image, RealNumber
 
 
 def normalize_image(
@@ -91,7 +91,7 @@ def compute_mean_and_std_from_fourier_image(
     *,
     half_space: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
-) -> tuple[RealNumber, RealNumber]:
+) -> tuple[ComplexNumber, RealNumber]:
     """Compute the mean and standard deviation in real space from
     an image in fourier space.
     """
