@@ -5,20 +5,14 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
-
-import cryojax.simulator as cs
-from cryojax.image import operators as op, rfftn
-from cryojax.io import read_array_with_spacing_from_mrc
+from jaxtyping import install_import_hook
 
 
-# from jaxtyping import install_import_hook
-
-
-# with install_import_hook("cryojax", "typeguard.typechecked"):
-#    import cryojax as cryojax
-#    import cryojax.simulator as cs
-#    from cryojax.image import operators as op, rfftn
-#    from cryojax.io import read_array_with_spacing_from_mrc
+with install_import_hook("cryojax", "typeguard.typechecked"):
+    import cryojax as cryojax
+    import cryojax.simulator as cs
+    from cryojax.image import operators as op, rfftn
+    from cryojax.io import read_array_with_spacing_from_mrc
 
 
 # jax.config.update("jax_numpy_dtype_promotion", "strict")
