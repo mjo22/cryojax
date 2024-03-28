@@ -5,11 +5,9 @@ for the optics, electron dose, and detector.
 
 from typing import Optional, overload
 
-import jax.numpy as jnp
 from equinox import Module
 from jaxtyping import Array, Complex, PRNGKeyArray
 
-from ..image import ifftn, rfftn
 from ..typing import RealNumber
 from ._config import ImageConfig
 from ._detector import AbstractDetector, NullDetector
@@ -72,16 +70,22 @@ class Instrument(Module, strict=True):
         Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
         | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
     ):
+        if isinstance(self.optics, NullOptics):
+            raise AttributeError(
+                "Tried to call `Instrument.propagate_to_detector_plane`, "
+                "but the `Instrument`'s optics model is `NullOptics`. This "
+                "is not supported!"
+            )
         """Propagate the scattering potential with the optics model."""
-        fourier_contrast_or_wavefunction_at_detector_plane = self.optics(
+        fourier_contrast_at_detector_plane = self.optics(
             fourier_potential_at_exit_plane, config, defocus_offset=defocus_offset
         )
 
-        return fourier_contrast_or_wavefunction_at_detector_plane
+        return fourier_contrast_at_detector_plane
 
     def compute_fourier_squared_wavefunction(
         self,
-        fourier_contrast_or_wavefunction_at_detector_plane: (
+        fourier_contrast_at_detector_plane: (
             Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
             | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
         ),
@@ -92,30 +96,20 @@ class Instrument(Module, strict=True):
         """
         N1, N2 = config.padded_shape
         if isinstance(self.optics, NullOptics):
-            # If there is no optics model, assume that the potential is being passed
-            # and return unchanged
-            fourier_potential_in_exit_plane = (
-                fourier_contrast_or_wavefunction_at_detector_plane
+            raise AttributeError(
+                "Tried to call `compute_fourier_squared_wavefunction`, "
+                "but the `Instrument`'s optics model is `NullOptics`. This "
+                "is not supported!"
             )
-            return fourier_potential_in_exit_plane
         elif self.optics.is_linear:
             # ... compute the squared wavefunction directly from the image contrast
             # as |psi|^2 = 1 + 2C.
-            fourier_contrast_at_detector_plane = (
-                fourier_contrast_or_wavefunction_at_detector_plane
-            )
+            fourier_contrast_at_detector_plane = fourier_contrast_at_detector_plane
             fourier_squared_wavefunction_at_detector_plane = (
                 (2 * fourier_contrast_at_detector_plane).at[0, 0].add(1.0 * N1 * N2)
             )
             return fourier_squared_wavefunction_at_detector_plane
         else:
-            # ... otherwise, take the modulus squared
-            fourier_wavefunction_at_detector_plane = (
-                fourier_contrast_or_wavefunction_at_detector_plane
-            )
-            fourier_squared_wavefunction_at_detector_plane = rfftn(
-                jnp.abs(ifftn(fourier_wavefunction_at_detector_plane)) ** 2
-            )
             raise NotImplementedError(
                 "Functionality for AbstractOptics.is_linear = False not supported."
             )
@@ -128,6 +122,12 @@ class Instrument(Module, strict=True):
         config: ImageConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute the expected electron events from the detector."""
+        if isinstance(self.detector, NullDetector):
+            raise AttributeError(
+                "Tried to call `Instrument.compute_expected_electron_events`, "
+                "but the `Instrument`'s detector model is `NullDetector`. This "
+                "is not supported!"
+            )
         fourier_expected_electron_events = self.detector(
             fourier_squared_wavefunction_at_detector_plane, self.dose, config, key=None
         )
@@ -143,6 +143,12 @@ class Instrument(Module, strict=True):
         config: ImageConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Measure the readout from the detector."""
+        if isinstance(self.detector, NullDetector):
+            raise AttributeError(
+                "Tried to call `Instrument.measure_detector_readout`, "
+                "but the `Instrument`'s detector model is `NullDetector`. This "
+                "is not supported!"
+            )
         fourier_detector_readout = self.detector(
             fourier_squared_wavefunction_at_detector_plane, self.dose, config, key
         )
