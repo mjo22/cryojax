@@ -13,7 +13,8 @@ def test_conformation(potential, pose, integrator, config):
     ensemble = DiscreteEnsemble(
         potential, integrator, pose, conformation=DiscreteConformation(0)
     )
-    _ = ensemble.scatter_to_exit_plane(config)
+    instrument = Instrument(300.0)
+    _ = ensemble.scatter_to_exit_plane(instrument, config)
 
 
 def test_conformation_vmap(potential, pose, integrator, config):

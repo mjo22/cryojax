@@ -26,14 +26,14 @@ def test_gaussian_limit():
     # Compute detector readout
     fourier_gaussian_detector_readout = gaussian_detector(
         fourier_vacuum_squared_wavefunction,
-        dose.electrons_per_angstrom_squared,
         config,
+        dose.electrons_per_angstrom_squared,
         key,
     )
     fourier_poisson_detector_readout = poisson_detector(
         fourier_vacuum_squared_wavefunction,
-        dose.electrons_per_angstrom_squared,
         config,
+        dose.electrons_per_angstrom_squared,
         key,
     )
     # Compare to see if the autocorrelation has converged
