@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 
-from cryojax.simulator import DiscreteConformation, DiscreteEnsemble
+from cryojax.simulator import DiscreteConformation, DiscreteEnsemble, Instrument
 
 
 def test_conformation(potential, pose, integrator, config):
@@ -33,7 +33,8 @@ def test_conformation_vmap(potential, pose, integrator, config):
     @partial(jax.vmap, in_axes=[0, None, None])
     def compute_conformation_stack(vmap, novmap, config):
         ensemble = eqx.combine(vmap, novmap)
-        return ensemble.scatter_to_exit_plane(config)
+        instrument = Instrument(300.0)
+        return ensemble.scatter_to_exit_plane(instrument, config)
 
     # Vmap over conformations
     image_stack = compute_conformation_stack(vmap, novmap, config)

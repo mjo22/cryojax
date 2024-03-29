@@ -25,10 +25,16 @@ def test_gaussian_limit():
     poisson_detector = cs.PoissonDetector(dqe)
     # Compute detector readout
     fourier_gaussian_detector_readout = gaussian_detector(
-        fourier_vacuum_squared_wavefunction, dose, config, key
+        fourier_vacuum_squared_wavefunction,
+        dose.electrons_per_angstrom_squared,
+        config,
+        key,
     )
     fourier_poisson_detector_readout = poisson_detector(
-        fourier_vacuum_squared_wavefunction, dose, config, key
+        fourier_vacuum_squared_wavefunction,
+        dose.electrons_per_angstrom_squared,
+        config,
+        key,
     )
     # Compare to see if the autocorrelation has converged
     np.testing.assert_allclose(
