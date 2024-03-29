@@ -10,6 +10,7 @@ import jax.numpy as jnp
 from equinox import AbstractClassVar, AbstractVar, field, Module
 from jaxtyping import Array, Complex, Shaped
 
+from ..constants import convert_keV_to_angstroms
 from ..coordinates import cartesian_to_polar
 from ..core import error_if_negative, error_if_not_fractional, error_if_not_positive
 from ..image.operators import (
@@ -35,9 +36,10 @@ class CTF(AbstractFourierOperator, strict=True):
     astigmatism_angle: Shaped[RealNumber, "..."] = field(
         default=0.0, converter=jnp.asarray
     )
-    voltage_in_kilovolts: Shaped[RealNumber, "..."] = field(
-        default=300.0, converter=error_if_not_positive
-    )
+    voltage_in_kilovolts: RealNumber = field(
+        default=300.0, static=True, converter=error_if_not_positive
+    )  # Mark `static=True` so that the voltage is not part of the model pytree
+    # It is treated as part of the pytree upstream, in the Instrument!
     spherical_aberration_in_mm: Shaped[RealNumber, "..."] = field(
         default=2.7, converter=error_if_negative
     )
@@ -46,15 +48,11 @@ class CTF(AbstractFourierOperator, strict=True):
     )
     phase_shift: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
 
-    @property
-    def wavelength_in_angstroms(self):
-        voltage_in_volts = 1000.0 * self.voltage_in_kilovolts  # kV to V
-        return 12.2643 / (voltage_in_volts + 0.97845e-6 * voltage_in_volts**2) ** 0.5
-
     def __call__(
         self,
         frequency_grid_in_angstroms: ImageCoords,
         *,
+        wavelength_in_angstroms: Optional[RealNumber | float] = None,
         defocus_offset: RealNumber | float = 0.0,
     ) -> RealImage:
         # Convert degrees to radians
@@ -62,17 +60,26 @@ class CTF(AbstractFourierOperator, strict=True):
         astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
         # Convert spherical abberation coefficient to angstroms
         spherical_aberration_in_angstroms = self.spherical_aberration_in_mm * 1e7
+        # Get the wavelength. It can either be passed from upstream or stored in the
+        # CTF
+        if wavelength_in_angstroms is None:
+            wavelength_in_angstroms = convert_keV_to_angstroms(
+                jnp.asarray(self.voltage_in_kilovolts)
+            )
+        else:
+            wavelength_in_angstroms = jnp.asarray(wavelength_in_angstroms)
         # Compute phase shifts for CTF
         phase_shifts = _compute_phase_shifts(
             frequency_grid_in_angstroms,
             self.defocus_u_in_angstroms + jnp.asarray(defocus_offset),
             self.defocus_v_in_angstroms + jnp.asarray(defocus_offset),
             astigmatism_angle,
-            self.wavelength_in_angstroms,
+            wavelength_in_angstroms,
             spherical_aberration_in_angstroms,
             self.amplitude_contrast_ratio,
             phase_shift,
         )
+        # Compute the CTF
         return jnp.sin(phase_shifts).at[0, 0].set(0.0)
 
 
@@ -107,6 +114,7 @@ class AbstractOptics(Module, strict=True):
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
+        wavelength_in_angstroms: RealNumber | float,
         defocus_offset: RealNumber | float = 0.0,
     ) -> (
         Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
@@ -135,6 +143,7 @@ class NullOptics(AbstractOptics):
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
+        wavelength_in_angstroms: RealNumber | float,
         defocus_offset: RealNumber | float = 0.0,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         return fourier_potential_in_exit_plane
@@ -175,13 +184,16 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
+        wavelength_in_angstroms: RealNumber | float,
         defocus_offset: RealNumber | float = 0.0,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Apply the CTF directly to the scattering potential."""
         frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
         # Compute the CTF
         ctf = self.envelope(frequency_grid) * self.ctf(
-            frequency_grid, defocus_offset=defocus_offset
+            frequency_grid,
+            wavelength_in_angstroms=wavelength_in_angstroms,
+            defocus_offset=defocus_offset,
         )
         # ... compute the contrast as the CTF multiplied by the scattering potential
         fourier_contrast_in_detector_plane = ctf * fourier_potential_in_exit_plane

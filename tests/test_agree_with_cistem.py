@@ -126,7 +126,8 @@ def test_compute_projection_with_cistem(
     specimen = cs.Specimen(potential, integrator, pose)
     box_size = potential.shape[0]
     config = cs.ImageConfig((box_size, box_size), pixel_size)
-    pipeline = cs.ImagePipeline(config, specimen)
+    instrument = cs.Instrument(voltage_in_kilovolts=300.0)
+    pipeline = cs.ImagePipeline(config, specimen, instrument)
     cryojax_projection = irfftn(
         pipeline.render(get_real=False).at[0, 0].set(0.0 + 0.0j)
         / np.sqrt(np.prod(config.shape)),

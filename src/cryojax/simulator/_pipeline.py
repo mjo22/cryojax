@@ -197,7 +197,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
         self,
         config: ImageConfig,
         specimen: AbstractSpecimen,
-        instrument: Optional[Instrument] = None,
+        instrument: Instrument,
         solvent: Optional[AbstractIce] = None,
         *,
         filter: Optional[AbstractFilter] = None,
@@ -205,7 +205,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
     ):
         self.config = config
         self.specimen = specimen
-        self.instrument = instrument or Instrument()
+        self.instrument = instrument
         self.solvent = solvent or NullIce()
         self.filter = filter
         self.mask = mask
@@ -225,7 +225,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
         """Render an image without any stochasticity."""
         # Compute the scattering potential in the exit plane
         fourier_potential_at_exit_plane = self.specimen.scatter_to_exit_plane(
-            self.config
+            self.instrument, self.config
         )
         if isinstance(self.instrument.optics, NullOptics):
             return self._get_final_image(
@@ -298,14 +298,14 @@ class ImagePipeline(AbstractPipeline, strict=True):
             # potential of the solvent
             fourier_potential_at_exit_plane = (
                 self.specimen.scatter_to_exit_plane_with_solvent(
-                    keys[idx], self.solvent, self.config
+                    keys[idx], self.instrument, self.solvent, self.config
                 )
             )
             idx += 1
         else:
             # ... otherwise, just compute the potential of the specimen
             fourier_potential_at_exit_plane = self.specimen.scatter_to_exit_plane(
-                self.config
+                self.instrument, self.config
             )
         if isinstance(self.instrument.optics, NullOptics):
             return self._get_final_image(
@@ -379,7 +379,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         self,
         config: ImageConfig,
         assembly: AbstractAssembly,
-        instrument: Optional[Instrument] = None,
+        instrument: Instrument,
         solvent: Optional[AbstractIce] = None,
         *,
         filter: Optional[AbstractFilter] = None,
@@ -387,7 +387,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
     ):
         self.config = config
         self.assembly = assembly
-        self.instrument = instrument or Instrument()
+        self.instrument = instrument
         self.solvent = solvent or NullIce()
         self.filter = filter
         self.mask = mask
@@ -418,7 +418,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
             keys = jnp.expand_dims(key, axis=0)
         if isinstance(self.instrument.optics, NullOptics):
             compute_fourier_potential_fn = (
-                lambda spec, conf, ins: spec.scatter_to_exit_plane(conf)
+                lambda spec, conf, ins: spec.scatter_to_exit_plane(ins, conf)
             )
             fourier_potential_in_exit_plane = self._compute_subunit_superposition(
                 compute_fourier_potential_fn
@@ -442,7 +442,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         else:
             compute_fourier_contrast_fn = (
                 lambda spec, conf, ins: ins.propagate_to_detector_plane(
-                    spec.scatter_to_exit_plane(conf),
+                    spec.scatter_to_exit_plane(ins, conf),
                     conf,
                     defocus_offset=spec.pose.offset_z_in_angstroms,
                 )
@@ -510,7 +510,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         """
         if isinstance(self.instrument.optics, NullOptics):
             compute_fourier_potential_fn = (
-                lambda spec, conf, ins: spec.scatter_to_exit_plane(conf)
+                lambda spec, conf, ins: spec.scatter_to_exit_plane(ins, conf)
             )
             fourier_potential_in_exit_plane = self._compute_subunit_superposition(
                 compute_fourier_potential_fn
@@ -524,7 +524,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         else:
             compute_fourier_contrast_fn = (
                 lambda spec, conf, ins: ins.propagate_to_detector_plane(
-                    spec.scatter_to_exit_plane(conf),
+                    spec.scatter_to_exit_plane(ins, conf),
                     conf,
                     defocus_offset=spec.pose.offset_z_in_angstroms,
                 )

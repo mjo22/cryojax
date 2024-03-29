@@ -115,15 +115,15 @@ class AbstractDetector(Module, strict=True):
         fourier_squared_wavefunction_at_detector_plane: Complex[
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
-        dose: ElectronDose,
         config: ImageConfig,
+        electrons_per_angstrom_squared: RealNumber,
         key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Pass the image through the detector model."""
         N_pix = np.prod(config.padded_shape)
         frequency_grid = config.wrapped_padded_frequency_grid_in_pixels.get()
         # Compute the time-integrated electron flux in pixels
-        electrons_per_pixel = dose.electrons_per_angstrom_squared * config.pixel_size**2
+        electrons_per_pixel = electrons_per_angstrom_squared * config.pixel_size**2
         # ... now the total number of electrons over the entire image
         electrons_per_image = N_pix * electrons_per_pixel
         # Normalize the squared wavefunction to a set of probabilities
@@ -134,7 +134,7 @@ class AbstractDetector(Module, strict=True):
         fourier_signal = fourier_squared_wavefunction_at_detector_plane * jnp.sqrt(
             self.dqe(frequency_grid)
         )
-        # Apply the dose
+        # Apply the integrated dose rate
         fourier_expected_electron_events = electrons_per_image * fourier_signal
         if key is None:
             # If there is no key given, return

@@ -12,6 +12,7 @@ from jaxtyping import Array, Complex
 from ...typing import (
     PointCloudCoords2D,
     PointCloudCoords3D,
+    RealNumber,
     RealPointCloud,
 )
 from .._config import ImageConfig
@@ -34,6 +35,7 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
     def __call__(
         self,
         potential: RealVoxelGridPotential | RealVoxelCloudPotential,
+        wavelength_in_angstroms: RealNumber,
         config: ImageConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Rasterize image with non-uniform FFTs."""

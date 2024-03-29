@@ -121,7 +121,10 @@ def test_agree_with_3j9g_assembly(
     @jax.jit
     def compute_rotated_image_with_3j9g(specimen, config, pose):
         specimen = eqx.tree_at(lambda m: m.pose, specimen, pose)
-        pipeline = cs.ImagePipeline(config=config, specimen=specimen)
+        instrument = cs.Instrument(voltage_in_kilovolts=300.0)
+        pipeline = cs.ImagePipeline(
+            config=config, specimen=specimen, instrument=instrument
+        )
         return pipeline.render(normalize=True)
 
     pose = cs.EulerAnglePose(*translation, 0.0, *euler_angles)

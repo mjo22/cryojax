@@ -72,7 +72,10 @@ def test_electron_potential_vmap(potential, integrator, config):
 
 
 def test_electron_potential_vmap_with_pipeline(potential, pose, integrator, config):
-    pipeline = cs.ImagePipeline(config, cs.Specimen(potential, integrator, pose))
+    instrument = cs.Instrument(voltage_in_kilovolts=300.0)
+    pipeline = cs.ImagePipeline(
+        config, cs.Specimen(potential, integrator, pose), instrument
+    )
 
     def is_potential_leaves_without_coordinates(element):
         if isinstance(element, cs.AbstractScatteringPotential):
