@@ -20,7 +20,7 @@ ScatteringPotentialT = TypeVar(
 
 class AbstractPotentialIntegrator(Module, Generic[ScatteringPotentialT], strict=True):
     """Base class for a method of integrating the scattering
-    potential onto the exit plane."""
+    potential to a set of phase shifts the exit plane."""
 
     @abstractmethod
     def __call__(

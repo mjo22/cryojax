@@ -57,15 +57,15 @@ class AbstractSpecimen(Module, strict=True):
         # Get potential in the lab frame
         potential = self.potential_in_lab_frame
         # Compute the scattering potential in fourier space
-        fourier_potential_at_exit_plane = self.integrator(
+        fourier_phase_at_exit_plane = self.integrator(
             potential, instrument.wavelength_in_angstroms, config
         )
         # Apply translation through phase shifts
-        fourier_potential_at_exit_plane *= self.pose.compute_shifts(
+        fourier_phase_at_exit_plane *= self.pose.compute_shifts(
             config.wrapped_padded_frequency_grid_in_angstroms.get()
         )
 
-        return fourier_potential_at_exit_plane
+        return fourier_phase_at_exit_plane
 
     def scatter_to_exit_plane_with_solvent(
         self,
@@ -75,15 +75,15 @@ class AbstractSpecimen(Module, strict=True):
         config: ImageConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Scatter the specimen potential to the exit plane, including
-        the potential due to the solvent."""
-        # Compute the scattering potential in fourier space
-        fourier_potential_at_exit_plane = self.scatter_to_exit_plane(instrument, config)
+        the phase shifts due to the solvent."""
+        # Compute the phase  in fourier space
+        fourier_phase_at_exit_plane = self.scatter_to_exit_plane(instrument, config)
         # Get the potential of the specimen plus the ice
-        fourier_potential_at_exit_plane_with_solvent = solvent(
-            key, fourier_potential_at_exit_plane, config
+        fourier_phase_at_exit_plane_with_solvent = solvent(
+            key, fourier_phase_at_exit_plane, config
         )
 
-        return fourier_potential_at_exit_plane_with_solvent
+        return fourier_phase_at_exit_plane_with_solvent
 
 
 class Specimen(AbstractSpecimen, strict=True):

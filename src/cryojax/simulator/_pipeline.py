@@ -223,13 +223,13 @@ class ImagePipeline(AbstractPipeline, strict=True):
         | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
         """Render an image without any stochasticity."""
-        # Compute the scattering potential in the exit plane
-        fourier_potential_at_exit_plane = self.specimen.scatter_to_exit_plane(
+        # Compute the phase shifts in the exit plane
+        fourier_phase_at_exit_plane = self.specimen.scatter_to_exit_plane(
             self.instrument, self.config
         )
         if isinstance(self.instrument.optics, NullOptics):
             return self._get_final_image(
-                fourier_potential_at_exit_plane,
+                fourier_phase_at_exit_plane,
                 view_cropped=view_cropped,
                 get_real=get_real,
                 normalize=normalize,
@@ -238,7 +238,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
             # ... propagate the potential to the detector plane
             fourier_contrast_at_detector_plane = (
                 self.instrument.propagate_to_detector_plane(
-                    fourier_potential_at_exit_plane,
+                    fourier_phase_at_exit_plane,
                     self.config,
                     defocus_offset=self.specimen.pose.offset_z_in_angstroms,
                 )
@@ -294,9 +294,9 @@ class ImagePipeline(AbstractPipeline, strict=True):
         else:
             keys = jnp.expand_dims(key, axis=0)
         if not isinstance(self.solvent, NullIce):
-            # Compute the scattering potential in the exit plane, including
+            # Compute the phase shifts in the exit plane, including
             # potential of the solvent
-            fourier_potential_at_exit_plane = (
+            fourier_phase_at_exit_plane = (
                 self.specimen.scatter_to_exit_plane_with_solvent(
                     keys[idx], self.instrument, self.solvent, self.config
                 )
@@ -304,12 +304,12 @@ class ImagePipeline(AbstractPipeline, strict=True):
             idx += 1
         else:
             # ... otherwise, just compute the potential of the specimen
-            fourier_potential_at_exit_plane = self.specimen.scatter_to_exit_plane(
+            fourier_phase_at_exit_plane = self.specimen.scatter_to_exit_plane(
                 self.instrument, self.config
             )
         if isinstance(self.instrument.optics, NullOptics):
             return self._get_final_image(
-                fourier_potential_at_exit_plane,
+                fourier_phase_at_exit_plane,
                 view_cropped=view_cropped,
                 get_real=get_real,
                 normalize=normalize,
@@ -318,7 +318,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
             # ... propagate the potential to the contrast at the detector plane
             fourier_contrast_at_detector_plane = (
                 self.instrument.propagate_to_detector_plane(
-                    fourier_potential_at_exit_plane,
+                    fourier_phase_at_exit_plane,
                     self.config,
                     defocus_offset=self.specimen.pose.offset_z_in_angstroms,
                 )
@@ -417,11 +417,11 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         else:
             keys = jnp.expand_dims(key, axis=0)
         if isinstance(self.instrument.optics, NullOptics):
-            compute_fourier_potential_fn = (
+            compute_fourier_phase_fn = (
                 lambda spec, conf, ins: spec.scatter_to_exit_plane(ins, conf)
             )
-            fourier_potential_in_exit_plane = self._compute_subunit_superposition(
-                compute_fourier_potential_fn
+            fourier_phase_in_exit_plane = self._compute_subunit_superposition(
+                compute_fourier_phase_fn
             )
             if not isinstance(self.solvent, NullIce):
                 # Compute the solvent potential in the detector plane
@@ -429,12 +429,10 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
                 fourier_solvent_potential_at_exit_plane = self.solvent.sample(
                     keys[idx], self.config
                 )
-                fourier_potential_in_exit_plane += (
-                    fourier_solvent_potential_at_exit_plane
-                )
+                fourier_phase_in_exit_plane += fourier_solvent_potential_at_exit_plane
                 idx += 1
             return self._get_final_image(
-                fourier_potential_in_exit_plane,
+                fourier_phase_in_exit_plane,
                 view_cropped=view_cropped,
                 get_real=get_real,
                 normalize=normalize,
@@ -509,14 +507,14 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         `AbstractAssembly.subunits`.
         """
         if isinstance(self.instrument.optics, NullOptics):
-            compute_fourier_potential_fn = (
+            compute_fourier_phase_fn = (
                 lambda spec, conf, ins: spec.scatter_to_exit_plane(ins, conf)
             )
-            fourier_potential_in_exit_plane = self._compute_subunit_superposition(
-                compute_fourier_potential_fn
+            fourier_phase_in_exit_plane = self._compute_subunit_superposition(
+                compute_fourier_phase_fn
             )
             return self._get_final_image(
-                fourier_potential_in_exit_plane,
+                fourier_phase_in_exit_plane,
                 view_cropped=view_cropped,
                 get_real=get_real,
                 normalize=normalize,

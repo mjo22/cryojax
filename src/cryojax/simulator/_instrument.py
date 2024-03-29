@@ -62,7 +62,7 @@ class Instrument(Module, strict=True):
 
     def propagate_to_detector_plane(
         self,
-        fourier_potential_at_exit_plane: Complex[
+        fourier_phase_at_exit_plane: Complex[
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
@@ -79,7 +79,7 @@ class Instrument(Module, strict=True):
             )
         """Propagate the scattering potential with the optics model."""
         fourier_contrast_at_detector_plane = self.optics(
-            fourier_potential_at_exit_plane,
+            fourier_phase_at_exit_plane,
             config,
             self.wavelength_in_angstroms,
             defocus_offset=defocus_offset,

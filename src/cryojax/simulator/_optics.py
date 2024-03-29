@@ -110,7 +110,7 @@ class AbstractOptics(Module, strict=True):
     @abstractmethod
     def __call__(
         self,
-        fourier_potential_in_exit_plane: Complex[
+        fourier_phase_in_exit_plane: Complex[
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
@@ -139,29 +139,26 @@ class NullOptics(AbstractOptics):
     @override
     def __call__(
         self,
-        fourier_potential_in_exit_plane: Complex[
+        fourier_phase_in_exit_plane: Complex[
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
         wavelength_in_angstroms: RealNumber | float,
         defocus_offset: RealNumber | float = 0.0,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
-        return fourier_potential_in_exit_plane
+        return fourier_phase_in_exit_plane
 
 
 NullOptics.__init__.__doc__ = """**Arguments:**
 
 - `ctf`: The contrast transfer function model.
 - `envelope`: The envelope function of the optics model.
-- `is_linear`: If `True`, the optics model directly computes
-               the image contrast from the potential. If `False`,
-               the optics model computes the wavefunction.
 """
 
 
 class WeakPhaseOptics(AbstractOptics, strict=True):
     """An optics model in the weak-phase approximation. Here, compute the image
-    contrast by applying the CTF directly to the scattering potential.
+    contrast by applying the CTF directly to the exit plane phase shifts.
     """
 
     ctf: CTF
@@ -180,14 +177,14 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
     @override
     def __call__(
         self,
-        fourier_potential_in_exit_plane: Complex[
+        fourier_phase_in_exit_plane: Complex[
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
         wavelength_in_angstroms: RealNumber | float,
         defocus_offset: RealNumber | float = 0.0,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
-        """Apply the CTF directly to the scattering potential."""
+        """Apply the CTF directly to the phase shifts in the exit plane."""
         frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
         # Compute the CTF
         ctf = self.envelope(frequency_grid) * self.ctf(
@@ -195,8 +192,9 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
             wavelength_in_angstroms=wavelength_in_angstroms,
             defocus_offset=defocus_offset,
         )
-        # ... compute the contrast as the CTF multiplied by the scattering potential
-        fourier_contrast_in_detector_plane = ctf * fourier_potential_in_exit_plane
+        # ... compute the contrast as the CTF multiplied by the exit plane
+        # phase shifts
+        fourier_contrast_in_detector_plane = ctf * fourier_phase_in_exit_plane
 
         return fourier_contrast_in_detector_plane
 
@@ -205,9 +203,6 @@ WeakPhaseOptics.__init__.__doc__ = """**Arguments:**
 
 - `ctf`: The contrast transfer function model.
 - `envelope`: The envelope function of the optics model.
-- `is_linear`: If `True`, the optics model directly computes
-               the image contrast from the potential. If `False`,
-               the optics model computes the wavefunction.
 """
 
 
