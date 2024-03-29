@@ -64,14 +64,18 @@ def build_helix_with_conformation(
 
 def test_superposition_pipeline_without_conformation(sample_subunit_mrc_path, config):
     helix = build_helix(sample_subunit_mrc_path, 1)
-    pipeline = cs.AssemblyPipeline(config=config, assembly=helix)
+    pipeline = cs.AssemblyPipeline(
+        config=config, assembly=helix, instrument=cs.Instrument(300.0)
+    )
     _ = pipeline.render()
     _ = pipeline.sample(jax.random.PRNGKey(0))
 
 
 def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, config):
     helix = build_helix_with_conformation(sample_subunit_mrc_path, 2)
-    pipeline = cs.AssemblyPipeline(config=config, assembly=helix)
+    pipeline = cs.AssemblyPipeline(
+        config=config, instrument=cs.Instrument(300.0), assembly=helix
+    )
     _ = pipeline.render()
     _ = pipeline.sample(jax.random.PRNGKey(0))
 
@@ -88,7 +92,9 @@ def test_c6_rotation(
     @jax.jit
     def compute_rotated_image(config, helix, pose):
         helix = eqx.tree_at(lambda m: m.pose, helix, pose)
-        pipeline = cs.AssemblyPipeline(config=config, assembly=helix)
+        pipeline = cs.AssemblyPipeline(
+            config=config, instrument=cs.Instrument(300.0), assembly=helix
+        )
         return pipeline.render(normalize=True)
 
     np.testing.assert_allclose(
@@ -109,30 +115,36 @@ def test_c6_rotation(
 def test_agree_with_3j9g_assembly(
     sample_subunit_mrc_path, potential, config, translation, euler_angles
 ):
+    instrument = cs.Instrument(voltage_in_kilovolts=300.0)
     helix = build_helix(sample_subunit_mrc_path, 2)
     specimen_39jg = cs.Specimen(potential, helix.subunit.integrator)
+    pipeline_for_assembly = cs.AssemblyPipeline(
+        config=config, instrument=instrument, assembly=helix
+    )
+    pipeline_for_3j9g = cs.ImagePipeline(
+        config=config, instrument=instrument, specimen=specimen_39jg
+    )
 
-    @jax.jit
-    def compute_rotated_image_with_helix(helix, config, pose):
-        helix = eqx.tree_at(lambda m: m.pose, helix, pose)
-        pipeline = cs.AssemblyPipeline(config=config, assembly=helix)
+    @eqx.filter_jit
+    def compute_rotated_image_with_helix(
+        pipeline: cs.AssemblyPipeline, pose: cs.AbstractPose
+    ):
+        pipeline = eqx.tree_at(lambda m: m.assembly.pose, pipeline, pose)
         return pipeline.render(normalize=True)
 
-    @jax.jit
-    def compute_rotated_image_with_3j9g(specimen, config, pose):
-        specimen = eqx.tree_at(lambda m: m.pose, specimen, pose)
-        instrument = cs.Instrument(voltage_in_kilovolts=300.0)
-        pipeline = cs.ImagePipeline(
-            config=config, specimen=specimen, instrument=instrument
-        )
+    @eqx.filter_jit
+    def compute_rotated_image_with_3j9g(
+        pipeline: cs.ImagePipeline, pose: cs.AbstractPose
+    ):
+        pipeline = eqx.tree_at(lambda m: m.specimen.pose, pipeline, pose)
         return pipeline.render(normalize=True)
 
     pose = cs.EulerAnglePose(*translation, 0.0, *euler_angles)
     reference_image = compute_rotated_image_with_3j9g(
-        specimen_39jg, config, cs.EulerAnglePose()
+        pipeline_for_3j9g, cs.EulerAnglePose()
     )
-    assembled_image = compute_rotated_image_with_helix(helix, config, pose)
-    test_image = compute_rotated_image_with_3j9g(specimen_39jg, config, pose)
+    assembled_image = compute_rotated_image_with_helix(pipeline_for_assembly, pose)
+    test_image = compute_rotated_image_with_3j9g(pipeline_for_3j9g, pose)
     assert np.std(assembled_image - test_image) < 10 * np.std(
         assembled_image - reference_image
     )
@@ -145,7 +157,9 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
     @jax.jit
     def compute_rotated_image(config, helix, pose):
         helix = eqx.tree_at(lambda m: m.pose, helix, pose)
-        pipeline = cs.AssemblyPipeline(config=config, assembly=helix)
+        pipeline = cs.AssemblyPipeline(
+            config=config, instrument=cs.Instrument(300.0), assembly=helix
+        )
         return pipeline.render(normalize=True)
 
     np.testing.assert_allclose(

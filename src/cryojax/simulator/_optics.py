@@ -36,8 +36,8 @@ class CTF(AbstractFourierOperator, strict=True):
     astigmatism_angle: Shaped[RealNumber, "..."] = field(
         default=0.0, converter=jnp.asarray
     )
-    voltage_in_kilovolts: RealNumber = field(
-        default=300.0, static=True, converter=error_if_not_positive
+    voltage_in_kilovolts: RealNumber | float = field(
+        default=300.0, static=True
     )  # Mark `static=True` so that the voltage is not part of the model pytree
     # It is treated as part of the pytree upstream, in the Instrument!
     spherical_aberration_in_mm: Shaped[RealNumber, "..."] = field(

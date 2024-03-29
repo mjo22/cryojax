@@ -6,6 +6,7 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 
 import cryojax.simulator as cs
+from cryojax.constants import convert_keV_to_angstroms
 from cryojax.coordinates import (
     AbstractCoordinates,
     CoordinateGrid,
@@ -63,8 +64,9 @@ def test_electron_potential_vmap(potential, integrator, config):
 
     @partial(jax.vmap, in_axes=[0, None, None, None])
     def compute_image_stack(vmap, novmap, integrator, config):
+        wavelength_in_angstroms = convert_keV_to_angstroms(300.0)
         potential = eqx.combine(vmap, novmap)
-        return integrator(potential, config)
+        return integrator(potential, wavelength_in_angstroms, config)
 
     # vmap over first axis
     image_stack = compute_image_stack(vmap, novmap, integrator, config)
