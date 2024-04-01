@@ -60,7 +60,7 @@ class ImageConfig(Module, strict=True):
     """
 
     shape: tuple[int, int] = field(static=True)
-    pixel_size: Float[Array, "..."] = field(converter=error_if_not_positive)
+    pixel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     padded_shape: tuple[int, int] = field(static=True)
     pad_mode: Union[str, Callable] = field(static=True)
@@ -74,7 +74,7 @@ class ImageConfig(Module, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        pixel_size: float | Float[Array, "..."],
+        pixel_size: float | Float[Array, ""],
         padded_shape: Optional[tuple[int, int]] = None,
         *,
         pad_scale: float = 1.0,

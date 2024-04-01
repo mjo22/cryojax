@@ -21,7 +21,7 @@ from ._config import ImageConfig
 class AbstractDQE(AbstractFourierOperator, strict=True):
     r"""Base class for a detector DQE."""
 
-    fraction_detected_electrons: AbstractVar[Float[Array, "..."]]
+    fraction_detected_electrons: AbstractVar[Float[Array, ""]]
 
     @abstractmethod
     def __call__(
@@ -49,7 +49,7 @@ class IdealDQE(AbstractDQE, strict=True):
     transmission electron microscopy." (2013) for details.
     """
 
-    fraction_detected_electrons: Float[Array, "..."] = field(
+    fraction_detected_electrons: Float[Array, ""] = field(
         default=1.0, converter=error_if_not_fractional
     )
 

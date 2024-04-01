@@ -60,9 +60,9 @@ class Gaussian2D(AbstractRealOperator, strict=True):
     where $r^2 = x^2 + y^2$.
     """
 
-    amplitude: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
-    b_factor: Float[Array, "..."] = field(default=1.0, converter=error_if_not_positive)
-    offset: Float[Array, "... 2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
+    amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
+    b_factor: Float[Array, ""] = field(default=1.0, converter=error_if_not_positive)
+    offset: Float[Array, "2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
 
     @override
     def __call__(

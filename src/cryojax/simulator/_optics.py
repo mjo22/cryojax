@@ -26,24 +26,24 @@ class CTF(AbstractFourierOperator, strict=True):
     scattering specimen.
     """
 
-    defocus_u_in_angstroms: Float[Array, "..."] = field(
+    defocus_u_in_angstroms: Float[Array, ""] = field(
         default=10000.0, converter=error_if_not_positive
     )
-    defocus_v_in_angstroms: Float[Array, "..."] = field(
+    defocus_v_in_angstroms: Float[Array, ""] = field(
         default=10000.0, converter=error_if_not_positive
     )
-    astigmatism_angle: Float[Array, "..."] = field(default=0.0, converter=jnp.asarray)
+    astigmatism_angle: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
     voltage_in_kilovolts: Float[Array, ""] | float = field(
         default=300.0, static=True
     )  # Mark `static=True` so that the voltage is not part of the model pytree
     # It is treated as part of the pytree upstream, in the Instrument!
-    spherical_aberration_in_mm: Float[Array, "..."] = field(
+    spherical_aberration_in_mm: Float[Array, ""] = field(
         default=2.7, converter=error_if_negative
     )
-    amplitude_contrast_ratio: Float[Array, "..."] = field(
+    amplitude_contrast_ratio: Float[Array, ""] = field(
         default=0.1, converter=error_if_not_fractional
     )
-    phase_shift: Float[Array, "..."] = field(default=0.0, converter=jnp.asarray)
+    phase_shift: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
 
     def __call__(
         self,

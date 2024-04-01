@@ -30,14 +30,14 @@ class Instrument(Module, strict=True):
     - `detector` : The model of the detector.
     """
 
-    voltage_in_kilovolts: Float[Array, "..."] = field(converter=error_if_not_positive)
+    voltage_in_kilovolts: Float[Array, ""] = field(converter=error_if_not_positive)
     dose: Optional[ElectronDose]
     optics: Optional[AbstractOptics]
     detector: Optional[AbstractDetector]
 
     def __init__(
         self,
-        voltage_in_kilovolts: float | Float[Array, "..."],
+        voltage_in_kilovolts: float | Float[Array, ""],
         *,
         dose: Optional[ElectronDose] = None,
         optics: Optional[AbstractOptics] = None,
