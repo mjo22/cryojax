@@ -8,7 +8,7 @@ from typing_extensions import override
 
 import jax.numpy as jnp
 from equinox import AbstractClassVar, AbstractVar, field, Module
-from jaxtyping import Array, Complex, Shaped
+from jaxtyping import Array, Complex, Float
 
 from ..constants import convert_keV_to_angstroms
 from ..coordinates import cartesian_to_polar
@@ -18,7 +18,6 @@ from ..image.operators import (
     Constant,
     FourierOperatorLike,
 )
-from ..typing import ImageCoords, RealImage, RealNumber
 from ._config import ImageConfig
 
 
@@ -27,34 +26,32 @@ class CTF(AbstractFourierOperator, strict=True):
     scattering specimen.
     """
 
-    defocus_u_in_angstroms: Shaped[RealNumber, "..."] = field(
+    defocus_u_in_angstroms: Float[Array, "..."] = field(
         default=10000.0, converter=error_if_not_positive
     )
-    defocus_v_in_angstroms: Shaped[RealNumber, "..."] = field(
+    defocus_v_in_angstroms: Float[Array, "..."] = field(
         default=10000.0, converter=error_if_not_positive
     )
-    astigmatism_angle: Shaped[RealNumber, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    voltage_in_kilovolts: RealNumber | float = field(
+    astigmatism_angle: Float[Array, "..."] = field(default=0.0, converter=jnp.asarray)
+    voltage_in_kilovolts: Float[Array, ""] | float = field(
         default=300.0, static=True
     )  # Mark `static=True` so that the voltage is not part of the model pytree
     # It is treated as part of the pytree upstream, in the Instrument!
-    spherical_aberration_in_mm: Shaped[RealNumber, "..."] = field(
+    spherical_aberration_in_mm: Float[Array, "..."] = field(
         default=2.7, converter=error_if_negative
     )
-    amplitude_contrast_ratio: Shaped[RealNumber, "..."] = field(
+    amplitude_contrast_ratio: Float[Array, "..."] = field(
         default=0.1, converter=error_if_not_fractional
     )
-    phase_shift: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
+    phase_shift: Float[Array, "..."] = field(default=0.0, converter=jnp.asarray)
 
     def __call__(
         self,
-        frequency_grid_in_angstroms: ImageCoords,
+        frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         *,
-        wavelength_in_angstroms: Optional[RealNumber | float] = None,
-        defocus_offset: RealNumber | float = 0.0,
-    ) -> RealImage:
+        wavelength_in_angstroms: Optional[Float[Array, ""] | float] = None,
+        defocus_offset: Float[Array, ""] | float = 0.0,
+    ) -> Float[Array, "y_dim x_dim"]:
         # Convert degrees to radians
         phase_shift = jnp.deg2rad(self.phase_shift)
         astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
@@ -104,7 +101,7 @@ class AbstractOptics(Module, strict=True):
     is_linear: AbstractClassVar[bool]
 
     @property
-    def wavelength_in_angstroms(self) -> RealNumber:
+    def wavelength_in_angstroms(self) -> Float[Array, ""]:
         return self.ctf.wavelength_in_angstroms
 
     @abstractmethod
@@ -114,8 +111,8 @@ class AbstractOptics(Module, strict=True):
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
-        wavelength_in_angstroms: RealNumber | float,
-        defocus_offset: RealNumber | float = 0.0,
+        wavelength_in_angstroms: Float[Array, ""] | float,
+        defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> (
         Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
         | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
@@ -149,8 +146,8 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
-        wavelength_in_angstroms: RealNumber | float,
-        defocus_offset: RealNumber | float = 0.0,
+        wavelength_in_angstroms: Float[Array, ""] | float,
+        defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Apply the CTF directly to the phase shifts in the exit plane."""
         frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
@@ -175,15 +172,15 @@ WeakPhaseOptics.__init__.__doc__ = """**Arguments:**
 
 
 def _compute_phase_shifts(
-    frequency_grid_in_angstroms: ImageCoords,
-    defocus_u_in_angstroms: RealNumber,
-    defocus_v_in_angstroms: RealNumber,
-    astigmatism_angle: RealNumber,
-    wavelength_in_angstroms: RealNumber,
-    spherical_aberration_in_angstroms: RealNumber,
-    amplitude_contrast_ratio: RealNumber,
-    phase_shift: RealNumber,
-) -> RealImage:
+    frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
+    defocus_u_in_angstroms: Float[Array, ""],
+    defocus_v_in_angstroms: Float[Array, ""],
+    astigmatism_angle: Float[Array, ""],
+    wavelength_in_angstroms: Float[Array, ""],
+    spherical_aberration_in_angstroms: Float[Array, ""],
+    amplitude_contrast_ratio: Float[Array, ""],
+    phase_shift: Float[Array, ""],
+) -> Float[Array, "y_dim x_dim"]:
     k_sqr, azimuth = cartesian_to_polar(frequency_grid_in_angstroms, square=True)
     defocus = 0.5 * (
         defocus_u_in_angstroms

@@ -14,18 +14,9 @@ from typing_extensions import override
 
 import jax.numpy as jnp
 from equinox import field
-from jaxtyping import Shaped
+from jaxtyping import Array, Float, Inexact
 
 from ...core import error_if_not_positive
-from ...typing import (
-    Image,
-    ImageCoords,
-    RealImage,
-    RealNumber,
-    RealVolume,
-    Volume,
-    VolumeCoords,
-)
 from ._operator import AbstractImageOperator
 
 
@@ -45,16 +36,20 @@ class AbstractFourierOperator(AbstractImageOperator, strict=True):
 
     @overload
     @abstractmethod
-    def __call__(self, freqs: ImageCoords) -> Image: ...
+    def __call__(
+        self, freqs: Float[Array, "y_dim x_dim 2"]
+    ) -> Inexact[Array, "y_dim x_dim"]: ...
 
     @overload
     @abstractmethod
-    def __call__(self, freqs: VolumeCoords) -> Volume: ...
+    def __call__(
+        self, freqs: Float[Array, "z_dim y_dim x_dim 3"]
+    ) -> Inexact[Array, "z_dim y_dim x_dim"]: ...
 
     @abstractmethod
     def __call__(  # pyright: ignore
-        self, freqs: ImageCoords | VolumeCoords
-    ) -> Image | Volume:
+        self, freqs: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+    ) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
         raise NotImplementedError
 
 
@@ -64,10 +59,12 @@ FourierOperatorLike = AbstractFourierOperator | AbstractImageOperator
 class ZeroMode(AbstractFourierOperator, strict=True):
     """This operator returns a constant in the zero mode."""
 
-    value: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
+    value: Float[Array, "..."] = field(default=0.0, converter=jnp.asarray)
 
     @override
-    def __call__(self, freqs: ImageCoords) -> RealImage:
+    def __call__(
+        self, freqs: Float[Array, "y_dim x_dim 2"]
+    ) -> Float[Array, "y_dim x_dim"]:
         N1, N2 = freqs.shape[0:-1]
         return jnp.zeros((N1, N2)).at[0, 0].set(self.value)
 
@@ -98,13 +95,15 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
     scale.
     """
 
-    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
-    length_scale: Shaped[RealNumber, "..."] = field(
+    amplitude: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
+    length_scale: Float[Array, "..."] = field(
         default=1.0, converter=error_if_not_positive
     )
 
     @override
-    def __call__(self, freqs: ImageCoords) -> RealImage:
+    def __call__(
+        self, freqs: Float[Array, "y_dim x_dim 2"]
+    ) -> Float[Array, "y_dim x_dim"]:
         k_sqr = jnp.sum(freqs**2, axis=-1)
         scaling = 1.0 / (k_sqr + jnp.divide(1, (self.length_scale) ** 2)) ** 1.5
         scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.length_scale**3)
@@ -130,19 +129,25 @@ class Lorenzian(AbstractFourierOperator, strict=True):
     scale.
     """
 
-    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
-    length_scale: Shaped[RealNumber, "..."] = field(
+    amplitude: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
+    length_scale: Float[Array, "..."] = field(
         default=1.0, converter=error_if_not_positive
     )
 
     @overload
-    def __call__(self, freqs: ImageCoords) -> RealImage: ...
+    def __call__(
+        self, freqs: Float[Array, "y_dim x_dim 2"]
+    ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
-    def __call__(self, freqs: VolumeCoords) -> RealVolume: ...
+    def __call__(
+        self, freqs: Float[Array, "z_dim y_dim x_dim 3"]
+    ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
     @override
-    def __call__(self, freqs: ImageCoords | VolumeCoords) -> RealImage | RealVolume:
+    def __call__(
+        self, freqs: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+    ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
         k_sqr = jnp.sum(freqs**2, axis=-1)
         scaling = 1.0 / (k_sqr + jnp.divide(1, self.length_scale**2))
         scaling *= jnp.divide(self.amplitude, self.length_scale**2)
@@ -176,19 +181,23 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
     where :math:`r^2 = x^2 + y^2`.
     """
 
-    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
-    b_factor: Shaped[RealNumber, "..."] = field(
-        default=1.0, converter=error_if_not_positive
-    )
+    amplitude: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
+    b_factor: Float[Array, "..."] = field(default=1.0, converter=error_if_not_positive)
 
     @overload
-    def __call__(self, freqs: ImageCoords) -> RealImage: ...
+    def __call__(
+        self, freqs: Float[Array, "y_dim x_dim 2"]
+    ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
-    def __call__(self, freqs: VolumeCoords) -> RealVolume: ...
+    def __call__(
+        self, freqs: Float[Array, "z_dim y_dim x_dim 3"]
+    ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
     @override
-    def __call__(self, freqs: ImageCoords | VolumeCoords) -> RealImage | RealVolume:
+    def __call__(
+        self, freqs: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+    ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
         k_sqr = jnp.sum(freqs**2, axis=-1)
         scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
         return scaling

@@ -9,11 +9,10 @@ import jax.numpy as jnp
 import mrcfile
 import numpy as np
 import pandas as pd
-from jaxtyping import Float, Int, Shaped
+from jaxtyping import Array, Float, Int
 
 from ..io import read_and_validate_starfile
 from ..simulator import CTF, EulerAnglePose, ImageConfig
-from ..typing import RealImage
 from ._dataset import AbstractDataset
 from ._particle_stack import AbstractParticleStack
 
@@ -39,14 +38,14 @@ class RelionParticleStack(AbstractParticleStack):
     [RELION](https://relion.readthedocs.io/en/release-5.0/).
     """
 
-    image_stack: Shaped[RealImage, "..."]
+    image_stack: Float[Array, "... y_dim x_dim"]
     config: ImageConfig
     pose: EulerAnglePose
     ctf: CTF
 
     def __init__(
         self,
-        image_stack: Shaped[RealImage, "..."] | Float[np.ndarray, "... Ny Nx"],
+        image_stack: Float[Array, "... y_dim x_dim"],
         config: ImageConfig,
         pose: EulerAnglePose,
         ctf: CTF,
@@ -313,7 +312,7 @@ class RelionDataset(AbstractDataset):
             tuple([jnp.asarray(value) for value in pose_parameter_values]),
         )
 
-        return RelionParticleStack(image_stack, config, pose, ctf)
+        return RelionParticleStack(jnp.asarray(image_stack), config, pose, ctf)
 
     @final
     def __len__(self) -> int:

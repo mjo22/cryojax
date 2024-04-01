@@ -5,17 +5,16 @@ Image normalization routines.
 from typing import Optional
 
 import jax.numpy as jnp
-
-from ..typing import ComplexImage, Image, RealNumber
+from jaxtyping import Array, Complex, Float, Inexact
 
 
 def normalize_image(
-    image: Image,
+    image: Inexact[Array, "y_dim x_dim"],
     *,
     is_real: bool = True,
     half_space: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
-) -> Image:
+) -> Inexact[Array, "y_dim x_dim"]:
     """
     Normalize so that the image is mean 0
     and standard deviation 1 in real space.
@@ -31,14 +30,14 @@ def normalize_image(
 
 
 def rescale_image(
-    image: Image,
-    std: float | RealNumber,
-    mean: float | RealNumber,
+    image: Inexact[Array, "y_dim x_dim"],
+    std: float | Float[Array, ""],
+    mean: float | Float[Array, ""],
     *,
     is_real: bool = True,
     half_space: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
-) -> Image:
+) -> Inexact[Array, "y_dim x_dim"]:
     """Normalize so that the image is mean mu
     and standard deviation N in real space.
 
@@ -87,11 +86,11 @@ def rescale_image(
 
 
 def compute_mean_and_std_from_fourier_image(
-    fourier_image: ComplexImage,
+    fourier_image: Complex[Array, "y_dim x_dim"],
     *,
     half_space: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
-) -> tuple[RealNumber, RealNumber]:
+) -> tuple[Float[Array, ""], Float[Array, ""]]:
     """Compute the mean and standard deviation in real space from
     an image in fourier space.
     """

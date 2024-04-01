@@ -8,16 +8,9 @@ from typing_extensions import override
 
 import jax.numpy as jnp
 from equinox import field
-from jaxtyping import Array, Float, Shaped
+from jaxtyping import Array, Float
 
 from ...core import error_if_not_positive
-from ...typing import (
-    ImageCoords,
-    RealImage,
-    RealNumber,
-    RealVolume,
-    VolumeCoords,
-)
 from ._operator import AbstractImageOperator
 
 
@@ -37,16 +30,21 @@ class AbstractRealOperator(AbstractImageOperator, strict=True):
 
     @overload
     @abstractmethod
-    def __call__(self, coords: ImageCoords) -> RealImage: ...
+    def __call__(
+        self, coords: Float[Array, "y_dim x_dim 2"]
+    ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
     @abstractmethod
-    def __call__(self, coords: VolumeCoords) -> RealVolume: ...
+    def __call__(
+        self, coords: Float[Array, "z_dim y_dim x_dim 3"]
+    ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
     @abstractmethod
     def __call__(  # pyright: ignore
-        self, coords: ImageCoords | VolumeCoords
-    ) -> RealImage | RealVolume:
+        self,
+        coords: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"],
+    ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
         raise NotImplementedError
 
 
@@ -62,14 +60,14 @@ class Gaussian2D(AbstractRealOperator, strict=True):
     where $r^2 = x^2 + y^2$.
     """
 
-    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
-    b_factor: Shaped[RealNumber, "..."] = field(
-        default=1.0, converter=error_if_not_positive
-    )
+    amplitude: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
+    b_factor: Float[Array, "..."] = field(default=1.0, converter=error_if_not_positive)
     offset: Float[Array, "... 2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
 
     @override
-    def __call__(self, coords: ImageCoords) -> RealImage:
+    def __call__(
+        self, coords: Float[Array, "y_dim x_dim 2"]
+    ) -> Float[Array, "y_dim x_dim"]:
         r_sqr = jnp.sum((coords - self.offset) ** 2, axis=-1)
         scaling = (self.amplitude / jnp.sqrt(2 * jnp.pi * self.b_factor)) * jnp.exp(
             -0.5 * r_sqr / self.b_factor

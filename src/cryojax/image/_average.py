@@ -9,65 +9,60 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Inexact
 
-from ..typing import (
-    Image,
-    RealImage,
-    RealVolume,
-    Volume,
-)
 
-
-Vector = Inexact[Array, "N"]
-RealVector = Float[Array, "N"]
+@overload
+def radial_average(
+    image: Inexact[Array, "y_dim x_dim"],
+    radial_grid: Float[Array, "y_dim x_dim"],
+    bins: Float[Array, " n_bins"],
+) -> Inexact[Array, " n_bins"]: ...
 
 
 @overload
 def radial_average(
-    image: Image,
-    radial_grid: RealImage,
-    bins: RealVector,
-) -> Vector: ...
+    image: Inexact[Array, "z_dim y_dim x_dim"],
+    radial_grid: Float[Array, "z_dim y_dim x_dim"],
+    bins: Float[Array, " n_bins"],
+) -> Inexact[Array, " n_bins"]: ...
 
 
 @overload
 def radial_average(
-    image: Volume,
-    radial_grid: RealVolume,
-    bins: RealVector,
-) -> Vector: ...
-
-
-@overload
-def radial_average(
-    image: Image,
-    radial_grid: RealImage,
-    bins: RealVector,
+    image: Inexact[Array, "y_dim x_dim"],
+    radial_grid: Float[Array, "y_dim x_dim"],
+    bins: Float[Array, " n_bins"],
     *,
     to_grid: bool = False,
     interpolation_mode: str = "nearest",
-) -> tuple[Vector, Image]: ...
+) -> tuple[Inexact[Array, " n_bins"], Inexact[Array, "y_dim x_dim"]]: ...
 
 
 @overload
 def radial_average(
-    image: Volume,
-    radial_grid: RealVolume,
-    bins: RealVector,
+    image: Inexact[Array, "z_dim y_dim x_dim"],
+    radial_grid: Float[Array, "z_dim y_dim x_dim"],
+    bins: Float[Array, " n_bins"],
     *,
     to_grid: bool = False,
     interpolation_mode: str = "nearest",
-) -> tuple[Vector, Volume]: ...
+) -> tuple[Inexact[Array, " n_bins"], Inexact[Array, "z_dim y_dim x_dim"]]: ...
 
 
 @partial(jax.jit, static_argnames=["to_grid", "interpolation_mode"])
 def radial_average(
-    image: Image | Volume,
-    radial_grid: RealImage | RealVolume,
-    bins: RealVector,
+    image: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"],
+    radial_grid: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"],
+    bins: Float[Array, " n_bins"],
     *,
     to_grid: bool = False,
     interpolation_mode: str = "nearest",
-) -> Vector | tuple[Vector, Image | Volume]:
+) -> (
+    Inexact[Array, " n_bins"]
+    | tuple[
+        Inexact[Array, " n_bins"],
+        Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"],
+    ]
+):
     """
     Radially average vectors r with a given magnitude
     coordinate system |r|.

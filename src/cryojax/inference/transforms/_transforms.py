@@ -11,10 +11,9 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from equinox import AbstractVar, field, Module
-from jaxtyping import Array, PyTree
+from jaxtyping import Array, Float, PyTree
 
 from ...core import error_if_not_positive, error_if_zero
-from ...typing import RealNumber
 
 
 def _is_transformed(x: Any) -> bool:
@@ -162,14 +161,14 @@ class RescalingTransform(AbstractParameterTransform, strict=True):
     """
 
     transformed_parameter: Array
-    scaling: RealNumber = field(converter=error_if_zero)
-    shift: RealNumber
+    scaling: Float[Array, ""] = field(converter=error_if_zero)
+    shift: Float[Array, ""]
 
     def __init__(
         self,
         parameter: Array,
-        scaling: RealNumber | float,
-        shift: RealNumber | float = 0.0,
+        scaling: Float[Array, ""] | float,
+        shift: Float[Array, ""] | float = 0.0,
     ):
         """**Arguments:**
 

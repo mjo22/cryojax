@@ -7,11 +7,10 @@ from typing import Optional
 
 import jax.numpy as jnp
 from equinox import field, Module
-from jaxtyping import Array, Complex, PRNGKeyArray, Shaped
+from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..constants import convert_keV_to_angstroms
 from ..core import error_if_not_positive
-from ..typing import RealNumber
 from ._config import ImageConfig
 from ._detector import AbstractDetector
 from ._dose import ElectronDose
@@ -31,16 +30,14 @@ class Instrument(Module, strict=True):
     - `detector` : The model of the detector.
     """
 
-    voltage_in_kilovolts: Shaped[RealNumber, "..."] = field(
-        converter=error_if_not_positive
-    )
+    voltage_in_kilovolts: Float[Array, "..."] = field(converter=error_if_not_positive)
     dose: Optional[ElectronDose]
     optics: Optional[AbstractOptics]
     detector: Optional[AbstractDetector]
 
     def __init__(
         self,
-        voltage_in_kilovolts: float | Shaped[RealNumber, "..."],
+        voltage_in_kilovolts: float | Float[Array, "..."],
         *,
         dose: Optional[ElectronDose] = None,
         optics: Optional[AbstractOptics] = None,
@@ -57,7 +54,7 @@ class Instrument(Module, strict=True):
         self.detector = detector
 
     @property
-    def wavelength_in_angstroms(self) -> RealNumber:
+    def wavelength_in_angstroms(self) -> Float[Array, ""]:
         return convert_keV_to_angstroms(self.voltage_in_kilovolts)
 
     def propagate_to_detector_plane(
@@ -66,7 +63,7 @@ class Instrument(Module, strict=True):
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
-        defocus_offset: RealNumber | float = 0.0,
+        defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> (
         Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
         | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]

@@ -4,6 +4,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
+from jaxtyping import Array, Float
 
 import cryojax.simulator as cs
 from cryojax.constants import convert_keV_to_angstroms
@@ -13,7 +14,6 @@ from cryojax.coordinates import (
     CoordinateList,
     FrequencySlice,
 )
-from cryojax.typing import PointCloudCoords3D, VolumeCoords, VolumeSliceCoords
 
 
 def test_voxel_electron_potential_loaders():
@@ -35,15 +35,16 @@ def test_voxel_electron_potential_loaders():
         fourier_potential.wrapped_frequency_slice_in_pixels, FrequencySlice
     )
     assert isinstance(
-        fourier_potential.wrapped_frequency_slice_in_pixels.get(), VolumeSliceCoords
+        fourier_potential.wrapped_frequency_slice_in_pixels.get(),
+        Float[Array, "1 _ _ 3"],
     )
     assert isinstance(real_potential.wrapped_coordinate_grid_in_pixels, CoordinateGrid)
     assert isinstance(
-        real_potential.wrapped_coordinate_grid_in_pixels.get(), VolumeCoords
+        real_potential.wrapped_coordinate_grid_in_pixels.get(), Float[Array, "_ _ _ 3"]
     )
     assert isinstance(cloud_potential.wrapped_coordinate_list_in_pixels, CoordinateList)
     assert isinstance(
-        cloud_potential.wrapped_coordinate_list_in_pixels.get(), PointCloudCoords3D
+        cloud_potential.wrapped_coordinate_list_in_pixels.get(), Float[Array, "_ 3"]
     )
 
 

@@ -6,9 +6,8 @@ from abc import abstractmethod
 from typing import Generic, TypeVar
 
 from equinox import Module
-from jaxtyping import Array, Complex
+from jaxtyping import Array, Complex, Float
 
-from ...typing import RealNumber
 from .._config import ImageConfig
 from .._potential import AbstractScatteringPotential
 
@@ -26,7 +25,7 @@ class AbstractPotentialIntegrator(Module, Generic[ScatteringPotentialT], strict=
     def __call__(
         self,
         potential: ScatteringPotentialT,
-        wavelength_in_angstroms: RealNumber,
+        wavelength_in_angstroms: Float[Array, ""],
         config: ImageConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute the scattering potential in the exit plane at

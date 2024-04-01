@@ -10,27 +10,26 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 from equinox import AbstractVar, field, Module
-from jaxtyping import Array, Complex, PRNGKeyArray, Shaped
+from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..core import error_if_not_fractional
 from ..image import irfftn, rfftn
 from ..image.operators import AbstractFourierOperator
-from ..typing import ImageCoords, RealImage, RealNumber
 from ._config import ImageConfig
 
 
 class AbstractDQE(AbstractFourierOperator, strict=True):
     r"""Base class for a detector DQE."""
 
-    fraction_detected_electrons: AbstractVar[Shaped[RealNumber, "..."]]
+    fraction_detected_electrons: AbstractVar[Float[Array, "..."]]
 
     @abstractmethod
     def __call__(
         self,
-        frequency_grid_in_angstroms_or_pixels: ImageCoords,
+        frequency_grid_in_angstroms_or_pixels: Float[Array, "y_dim x_dim 2"],
         *,
-        pixel_size: Optional[RealNumber] = None,
-    ) -> RealImage | RealNumber:
+        pixel_size: Optional[Float[Array, ""]] = None,
+    ) -> Float[Array, "y_dim x_dim"]:
         """**Arguments:**
 
         - `frequency_grid_in_angstroms_or_pixels`: A frequency grid
@@ -50,17 +49,17 @@ class IdealDQE(AbstractDQE, strict=True):
     transmission electron microscopy." (2013) for details.
     """
 
-    fraction_detected_electrons: Shaped[RealNumber, "..."] = field(
+    fraction_detected_electrons: Float[Array, "..."] = field(
         default=1.0, converter=error_if_not_fractional
     )
 
     @override
     def __call__(
         self,
-        frequency_grid_in_angstroms_or_pixels: ImageCoords,
+        frequency_grid_in_angstroms_or_pixels: Float[Array, "y_dim x_dim 2"],
         *,
-        pixel_size: Optional[RealNumber] = None,
-    ) -> RealImage:
+        pixel_size: Optional[Float[Array, ""]] = None,
+    ) -> Float[Array, "y_dim x_dim"]:
         if pixel_size is None:
             frequency_grid_in_nyquist_units = (
                 frequency_grid_in_angstroms_or_pixels / 0.5
@@ -86,8 +85,8 @@ class AbstractDetector(Module, strict=True):
 
     @abstractmethod
     def sample(
-        self, key: PRNGKeyArray, expected_electron_events: RealImage
-    ) -> RealImage:
+        self, key: PRNGKeyArray, expected_electron_events: Float[Array, "y_dim x_dim"]
+    ) -> Float[Array, "y_dim x_dim"]:
         """Sample a realization from the detector noise model."""
         raise NotImplementedError
 
@@ -97,7 +96,7 @@ class AbstractDetector(Module, strict=True):
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: ImageConfig,
-        electrons_per_angstrom_squared: RealNumber,
+        electrons_per_angstrom_squared: Float[Array, ""],
         key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Pass the image through the detector model."""
@@ -136,8 +135,8 @@ class GaussianDetector(AbstractDetector, strict=True):
 
     @override
     def sample(
-        self, key: PRNGKeyArray, expected_electron_events: RealImage
-    ) -> RealImage:
+        self, key: PRNGKeyArray, expected_electron_events: Float[Array, "y_dim x_dim"]
+    ) -> Float[Array, "y_dim x_dim"]:
         return expected_electron_events + jnp.sqrt(
             expected_electron_events
         ) * jr.normal(key, expected_electron_events.shape)
@@ -148,6 +147,6 @@ class PoissonDetector(AbstractDetector, strict=True):
 
     @override
     def sample(
-        self, key: PRNGKeyArray, expected_electron_events: RealImage
-    ) -> RealImage:
+        self, key: PRNGKeyArray, expected_electron_events: Float[Array, "y_dim x_dim"]
+    ) -> Float[Array, "y_dim x_dim"]:
         return jr.poisson(key, expected_electron_events).astype(float)

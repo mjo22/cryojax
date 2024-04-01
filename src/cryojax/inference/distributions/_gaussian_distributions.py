@@ -9,12 +9,11 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 from equinox import field
-from jaxtyping import Array, Complex, Float, PRNGKeyArray, Shaped
+from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ...core import error_if_not_positive
 from ...image.operators import Constant, FourierOperatorLike
 from ...simulator import AbstractPipeline
-from ...typing import RealNumber
 from ._distribution import AbstractDistribution
 
 
@@ -27,13 +26,13 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
 
     pipeline: AbstractPipeline
     variance: FourierOperatorLike
-    contrast_scale: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
+    contrast_scale: Float[Array, "..."] = field(converter=error_if_not_positive)
 
     def __init__(
         self,
         pipeline: AbstractPipeline,
         variance: Optional[FourierOperatorLike] = None,
-        contrast_scale: float | RealNumber = 1.0,
+        contrast_scale: float | Float[Array, "..."] = 1.0,
     ):
         """**Arguments:**
 
@@ -87,7 +86,7 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
             Array,
             "{self.pipeline.config.y_dim} {self.pipeline.config.x_dim//2+1}",
         ],
-    ) -> RealNumber:
+    ) -> Float[Array, ""]:
         """Evaluate the log-likelihood of the gaussian noise model.
 
         **Arguments:**

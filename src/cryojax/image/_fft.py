@@ -10,28 +10,28 @@ from jaxtyping import Array, Complex, Float, Inexact
 
 @overload
 def ifftn(
-    ft: Complex[Array, "Nz Ny Nx"],
+    ft: Complex[Array, "z_dim y_dim x_dim"],
     real: bool = False,
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Complex[Array, "Nz Ny Nx"]: ...
+) -> Complex[Array, "z_dim y_dim x_dim"]: ...
 
 
 @overload
 def ifftn(
-    ft: Complex[Array, "Ny Nx"],
+    ft: Complex[Array, "y_dim x_dim"],
     real: bool = False,
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Complex[Array, "Ny Nx"]: ...
+) -> Complex[Array, "y_dim x_dim"]: ...
 
 
 def ifftn(
-    ft: Complex[Array, "Ny Nx"] | Complex[Array, "Nz Ny Nx"],
+    ft: Complex[Array, "y_dim x_dim"] | Complex[Array, "z_dim y_dim x_dim"],
     real: bool = False,
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Complex[Array, "Ny Nx"] | Complex[Array, "Nz Ny Nx"]:
+) -> Complex[Array, "y_dim x_dim"] | Complex[Array, "z_dim y_dim x_dim"]:
     """
     Helper routine to match the inverse fourier transform
     to the output of a type 1 non-uniform FFT with jax-finufft.
@@ -59,25 +59,25 @@ def ifftn(
 
 @overload
 def fftn(
-    ift: Inexact[Array, "Nz Ny Nx"],
+    ift: Inexact[Array, "z_dim y_dim x_dim"],
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Complex[Array, "Nz Ny Nx"]: ...
+) -> Complex[Array, "z_dim y_dim x_dim"]: ...
 
 
 @overload
 def fftn(
-    ift: Inexact[Array, "Ny Nx"],
+    ift: Inexact[Array, "y_dim x_dim"],
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Complex[Array, "Ny Nx"]: ...
+) -> Complex[Array, "y_dim x_dim"]: ...
 
 
 def fftn(
-    ift: Inexact[Array, "Ny Nx"] | Inexact[Array, "Nz Ny Nx"],
+    ift: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"],
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Complex[Array, "Ny Nx"] | Complex[Array, "Nz Ny Nx"]:
+) -> Complex[Array, "y_dim x_dim"] | Complex[Array, "z_dim y_dim x_dim"]:
     """
     Helper routine to match the fourier transform of an array
     with the output of a type 1 non-uniform FFT with jax-finufft.
@@ -99,28 +99,32 @@ def fftn(
 
 @overload
 def irfftn(
-    ft: Complex[Array, "Ny Nx//2+1"],
+    ft: Complex[Array, "y_dim x_dim//2+1"],
     s: Optional[tuple[int, ...]] = None,
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Float[Array, "Ny Nx"] | Float[Array, " *s"]: ...
+) -> Float[Array, "y_dim x_dim"] | Float[Array, " *s"]: ...
 
 
 @overload
 def irfftn(
-    ft: Complex[Array, "Nz Ny Nx//2+1"],
+    ft: Complex[Array, "z_dim y_dim x_dim//2+1"],
     s: Optional[tuple[int, ...]] = None,
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Float[Array, "Nz Ny Nx"] | Float[Array, " *s"]: ...
+) -> Float[Array, "z_dim y_dim x_dim"] | Float[Array, " *s"]: ...
 
 
 def irfftn(
-    ft: Complex[Array, "Ny Nx//2+1"] | Complex[Array, "Nz Ny Nx//2+1"],
+    ft: Complex[Array, "y_dim x_dim//2+1"] | Complex[Array, "z_dim y_dim x_dim//2+1"],
     s: Optional[tuple[int, ...]] = None,
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Float[Array, "Ny Nx"] | Float[Array, "Nz Ny Nx"] | Float[Array, " *s"]:
+) -> (
+    Float[Array, "y_dim x_dim"]
+    | Float[Array, "z_dim y_dim x_dim"]
+    | Float[Array, " *s"]
+):
     """
     Helper routine to compute the inverse fourier transform
     from real input.
@@ -142,25 +146,25 @@ def irfftn(
 
 @overload
 def rfftn(
-    ift: Float[Array, "Ny Nx"],
+    ift: Float[Array, "y_dim x_dim"],
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Complex[Array, "Ny Nx//2+1"]: ...
+) -> Complex[Array, "y_dim x_dim//2+1"]: ...
 
 
 @overload
 def rfftn(
-    ift: Float[Array, "Nz Ny Nx"],
+    ift: Float[Array, "z_dim y_dim x_dim"],
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Complex[Array, "Nz Ny Nx//2+1"]: ...
+) -> Complex[Array, "z_dim y_dim x_dim//2+1"]: ...
 
 
 def rfftn(
-    ift: Float[Array, "Ny Nx"] | Float[Array, "Nz Ny Nx"],
+    ift: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"],
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
-) -> Complex[Array, "Ny Nx//2+1"] | Complex[Array, "Nz Ny Nx//2+1"]:
+) -> Complex[Array, "y_dim x_dim//2+1"] | Complex[Array, "z_dim y_dim x_dim//2+1"]:
     """
     Helper routine to compute the fourier transform of an array
     to match the output of a type 1 non-uniform FFT.
