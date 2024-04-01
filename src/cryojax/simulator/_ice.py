@@ -41,33 +41,6 @@ class AbstractIce(Module, strict=True):
         return fourier_phase_at_exit_plane + fourier_ice_phase_at_exit_plane
 
 
-class NullIce(AbstractIce):
-    """A "null" ice model."""
-
-    @override
-    def sample(
-        self, key: PRNGKeyArray, config: ImageConfig
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
-        return jnp.zeros(
-            config.wrapped_padded_frequency_grid_in_angstroms.get().shape[0:-1],
-            dtype=complex,
-        )
-
-    @override
-    def __call__(
-        self,
-        key: PRNGKeyArray,
-        fourier_phase_at_exit_plane: Complex[
-            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
-        ],
-        config: ImageConfig,
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
-        return jnp.zeros(
-            config.wrapped_padded_frequency_grid_in_angstroms.get().shape[0:-1],
-            dtype=complex,
-        )
-
-
 class GaussianIce(AbstractIce, strict=True):
     r"""Ice modeled as gaussian noise.
 

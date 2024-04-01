@@ -15,9 +15,8 @@ from jaxtyping import Array, Complex, PRNGKeyArray, Shaped
 from ..core import error_if_not_fractional
 from ..image import irfftn, rfftn
 from ..image.operators import AbstractFourierOperator
-from ..typing import ComplexImage, ImageCoords, RealImage, RealNumber
+from ..typing import ImageCoords, RealImage, RealNumber
 from ._config import ImageConfig
-from ._dose import ElectronDose
 
 
 class AbstractDQE(AbstractFourierOperator, strict=True):
@@ -42,24 +41,6 @@ class AbstractDQE(AbstractFourierOperator, strict=True):
         - `pixel_size`: The pixel size of `frequency_grid_in_angstroms_or_pixels`.
         """
         raise NotImplementedError
-
-
-class NullDQE(AbstractDQE, strict=True):
-    r"""A model for a null DQE."""
-
-    fraction_detected_electrons: Shaped[RealNumber, "..."]
-
-    def __init__(self):
-        self.fraction_detected_electrons = jnp.asarray(1.0)
-
-    @override
-    def __call__(
-        self,
-        frequency_grid_in_angstroms_or_pixels: ImageCoords,
-        *,
-        pixel_size: Optional[RealNumber] = None,
-    ) -> RealNumber:
-        return jnp.asarray(1.0)
 
 
 class IdealDQE(AbstractDQE, strict=True):
@@ -146,30 +127,6 @@ class AbstractDetector(Module, strict=True):
                 fourier_expected_electron_events, s=config.padded_shape
             )
             return rfftn(self.sample(key, expected_electron_events))
-
-
-class NullDetector(AbstractDetector):
-    """A null detector model."""
-
-    @override
-    def __init__(self):
-        self.dqe = NullDQE()
-
-    @override
-    def sample(
-        self, key: PRNGKeyArray, expected_electron_events: RealImage
-    ) -> RealImage:
-        return expected_electron_events
-
-    @override
-    def __call__(
-        self,
-        fourier_squared_wavefunction_at_detector_plane: ComplexImage,
-        dose: ElectronDose,
-        config: ImageConfig,
-        key: Optional[PRNGKeyArray] = None,
-    ) -> ComplexImage:
-        return fourier_squared_wavefunction_at_detector_plane
 
 
 class GaussianDetector(AbstractDetector, strict=True):

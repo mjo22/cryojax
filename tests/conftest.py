@@ -137,7 +137,7 @@ def solvent():
 
 @pytest.fixture
 def noiseless_model(config, specimen, instrument):
-    instrument = eqx.tree_at(lambda ins: ins.detector, instrument, cs.NullDetector())
+    instrument = eqx.tree_at(lambda ins: ins.detector, instrument, None)
     return cs.ImagePipeline(config=config, specimen=specimen, instrument=instrument)
 
 

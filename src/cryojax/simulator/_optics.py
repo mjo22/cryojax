@@ -124,38 +124,6 @@ class AbstractOptics(Module, strict=True):
         raise NotImplementedError
 
 
-class NullOptics(AbstractOptics):
-    """A null optics model."""
-
-    ctf: CTF
-    envelope: FourierOperatorLike
-
-    is_linear: ClassVar[bool] = True
-
-    def __init__(self):
-        self.ctf = CTF()
-        self.envelope = Constant(1.0)
-
-    @override
-    def __call__(
-        self,
-        fourier_phase_in_exit_plane: Complex[
-            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
-        ],
-        config: ImageConfig,
-        wavelength_in_angstroms: RealNumber | float,
-        defocus_offset: RealNumber | float = 0.0,
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
-        return fourier_phase_in_exit_plane
-
-
-NullOptics.__init__.__doc__ = """**Arguments:**
-
-- `ctf`: The contrast transfer function model.
-- `envelope`: The envelope function of the optics model.
-"""
-
-
 class WeakPhaseOptics(AbstractOptics, strict=True):
     """An optics model in the weak-phase approximation. Here, compute the image
     contrast by applying the CTF directly to the exit plane phase shifts.

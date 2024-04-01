@@ -16,10 +16,8 @@ from ..image import irfftn, normalize_image, rfftn
 from ..image.operators import AbstractFilter, AbstractMask
 from ._assembly import AbstractAssembly
 from ._config import ImageConfig
-from ._detector import NullDetector
-from ._ice import AbstractIce, NullIce
+from ._ice import AbstractIce
 from ._instrument import Instrument
-from ._optics import NullOptics
 from ._pose import AbstractPose
 from ._specimen import AbstractConformation, AbstractSpecimen
 
@@ -188,7 +186,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
     config: ImageConfig
     specimen: AbstractSpecimen
     instrument: Instrument
-    solvent: AbstractIce
+    solvent: Optional[AbstractIce]
 
     filter: Optional[AbstractFilter]
     mask: Optional[AbstractMask]
@@ -206,7 +204,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
         self.config = config
         self.specimen = specimen
         self.instrument = instrument
-        self.solvent = solvent or NullIce()
+        self.solvent = solvent
         self.filter = filter
         self.mask = mask
 
@@ -227,7 +225,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
         fourier_phase_at_exit_plane = self.specimen.scatter_to_exit_plane(
             self.instrument, self.config
         )
-        if isinstance(self.instrument.optics, NullOptics):
+        if self.instrument.optics is None:
             return self._get_final_image(
                 fourier_phase_at_exit_plane,
                 view_cropped=view_cropped,
@@ -250,7 +248,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
                     self.config,
                 )
             )
-            if isinstance(self.instrument.detector, NullDetector):
+            if self.instrument.detector is None:
                 return self._get_final_image(
                     fourier_squared_wavefunction_at_detector_plane,
                     view_cropped=view_cropped,
@@ -287,13 +285,11 @@ class ImagePipeline(AbstractPipeline, strict=True):
     ):
         """Sample the assembly from the stochastic parts of the model."""
         idx = 0  # Keep track of number of stochastic models
-        if not isinstance(self.solvent, NullIce) and not isinstance(
-            self.instrument.detector, NullDetector
-        ):
+        if self.solvent is not None and self.instrument.detector is not None:
             keys = jax.random.split(key)
         else:
             keys = jnp.expand_dims(key, axis=0)
-        if not isinstance(self.solvent, NullIce):
+        if self.solvent is not None:
             # Compute the phase shifts in the exit plane, including
             # potential of the solvent
             fourier_phase_at_exit_plane = (
@@ -307,7 +303,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
             fourier_phase_at_exit_plane = self.specimen.scatter_to_exit_plane(
                 self.instrument, self.config
             )
-        if isinstance(self.instrument.optics, NullOptics):
+        if self.instrument.optics is None:
             return self._get_final_image(
                 fourier_phase_at_exit_plane,
                 view_cropped=view_cropped,
@@ -330,7 +326,7 @@ class ImagePipeline(AbstractPipeline, strict=True):
                     self.config,
                 )
             )
-            if isinstance(self.instrument.detector, NullDetector):
+            if self.instrument.detector is None:
                 return self._get_final_image(
                     fourier_squared_wavefunction_at_detector_plane,
                     view_cropped=view_cropped,
@@ -388,7 +384,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         self.config = config
         self.assembly = assembly
         self.instrument = instrument
-        self.solvent = solvent or NullIce()
+        self.solvent = solvent
         self.filter = filter
         self.mask = mask
 
@@ -410,20 +406,18 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         stochastic models.
         """
         idx = 0  # Keep track of number of stochastic models
-        if not isinstance(self.solvent, NullIce) and not isinstance(
-            self.instrument.detector, NullDetector
-        ):
+        if self.solvent is not None and self.instrument.detector is not None:
             keys = jax.random.split(key)
         else:
             keys = jnp.expand_dims(key, axis=0)
-        if isinstance(self.instrument.optics, NullOptics):
+        if self.instrument.optics is None:
             compute_fourier_phase_fn = (
                 lambda spec, conf, ins: spec.scatter_to_exit_plane(ins, conf)
             )
             fourier_phase_in_exit_plane = self._compute_subunit_superposition(
                 compute_fourier_phase_fn
             )
-            if not isinstance(self.solvent, NullIce):
+            if self.solvent is not None:
                 # Compute the solvent potential in the detector plane
                 # and add to that of the specimen
                 fourier_solvent_potential_at_exit_plane = self.solvent.sample(
@@ -449,7 +443,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
             fourier_contrast_at_detector_plane = self._compute_subunit_superposition(
                 compute_fourier_contrast_fn
             )
-            if not isinstance(self.solvent, NullIce):
+            if self.solvent is not None:
                 # Compute the solvent contrast in the detector plane
                 # and add to that of the specimen
                 fourier_solvent_potential_at_exit_plane = self.solvent.sample(
@@ -468,7 +462,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
                     self.config,
                 )
             )
-            if isinstance(self.instrument.detector, NullDetector):
+            if self.instrument.detector is None:
                 return self._get_final_image(
                     fourier_squared_wavefunction_at_detector_plane,
                     view_cropped=view_cropped,
@@ -506,7 +500,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
         """Render the superposition of images from the
         `AbstractAssembly.subunits`.
         """
-        if isinstance(self.instrument.optics, NullOptics):
+        if self.instrument.optics is None:
             compute_fourier_phase_fn = (
                 lambda spec, conf, ins: spec.scatter_to_exit_plane(ins, conf)
             )
@@ -538,7 +532,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
                     self.config,
                 )
             )
-            if isinstance(self.instrument.detector, NullDetector):
+            if self.instrument.detector is None:
                 return self._get_final_image(
                     fourier_squared_wavefunction_at_detector_plane,
                     view_cropped=view_cropped,

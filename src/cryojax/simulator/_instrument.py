@@ -13,9 +13,9 @@ from ..constants import convert_keV_to_angstroms
 from ..core import error_if_not_positive
 from ..typing import RealNumber
 from ._config import ImageConfig
-from ._detector import AbstractDetector, NullDetector
+from ._detector import AbstractDetector
 from ._dose import ElectronDose
-from ._optics import AbstractOptics, NullOptics
+from ._optics import AbstractOptics
 
 
 class Instrument(Module, strict=True):
@@ -34,9 +34,9 @@ class Instrument(Module, strict=True):
     voltage_in_kilovolts: Shaped[RealNumber, "..."] = field(
         converter=error_if_not_positive
     )
-    dose: ElectronDose
-    optics: AbstractOptics
-    detector: AbstractDetector
+    dose: Optional[ElectronDose]
+    optics: Optional[AbstractOptics]
+    detector: Optional[AbstractDetector]
 
     def __init__(
         self,
@@ -52,9 +52,9 @@ class Instrument(Module, strict=True):
                 "an ElectronDose."
             )
         self.voltage_in_kilovolts = jnp.asarray(voltage_in_kilovolts)
-        self.optics = optics or NullOptics()
-        self.dose = dose or ElectronDose(electrons_per_angstrom_squared=100.0)
-        self.detector = detector or NullDetector()
+        self.optics = optics
+        self.dose = dose
+        self.detector = detector
 
     @property
     def wavelength_in_angstroms(self) -> RealNumber:
@@ -71,11 +71,11 @@ class Instrument(Module, strict=True):
         Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
         | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
     ):
-        if isinstance(self.optics, NullOptics):
+        if self.optics is None:
             raise AttributeError(
                 "Tried to call `Instrument.propagate_to_detector_plane`, "
-                "but the `Instrument`'s optics model is `NullOptics`. This "
-                "is not supported!"
+                "but the `Instrument`'s optics model is `None`. This "
+                "is not allowed!"
             )
         """Propagate the scattering potential with the optics model."""
         fourier_contrast_at_detector_plane = self.optics(
@@ -99,11 +99,11 @@ class Instrument(Module, strict=True):
         contrast.
         """
         N1, N2 = config.padded_shape
-        if isinstance(self.optics, NullOptics):
+        if self.optics is None:
             raise AttributeError(
                 "Tried to call `compute_fourier_squared_wavefunction`, "
-                "but the `Instrument`'s optics model is `NullOptics`. This "
-                "is not supported!"
+                "but the `Instrument`'s optics model is `None`. This "
+                "is not allowed!"
             )
         elif self.optics.is_linear:
             # ... compute the squared wavefunction directly from the image contrast
@@ -126,11 +126,11 @@ class Instrument(Module, strict=True):
         config: ImageConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute the expected electron events from the detector."""
-        if isinstance(self.detector, NullDetector):
+        if self.detector is None:
             raise AttributeError(
                 "Tried to call `Instrument.compute_expected_electron_events`, "
-                "but the `Instrument`'s detector model is `NullDetector`. This "
-                "is not supported!"
+                "but the `Instrument`'s detector model is `None`. This "
+                "is not allowed!"
             )
         fourier_expected_electron_events = self.detector(
             fourier_squared_wavefunction_at_detector_plane,
@@ -150,11 +150,11 @@ class Instrument(Module, strict=True):
         config: ImageConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Measure the readout from the detector."""
-        if isinstance(self.detector, NullDetector):
+        if self.detector is None:
             raise AttributeError(
                 "Tried to call `Instrument.measure_detector_readout`, "
-                "but the `Instrument`'s detector model is `NullDetector`. This "
-                "is not supported!"
+                "but the `Instrument`'s detector model is `None`. This "
+                "is not allowed!"
             )
         fourier_detector_readout = self.detector(
             fourier_squared_wavefunction_at_detector_plane,

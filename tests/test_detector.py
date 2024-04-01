@@ -20,7 +20,7 @@ def test_gaussian_limit():
     dose = cs.ElectronDose(electrons_per_angstrom_squared)
     # Create detector models
     key = jax.random.PRNGKey(1234)
-    dqe = cs.NullDQE()
+    dqe = cs.IdealDQE()
     gaussian_detector = cs.GaussianDetector(dqe)
     poisson_detector = cs.PoissonDetector(dqe)
     # Compute detector readout
