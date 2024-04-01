@@ -29,9 +29,9 @@ class AbstractPose(Module, strict=True):
            `AbstractPose.from_rotation` class method.
     """
 
-    offset_x_in_angstroms: AbstractVar[Float[Array, "..."]]
-    offset_y_in_angstroms: AbstractVar[Float[Array, "..."]]
-    offset_z_in_angstroms: AbstractVar[Float[Array, "..."]]
+    offset_x_in_angstroms: AbstractVar[Float[Array, ""]]
+    offset_y_in_angstroms: AbstractVar[Float[Array, ""]]
+    offset_z_in_angstroms: AbstractVar[Float[Array, ""]]
 
     @overload
     def rotate_coordinates(
@@ -135,19 +135,13 @@ class EulerAnglePose(AbstractPose, strict=True):
     given by a zyz extrinsic rotations.
     """
 
-    offset_x_in_angstroms: Float[Array, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_y_in_angstroms: Float[Array, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_z_in_angstroms: Float[Array, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
+    offset_x_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
 
-    view_phi: Float[Array, "..."] = field(default=0.0, converter=jnp.asarray)
-    view_theta: Float[Array, "..."] = field(default=0.0, converter=jnp.asarray)
-    view_psi: Float[Array, "..."] = field(default=0.0, converter=jnp.asarray)
+    view_phi: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    view_theta: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    view_psi: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
 
     @cached_property
     @override
@@ -192,19 +186,11 @@ EulerAnglePose.__init__.__doc__ = """**Arguments:**
 class QuaternionPose(AbstractPose, strict=True):
     """An `AbstractPose` represented by unit quaternions."""
 
-    offset_x_in_angstroms: Float[Array, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_y_in_angstroms: Float[Array, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_z_in_angstroms: Float[Array, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
+    offset_x_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
 
-    wxyz: Float[Array, "... 4"] = field(
-        default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray
-    )
+    wxyz: Float[Array, "4"] = field(default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray)
 
     @cached_property
     @override
@@ -242,17 +228,11 @@ class AxisAnglePose(AbstractPose, strict=True):
     the matrix exponential.
     """
 
-    offset_x_in_angstroms: Float[Array, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_y_in_angstroms: Float[Array, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_z_in_angstroms: Float[Array, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
+    offset_x_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
 
-    euler_vector: Float[Array, "... 3"] = field(
+    euler_vector: Float[Array, "3"] = field(
         default=(0.0, 0.0, 0.0), converter=jnp.asarray
     )
 

@@ -26,13 +26,13 @@ class IndependentFourierGaussian(AbstractDistribution, strict=True):
 
     pipeline: AbstractPipeline
     variance: FourierOperatorLike
-    contrast_scale: Float[Array, "..."] = field(converter=error_if_not_positive)
+    contrast_scale: Float[Array, ""] = field(converter=error_if_not_positive)
 
     def __init__(
         self,
         pipeline: AbstractPipeline,
         variance: Optional[FourierOperatorLike] = None,
-        contrast_scale: float | Float[Array, "..."] = 1.0,
+        contrast_scale: float | Float[Array, ""] = 1.0,
     ):
         """**Arguments:**
 

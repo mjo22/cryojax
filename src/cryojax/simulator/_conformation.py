@@ -23,4 +23,4 @@ class DiscreteConformation(AbstractConformation, strict=True):
     A conformational variable wrapped in a Module.
     """
 
-    value: Int[Array, "..."] = field(converter=error_if_negative)
+    value: Int[Array, ""] = field(converter=error_if_negative)

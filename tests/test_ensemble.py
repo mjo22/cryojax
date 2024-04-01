@@ -24,7 +24,9 @@ def test_conformation_vmap(potential, pose, integrator, config):
         stacked_potential,
         integrator,
         pose,
-        conformation=DiscreteConformation(jnp.asarray((0, 1, 2, 1, 0))),
+        conformation=jax.vmap(lambda value: DiscreteConformation(value))(
+            jnp.asarray((0, 1, 2, 1, 0))
+        ),
     )
     # Setup vmap
     is_vmap = lambda x: isinstance(x, DiscreteConformation)

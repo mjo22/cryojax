@@ -49,7 +49,7 @@ def build_helix_with_conformation(
         subunit_pose,
         conformation=cs.DiscreteConformation(0),
     )
-    conformation = cs.DiscreteConformation(
+    conformation = jax.vmap(lambda value: cs.DiscreteConformation(value))(
         np.random.choice(2, n_start * n_subunits_per_start)
     )
     return cs.Helix(

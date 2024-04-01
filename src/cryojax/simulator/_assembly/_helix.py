@@ -29,8 +29,8 @@ class Helix(AbstractAssembly, strict=True):
     """
 
     subunit: AbstractSpecimen
-    rise: Float[Array, "..."]
-    twist: Float[Array, "..."]
+    rise: Float[Array, ""]
+    twist: Float[Array, ""]
 
     pose: AbstractPose
     conformation: Optional[AbstractConformation]
@@ -41,8 +41,8 @@ class Helix(AbstractAssembly, strict=True):
     def __init__(
         self,
         subunit: AbstractSpecimen,
-        rise: Float[Array, "..."] | float,
-        twist: Float[Array, "..."] | float,
+        rise: Float[Array, ""] | float,
+        twist: Float[Array, ""] | float,
         pose: Optional[AbstractPose] = None,
         conformation: Optional[AbstractConformation] = None,
         n_start: int = 1,

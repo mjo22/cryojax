@@ -16,6 +16,6 @@ class ElectronDose(Module, strict=True):
     `electrons_per_angstrom_squared`: The integrated electron flux.
     """
 
-    electrons_per_angstrom_squared: Float[Array, "..."] = field(
+    electrons_per_angstrom_squared: Float[Array, ""] = field(
         converter=error_if_not_positive
     )

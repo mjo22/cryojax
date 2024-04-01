@@ -59,7 +59,7 @@ FourierOperatorLike = AbstractFourierOperator | AbstractImageOperator
 class ZeroMode(AbstractFourierOperator, strict=True):
     """This operator returns a constant in the zero mode."""
 
-    value: Float[Array, "..."] = field(default=0.0, converter=jnp.asarray)
+    value: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
 
     @override
     def __call__(
@@ -95,10 +95,8 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
     scale.
     """
 
-    amplitude: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
-    length_scale: Float[Array, "..."] = field(
-        default=1.0, converter=error_if_not_positive
-    )
+    amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
+    length_scale: Float[Array, ""] = field(default=1.0, converter=error_if_not_positive)
 
     @override
     def __call__(
@@ -129,10 +127,8 @@ class Lorenzian(AbstractFourierOperator, strict=True):
     scale.
     """
 
-    amplitude: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
-    length_scale: Float[Array, "..."] = field(
-        default=1.0, converter=error_if_not_positive
-    )
+    amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
+    length_scale: Float[Array, ""] = field(default=1.0, converter=error_if_not_positive)
 
     @overload
     def __call__(
@@ -181,8 +177,8 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
     where :math:`r^2 = x^2 + y^2`.
     """
 
-    amplitude: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
-    b_factor: Float[Array, "..."] = field(default=1.0, converter=error_if_not_positive)
+    amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
+    b_factor: Float[Array, ""] = field(default=1.0, converter=error_if_not_positive)
 
     @overload
     def __call__(

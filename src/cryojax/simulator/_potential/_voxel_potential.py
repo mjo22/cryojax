@@ -37,7 +37,7 @@ from ._scattering_potential import AbstractScatteringPotential
 class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     """Abstract interface for a voxel-based scattering potential representation."""
 
-    voxel_size: AbstractVar[Float[Array, "..."]]
+    voxel_size: AbstractVar[Float[Array, ""]]
     is_real: AbstractClassVar[bool]
 
     @property
@@ -86,9 +86,9 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @abstractmethod
     def __init__(
         self,
-        fourier_voxel_grid: Complex[Array, "... dim dim dim"],
+        fourier_voxel_grid: Complex[Array, "dim dim dim"],
         wrapped_frequency_slice_in_pixels: FrequencySlice,
-        voxel_size: Float[Array, "..."] | float,
+        voxel_size: Float[Array, ""] | float,
     ):
         raise NotImplementedError
 
@@ -208,18 +208,18 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
     """A 3D scattering potential voxel grid in fourier-space."""
 
-    fourier_voxel_grid: Complex[Array, "... dim dim dim"]
+    fourier_voxel_grid: Complex[Array, "dim dim dim"]
     wrapped_frequency_slice_in_pixels: FrequencySlice
-    voxel_size: Float[Array, "..."] = field(converter=error_if_not_positive)
+    voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = False
 
     @override
     def __init__(
         self,
-        fourier_voxel_grid: Complex[Array, "... dim dim dim"],
+        fourier_voxel_grid: Complex[Array, "dim dim dim"],
         wrapped_frequency_slice_in_pixels: FrequencySlice,
-        voxel_size: Float[Array, "..."] | float,
+        voxel_size: Float[Array, ""] | float,
     ):
         """**Arguments:**
 
@@ -242,17 +242,17 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     by spline coefficients.
     """
 
-    coefficients: Float[Array, "... coeff_dim coeff_dim coeff_dim"]
+    coefficients: Float[Array, "coeff_dim coeff_dim coeff_dim"]
     wrapped_frequency_slice_in_pixels: FrequencySlice
-    voxel_size: Float[Array, "..."] = field(converter=error_if_not_positive)
+    voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = False
 
     def __init__(
         self,
-        fourier_voxel_grid: Float[Array, "... dim dim dim"],
+        fourier_voxel_grid: Float[Array, "dim dim dim"],
         wrapped_frequency_slice_in_pixels: FrequencySlice,
-        voxel_size: Float[Array, "..."] | float,
+        voxel_size: Float[Array, ""] | float,
     ):
         """
         !!! note
@@ -275,13 +275,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
                                                wrapped in a `FrequencySlice` object.
         - `voxel_size`: The voxel size.
         """
-        n_batch_dims = fourier_voxel_grid.ndim - 3
-        compute_spline_coefficients_3d = compute_spline_coefficients
-        for _ in range(n_batch_dims):
-            compute_spline_coefficients_3d = jax.vmap(compute_spline_coefficients_3d)
-        self.coefficients = compute_spline_coefficients_3d(
-            jnp.asarray(fourier_voxel_grid)
-        )
+        self.coefficients = compute_spline_coefficients(jnp.asarray(fourier_voxel_grid))
         self.wrapped_frequency_slice_in_pixels = wrapped_frequency_slice_in_pixels
         self.voxel_size = jnp.asarray(voxel_size)
 
@@ -295,17 +289,17 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     """Abstraction of a 3D scattering potential voxel grid in real-space."""
 
-    real_voxel_grid: Float[Array, "... dim dim dim"]
+    real_voxel_grid: Float[Array, "dim dim dim"]
     wrapped_coordinate_grid_in_pixels: CoordinateGrid
-    voxel_size: Float[Array, "..."] = field(converter=error_if_not_positive)
+    voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = True
 
     def __init__(
         self,
-        real_voxel_grid: Float[Array, "... dim dim dim"],
+        real_voxel_grid: Float[Array, "dim dim dim"],
         wrapped_coordinate_grid_in_pixels: CoordinateGrid,
-        voxel_size: Float[Array, "..."] | float,
+        voxel_size: Float[Array, ""] | float,
     ):
         """**Arguments:**
 
@@ -447,17 +441,17 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         voxel values.
     """
 
-    voxel_weights: Float[Array, "... size"]
+    voxel_weights: Float[Array, " size"]
     wrapped_coordinate_list_in_pixels: CoordinateList
-    voxel_size: Float[Array, "..."] = field(converter=error_if_not_positive)
+    voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = True
 
     def __init__(
         self,
-        voxel_weights: Float[Array, "... size"],
+        voxel_weights: Float[Array, " size"],
         wrapped_coordinate_list_in_pixels: CoordinateList,
-        voxel_size: Float[Array, "..."] | float,
+        voxel_size: Float[Array, ""] | float,
     ):
         """**Arguments:**
 
