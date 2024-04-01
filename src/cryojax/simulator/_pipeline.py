@@ -366,7 +366,7 @@ class AssemblyPipeline(AbstractPipeline, strict=True):
     config: ImageConfig
     assembly: AbstractAssembly
     instrument: Instrument
-    solvent: AbstractIce
+    solvent: Optional[AbstractIce]
 
     filter: Optional[AbstractFilter]
     mask: Optional[AbstractMask]
