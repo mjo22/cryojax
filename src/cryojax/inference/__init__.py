@@ -3,6 +3,7 @@ from ._grid_search import (
     AbstractGridSearchMethod as AbstractGridSearchMethod,
     run_grid_search as run_grid_search,
     SearchForMinimum as SearchForMinimum,
+    tree_grid_shape as tree_grid_shape,
 )
 from ._transforms import (
     AbstractLieGroupTransform as AbstractLieGroupTransform,

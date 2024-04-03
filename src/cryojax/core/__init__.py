@@ -10,3 +10,4 @@ from ._filtered_transformations import (
     filter_value_and_grad_with_spec as filter_value_and_grad_with_spec,
     filter_vmap_with_spec as filter_vmap_with_spec,
 )
+from ._pytree_manipulation import tree_take as tree_take

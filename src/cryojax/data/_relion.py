@@ -85,8 +85,8 @@ RelionParticleStack.__init__.__doc__ = """**Arguments:**
 """
 
 
-def default_relion_make_config(
-    shape: tuple[int, int], pixel_size: float | Float[np.ndarray, "..."], **kwargs: Any
+def _default_make_config_fn(
+    shape: tuple[int, int], pixel_size: float | Float[np.ndarray, ""], **kwargs: Any
 ):
     return ImageConfig(shape, jnp.asarray(pixel_size), **kwargs)
 
@@ -100,7 +100,7 @@ class RelionDataset(AbstractDataset):
     path_to_relion_project: pathlib.Path
     data_blocks: dict[str, pd.DataFrame]
 
-    make_config: Callable[
+    make_config_fn: Callable[
         [tuple[int, int], float | Float[np.ndarray, "..."]], ImageConfig
     ]
 
@@ -109,9 +109,9 @@ class RelionDataset(AbstractDataset):
         self,
         path_to_starfile: str | pathlib.Path,
         path_to_relion_project: str | pathlib.Path,
-        make_config: Callable[
-            [tuple[int, int], float | Float[np.ndarray, "..."]], ImageConfig
-        ] = default_relion_make_config,
+        make_config_fn: Callable[
+            [tuple[int, int], float | Float[np.ndarray, ""]], ImageConfig
+        ] = _default_make_config_fn,
     ):
         """**Arguments:**
 
@@ -124,7 +124,7 @@ class RelionDataset(AbstractDataset):
         object.__setattr__(
             self, "path_to_relion_project", pathlib.Path(path_to_relion_project)
         )
-        object.__setattr__(self, "make_config", make_config)
+        object.__setattr__(self, "make_config_fn", make_config_fn)
 
     @final
     def __getitem__(
@@ -234,7 +234,7 @@ class RelionDataset(AbstractDataset):
         spherical_aberration_in_mm = np.asarray(optics_group["rlnSphericalAberration"])
         amplitude_contrast_ratio = np.asarray(optics_group["rlnAmplitudeContrast"])
         # ... create cryojax objects
-        config = self.make_config((int(image_size), int(image_size)), pixel_size)
+        config = self.make_config_fn((int(image_size), int(image_size)), pixel_size)
         ctf = CTF(
             defocus_u_in_angstroms,
             defocus_v_in_angstroms,
