@@ -140,10 +140,10 @@ def extract_slice(
 
 
 def extract_slice_with_cubic_spline(
-    spline_coefficients: Complex[Array, "N+2 N+2 N+2"],
-    frequency_slice: Float[Array, "1 N N 3"],
+    spline_coefficients: Complex[Array, "N N N"],
+    frequency_slice: Float[Array, "1 N-2 N-2 3"],
     **kwargs: Any,
-) -> Complex[Array, "N N//2+1"]:
+) -> Complex[Array, " N-2 (N-2)//2+1"]:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using the fourier slice theorem, using cubic

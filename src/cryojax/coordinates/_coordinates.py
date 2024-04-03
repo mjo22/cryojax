@@ -7,7 +7,6 @@ from typing import Any, Optional
 from typing_extensions import Self
 
 import equinox as eqx
-import jax
 import jax.numpy as jnp
 import numpy as np
 from equinox import AbstractVar
@@ -91,7 +90,7 @@ class CoordinateGrid(AbstractCoordinates, strict=True):
         self.array = make_coordinates(shape, grid_spacing)
 
     def get(self) -> ImageCoords | VolumeCoords:
-        return jax.lax.stop_gradient(self.array)
+        return self.array
 
 
 class FrequencyGrid(AbstractCoordinates, strict=True):
@@ -110,7 +109,7 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
         self.array = make_frequencies(shape, grid_spacing, half_space=half_space)
 
     def get(self) -> ImageCoords | VolumeCoords:
-        return jax.lax.stop_gradient(self.array)
+        return self.array
 
 
 class FrequencySlice(AbstractCoordinates, strict=True):
@@ -146,7 +145,7 @@ class FrequencySlice(AbstractCoordinates, strict=True):
         self.array = frequency_slice
 
     def get(self) -> VolumeSliceCoords:
-        return jax.lax.stop_gradient(self.array)
+        return self.array
 
 
 def make_coordinates(
