@@ -3,5 +3,5 @@ from ._distribution import (
     AbstractMarginalDistribution as AbstractMarginalDistribution,
 )
 from ._gaussian_distributions import (
-    IndependentFourierGaussian as IndependentFourierGaussian,
+    IndependentGaussianFourierModes as IndependentGaussianFourierModes,
 )

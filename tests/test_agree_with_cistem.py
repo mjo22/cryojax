@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from pycistem.core import AnglesAndShifts, CTF as cisCTF, Image
+from pycistem.core import AnglesAndShifts, CTF as cisCTF, Image  # pyright: ignore
 
 import cryojax.simulator as cs
 from cryojax.coordinates import cartesian_to_polar, make_frequencies

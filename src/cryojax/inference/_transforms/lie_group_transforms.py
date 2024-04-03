@@ -17,7 +17,7 @@ from jaxtyping import Array, Float, PyTree
 
 from ...rotations import AbstractMatrixLieGroup, SE3, SO3
 from ...simulator import QuaternionPose
-from ._transforms import AbstractParameterTransform
+from .transforms import AbstractParameterTransform
 
 
 def _apply_update_with_lie_transform(u, p):

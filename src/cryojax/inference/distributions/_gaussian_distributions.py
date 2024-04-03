@@ -17,7 +17,7 @@ from ...simulator import AbstractPipeline
 from ._distribution import AbstractDistribution
 
 
-class IndependentFourierGaussian(AbstractDistribution, strict=True):
+class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
     r"""A gaussian noise model, where each fourier mode is independent.
 
     This computes the likelihood in Fourier space,
