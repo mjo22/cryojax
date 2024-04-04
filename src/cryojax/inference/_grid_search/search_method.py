@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, PyTree
 
-from .custom_types import Grid, GridPoint, SearchSolution, SearchState
+from .custom_types import PyTreeGrid, PyTreeGridPoint, SearchSolution, SearchState
 
 
 class AbstractGridSearchMethod(
@@ -17,8 +17,8 @@ class AbstractGridSearchMethod(
     @abstractmethod
     def init(
         self,
-        fn: Callable[[GridPoint, Any], Array],
-        tree_grid: Grid,
+        fn: Callable[[PyTreeGridPoint, Any], Array],
+        tree_grid: PyTreeGrid,
         f_struct: PyTree[jax.ShapeDtypeStruct],
     ) -> SearchState:
         raise NotImplementedError
@@ -26,8 +26,8 @@ class AbstractGridSearchMethod(
     @abstractmethod
     def update(
         self,
-        fn: Callable[[GridPoint, Any], Array],
-        tree_grid_point: GridPoint,
+        fn: Callable[[PyTreeGridPoint, Any], Array],
+        tree_grid_point: PyTreeGridPoint,
         args: Any,
         state: SearchState,
     ) -> SearchState:
@@ -36,8 +36,8 @@ class AbstractGridSearchMethod(
     @abstractmethod
     def postprocess(
         self,
-        fn: Callable[[GridPoint, Any], Array],
-        tree_grid: Grid,
+        fn: Callable[[PyTreeGridPoint, Any], Array],
+        tree_grid: PyTreeGrid,
         args: Any,
         state: SearchState,
     ) -> SearchSolution:
@@ -57,8 +57,8 @@ class SearchForMinimum(
 ):
     def init(
         self,
-        fn: Callable[[GridPoint, Any], Array],
-        tree_grid: Grid,
+        fn: Callable[[PyTreeGridPoint, Any], Array],
+        tree_grid: PyTreeGrid,
         f_struct: PyTree[jax.ShapeDtypeStruct],
     ) -> MinimumState:
         state = MinimumState(current_minimum_value=jnp.full(f_struct.shape, jnp.inf))
@@ -66,8 +66,8 @@ class SearchForMinimum(
 
     def update(
         self,
-        fn: Callable[[GridPoint, Any], Array],
-        tree_grid_point: GridPoint,
+        fn: Callable[[PyTreeGridPoint, Any], Array],
+        tree_grid_point: PyTreeGridPoint,
         args: Any,
         state: MinimumState,
     ) -> MinimumState:
@@ -75,8 +75,8 @@ class SearchForMinimum(
 
     def postprocess(
         self,
-        fn: Callable[[GridPoint, Any], Array],
-        tree_grid: Grid,
+        fn: Callable[[PyTreeGridPoint, Any], Array],
+        tree_grid: PyTreeGrid,
         args: Any,
         state: MinimumState,
     ) -> MinimumSolution:
