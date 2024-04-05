@@ -50,18 +50,16 @@ def run_grid_search(
         tree_grid_unravel_index(initial_iteration_index, tree_grid, is_leaf=is_leaf),
     )
     fn = eqx.filter_closure_convert(fn, init_tree_grid_point, args)
-    is_static_leaf = lambda x: isinstance(x, eqxi.Static)
     f_struct = jtu.tree_map(
         lambda x: x.value,
         jtu.tree_map(eqxi.Static, fn.out_struct),
-        is_leaf=is_static_leaf,
+        is_leaf=lambda x: isinstance(x, eqxi.Static),
     )
     # Get the initial state of the search method
     init_state = method.init(tree_grid, f_struct)
     dynamic_init_state, static_state = eqx.partition(init_state, eqx.is_array)
-    # Get the number of iterations of the loop
-    n_iterations = math.prod(tree_grid_shape(tree_grid, is_leaf=is_leaf))
-    maximum_iteration_index = n_iterations - 1
+    # Get the number of iterations of the loop (the size of the grid)
+    maximum_iterations = math.prod(tree_grid_shape(tree_grid, is_leaf=is_leaf))
     # Finally, build the loop
     init_carry = (
         init_tree_grid_point,
@@ -74,7 +72,7 @@ def run_grid_search(
         tree_grid_point, iteration_index, dynamic_state, _ = carry
         state = eqx.combine(static_state, dynamic_state)
         terminate = method.terminate(
-            fn, tree_grid_point, args, state, iteration_index, maximum_iteration_index
+            fn, tree_grid_point, args, state, iteration_index, maximum_iterations
         )
         return jnp.invert(terminate)
 
@@ -93,13 +91,13 @@ def run_grid_search(
 
     # Run and unpack results
     final_carry = eqxi.while_loop(
-        cond_fun, body_fun, init_carry, kind="lax", max_steps=n_iterations
+        cond_fun, body_fun, init_carry, kind="lax", max_steps=maximum_iterations
     )
     _, final_iteration_index, dynamic_final_state, _ = final_carry
     final_state = eqx.combine(static_state, dynamic_final_state)
     # Return the solution
     solution = method.postprocess(
-        tree_grid, final_state, final_iteration_index, maximum_iteration_index
+        tree_grid, final_state, final_iteration_index, maximum_iterations
     )
     return solution
 
@@ -190,13 +188,13 @@ def tree_grid_unravel_index(
     """
     raveled_index = jnp.asarray(raveled_index)
     shape = tree_grid_shape(tree_grid, is_leaf=is_leaf)
-    raveled_index = eqx.error_if(
-        raveled_index,
-        jnp.logical_or(raveled_index < 0, raveled_index >= math.prod(shape)),
-        "The flattened grid index must be greater than 0 and less than the "
-        f" grid size. The grid has shape {shape}, so its maximum index is "
-        f"{math.prod(shape) - 1}.",
-    )
+    # raveled_index = eqx.error_if(
+    #     raveled_index,
+    #     jnp.logical_or(raveled_index < 0, raveled_index >= math.prod(shape)),
+    #     "The flattened grid index must be greater than 0 and less than the "
+    #     f"grid size. Got index {raveled_index}, but the grid has shape {shape}, "
+    #     f"so its maximum index is {math.prod(shape) - 1}.",
+    # )
     unraveled_index = jnp.unravel_index(raveled_index, shape)
     tree_grid_def = jtu.tree_structure(tree_grid, is_leaf=is_leaf)
     tree_grid_index = jtu.tree_unflatten(tree_grid_def, unraveled_index)

@@ -39,7 +39,7 @@ class AbstractGridSearchMethod(
         args: Any,
         state: SearchState,
         current_iteration_index: Int[Array, ""],
-        maximum_iteration_index: int,
+        maximum_iterations: int,
     ) -> Bool[Array, ""]:
         raise NotImplementedError
 
@@ -49,7 +49,7 @@ class AbstractGridSearchMethod(
         tree_grid: PyTreeGrid,
         final_state: SearchState,
         final_iteration_index: Int[Array, ""],
-        maximum_iteration_index: int,
+        maximum_iterations: int,
     ) -> SearchSolution:
         raise NotImplementedError
 
@@ -67,20 +67,20 @@ class MinimumSolution(eqx.Module, strict=True):
         self,
         final_state: MinimumState,
         final_iteration_index: Int[Array, ""],
-        maximum_iteration_index: int,
+        maximum_iterations: int,
     ):
         final_iteration_index = eqx.error_if(
             final_iteration_index,
-            final_iteration_index != jnp.array(maximum_iteration_index),
+            final_iteration_index != jnp.array(maximum_iterations),
             "The final index of the grid search iteration was "
-            "found to not be equal to the size of the grid minus 1. "
+            "found to not be equal to the size of the grid. "
             f"The final index is {final_iteration_index}, "
-            f"but it should be {maximum_iteration_index}.",
+            f"but it should be {maximum_iterations}.",
         )
         self.final_state = final_state
         self.stats = dict(
             final_iteration_index=final_iteration_index,
-            maximum_iteration_index=maximum_iteration_index,
+            maximum_iterations=maximum_iterations,
         )
 
 
@@ -123,7 +123,7 @@ class SearchForMinimum(
         args: Any,
         state: MinimumState,
         current_iteration_index: Int[Array, ""],
-        maximum_iteration_index: int,
+        maximum_iterations: int,
     ) -> Bool[Array, ""]:
         return jnp.array(False)
 
@@ -132,8 +132,6 @@ class SearchForMinimum(
         tree_grid: PyTreeGrid,
         final_state: MinimumState,
         final_iteration_index: Int[Array, ""],
-        maximum_iteration_index: int,
+        maximum_iterations: int,
     ) -> MinimumSolution:
-        return MinimumSolution(
-            final_state, final_iteration_index, maximum_iteration_index
-        )
+        return MinimumSolution(final_state, final_iteration_index, maximum_iterations)
