@@ -2,9 +2,10 @@
 
 import math
 from collections.abc import Callable
-from typing import Any, Optional  # , cast
+from typing import Any, Optional
 
 import equinox as eqx
+import equinox.internal as eqxi
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jaxtyping import Array, Int, PyTree
@@ -21,11 +22,86 @@ def run_grid_search(
     args: Any = None,
     *,
     is_leaf: Optional[Callable[[Any], bool]] = None,
-):
-    # fn = eqx.filter_closure_convert(fn, grid, args)
-    # fn = cast(Callable[[PyTreeGridPoint, Any], Out], fn)
-    # f_struct = fn.out_struct
-    pass
+) -> PyTree[Any]:
+    """Run a grid search to optimize the function `fn`.
+
+    **Arguments:**
+
+    - `fn`: The function we would like to minimize with grid search. This
+            should be evaluated at arguments `fn(y, args)` and can return
+            any `jax.Array`. Here, `y` is a particular grid point of
+            `tree_grid`.
+    - `method`: An interface that specifies what we would like to do with
+                each evaluation of `fn`.
+    - `tree_grid`:
+    - `args`: Arguments passed to `fn`.
+    - `is_leaf`: As [`jax.tree_util.tree_flatten`](https://jax.readthedocs.io/en/latest/_autosummary/jax.tree_util.tree_flatten.html).
+                 This specifies what is to be treated as a leaf in `tree_grid`.
+
+    **Returns:**
+
+    Any pytree, as specified by the method `AbstractGridSearchMethod.postprocess`.
+    """
+    # Evaluate the shape and dtype of the output of `fn` using
+    # eqx.filter_closure_convert
+    initial_iteration_index = jnp.array(0)
+    init_tree_grid_point = tree_grid_take(
+        tree_grid,
+        tree_grid_unravel_index(initial_iteration_index, tree_grid, is_leaf=is_leaf),
+    )
+    fn = eqx.filter_closure_convert(fn, init_tree_grid_point, args)
+    is_static_leaf = lambda x: isinstance(x, eqxi.Static)
+    f_struct = jtu.tree_map(
+        lambda x: x.value,
+        jtu.tree_map(eqxi.Static, fn.out_struct),
+        is_leaf=is_static_leaf,
+    )
+    # Get the initial state of the search method
+    init_state = method.init(tree_grid, f_struct)
+    dynamic_init_state, static_state = eqx.partition(init_state, eqx.is_array)
+    # Get the number of iterations of the loop
+    n_iterations = math.prod(tree_grid_shape(tree_grid, is_leaf=is_leaf))
+    maximum_iteration_index = n_iterations - 1
+    # Finally, build the loop
+    init_carry = (
+        init_tree_grid_point,
+        initial_iteration_index,
+        dynamic_init_state,
+        tree_grid,
+    )
+
+    def cond_fun(carry):
+        tree_grid_point, iteration_index, dynamic_state, _ = carry
+        state = eqx.combine(static_state, dynamic_state)
+        terminate = method.terminate(
+            fn, tree_grid_point, args, state, iteration_index, maximum_iteration_index
+        )
+        return jnp.invert(terminate)
+
+    def body_fun(carry):
+        tree_grid_point, iteration_index, dynamic_state, tree_grid = carry
+        state = eqx.combine(static_state, dynamic_state)
+        new_state = method.update(fn, tree_grid_point, args, state, iteration_index)
+        new_dynamic_state, new_static_state = eqx.partition(new_state, eqx.is_array)
+        assert eqx.tree_equal(static_state, new_static_state) is True
+        new_iteration_index = iteration_index + 1
+        new_tree_grid_point = tree_grid_take(
+            tree_grid,
+            tree_grid_unravel_index(new_iteration_index, tree_grid, is_leaf=is_leaf),
+        )
+        return new_tree_grid_point, new_iteration_index, new_dynamic_state, tree_grid
+
+    # Run and unpack results
+    final_carry = eqxi.while_loop(
+        cond_fun, body_fun, init_carry, kind="lax", max_steps=n_iterations
+    )
+    _, final_iteration_index, dynamic_final_state, _ = final_carry
+    final_state = eqx.combine(static_state, dynamic_final_state)
+    # Return the solution
+    solution = method.postprocess(
+        tree_grid, final_state, final_iteration_index, maximum_iteration_index
+    )
+    return solution
 
 
 def tree_grid_shape(
@@ -38,7 +114,7 @@ def tree_grid_shape(
     **Arguments:**
 
     - `tree_grid`: A sparse grid cartesian grid, represented as a pytree.
-                   See [`run_grid_search`]() for more information.
+                   See [`run_grid_search`][] for more information.
     - `is_leaf`: As [`jax.tree_util.tree_flatten`](https://jax.readthedocs.io/en/latest/_autosummary/jax.tree_util.tree_flatten.html).
 
     **Returns:**
@@ -94,7 +170,8 @@ def tree_grid_unravel_index(
     """Get a "grid index" for a pytree grid.
 
     Roughly, this can be thought of as `jax.numpy.unravel_index`, but with a
-    pytree grid. See
+    pytree grid. See [`tree_grid_take`][] for an example of how to use this
+    function to sample a grid point.
 
     **Arguments:**
 
@@ -102,14 +179,14 @@ def tree_grid_unravel_index(
                        valued index, as one would with a flattened array. Passing
                        a 1D array of indices is also supported.
     - `tree_grid`: A sparse grid cartesian grid, represented as a pytree.
-                   See [`run_grid_search`]() for more information.
+                   See [`run_grid_search`][] for more information.
     - `is_leaf`: As [`jax.tree_util.tree_flatten`](https://jax.readthedocs.io/en/latest/_autosummary/jax.tree_util.tree_flatten.html).
 
     **Returns:**
 
     The grid index. This is a pytree of the same structure as `tree_grid`, with the
     result of `jax.numpy.unravel_index(raveled_index, shape)` inserted into the
-    appropriate leaf. Here, `shape` is given by the output of [`tree_grid_shape`]().
+    appropriate leaf. Here, `shape` is given by the output of [`tree_grid_shape`][].
     """
     raveled_index = jnp.asarray(raveled_index)
     shape = tree_grid_shape(tree_grid, is_leaf=is_leaf)
@@ -132,7 +209,7 @@ def tree_grid_take(
     tree_grid_index: PyTreeGridIndex,
 ) -> PyTreeGridPoint:
     """Get a grid point of the pytree grid, given a
-    pytree grid index. See [`tree_grid_unravel_index`]() to see
+    pytree grid index. See [`tree_grid_unravel_index`][] to see
     how to return a pytree grid index.
 
     Roughly, this can be thought of as `jax.numpy.take`, but with a
@@ -141,9 +218,9 @@ def tree_grid_take(
     **Arguments:**
 
     - `tree_grid`: A sparse cartesian grid, represented as a pytree.
-                   See [`run_grid_search`]() for more information.
+                   See [`run_grid_search`][] for more information.
     - `tree_grid_index`: An index for `tree_grid`, also represented as a pytree.
-                   See [`tree_grid_unravel_index`]() for more information.
+                   See [`tree_grid_unravel_index`][] for more information.
 
     **Returns:**
 
@@ -190,7 +267,7 @@ def _leaf_take(index, leaf, **kwargs):
 
 
 def _get_leading_dim(array):
-    return (jnp.atleast_1d(array).shape[0],)
+    return (array.shape[0],)
 
 
 class _LeafLeadingDimension(eqx.Module):

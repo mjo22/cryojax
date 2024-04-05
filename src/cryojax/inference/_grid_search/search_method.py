@@ -6,7 +6,7 @@ from typing import Any, Callable, Generic
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, PyTree
+from jaxtyping import Array, Bool, Int, PyTree
 
 from .custom_types import PyTreeGrid, PyTreeGridPoint, SearchSolution, SearchState
 
@@ -16,10 +16,7 @@ class AbstractGridSearchMethod(
 ):
     @abstractmethod
     def init(
-        self,
-        fn: Callable[[PyTreeGridPoint, Any], Array],
-        tree_grid: PyTreeGrid,
-        f_struct: PyTree[jax.ShapeDtypeStruct],
+        self, tree_grid: PyTreeGrid, f_struct: PyTree[jax.ShapeDtypeStruct]
     ) -> SearchState:
         raise NotImplementedError
 
@@ -30,38 +27,73 @@ class AbstractGridSearchMethod(
         tree_grid_point: PyTreeGridPoint,
         args: Any,
         state: SearchState,
+        current_iteration_index: Int[Array, ""],
     ) -> SearchState:
+        raise NotImplementedError
+
+    @abstractmethod
+    def terminate(
+        self,
+        fn: Callable[[PyTreeGridPoint, Any], Array],
+        tree_grid_point: PyTreeGridPoint,
+        args: Any,
+        state: SearchState,
+        current_iteration_index: Int[Array, ""],
+        maximum_iteration_index: int,
+    ) -> Bool[Array, ""]:
         raise NotImplementedError
 
     @abstractmethod
     def postprocess(
         self,
-        fn: Callable[[PyTreeGridPoint, Any], Array],
         tree_grid: PyTreeGrid,
-        args: Any,
-        state: SearchState,
+        final_state: SearchState,
+        final_iteration_index: Int[Array, ""],
+        maximum_iteration_index: int,
     ) -> SearchSolution:
         raise NotImplementedError
 
 
 class MinimumState(eqx.Module, strict=True):
     current_minimum_value: Array
+    current_best_solution: Array
 
 
 class MinimumSolution(eqx.Module, strict=True):
     final_state: MinimumState
+    stats: dict[str, Any]
+
+    def __init__(
+        self,
+        final_state: MinimumState,
+        final_iteration_index: Int[Array, ""],
+        maximum_iteration_index: int,
+    ):
+        final_iteration_index = eqx.error_if(
+            final_iteration_index,
+            final_iteration_index != jnp.array(maximum_iteration_index),
+            "The final index of the grid search iteration was "
+            "found to not be equal to the size of the grid minus 1. "
+            f"The final index is {final_iteration_index}, "
+            f"but it should be {maximum_iteration_index}.",
+        )
+        self.final_state = final_state
+        self.stats = dict(
+            final_iteration_index=final_iteration_index,
+            maximum_iteration_index=maximum_iteration_index,
+        )
 
 
 class SearchForMinimum(
     AbstractGridSearchMethod[MinimumState, MinimumSolution], strict=True
 ):
     def init(
-        self,
-        fn: Callable[[PyTreeGridPoint, Any], Array],
-        tree_grid: PyTreeGrid,
-        f_struct: PyTree[jax.ShapeDtypeStruct],
+        self, tree_grid: PyTreeGrid, f_struct: PyTree[jax.ShapeDtypeStruct]
     ) -> MinimumState:
-        state = MinimumState(current_minimum_value=jnp.full(f_struct.shape, jnp.inf))
+        state = MinimumState(
+            current_minimum_value=jnp.full(f_struct.shape, jnp.inf),
+            current_best_solution=jnp.full(f_struct.shape, 0, dtype=int),
+        )
         return state
 
     def update(
@@ -70,14 +102,38 @@ class SearchForMinimum(
         tree_grid_point: PyTreeGridPoint,
         args: Any,
         state: MinimumState,
+        current_iteration_index: Int[Array, ""],
     ) -> MinimumState:
-        raise NotImplementedError
+        value = fn(tree_grid_point, args)
+        last_minimum_value = state.current_minimum_value
+        last_best_solution = state.current_best_solution
+        is_less_than_last_minimum = value < last_minimum_value
+        current_minimum_value = jnp.where(
+            is_less_than_last_minimum, value, last_minimum_value
+        )
+        current_best_solution = jnp.where(
+            is_less_than_last_minimum, current_iteration_index, last_best_solution
+        )
+        return MinimumState(current_minimum_value, current_best_solution)
+
+    def terminate(
+        self,
+        fn: Callable[[PyTreeGridPoint, Any], Array],
+        tree_grid_point: PyTreeGridPoint,
+        args: Any,
+        state: MinimumState,
+        current_iteration_index: Int[Array, ""],
+        maximum_iteration_index: int,
+    ) -> Bool[Array, ""]:
+        return jnp.array(False)
 
     def postprocess(
         self,
-        fn: Callable[[PyTreeGridPoint, Any], Array],
         tree_grid: PyTreeGrid,
-        args: Any,
-        state: MinimumState,
+        final_state: MinimumState,
+        final_iteration_index: Int[Array, ""],
+        maximum_iteration_index: int,
     ) -> MinimumSolution:
-        return MinimumSolution(final_state=state)
+        return MinimumSolution(
+            final_state, final_iteration_index, maximum_iteration_index
+        )
