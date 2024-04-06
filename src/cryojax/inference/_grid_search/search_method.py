@@ -1,14 +1,21 @@
 """An interface for a grid search method."""
 
+import math
 from abc import abstractmethod
-from typing import Any, Callable, Generic
+from typing import Any, Callable, Generic, Optional
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Bool, Int, PyTree
+import jax.tree_util as jtu
+from jaxtyping import Array, Int, PyTree
 
 from .custom_types import PyTreeGrid, PyTreeGridPoint, SearchSolution, SearchState
+from .pytree_manipulation import (
+    tree_grid_shape,
+    tree_grid_take,
+    tree_grid_unravel_index,
+)
 
 
 class AbstractGridSearchMethod(
@@ -16,7 +23,11 @@ class AbstractGridSearchMethod(
 ):
     @abstractmethod
     def init(
-        self, tree_grid: PyTreeGrid, f_struct: PyTree[jax.ShapeDtypeStruct]
+        self,
+        tree_grid: PyTreeGrid,
+        f_struct: PyTree[jax.ShapeDtypeStruct],
+        *,
+        is_leaf: Optional[Callable[[Any], bool]] = None,
     ) -> SearchState:
         raise NotImplementedError
 
@@ -32,24 +43,13 @@ class AbstractGridSearchMethod(
         raise NotImplementedError
 
     @abstractmethod
-    def terminate(
-        self,
-        fn: Callable[[PyTreeGridPoint, Any], Array],
-        tree_grid_point: PyTreeGridPoint,
-        args: Any,
-        state: SearchState,
-        current_iteration_index: Int[Array, ""],
-        maximum_iterations: int,
-    ) -> Bool[Array, ""]:
-        raise NotImplementedError
-
-    @abstractmethod
     def postprocess(
         self,
         tree_grid: PyTreeGrid,
         final_state: SearchState,
-        final_iteration_index: Int[Array, ""],
-        maximum_iterations: int,
+        f_struct: PyTree[jax.ShapeDtypeStruct],
+        *,
+        is_leaf: Optional[Callable[[Any], bool]] = None,
     ) -> SearchSolution:
         raise NotImplementedError
 
@@ -60,35 +60,20 @@ class MinimumState(eqx.Module, strict=True):
 
 
 class MinimumSolution(eqx.Module, strict=True):
-    final_state: MinimumState
+    value: PyTreeGridPoint
     stats: dict[str, Any]
-
-    def __init__(
-        self,
-        final_state: MinimumState,
-        final_iteration_index: Int[Array, ""],
-        maximum_iterations: int,
-    ):
-        final_iteration_index = eqx.error_if(
-            final_iteration_index,
-            final_iteration_index != jnp.array(maximum_iterations),
-            "The final index of the grid search iteration was "
-            "found to not be equal to the size of the grid. "
-            f"The final index is {final_iteration_index}, "
-            f"but it should be {maximum_iterations}.",
-        )
-        self.final_state = final_state
-        self.stats = dict(
-            final_iteration_index=final_iteration_index,
-            maximum_iterations=maximum_iterations,
-        )
+    state: MinimumState
 
 
 class SearchForMinimum(
     AbstractGridSearchMethod[MinimumState, MinimumSolution], strict=True
 ):
     def init(
-        self, tree_grid: PyTreeGrid, f_struct: PyTree[jax.ShapeDtypeStruct]
+        self,
+        tree_grid: PyTreeGrid,
+        f_struct: PyTree[jax.ShapeDtypeStruct],
+        *,
+        is_leaf: Optional[Callable[[Any], bool]] = None,
     ) -> MinimumState:
         state = MinimumState(
             current_minimum_value=jnp.full(f_struct.shape, jnp.inf),
@@ -116,22 +101,35 @@ class SearchForMinimum(
         )
         return MinimumState(current_minimum_value, current_best_solution)
 
-    def terminate(
-        self,
-        fn: Callable[[PyTreeGridPoint, Any], Array],
-        tree_grid_point: PyTreeGridPoint,
-        args: Any,
-        state: MinimumState,
-        current_iteration_index: Int[Array, ""],
-        maximum_iterations: int,
-    ) -> Bool[Array, ""]:
-        return jnp.array(False)
-
     def postprocess(
         self,
         tree_grid: PyTreeGrid,
         final_state: MinimumState,
-        final_iteration_index: Int[Array, ""],
-        maximum_iterations: int,
+        f_struct: PyTree[jax.ShapeDtypeStruct],
+        *,
+        is_leaf: Optional[Callable[[Any], bool]] = None,
     ) -> MinimumSolution:
-        return MinimumSolution(final_state, final_iteration_index, maximum_iterations)
+        if final_state.current_best_solution.shape != f_struct.shape:
+            raise ValueError(
+                "The shape of the search state solution does "
+                "not match the shape of the output of `fn`. Got "
+                f"output shape {f_struct.shape} for `fn`, but got "
+                f"shape {final_state.current_best_solution.shape} for the "
+                "solution."
+            )
+        if f_struct.shape == ():
+            raveled_index = final_state.current_best_solution
+        else:
+            raveled_index = final_state.current_best_solution.ravel()
+        tree_grid_index = tree_grid_unravel_index(
+            raveled_index, tree_grid, is_leaf=is_leaf
+        )
+        value = jtu.tree_map(
+            lambda x: x.reshape(f_struct.shape),
+            tree_grid_take(tree_grid, tree_grid_index),
+        )
+        return MinimumSolution(
+            value,
+            {"n_iterations": math.prod(tree_grid_shape(tree_grid, is_leaf=is_leaf))},
+            final_state,
+        )
