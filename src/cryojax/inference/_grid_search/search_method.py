@@ -55,7 +55,7 @@ class AbstractGridSearchMethod(
 
 
 class MinimumState(eqx.Module, strict=True):
-    current_minimum_value: Array
+    current_minimum_eval: Array
     current_best_solution: Array
 
 
@@ -76,7 +76,7 @@ class SearchForMinimum(
         is_leaf: Optional[Callable[[Any], bool]] = None,
     ) -> MinimumState:
         state = MinimumState(
-            current_minimum_value=jnp.full(f_struct.shape, jnp.inf),
+            current_minimum_eval=jnp.full(f_struct.shape, jnp.inf),
             current_best_solution=jnp.full(f_struct.shape, 0, dtype=int),
         )
         return state
@@ -90,16 +90,16 @@ class SearchForMinimum(
         current_iteration_index: Int[Array, ""],
     ) -> MinimumState:
         value = fn(tree_grid_point, args)
-        last_minimum_value = state.current_minimum_value
+        last_minimum_value = state.current_minimum_eval
         last_best_solution = state.current_best_solution
         is_less_than_last_minimum = value < last_minimum_value
-        current_minimum_value = jnp.where(
+        current_minimum_eval = jnp.where(
             is_less_than_last_minimum, value, last_minimum_value
         )
         current_best_solution = jnp.where(
             is_less_than_last_minimum, current_iteration_index, last_best_solution
         )
-        return MinimumState(current_minimum_value, current_best_solution)
+        return MinimumState(current_minimum_eval, current_best_solution)
 
     def postprocess(
         self,
