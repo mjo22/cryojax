@@ -6,8 +6,8 @@ from pycistem.core import AnglesAndShifts, CTF as cisCTF, Image  # pyright: igno
 
 import cryojax.simulator as cs
 from cryojax.coordinates import cartesian_to_polar, make_frequencies
+from cryojax.data import read_array_with_spacing_from_mrc
 from cryojax.image import irfftn, powerspectrum
-from cryojax.io import read_array_with_spacing_from_mrc
 from cryojax.simulator import CTF, EulerAnglePose
 
 

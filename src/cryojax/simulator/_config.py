@@ -11,8 +11,8 @@ import jax.numpy as jnp
 from equinox import field, Module
 from jaxtyping import Array, Complex, Float
 
+from .._errors import error_if_not_positive
 from ..coordinates import CoordinateGrid, FrequencyGrid
-from ..core import error_if_not_positive
 from ..image import (
     crop_to_shape,
     irfftn,

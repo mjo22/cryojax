@@ -13,7 +13,7 @@ import jax.tree_util as jtu
 from equinox import AbstractVar, field, Module
 from jaxtyping import Array, Float, PyTree
 
-from ...core import error_if_not_positive, error_if_zero
+from ..._errors import error_if_not_positive, error_if_zero
 
 
 def _is_transformed(x: Any) -> bool:
