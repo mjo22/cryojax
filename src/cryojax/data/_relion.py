@@ -11,9 +11,9 @@ import numpy as np
 import pandas as pd
 from jaxtyping import Array, Float, Int
 
-from ..io import read_and_validate_starfile
 from ..simulator import CTF, EulerAnglePose, ImageConfig
 from ._dataset import AbstractDataset
+from ._io import read_and_validate_starfile
 from ._particle_stack import AbstractParticleStack
 
 

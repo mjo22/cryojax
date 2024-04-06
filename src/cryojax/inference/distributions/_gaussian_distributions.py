@@ -11,7 +11,7 @@ import numpy as np
 from equinox import field
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
-from ...core import error_if_not_positive
+from ..._errors import error_if_not_positive
 from ...image.operators import Constant, FourierOperatorLike
 from ...simulator import AbstractPipeline
 from ._distribution import AbstractDistribution

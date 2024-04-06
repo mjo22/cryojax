@@ -5,7 +5,7 @@ Models the electron dose.
 from equinox import field, Module
 from jaxtyping import Array, Float
 
-from ..core import error_if_not_positive
+from .._errors import error_if_not_positive
 
 
 class ElectronDose(Module, strict=True):

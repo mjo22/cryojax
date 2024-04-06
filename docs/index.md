@@ -47,15 +47,15 @@ First, instantiate the scattering potential representation and its respective me
 ```python
 import jax
 import jax.numpy as jnp
-import cryojax.simulator as cs
-from cryojax.io import read_array_with_spacing_from_mrc
+import cryojax.simulator as cxs
+from cryojax.data import read_array_with_spacing_from_mrc
 
 # Instantiate the scattering potential.
 filename = "example_scattering_potential.mrc"
 real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(filename)
-potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, voxel_size)
+potential = cxs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, voxel_size)
 # ... now instantiate fourier slice extraction
-integrator = cs.FourierSliceExtract(interpolation_order=1)
+integrator = cxs.FourierSliceExtract(interpolation_order=1)
 ```
 
 Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool.
@@ -64,7 +64,7 @@ We can now instantiate the representation of a biological specimen, which also i
 
 ```python
 # First instantiate the pose. Angles are given in degrees
-pose = cs.EulerAnglePose(
+pose = cxs.EulerAnglePose(
     offset_x_in_angstroms=5.0,
     offset_y_in_angstroms=-3.0,
     view_phi=20.0,
@@ -72,24 +72,24 @@ pose = cs.EulerAnglePose(
     view_psi=-10.0,
 )
 # ... now, build the biological specimen
-specimen = cs.Specimen(potential, integrator, pose)
+specimen = cxs.Specimen(potential, integrator, pose)
 ```
 
 Next, build the model for the electron microscope. Here, we simply include a model for the CTF in the weak-phase approximation (linear image formation theory).
 
 ```python
-from cryojax.image import operators as op
+from cryojax.image.operators import FourierGaussian
 
 # First, initialize the CTF and its optics model
-ctf = cs.CTF(
+ctf = cxs.CTF(
     defocus_u_in_angstroms=10000.0,
     defocus_v_in_angstroms=9800.0,
     astigmatism_angle=10.0,
     amplitude_contrast_ratio=0.1)
-optics = cs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # b_factor is given in Angstroms^2
+optics = cxs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # b_factor is given in Angstroms^2
 # ... these are stored in the Instrument
 voltage_in_kilovolts = 300.0
-instrument = cs.Instrument(voltage_in_kilovolts, optics)
+instrument = cxs.Instrument(voltage_in_kilovolts, optics)
 ```
 
 The `CTF` has all parameters used in CTFFIND4, which take their default values if not
@@ -97,9 +97,9 @@ explicitly configured here. Finally, we can instantiate the `ImagePipeline` and 
 
 ```python
 # Instantiate the image configuration
-config = cs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
+config = cxs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
 # Build the image formation model
-pipeline = cs.ImagePipeline(config, specimen, instrument)
+pipeline = cxs.ImagePipeline(config, specimen, instrument)
 # ... simulate an image and return a normalized image in real-space
 image = pipeline.render(get_real=True, normalize=True)
 ```

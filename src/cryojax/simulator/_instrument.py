@@ -9,8 +9,8 @@ import jax.numpy as jnp
 from equinox import field, Module
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
+from .._errors import error_if_not_positive
 from ..constants import convert_keV_to_angstroms
-from ..core import error_if_not_positive
 from ._config import ImageConfig
 from ._detector import AbstractDetector
 from ._dose import ElectronDose

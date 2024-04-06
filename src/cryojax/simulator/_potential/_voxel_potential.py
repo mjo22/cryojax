@@ -20,9 +20,9 @@ import numpy as np
 from equinox import AbstractClassVar, AbstractVar, field
 from jaxtyping import Array, Complex, Float, Int
 
+from ..._errors import error_if_not_positive
 from ...constants import get_form_factor_params
 from ...coordinates import CoordinateGrid, CoordinateList, FrequencySlice
-from ...core import error_if_not_positive
 from ...image import (
     compute_spline_coefficients,
     crop_to_shape,

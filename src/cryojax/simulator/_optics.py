@@ -10,9 +10,9 @@ import jax.numpy as jnp
 from equinox import AbstractClassVar, AbstractVar, field, Module
 from jaxtyping import Array, Complex, Float
 
+from .._errors import error_if_negative, error_if_not_fractional, error_if_not_positive
 from ..constants import convert_keV_to_angstroms
 from ..coordinates import cartesian_to_polar
-from ..core import error_if_negative, error_if_not_fractional, error_if_not_positive
 from ..image.operators import (
     AbstractFourierOperator,
     Constant,

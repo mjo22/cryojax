@@ -1,5 +1,5 @@
 """
-Utilities for runtime errors, wrapping `equinox.error_if`. 
+Utilities for runtime errors, wrapping `equinox.error_if`.
 """
 
 import equinox as eqx
