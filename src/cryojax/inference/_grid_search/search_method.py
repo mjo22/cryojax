@@ -144,7 +144,7 @@ class MinimumSolution(eqx.Module, strict=True):
     state: MinimumState
 
 
-class SearchForMinimum(
+class MinimumSearchMethod(
     AbstractGridSearchMethod[MinimumState, MinimumSolution], strict=True
 ):
     """Simply find the minimum value returned by `fn` over all grid points.

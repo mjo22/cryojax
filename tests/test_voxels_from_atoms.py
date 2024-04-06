@@ -5,8 +5,8 @@ import pytest
 from jax import config
 
 from cryojax.coordinates import CoordinateGrid
+from cryojax.data import read_atoms_from_pdb
 from cryojax.image import ifftn
-from cryojax.io import read_atoms_from_pdb
 from cryojax.simulator import (
     build_real_space_voxels_from_atoms,
     FourierVoxelGridPotential,

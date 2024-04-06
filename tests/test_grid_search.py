@@ -90,7 +90,7 @@ def test_run_grid_search(batch_size):
     )
     grid = (x, y)
     # Run the grid search
-    method = cxi.SearchForMinimum(batch_size=batch_size)
+    method = cxi.MinimumSearchMethod(batch_size=batch_size)
     solution = cxi.run_grid_search(cost_fn, method, grid, (variance, offset))
     np.testing.assert_allclose(solution.state.current_minimum_eval, true_min_eval)
     np.testing.assert_allclose(solution.value, true_min_pos)
