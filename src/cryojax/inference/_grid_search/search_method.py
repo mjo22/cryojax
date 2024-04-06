@@ -82,10 +82,10 @@ class AbstractGridSearchMethod(
     def batch_update(
         self,
         fn: Callable[[PyTreeGridPoint, Any], Array],
-        tree_grid_points: PyTreeGridPoint,
+        tree_grid_point_batch: PyTreeGridPoint,
         args: Any,
         state: SearchState,
-        raveled_grid_indices: Int[Array, " _"],
+        raveled_grid_index_batch: Int[Array, " _"],
     ) -> SearchState:
         """Update the state of the grid search with a batch of grid points as
         input.
@@ -93,11 +93,12 @@ class AbstractGridSearchMethod(
         **Arguments:**
 
         - `fn`: As [`run_grid_search`][].
-        - `tree_grid_points`: The grid points at which to evaluate `fn` in parallel.
+        - `tree_grid_point_batch`: The grid points at which to evaluate `fn` in
+                                   parallel.
         - `args`: As [`run_grid_search`][].
         - `state`: The current state of the search.
-        - `raveled_grid_indices`: The current batch of indices on which to evaluate
-                                  the grid.
+        - `raveled_grid_index_batch`: The current batch of indices on which to evaluate
+                                      the grid.
 
         **Returns:**
 
@@ -213,15 +214,17 @@ class SearchForMinimum(
     def batch_update(
         self,
         fn: Callable[[PyTreeGridPoint, Any], Array],
-        tree_grid_points: PyTreeGridPoint,
+        tree_grid_point_batch: PyTreeGridPoint,
         args: Any,
         state: MinimumState,
-        raveled_grid_indices: Int[Array, " _"],
+        raveled_grid_index_batch: Int[Array, " _"],
     ) -> MinimumState:
         # Evaluate the batch of grid points and extract the best one
-        value_batch = jax.vmap(fn, in_axes=[0, None])(tree_grid_points, args)
+        value_batch = jax.vmap(fn, in_axes=[0, None])(tree_grid_point_batch, args)
         best_batch_index = jnp.argmin(value_batch, axis=0)
-        raveled_grid_index = jnp.take(raveled_grid_indices, best_batch_index, axis=0)
+        raveled_grid_index = jnp.take(
+            raveled_grid_index_batch, best_batch_index, axis=0
+        )
         value = jnp.take(value_batch, best_batch_index, axis=0)
         # Unpack the current state
         last_minimum_value = state.current_minimum_eval
