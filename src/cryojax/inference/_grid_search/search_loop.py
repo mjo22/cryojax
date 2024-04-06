@@ -7,6 +7,7 @@ from typing import Any, Optional
 import equinox as eqx
 import equinox.internal as eqxi
 import jax
+import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax.experimental import host_callback
 from jaxtyping import Array, PyTree
@@ -87,7 +88,7 @@ def run_grid_search(
     # Finally, build the loop
     init_carry = (dynamic_init_state, tree_grid)
 
-    def body_fun(iteration_index, carry):
+    def brute_force_body_fun(iteration_index, carry):
         dynamic_state, tree_grid = carry
         state = eqx.combine(static_state, dynamic_state)
         tree_grid_point = tree_grid_take(
@@ -99,8 +100,43 @@ def run_grid_search(
         assert eqx.tree_equal(static_state, new_static_state) is True
         return new_dynamic_state, tree_grid
 
+    def batched_body_fun(iteration_index, carry):
+        dynamic_state, tree_grid = carry
+        state = eqx.combine(static_state, dynamic_state)
+        raveled_grid_index_batch = jnp.linspace(
+            iteration_index * method.batch_size,
+            (iteration_index + 1) * method.batch_size - 1,
+            method.batch_size,
+            dtype=int,
+        )
+        tree_grid_points = tree_grid_take(
+            tree_grid,
+            tree_grid_unravel_index(
+                raveled_grid_index_batch, tree_grid, is_leaf=is_leaf
+            ),
+        )
+        new_state = method.batch_update(
+            fn, tree_grid_points, args, state, raveled_grid_index_batch
+        )
+        new_dynamic_state, new_static_state = eqx.partition(new_state, eqx.is_array)
+        assert eqx.tree_equal(static_state, new_static_state) is True
+        return new_dynamic_state, tree_grid
+
     # Get the number of iterations of the loop (the size of the grid)
-    n_iterations = math.prod(tree_grid_shape(tree_grid, is_leaf=is_leaf))
+    grid_size = math.prod(tree_grid_shape(tree_grid, is_leaf=is_leaf))
+    if method.batch_size is None:
+        n_iterations = grid_size
+        body_fun = brute_force_body_fun
+    else:
+        if grid_size % method.batch_size != 0:
+            raise ValueError(
+                "The size of the grid must be an integer multiple "
+                "of the `method.batch_size`. Found that the grid size "
+                f"is equal to {grid_size}, and the batch size is equal "
+                f"to {method.batch_size}."
+            )
+        n_iterations = grid_size // method.batch_size
+        body_fun = batched_body_fun
     # Run and unpack results
     if progress_bar:
         body_fun = _loop_tqdm(n_iterations, print_every)(body_fun)

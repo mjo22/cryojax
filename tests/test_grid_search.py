@@ -2,6 +2,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from jaxtyping import Array, install_import_hook
 
 
@@ -69,9 +70,10 @@ def cost_fn(grid_point, variance_plus_offset):
     )
 
 
-def test_run_grid_search():
+@pytest.mark.parametrize("batch_size", [None, 1, 10])
+def test_run_grid_search(batch_size):
     # Compute full landscape of simple analytic "cost function"
-    dim = 20
+    dim = 200
     coords = make_coordinates((dim, dim))
     variance, offset = jnp.asarray(10.0), jnp.asarray((2.0, -1.0))
     landscape = jax.vmap(jax.vmap(cost_fn, in_axes=[0, None]), in_axes=[0, None])(
@@ -88,7 +90,7 @@ def test_run_grid_search():
     )
     grid = (x, y)
     # Run the grid search
-    method = cxi.SearchForMinimum()
+    method = cxi.SearchForMinimum(batch_size=batch_size)
     solution = cxi.run_grid_search(cost_fn, method, grid, (variance, offset))
     np.testing.assert_allclose(solution.state.current_minimum_eval, true_min_eval)
     np.testing.assert_allclose(solution.value, true_min_pos)

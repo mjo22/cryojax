@@ -25,6 +25,8 @@ class AbstractGridSearchMethod(
     search.
     """
 
+    batch_size: eqx.AbstractVar[Optional[int]]
+
     @abstractmethod
     def init(
         self,
@@ -55,7 +57,7 @@ class AbstractGridSearchMethod(
         tree_grid_point: PyTreeGridPoint,
         args: Any,
         state: SearchState,
-        current_iteration_index: Int[Array, ""],
+        raveled_grid_index: Int[Array, ""],
     ) -> SearchState:
         """Update the state of the grid search.
 
@@ -66,9 +68,36 @@ class AbstractGridSearchMethod(
                              `fn` is evaluated as `fn(tree_grid_point, args)`.
         - `args`: As [`run_grid_search`][].
         - `state`: The current state of the search.
-        - `current_iteration_index`: The current index of the search. This is
-                                     used to index `tree_grid` to extract the
-                                     `tree_grid_point`.
+        - `raveled_grid_index`: The current index of the grid. This is
+                                used to index `tree_grid` to extract the
+                                `tree_grid_point`.
+
+        **Returns:**
+
+        The updated state of the grid search.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def batch_update(
+        self,
+        fn: Callable[[PyTreeGridPoint, Any], Array],
+        tree_grid_points: PyTreeGridPoint,
+        args: Any,
+        state: SearchState,
+        raveled_grid_indices: Int[Array, " _"],
+    ) -> SearchState:
+        """Update the state of the grid search with a batch of grid points as
+        input.
+
+        **Arguments:**
+
+        - `fn`: As [`run_grid_search`][].
+        - `tree_grid_points`: The grid points at which to evaluate `fn` in parallel.
+        - `args`: As [`run_grid_search`][].
+        - `state`: The current state of the search.
+        - `raveled_grid_indices`: The current batch of indices on which to evaluate
+                                  the grid.
 
         **Returns:**
 
@@ -109,7 +138,7 @@ class MinimumState(eqx.Module, strict=True):
 
 
 class MinimumSolution(eqx.Module, strict=True):
-    value: PyTreeGridPoint
+    value: Optional[PyTreeGridPoint]
     stats: dict[str, Any]
     state: MinimumState
 
@@ -120,7 +149,28 @@ class SearchForMinimum(
     """Simply find the minimum value returned by `fn` over all grid points.
 
     The minimization is done *elementwise* for the output returned by `fn(y, args)`.
+    This allows for more clever grid searches than a brute-force approach--for example,
+    `fn` can explore its own region of parameter space in parallel.
     """
+
+    get_solution_value: bool
+    batch_size: Optional[int]
+
+    def __init__(
+        self, *, get_solution_value: bool = True, batch_size: Optional[int] = None
+    ):
+        """**Arguments:**
+
+        - `get_solution_value`: If `True`, the grid search solution will contain the
+                                best grid point found. If `False`, only the flattened
+                                index corresponding to these grid points are returned
+                                and [`tree_grid_take`][] must be used to extract the
+                                actual grid points. Setting this to `False` may be
+                                necessary if the grid contains large arrays.
+        - `batch_size`: The stride of grid points over which to evaluate in parallel.
+        """
+        self.get_solution_value = get_solution_value
+        self.batch_size = batch_size
 
     def init(
         self,
@@ -143,20 +193,46 @@ class SearchForMinimum(
         tree_grid_point: PyTreeGridPoint,
         args: Any,
         state: MinimumState,
-        current_iteration_index: Int[Array, ""],
+        raveled_grid_index: Int[Array, ""],
     ) -> MinimumState:
+        # Evaluate the function
+        value = fn(tree_grid_point, args)
         # Unpack the current state
         last_minimum_value = state.current_minimum_eval
         last_best_raveled_index = state.current_best_raveled_index
-        # Evaluate the function
-        value = fn(tree_grid_point, args)
         # Update the minimum and best grid index, elementwise
         is_less_than_last_minimum = value < last_minimum_value
         current_minimum_eval = jnp.where(
             is_less_than_last_minimum, value, last_minimum_value
         )
         current_best_raveled_index = jnp.where(
-            is_less_than_last_minimum, current_iteration_index, last_best_raveled_index
+            is_less_than_last_minimum, raveled_grid_index, last_best_raveled_index
+        )
+        return MinimumState(current_minimum_eval, current_best_raveled_index)
+
+    def batch_update(
+        self,
+        fn: Callable[[PyTreeGridPoint, Any], Array],
+        tree_grid_points: PyTreeGridPoint,
+        args: Any,
+        state: MinimumState,
+        raveled_grid_indices: Int[Array, " _"],
+    ) -> MinimumState:
+        # Evaluate the batch of grid points and extract the best one
+        value_batch = jax.vmap(fn, in_axes=[0, None])(tree_grid_points, args)
+        best_batch_index = jnp.argmin(value_batch, axis=0)
+        raveled_grid_index = jnp.take(raveled_grid_indices, best_batch_index, axis=0)
+        value = jnp.take(value_batch, best_batch_index, axis=0)
+        # Unpack the current state
+        last_minimum_value = state.current_minimum_eval
+        last_best_raveled_index = state.current_best_raveled_index
+        # Update the minimum and best grid index, elementwise
+        is_less_than_last_minimum = value < last_minimum_value
+        current_minimum_eval = jnp.where(
+            is_less_than_last_minimum, value, last_minimum_value
+        )
+        current_best_raveled_index = jnp.where(
+            is_less_than_last_minimum, raveled_grid_index, last_best_raveled_index
         )
         return MinimumState(current_minimum_eval, current_best_raveled_index)
 
@@ -177,22 +253,25 @@ class SearchForMinimum(
                 f"shape {final_state.current_best_raveled_index.shape} for the "
                 "solution."
             )
-        # Extract the solution of the search, i.e. the grid point(s) corresponding
-        # to the raveled grid index
-        if f_struct.shape == ():
-            raveled_index = final_state.current_best_raveled_index
+        if self.get_solution_value:
+            # Extract the solution of the search, i.e. the grid point(s) corresponding
+            # to the raveled grid index
+            if f_struct.shape == ():
+                raveled_index = final_state.current_best_raveled_index
+            else:
+                raveled_index = final_state.current_best_raveled_index.ravel()
+            # ... get the pytree representation of the index
+            tree_grid_index = tree_grid_unravel_index(
+                raveled_index, tree_grid, is_leaf=is_leaf
+            )
+            # ... index the full grid, reshaping the solution's leaves to be the same
+            # shape as returned by `fn`
+            value = jtu.tree_map(
+                lambda x: x.reshape(f_struct.shape),
+                tree_grid_take(tree_grid, tree_grid_index),
+            )
         else:
-            raveled_index = final_state.current_best_raveled_index.ravel()
-        # ... get the pytree representation of the index
-        tree_grid_index = tree_grid_unravel_index(
-            raveled_index, tree_grid, is_leaf=is_leaf
-        )
-        # ... index the full grid, reshaping the solution's leaves to be the same
-        # shape as returned by `fn`
-        value = jtu.tree_map(
-            lambda x: x.reshape(f_struct.shape),
-            tree_grid_take(tree_grid, tree_grid_index),
-        )
+            value = None
         # ... build and return the solution
         return MinimumSolution(
             value,
