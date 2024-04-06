@@ -33,16 +33,27 @@ def run_grid_search(
     progress_bar: bool = False,
     print_every: Optional[int] = None,
 ) -> PyTree[Any]:
-    """Run a grid search to optimize the function `fn`.
+    """Run a grid search to minimize the function `fn`.
+
+    !!! question "What is a `tree_grid`?"
+
+        For the grid search, we represent the grid as an arbitrary
+        pytree whose leaves are JAX arrays with a leading dimension.
+        For a particular leaf, its leading dimension indexes a set
+        grid points. The entire grid is then the cartesian product
+        of the grid points of all of its leaves.
+
+    To learn more, see the `tree_grid` manipulation routines [`tree_grid_shape`][] and
+    [`tree_grid_take`][].
 
     **Arguments:**
 
     - `fn`: The function we would like to minimize with grid search. This
-            should be evaluated at arguments `fn(y, args)` and can return
-            any `jax.Array`. Here, `y` is a particular grid point of
-            `tree_grid`.
+            should be evaluated at arguments `fn(y, args)`, where `y` is a
+            particular grid point of `tree_grid`. The value returned by `fn`
+            must be compatible with the respective `method`.
     - `method`: An interface that specifies what we would like to do with
-                each evaluation of `fn`.
+                each evaluation of `fn`. `SearchForMinimum` is a common choice.
     - `tree_grid`:
     - `args`: Arguments passed to `fn`.
     - `is_leaf`: As [`jax.tree_util.tree_flatten`](https://jax.readthedocs.io/en/latest/_autosummary/jax.tree_util.tree_flatten.html).
