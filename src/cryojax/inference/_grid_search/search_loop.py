@@ -43,6 +43,13 @@ def run_grid_search(
         grid points. The entire grid is then the cartesian product
         of the grid points of all of its leaves.
 
+    !!! warning
+
+        A `tree_grid` can only have leaves thay are JAX arrays of
+        grid points and `None`. It is difficult to precisely check this
+        condition even with a run-time type checker, so breaking it may
+        result in unhelpful errors.
+
     To learn more, see the `tree_grid` manipulation routines [`tree_grid_shape`][] and
     [`tree_grid_take`][].
 
@@ -54,8 +61,9 @@ def run_grid_search(
             must be compatible with the respective `method`.
     - `method`: An interface that specifies what we would like to do with
                 each evaluation of `fn`. `SearchForMinimum` is a common choice.
-    - `tree_grid`:
-    - `args`: Arguments passed to `fn`.
+    - `tree_grid`: The grid as a pytree. Importantly, its leaves can only be JAX
+                   arrays with leading dimensions and `None`.
+    - `args`: Arguments passed to `fn`, as `fn(y, args)`.
     - `is_leaf`: As [`jax.tree_util.tree_flatten`](https://jax.readthedocs.io/en/latest/_autosummary/jax.tree_util.tree_flatten.html).
                  This specifies what is to be treated as a leaf in `tree_grid`.
     - `unroll`: As [`jax.lax.fori_loop`](https://jax.readthedocs.io/en/latest/_autosummary/jax.lax.fori_loop.html)
