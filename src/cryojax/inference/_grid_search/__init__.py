@@ -1,4 +1,3 @@
-from .custom_types import PyTreeGrid as PyTreeGrid, PyTreeGridPoint as PyTreeGridPoint
 from .pytree_manipulation import (
     tree_grid_shape as tree_grid_shape,
     tree_grid_take as tree_grid_take,
