@@ -11,9 +11,8 @@ from equinox import field
 from jaxtyping import Array, Float
 
 from ...rotations import SO3
-from .._conformation import AbstractConformation
 from .._pose import AbstractPose, EulerAnglePose
-from .._specimen import AbstractSpecimen
+from .._specimen import AbstractConformation, AbstractSpecimen
 from .assembly import AbstractAssembly
 
 

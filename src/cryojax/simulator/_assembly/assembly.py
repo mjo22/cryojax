@@ -14,9 +14,8 @@ from equinox import AbstractVar
 from jaxtyping import Array, Float
 
 from ...rotations import SO3
-from .._conformation import AbstractConformation
 from .._pose import AbstractPose
-from .._specimen import AbstractEnsemble, AbstractSpecimen
+from .._specimen import AbstractConformation, AbstractEnsemble, AbstractSpecimen
 
 
 class AbstractAssembly(eqx.Module, strict=True):
