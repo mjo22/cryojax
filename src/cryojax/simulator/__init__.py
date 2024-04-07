@@ -2,13 +2,9 @@ from ._assembly import (
     AbstractAssembly as AbstractAssembly,
     compute_helical_lattice_positions as compute_helical_lattice_positions,
     compute_helical_lattice_rotations as compute_helical_lattice_rotations,
-    Helix as Helix,
+    HelicalAssembly as HelicalAssembly,
 )
 from ._config import ImageConfig as ImageConfig
-from ._conformation import (
-    AbstractConformation as AbstractConformation,
-    DiscreteConformation as DiscreteConformation,
-)
 from ._detector import (
     AbstractDetector as AbstractDetector,
     AbstractDQE as AbstractDQE,
@@ -59,8 +55,10 @@ from ._potential import (
     RealVoxelGridPotential as RealVoxelGridPotential,
 )
 from ._specimen import (
+    AbstractConformation as AbstractConformation,
     AbstractEnsemble as AbstractEnsemble,
     AbstractSpecimen as AbstractSpecimen,
+    DiscreteConformation as DiscreteConformation,
     DiscreteEnsemble as DiscreteEnsemble,
     Specimen as Specimen,
 )

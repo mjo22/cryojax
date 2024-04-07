@@ -31,7 +31,7 @@ from ...image import (
 )
 from ...image.operators import AbstractFilter
 from .._pose import AbstractPose
-from ._scattering_potential import AbstractScatteringPotential
+from .scattering_potential import AbstractScatteringPotential
 
 
 class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):

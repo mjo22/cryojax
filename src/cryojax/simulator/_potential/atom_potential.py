@@ -10,7 +10,7 @@ from equinox import field
 from jaxtyping import Array
 
 from .._pose import AbstractPose
-from ._scattering_potential import AbstractScatteringPotential
+from .scattering_potential import AbstractScatteringPotential
 
 
 class AtomCloud(AbstractScatteringPotential):

@@ -14,10 +14,10 @@ from ...rotations import SO3
 from .._conformation import AbstractConformation
 from .._pose import AbstractPose, EulerAnglePose
 from .._specimen import AbstractSpecimen
-from ._assembly import AbstractAssembly
+from .assembly import AbstractAssembly
 
 
-class Helix(AbstractAssembly, strict=True):
+class HelicalAssembly(AbstractAssembly, strict=True):
     """
     Abstraction of a helical polymer.
 

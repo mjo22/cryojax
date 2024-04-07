@@ -7,7 +7,7 @@ from typing import Any
 from equinox import AbstractVar, field, Module
 from jaxtyping import Array, Int
 
-from .._errors import error_if_negative
+from ..._errors import error_if_negative
 
 
 class AbstractConformation(Module, strict=True):

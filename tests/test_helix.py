@@ -8,7 +8,7 @@ import cryojax.simulator as cs
 from cryojax.data import read_array_with_spacing_from_mrc
 
 
-def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
+def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.HelicalAssembly:
     real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(
         sample_subunit_mrc_path
     )
@@ -19,7 +19,7 @@ def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
     r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
     subunit_pose = cs.EulerAnglePose(*r_0)
     subunit = cs.Specimen(subunit_density, integrator, subunit_pose)
-    return cs.Helix(
+    return cs.HelicalAssembly(
         subunit,
         rise=21.8,
         twist=29.4,
@@ -30,7 +30,7 @@ def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.Helix:
 
 def build_helix_with_conformation(
     sample_subunit_mrc_path, n_subunits_per_start
-) -> cs.Helix:
+) -> cs.HelicalAssembly:
     subunit_density = tuple(
         [
             cs.FourierVoxelGridPotential.from_real_voxel_grid(
@@ -52,7 +52,7 @@ def build_helix_with_conformation(
     conformation = jax.vmap(lambda value: cs.DiscreteConformation(value))(
         np.random.choice(2, n_start * n_subunits_per_start)
     )
-    return cs.Helix(
+    return cs.HelicalAssembly(
         subunit,
         conformation=conformation,
         rise=21.8,

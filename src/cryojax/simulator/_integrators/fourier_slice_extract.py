@@ -19,7 +19,7 @@ from .._potential import (
     FourierVoxelGridPotential,
     FourierVoxelGridPotentialInterpolator,
 )
-from ._potential_integrator import AbstractPotentialIntegrator
+from .potential_integrator import AbstractPotentialIntegrator
 
 
 class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):

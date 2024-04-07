@@ -1,7 +1,7 @@
-from ._scattering_potential import (
+from .scattering_potential import (
     AbstractScatteringPotential as AbstractScatteringPotential,
 )
-from ._voxel_potential import (
+from .voxel_potential import (
     AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
     AbstractVoxelPotential as AbstractVoxelPotential,
     build_real_space_voxels_from_atoms as build_real_space_voxels_from_atoms,

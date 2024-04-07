@@ -7,17 +7,15 @@ from functools import cached_property
 from typing import Any, Optional
 from typing_extensions import override
 
-import jax
 from equinox import AbstractVar, Module
 from jaxtyping import Array, Complex, PRNGKeyArray
 
-from ._config import ImageConfig
-from ._conformation import AbstractConformation, DiscreteConformation
-from ._ice import AbstractIce
-from ._instrument import Instrument
-from ._integrators import AbstractPotentialIntegrator
-from ._pose import AbstractPose, EulerAnglePose
-from ._potential import AbstractScatteringPotential
+from .._config import ImageConfig
+from .._ice import AbstractIce
+from .._instrument import Instrument
+from .._integrators import AbstractPotentialIntegrator
+from .._pose import AbstractPose, EulerAnglePose
+from .._potential import AbstractScatteringPotential
 
 
 class AbstractSpecimen(Module, strict=True):
@@ -116,56 +114,3 @@ class Specimen(AbstractSpecimen, strict=True):
         """Get the scattering potential in the center of mass
         frame."""
         return self.potential
-
-
-class AbstractEnsemble(AbstractSpecimen, strict=True):
-    """
-    Abstraction of an ensemble of a biological specimen which can
-    occupy different conformations.
-
-    **Attributes:**
-
-    - `conformation`: The conformation at which to evaluate the scattering potential.
-    """
-
-    conformation: AbstractVar[AbstractConformation]
-
-
-class DiscreteEnsemble(AbstractEnsemble, strict=True):
-    """
-    Abstraction of an ensemble with discrete conformational
-    heterogeneity.
-
-    **Attributes:**
-
-    - `potential`: A tuple of scattering potential representations.
-    - `pose`: The pose of the specimen.
-    - `conformation`: A conformation with a discrete index at which to evaluate
-                      the scattering potential tuple.
-    """
-
-    potential: tuple[AbstractScatteringPotential, ...]
-    integrator: AbstractPotentialIntegrator
-    pose: AbstractPose
-    conformation: DiscreteConformation
-
-    def __init__(
-        self,
-        potential: tuple[AbstractScatteringPotential, ...],
-        integrator: AbstractPotentialIntegrator,
-        pose: Optional[AbstractPose] = None,
-        conformation: Optional[DiscreteConformation] = None,
-    ):
-        self.potential = potential
-        self.integrator = integrator
-        self.pose = pose or EulerAnglePose()
-        self.conformation = conformation or DiscreteConformation(0)
-
-    @cached_property
-    @override
-    def potential_in_com_frame(self) -> AbstractScatteringPotential:
-        """Get the scattering potential at configured conformation."""
-        funcs = [lambda i=i: self.potential[i] for i in range(len(self.potential))]
-        potential = jax.lax.switch(self.conformation.value, funcs)
-
-        return potential

@@ -18,6 +18,10 @@ def filter_grad_with_spec(
     *,
     has_aux: bool = False,
 ) -> Callable:
+    """A lightweight wrapper around `equinox.filter_grad` that accepts a
+    `filter_spec`.
+    """
+
     @wraps(func)
     def partition_and_recombine_fn(pytree: PyTree, *args: Any, **kwargs: Any):
         @partial(
@@ -45,6 +49,10 @@ def filter_value_and_grad_with_spec(
     *,
     has_aux: bool = False,
 ) -> Callable:
+    """A lightweight wrapper around `equinox.filter_value_and_grad` that
+    accepts a `filter_spec`.
+    """
+
     @wraps(func)
     def partition_and_recombine_fn(pytree: PyTree, *args: Any, **kwargs: Any):
         @partial(
@@ -79,6 +87,10 @@ def filter_vmap_with_spec(
     axis_name: Hashable = None,
     axis_size: Optional[int] = None,
 ) -> Callable:
+    """A lightweight wrapper around `equinox.filter_vmap` that accepts a
+    `filter_spec`.
+    """
+
     @wraps(func)
     def partition_and_recombine_fn(pytree: PyTree, *args: Any):
         @partial(

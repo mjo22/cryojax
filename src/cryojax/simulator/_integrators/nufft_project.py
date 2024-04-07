@@ -10,7 +10,7 @@ from jaxtyping import Array, Complex, Float
 
 from .._config import ImageConfig
 from .._potential import RealVoxelCloudPotential, RealVoxelGridPotential
-from ._potential_integrator import AbstractPotentialIntegrator
+from .potential_integrator import AbstractPotentialIntegrator
 
 
 class NufftProject(AbstractPotentialIntegrator, strict=True):
