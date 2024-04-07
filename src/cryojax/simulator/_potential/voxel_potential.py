@@ -438,7 +438,8 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         of storing the whole voxel grid, a `RealVoxelCloudPotential` need
         only store points of non-zero scattering potential. Therefore,
         a `RealVoxelCloudPotential` stores a point cloud of scattering potential
-        voxel values.
+        voxel values. Instantiating with the `from_real_voxel_grid` constructor
+        will automatically mask points of zero scattering potential.
     """
 
     voxel_weights: Float[Array, " size"]
@@ -465,8 +466,8 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         self.voxel_size = jnp.asarray(voxel_size)
 
     @property
-    def shape(self) -> tuple[int, int]:
-        return cast(tuple[int, int], self.voxel_weights.shape)
+    def shape(self) -> tuple[int]:
+        return cast(tuple[int], self.voxel_weights.shape)
 
     @cached_property
     def wrapped_coordinate_list_in_angstroms(self) -> CoordinateList:
@@ -491,6 +492,8 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         coordinate_grid_in_pixels: Optional[CoordinateGrid] = None,
         rtol: float = 1e-05,
         atol: float = 1e-08,
+        size: Optional[int] = None,
+        fill_value: Optional[float] = None,
     ) -> Self:
         """Load an `RealVoxelCloudPotential` from a real-valued 3D electron
         scattering potential voxel grid.
@@ -499,10 +502,15 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
         - `real_voxel_grid`: An electron scattering potential voxel grid in real space.
         - `voxel_size`: The voxel size of `real_voxel_grid`.
-        - `rtol`: Argument passed to `jnp.isclose`, used for removing
-                points of zero scattering potential.
-        - `atol`: Argument passed to `jnp.isclose`, used for removing
-                points of zero scattering potential.
+        - `rtol`: Argument passed to `jnp.isclose`, used for masking
+                  voxels of zero scattering potential.
+        - `atol`: Argument passed to `jnp.isclose`, used for masking
+                  voxels of zero scattering potential.
+        - `size`: Argument passed to `jnp.where`, used for fixing the size
+                  of the masked scattering potential. This argument is required
+                  for using this function with a JAX transformation.
+        - `fill_value`: Argument passed to `jnp.where`, used if `size` is specified and
+                        the mask has fewer than the indicated number of elements.
         """
         # Cast to jax array
         real_voxel_grid, voxel_size = (
@@ -514,7 +522,11 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
             coordinate_grid_in_pixels = CoordinateGrid(real_voxel_grid.shape)
         # ... mask zeros to store smaller arrays. This
         # option is not jittable.
-        nonzero = jnp.where(~jnp.isclose(real_voxel_grid, 0.0, rtol=rtol, atol=atol))
+        nonzero = jnp.where(
+            ~jnp.isclose(real_voxel_grid, 0.0, rtol=rtol, atol=atol),
+            size=size,
+            fill_value=fill_value,
+        )
         flat_potential = real_voxel_grid[nonzero]
         coordinate_list = CoordinateList(coordinate_grid_in_pixels.get()[nonzero])
 
