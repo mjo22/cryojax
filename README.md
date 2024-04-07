@@ -111,7 +111,7 @@ pipeline = cxs.ImagePipeline(config, specimen, instrument)
 image_without_noise = pipeline.render(get_real=True)
 ```
 
-`cryojax` also defines a library of distributions from which to sample the data. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentFourierGaussian` distribution and either sample from it or compute its log-likelihood.
+`cryojax` also defines a library of distributions from which to sample the data. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentGaussianFourierModes` distribution and either sample from it or compute its log-likelihood.
 
 ```python
 from cryojax.image import rfftn, operators as op
