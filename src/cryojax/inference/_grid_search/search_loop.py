@@ -61,7 +61,7 @@ def run_grid_search(
             particular grid point of `tree_grid`. The value returned by `fn`
             must be compatible with the respective `method`.
     - `method`: An interface that specifies what we would like to do with
-                each evaluation of `fn`. `SearchForMinimum` is a common choice.
+                each evaluation of `fn`.
     - `tree_grid`: The grid as a pytree. Importantly, its leaves can only be JAX
                    arrays with leading dimensions and `None`.
     - `args`: Arguments passed to `fn`, as `fn(y, args)`.
