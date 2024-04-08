@@ -599,7 +599,7 @@ def evaluate_3d_real_space_gaussian(
     sq_distances = jnp.sum(
         b_inverse * (coordinate_grid_in_angstroms - atom_position) ** 2, axis=-1
     )
-    return jnp.exp(-jnp.pi * sq_distances) * a * b_inverse ** (3.0 / 2.0)
+    return 32 * jnp.pi ** (5/2) * (jnp.exp(-jnp.pi * sq_distances) * a * b_inverse ** (3.0 / 2.0)
 
 
 def evaluate_3d_atom_potential(
