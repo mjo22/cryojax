@@ -5,17 +5,16 @@ Routines for rescaling image pixel size.
 import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate
-
-from ..typing import RealImage, RealNumber
+from jaxtyping import Array, Float
 
 
 def rescale_pixel_size(
-    image: RealImage,
-    current_pixel_size: RealNumber,
-    new_pixel_size: RealNumber,
+    image: Float[Array, "y_dim x_dim"],
+    current_pixel_size: Float[Array, ""],
+    new_pixel_size: Float[Array, ""],
     method: str = "bicubic",
     antialias: bool = False,
-) -> RealImage:
+) -> Float[Array, "y_dim x_dim"]:
     """
     Measure an image at a given pixel size using interpolation.
 

@@ -8,10 +8,9 @@ from typing import Optional
 import jax
 import jax.numpy as jnp
 from equinox import field
-from jaxtyping import Array, Float, Shaped
+from jaxtyping import Array, Float
 
 from ...rotations import SO3
-from ...typing import RealNumber
 from .._conformation import AbstractConformation
 from .._pose import AbstractPose, EulerAnglePose
 from .._specimen import AbstractSpecimen
@@ -30,8 +29,8 @@ class Helix(AbstractAssembly, strict=True):
     """
 
     subunit: AbstractSpecimen
-    rise: Shaped[RealNumber, "..."]
-    twist: Shaped[RealNumber, "..."]
+    rise: Float[Array, ""]
+    twist: Float[Array, ""]
 
     pose: AbstractPose
     conformation: Optional[AbstractConformation]
@@ -42,8 +41,8 @@ class Helix(AbstractAssembly, strict=True):
     def __init__(
         self,
         subunit: AbstractSpecimen,
-        rise: Shaped[RealNumber, "..."] | float,
-        twist: Shaped[RealNumber, "..."] | float,
+        rise: Float[Array, ""] | float,
+        twist: Float[Array, ""] | float,
         pose: Optional[AbstractPose] = None,
         conformation: Optional[AbstractConformation] = None,
         n_start: int = 1,
@@ -117,8 +116,8 @@ class Helix(AbstractAssembly, strict=True):
 
 
 def compute_helical_lattice_positions(
-    rise: RealNumber,
-    twist: RealNumber,
+    rise: Float[Array, ""],
+    twist: Float[Array, ""],
     n_subunits_per_start: int,
     initial_displacement: Float[Array, "3"],
     n_start: int = 1,
@@ -204,7 +203,7 @@ def compute_helical_lattice_positions(
 
 
 def compute_helical_lattice_rotations(
-    twist: RealNumber,
+    twist: Float[Array, ""],
     n_subunits_per_start: int,
     initial_rotation: Float[Array, "3 3"] = jnp.eye(3),
     n_start: int = 1,

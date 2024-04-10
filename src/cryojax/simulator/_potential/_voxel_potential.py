@@ -18,7 +18,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from equinox import AbstractClassVar, AbstractVar, field
-from jaxtyping import Array, Float, Int, Shaped
+from jaxtyping import Array, Complex, Float, Int
 
 from ...constants import get_form_factor_params
 from ...coordinates import CoordinateGrid, CoordinateList, FrequencySlice
@@ -30,12 +30,6 @@ from ...image import (
     pad_to_shape,
 )
 from ...image.operators import AbstractFilter
-from ...typing import (
-    ComplexCubicVolume,
-    RealCubicVolume,
-    RealNumber,
-    RealPointCloud,
-)
 from .._pose import AbstractPose
 from ._scattering_potential import AbstractScatteringPotential
 
@@ -43,7 +37,7 @@ from ._scattering_potential import AbstractScatteringPotential
 class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     """Abstract interface for a voxel-based scattering potential representation."""
 
-    voxel_size: AbstractVar[Shaped[RealNumber, "..."]]
+    voxel_size: AbstractVar[Float[Array, ""]]
     is_real: AbstractClassVar[bool]
 
     @property
@@ -56,7 +50,7 @@ class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
     @abstractmethod
     def from_real_voxel_grid(
         cls,
-        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
     ) -> Self:
         """Load an `AbstractVoxels` from real-valued 3D electron
@@ -92,9 +86,9 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @abstractmethod
     def __init__(
         self,
-        fourier_voxel_grid: Shaped[ComplexCubicVolume, "..."],
+        fourier_voxel_grid: Complex[Array, "dim dim dim"],
         wrapped_frequency_slice_in_pixels: FrequencySlice,
-        voxel_size: Shaped[RealNumber, "..."] | float,
+        voxel_size: Float[Array, ""] | float,
     ):
         raise NotImplementedError
 
@@ -115,7 +109,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_real_voxel_grid(
         cls,
-        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
         pad_scale: float = 1.0,
@@ -214,18 +208,18 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
     """A 3D scattering potential voxel grid in fourier-space."""
 
-    fourier_voxel_grid: Shaped[ComplexCubicVolume, "..."]
+    fourier_voxel_grid: Complex[Array, "dim dim dim"]
     wrapped_frequency_slice_in_pixels: FrequencySlice
-    voxel_size: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
+    voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = False
 
     @override
     def __init__(
         self,
-        fourier_voxel_grid: Shaped[ComplexCubicVolume, "..."],
+        fourier_voxel_grid: Complex[Array, "dim dim dim"],
         wrapped_frequency_slice_in_pixels: FrequencySlice,
-        voxel_size: Shaped[RealNumber, "..."] | float,
+        voxel_size: Float[Array, ""] | float,
     ):
         """**Arguments:**
 
@@ -248,17 +242,17 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     by spline coefficients.
     """
 
-    coefficients: Shaped[ComplexCubicVolume, "..."]
+    coefficients: Float[Array, "coeff_dim coeff_dim coeff_dim"]
     wrapped_frequency_slice_in_pixels: FrequencySlice
-    voxel_size: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
+    voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = False
 
     def __init__(
         self,
-        fourier_voxel_grid: Shaped[ComplexCubicVolume, "..."],
+        fourier_voxel_grid: Float[Array, "dim dim dim"],
         wrapped_frequency_slice_in_pixels: FrequencySlice,
-        voxel_size: Shaped[RealNumber, "..."] | float,
+        voxel_size: Float[Array, ""] | float,
     ):
         """
         !!! note
@@ -281,13 +275,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
                                                wrapped in a `FrequencySlice` object.
         - `voxel_size`: The voxel size.
         """
-        n_batch_dims = fourier_voxel_grid.ndim - 3
-        compute_spline_coefficients_3d = compute_spline_coefficients
-        for _ in range(n_batch_dims):
-            compute_spline_coefficients_3d = jax.vmap(compute_spline_coefficients_3d)
-        self.coefficients = compute_spline_coefficients_3d(
-            jnp.asarray(fourier_voxel_grid)
-        )
+        self.coefficients = compute_spline_coefficients(jnp.asarray(fourier_voxel_grid))
         self.wrapped_frequency_slice_in_pixels = wrapped_frequency_slice_in_pixels
         self.voxel_size = jnp.asarray(voxel_size)
 
@@ -301,17 +289,17 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     """Abstraction of a 3D scattering potential voxel grid in real-space."""
 
-    real_voxel_grid: Shaped[RealCubicVolume, "..."]
+    real_voxel_grid: Float[Array, "dim dim dim"]
     wrapped_coordinate_grid_in_pixels: CoordinateGrid
-    voxel_size: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
+    voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = True
 
     def __init__(
         self,
-        real_voxel_grid: Shaped[RealCubicVolume, "..."],
+        real_voxel_grid: Float[Array, "dim dim dim"],
         wrapped_coordinate_grid_in_pixels: CoordinateGrid,
-        voxel_size: Shaped[RealNumber, "..."] | float,
+        voxel_size: Float[Array, ""] | float,
     ):
         """**Arguments:**
 
@@ -346,7 +334,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_real_voxel_grid(
         cls,
-        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
         coordinate_grid: Optional[CoordinateGrid] = None,
@@ -356,7 +344,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_real_voxel_grid(
         cls,
-        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
         crop_scale: Optional[float] = None,
@@ -365,7 +353,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_real_voxel_grid(
         cls,
-        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
         coordinate_grid_in_pixels: Optional[CoordinateGrid] = None,
@@ -453,17 +441,17 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
         voxel values.
     """
 
-    voxel_weights: Shaped[RealPointCloud, "..."]
+    voxel_weights: Float[Array, " size"]
     wrapped_coordinate_list_in_pixels: CoordinateList
-    voxel_size: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
+    voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     is_real: ClassVar[bool] = True
 
     def __init__(
         self,
-        voxel_weights: Shaped[RealPointCloud, "..."],
+        voxel_weights: Float[Array, " size"],
         wrapped_coordinate_list_in_pixels: CoordinateList,
-        voxel_size: Shaped[RealNumber, "..."] | float,
+        voxel_size: Float[Array, ""] | float,
     ):
         """**Arguments:**
 
@@ -497,7 +485,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     @classmethod
     def from_real_voxel_grid(
         cls,
-        real_voxel_grid: Float[Array, "N N N"] | Float[np.ndarray, "N N N"],
+        real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
         *,
         coordinate_grid_in_pixels: Optional[CoordinateGrid] = None,
@@ -574,11 +562,11 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
 
 def evaluate_3d_real_space_gaussian(
-    coordinate_grid_in_angstroms: Float[Array, "N1 N2 N3 3"],
+    coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"],
     atom_position: Float[Array, "3"],
     a: Float[Array, ""],
     b: Float[Array, ""],
-) -> Float[Array, "N1 N2 N3"]:
+) -> Float[Array, "z_dim y_dim x_dim"]:
     """Evaluate a gaussian on a 3D grid.
     The naming convention for parameters follows "Robust
     Parameterization of Elastic and Absorptive Electron Atomic Scattering
@@ -603,11 +591,11 @@ def evaluate_3d_real_space_gaussian(
 
 
 def evaluate_3d_atom_potential(
-    coordinate_grid_in_angstroms: Float[Array, "N1 N2 N3 3"],
+    coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"],
     atom_position: Float[Array, "3"],
     atomic_as: Float[Array, " n_form_factors"],
     atomic_bs: Float[Array, " n_form_factors"],
-) -> Float[Array, "N1 N2 N3"]:
+) -> Float[Array, "z_dim y_dim x_dim"]:
     """Evaluates the electron potential of a single atom on a 3D grid.
 
     **Arguments:**
@@ -633,8 +621,8 @@ def build_real_space_voxels_from_atoms(
     atom_positions: Float[Array, "n_atoms 3"],
     ff_a: Float[Array, "n_atoms n_form_factors"],
     ff_b: Float[Array, "n_atoms n_form_factors"],
-    coordinate_grid_in_angstroms: Float[Array, "N N N 3"],
-) -> Float[Array, "N N N"]:
+    coordinate_grid_in_angstroms: Float[Array, "dim dim dim 3"],
+) -> Float[Array, "dim dim dim"]:
     """
     Build a voxel representation of an atomic model.
 

@@ -9,7 +9,7 @@ from typing import Any, Callable, Optional, Union
 import jax
 import jax.numpy as jnp
 from equinox import field, Module
-from jaxtyping import Array, Complex, Float, Shaped
+from jaxtyping import Array, Complex, Float
 
 from ..coordinates import CoordinateGrid, FrequencyGrid
 from ..core import error_if_not_positive
@@ -21,7 +21,6 @@ from ..image import (
     resize_with_crop_or_pad,
     rfftn,
 )
-from ..typing import RealImage, RealNumber
 
 
 class ImageConfig(Module, strict=True):
@@ -61,7 +60,7 @@ class ImageConfig(Module, strict=True):
     """
 
     shape: tuple[int, int] = field(static=True)
-    pixel_size: Shaped[RealNumber, "..."] = field(converter=error_if_not_positive)
+    pixel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     padded_shape: tuple[int, int] = field(static=True)
     pad_mode: Union[str, Callable] = field(static=True)
@@ -75,7 +74,7 @@ class ImageConfig(Module, strict=True):
     def __init__(
         self,
         shape: tuple[int, int],
-        pixel_size: float | Shaped[RealNumber, "..."],
+        pixel_size: float | Float[Array, ""],
         padded_shape: Optional[tuple[int, int]] = None,
         *,
         pad_scale: float = 1.0,
@@ -137,7 +136,7 @@ class ImageConfig(Module, strict=True):
             Float[Array, "{self.padded_y_dim} {self.padded_x_dim}"]
             | Complex[Array, "{self.padded_y_dim} {self.padded_x_dim//2+1}"]
         ),
-        current_pixel_size: RealNumber,
+        current_pixel_size: Float[Array, ""],
         is_real: bool = True,
     ) -> Complex[Array, "{self.padded_y_dim} {self.padded_x_dim//2+1}"]:
         """Rescale the image pixel size using real-space interpolation. Only
@@ -164,19 +163,19 @@ class ImageConfig(Module, strict=True):
         )
 
     def crop_to_shape(
-        self, image: RealImage
+        self, image: Float[Array, "y_dim x_dim"]
     ) -> Float[Array, "{self.y_dim} {self.x_dim}"]:
         """Crop an image."""
         return crop_to_shape(image, self.shape)
 
     def pad_to_padded_shape(
-        self, image: RealImage, **kwargs: Any
+        self, image: Float[Array, "y_dim x_dim"], **kwargs: Any
     ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim}"]:
         """Pad an image."""
         return pad_to_shape(image, self.padded_shape, mode=self.pad_mode, **kwargs)
 
     def crop_or_pad_to_padded_shape(
-        self, image: RealImage, **kwargs: Any
+        self, image: Float[Array, "y_dim x_dim"], **kwargs: Any
     ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim}"]:
         """Reshape an image using cropping or padding."""
         return resize_with_crop_or_pad(

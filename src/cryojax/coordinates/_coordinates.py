@@ -10,16 +10,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
 from equinox import AbstractVar
-from jaxtyping import Array, Float
-
-from ..typing import (
-    Image,
-    ImageCoords,
-    PointCloudCoords2D,
-    PointCloudCoords3D,
-    VolumeCoords,
-    VolumeSliceCoords,
-)
+from jaxtyping import Array, Float, Inexact
 
 
 class AbstractCoordinates(eqx.Module, strict=True):
@@ -66,12 +57,16 @@ class CoordinateList(AbstractCoordinates, strict=True):
     A Pytree that wraps a coordinate list.
     """
 
-    array: PointCloudCoords3D | PointCloudCoords2D = eqx.field(converter=jnp.asarray)
+    array: Float[Array, "size 3"] | Float[Array, "size 2"] = eqx.field(
+        converter=jnp.asarray
+    )
 
-    def __init__(self, coordinate_list: PointCloudCoords2D | PointCloudCoords3D):
+    def __init__(
+        self, coordinate_list: Float[Array, "size 2"] | Float[Array, "size 3"]
+    ):
         self.array = coordinate_list
 
-    def get(self) -> PointCloudCoords3D | PointCloudCoords2D:
+    def get(self) -> Float[Array, "size 3"] | Float[Array, "size 2"]:
         return self.array
 
 
@@ -80,7 +75,9 @@ class CoordinateGrid(AbstractCoordinates, strict=True):
     A Pytree that wraps a coordinate grid.
     """
 
-    array: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
+    array: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"] = (
+        eqx.field(converter=jnp.asarray)
+    )
 
     def __init__(
         self,
@@ -89,7 +86,9 @@ class CoordinateGrid(AbstractCoordinates, strict=True):
     ):
         self.array = make_coordinates(shape, grid_spacing)
 
-    def get(self) -> ImageCoords | VolumeCoords:
+    def get(
+        self,
+    ) -> Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]:
         return self.array
 
 
@@ -98,7 +97,9 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
     A Pytree that wraps a frequency grid.
     """
 
-    array: ImageCoords | VolumeCoords = eqx.field(converter=jnp.asarray)
+    array: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"] = (
+        eqx.field(converter=jnp.asarray)
+    )
 
     def __init__(
         self,
@@ -108,7 +109,9 @@ class FrequencyGrid(AbstractCoordinates, strict=True):
     ):
         self.array = make_frequencies(shape, grid_spacing, half_space=half_space)
 
-    def get(self) -> ImageCoords | VolumeCoords:
+    def get(
+        self,
+    ) -> Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]:
         return self.array
 
 
@@ -120,7 +123,7 @@ class FrequencySlice(AbstractCoordinates, strict=True):
     component in the center.
     """
 
-    array: VolumeSliceCoords = eqx.field(converter=jnp.asarray)
+    array: Float[Array, "1 y_dim x_dim 3"] = eqx.field(converter=jnp.asarray)
 
     def __init__(
         self,
@@ -144,7 +147,7 @@ class FrequencySlice(AbstractCoordinates, strict=True):
         )
         self.array = frequency_slice
 
-    def get(self) -> VolumeSliceCoords:
+    def get(self) -> Float[Array, "1 y_dim x_dim 3"]:
         return self.array
 
 
@@ -208,7 +211,9 @@ def make_frequencies(
     return frequency_grid
 
 
-def cartesian_to_polar(freqs: ImageCoords, square: bool = False) -> tuple[Image, Image]:
+def cartesian_to_polar(
+    freqs: Float[Array, "y_dim x_dim 2"], square: bool = False
+) -> tuple[Inexact[Array, "y_dim x_dim"], Inexact[Array, "y_dim x_dim"]]:
     """
     Convert from cartesian to polar coordinates.
 

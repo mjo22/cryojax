@@ -105,10 +105,12 @@ def masks(config):
 
 @pytest.fixture
 def instrument():
+    voltage_in_kilovolts = 300.0
     return cs.Instrument(
-        cs.WeakPhaseOptics(cs.CTF()),
-        cs.ElectronDose(electrons_per_angstrom_squared=1000.0),
-        cs.GaussianDetector(cs.IdealDQE(fraction_detected_electrons=1.0)),
+        voltage_in_kilovolts,
+        optics=cs.WeakPhaseOptics(cs.CTF()),
+        dose=cs.ElectronDose(electrons_per_angstrom_squared=1000.0),
+        detector=cs.GaussianDetector(cs.IdealDQE(fraction_detected_electrons=1.0)),
     )
 
 
@@ -135,7 +137,7 @@ def solvent():
 
 @pytest.fixture
 def noiseless_model(config, specimen, instrument):
-    instrument = eqx.tree_at(lambda ins: ins.detector, instrument, cs.NullDetector())
+    instrument = eqx.tree_at(lambda ins: ins.detector, instrument, None)
     return cs.ImagePipeline(config=config, specimen=specimen, instrument=instrument)
 
 

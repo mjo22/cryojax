@@ -23,8 +23,9 @@ def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     specimen = cs.Specimen(potential, integrator, pose)
     config_control = cs.ImageConfig(control_shape, pixel_size)
     config_test = cs.ImageConfig(shape, pixel_size)
-    pipeline_control = cs.ImagePipeline(config_control, specimen)
-    pipeline_test = cs.ImagePipeline(config_test, specimen)
+    instrument = cs.Instrument(voltage_in_kilovolts=300.0)
+    pipeline_control = cs.ImagePipeline(config_control, specimen, instrument)
+    pipeline_test = cs.ImagePipeline(config_test, specimen, instrument)
 
     np.testing.assert_allclose(
         crop_to_shape(pipeline_test.render(), control_shape),

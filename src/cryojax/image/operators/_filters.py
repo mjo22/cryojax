@@ -9,18 +9,9 @@ from typing import Optional, overload
 import jax
 import jax.numpy as jnp
 from equinox import field
+from jaxtyping import Array, Complex, Float, Inexact
 
 from ...coordinates import make_frequencies
-from ...typing import (
-    ComplexImage,
-    ComplexVolume,
-    Image,
-    ImageCoords,
-    RealImage,
-    RealVolume,
-    Volume,
-    VolumeCoords,
-)
 from .._edges import resize_with_crop_or_pad
 from .._fft import irfftn, rfftn
 from .._spectrum import powerspectrum
@@ -33,14 +24,18 @@ class AbstractFilter(AbstractImageMultiplier, strict=True):
     """
 
     @overload
-    def __call__(self, image: ComplexImage) -> ComplexImage: ...
+    def __call__(
+        self, image: Complex[Array, "y_dim x_dim"]
+    ) -> Complex[Array, "y_dim x_dim"]: ...
 
     @overload
-    def __call__(self, image: ComplexVolume) -> ComplexVolume: ...
+    def __call__(
+        self, image: Complex[Array, "z_dim y_dim x_dim"]
+    ) -> Complex[Array, "z_dim y_dim x_dim"]: ...
 
     def __call__(
-        self, image: ComplexImage | ComplexVolume
-    ) -> ComplexImage | ComplexVolume:
+        self, image: Complex[Array, "y_dim x_dim"] | Complex[Array, "z_dim y_dim x_dim"]
+    ) -> Complex[Array, "y_dim x_dim"] | Complex[Array, "z_dim y_dim x_dim"]:
         return image * jax.lax.stop_gradient(self.buffer)
 
 
@@ -49,20 +44,25 @@ class CustomFilter(AbstractFilter, strict=True):
     Pass a custom filter as an array.
     """
 
-    buffer: Image | Volume
+    buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
-    def __init__(self, filter: Image | Volume):
+    def __init__(
+        self,
+        filter: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"],
+    ):
         self.buffer = filter
 
 
 class InverseSincFilter(AbstractFilter, strict=True):
     """Apply sinc-correction to an image."""
 
-    buffer: Image | Volume
+    buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
     def __init__(
         self,
-        frequency_grid: ImageCoords | VolumeCoords,
+        frequency_grid: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
         grid_spacing: float = 1.0,
     ):
         ndim = frequency_grid.ndim - 1
@@ -88,14 +88,16 @@ class LowpassFilter(AbstractFilter, strict=True):
         By default, ``0.05``.
     """
 
-    buffer: Image | Volume
+    buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
     cutoff: float = field(static=True)
     rolloff: float = field(static=True)
 
     def __init__(
         self,
-        frequency_grid: ImageCoords | VolumeCoords,
+        frequency_grid: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
         grid_spacing: float = 1.0,
         cutoff: float = 0.95,
         rolloff: float = 0.05,
@@ -112,11 +114,11 @@ class WhiteningFilter(AbstractFilter, strict=True):
     Apply a whitening filter to an image.
     """
 
-    buffer: Image | Volume
+    buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
     def __init__(
         self,
-        micrograph: RealImage,
+        micrograph: Float[Array, "y_dim x_dim"],
         shape: Optional[tuple[int, int]] = None,
         interpolation_mode: str = "nearest",
     ):
@@ -127,28 +129,28 @@ class WhiteningFilter(AbstractFilter, strict=True):
 
 @overload
 def _compute_lowpass_filter(
-    frequency_grid: ImageCoords,
+    frequency_grid: Float[Array, "y_dim x_dim 2"],
     grid_spacing: float,
     cutoff: float,
     rolloff: float,
-) -> RealImage: ...
+) -> Float[Array, "y_dim x_dim"]: ...
 
 
 @overload
 def _compute_lowpass_filter(
-    frequency_grid: VolumeCoords,
+    frequency_grid: Float[Array, "z_dim y_dim x_dim 3"],
     grid_spacing: float,
     cutoff: float,
     rolloff: float,
-) -> RealVolume: ...
+) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
 
 def _compute_lowpass_filter(
-    frequency_grid: ImageCoords | VolumeCoords,
+    frequency_grid: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"],
     grid_spacing: float = 1.0,
     cutoff: float = 0.667,
     rolloff: float = 0.05,
-) -> RealImage | RealVolume:
+) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
     """
     Create a low-pass filter.
 
@@ -191,10 +193,10 @@ def _compute_lowpass_filter(
 
 
 def _compute_whitening_filter(
-    micrograph: RealImage,
+    micrograph: Float[Array, "y_dim x_dim"],
     shape: Optional[tuple[int, int]] = None,
     interpolation_mode="nearest",
-) -> RealImage:
+) -> Float[Array, "y_dim x_dim"]:
     """
     Compute a whitening filter from a micrograph. This is taken
     to be the inverse square root of the 2D radially averaged

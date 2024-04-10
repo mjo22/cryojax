@@ -5,16 +5,16 @@ Base class for a cryojax distribution.
 from abc import abstractmethod
 
 from equinox import AbstractVar, Module
-from jaxtyping import PRNGKeyArray
-
-from ...typing import Image, RealNumber
+from jaxtyping import Array, Float, Inexact, PRNGKeyArray
 
 
 class AbstractDistribution(Module, strict=True):
     """An image formation model equipped with a probabilistic model."""
 
     @abstractmethod
-    def log_likelihood(self, observed: Image) -> RealNumber:
+    def log_likelihood(
+        self, observed: Inexact[Array, "y_dim x_dim"]
+    ) -> Float[Array, ""]:
         """Evaluate the log likelihood.
 
         **Arguments:**
@@ -24,7 +24,9 @@ class AbstractDistribution(Module, strict=True):
         raise NotImplementedError
 
     @abstractmethod
-    def sample(self, key: PRNGKeyArray, *, get_real: bool = True) -> Image:
+    def sample(
+        self, key: PRNGKeyArray, *, get_real: bool = True
+    ) -> Inexact[Array, "y_dim x_dim"]:
         """Sample from the distribution.
 
         **Arguments:**
@@ -35,7 +37,7 @@ class AbstractDistribution(Module, strict=True):
         raise NotImplementedError
 
     @abstractmethod
-    def render(self, *, get_real: bool = True) -> Image:
+    def render(self, *, get_real: bool = True) -> Inexact[Array, "y_dim x_dim"]:
         """Render the image formation model."""
         raise NotImplementedError
 
@@ -46,7 +48,9 @@ class AbstractMarginalDistribution(AbstractDistribution, strict=True):
     distribution: AbstractVar[AbstractDistribution]
 
     @abstractmethod
-    def marginal_log_likelihood(self, observed: Image) -> RealNumber:
+    def marginal_log_likelihood(
+        self, observed: Inexact[Array, "y_dim x_dim"]
+    ) -> Float[Array, ""]:
         """Evaluate the marginalized log likelihood.
 
         **Arguments:**
