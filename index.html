@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.15">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.17">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.7e359304.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.bcfcd587.min.css">
       
       
 
@@ -626,11 +626,11 @@ python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </sp
     <span class="n">defocus_u_in_angstroms</span><span class="o">=</span><span class="mf">10000.0</span><span class="p">,</span>
     <span class="n">defocus_v_in_angstroms</span><span class="o">=</span><span class="mf">9800.0</span><span class="p">,</span>
     <span class="n">astigmatism_angle</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
-    <span class="n">voltage_in_kilovolts</span><span class="o">=</span><span class="mf">300.0</span><span class="p">,</span>
     <span class="n">amplitude_contrast_ratio</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
 <span class="n">optics</span> <span class="o">=</span> <span class="n">cs</span><span class="o">.</span><span class="n">WeakPhaseOptics</span><span class="p">(</span><span class="n">ctf</span><span class="p">,</span> <span class="n">envelope</span><span class="o">=</span><span class="n">op</span><span class="o">.</span><span class="n">FourierGaussian</span><span class="p">(</span><span class="n">b_factor</span><span class="o">=</span><span class="mf">5.0</span><span class="p">))</span>  <span class="c1"># b_factor is given in Angstroms^2</span>
 <span class="c1"># ... these are stored in the Instrument</span>
-<span class="n">instrument</span> <span class="o">=</span> <span class="n">cs</span><span class="o">.</span><span class="n">Instrument</span><span class="p">(</span><span class="n">optics</span><span class="p">)</span>
+<span class="n">voltage_in_kilovolts</span> <span class="o">=</span> <span class="mf">300.0</span>
+<span class="n">instrument</span> <span class="o">=</span> <span class="n">cs</span><span class="o">.</span><span class="n">Instrument</span><span class="p">(</span><span class="n">voltage_in_kilovolts</span><span class="p">,</span> <span class="n">optics</span><span class="p">)</span>
 </code></pre></div>
 <p>The <code>CTF</code> has all parameters used in CTFFIND4, which take their default values if not
 explicitly configured here. Finally, we can instantiate the <code>ImagePipeline</code> and simulate an image.</p>
@@ -697,7 +697,7 @@ explicitly configured here. Finally, we can instantiate the <code>ImagePipeline<
     <script id="__config" type="application/json">{"base": ".", "features": ["navigation.sections", "toc.integrate"], "search": "assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="assets/javascripts/bundle.bd41221c.min.js"></script>
+      <script src="assets/javascripts/bundle.1e8ae164.min.js"></script>
       
         <script src="javascripts/mathjax.js"></script>
       
