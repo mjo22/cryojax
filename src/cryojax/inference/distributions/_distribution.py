@@ -43,9 +43,7 @@ class AbstractDistribution(Module, strict=True):
 
 
 class AbstractMarginalDistribution(AbstractDistribution, strict=True):
-    """An image formation model equipped with a probabilistic model."""
-
-    distribution: AbstractVar[AbstractDistribution]
+    """An `AbstractDistribution` equipped with a marginalized likelihood."""
 
     @abstractmethod
     def marginal_log_likelihood(
