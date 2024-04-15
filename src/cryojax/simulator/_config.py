@@ -44,12 +44,19 @@ class ImageConfig(Module, strict=True):
         The interpolation method for pixel size rescaling. See
         ``jax.image.scale_and_translate`` for options.
     - `wrapped_frequency_grid_in_pixels`:
-        The fourier wavevectors in the imaging plane, wrapped in
-        a `FrequencyGrid` object.
+        The fourier wavevectors in the imaging plane on the half
+        space, wrapped in a `FrequencyGrid` object.
     - `wrapped_padded_frequency_grid_in_pixels`:
         The fourier wavevectors in the imaging plane
-        in the padded coordinate system, wrapped in
-        a `FrequencyGrid` object.
+        in the padded coordinate system on the half space,
+        wrapped in a `FrequencyGrid` object.
+    - `wrapped_full_frequency_grid_in_pixels`:
+        The fourier wavevectors in the imaging plane on the
+        full plane, wrapped in a `FrequencyGrid` object.
+    - `wrapped_full_padded_frequency_grid_in_pixels`:
+        The fourier wavevectors in the imaging plane
+        in the padded coordinate system on the full plane,
+        wrapped in a `FrequencyGrid` object.
     - `wrapped_coordinate_grid_in_pixels`:
         The coordinates in the imaging plane, wrapped
         in a `CoordinateGrid` object.
@@ -68,6 +75,8 @@ class ImageConfig(Module, strict=True):
 
     wrapped_frequency_grid_in_pixels: FrequencyGrid
     wrapped_padded_frequency_grid_in_pixels: FrequencyGrid
+    wrapped_full_frequency_grid_in_pixels: FrequencyGrid
+    wrapped_full_padded_frequency_grid_in_pixels: FrequencyGrid
     wrapped_coordinate_grid_in_pixels: CoordinateGrid
     wrapped_padded_coordinate_grid_in_pixels: CoordinateGrid
 
@@ -102,6 +111,12 @@ class ImageConfig(Module, strict=True):
         self.wrapped_padded_frequency_grid_in_pixels = FrequencyGrid(
             shape=self.padded_shape
         )
+        self.wrapped_full_frequency_grid_in_pixels = FrequencyGrid(
+            shape=self.shape, half_space=False
+        )
+        self.wrapped_full_padded_frequency_grid_in_pixels = FrequencyGrid(
+            shape=self.padded_shape, half_space=False
+        )
         self.wrapped_coordinate_grid_in_pixels = CoordinateGrid(shape=self.shape)
         self.wrapped_padded_coordinate_grid_in_pixels = CoordinateGrid(
             shape=self.padded_shape
@@ -123,12 +138,20 @@ class ImageConfig(Module, strict=True):
         return self.wrapped_frequency_grid_in_pixels / self.pixel_size
 
     @cached_property
+    def wrapped_full_frequency_grid_in_angstroms(self) -> FrequencyGrid:
+        return self.wrapped_full_frequency_grid_in_pixels / self.pixel_size
+
+    @cached_property
     def wrapped_padded_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         return self.pixel_size * self.wrapped_padded_coordinate_grid_in_pixels  # type: ignore
 
     @cached_property
     def wrapped_padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
         return self.wrapped_padded_frequency_grid_in_pixels / self.pixel_size
+
+    @cached_property
+    def wrapped_full_padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
+        return self.wrapped_full_padded_frequency_grid_in_pixels / self.pixel_size
 
     def rescale_to_pixel_size(
         self,

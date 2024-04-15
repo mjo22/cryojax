@@ -7,7 +7,7 @@ from .._potential import RealVoxelGridPotential
 from .potential_integrator import AbstractPotentialIntegrator
 
 
-class MultiSlice(AbstractPotentialIntegrator, strict=True):
+class MultiSliceIntegrator(AbstractPotentialIntegrator, strict=True):
     delta_z: int = field(static=True, default=1)  # pixels
     sigma: int = field(static=True, default=1)  # TODO: get from config
 

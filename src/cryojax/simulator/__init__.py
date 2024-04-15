@@ -27,8 +27,10 @@ from ._integrators import (
     project_with_nufft as project_with_nufft,
 )
 from ._optics import (
+    AbstractCTF as AbstractCTF,
     AbstractOptics as AbstractOptics,
     CTF as CTF,
+    MultiSliceOptics as MultiSliceOptics,
     WeakPhaseOptics as WeakPhaseOptics,
 )
 from ._pipeline import (
