@@ -114,6 +114,8 @@ class Instrument(Module, strict=True):
             raise NotImplementedError(
                 "Functionality for AbstractOptics.is_linear = False not supported."
             )
+        # TODO: multislice here. return in Fourier space after ||^2.
+        # see Eq. 6 in 10.1016/j.jsb.2013.05.008
 
     def compute_expected_electron_events(
         self,

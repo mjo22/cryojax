@@ -164,6 +164,49 @@ class WeakPhaseOptics(AbstractOptics, strict=True):
         return fourier_contrast_in_detector_plane
 
 
+class MultiSliceOptics(AbstractOptics, strict=True):
+    """An optics model in the weak-phase approximation. Here, compute the image
+    contrast by applying the CTF directly to the exit plane phase shifts.
+    """
+
+    ctf: CTF
+    envelope: FourierOperatorLike
+
+    is_linear: ClassVar[bool] = False
+
+    def __init__(
+        self,
+        ctf: CTF,
+        envelope: Optional[FourierOperatorLike] = None,
+    ):
+        self.ctf = ctf
+        self.envelope = envelope or Constant(1.0)
+
+    @override
+    def __call__(
+        self,
+        fourier_phase_in_exit_plane: Complex[
+            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+        ],
+        config: ImageConfig,
+        wavelength_in_angstroms: Float[Array, ""] | float,
+        defocus_offset: Float[Array, ""] | float = 0.0,
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+        """Apply the CTF directly to the phase shifts in the exit plane."""
+        frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
+        # Compute the CTF
+        ctf = self.envelope(frequency_grid) * self.ctf(
+            frequency_grid,
+            wavelength_in_angstroms=wavelength_in_angstroms,
+            defocus_offset=defocus_offset,
+        )
+        # ... compute the contrast as the CTF multiplied by the exit plane
+        # phase shifts
+        fourier_contrast_in_detector_plane = ctf * fourier_phase_in_exit_plane
+
+        return fourier_contrast_in_detector_plane
+
+
 WeakPhaseOptics.__init__.__doc__ = """**Arguments:**
 
 - `ctf`: The contrast transfer function model.
