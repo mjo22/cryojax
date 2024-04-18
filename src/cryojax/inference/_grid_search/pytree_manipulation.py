@@ -53,17 +53,26 @@ def tree_grid_shape(
         assert tree_grid_shape(complicated_tree_grid) == (10, 10, 10)
         ```
     """  # noqa: E501
-    _leading_dim_resolver = jtu.tree_map(
-        _LeafLeadingDimension, tree_grid, is_leaf=is_leaf
-    )
-    _reduce_fn = lambda x, y: (
-        x.get() + y.get() if isinstance(x, _LeafLeadingDimension) else x + y.get()
-    )
-    return jtu.tree_reduce(
-        _reduce_fn,
-        _leading_dim_resolver,
-        is_leaf=lambda x: isinstance(x, _LeafLeadingDimension),
-    )
+    n_leaves = len(jtu.tree_leaves(tree_grid, is_leaf=is_leaf))
+    if n_leaves == 0:
+        raise ValueError(
+            "The pytree passed to `tree_grid_shape` should have at least "
+            f"one leaf. The pytree was equal to {tree_grid}, which has "
+            "no leaves."
+        )
+    else:
+        _leading_dim_resolver = jtu.tree_map(
+            _LeafLeadingDimension, tree_grid, is_leaf=is_leaf
+        )
+        _reduce_fn = lambda x, y: (
+            x.get() + y.get() if isinstance(x, _LeafLeadingDimension) else x + y.get()
+        )
+        shape = jtu.tree_reduce(
+            _reduce_fn,
+            _leading_dim_resolver,
+            is_leaf=lambda x: isinstance(x, _LeafLeadingDimension),
+        )
+        return shape if n_leaves > 1 else shape.get()
 
 
 def tree_grid_unravel_index(

@@ -95,7 +95,7 @@ ctf = cxs.CTF(
     amplitude_contrast_ratio=0.1)
 optics = cxs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # b_factor is given in Angstroms^2
 # ... these are stored in the Instrument
-voltage_in_kilovolts = 300.0,
+voltage_in_kilovolts = 300.0
 instrument = cxs.Instrument(voltage_in_kilovolts, optics)
 ```
 

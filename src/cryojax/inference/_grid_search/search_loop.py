@@ -46,7 +46,7 @@ def run_grid_search(
 
     !!! warning
 
-        A `tree_grid` can only have leaves thay are JAX arrays of
+        A `tree_grid` can only have leaves that are JAX arrays of
         grid points and `None`. It is difficult to precisely check this
         condition even with a run-time type checker, so breaking it may
         result in unhelpful errors.
@@ -201,11 +201,15 @@ def _build_tqdm(
             print_every = 1
     else:
         if print_every < 1:
-            raise ValueError(f"Print rate should be greater than 0. got {print_every}")
+            raise ValueError(
+                "The number of iterations per progress bar update should "
+                f"be greater than 0. Got {print_every}."
+            )
         elif print_every > n_iterations:
             raise ValueError(
-                "Print rate should be less than the "
-                f"number of steps {n_iterations}. got {print_every}"
+                "The number of iterations per progress bar update should be less "
+                f"than the number of iterations, equal to {n_iterations}. "
+                f"Got {print_every}."
             )
 
     remainder = n_iterations % print_every

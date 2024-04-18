@@ -222,10 +222,8 @@ class MinimumSearchMethod(
         # Evaluate the batch of grid points and extract the best one
         value_batch = jax.vmap(fn, in_axes=[0, None])(tree_grid_point_batch, args)
         best_batch_index = jnp.argmin(value_batch, axis=0)
-        raveled_grid_index = jnp.take(
-            raveled_grid_index_batch, best_batch_index, axis=0
-        )
-        value = jnp.take(value_batch, best_batch_index, axis=0)
+        raveled_grid_index = jnp.take(raveled_grid_index_batch, best_batch_index)
+        value = jnp.amin(value_batch, axis=0)
         # Unpack the current state
         last_minimum_value = state.current_minimum_eval
         last_best_raveled_index = state.current_best_raveled_index
@@ -269,9 +267,13 @@ class MinimumSearchMethod(
             )
             # ... index the full grid, reshaping the solution's leaves to be the same
             # shape as returned by `fn`
+            _reshape_fn = lambda x: (
+                x.reshape((*f_struct.shape, *x.shape[1:]))
+                if x.ndim > 1
+                else lambda x: x.reshape(f_struct.shape)
+            )
             value = jtu.tree_map(
-                lambda x: x.reshape(f_struct.shape),
-                tree_grid_take(tree_grid, tree_grid_index),
+                _reshape_fn, tree_grid_take(tree_grid, tree_grid_index)
             )
         else:
             value = None

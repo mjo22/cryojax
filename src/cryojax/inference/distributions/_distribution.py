@@ -4,7 +4,7 @@ Base class for a cryojax distribution.
 
 from abc import abstractmethod
 
-from equinox import AbstractVar, Module
+from equinox import Module
 from jaxtyping import Array, Float, Inexact, PRNGKeyArray
 
 
