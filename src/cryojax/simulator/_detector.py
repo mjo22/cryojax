@@ -90,6 +90,53 @@ class AbstractDetector(Module, strict=True):
         """Sample a realization from the detector noise model."""
         raise NotImplementedError
 
+    def compute_expected_electron_events(
+        self,
+        fourier_squared_wavefunction_at_detector_plane: Complex[
+            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+        ],
+        config: ImageConfig,
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+        """Compute the expected electron events from the detector."""
+        if self.detector is None:
+            raise AttributeError(
+                "Tried to call `Instrument.compute_expected_electron_events`, "
+                "but the `Instrument`'s detector model is `None`. This "
+                "is not allowed!"
+            )
+        fourier_expected_electron_events = self.detector(
+            fourier_squared_wavefunction_at_detector_plane,
+            config,
+            self.dose.electrons_per_angstrom_squared,
+            key=None,
+        )
+
+        return fourier_expected_electron_events
+
+    def measure_detector_readout(
+        self,
+        key: PRNGKeyArray,
+        fourier_squared_wavefunction_at_detector_plane: Complex[
+            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+        ],
+        config: ImageConfig,
+    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+        """Measure the readout from the detector."""
+        if self.detector is None:
+            raise AttributeError(
+                "Tried to call `Instrument.measure_detector_readout`, "
+                "but the `Instrument`'s detector model is `None`. This "
+                "is not allowed!"
+            )
+        fourier_detector_readout = self.detector(
+            fourier_squared_wavefunction_at_detector_plane,
+            config,
+            self.dose.electrons_per_angstrom_squared,
+            key,
+        )
+
+        return fourier_detector_readout
+
     def __call__(
         self,
         fourier_squared_wavefunction_at_detector_plane: Complex[

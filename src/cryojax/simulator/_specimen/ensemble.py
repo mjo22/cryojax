@@ -9,7 +9,6 @@ from typing_extensions import override
 import jax
 from equinox import AbstractVar
 
-from .._integrators import AbstractPotentialIntegrator
 from .._pose import AbstractPose, EulerAnglePose
 from .._potential import AbstractScatteringPotential
 from .conformation import AbstractConformation, DiscreteConformation
@@ -43,19 +42,16 @@ class DiscreteEnsemble(AbstractEnsemble, strict=True):
     """
 
     potential: tuple[AbstractScatteringPotential, ...]
-    integrator: AbstractPotentialIntegrator
     pose: AbstractPose
     conformation: DiscreteConformation
 
     def __init__(
         self,
         potential: tuple[AbstractScatteringPotential, ...],
-        integrator: AbstractPotentialIntegrator,
         pose: Optional[AbstractPose] = None,
         conformation: Optional[DiscreteConformation] = None,
     ):
         self.potential = potential
-        self.integrator = integrator
         self.pose = pose or EulerAnglePose()
         self.conformation = conformation or DiscreteConformation(0)
 

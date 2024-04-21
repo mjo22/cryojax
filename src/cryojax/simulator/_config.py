@@ -24,40 +24,7 @@ from ..image import (
 
 
 class ImageConfig(Module, strict=True):
-    """Configuration and utilities for an electron microscopy image.
-
-    **Attributes:**
-
-    - `shape`:
-        Shape of the imaging plane in pixels.
-        ``width, height = shape[0], shape[1]``
-        is the size of the desired imaging plane.
-    - `pixel_size`:
-        The pixel size of the image in Angstroms.
-    - `padded_shape`:
-        The shape of the image affter padding. This is
-        set with the `pad_scale` variable during initialization.
-    - `pad_mode`:
-        The method of image padding. By default, ``"constant"``.
-        For all options, see ``jax.numpy.pad``.
-    - `rescale_method`:
-        The interpolation method for pixel size rescaling. See
-        ``jax.image.scale_and_translate`` for options.
-    - `wrapped_frequency_grid_in_pixels`:
-        The fourier wavevectors in the imaging plane, wrapped in
-        a `FrequencyGrid` object.
-    - `wrapped_padded_frequency_grid_in_pixels`:
-        The fourier wavevectors in the imaging plane
-        in the padded coordinate system, wrapped in
-        a `FrequencyGrid` object.
-    - `wrapped_coordinate_grid_in_pixels`:
-        The coordinates in the imaging plane, wrapped
-        in a `CoordinateGrid` object.
-    - `wrapped_padded_coordinate_grid_in_pixels`:
-        The coordinates in the imaging plane
-        in the padded coordinate system, wrapped in a
-        `CoordinateGrid` object.
-    """
+    """Configuration and utilities for an electron microscopy image."""
 
     shape: tuple[int, int] = field(static=True)
     pixel_size: Float[Array, ""] = field(converter=error_if_not_positive)
@@ -65,11 +32,6 @@ class ImageConfig(Module, strict=True):
     padded_shape: tuple[int, int] = field(static=True)
     pad_mode: Union[str, Callable] = field(static=True)
     rescale_method: str = field(static=True)
-
-    wrapped_frequency_grid_in_pixels: FrequencyGrid
-    wrapped_padded_frequency_grid_in_pixels: FrequencyGrid
-    wrapped_coordinate_grid_in_pixels: CoordinateGrid
-    wrapped_padded_coordinate_grid_in_pixels: CoordinateGrid
 
     def __init__(
         self,
@@ -83,10 +45,25 @@ class ImageConfig(Module, strict=True):
     ):
         """**Arguments:**
 
+        - `shape`:
+            Shape of the imaging plane in pixels.
+            ``width, height = shape[0], shape[1]``
+            is the size of the desired imaging plane.
+        - `pixel_size`:
+            The pixel size of the image in Angstroms.
+        - `padded_shape`:
+            The shape of the image affter padding. This is
+            set with the `pad_scale` variable during initialization.
         - `pad_scale`: A scale factor at which to pad the image. This is
                        optionally used to set `padded_shape` and must be
                        greater than `1`. If `padded_shape` is set, this
                        argument is ignored.
+        - `pad_mode`:
+            The method of image padding. By default, ``"constant"``.
+            For all options, see ``jax.numpy.pad``.
+        - `rescale_method`:
+            The interpolation method for pixel size rescaling. See
+            ``jax.image.scale_and_translate`` for options.
         """
         self.shape = shape
         self.pixel_size = jnp.asarray(pixel_size)
@@ -97,15 +74,6 @@ class ImageConfig(Module, strict=True):
             self.padded_shape = (int(pad_scale * shape[0]), int(pad_scale * shape[1]))
         else:
             self.padded_shape = padded_shape
-        # Set coordinates
-        self.wrapped_frequency_grid_in_pixels = FrequencyGrid(shape=self.shape)
-        self.wrapped_padded_frequency_grid_in_pixels = FrequencyGrid(
-            shape=self.padded_shape
-        )
-        self.wrapped_coordinate_grid_in_pixels = CoordinateGrid(shape=self.shape)
-        self.wrapped_padded_coordinate_grid_in_pixels = CoordinateGrid(
-            shape=self.padded_shape
-        )
 
     def __check_init__(self):
         if self.padded_shape[0] < self.shape[0] or self.padded_shape[1] < self.shape[1]:
@@ -115,19 +83,51 @@ class ImageConfig(Module, strict=True):
             )
 
     @cached_property
+    def wrapped_coordinate_grid_in_pixels(self) -> CoordinateGrid:
+        return CoordinateGrid(shape=self.shape)
+
+    @cached_property
     def wrapped_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         return self.pixel_size * self.wrapped_coordinate_grid_in_pixels  # type: ignore
+
+    @cached_property
+    def wrapped_frequency_grid_in_pixels(self) -> FrequencyGrid:
+        return FrequencyGrid(shape=self.shape)
 
     @cached_property
     def wrapped_frequency_grid_in_angstroms(self) -> FrequencyGrid:
         return self.wrapped_frequency_grid_in_pixels / self.pixel_size
 
     @cached_property
+    def wrapped_full_frequency_grid_in_pixels(self) -> FrequencyGrid:
+        return FrequencyGrid(shape=self.shape, half_space=False)
+
+    @cached_property
+    def wrapped_full_frequency_grid_in_angstroms(self) -> FrequencyGrid:
+        return self.wrapped_frequency_grid_in_pixels / self.pixel_size
+
+    @cached_property
+    def wrapped_padded_coordinate_grid_in_pixels(self) -> CoordinateGrid:
+        return CoordinateGrid(shape=self.padded_shape)
+
+    @cached_property
     def wrapped_padded_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
         return self.pixel_size * self.wrapped_padded_coordinate_grid_in_pixels  # type: ignore
 
     @cached_property
+    def wrapped_padded_frequency_grid_in_pixels(self) -> FrequencyGrid:
+        return FrequencyGrid(shape=self.padded_shape)
+
+    @cached_property
     def wrapped_padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
+        return self.wrapped_padded_frequency_grid_in_pixels / self.pixel_size
+
+    @cached_property
+    def wrapped_padded_full_frequency_grid_in_pixels(self) -> FrequencyGrid:
+        return FrequencyGrid(shape=self.padded_shape, half_space=False)
+
+    @cached_property
+    def wrapped_padded_full_frequency_grid_in_angstroms(self) -> FrequencyGrid:
         return self.wrapped_padded_frequency_grid_in_pixels / self.pixel_size
 
     def rescale_to_pixel_size(
@@ -183,7 +183,7 @@ class ImageConfig(Module, strict=True):
         )
 
     @property
-    def n_pix(self) -> int:
+    def n_pixels(self) -> int:
         return math.prod(self.shape)
 
     @property
@@ -203,5 +203,5 @@ class ImageConfig(Module, strict=True):
         return self.padded_shape[1]
 
     @property
-    def padded_n_pix(self) -> int:
+    def padded_n_pixels(self) -> int:
         return math.prod(self.padded_shape)
