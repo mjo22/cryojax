@@ -121,9 +121,9 @@ class AbstractPipeline(Module, strict=True):
                 is_filter_applied = True
                 image = self.filter(image)
             image = irfftn(image, s=config.padded_shape)
+            image = config.crop_to_shape(image)
             if self.mask is not None:
                 image = self.mask(image)
-            image = config.crop_to_shape(image)
             if is_filter_applied or self.filter is None:
                 # ... normalize and return if the filter has already been applied
                 if normalize:

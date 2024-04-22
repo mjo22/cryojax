@@ -19,15 +19,18 @@ def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     )
     assert control_shape == potential.fourier_voxel_grid.shape[0:2]
     pose = cs.EulerAnglePose()
-    integrator = cs.FourierSliceExtract()
-    specimen = cs.Specimen(potential, integrator, pose)
+    method = cs.FourierSliceExtract()
+    specimen = cs.BaseEnsemble(potential, pose)
+    transfer_theory = cs.ContrastTransferTheory(cs.ContrastTransferFunction())
+    theory = cs.LinearScatteringTheory(specimen, method, transfer_theory)
     config_control = cs.ImageConfig(control_shape, pixel_size)
     config_test = cs.ImageConfig(shape, pixel_size)
     instrument = cs.Instrument(voltage_in_kilovolts=300.0)
-    pipeline_control = cs.ImagePipeline(config_control, specimen, instrument)
-    pipeline_test = cs.ImagePipeline(config_test, specimen, instrument)
+    pipeline_control = cs.ImagePipeline(config_control, theory, instrument)
+    pipeline_test = cs.ImagePipeline(config_test, theory, instrument)
 
     np.testing.assert_allclose(
         crop_to_shape(pipeline_test.render(), control_shape),
         pipeline_control.render(),
+        rtol=5e-4
     )

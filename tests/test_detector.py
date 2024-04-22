@@ -8,7 +8,7 @@ from cryojax.image import irfftn, rfftn
 
 def test_gaussian_limit():
     # Pick a large integrated electron flux to test
-    electrons_per_angstrom_squared = 10000.0
+    electrons_per_angstrom_squared = jnp.asarray(10000.0)
     # Create ImageConfig
     config = cs.ImageConfig((25, 25), 1.0)
     N_pix = np.prod(config.padded_shape)
@@ -16,8 +16,6 @@ def test_gaussian_limit():
     # Create squared wavefunction of just vacuum, i.e. 1 everywhere
     vacuum_squared_wavefunction = jnp.ones(config.shape, dtype=float)
     fourier_vacuum_squared_wavefunction = rfftn(vacuum_squared_wavefunction)
-    # Instantiate the electron dose
-    dose = cs.ElectronDose(electrons_per_angstrom_squared)
     # Create detector models
     key = jax.random.PRNGKey(1234)
     dqe = cs.IdealDQE()
@@ -27,13 +25,13 @@ def test_gaussian_limit():
     fourier_gaussian_detector_readout = gaussian_detector(
         fourier_vacuum_squared_wavefunction,
         config,
-        dose.electrons_per_angstrom_squared,
+        electrons_per_angstrom_squared,
         key,
     )
     fourier_poisson_detector_readout = poisson_detector(
         fourier_vacuum_squared_wavefunction,
         config,
-        dose.electrons_per_angstrom_squared,
+        electrons_per_angstrom_squared,
         key,
     )
     # Compare to see if the autocorrelation has converged

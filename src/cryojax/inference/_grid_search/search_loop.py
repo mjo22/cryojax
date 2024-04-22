@@ -114,7 +114,7 @@ def run_grid_search(
         raveled_grid_index_batch = jnp.linspace(
             iteration_index * method.batch_size,
             (iteration_index + 1) * method.batch_size - 1,
-            method.batch_size,
+            method.batch_size,  # type: ignore
             dtype=int,
         )
         tree_grid_points = tree_grid_take(
@@ -160,7 +160,7 @@ def run_grid_search(
 
 def _loop_tqdm(
     n_iterations: int,
-    print_every: int,
+    print_every: Optional[int] = None,
     **kwargs,
 ) -> Callable:
     """Add a tqdm progress bar to `body_fun` used in `jax.lax.fori_loop`.
@@ -182,7 +182,7 @@ def _loop_tqdm(
 
 def _build_tqdm(
     n_iterations: int,
-    print_every: Optional[int],
+    print_every: Optional[int] = None,
     **kwargs,
 ) -> tuple[Callable, Callable]:
     """Build the tqdm progress bar on the host."""
@@ -222,7 +222,7 @@ def _build_tqdm(
         tqdm_bars[0].update(arg)
 
     def _update_progress_bar(iter_num):
-        _ = jax.jax.lax.cond(
+        _ = jax.lax.cond(
             iter_num == 0,
             lambda _: host_callback.id_tap(_define_tqdm, None, result=iter_num),
             lambda _: iter_num,

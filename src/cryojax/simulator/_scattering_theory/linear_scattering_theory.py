@@ -22,9 +22,6 @@ from .base_scattering_theory import AbstractScatteringTheory
 class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
     """Base class for a scattering theory in linear image formation theory."""
 
-    projection_method: eqx.AbstractVar[AbstractPotentialProjectionMethod]
-    transfer_theory: eqx.AbstractVar[ContrastTransferTheory]
-
     @abstractmethod
     def compute_fourier_phase_shifts_at_exit_plane(
         self,
@@ -140,7 +137,7 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
     assembly: AbstractAssembly
     projection_method: AbstractPotentialProjectionMethod
     transfer_theory: ContrastTransferTheory
-    solvent: Optional[AbstractIce]
+    solvent: Optional[AbstractIce] = None
 
     @override
     def compute_fourier_phase_shifts_at_exit_plane(
