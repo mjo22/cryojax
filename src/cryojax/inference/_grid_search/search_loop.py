@@ -30,7 +30,6 @@ def run_grid_search(
     args: Any,
     *,
     is_leaf: Optional[Callable[[Any], bool]] = None,
-    unroll: Optional[int | bool] = None,
     progress_bar: bool = False,
     print_every: Optional[int] = None,
 ) -> PyTree[Any]:
@@ -67,7 +66,6 @@ def run_grid_search(
     - `args`: Arguments passed to `fn`, as `fn(y, args)`.
     - `is_leaf`: As [`jax.tree_util.tree_flatten`](https://jax.readthedocs.io/en/latest/_autosummary/jax.tree_util.tree_flatten.html).
                  This specifies what is to be treated as a leaf in `tree_grid`.
-    - `unroll`: As [`jax.lax.fori_loop`](https://jax.readthedocs.io/en/latest/_autosummary/jax.lax.fori_loop.html)
     - `progress_bar`: Add a [`tqdm`](https://github.com/tqdm/tqdm) progress bar to the
                       search loop.
     - `print_every`: An interval for the number of iterations at which to update the
@@ -149,7 +147,7 @@ def run_grid_search(
     if progress_bar:
         body_fun = _loop_tqdm(n_iterations, print_every)(body_fun)
     final_carry = jax.lax.fori_loop(
-        0, n_iterations, body_fun, init_carry, unroll=unroll
+        0, n_iterations, body_fun, init_carry
     )
     dynamic_final_state, _ = final_carry
     final_state = eqx.combine(static_state, dynamic_final_state)
