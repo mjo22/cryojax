@@ -6,7 +6,6 @@ import pytest
 
 import cryojax.simulator as cs
 from cryojax.data import read_array_with_spacing_from_mrc
-from cryojax.image import irfftn
 
 
 def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.HelicalAssembly:
@@ -190,7 +189,7 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
             cs.FourierSliceExtract(),
             cs.ContrastTransferTheory(cs.ContrastTransferFunction()),
         )
-        return config.crop_to_shape(irfftn(theory.compute_fourier_phase_shifts_at_exit_plane(config, cs.Instrument(300.0))), s=config.padded_shape)
+        return config.crop_to_shape(irfftn(theory.compute_fourier_phase_shifts_at_exit_plane(config, cs.Instrument(300.0))), s=config.padded_shape)  # noqa: E501
 
     np.testing.assert_allclose(
         compute_rotated_image(
@@ -210,4 +209,4 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
         ),
         atol=1e-1,
     )
-"""
+"""  # noqa: E501
