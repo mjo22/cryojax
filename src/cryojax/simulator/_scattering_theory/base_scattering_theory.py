@@ -9,6 +9,7 @@ from .._instrument import Instrument
 
 
 class AbstractScatteringTheory(eqx.Module, strict=True):
+    """Base class for a scattering theory."""
 
     @abstractmethod
     def compute_fourier_squared_wavefunction_at_detector_plane(

@@ -20,6 +20,8 @@ from .base_scattering_theory import AbstractScatteringTheory
 
 
 class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
+    """Base class for a scattering theory in linear image formation theory."""
+
     projection_method: eqx.AbstractVar[AbstractPotentialProjectionMethod]
     transfer_theory: eqx.AbstractVar[ContrastTransferTheory]
 
@@ -64,6 +66,8 @@ class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
 
 
 class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
+    """Base linear image formation theory."""
+
     potential_ensemble: AbstractPotentialEnsemble
     projection_method: AbstractPotentialProjectionMethod
     transfer_theory: ContrastTransferTheory
@@ -121,7 +125,18 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
         return fourier_contrast_at_detector_plane
 
 
+LinearScatteringTheory.__init__.__doc__ = """**Arguments:**
+
+- `potential_ensemble`: The specimen potential ensemble.
+- `projection_method`: The method for computing projections of the specimen potential.
+- `transfer_theory`: The contrast transfer theory.
+- `solvent`: The model for the solvent.
+"""
+
+
 class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict=True):
+    """Compute the superposition of images stored in `AbstractAssembly.subunits`."""
+
     assembly: AbstractAssembly
     projection_method: AbstractPotentialProjectionMethod
     transfer_theory: ContrastTransferTheory
@@ -204,3 +219,12 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
         )
 
         return fourier_contrast_at_detector_plane
+
+
+LinearScatteringTheory.__init__.__doc__ = """**Arguments:**
+
+- `assembly`: The assembly of subunits over which to compute a superposition of images.
+- `projection_method`: The method for computing projections of the specimen potential.
+- `transfer_theory`: The contrast transfer theory.
+- `solvent`: The model for the solvent.
+"""

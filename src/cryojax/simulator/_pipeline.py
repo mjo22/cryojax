@@ -70,15 +70,14 @@ class AbstractPipeline(Module, strict=True):
         | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
         | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
-        """
-        Sample an image from a realization of the `AbstractIce` and
-        `AbstractDetector` models.
+        """Sample an image from a realization of the stochastic models contained
+        in the `AbstractPipeline`.
+
+        See `ImagePipeline.render` for documentation of keyword arguments.
 
         **Arguments:**
 
         - `key`: The random number generator key.
-
-        See `ImagePipeline.render` for documentation of keyword arguments.
         """
         raise NotImplementedError
 
@@ -213,7 +212,6 @@ class ImagePipeline(AbstractPipeline, strict=True):
         | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
         | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
-        """Render an image without any stochasticity."""
         # Compute the squared wavefunction
         theory = self.scattering_theory
         fourier_squared_wavefunction_at_detector_plane = (
@@ -257,7 +255,6 @@ class ImagePipeline(AbstractPipeline, strict=True):
         | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
         | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
-        """Sample the assembly from the stochastic parts of the model."""
         if self.instrument.detector is not None:
             keys = jax.random.split(key)
         else:

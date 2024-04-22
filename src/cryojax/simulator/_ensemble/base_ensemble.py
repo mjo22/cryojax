@@ -40,14 +40,7 @@ class AbstractPotentialEnsemble(Module, strict=True):
 
 
 class BaseEnsemble(AbstractPotentialEnsemble, strict=True):
-    """
-    Abstraction of a of biological specimen.
-
-    **Attributes:**
-
-    - `potential`: The scattering potential representation of the
-                    specimen as a single scattering potential object.
-    """
+    """Abstraction of a biological specimen with one conformation."""
 
     state_space: AbstractSpecimenPotential
     pose: AbstractPose
@@ -58,6 +51,12 @@ class BaseEnsemble(AbstractPotentialEnsemble, strict=True):
         state_space: AbstractSpecimenPotential,
         pose: Optional[AbstractPose] = None,
     ):
+        """**Arguments:**
+
+        - `state_space`: The scattering potential representation of the
+                         specimen as a single scattering potential object.
+        - `pose`: The pose of the specimen.
+        """
         self.state_space = state_space
         self.pose = pose or EulerAnglePose()
         self.conformation = None

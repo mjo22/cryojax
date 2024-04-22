@@ -28,13 +28,6 @@ class DiscreteEnsemble(AbstractPotentialEnsemble, strict=True):
     """
     Abstraction of an ensemble with discrete conformational
     heterogeneity.
-
-    **Attributes:**
-
-    - `state_space`: A tuple of specimen potential representations.
-    - `pose`: The pose of the specimen.
-    - `conformation`: A conformation with a discrete index at which to evaluate
-                      the scattering potential tuple.
     """
 
     state_space: tuple[AbstractSpecimenPotential, ...]
@@ -47,6 +40,13 @@ class DiscreteEnsemble(AbstractPotentialEnsemble, strict=True):
         pose: Optional[AbstractPose] = None,
         conformation: Optional[DiscreteConformation] = None,
     ):
+        """**Arguments:**
+
+        - `state_space`: A tuple of specimen potential representations.
+        - `pose`: The pose of the specimen.
+        - `conformation`: A conformation with a discrete index at which to evaluate
+                          the scattering potential tuple.
+        """
         self.state_space = state_space
         self.pose = pose or EulerAnglePose()
         self.conformation = conformation or DiscreteConformation(0)
