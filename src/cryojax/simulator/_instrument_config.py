@@ -109,7 +109,7 @@ class InstrumentConfig(Module, strict=True):
 
     @cached_property
     def wrapped_full_frequency_grid_in_angstroms(self) -> FrequencyGrid:
-        return self.wrapped_frequency_grid_in_pixels / self.pixel_size
+        return self.wrapped_full_frequency_grid_in_pixels / self.pixel_size
 
     @cached_property
     def wrapped_padded_coordinate_grid_in_pixels(self) -> CoordinateGrid:
@@ -133,7 +133,7 @@ class InstrumentConfig(Module, strict=True):
 
     @cached_property
     def wrapped_padded_full_frequency_grid_in_angstroms(self) -> FrequencyGrid:
-        return self.wrapped_padded_frequency_grid_in_pixels / self.pixel_size
+        return self.wrapped_padded_full_frequency_grid_in_pixels / self.pixel_size
 
     def crop_to_shape(
         self, image: Float[Array, "y_dim x_dim"]
