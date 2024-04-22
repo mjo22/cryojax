@@ -32,5 +32,5 @@ def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     np.testing.assert_allclose(
         crop_to_shape(pipeline_test.render(), control_shape),
         pipeline_control.render(),
-        rtol=5e-4
+        rtol=5e-4,
     )
