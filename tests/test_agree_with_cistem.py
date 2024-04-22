@@ -127,7 +127,7 @@ def test_compute_projection_with_cistem(
     box_size = potential.shape[0]
     config = cs.ImageConfig((box_size, box_size), pixel_size)
     cryojax_projection = irfftn(
-        projection_method.compute_fourier_projected_potential(
+        projection_method.compute_raw_fourier_projected_potential(
             specimen.get_potential_in_lab_frame(), config
         )
         .at[0, 0]
