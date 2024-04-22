@@ -13,7 +13,7 @@ from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..._errors import error_if_not_positive
 from ...image.operators import Constant, FourierOperatorLike
-from ...simulator import AbstractPipeline
+from ...simulator import AbstractImagingPipeline
 from ._distribution import AbstractDistribution
 
 
@@ -24,13 +24,13 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
     so that the variance to be an arbitrary noise power spectrum.
     """
 
-    pipeline: AbstractPipeline
+    pipeline: AbstractImagingPipeline
     variance: FourierOperatorLike
     contrast_scale: Float[Array, ""] = field(converter=error_if_not_positive)
 
     def __init__(
         self,
-        pipeline: AbstractPipeline,
+        pipeline: AbstractImagingPipeline,
         variance: Optional[FourierOperatorLike] = None,
         contrast_scale: float | Float[Array, ""] = 1.0,
     ):

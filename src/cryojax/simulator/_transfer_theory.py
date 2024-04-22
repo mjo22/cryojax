@@ -18,7 +18,7 @@ from ..image.operators import (
     Constant,
     FourierOperatorLike,
 )
-from ._config import ImageConfig
+from ._instrument_config import InstrumentConfig
 
 
 class AbstractTransferFunction(AbstractFourierOperator, strict=True):
@@ -118,8 +118,7 @@ class AbstractTransferTheory(Module, strict=True):
             Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
             | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
         ),
-        config: ImageConfig,
-        wavelength_in_angstroms: Float[Array, ""] | float,
+        config: InstrumentConfig,
         defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> (
         Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
@@ -151,8 +150,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         fourier_phase_or_wavefunction_in_exit_plane: Complex[
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
-        config: ImageConfig,
-        wavelength_in_angstroms: Float[Array, ""] | float,
+        config: InstrumentConfig,
         defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Apply the CTF directly to the phase shifts in the exit plane."""
@@ -161,7 +159,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         # Compute the CTF
         ctf = self.envelope(frequency_grid) * self.transfer_function(
             frequency_grid,
-            wavelength_in_angstroms=wavelength_in_angstroms,
+            wavelength_in_angstroms=config.wavelength_in_angstroms,
             defocus_offset=defocus_offset,
         )
         # ... compute the contrast as the CTF multiplied by the exit plane

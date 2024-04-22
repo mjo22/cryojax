@@ -146,9 +146,7 @@ def run_grid_search(
     # Run and unpack results
     if progress_bar:
         body_fun = _loop_tqdm(n_iterations, print_every)(body_fun)
-    final_carry = jax.lax.fori_loop(
-        0, n_iterations, body_fun, init_carry
-    )
+    final_carry = jax.lax.fori_loop(0, n_iterations, body_fun, init_carry)
     dynamic_final_state, _ = final_carry
     final_state = eqx.combine(static_state, dynamic_final_state)
     # Return the solution

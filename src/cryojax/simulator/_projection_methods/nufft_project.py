@@ -6,10 +6,9 @@ import math
 from typing_extensions import override
 
 import jax.numpy as jnp
-from equinox import field
 from jaxtyping import Array, Complex, Float
 
-from .._config import ImageConfig
+from .._instrument_config import InstrumentConfig
 from .._potential import RealVoxelCloudPotential, RealVoxelGridPotential
 from .projection_method import AbstractVoxelPotentialProjectionMethod
 
@@ -24,13 +23,14 @@ class NufftProject(AbstractVoxelPotentialProjectionMethod, strict=True):
         See ``jax-finufft`` for documentation.
     """
 
-    eps: float = field(static=True, default=1e-6)
+    pixel_rescaling_method: str = "bicubic"
+    eps: float = 1e-6
 
     @override
     def compute_raw_fourier_projected_potential(
         self,
         potential: RealVoxelGridPotential | RealVoxelCloudPotential,
-        config: ImageConfig,
+        config: InstrumentConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(potential, RealVoxelGridPotential):

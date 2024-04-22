@@ -7,25 +7,24 @@ from typing import Optional
 from typing_extensions import override
 
 import jax
-import jax.numpy as jnp
 from equinox import AbstractVar, Module
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..image import irfftn, normalize_image, rfftn
 from ..image.operators import AbstractFilter, AbstractMask
-from ._config import ImageConfig
-from ._instrument import Instrument
-from ._scattering_theory import AbstractScatteringTheory
+from ._detector import AbstractDetector
+from ._instrument_config import InstrumentConfig
+from ._scattering_theory import AbstractLinearScatteringTheory, AbstractScatteringTheory
 
 
-class AbstractPipeline(Module, strict=True):
+class AbstractImagingPipeline(Module, strict=True):
     """Base class for an image formation model.
 
-    Call an `AbstractPipeline`'s `render` and `sample`,
+    Call an `AbstractImagingPipeline`'s `render` and `sample`,
     routines.
     """
 
-    config: AbstractVar[ImageConfig]
+    config: AbstractVar[InstrumentConfig]
     filter: AbstractVar[Optional[AbstractFilter]]
     mask: AbstractVar[Optional[AbstractMask]]
 
@@ -71,7 +70,7 @@ class AbstractPipeline(Module, strict=True):
         | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
         """Sample an image from a realization of the stochastic models contained
-        in the `AbstractPipeline`.
+        in the `AbstractImagingPipeline`.
 
         See `ImagePipeline.render` for documentation of keyword arguments.
 
@@ -165,37 +164,124 @@ class AbstractPipeline(Module, strict=True):
             return irfftn(image, s=config.padded_shape) if get_real else image
 
 
-class ImagePipeline(AbstractPipeline, strict=True):
-    """Standard image formation pipeline.
+class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
+    """An image formation pipeline that returns the image contrast from a linear
+    scattering theory.
 
     **Attributes:**
 
-    - `config`: The image configuration.
-    - `scattering_theory`: The scattering theory.
-    - `instrument`: The properties of the electron microscope.
+    - `config`: The configuration of the instrument, such as for the pixel size
+                and the wavelength.
+    - `scattering_theory`: The scattering theory. This must be a linear scattering
+                           theory.
     - `filter: `A filter to apply to the image.
     - `mask`: A mask to apply to the image.
     """
 
-    config: ImageConfig
-    scattering_theory: AbstractScatteringTheory
-    instrument: Instrument
+    config: InstrumentConfig
+    scattering_theory: AbstractLinearScatteringTheory
 
     filter: Optional[AbstractFilter]
     mask: Optional[AbstractMask]
 
     def __init__(
         self,
-        config: ImageConfig,
-        scattering_theory: AbstractScatteringTheory,
-        instrument: Instrument,
+        config: InstrumentConfig,
+        scattering_theory: AbstractLinearScatteringTheory,
         *,
         filter: Optional[AbstractFilter] = None,
         mask: Optional[AbstractMask] = None,
     ):
         self.config = config
         self.scattering_theory = scattering_theory
-        self.instrument = instrument
+        self.filter = filter
+        self.mask = mask
+
+    @override
+    def render(
+        self,
+        *,
+        postprocess: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
+    ) -> (
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
+    ):
+        # Compute the squared wavefunction
+        fourier_contrast_at_detector_plane = (
+            self.scattering_theory.compute_fourier_contrast_at_detector_plane(
+                self.config
+            )
+        )
+
+        return self._maybe_postprocess(
+            fourier_contrast_at_detector_plane,
+            postprocess=postprocess,
+            get_real=get_real,
+            normalize=normalize,
+        )
+
+    @override
+    def sample(
+        self,
+        key: PRNGKeyArray,
+        *,
+        postprocess: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
+    ) -> (
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
+    ):
+        # Compute the squared wavefunction
+        fourier_contrast_at_detector_plane = (
+            self.scattering_theory.compute_fourier_contrast_at_detector_plane(
+                self.config, key
+            )
+        )
+
+        return self._maybe_postprocess(
+            fourier_contrast_at_detector_plane,
+            postprocess=postprocess,
+            get_real=get_real,
+            normalize=normalize,
+        )
+
+
+class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
+    """An image formation pipeline that returns an intensity distribution---or in other
+    words a squared wavefunction.
+
+    **Attributes:**
+
+    - `config`: The configuration of the instrument, such as for the pixel size
+                and the wavelength.
+    - `scattering_theory`: The scattering theory.
+    - `filter: `A filter to apply to the image.
+    - `mask`: A mask to apply to the image.
+    """
+
+    config: InstrumentConfig
+    scattering_theory: AbstractScatteringTheory
+
+    filter: Optional[AbstractFilter]
+    mask: Optional[AbstractMask]
+
+    def __init__(
+        self,
+        config: InstrumentConfig,
+        scattering_theory: AbstractScatteringTheory,
+        *,
+        filter: Optional[AbstractFilter] = None,
+        mask: Optional[AbstractMask] = None,
+    ):
+        self.config = config
+        self.scattering_theory = scattering_theory
         self.filter = filter
         self.mask = mask
 
@@ -216,30 +302,16 @@ class ImagePipeline(AbstractPipeline, strict=True):
         theory = self.scattering_theory
         fourier_squared_wavefunction_at_detector_plane = (
             theory.compute_fourier_squared_wavefunction_at_detector_plane(
-                self.config, self.instrument
+                self.config,
             )
         )
-        if self.instrument.detector is None:
-            return self._maybe_postprocess(
-                fourier_squared_wavefunction_at_detector_plane,
-                postprocess=postprocess,
-                get_real=get_real,
-                normalize=normalize,
-            )
-        else:
-            # ... now measure the expected electron events at the detector
-            fourier_expected_electron_events = (
-                self.instrument.compute_expected_electron_events(
-                    fourier_squared_wavefunction_at_detector_plane, self.config
-                )
-            )
 
-            return self._maybe_postprocess(
-                fourier_expected_electron_events,
-                postprocess=postprocess,
-                get_real=get_real,
-                normalize=normalize,
-            )
+        return self._maybe_postprocess(
+            fourier_squared_wavefunction_at_detector_plane,
+            postprocess=postprocess,
+            get_real=get_real,
+            normalize=normalize,
+        )
 
     @override
     def sample(
@@ -255,35 +327,121 @@ class ImagePipeline(AbstractPipeline, strict=True):
         | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
         | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
     ):
-        if self.instrument.detector is not None:
-            keys = jax.random.split(key)
-        else:
-            keys = jnp.expand_dims(key, axis=0)
+        theory = self.scattering_theory
+        fourier_squared_wavefunction_at_detector_plane = (
+            theory.compute_fourier_squared_wavefunction_at_detector_plane(
+                self.config, key
+            )
+        )
+
+        return self._maybe_postprocess(
+            fourier_squared_wavefunction_at_detector_plane,
+            postprocess=postprocess,
+            get_real=get_real,
+            normalize=normalize,
+        )
+
+
+class ElectronCountsImagingPipeline(AbstractImagingPipeline, strict=True):
+    """An image formation pipeline that returns electron counts, given a
+    model for the detector.
+
+    **Attributes:**
+
+    - `config`: The configuration of the instrument, such as for the pixel size
+                and the wavelength.
+    - `scattering_theory`: The scattering theory.
+    - `detector`: The electron detector.
+    - `filter: `A filter to apply to the image.
+    - `mask`: A mask to apply to the image.
+    """
+
+    config: InstrumentConfig
+    scattering_theory: AbstractScatteringTheory
+    detector: AbstractDetector
+
+    filter: Optional[AbstractFilter]
+    mask: Optional[AbstractMask]
+
+    def __init__(
+        self,
+        config: InstrumentConfig,
+        scattering_theory: AbstractScatteringTheory,
+        detector: AbstractDetector,
+        *,
+        filter: Optional[AbstractFilter] = None,
+        mask: Optional[AbstractMask] = None,
+    ):
+        self.config = config
+        self.scattering_theory = scattering_theory
+        self.detector = detector
+        self.filter = filter
+        self.mask = mask
+
+    @override
+    def render(
+        self,
+        *,
+        postprocess: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
+    ) -> (
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
+    ):
+        # Compute the squared wavefunction
+        theory = self.scattering_theory
+        fourier_squared_wavefunction_at_detector_plane = (
+            theory.compute_fourier_squared_wavefunction_at_detector_plane(self.config)
+        )
+        # ... now measure the expected electron events at the detector
+        fourier_expected_electron_events = (
+            self.detector.compute_expected_electron_events(
+                fourier_squared_wavefunction_at_detector_plane, self.config
+            )
+        )
+
+        return self._maybe_postprocess(
+            fourier_expected_electron_events,
+            postprocess=postprocess,
+            get_real=get_real,
+            normalize=normalize,
+        )
+
+    @override
+    def sample(
+        self,
+        key: PRNGKeyArray,
+        *,
+        postprocess: bool = True,
+        get_real: bool = True,
+        normalize: bool = False,
+    ) -> (
+        Float[Array, "{self.config.y_dim} {self.config.x_dim}"]
+        | Float[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim}"]
+        | Complex[Array, "{self.config.y_dim} {self.config.x_dim//2+1}"]
+        | Complex[Array, "{self.config.padded_y_dim} {self.config.padded_x_dim//2+1}"]
+    ):
+        keys = jax.random.split(key)
         # Compute the squared wavefunction
         theory = self.scattering_theory
         fourier_squared_wavefunction_at_detector_plane = (
             theory.compute_fourier_squared_wavefunction_at_detector_plane(
-                self.config, self.instrument, keys[0]
+                self.config, keys[0]
             )
         )
-        if self.instrument.detector is None:
-            return self._maybe_postprocess(
-                fourier_squared_wavefunction_at_detector_plane,
-                postprocess=postprocess,
-                get_real=get_real,
-                normalize=normalize,
-            )
-        else:
-            # ... now measure the detector readout
-            fourier_detector_readout = self.instrument.measure_detector_readout(
-                keys[1],
-                fourier_squared_wavefunction_at_detector_plane,
-                self.config,
-            )
+        # ... now measure the detector readout
+        fourier_detector_readout = self.detector.compute_detector_readout(
+            keys[1],
+            fourier_squared_wavefunction_at_detector_plane,
+            self.config,
+        )
 
-            return self._maybe_postprocess(
-                fourier_detector_readout,
-                postprocess=postprocess,
-                get_real=get_real,
-                normalize=normalize,
-            )
+        return self._maybe_postprocess(
+            fourier_detector_readout,
+            postprocess=postprocess,
+            get_real=get_real,
+            normalize=normalize,
+        )

@@ -12,31 +12,33 @@ from equinox import Module
 from jaxtyping import Array, Complex, PRNGKeyArray
 
 from ..image.operators import FourierOperatorLike
-from ._config import ImageConfig
+from ._instrument_config import InstrumentConfig
 
 
 class AbstractIce(Module, strict=True):
     """Base class for an ice model."""
 
     @abstractmethod
-    def sample(
-        self, key: PRNGKeyArray, config: ImageConfig
+    def sample_fourier_phase_shifts_from_ice(
+        self, key: PRNGKeyArray, config: InstrumentConfig
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Sample a stochastic realization of the phase shifts due to the ice
         at the exit plane."""
         raise NotImplementedError
 
-    def __call__(
+    def compute_fourier_phase_shifts_with_ice(
         self,
         key: PRNGKeyArray,
         fourier_phase_at_exit_plane: Complex[
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
-        config: ImageConfig,
+        config: InstrumentConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute the combined phase of the ice and the specimen."""
         # Sample the realization of the phase due to the ice.
-        fourier_ice_phase_at_exit_plane = self.sample(key, config)
+        fourier_ice_phase_at_exit_plane = self.sample_fourier_phase_shifts_from_ice(
+            key, config
+        )
 
         return fourier_phase_at_exit_plane + fourier_ice_phase_at_exit_plane
 
@@ -58,8 +60,8 @@ class GaussianIce(AbstractIce, strict=True):
         self.variance = variance
 
     @override
-    def sample(
-        self, key: PRNGKeyArray, config: ImageConfig
+    def sample_fourier_phase_shifts_from_ice(
+        self, key: PRNGKeyArray, config: InstrumentConfig
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Sample a realization of the ice phase shifts as colored gaussian noise."""
         N_pix = np.prod(config.padded_shape)

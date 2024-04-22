@@ -9,10 +9,9 @@ import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
 from .._assembly import AbstractAssembly
-from .._config import ImageConfig
 from .._ensemble import AbstractConformation, AbstractPotentialEnsemble
 from .._ice import AbstractIce
-from .._instrument import Instrument
+from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
 from .._projection_methods import AbstractPotentialProjectionMethod
 from .._transfer_theory import ContrastTransferTheory
@@ -25,8 +24,7 @@ class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
     @abstractmethod
     def compute_fourier_phase_shifts_at_exit_plane(
         self,
-        config: ImageConfig,
-        instrument: Instrument,
+        config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         raise NotImplementedError
@@ -34,8 +32,7 @@ class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
     @abstractmethod
     def compute_fourier_contrast_at_detector_plane(
         self,
-        config: ImageConfig,
-        instrument: Instrument,
+        config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         raise NotImplementedError
@@ -43,8 +40,7 @@ class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
     @override
     def compute_fourier_squared_wavefunction_at_detector_plane(
         self,
-        config: ImageConfig,
-        instrument: Instrument,
+        config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute the squared wavefunction at the detector plane, given the
@@ -54,7 +50,7 @@ class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
         # ... compute the squared wavefunction directly from the image contrast
         # as |psi|^2 = 1 + 2C.
         fourier_contrast_at_detector_plane = (
-            self.compute_fourier_contrast_at_detector_plane(config, instrument, rng_key)
+            self.compute_fourier_contrast_at_detector_plane(config, rng_key)
         )
         fourier_squared_wavefunction_at_detector_plane = (
             (2 * fourier_contrast_at_detector_plane).at[0, 0].add(1.0 * N1 * N2)
@@ -73,8 +69,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
     @override
     def compute_fourier_phase_shifts_at_exit_plane(
         self,
-        config: ImageConfig,
-        instrument: Instrument,
+        config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         # Get potential in the lab frame
@@ -86,7 +81,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
             )
         )
         fourier_phase_at_exit_plane = (
-            instrument.wavelength_in_angstroms * fourier_projected_potential
+            config.wavelength_in_angstroms * fourier_projected_potential
         )
         # Apply in-plane translation through phase shifts
         fourier_phase_at_exit_plane *= self.potential_ensemble.pose.compute_shifts(
@@ -96,8 +91,10 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
         if rng_key is not None:
             # Get the potential of the specimen plus the ice
             if self.solvent is not None:
-                fourier_phase_at_exit_plane = self.solvent(
-                    rng_key, fourier_phase_at_exit_plane, config
+                fourier_phase_at_exit_plane = (
+                    self.solvent.compute_fourier_phase_shifts_with_ice(
+                        rng_key, fourier_phase_at_exit_plane, config
+                    )
                 )
 
         return fourier_phase_at_exit_plane
@@ -105,17 +102,15 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
     @override
     def compute_fourier_contrast_at_detector_plane(
         self,
-        config: ImageConfig,
-        instrument: Instrument,
+        config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         fourier_phase_at_exit_plane = self.compute_fourier_phase_shifts_at_exit_plane(
-            config, instrument, rng_key
+            config, rng_key
         )
         fourier_contrast_at_detector_plane = self.transfer_theory(
             fourier_phase_at_exit_plane,
             config,
-            instrument.wavelength_in_angstroms,
             defocus_offset=self.potential_ensemble.pose.offset_z_in_angstroms,
         )
 
@@ -142,12 +137,11 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
     @override
     def compute_fourier_phase_shifts_at_exit_plane(
         self,
-        config: ImageConfig,
-        instrument: Instrument,
+        config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         @partial(eqx.filter_vmap, in_axes=(0, None, None, None))
-        def compute_subunit_stack(ensemble_vmap, ensemble_no_vmap, instrument, config):
+        def compute_subunit_stack(ensemble_vmap, ensemble_no_vmap, config):
             ensemble = eqx.combine(ensemble_vmap, ensemble_no_vmap)
             # Get potential in the lab frame
             potential = ensemble.get_potential_in_lab_frame()
@@ -158,7 +152,7 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
                 )
             )
             fourier_phase_at_exit_plane = (
-                instrument.wavelength_in_angstroms * fourier_projected_potential
+                config.wavelength_in_angstroms * fourier_projected_potential
             )
             # Apply in-plane translation through phase shifts
             fourier_phase_at_exit_plane *= ensemble.pose.compute_shifts(
@@ -168,13 +162,9 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
             return fourier_phase_at_exit_plane
 
         @eqx.filter_jit
-        def compute_subunit_superposition(
-            ensemble_vmap, ensemble_no_vmap, instrument, config
-        ):
+        def compute_subunit_superposition(ensemble_vmap, ensemble_no_vmap, config):
             return jnp.sum(
-                compute_subunit_stack(
-                    ensemble_vmap, ensemble_no_vmap, instrument, config
-                ),
+                compute_subunit_stack(ensemble_vmap, ensemble_no_vmap, config),
                 axis=0,
             )
 
@@ -186,14 +176,16 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
         vmap, novmap = eqx.partition(subunits, to_vmap)
 
         fourier_phase_at_exit_plane = compute_subunit_superposition(
-            vmap, novmap, instrument, config
+            vmap, novmap, config
         )
 
         if rng_key is not None:
             # Get the potential of the specimen plus the ice
             if self.solvent is not None:
-                fourier_phase_at_exit_plane = self.solvent(
-                    rng_key, fourier_phase_at_exit_plane, config
+                fourier_phase_at_exit_plane = (
+                    self.solvent.compute_fourier_phase_shifts_with_ice(
+                        rng_key, fourier_phase_at_exit_plane, config
+                    )
                 )
 
         return fourier_phase_at_exit_plane
@@ -201,17 +193,15 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
     @override
     def compute_fourier_contrast_at_detector_plane(
         self,
-        config: ImageConfig,
-        instrument: Instrument,
+        config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         fourier_phase_at_exit_plane = self.compute_fourier_phase_shifts_at_exit_plane(
-            config, instrument, rng_key
+            config, rng_key
         )
         fourier_contrast_at_detector_plane = self.transfer_theory(
             fourier_phase_at_exit_plane,
             config,
-            instrument.wavelength_in_angstroms,
             defocus_offset=self.assembly.pose.offset_z_in_angstroms,
         )
 

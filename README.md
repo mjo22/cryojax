@@ -70,7 +70,7 @@ pose = cxs.EulerAnglePose(
     view_psi=-10.0,
 )
 # ... now, build the ensemble. In this case, the ensemble is just one potential and a pose
-potential_ensemble = cxs.BaseEnsemble(potential, pose)
+potential_mapping = cxs.PoseToPotentialMapping(potential, pose)
 ```
 
 Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool. Then, the representation of a biological specimen is instantiated, which also includes a pose and conformational heterogeneity. Here, the `BaseEnsemble` class takes a pose but has no heterogeneity.
@@ -90,21 +90,18 @@ ctf = cxs.ContrastTransferFunction(
     amplitude_contrast_ratio=0.1)
 transfer_theory = cxs.ContrastTransferTheory(ctf, envelope=op.FourierGaussian(b_factor=5.0))
 # ... now for the scattering theory
-scattering_theory = cxs.LinearScatteringTheory(potential_ensemble, projection_method, transfer_theory)
+scattering_theory = cxs.LinearScatteringTheory(potential_mapping, projection_method, transfer_theory)
 ```
 
 The `ContrastTransferFunction` has parameters used in CTFFIND4, which take their default values if not
-explicitly configured here. Finally, we can instantiate the `ImagePipeline` and simulate an image.
+explicitly configured here. Finally, we can instantiate the `pipeline`--the highest level of imaging abstraction in `cryojax`--and simulate an image. Here, we choose a `ContrastImagingPipeline`, which simulates the contrast from a linear scattering theory.
 
 ```python
 # Finally, build the image formation model
-# ... first instantiate the image configuration
-config = cxs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
-# ... then the instrument
-voltage_in_kilovolts = 300.0
-instrument = cxs.Instrument(voltage_in_kilovolts)
+# ... first instantiate the instrument configuration
+config = cxs.InstrumentConfig(shape=(320, 320), pixel_size=voxel_size, voltage_in_kilovolts=300.0)
 # ... now the imaging pipeline
-pipeline = cxs.ImagePipeline(config, scattering_theory, instrument)
+pipeline = cxs.ContrastImagingPipeline(config, scattering_theory)
 # ... finally, simulate an image and return in real-space!
 image_without_noise = pipeline.render(get_real=True)
 ```

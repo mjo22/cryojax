@@ -6,7 +6,6 @@ from typing import Any
 from typing_extensions import override
 
 import jax.numpy as jnp
-from equinox import field
 from jaxtyping import Array, Complex, Float
 
 from ...image import (
@@ -15,7 +14,7 @@ from ...image import (
     map_coordinates_with_cubic_spline,
     rfftn,
 )
-from .._config import ImageConfig
+from .._instrument_config import InstrumentConfig
 from .._potential import (
     FourierVoxelGridPotential,
     FourierVoxelGridPotentialInterpolator,
@@ -44,15 +43,16 @@ class FourierSliceExtract(AbstractVoxelPotentialProjectionMethod, strict=True):
         ``interpolation_mode = "fill"``.
     """
 
-    interpolation_order: int = field(static=True, default=1)
-    interpolation_mode: str = field(static=True, default="fill")
-    interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
+    pixel_rescaling_method: str = "bicubic"
+    interpolation_order: int = 1
+    interpolation_mode: str = "fill"
+    interpolation_cval: complex = 0.0 + 0.0j
 
     @override
     def compute_raw_fourier_projected_potential(
         self,
         potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
-        config: ImageConfig,
+        config: InstrumentConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute a projection of the real-space potential by extracting
         a central slice in fourier space.
@@ -85,7 +85,7 @@ class FourierSliceExtract(AbstractVoxelPotentialProjectionMethod, strict=True):
                 "FourierVoxelGridInterpolator."
             )
 
-        # Resize the image to match the ImageConfig.padded_shape
+        # Resize the image to match the InstrumentConfig.padded_shape
         if config.padded_shape != (N, N):
             fourier_projection = rfftn(
                 config.crop_or_pad_to_padded_shape(irfftn(fourier_projection, s=(N, N)))

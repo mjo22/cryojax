@@ -4,11 +4,11 @@ from ._assembly import (
     compute_helical_lattice_rotations as compute_helical_lattice_rotations,
     HelicalAssembly as HelicalAssembly,
 )
-from ._config import ImageConfig as ImageConfig
 from ._detector import (
     AbstractDetector as AbstractDetector,
     AbstractDQE as AbstractDQE,
     GaussianDetector as GaussianDetector,
+    IdealCountingDQE as IdealCountingDQE,
     IdealDQE as IdealDQE,
     PoissonDetector as PoissonDetector,
 )
@@ -23,10 +23,12 @@ from ._ice import (
     AbstractIce as AbstractIce,
     GaussianIce as GaussianIce,
 )
-from ._instrument import Instrument as Instrument
+from ._instrument_config import InstrumentConfig as InstrumentConfig
 from ._pipeline import (
-    AbstractPipeline as AbstractPipeline,
-    ImagePipeline as ImagePipeline,
+    AbstractImagingPipeline as AbstractImagingPipeline,
+    ContrastImagingPipeline as ContrastImagingPipeline,
+    ElectronCountsImagingPipeline as ElectronCountsImagingPipeline,
+    IntensityImagingPipeline as IntensityImagingPipeline,
 )
 from ._pose import (
     AbstractPose as AbstractPose,

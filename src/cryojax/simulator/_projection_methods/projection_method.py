@@ -6,14 +6,16 @@ from abc import abstractmethod
 from typing import Generic, TypeVar
 from typing_extensions import override
 
-from equinox import Module
+from equinox import AbstractVar, Module
 from jaxtyping import Array, Complex
 
-from .._config import ImageConfig
+from ...image import maybe_rescale_pixel_size
+from .._instrument_config import InstrumentConfig
 from .._potential import AbstractSpecimenPotential, AbstractVoxelPotential
 
 
 PotentialT = TypeVar("PotentialT", bound="AbstractSpecimenPotential")
+VoxelPotentialT = TypeVar("VoxelPotentialT", bound="AbstractVoxelPotential")
 
 
 class AbstractPotentialProjectionMethod(Module, Generic[PotentialT], strict=True):
@@ -23,10 +25,10 @@ class AbstractPotentialProjectionMethod(Module, Generic[PotentialT], strict=True
     def compute_fourier_projected_potential(
         self,
         potential: PotentialT,
-        config: ImageConfig,
+        config: InstrumentConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute the scattering potential in the exit plane at
-        the `ImageConfig` settings.
+        the `InstrumentConfig` settings.
 
         **Arguments:**
 
@@ -38,29 +40,33 @@ class AbstractPotentialProjectionMethod(Module, Generic[PotentialT], strict=True
 
 
 class AbstractVoxelPotentialProjectionMethod(
-    AbstractPotentialProjectionMethod[AbstractVoxelPotential], strict=True
+    AbstractPotentialProjectionMethod[VoxelPotentialT], strict=True
 ):
     """Base class for a method of extracting projections of a voxel-based potential."""
+
+    pixel_rescaling_method: AbstractVar[str]
 
     @abstractmethod
     def compute_raw_fourier_projected_potential(
         self,
-        potential: AbstractVoxelPotential,
-        config: ImageConfig,
+        potential: VoxelPotentialT,
+        config: InstrumentConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         raise NotImplementedError
 
     @override
     def compute_fourier_projected_potential(
         self,
-        potential: AbstractVoxelPotential,
-        config: ImageConfig,
+        potential: VoxelPotentialT,
+        config: InstrumentConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         raw_fourier_projected_potential = self.compute_raw_fourier_projected_potential(
             potential, config
         )
-        return config.rescale_to_pixel_size(
+        return maybe_rescale_pixel_size(
             potential.voxel_size * raw_fourier_projected_potential,
             potential.voxel_size,
+            config.pixel_size,
             is_real=False,
+            shape_in_real_space=config.padded_shape,
         )
