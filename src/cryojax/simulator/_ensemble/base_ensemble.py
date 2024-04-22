@@ -1,45 +1,45 @@
 """
-Abstractions of biological specimen.
+Abstractions of ensembles of biological specimen.
 """
 
 from abc import abstractmethod
-from functools import cached_property
 from typing import Any, Optional
 from typing_extensions import override
 
 from equinox import AbstractVar, Module
 
 from .._pose import AbstractPose, EulerAnglePose
-from .._potential import AbstractScatteringPotential
+from .._potential import AbstractSpecimenPotential
+from .conformation import AbstractConformation
 
 
-class AbstractSpecimen(Module, strict=True):
+class AbstractPotentialEnsemble(Module, strict=True):
     """
     Abstraction of a of biological specimen.
 
     **Attributes:**
 
-    - `potential`: The scattering potential of the specimen.
-    - `pose`: The pose of the specimen.
+    - `state_space`: The state space of the scattering potential.
+    - `pose`: The pose of the scattering potential
     """
 
-    potential: AbstractVar[Any]
+    state_space: AbstractVar[Any]
     pose: AbstractVar[AbstractPose]
+    conformation: AbstractVar[Optional[AbstractConformation]]
 
-    @cached_property
     @abstractmethod
-    def potential_in_com_frame(self) -> AbstractScatteringPotential:
+    def get_potential(self) -> AbstractSpecimenPotential:
         """Get the scattering potential in the center of mass
         frame."""
         raise NotImplementedError
 
-    @cached_property
-    def potential_in_lab_frame(self) -> AbstractScatteringPotential:
+    def get_potential_in_lab_frame(self) -> AbstractSpecimenPotential:
         """Get the scattering potential in the lab frame."""
-        return self.potential_in_com_frame.rotate_to_pose(self.pose)
+        potential = self.get_potential_in_lab_frame()
+        return potential.rotate_to_pose(self.pose)
 
 
-class Specimen(AbstractSpecimen, strict=True):
+class BaseEnsemble(AbstractPotentialEnsemble, strict=True):
     """
     Abstraction of a of biological specimen.
 
@@ -49,20 +49,21 @@ class Specimen(AbstractSpecimen, strict=True):
                     specimen as a single scattering potential object.
     """
 
-    potential: AbstractScatteringPotential
+    state_space: AbstractSpecimenPotential
     pose: AbstractPose
+    conformation: None
 
     def __init__(
         self,
-        potential: AbstractScatteringPotential,
+        state_space: AbstractSpecimenPotential,
         pose: Optional[AbstractPose] = None,
     ):
-        self.potential = potential
+        self.state_space = state_space
         self.pose = pose or EulerAnglePose()
+        self.conformation = None
 
-    @cached_property
     @override
-    def potential_in_com_frame(self) -> AbstractScatteringPotential:
+    def get_potential(self) -> AbstractSpecimenPotential:
         """Get the scattering potential in the center of mass
         frame."""
-        return self.potential
+        return self.state_space

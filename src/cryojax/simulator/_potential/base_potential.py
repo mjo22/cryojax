@@ -10,8 +10,10 @@ from equinox import Module
 from .._pose import AbstractPose
 
 
-class AbstractScatteringPotential(Module, strict=True):
-    """Abstract interface for an electron scattering potential."""
+class AbstractSpecimenPotential(Module, strict=True):
+    """Abstract interface for the potential energy distribution of a
+    biological specimen.
+    """
 
     @abstractmethod
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
@@ -19,6 +21,6 @@ class AbstractScatteringPotential(Module, strict=True):
 
         **Arguments:**
 
-        - `pose`: The pose at which to view the `AbstractScatteringPotential`.
+        - `pose`: The pose at which to view the `AbstractSpecimenPotential`.
         """
         raise NotImplementedError

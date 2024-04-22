@@ -15,7 +15,7 @@ from jaxtyping import Array, Float
 
 from ...rotations import SO3
 from .._pose import AbstractPose
-from .._specimen import AbstractConformation, AbstractEnsemble, AbstractSpecimen
+from .._ensemble import AbstractConformation, AbstractPotentialEnsemble
 
 
 class AbstractAssembly(eqx.Module, strict=True):
@@ -31,22 +31,20 @@ class AbstractAssembly(eqx.Module, strict=True):
            and `AbstractAssembly.rotations` properties.
     """
 
-    subunit: AbstractVar[AbstractSpecimen]
+    subunit: AbstractVar[AbstractPotentialEnsemble]
     pose: AbstractVar[AbstractPose]
     conformation: AbstractVar[Optional[AbstractConformation]]
 
     n_subunits: AbstractVar[int]
 
     def __check_init__(self):
-        if self.conformation is not None and not isinstance(
-            self.subunit, AbstractEnsemble
-        ):
+        if self.conformation is not None and self.subunit.conformation is None:
             # Make sure that if conformation is set, subunit is an AbstractEnsemble
             raise AttributeError(
-                f"If {type(self)}.conformation is set, {type(self)}.subunit must be an "
-                "AbstractEnsemble."
+                f"If {type(self)}.conformation is set, {type(self)}.subunit.conformation cannot be "
+                "`None`."
             )
-        if self.conformation is not None and isinstance(self.subunit, AbstractEnsemble):
+        if self.conformation is not None and self.subunit.conformation is not None:
             # ... if it is an AbstractEnsemble, the AbstractConformation must be the
             #  right type
             if not isinstance(self.conformation, type(self.subunit.conformation)):
@@ -95,10 +93,10 @@ class AbstractAssembly(eqx.Module, strict=True):
         return make_assembly_poses(transformed_rotations, transformed_positions)
 
     @cached_property
-    def subunits(self) -> AbstractSpecimen:
+    def subunits(self) -> AbstractPotentialEnsemble:
         """Draw a realization of all of the subunits in the lab frame."""
         # Compute a list of subunits, configured at the correct conformations
-        if isinstance(self.subunit, AbstractEnsemble):
+        if self.subunit.conformation is not None:
             where = lambda s: (s.conformation, s.pose)
             return eqx.tree_at(where, self.subunit, (self.conformation, self.poses))
         else:

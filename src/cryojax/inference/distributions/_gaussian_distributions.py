@@ -72,7 +72,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         # Compute the zero mean variance and scale up to be independent of the number of
         # pixels
         std = jnp.sqrt(N_pix * self.variance(freqs))
-        noise = self.pipeline.crop_and_apply_operators(
+        noise = self.pipeline.postprocess(
             std * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0),
             get_real=get_real,
         )

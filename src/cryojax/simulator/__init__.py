@@ -12,28 +12,27 @@ from ._detector import (
     IdealDQE as IdealDQE,
     PoissonDetector as PoissonDetector,
 )
-from ._dose import ElectronDose as ElectronDose
 from ._ice import (
     AbstractIce as AbstractIce,
     GaussianIce as GaussianIce,
 )
 from ._instrument import Instrument as Instrument
-from ._integrators import (
-    AbstractPotentialIntegrator as AbstractPotentialIntegrator,
+from ._projection_methods import (
+    AbstractPotentialProjectionMethod as AbstractPotentialProjectionMethod,
     extract_slice as extract_slice,
     extract_slice_with_cubic_spline as extract_slice_with_cubic_spline,
     FourierSliceExtract as FourierSliceExtract,
     NufftProject as NufftProject,
     project_with_nufft as project_with_nufft,
 )
-from ._optics import (
-    AbstractOptics as AbstractOptics,
-    CTF as CTF,
-    WeakPhaseOptics as WeakPhaseOptics,
+from ._transfer_theory import (
+    AbstractTransferFunction as AbstractTransferFunction,
+    ContrastTransferFunction as ContrastTransferFunction,
+    AbstractTransferTheory as AbstractTransferTheory,
+    ContrastTransferTheory as ContrastTransferTheory,
 )
 from ._pipeline import (
     AbstractPipeline as AbstractPipeline,
-    AssemblyPipeline as AssemblyPipeline,
     ImagePipeline as ImagePipeline,
 )
 from ._pose import (
@@ -44,7 +43,7 @@ from ._pose import (
 )
 from ._potential import (
     AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
-    AbstractScatteringPotential as AbstractScatteringPotential,
+    AbstractSpecimenPotential as AbstractSpecimenPotential,
     AbstractVoxelPotential as AbstractVoxelPotential,
     build_real_space_voxels_from_atoms as build_real_space_voxels_from_atoms,
     evaluate_3d_atom_potential as evaluate_3d_atom_potential,
@@ -54,11 +53,16 @@ from ._potential import (
     RealVoxelCloudPotential as RealVoxelCloudPotential,
     RealVoxelGridPotential as RealVoxelGridPotential,
 )
-from ._specimen import (
+from ._scattering_theory import (
+    AbstractScatteringTheory as AbstractScatteringTheory,
+    AbstractLinearScatteringTheory as AbstractLinearScatteringTheory,
+    LinearScatteringTheory as LinearScatteringTheory,
+    LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
+)
+from ._ensemble import (
     AbstractConformation as AbstractConformation,
-    AbstractEnsemble as AbstractEnsemble,
-    AbstractSpecimen as AbstractSpecimen,
+    AbstractPotentialEnsemble as AbstractPotentialEnsemble,
+    BaseEnsemble as BaseEnsemble,
     DiscreteConformation as DiscreteConformation,
     DiscreteEnsemble as DiscreteEnsemble,
-    Specimen as Specimen,
 )

@@ -3,11 +3,11 @@ Models of instrument optics.
 """
 
 from abc import abstractmethod
-from typing import ClassVar, Optional
+from typing import Optional
 from typing_extensions import override
 
 import jax.numpy as jnp
-from equinox import AbstractClassVar, AbstractVar, field, Module
+from equinox import AbstractVar, field, Module
 from jaxtyping import Array, Complex, Float
 
 from .._errors import error_if_negative, error_if_not_fractional, error_if_not_positive
@@ -106,52 +106,10 @@ ContrastTransferFunction.__init__.__doc__ = """**Arguments:**
 """
 
 
-class WaveTransferFunction(AbstractTransferFunction, strict=True):
-    """Compute the Contrast Transfer Function (CTF) # TODO"""
-
-    defocus_u_in_angstroms: Float[Array, ""] = field(
-        default=10000.0, converter=error_if_not_positive
-    )
-    defocus_v_in_angstroms: Float[Array, ""] = field(
-        default=10000.0, converter=error_if_not_positive
-    )
-    astigmatism_angle: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    voltage_in_kilovolts: Float[Array, ""] | float = field(
-        default=300.0, static=True
-    )  # Mark `static=True` so that the voltage is not part of the model pytree
-    # It is treated as part of the pytree upstream, in the Instrument!
-    spherical_aberration_in_mm: Float[Array, ""] = field(
-        default=2.7, converter=error_if_negative
-    )
-    phase_shift: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-
-    def __call__(
-        self,
-        frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-        *,
-        wavelength_in_angstroms: Optional[Float[Array, ""] | float] = None,
-        defocus_offset: Float[Array, ""] | float = 0.0,
-    ) -> Complex[Array, "y_dim x_dim"]:
-        raise NotImplementedError
-
-
-WaveTransferFunction.__init__.__doc__ = """**Arguments:**
-
-- `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
-- `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
-- `astigmatism_angle`: The defocus angle.
-- `voltage_in_kilovolts`: The accelerating voltage in kV.
-- `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
-- `phase_shift`: The additional phase shift.
-"""
-
-
 class AbstractTransferTheory(Module, strict=True):
     """Base class for an optics model."""
 
     transfer_function: AbstractVar[AbstractTransferFunction]
-
-    is_linear: AbstractClassVar[bool]
 
     @abstractmethod
     def __call__(
@@ -179,14 +137,12 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
     transfer_function: ContrastTransferFunction
     envelope: FourierOperatorLike
 
-    is_linear: ClassVar[bool] = True
-
     def __init__(
         self,
-        ctf: ContrastTransferFunction,
+        transfer_function: ContrastTransferFunction,
         envelope: Optional[FourierOperatorLike] = None,
     ):
-        self.transfer_function = ctf
+        self.transfer_function = transfer_function
         self.envelope = envelope or Constant(1.0)
 
     @override
@@ -203,7 +159,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         fourier_phase_in_exit_plane = fourier_phase_or_wavefunction_in_exit_plane
         frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
         # Compute the CTF
-        ctf = self.envelope(frequency_grid) * self.ctf(
+        ctf = self.envelope(frequency_grid) * self.transfer_function(
             frequency_grid,
             wavelength_in_angstroms=wavelength_in_angstroms,
             defocus_offset=defocus_offset,
@@ -219,38 +175,6 @@ ContrastTransferTheory.__init__.__doc__ = """**Arguments:**
 
 - `transfer_function`: The contrast transfer function model.
 - `envelope`: The envelope function of the optics model.
-"""
-
-
-class WaveTransferTheory(AbstractTransferTheory, strict=True):
-    """An optics model in the weak-phase approximation. Here, compute the image
-    contrast by applying the CTF directly to the exit plane phase shifts.
-    """
-
-    transfer_function: WaveTransferFunction
-
-    is_linear: ClassVar[bool] = False
-
-    def __init__(self, transfer_function: WaveTransferFunction):
-        self.transfer_function = transfer_function
-
-    @override
-    def __call__(
-        self,
-        fourier_phase_or_wavefunction_in_exit_plane: Complex[
-            Array, "{config.padded_y_dim} {config.padded_x_dim}"
-        ],
-        config: ImageConfig,
-        wavelength_in_angstroms: Float[Array, ""] | float,
-        defocus_offset: Float[Array, ""] | float = 0.0,
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]:
-        """TODO"""
-        raise NotImplementedError
-
-
-WaveTransferTheory.__init__.__doc__ = """**Arguments:**
-
-- `transfer_function`: The transfer function model.
 """
 
 
