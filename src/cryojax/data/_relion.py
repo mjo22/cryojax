@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from jaxtyping import Array, Float, Int
 
-from ..simulator import CTF, EulerAnglePose, ImageConfig
+from ..simulator import ContrastTransferFunction, EulerAnglePose, ImageConfig
 from ._dataset import AbstractDataset
 from ._io import read_and_validate_starfile
 from ._particle_stack import AbstractParticleStack
@@ -41,14 +41,14 @@ class RelionParticleStack(AbstractParticleStack):
     image_stack: Float[Array, "... y_dim x_dim"]
     config: ImageConfig
     pose: EulerAnglePose
-    ctf: CTF
+    ctf: ContrastTransferFunction
 
     def __init__(
         self,
         image_stack: Float[Array, "... y_dim x_dim"],
         config: ImageConfig,
         pose: EulerAnglePose,
-        ctf: CTF,
+        ctf: ContrastTransferFunction,
     ):
         # Set image stack and config as is
         self.image_stack = jnp.asarray(image_stack)
@@ -235,7 +235,7 @@ class RelionDataset(AbstractDataset):
         amplitude_contrast_ratio = jnp.asarray(optics_group["rlnAmplitudeContrast"])
         # ... create cryojax objects
         config = self.make_config_fn((int(image_size), int(image_size)), pixel_size)
-        ctf = CTF(
+        ctf = ContrastTransferFunction(
             defocus_u_in_angstroms=defocus_u_in_angstroms,
             defocus_v_in_angstroms=defocus_v_in_angstroms,
             astigmatism_angle=astigmatism_angle,

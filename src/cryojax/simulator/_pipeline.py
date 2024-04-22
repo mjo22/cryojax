@@ -215,8 +215,11 @@ class ImagePipeline(AbstractPipeline, strict=True):
     ):
         """Render an image without any stochasticity."""
         # Compute the squared wavefunction
-        fourier_squared_wavefunction_at_detector_plane = self.scattering_theory.compute_fourier_squared_wavefunction_at_detector_plane(
-            self.config, self.instrument
+        theory = self.scattering_theory
+        fourier_squared_wavefunction_at_detector_plane = (
+            theory.compute_fourier_squared_wavefunction_at_detector_plane(
+                self.config, self.instrument
+            )
         )
         if self.instrument.detector is None:
             return self._maybe_postprocess(
@@ -260,8 +263,11 @@ class ImagePipeline(AbstractPipeline, strict=True):
         else:
             keys = jnp.expand_dims(key, axis=0)
         # Compute the squared wavefunction
-        fourier_squared_wavefunction_at_detector_plane = self.scattering_theory.compute_fourier_squared_wavefunction_at_detector_plane(
-            self.config, self.instrument, keys[0]
+        theory = self.scattering_theory
+        fourier_squared_wavefunction_at_detector_plane = (
+            theory.compute_fourier_squared_wavefunction_at_detector_plane(
+                self.config, self.instrument, keys[0]
+            )
         )
         if self.instrument.detector is None:
             return self._maybe_postprocess(

@@ -10,7 +10,7 @@ from equinox import AbstractVar, Module
 
 from .._pose import AbstractPose, EulerAnglePose
 from .._potential import AbstractSpecimenPotential
-from .conformation import AbstractConformation
+from .base_conformation import AbstractConformation
 
 
 class AbstractPotentialEnsemble(Module, strict=True):
@@ -35,7 +35,7 @@ class AbstractPotentialEnsemble(Module, strict=True):
 
     def get_potential_in_lab_frame(self) -> AbstractSpecimenPotential:
         """Get the scattering potential in the lab frame."""
-        potential = self.get_potential_in_lab_frame()
+        potential = self.get_potential()
         return potential.rotate_to_pose(self.pose)
 
 

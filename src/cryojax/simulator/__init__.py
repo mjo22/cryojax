@@ -12,25 +12,18 @@ from ._detector import (
     IdealDQE as IdealDQE,
     PoissonDetector as PoissonDetector,
 )
+from ._ensemble import (
+    AbstractConformation as AbstractConformation,
+    AbstractPotentialEnsemble as AbstractPotentialEnsemble,
+    BaseEnsemble as BaseEnsemble,
+    DiscreteConformation as DiscreteConformation,
+    DiscreteEnsemble as DiscreteEnsemble,
+)
 from ._ice import (
     AbstractIce as AbstractIce,
     GaussianIce as GaussianIce,
 )
 from ._instrument import Instrument as Instrument
-from ._projection_methods import (
-    AbstractPotentialProjectionMethod as AbstractPotentialProjectionMethod,
-    extract_slice as extract_slice,
-    extract_slice_with_cubic_spline as extract_slice_with_cubic_spline,
-    FourierSliceExtract as FourierSliceExtract,
-    NufftProject as NufftProject,
-    project_with_nufft as project_with_nufft,
-)
-from ._transfer_theory import (
-    AbstractTransferFunction as AbstractTransferFunction,
-    ContrastTransferFunction as ContrastTransferFunction,
-    AbstractTransferTheory as AbstractTransferTheory,
-    ContrastTransferTheory as ContrastTransferTheory,
-)
 from ._pipeline import (
     AbstractPipeline as AbstractPipeline,
     ImagePipeline as ImagePipeline,
@@ -53,16 +46,23 @@ from ._potential import (
     RealVoxelCloudPotential as RealVoxelCloudPotential,
     RealVoxelGridPotential as RealVoxelGridPotential,
 )
+from ._projection_methods import (
+    AbstractPotentialProjectionMethod as AbstractPotentialProjectionMethod,
+    extract_slice as extract_slice,
+    extract_slice_with_cubic_spline as extract_slice_with_cubic_spline,
+    FourierSliceExtract as FourierSliceExtract,
+    NufftProject as NufftProject,
+    project_with_nufft as project_with_nufft,
+)
 from ._scattering_theory import (
-    AbstractScatteringTheory as AbstractScatteringTheory,
     AbstractLinearScatteringTheory as AbstractLinearScatteringTheory,
+    AbstractScatteringTheory as AbstractScatteringTheory,
     LinearScatteringTheory as LinearScatteringTheory,
     LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
 )
-from ._ensemble import (
-    AbstractConformation as AbstractConformation,
-    AbstractPotentialEnsemble as AbstractPotentialEnsemble,
-    BaseEnsemble as BaseEnsemble,
-    DiscreteConformation as DiscreteConformation,
-    DiscreteEnsemble as DiscreteEnsemble,
+from ._transfer_theory import (
+    AbstractTransferFunction as AbstractTransferFunction,
+    AbstractTransferTheory as AbstractTransferTheory,
+    ContrastTransferFunction as ContrastTransferFunction,
+    ContrastTransferTheory as ContrastTransferTheory,
 )

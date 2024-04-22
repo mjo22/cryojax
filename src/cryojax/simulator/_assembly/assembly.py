@@ -14,8 +14,8 @@ from equinox import AbstractVar
 from jaxtyping import Array, Float
 
 from ...rotations import SO3
-from .._pose import AbstractPose
 from .._ensemble import AbstractConformation, AbstractPotentialEnsemble
+from .._pose import AbstractPose
 
 
 class AbstractAssembly(eqx.Module, strict=True):
@@ -41,8 +41,8 @@ class AbstractAssembly(eqx.Module, strict=True):
         if self.conformation is not None and self.subunit.conformation is None:
             # Make sure that if conformation is set, subunit is an AbstractEnsemble
             raise AttributeError(
-                f"If {type(self)}.conformation is set, {type(self)}.subunit.conformation cannot be "
-                "`None`."
+                f"If {type(self)}.conformation is set, "
+                "{type(self)}.subunit.conformation cannot be `None`."
             )
         if self.conformation is not None and self.subunit.conformation is not None:
             # ... if it is an AbstractEnsemble, the AbstractConformation must be the

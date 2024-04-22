@@ -31,10 +31,10 @@ from ...image import (
 )
 from ...image.operators import AbstractFilter
 from .._pose import AbstractPose
-from .scattering_potential import AbstractScatteringPotential
+from .base_potential import AbstractSpecimenPotential
 
 
-class AbstractVoxelPotential(AbstractScatteringPotential, strict=True):
+class AbstractVoxelPotential(AbstractSpecimenPotential, strict=True):
     """Abstract interface for a voxel-based scattering potential representation."""
 
     voxel_size: AbstractVar[Float[Array, ""]]

@@ -9,18 +9,17 @@ import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
 from .._assembly import AbstractAssembly
-from .base_scattering_theory import AbstractScatteringTheory
 from .._config import ImageConfig
+from .._ensemble import AbstractConformation, AbstractPotentialEnsemble
 from .._ice import AbstractIce
 from .._instrument import Instrument
 from .._pose import AbstractPose
 from .._projection_methods import AbstractPotentialProjectionMethod
 from .._transfer_theory import ContrastTransferTheory
-from .._ensemble import AbstractConformation, AbstractPotentialEnsemble
+from .base_scattering_theory import AbstractScatteringTheory
 
 
 class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
-
     projection_method: eqx.AbstractVar[AbstractPotentialProjectionMethod]
     transfer_theory: eqx.AbstractVar[ContrastTransferTheory]
 
@@ -65,10 +64,10 @@ class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
 
 
 class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
-    ensemble: AbstractPotentialEnsemble
+    potential_ensemble: AbstractPotentialEnsemble
     projection_method: AbstractPotentialProjectionMethod
     transfer_theory: ContrastTransferTheory
-    solvent: Optional[AbstractIce]
+    solvent: Optional[AbstractIce] = None
 
     @override
     def compute_fourier_phase_shifts_at_exit_plane(
@@ -78,7 +77,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
         rng_key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         # Get potential in the lab frame
-        potential = self.ensemble.get_potential_in_lab_frame()
+        potential = self.potential_ensemble.get_potential_in_lab_frame()
         # Compute the phase shifts in the exit plane
         fourier_projected_potential = (
             self.projection_method.compute_fourier_projected_potential(
@@ -89,7 +88,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
             instrument.wavelength_in_angstroms * fourier_projected_potential
         )
         # Apply in-plane translation through phase shifts
-        fourier_phase_at_exit_plane *= self.ensemble.pose.compute_shifts(
+        fourier_phase_at_exit_plane *= self.potential_ensemble.pose.compute_shifts(
             config.wrapped_padded_frequency_grid_in_angstroms.get()
         )
 
@@ -116,7 +115,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
             fourier_phase_at_exit_plane,
             config,
             instrument.wavelength_in_angstroms,
-            defocus_offset=self.ensemble.pose.offset_z_in_angstroms,
+            defocus_offset=self.potential_ensemble.pose.offset_z_in_angstroms,
         )
 
         return fourier_contrast_at_detector_plane
@@ -135,7 +134,6 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
         instrument: Instrument,
         rng_key: Optional[PRNGKeyArray] = None,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
-
         @partial(eqx.filter_vmap, in_axes=(0, None, None, None))
         def compute_subunit_stack(ensemble_vmap, ensemble_no_vmap, instrument, config):
             ensemble = eqx.combine(ensemble_vmap, ensemble_no_vmap)

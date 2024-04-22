@@ -50,20 +50,11 @@ import jax.numpy as jnp
 import cryojax.simulator as cxs
 from cryojax.data import read_array_with_spacing_from_mrc
 
-# Instantiate the scattering potential.
+# Instantiate the scattering potential
 filename = "example_scattering_potential.mrc"
 real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(filename)
 potential = cxs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, voxel_size)
-# ... now instantiate fourier slice extraction
-integrator = cxs.FourierSliceExtract(interpolation_order=1)
-```
-
-Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`, and the fourier-slice projection theorem is initialized with `FourierSliceExtract`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool.
-
-We can now instantiate the representation of a biological specimen, which also includes a pose.
-
-```python
-# First instantiate the pose. Angles are given in degrees
+# ... now, instantiate the pose. Angles are given in degrees
 pose = cxs.EulerAnglePose(
     offset_x_in_angstroms=5.0,
     offset_y_in_angstroms=-3.0,
@@ -71,36 +62,43 @@ pose = cxs.EulerAnglePose(
     view_theta=80.0,
     view_psi=-10.0,
 )
-# ... now, build the biological specimen
-specimen = cxs.Specimen(potential, integrator, pose)
+# ... now, build the ensemble. In this case, the ensemble is just one potential and a pose
+potential_ensemble = cxs.BaseEnsemble(potential, pose)
 ```
 
-Next, build the model for the electron microscope. Here, we simply include a model for the CTF in the weak-phase approximation (linear image formation theory).
+Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool. Then, the representation of a biological specimen is instantiated, which also includes a pose and conformational heterogeneity. Here, the `BaseEnsemble` class takes a pose but has no heterogeneity.
+
+Next, build the *scattering theory*. The simplest `theory` is the `LinearScatteringTheory`. This represents the usual image formation pipeline in cryo-EM, which forms images by computing projections of the potential and convolving the result with a contrast transfer function.
 
 ```python
-from cryojax.image.operators import FourierGaussian
+from cryojax.image import operators as op
 
-# First, initialize the CTF and its optics model
-ctf = cxs.CTF(
+# Initialize the scattering theory. First, instantiate fourier slice extraction
+projection_method = cxs.FourierSliceExtract(interpolation_order=1)
+# ... next, the contrast transfer theory
+ctf = cxs.ContrastTransferFunction(
     defocus_u_in_angstroms=10000.0,
     defocus_v_in_angstroms=9800.0,
     astigmatism_angle=10.0,
     amplitude_contrast_ratio=0.1)
-optics = cxs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # b_factor is given in Angstroms^2
-# ... these are stored in the Instrument
-voltage_in_kilovolts = 300.0
-instrument = cxs.Instrument(voltage_in_kilovolts, optics)
+transfer_theory = cxs.ContrastTransferTheory(ctf, envelope=op.FourierGaussian(b_factor=5.0))
+# ... now for the scattering theory
+scattering_theory = cxs.LinearScatteringTheory(potential_ensemble, projection_method, transfer_theory)
 ```
 
-The `CTF` has all parameters used in CTFFIND4, which take their default values if not
+The `ContrastTransferFunction` has parameters used in CTFFIND4, which take their default values if not
 explicitly configured here. Finally, we can instantiate the `ImagePipeline` and simulate an image.
 
 ```python
-# Instantiate the image configuration
+# Finally, build the image formation model
+# ... first instantiate the image configuration
 config = cxs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
-# Build the image formation model
-pipeline = cxs.ImagePipeline(config, specimen, instrument)
-# ... simulate an image and return a normalized image in real-space
+# ... then the instrument
+voltage_in_kilovolts = 300.0
+instrument = cxs.Instrument(voltage_in_kilovolts)
+# ... now the imaging pipeline
+pipeline = cxs.ImagePipeline(config, scattering_theory, instrument)
+# ... finally, simulate an image and return in real-space!
 image = pipeline.render(get_real=True, normalize=True)
 ```
 

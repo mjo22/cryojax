@@ -5,14 +5,15 @@ Abstractions of ensembles on discrete conformational variables.
 from typing import Optional
 from typing_extensions import override
 
-from equinox import field
 import jax
+from equinox import field
 from jaxtyping import Array, Int
 
-from .base_ensemble import AbstractConformation, AbstractPotentialEnsemble
 from ..._errors import error_if_negative
 from .._pose import AbstractPose, EulerAnglePose
 from .._potential import AbstractSpecimenPotential
+from .base_conformation import AbstractConformation
+from .base_ensemble import AbstractPotentialEnsemble
 
 
 class DiscreteConformation(AbstractConformation, strict=True):

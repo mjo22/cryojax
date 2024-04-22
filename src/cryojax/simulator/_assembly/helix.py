@@ -11,8 +11,8 @@ from equinox import field
 from jaxtyping import Array, Float
 
 from ...rotations import SO3
+from .._ensemble import AbstractConformation, AbstractPotentialEnsemble
 from .._pose import AbstractPose, EulerAnglePose
-from .._specimen import AbstractConformation, AbstractSpecimen
 from .assembly import AbstractAssembly
 
 
@@ -27,7 +27,7 @@ class HelicalAssembly(AbstractAssembly, strict=True):
     image, pointing out-of-plane (i.e. along the z direction).
     """
 
-    subunit: AbstractSpecimen
+    subunit: AbstractPotentialEnsemble
     rise: Float[Array, ""]
     twist: Float[Array, ""]
 
@@ -39,7 +39,7 @@ class HelicalAssembly(AbstractAssembly, strict=True):
 
     def __init__(
         self,
-        subunit: AbstractSpecimen,
+        subunit: AbstractPotentialEnsemble,
         rise: Float[Array, ""] | float,
         twist: Float[Array, ""] | float,
         pose: Optional[AbstractPose] = None,
