@@ -114,7 +114,7 @@ class IdealCTF(AbstractCTF, strict=True):
         wavelength_in_angstroms: Optional[Float[Array, ""] | float] = None,
         defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> Float[Array, "y_dim x_dim"]:
-        return jnp.asarray(1.0)
+        return jnp.ones(frequency_grid_in_angstroms.shape[0:2])
 
 
 class ContrastTransferTheory(AbstractTransferTheory, strict=True):
@@ -136,14 +136,13 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
     @override
     def __call__(
         self,
-        fourier_phase_or_wavefunction_in_exit_plane: Complex[
+        fourier_phase_at_exit_plane: Complex[
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
         config: InstrumentConfig,
         defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Apply the CTF directly to the phase shifts in the exit plane."""
-        fourier_phase_in_exit_plane = fourier_phase_or_wavefunction_in_exit_plane
         frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
         # Compute the CTF
         ctf = self.envelope(frequency_grid) * self.transfer_function(
@@ -153,9 +152,9 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         )
         # ... compute the contrast as the CTF multiplied by the exit plane
         # phase shifts
-        fourier_contrast_in_detector_plane = ctf * fourier_phase_in_exit_plane
+        fourier_contrast_at_detector_plane = ctf * fourier_phase_at_exit_plane
 
-        return fourier_contrast_in_detector_plane
+        return fourier_contrast_at_detector_plane
 
 
 ContrastTransferTheory.__init__.__doc__ = """**Arguments:**

@@ -132,7 +132,7 @@ def pose():
 
 @pytest.fixture
 def specimen(potential, pose):
-    return cs.BaseEnsemble(potential, pose)
+    return cs.SingleStructureEnsemble(potential, pose)
 
 
 @pytest.fixture
@@ -155,7 +155,7 @@ def theory_with_solvent(specimen, projection_method, transfer_theory, solvent):
 
 
 @pytest.fixture
-def noiseless_model(config, theory, instrument):
+def noiseless_model(config, theory):
     return cs.IntensityImagingPipeline(config=config, scattering_theory=theory)
 
 

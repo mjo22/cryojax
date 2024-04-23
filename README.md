@@ -49,7 +49,7 @@ The [`jax-finufft`](https://github.com/dfm/jax-finufft) package is an optional d
 
 The following is a basic workflow to simulate an image.
 
-First, instantiate the scattering potential representation and its respective method for computing image projections.
+First, instantiate the spatial potential energy distribution representation and its respective method for computing image projections.
 
 ```python
 import jax
@@ -70,7 +70,7 @@ pose = cxs.EulerAnglePose(
     view_psi=-10.0,
 )
 # ... now, build the ensemble. In this case, the ensemble is just a single structure
-potential_ensemble = cxs.SingleStructureEnsemble(potential, pose)
+structural_ensemble = cxs.SingleStructureEnsemble(potential, pose)
 ```
 
 Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool. Then, the representation of a biological specimen is instantiated, which also includes a pose and conformational heterogeneity. Here, the `SingleStructureEnsemble` class takes a pose but has no heterogeneity.
@@ -91,7 +91,7 @@ transfer_function = cxs.AberratedCTF(
 )
 transfer_theory = cxs.ContrastTransferTheory(transfer_function, envelope=op.FourierGaussian(b_factor=5.0))
 # ... now for the scattering theory
-scattering_theory = cxs.LinearScatteringTheory(potential_ensemble, projection_method, transfer_theory)
+scattering_theory = cxs.LinearScatteringTheory(structural_ensemble, projection_method, transfer_theory)
 ```
 
 The `AberratedCTF` has parameters used in CTFFIND4, which take their default values if not

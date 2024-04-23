@@ -44,10 +44,10 @@ def test_default_pose_images(noiseless_model):
     quat = cs.QuaternionPose()
 
     model_euler = eqx.tree_at(
-        lambda m: m.scattering_theory.potential_ensemble.pose, noiseless_model, euler
+        lambda m: m.scattering_theory.structural_ensemble.pose, noiseless_model, euler
     )
     model_quat = eqx.tree_at(
-        lambda m: m.scattering_theory.potential_ensemble.pose, noiseless_model, quat
+        lambda m: m.scattering_theory.structural_ensemble.pose, noiseless_model, quat
     )
     np.testing.assert_allclose(model_euler.render(), model_quat.render())
 

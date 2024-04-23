@@ -41,25 +41,25 @@ class RelionParticleStack(AbstractParticleStack):
     image_stack: Float[Array, "... y_dim x_dim"]
     config: InstrumentConfig
     pose: EulerAnglePose
-    ctf: AberratedCTF
+    transfer_function: AberratedCTF
 
     def __init__(
         self,
         image_stack: Float[Array, "... y_dim x_dim"],
         config: InstrumentConfig,
         pose: EulerAnglePose,
-        ctf: AberratedCTF,
+        transfer_function: AberratedCTF,
     ):
         # Set image stack and config as is
         self.image_stack = jnp.asarray(image_stack)
         self.config = config
         # Set CTF using the defocus offset in the EulerAnglePose
-        self.ctf = eqx.tree_at(
-            lambda ctf: (ctf.defocus_u_in_angstroms, ctf.defocus_v_in_angstroms),
-            ctf,
+        self.transfer_function = eqx.tree_at(
+            lambda tf: (tf.defocus_u_in_angstroms, tf.defocus_v_in_angstroms),
+            transfer_function,
             (
-                ctf.defocus_u_in_angstroms + pose.offset_z_in_angstroms,
-                ctf.defocus_v_in_angstroms + pose.offset_z_in_angstroms,
+                transfer_function.defocus_u_in_angstroms + pose.offset_z_in_angstroms,
+                transfer_function.defocus_v_in_angstroms + pose.offset_z_in_angstroms,
             ),
         )
         # Set defocus offset to zero
@@ -78,11 +78,12 @@ RelionParticleStack.__init__.__doc__ = """**Arguments:**
 - `pose`: The pose, represented by euler angles. Any subset of pytree leaves may
           have a batch dimension. Upon instantiation, `pose.offset_z_in_angstroms`
           is set to zero.
-- `ctf`: The contrast transfer function. Any subset of pytree leaves may
-         have a batch dimension. Upon instantiation, `ctf.defocus_u_in_angstroms`
-         is set to `ctf.defocus_u_in_angstroms + pose.offset_z_in_angstroms` (and
-         also for `ctf.defocus_v_in_angstroms`).
-"""
+- `transfer_function`: The contrast transfer function. Any subset of pytree leaves may
+                       have a batch dimension. Upon instantiation,
+                       `transfer_function.defocus_u_in_angstroms` is set to
+                       `transfer_function.defocus_u_in_angstroms + pose.offset_z_in_angstroms` (and
+                        also for `transfer_function.defocus_v_in_angstroms`).
+"""  # noqa: E501
 
 
 def _default_make_config_fn(
@@ -243,7 +244,7 @@ class RelionDataset(AbstractDataset):
             pixel_size,
             jnp.asarray(voltage_in_kilovolts),
         )
-        ctf = AberratedCTF(
+        transfer_function = AberratedCTF(
             defocus_u_in_angstroms=defocus_u_in_angstroms,
             defocus_v_in_angstroms=defocus_v_in_angstroms,
             astigmatism_angle=astigmatism_angle,
@@ -320,7 +321,9 @@ class RelionDataset(AbstractDataset):
             tuple([jnp.asarray(value) for value in pose_parameter_values]),
         )
 
-        return RelionParticleStack(jnp.asarray(image_stack), config, pose, ctf)
+        return RelionParticleStack(
+            jnp.asarray(image_stack), config, pose, transfer_function
+        )
 
     @final
     def __len__(self) -> int:

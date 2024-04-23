@@ -11,10 +11,10 @@ from jaxtyping import Array, Complex
 
 from ...image import maybe_rescale_pixel_size
 from .._instrument_config import InstrumentConfig
-from .._potential import AbstractPotentialRepresentation, AbstractVoxelPotential
+from .._potential import AbstractVoxelPotential
 
 
-PotentialT = TypeVar("PotentialT", bound="AbstractPotentialRepresentation")
+PotentialT = TypeVar("PotentialT")
 VoxelPotentialT = TypeVar("VoxelPotentialT", bound="AbstractVoxelPotential")
 
 
@@ -40,7 +40,9 @@ class AbstractPotentialProjectionMethod(Module, Generic[PotentialT], strict=True
 
 
 class AbstractVoxelPotentialProjectionMethod(
-    AbstractPotentialProjectionMethod[VoxelPotentialT], strict=True
+    AbstractPotentialProjectionMethod[VoxelPotentialT],
+    Generic[VoxelPotentialT],
+    strict=True,
 ):
     """Base class for a method of extracting projections of a voxel-based potential."""
 

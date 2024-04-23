@@ -89,7 +89,10 @@ class IdealDQE(AbstractDQE, strict=True):
         *,
         pixel_size: Optional[Float[Array, ""]] = None,
     ) -> Float[Array, "y_dim x_dim"]:
-        return self.fraction_detected_electrons
+        return jnp.full(
+            frequency_grid_in_angstroms_or_pixels.shape[0:2],
+            self.fraction_detected_electrons,
+        )
 
 
 class AbstractDetector(Module, strict=True):

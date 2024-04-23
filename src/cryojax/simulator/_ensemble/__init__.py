@@ -9,3 +9,6 @@ from .discrete_ensemble import (
     DiscreteConformationalVariable as DiscreteConformationalVariable,
     DiscreteStructuralEnsemble as DiscreteStructuralEnsemble,
 )
+from .ensemble_batcher import (
+    AbstractStructuralEnsembleBatcher as AbstractStructuralEnsembleBatcher,
+)

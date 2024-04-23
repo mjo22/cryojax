@@ -42,7 +42,7 @@ The [`jax-finufft`](https://github.com/dfm/jax-finufft) package is an optional d
 
 The following is a basic workflow to simulate an image.
 
-First, instantiate the scattering potential representation and its respective method for computing image projections.
+First, instantiate the spatial potential energy distribution representation and its respective method for computing image projections.
 
 ```python
 import jax
@@ -62,13 +62,13 @@ pose = cxs.EulerAnglePose(
     view_theta=80.0,
     view_psi=-10.0,
 )
-# ... now, build the ensemble. In this case, the ensemble is just one potential and a pose
-potential_ensemble = cxs.BaseEnsemble(potential, pose)
+# ... now, build the ensemble. In this case, the ensemble is just a single structure
+structural_ensemble = cxs.SingleStructureEnsemble(potential, pose)
 ```
 
-Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool. Then, the representation of a biological specimen is instantiated, which also includes a pose and conformational heterogeneity. Here, the `BaseEnsemble` class takes a pose but has no heterogeneity.
+Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool. Then, the representation of a biological specimen is instantiated, which also includes a pose and conformational heterogeneity. Here, the `SingleStructureEnsemble` class takes a pose but has no heterogeneity.
 
-Next, build the *scattering theory*. The simplest `theory` is the `LinearScatteringTheory`. This represents the usual image formation pipeline in cryo-EM, which forms images by computing projections of the potential and convolving the result with a contrast transfer function.
+Next, build the *scattering theory*. The simplest `scattering_theory` is the `LinearScatteringTheory`. This represents the usual image formation pipeline in cryo-EM, which forms images by computing projections of the potential and convolving the result with a contrast transfer function.
 
 ```python
 from cryojax.image import operators as op
@@ -76,30 +76,28 @@ from cryojax.image import operators as op
 # Initialize the scattering theory. First, instantiate fourier slice extraction
 projection_method = cxs.FourierSliceExtract(interpolation_order=1)
 # ... next, the contrast transfer theory
-ctf = cxs.ContrastTransferFunction(
+transfer_function = cxs.AberratedCTF(
     defocus_u_in_angstroms=10000.0,
     defocus_v_in_angstroms=9800.0,
     astigmatism_angle=10.0,
-    amplitude_contrast_ratio=0.1)
-transfer_theory = cxs.ContrastTransferTheory(ctf, envelope=op.FourierGaussian(b_factor=5.0))
+    amplitude_contrast_ratio=0.1
+)
+transfer_theory = cxs.ContrastTransferTheory(transfer_function, envelope=op.FourierGaussian(b_factor=5.0))
 # ... now for the scattering theory
-scattering_theory = cxs.LinearScatteringTheory(potential_ensemble, projection_method, transfer_theory)
+scattering_theory = cxs.LinearScatteringTheory(structural_ensemble, projection_method, transfer_theory)
 ```
 
-The `ContrastTransferFunction` has parameters used in CTFFIND4, which take their default values if not
-explicitly configured here. Finally, we can instantiate the `ImagePipeline` and simulate an image.
+The `AberratedCTF` has parameters used in CTFFIND4, which take their default values if not
+explicitly configured here. Finally, we can instantiate the `pipeline`--the highest level of imaging abstraction in `cryojax`--and simulate an image. Here, we choose a `ContrastImagingPipeline`, which simulates image contrast from a linear scattering theory.
 
 ```python
 # Finally, build the image formation model
-# ... first instantiate the image configuration
-config = cxs.ImageConfig(shape=(320, 320), pixel_size=voxel_size)
-# ... then the instrument
-voltage_in_kilovolts = 300.0
-instrument = cxs.Instrument(voltage_in_kilovolts)
+# ... first instantiate the instrument configuration
+config = cxs.InstrumentConfig(shape=(320, 320), pixel_size=voxel_size, voltage_in_kilovolts=300.0)
 # ... now the imaging pipeline
-pipeline = cxs.ImagePipeline(config, scattering_theory, instrument)
+pipeline = cxs.ContrastImagingPipeline(config, scattering_theory)
 # ... finally, simulate an image and return in real-space!
-image = pipeline.render(get_real=True, normalize=True)
+image_contrast = pipeline.render(get_real=True)
 ```
 
 ## Next steps

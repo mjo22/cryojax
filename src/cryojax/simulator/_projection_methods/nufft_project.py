@@ -13,7 +13,12 @@ from .._potential import RealVoxelCloudPotential, RealVoxelGridPotential
 from .projection_method import AbstractVoxelPotentialProjectionMethod
 
 
-class NufftProject(AbstractVoxelPotentialProjectionMethod, strict=True):
+class NufftProject(
+    AbstractVoxelPotentialProjectionMethod[
+        RealVoxelGridPotential | RealVoxelCloudPotential
+    ],
+    strict=True,
+):
     """Integrate points onto the exit plane using
     non-uniform FFTs.
 

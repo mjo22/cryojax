@@ -7,7 +7,6 @@ from typing import Optional
 
 import jax
 import jax.numpy as jnp
-from equinox import field
 from jaxtyping import Array, Float
 
 from ...rotations import SO3
@@ -34,8 +33,8 @@ class HelicalAssembly(AbstractAssembly, strict=True):
     pose: AbstractPose
     conformation: Optional[AbstractConformationalVariable]
 
-    n_subunits: int = field(static=True)
-    n_start: int = field(static=True)
+    n_subunits: int
+    n_start: int
 
     def __init__(
         self,

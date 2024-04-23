@@ -1,12 +1,12 @@
 """
 Abstraction of a biological assembly. This assembles a structure
-by computing an Ensemble of subunits, parameterized by
-some geometry.
+by computing a batch of subunits, parameterized by some geometry.
 """
 
 from abc import abstractmethod
 from functools import cached_property
 from typing import Optional
+from typing_extensions import override
 
 import equinox as eqx
 import jax
@@ -14,15 +14,16 @@ from equinox import AbstractVar
 from jaxtyping import Array, Float
 
 from ...rotations import SO3
-from .._ensemble import AbstractConformationalVariable, AbstractStructuralEnsemble
+from .._ensemble import (
+    AbstractConformationalVariable,
+    AbstractStructuralEnsemble,
+    AbstractStructuralEnsembleBatcher,
+)
 from .._pose import AbstractPose
 
 
-class AbstractAssembly(eqx.Module, strict=True):
+class AbstractAssembly(AbstractStructuralEnsembleBatcher, strict=True):
     """Abstraction of a biological assembly.
-
-    This class acts just like an ``AbstractSpecimen``, however
-    it creates an assembly from a subunit.
 
     To subclass an `AbstractAssembly`,
         1) Overwrite the `AbstractAssembly.n_subunits`
@@ -72,19 +73,19 @@ class AbstractAssembly(eqx.Module, strict=True):
         Draw the poses of the subunits in the lab frame, measured
         from the rotation relative to the first subunit.
         """
-        # Transform the subunit positions by pose of the helix
+        # Transform the subunit positions by the center of mass pose of the assembly.
         transformed_positions = (
             self.pose.rotate_coordinates(self.offsets_in_angstroms, inverse=False)
             + self.pose.offset_in_angstroms
         )
-        # Transform the subunit rotations by the pose of the helix. This operation
-        # left multiplies by the pose of the helix, taking care that first subunits
-        # are rotated to the center of mass frame, then the lab frame.
+        # Transform the subunit rotations by the center of mass pose of the assembly.
+        # This operation left multiplies by the pose rotation matrix, taking care that
+        # first subunits are rotated to the center of mass frame, then the lab frame.
         transformed_rotations = jax.vmap(
             lambda com_rotation, subunit_rotation: com_rotation @ subunit_rotation,
             in_axes=[None, 0],
         )(self.pose.rotation, self.rotations)
-        # Function to construct AbstractPoses
+        # Construct the batch of `AbstractPose`s
         cls = type(self.pose)
         make_assembly_poses = jax.vmap(
             lambda rot, pos: cls.from_rotation_and_translation(rot, pos)
@@ -102,3 +103,7 @@ class AbstractAssembly(eqx.Module, strict=True):
         else:
             where = lambda s: s.pose
             return eqx.tree_at(where, self.subunit, self.poses)
+
+    @override
+    def get_batched_structural_ensemble(self) -> AbstractStructuralEnsemble:
+        return self.subunits

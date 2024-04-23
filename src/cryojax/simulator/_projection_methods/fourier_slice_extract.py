@@ -22,7 +22,12 @@ from .._potential import (
 from .projection_method import AbstractVoxelPotentialProjectionMethod
 
 
-class FourierSliceExtract(AbstractVoxelPotentialProjectionMethod, strict=True):
+class FourierSliceExtract(
+    AbstractVoxelPotentialProjectionMethod[
+        FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator
+    ],
+    strict=True,
+):
     """Integrate points to the exit plane using the
     Fourier-projection slice theorem.
 

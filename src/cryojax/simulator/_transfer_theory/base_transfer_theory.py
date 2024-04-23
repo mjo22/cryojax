@@ -32,7 +32,7 @@ class AbstractTransferTheory(Module, strict=True):
     @abstractmethod
     def __call__(
         self,
-        fourier_phase_or_wavefunction_in_exit_plane: (
+        fourier_phase_or_wavefunction_at_exit_plane: (
             Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
             | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
         ),
