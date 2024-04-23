@@ -44,7 +44,7 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
         spherical_aberration_in_mm=cs,
         amplitude_contrast_ratio=ac,
     )
-    ctf = np.array(optics(freqs))
+    ctf = jnp.array(optics(freqs))
     # Compute cisTEM CTF
     cisTEM_optics = cisCTF(
         kV=kV,
@@ -123,12 +123,11 @@ def test_compute_projection_with_cistem(
     )
     pose = cs.EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
     projection_method = cs.FourierSliceExtract()
-    specimen = cs.SingleStructureEnsemble(potential, pose)
     box_size = potential.shape[0]
     config = cs.InstrumentConfig((box_size, box_size), pixel_size, 300.0)
     cryojax_projection = irfftn(
         projection_method.compute_raw_fourier_projected_potential(
-            specimen.get_potential_in_lab_frame(), config
+            potential.rotate_to_pose(pose), config
         )
         .at[0, 0]
         .set(0.0 + 0.0j)

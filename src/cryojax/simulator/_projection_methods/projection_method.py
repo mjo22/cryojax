@@ -40,7 +40,7 @@ class AbstractPotentialProjectionMethod(Module, Generic[PotentialT], strict=True
 
 
 class AbstractVoxelPotentialProjectionMethod(
-    AbstractPotentialProjectionMethod[VoxelPotentialT],
+    AbstractPotentialProjectionMethod[AbstractVoxelPotential],
     Generic[VoxelPotentialT],
     strict=True,
 ):
@@ -59,11 +59,11 @@ class AbstractVoxelPotentialProjectionMethod(
     @override
     def compute_fourier_projected_potential(
         self,
-        potential: VoxelPotentialT,
+        potential: AbstractVoxelPotential,
         config: InstrumentConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         raw_fourier_projected_potential = self.compute_raw_fourier_projected_potential(
-            potential, config
+            potential, config  # type: ignore
         )
         return maybe_rescale_pixel_size(
             potential.voxel_size * raw_fourier_projected_potential,

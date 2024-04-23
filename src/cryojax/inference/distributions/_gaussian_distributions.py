@@ -73,7 +73,8 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         # pixels
         std = jnp.sqrt(N_pix * self.variance(freqs))
         noise = self.pipeline.postprocess(
-            std * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0),
+            std
+            * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0).astype(complex),
             get_real=get_real,
         )
         image = self.render(get_real=get_real)
