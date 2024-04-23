@@ -99,7 +99,7 @@ class AbstractDetector(Module, strict=True):
     dqe: AbstractDQE
 
     def __init__(self, dqe: AbstractDQE):
-        self.dq = dqe
+        self.dqe = dqe
 
     @abstractmethod
     def sample_readout_from_expected_events(
