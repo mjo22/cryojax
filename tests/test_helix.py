@@ -62,7 +62,7 @@ def build_helix_with_conformation(
 
 def test_superposition_pipeline_without_conformation(sample_subunit_mrc_path, config):
     helix = build_helix(sample_subunit_mrc_path, 1)
-    projection_method = cs.FourierSliceExtract()
+    projection_method = cs.FourierSliceExtraction()
     transfer_theory = cs.ContrastTransferTheory(cs.IdealContrastTransferFunction())
     theory = cs.LinearSuperpositionScatteringTheory(
         helix, projection_method, transfer_theory
@@ -76,7 +76,7 @@ def test_superposition_pipeline_without_conformation(sample_subunit_mrc_path, co
 
 def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, config):
     helix = build_helix_with_conformation(sample_subunit_mrc_path, 2)
-    projection_method = cs.FourierSliceExtract()
+    projection_method = cs.FourierSliceExtraction()
     transfer_theory = cs.ContrastTransferTheory(cs.IdealContrastTransferFunction())
     theory = cs.LinearSuperpositionScatteringTheory(
         helix, projection_method, transfer_theory
@@ -96,7 +96,7 @@ def test_c6_rotation(
     sample_subunit_mrc_path, config, rotation_angle, n_subunits_per_start
 ):
     helix = build_helix(sample_subunit_mrc_path, n_subunits_per_start)
-    projection_method = cs.FourierSliceExtract()
+    projection_method = cs.FourierSliceExtraction()
     transfer_theory = cs.ContrastTransferTheory(cs.IdealContrastTransferFunction())
     theory = cs.LinearSuperpositionScatteringTheory(
         helix, projection_method, transfer_theory
@@ -134,12 +134,12 @@ def test_agree_with_3j9g_assembly(
     specimen_39jg = cs.SingleStructureEnsemble(potential, cs.EulerAnglePose())
     superposition_theory = cs.LinearSuperpositionScatteringTheory(
         helix,
-        cs.FourierSliceExtract(),
+        cs.FourierSliceExtraction(),
         cs.ContrastTransferTheory(cs.IdealContrastTransferFunction()),
     )
     theory = cs.LinearScatteringTheory(
         specimen_39jg,
-        cs.FourierSliceExtract(),
+        cs.FourierSliceExtraction(),
         cs.ContrastTransferTheory(cs.IdealContrastTransferFunction()),
     )
     pipeline_for_assembly = cs.ContrastImagingPipeline(
@@ -189,7 +189,7 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
         helix = eqx.tree_at(lambda m: m.pose, helix, pose)
         theory = cs.LinearSuperpositionScatteringTheory(
             helix,
-            cs.FourierSliceExtract(),
+            cs.FourierSliceExtraction(),
             cs.ContrastTransferTheory(cs.IdealContrastTransferFunction()),
         )
         return config.crop_to_shape(

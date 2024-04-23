@@ -22,7 +22,7 @@ from .._potential_representation import (
 from .projection_method import AbstractVoxelPotentialProjectionMethod
 
 
-class FourierSliceExtract(
+class FourierSliceExtraction(
     AbstractVoxelPotentialProjectionMethod[
         FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator
     ],

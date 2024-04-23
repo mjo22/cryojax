@@ -13,7 +13,7 @@ from .._potential_representation import RealVoxelCloudPotential, RealVoxelGridPo
 from .projection_method import AbstractVoxelPotentialProjectionMethod
 
 
-class NufftProject(
+class NufftProjection(
     AbstractVoxelPotentialProjectionMethod[
         RealVoxelGridPotential | RealVoxelCloudPotential
     ],

@@ -83,7 +83,7 @@ def config(pixel_size, voltage_in_kilovolts):
 
 @pytest.fixture
 def projection_method():
-    return cs.FourierSliceExtract(interpolation_order=1)
+    return cs.FourierSliceExtraction(interpolation_order=1)
 
 
 @pytest.fixture

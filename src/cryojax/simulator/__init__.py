@@ -41,8 +41,8 @@ from ._projection_method import (
     AbstractPotentialProjectionMethod as AbstractPotentialProjectionMethod,
     extract_slice as extract_slice,
     extract_slice_with_cubic_spline as extract_slice_with_cubic_spline,
-    FourierSliceExtract as FourierSliceExtract,
-    NufftProject as NufftProject,
+    FourierSliceExtraction as FourierSliceExtraction,
+    NufftProjection as NufftProjection,
     project_with_nufft as project_with_nufft,
 )
 from ._scattering_theory import (
@@ -58,6 +58,7 @@ from ._solvent import (
 from ._structural_ensemble import (
     AbstractConformationalVariable as AbstractConformationalVariable,
     AbstractStructuralEnsemble as AbstractStructuralEnsemble,
+    AbstractStructuralEnsembleBatcher as AbstractStructuralEnsembleBatcher,
     DiscreteConformationalVariable as DiscreteConformationalVariable,
     DiscreteStructuralEnsemble as DiscreteStructuralEnsemble,
     SingleStructureEnsemble as SingleStructureEnsemble,

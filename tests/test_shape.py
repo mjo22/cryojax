@@ -47,7 +47,7 @@ def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     )
     assert control_shape == potential.fourier_voxel_grid.shape[0:2]
     pose = cs.EulerAnglePose()
-    method = cs.FourierSliceExtract()
+    method = cs.FourierSliceExtraction()
     specimen = cs.SingleStructureEnsemble(potential, pose)
     transfer_theory = cs.ContrastTransferTheory(cs.ContrastTransferFunction())
     theory = cs.LinearScatteringTheory(specimen, method, transfer_theory)
