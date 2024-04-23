@@ -1,4 +1,4 @@
-from ._distribution import (
+from ._base_distribution import (
     AbstractDistribution as AbstractDistribution,
     AbstractMarginalDistribution as AbstractMarginalDistribution,
 )

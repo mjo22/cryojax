@@ -14,12 +14,12 @@ from equinox import AbstractVar
 from jaxtyping import Array, Float
 
 from ...rotations import SO3
-from .._ensemble import (
+from .._pose import AbstractPose
+from .._structural_ensemble import (
     AbstractConformationalVariable,
     AbstractStructuralEnsemble,
     AbstractStructuralEnsembleBatcher,
 )
-from .._pose import AbstractPose
 
 
 class AbstractAssembly(AbstractStructuralEnsembleBatcher, strict=True):

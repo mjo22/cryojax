@@ -14,10 +14,10 @@ from ...image.operators import (
 )
 from .._instrument_config import InstrumentConfig
 from .base_transfer_theory import AbstractTransferFunction, AbstractTransferTheory
-from .common_functions import compute_aberrated_phase_shifts
+from .common_functions import compute_phase_shifts_with_amplitude_contrast_ratio
 
 
-class AbstractCTF(AbstractTransferFunction, strict=True):
+class AbstractContrastTransferFunction(AbstractTransferFunction, strict=True):
     """An abstract base class for a transfer function."""
 
     @abstractmethod
@@ -27,13 +27,13 @@ class AbstractCTF(AbstractTransferFunction, strict=True):
         *,
         wavelength_in_angstroms: Optional[Float[Array, ""] | float] = None,
         defocus_offset: Float[Array, ""] | float = 0.0,
-    ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
+    ) -> Float[Array, "y_dim x_dim"]:
         raise NotImplementedError
 
 
-class AberratedCTF(AbstractCTF, strict=True):
-    """Compute the Contrast Transfer Function (CTF) in for a weakly
-    scattering specimen.
+class ContrastTransferFunction(AbstractContrastTransferFunction, strict=True):
+    """Compute an astigmatic Contrast Transfer Function (CTF) with a
+    spherical aberration correction and amplitude contrast ratio.
     """
 
     defocus_u_in_angstroms: Float[Array, ""] = field(
@@ -76,7 +76,7 @@ class AberratedCTF(AbstractCTF, strict=True):
         else:
             wavelength_in_angstroms = jnp.asarray(wavelength_in_angstroms)
         # Compute phase shifts for CTF
-        phase_shifts = compute_aberrated_phase_shifts(
+        phase_shifts = compute_phase_shifts_with_amplitude_contrast_ratio(
             frequency_grid_in_angstroms,
             self.defocus_u_in_angstroms + jnp.asarray(defocus_offset),
             self.defocus_v_in_angstroms + jnp.asarray(defocus_offset),
@@ -84,13 +84,13 @@ class AberratedCTF(AbstractCTF, strict=True):
             wavelength_in_angstroms,
             spherical_aberration_in_angstroms,
             phase_shift,
-            amplitude_contrast_ratio=self.amplitude_contrast_ratio,
+            self.amplitude_contrast_ratio,
         )
         # Compute the CTF
         return jnp.sin(phase_shifts).at[0, 0].set(0.0)
 
 
-AberratedCTF.__init__.__doc__ = """**Arguments:**
+ContrastTransferFunction.__init__.__doc__ = """**Arguments:**
 
 - `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
 - `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
@@ -102,7 +102,7 @@ AberratedCTF.__init__.__doc__ = """**Arguments:**
 """
 
 
-class IdealCTF(AbstractCTF, strict=True):
+class IdealContrastTransferFunction(AbstractContrastTransferFunction, strict=True):
     """Compute a perfect CTF, where frequency content is delivered equally
     over all frequencies.
     """
@@ -122,12 +122,12 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
     contrast by applying the CTF directly to the exit plane phase shifts.
     """
 
-    transfer_function: AbstractCTF
+    transfer_function: AbstractContrastTransferFunction
     envelope: FourierOperatorLike
 
     def __init__(
         self,
-        transfer_function: AbstractCTF,
+        transfer_function: AbstractContrastTransferFunction,
         envelope: Optional[FourierOperatorLike] = None,
     ):
         self.transfer_function = transfer_function
@@ -137,17 +137,22 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
     def __call__(
         self,
         fourier_phase_at_exit_plane: Complex[
-            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
         ],
-        config: InstrumentConfig,
+        instrument_config: InstrumentConfig,
         defocus_offset: Float[Array, ""] | float = 0.0,
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
         """Apply the CTF directly to the phase shifts in the exit plane."""
-        frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
+        frequency_grid = (
+            instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
+        )
         # Compute the CTF
         ctf = self.envelope(frequency_grid) * self.transfer_function(
             frequency_grid,
-            wavelength_in_angstroms=config.wavelength_in_angstroms,
+            wavelength_in_angstroms=instrument_config.wavelength_in_angstroms,
             defocus_offset=defocus_offset,
         )
         # ... compute the contrast as the CTF multiplied by the exit plane

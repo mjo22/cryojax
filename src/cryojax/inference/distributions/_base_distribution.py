@@ -12,9 +12,7 @@ class AbstractDistribution(Module, strict=True):
     """An image formation model equipped with a probabilistic model."""
 
     @abstractmethod
-    def log_likelihood(
-        self, observed: Inexact[Array, "y_dim x_dim"]
-    ) -> Float[Array, ""]:
+    def log_likelihood(self, observed: Inexact[Array, "y_dim x_dim"]) -> Float[Array, ""]:
         """Evaluate the log likelihood.
 
         **Arguments:**

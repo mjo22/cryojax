@@ -15,7 +15,7 @@ from ...image import (
     rfftn,
 )
 from .._instrument_config import InstrumentConfig
-from .._potential import (
+from .._potential_representation import (
     FourierVoxelGridPotential,
     FourierVoxelGridPotentialInterpolator,
 )
@@ -57,8 +57,10 @@ class FourierSliceExtract(
     def compute_raw_fourier_projected_potential(
         self,
         potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
-        config: InstrumentConfig,
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+        instrument_config: InstrumentConfig,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
         """Compute a projection of the real-space potential by extracting
         a central slice in fourier space.
         """
@@ -91,9 +93,11 @@ class FourierSliceExtract(
             )
 
         # Resize the image to match the InstrumentConfig.padded_shape
-        if config.padded_shape != (N, N):
+        if instrument_config.padded_shape != (N, N):
             fourier_projection = rfftn(
-                config.crop_or_pad_to_padded_shape(irfftn(fourier_projection, s=(N, N)))
+                instrument_config.crop_or_pad_to_padded_shape(
+                    irfftn(fourier_projection, s=(N, N))
+                )
             )
         return fourier_projection
 

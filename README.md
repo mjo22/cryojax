@@ -83,7 +83,7 @@ from cryojax.image import operators as op
 # Initialize the scattering theory. First, instantiate fourier slice extraction
 projection_method = cxs.FourierSliceExtract(interpolation_order=1)
 # ... next, the contrast transfer theory
-transfer_function = cxs.AberratedCTF(
+transfer_function = cxs.ContrastTransferFunction(
     defocus_u_in_angstroms=10000.0,
     defocus_v_in_angstroms=9800.0,
     astigmatism_angle=10.0,
@@ -94,17 +94,17 @@ transfer_theory = cxs.ContrastTransferTheory(transfer_function, envelope=op.Four
 scattering_theory = cxs.LinearScatteringTheory(structural_ensemble, projection_method, transfer_theory)
 ```
 
-The `AberratedCTF` has parameters used in CTFFIND4, which take their default values if not
-explicitly configured here. Finally, we can instantiate the `pipeline`--the highest level of imaging abstraction in `cryojax`--and simulate an image. Here, we choose a `ContrastImagingPipeline`, which simulates image contrast from a linear scattering theory.
+The `ContrastTransferFunction` has parameters used in CTFFIND4, which take their default values if not
+explicitly configured here. Finally, we can instantiate the `imaging_pipeline`--the highest level of imaging abstraction in `cryojax`--and simulate an image. Here, we choose a `ContrastImagingPipeline`, which simulates image contrast from a linear scattering theory.
 
 ```python
 # Finally, build the image formation model
 # ... first instantiate the instrument configuration
-config = cxs.InstrumentConfig(shape=(320, 320), pixel_size=voxel_size, voltage_in_kilovolts=300.0)
+instrument_config = cxs.InstrumentConfig(shape=(320, 320), pixel_size=voxel_size, voltage_in_kilovolts=300.0)
 # ... now the imaging pipeline
-pipeline = cxs.ContrastImagingPipeline(config, scattering_theory)
+imaging_pipeline = cxs.ContrastImagingPipeline(instrument_config, scattering_theory)
 # ... finally, simulate an image and return in real-space!
-image_without_noise = pipeline.render(get_real=True)
+image_without_noise = imaging_pipeline.render(get_real=True)
 ```
 
 `cryojax` also defines a library of distributions from which to sample the data. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentGaussianFourierModes` distribution and either sample from it or compute its log-likelihood.
@@ -114,7 +114,7 @@ from cryojax.image import rfftn, operators as op
 from cryojax.inference import distributions as dist
 
 # Passing the ImagePipeline and a variance function, instantiate the distribution
-distribution = dist.IndependentGaussianFourierModes(pipeline, variance=op.Constant(1.0))
+distribution = dist.IndependentGaussianFourierModes(imaging_pipeline, variance=op.Constant(1.0))
 # ... then, either simulate an image from this distribution
 key = jax.random.PRNGKey(seed=0)
 image_with_noise = distribution.sample(key)

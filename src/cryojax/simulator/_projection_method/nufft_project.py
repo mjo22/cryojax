@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
 from .._instrument_config import InstrumentConfig
-from .._potential import RealVoxelCloudPotential, RealVoxelGridPotential
+from .._potential_representation import RealVoxelCloudPotential, RealVoxelGridPotential
 from .projection_method import AbstractVoxelPotentialProjectionMethod
 
 
@@ -35,8 +35,10 @@ class NufftProject(
     def compute_raw_fourier_projected_potential(
         self,
         potential: RealVoxelGridPotential | RealVoxelCloudPotential,
-        config: InstrumentConfig,
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+        instrument_config: InstrumentConfig,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(potential, RealVoxelGridPotential):
             shape = potential.shape
@@ -45,14 +47,14 @@ class NufftProject(
                 potential.wrapped_coordinate_grid_in_pixels.get().reshape(
                     (math.prod(shape), 3)
                 ),
-                config.padded_shape,
+                instrument_config.padded_shape,
                 eps=self.eps,
             )
         elif isinstance(potential, RealVoxelCloudPotential):
             fourier_projection = project_with_nufft(
                 potential.voxel_weights,
                 potential.wrapped_coordinate_list_in_pixels.get(),
-                config.padded_shape,
+                instrument_config.padded_shape,
                 eps=self.eps,
             )
         else:

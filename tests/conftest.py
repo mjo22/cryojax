@@ -78,9 +78,7 @@ def voltage_in_kilovolts():
 
 @pytest.fixture
 def config(pixel_size, voltage_in_kilovolts):
-    return cs.InstrumentConfig(
-        (65, 66), pixel_size, voltage_in_kilovolts, pad_scale=1.1
-    )
+    return cs.InstrumentConfig((65, 66), pixel_size, voltage_in_kilovolts, pad_scale=1.1)
 
 
 @pytest.fixture
@@ -111,7 +109,7 @@ def masks(config):
 
 @pytest.fixture
 def transfer_theory():
-    return cs.ContrastTransferTheory(transfer_function=cs.AberratedCTF())
+    return cs.ContrastTransferTheory(transfer_function=cs.ContrastTransferFunction())
 
 
 @pytest.fixture
@@ -156,13 +154,13 @@ def theory_with_solvent(specimen, projection_method, transfer_theory, solvent):
 
 @pytest.fixture
 def noiseless_model(config, theory):
-    return cs.IntensityImagingPipeline(config=config, scattering_theory=theory)
+    return cs.IntensityImagingPipeline(instrument_config=config, scattering_theory=theory)
 
 
 @pytest.fixture
 def noisy_model(config, theory_with_solvent, detector):
     return cs.ElectronCountsImagingPipeline(
-        config=config,
+        instrument_config=config,
         scattering_theory=theory_with_solvent,
         detector=detector,
     )

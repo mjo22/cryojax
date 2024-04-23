@@ -183,9 +183,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
         - `**kwargs`: Passed to `AbstractFourierVoxelGridPotential.from_real_voxel_grid`
         """
-        form_factors = (
-            form_factors if form_factors is None else jnp.asarray(form_factors)
-        )
+        form_factors = form_factors if form_factors is None else jnp.asarray(form_factors)
         a_vals, b_vals = get_form_factor_params(
             jnp.asarray(atom_identities), form_factors
         )
@@ -280,9 +278,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 
     @property
     def shape(self) -> tuple[int, int, int]:
-        return cast(
-            tuple[int, int, int], tuple([s - 2 for s in self.coefficients.shape])
-        )
+        return cast(tuple[int, int, int], tuple([s - 2 for s in self.coefficients.shape]))
 
 
 class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
@@ -387,9 +383,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
         - `**kwargs`: Passed to `RealVoxelGridPotential.from_real_voxel_grid`
         """
-        form_factors = (
-            form_factors if form_factors is None else jnp.asarray(form_factors)
-        )
+        form_factors = form_factors if form_factors is None else jnp.asarray(form_factors)
         a_vals, b_vals = get_form_factor_params(
             jnp.asarray(atom_identities), form_factors
         )
@@ -530,9 +524,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
         - `**kwargs`: Passed to `RealVoxelCloudPotential.from_real_voxel_grid`
         """
-        form_factors = (
-            form_factors if form_factors is None else jnp.asarray(form_factors)
-        )
+        form_factors = form_factors if form_factors is None else jnp.asarray(form_factors)
         a_vals, b_vals = get_form_factor_params(
             jnp.asarray(atom_identities), form_factors
         )

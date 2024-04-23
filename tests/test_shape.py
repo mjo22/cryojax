@@ -16,8 +16,8 @@ def test_real_shape(model, request):
     model = request.getfixturevalue(model)
     image = model.render()
     padded_image = model.render(postprocess=False)
-    assert image.shape == model.config.shape
-    assert padded_image.shape == model.config.padded_shape
+    assert image.shape == model.instrument_config.shape
+    assert padded_image.shape == model.instrument_config.padded_shape
 
 
 @pytest.mark.parametrize("model", ["noisy_model"])
@@ -26,10 +26,15 @@ def test_fourier_shape(model, request):
     model = request.getfixturevalue(model)
     image = model.render(get_real=False)
     padded_image = model.render(postprocess=False, get_real=False)
-    assert image.shape == model.config.wrapped_frequency_grid_in_pixels.get().shape[0:2]
+    assert (
+        image.shape
+        == model.instrument_config.wrapped_frequency_grid_in_pixels.get().shape[0:2]
+    )
     assert (
         padded_image.shape
-        == model.config.wrapped_padded_frequency_grid_in_pixels.get().shape[0:2]
+        == model.instrument_config.wrapped_padded_frequency_grid_in_pixels.get().shape[
+            0:2
+        ]
     )
 
 
@@ -44,7 +49,7 @@ def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     pose = cs.EulerAnglePose()
     method = cs.FourierSliceExtract()
     specimen = cs.SingleStructureEnsemble(potential, pose)
-    transfer_theory = cs.ContrastTransferTheory(cs.AberratedCTF())
+    transfer_theory = cs.ContrastTransferTheory(cs.ContrastTransferFunction())
     theory = cs.LinearScatteringTheory(specimen, method, transfer_theory)
     config_control = cs.InstrumentConfig(
         control_shape, pixel_size, voltage_in_kilovolts=300.0

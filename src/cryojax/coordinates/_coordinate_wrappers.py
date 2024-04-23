@@ -63,9 +63,7 @@ class CoordinateList(AbstractCoordinates, strict=True):
         converter=jnp.asarray
     )
 
-    def __init__(
-        self, coordinate_list: Float[Array, "size 2"] | Float[Array, "size 3"]
-    ):
+    def __init__(self, coordinate_list: Float[Array, "size 2"] | Float[Array, "size 3"]):
         self.array = coordinate_list
 
     def get(self) -> Float[Array, "size 3"] | Float[Array, "size 2"]:

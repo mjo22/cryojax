@@ -47,9 +47,7 @@ class AbstractPose(Module, strict=True):
 
     def rotate_coordinates(
         self,
-        volume_coordinates: (
-            Float[Array, "z_dim y_dim x_dim 3"] | Float[Array, "size 3"]
-        ),
+        volume_coordinates: Float[Array, "z_dim y_dim x_dim 3"] | Float[Array, "size 3"],
         inverse: bool = False,
     ) -> Float[Array, "z_dim y_dim x_dim 3"] | Float[Array, "size 3"]:
         """Rotate coordinates from a particular convention."""
@@ -75,9 +73,7 @@ class AbstractPose(Module, strict=True):
         given a frequency grid coordinate system.
         """
         xy = self.offset_in_angstroms[0:2]
-        return jnp.exp(
-            -1.0j * (2 * jnp.pi * jnp.matmul(frequency_grid_in_angstroms, xy))
-        )
+        return jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(frequency_grid_in_angstroms, xy)))
 
     @cached_property
     def offset_in_angstroms(self) -> Float[Array, "3"]:
@@ -275,9 +271,7 @@ def _convert_quaternion_to_euler_angles(
 
     Adapted from https://github.com/chrisflesher/jax-scipy-spatial/.
     """
-    if len(convention) != 3 or not all(
-        [axis in ["x", "y", "z"] for axis in convention]
-    ):
+    if len(convention) != 3 or not all([axis in ["x", "y", "z"] for axis in convention]):
         raise ValueError(
             f"`convention` should be a string of three characters, each "
             f"of which is 'x', 'y', or 'z'. Instead, got '{convention}'"

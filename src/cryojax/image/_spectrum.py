@@ -44,9 +44,7 @@ def powerspectrum(
     k_max: Optional[Float[Array, ""] | float] = None,
 ) -> (
     tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]
-    | tuple[
-        Float[Array, " n_bins"], Float[Array, "y_dim x_dim"], Float[Array, " n_bins"]
-    ]
+    | tuple[Float[Array, " n_bins"], Float[Array, "y_dim x_dim"], Float[Array, " n_bins"]]
 ): ...
 
 

@@ -3,8 +3,8 @@ from .base_transfer_theory import (
     AbstractTransferTheory as AbstractTransferTheory,
 )
 from .contrast_transfer_theory import (
-    AberratedCTF as AberratedCTF,
-    AbstractCTF as AbstractCTF,
+    AbstractContrastTransferFunction as AbstractContrastTransferFunction,
+    ContrastTransferFunction as ContrastTransferFunction,
     ContrastTransferTheory as ContrastTransferTheory,
-    IdealCTF as IdealCTF,
+    IdealContrastTransferFunction as IdealContrastTransferFunction,
 )

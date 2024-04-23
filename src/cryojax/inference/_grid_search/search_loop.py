@@ -117,9 +117,7 @@ def run_grid_search(
         )
         tree_grid_points = tree_grid_take(
             tree_grid,
-            tree_grid_unravel_index(
-                raveled_grid_index_batch, tree_grid, is_leaf=is_leaf
-            ),
+            tree_grid_unravel_index(raveled_grid_index_batch, tree_grid, is_leaf=is_leaf),
         )
         new_state = method.batch_update(
             fn, tree_grid_points, args, state, raveled_grid_index_batch

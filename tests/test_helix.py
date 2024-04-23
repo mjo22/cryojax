@@ -63,11 +63,13 @@ def build_helix_with_conformation(
 def test_superposition_pipeline_without_conformation(sample_subunit_mrc_path, config):
     helix = build_helix(sample_subunit_mrc_path, 1)
     projection_method = cs.FourierSliceExtract()
-    transfer_theory = cs.ContrastTransferTheory(cs.IdealCTF())
+    transfer_theory = cs.ContrastTransferTheory(cs.IdealContrastTransferFunction())
     theory = cs.LinearSuperpositionScatteringTheory(
         helix, projection_method, transfer_theory
     )
-    pipeline = cs.ContrastImagingPipeline(config=config, scattering_theory=theory)
+    pipeline = cs.ContrastImagingPipeline(
+        instrument_config=config, scattering_theory=theory
+    )
     _ = pipeline.render()
     _ = pipeline.sample(jax.random.PRNGKey(0))
 
@@ -75,11 +77,13 @@ def test_superposition_pipeline_without_conformation(sample_subunit_mrc_path, co
 def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, config):
     helix = build_helix_with_conformation(sample_subunit_mrc_path, 2)
     projection_method = cs.FourierSliceExtract()
-    transfer_theory = cs.ContrastTransferTheory(cs.IdealCTF())
+    transfer_theory = cs.ContrastTransferTheory(cs.IdealContrastTransferFunction())
     theory = cs.LinearSuperpositionScatteringTheory(
         helix, projection_method, transfer_theory
     )
-    pipeline = cs.ContrastImagingPipeline(config=config, scattering_theory=theory)
+    pipeline = cs.ContrastImagingPipeline(
+        instrument_config=config, scattering_theory=theory
+    )
     _ = pipeline.render()
     _ = pipeline.sample(jax.random.PRNGKey(0))
 
@@ -93,11 +97,13 @@ def test_c6_rotation(
 ):
     helix = build_helix(sample_subunit_mrc_path, n_subunits_per_start)
     projection_method = cs.FourierSliceExtract()
-    transfer_theory = cs.ContrastTransferTheory(cs.IdealCTF())
+    transfer_theory = cs.ContrastTransferTheory(cs.IdealContrastTransferFunction())
     theory = cs.LinearSuperpositionScatteringTheory(
         helix, projection_method, transfer_theory
     )
-    pipeline = cs.ContrastImagingPipeline(config=config, scattering_theory=theory)
+    pipeline = cs.ContrastImagingPipeline(
+        instrument_config=config, scattering_theory=theory
+    )
 
     @eqx.filter_jit
     def compute_rotated_image(pipeline, pose):
@@ -129,18 +135,18 @@ def test_agree_with_3j9g_assembly(
     superposition_theory = cs.LinearSuperpositionScatteringTheory(
         helix,
         cs.FourierSliceExtract(),
-        cs.ContrastTransferTheory(cs.IdealCTF()),
+        cs.ContrastTransferTheory(cs.IdealContrastTransferFunction()),
     )
     theory = cs.LinearScatteringTheory(
         specimen_39jg,
         cs.FourierSliceExtract(),
-        cs.ContrastTransferTheory(cs.IdealCTF()),
+        cs.ContrastTransferTheory(cs.IdealContrastTransferFunction()),
     )
     pipeline_for_assembly = cs.ContrastImagingPipeline(
-        config=config, scattering_theory=superposition_theory
+        instrument_config=config, scattering_theory=superposition_theory
     )
     pipeline_for_3j9g = cs.ContrastImagingPipeline(
-        config=config, scattering_theory=theory
+        instrument_config=config, scattering_theory=theory
     )
 
     @eqx.filter_jit
@@ -184,7 +190,7 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
         theory = cs.LinearSuperpositionScatteringTheory(
             helix,
             cs.FourierSliceExtract(),
-            cs.ContrastTransferTheory(cs.IdealCTF()),
+            cs.ContrastTransferTheory(cs.IdealContrastTransferFunction()),
         )
         return config.crop_to_shape(
             irfftn(

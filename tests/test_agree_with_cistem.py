@@ -8,7 +8,7 @@ import cryojax.simulator as cs
 from cryojax.coordinates import cartesian_to_polar, make_frequencies
 from cryojax.data import read_array_with_spacing_from_mrc
 from cryojax.image import irfftn, powerspectrum
-from cryojax.simulator import AberratedCTF, EulerAnglePose
+from cryojax.simulator import ContrastTransferFunction, EulerAnglePose
 
 
 jax.config.update("jax_enable_x64", True)
@@ -36,7 +36,7 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
     freqs = make_frequencies(shape, pixel_size)
     k_sqr, theta = cartesian_to_polar(freqs, square=True)
     # Compute cryojax CTF
-    optics = AberratedCTF(
+    optics = ContrastTransferFunction(
         defocus_u_in_angstroms=defocus1,
         defocus_v_in_angstroms=defocus2,
         astigmatism_angle=asti_angle,
@@ -55,9 +55,9 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
         astig_angle=asti_angle,
         pixel_size=pixel_size,
     )
-    cisTEM_ctf = np.vectorize(
-        lambda k_sqr, theta: cisTEM_optics.Evaluate(k_sqr, theta)
-    )(k_sqr.ravel() * pixel_size**2, theta.ravel()).reshape(freqs.shape[0:2])
+    cisTEM_ctf = np.vectorize(lambda k_sqr, theta: cisTEM_optics.Evaluate(k_sqr, theta))(
+        k_sqr.ravel() * pixel_size**2, theta.ravel()
+    ).reshape(freqs.shape[0:2])
     cisTEM_ctf[0, 0] = 0.0
 
     # Compute cryojax and cisTEM power spectrum
