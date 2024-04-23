@@ -270,7 +270,7 @@ class MinimumSearchMethod(
             _reshape_fn = lambda x: (
                 x.reshape((*f_struct.shape, *x.shape[1:]))
                 if x.ndim > 1
-                else lambda x: x.reshape(f_struct.shape)
+                else x.reshape(f_struct.shape)
             )
             value = jtu.tree_map(
                 _reshape_fn, tree_grid_take(tree_grid, tree_grid_index)

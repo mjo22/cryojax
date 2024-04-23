@@ -22,5 +22,8 @@ from ._normalize import (
     normalize_image as normalize_image,
     rescale_image as rescale_image,
 )
-from ._rescale_pixel_size import rescale_pixel_size as rescale_pixel_size
+from ._rescale_pixel_size import (
+    maybe_rescale_pixel_size as maybe_rescale_pixel_size,
+    rescale_pixel_size as rescale_pixel_size,
+)
 from ._spectrum import powerspectrum as powerspectrum

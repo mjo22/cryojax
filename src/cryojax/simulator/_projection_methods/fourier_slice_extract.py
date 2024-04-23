@@ -3,9 +3,9 @@ Using the fourier slice theorem for computing volume projections.
 """
 
 from typing import Any
+from typing_extensions import override
 
 import jax.numpy as jnp
-from equinox import field
 from jaxtyping import Array, Complex, Float
 
 from ...image import (
@@ -14,15 +14,20 @@ from ...image import (
     map_coordinates_with_cubic_spline,
     rfftn,
 )
-from .._config import ImageConfig
+from .._instrument_config import InstrumentConfig
 from .._potential import (
     FourierVoxelGridPotential,
     FourierVoxelGridPotentialInterpolator,
 )
-from .potential_integrator import AbstractPotentialIntegrator
+from .projection_method import AbstractVoxelPotentialProjectionMethod
 
 
-class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
+class FourierSliceExtract(
+    AbstractVoxelPotentialProjectionMethod[
+        FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator
+    ],
+    strict=True,
+):
     """Integrate points to the exit plane using the
     Fourier-projection slice theorem.
 
@@ -43,15 +48,16 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
         ``interpolation_mode = "fill"``.
     """
 
-    interpolation_order: int = field(static=True, default=1)
-    interpolation_mode: str = field(static=True, default="fill")
-    interpolation_cval: complex = field(static=True, default=0.0 + 0.0j)
+    pixel_rescaling_method: str = "bicubic"
+    interpolation_order: int = 1
+    interpolation_mode: str = "fill"
+    interpolation_cval: complex = 0.0 + 0.0j
 
-    def __call__(
+    @override
+    def compute_raw_fourier_projected_potential(
         self,
         potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
-        wavelength_in_angstroms: Float[Array, ""],
-        config: ImageConfig,
+        config: InstrumentConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute a projection of the real-space potential by extracting
         a central slice in fourier space.
@@ -84,15 +90,12 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
                 "FourierVoxelGridInterpolator."
             )
 
-        # Resize the image to match the ImageConfig.padded_shape
+        # Resize the image to match the InstrumentConfig.padded_shape
         if config.padded_shape != (N, N):
             fourier_projection = rfftn(
                 config.crop_or_pad_to_padded_shape(irfftn(fourier_projection, s=(N, N)))
             )
-        # Rescale the voxel size to the ImageConfig.pixel_size
-        return config.rescale_to_pixel_size(
-            fourier_projection, potential.voxel_size, is_real=False
-        )
+        return fourier_projection
 
 
 def extract_slice(
@@ -176,4 +179,6 @@ def extract_slice_with_cubic_spline(
     # Shift zero frequency component to corner and take upper half plane
     projection = jnp.fft.ifftshift(projection)[:, : N // 2 + 1]
     # Set last line of frequencies to zero if image dimension is even
-    return projection if N % 2 == 1 else projection.at[:, -1].set(0.0 + 0.0j)
+    if N % 2 == 0:
+        projection = projection.at[:, -1].set(0.0 + 0.0j).at[N // 2, :].set(0.0 + 0.0j)
+    return projection

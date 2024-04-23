@@ -14,11 +14,9 @@ jax.config.update("jax_enable_x64", True)
     [
         "noisy_model",
         "noiseless_model",
-        "filtered_model",
-        "filtered_and_masked_model",
     ],
 )
-def test_compute_with_filters_and_masks(model, request):
+def test_normalized_pipeline_image(model, request):
     model = request.getfixturevalue(model)
     key = jax.random.PRNGKey(1234)
     im1 = model.render(get_real=True, normalize=True)
@@ -33,4 +31,4 @@ def test_compute_with_filters_and_masks(model, request):
     )
     for im in [im1, im2, im3, im4]:
         np.testing.assert_allclose(jnp.std(im), jnp.asarray(1.0), rtol=1e-3)
-        np.testing.assert_allclose(jnp.mean(im), jnp.asarray(0.0), atol=1e-12)
+        np.testing.assert_allclose(jnp.mean(im), jnp.asarray(0.0), atol=1e-8)

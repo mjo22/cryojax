@@ -30,7 +30,6 @@ def run_grid_search(
     args: Any,
     *,
     is_leaf: Optional[Callable[[Any], bool]] = None,
-    unroll: Optional[int | bool] = None,
     progress_bar: bool = False,
     print_every: Optional[int] = None,
 ) -> PyTree[Any]:
@@ -67,7 +66,6 @@ def run_grid_search(
     - `args`: Arguments passed to `fn`, as `fn(y, args)`.
     - `is_leaf`: As [`jax.tree_util.tree_flatten`](https://jax.readthedocs.io/en/latest/_autosummary/jax.tree_util.tree_flatten.html).
                  This specifies what is to be treated as a leaf in `tree_grid`.
-    - `unroll`: As [`jax.lax.fori_loop`](https://jax.readthedocs.io/en/latest/_autosummary/jax.lax.fori_loop.html)
     - `progress_bar`: Add a [`tqdm`](https://github.com/tqdm/tqdm) progress bar to the
                       search loop.
     - `print_every`: An interval for the number of iterations at which to update the
@@ -114,7 +112,7 @@ def run_grid_search(
         raveled_grid_index_batch = jnp.linspace(
             iteration_index * method.batch_size,
             (iteration_index + 1) * method.batch_size - 1,
-            method.batch_size,
+            method.batch_size,  # type: ignore
             dtype=int,
         )
         tree_grid_points = tree_grid_take(
@@ -148,9 +146,7 @@ def run_grid_search(
     # Run and unpack results
     if progress_bar:
         body_fun = _loop_tqdm(n_iterations, print_every)(body_fun)
-    final_carry = jax.lax.fori_loop(
-        0, n_iterations, body_fun, init_carry, unroll=unroll
-    )
+    final_carry = jax.lax.fori_loop(0, n_iterations, body_fun, init_carry)
     dynamic_final_state, _ = final_carry
     final_state = eqx.combine(static_state, dynamic_final_state)
     # Return the solution
@@ -160,7 +156,7 @@ def run_grid_search(
 
 def _loop_tqdm(
     n_iterations: int,
-    print_every: int,
+    print_every: Optional[int] = None,
     **kwargs,
 ) -> Callable:
     """Add a tqdm progress bar to `body_fun` used in `jax.lax.fori_loop`.
@@ -182,7 +178,7 @@ def _loop_tqdm(
 
 def _build_tqdm(
     n_iterations: int,
-    print_every: Optional[int],
+    print_every: Optional[int] = None,
     **kwargs,
 ) -> tuple[Callable, Callable]:
     """Build the tqdm progress bar on the host."""
@@ -222,7 +218,7 @@ def _build_tqdm(
         tqdm_bars[0].update(arg)
 
     def _update_progress_bar(iter_num):
-        _ = jax.jax.lax.cond(
+        _ = jax.lax.cond(
             iter_num == 0,
             lambda _: host_callback.id_tap(_define_tqdm, None, result=iter_num),
             lambda _: iter_num,

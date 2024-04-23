@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from jaxtyping import Array, Float, Int
 
-from ..simulator import CTF, EulerAnglePose, ImageConfig
+from ..simulator import AberratedCTF, EulerAnglePose, InstrumentConfig
 from ._dataset import AbstractDataset
 from ._io import read_and_validate_starfile
 from ._particle_stack import AbstractParticleStack
@@ -39,27 +39,27 @@ class RelionParticleStack(AbstractParticleStack):
     """
 
     image_stack: Float[Array, "... y_dim x_dim"]
-    config: ImageConfig
+    config: InstrumentConfig
     pose: EulerAnglePose
-    ctf: CTF
+    transfer_function: AberratedCTF
 
     def __init__(
         self,
         image_stack: Float[Array, "... y_dim x_dim"],
-        config: ImageConfig,
+        config: InstrumentConfig,
         pose: EulerAnglePose,
-        ctf: CTF,
+        transfer_function: AberratedCTF,
     ):
         # Set image stack and config as is
         self.image_stack = jnp.asarray(image_stack)
         self.config = config
         # Set CTF using the defocus offset in the EulerAnglePose
-        self.ctf = eqx.tree_at(
-            lambda ctf: (ctf.defocus_u_in_angstroms, ctf.defocus_v_in_angstroms),
-            ctf,
+        self.transfer_function = eqx.tree_at(
+            lambda tf: (tf.defocus_u_in_angstroms, tf.defocus_v_in_angstroms),
+            transfer_function,
             (
-                ctf.defocus_u_in_angstroms + pose.offset_z_in_angstroms,
-                ctf.defocus_v_in_angstroms + pose.offset_z_in_angstroms,
+                transfer_function.defocus_u_in_angstroms + pose.offset_z_in_angstroms,
+                transfer_function.defocus_v_in_angstroms + pose.offset_z_in_angstroms,
             ),
         )
         # Set defocus offset to zero
@@ -73,22 +73,26 @@ RelionParticleStack.__init__.__doc__ = """**Arguments:**
 - `image_stack`: The stack of images. The shape of this array
                  is a leading batch dimension followed by the shape
                  of an image in the stack.
-- `config`: The image configuration. Any subset of pytree leaves may
+- `config`: The instrument configuration. Any subset of pytree leaves may
             have a batch dimension.
 - `pose`: The pose, represented by euler angles. Any subset of pytree leaves may
           have a batch dimension. Upon instantiation, `pose.offset_z_in_angstroms`
           is set to zero.
-- `ctf`: The contrast transfer function. Any subset of pytree leaves may
-         have a batch dimension. Upon instantiation, `ctf.defocus_u_in_angstroms`
-         is set to `ctf.defocus_u_in_angstroms + pose.offset_z_in_angstroms` (and
-         also for `ctf.defocus_v_in_angstroms`).
-"""
+- `transfer_function`: The contrast transfer function. Any subset of pytree leaves may
+                       have a batch dimension. Upon instantiation,
+                       `transfer_function.defocus_u_in_angstroms` is set to
+                       `transfer_function.defocus_u_in_angstroms + pose.offset_z_in_angstroms` (and
+                        also for `transfer_function.defocus_v_in_angstroms`).
+"""  # noqa: E501
 
 
 def _default_make_config_fn(
-    shape: tuple[int, int], pixel_size: float | Float[np.ndarray, ""], **kwargs: Any
+    shape: tuple[int, int],
+    pixel_size: Float[Array, ""],
+    voltage_in_kilovolts: Float[Array, ""],
+    **kwargs: Any,
 ):
-    return ImageConfig(shape, jnp.asarray(pixel_size), **kwargs)
+    return InstrumentConfig(shape, pixel_size, voltage_in_kilovolts, **kwargs)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -101,7 +105,7 @@ class RelionDataset(AbstractDataset):
     data_blocks: dict[str, pd.DataFrame]
 
     make_config_fn: Callable[
-        [tuple[int, int], float | Float[np.ndarray, "..."]], ImageConfig
+        [tuple[int, int], Float[Array, "..."], Float[Array, "..."]], InstrumentConfig
     ]
 
     @final
@@ -110,7 +114,8 @@ class RelionDataset(AbstractDataset):
         path_to_starfile: str | pathlib.Path,
         path_to_relion_project: str | pathlib.Path,
         make_config_fn: Callable[
-            [tuple[int, int], float | Float[np.ndarray, ""]], ImageConfig
+            [tuple[int, int], Float[Array, "..."], Float[Array, "..."]],
+            InstrumentConfig,
         ] = _default_make_config_fn,
     ):
         """**Arguments:**
@@ -234,8 +239,12 @@ class RelionDataset(AbstractDataset):
         spherical_aberration_in_mm = jnp.asarray(optics_group["rlnSphericalAberration"])
         amplitude_contrast_ratio = jnp.asarray(optics_group["rlnAmplitudeContrast"])
         # ... create cryojax objects
-        config = self.make_config_fn((int(image_size), int(image_size)), pixel_size)
-        ctf = CTF(
+        config = self.make_config_fn(
+            (int(image_size), int(image_size)),
+            pixel_size,
+            jnp.asarray(voltage_in_kilovolts),
+        )
+        transfer_function = AberratedCTF(
             defocus_u_in_angstroms=defocus_u_in_angstroms,
             defocus_v_in_angstroms=defocus_v_in_angstroms,
             astigmatism_angle=astigmatism_angle,
@@ -312,7 +321,9 @@ class RelionDataset(AbstractDataset):
             tuple([jnp.asarray(value) for value in pose_parameter_values]),
         )
 
-        return RelionParticleStack(jnp.asarray(image_stack), config, pose, ctf)
+        return RelionParticleStack(
+            jnp.asarray(image_stack), config, pose, transfer_function
+        )
 
     @final
     def __len__(self) -> int:

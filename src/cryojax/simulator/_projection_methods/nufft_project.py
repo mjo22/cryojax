@@ -3,17 +3,22 @@ Using non-uniform FFTs for computing volume projections.
 """
 
 import math
+from typing_extensions import override
 
 import jax.numpy as jnp
-from equinox import field
 from jaxtyping import Array, Complex, Float
 
-from .._config import ImageConfig
+from .._instrument_config import InstrumentConfig
 from .._potential import RealVoxelCloudPotential, RealVoxelGridPotential
-from .potential_integrator import AbstractPotentialIntegrator
+from .projection_method import AbstractVoxelPotentialProjectionMethod
 
 
-class NufftProject(AbstractPotentialIntegrator, strict=True):
+class NufftProject(
+    AbstractVoxelPotentialProjectionMethod[
+        RealVoxelGridPotential | RealVoxelCloudPotential
+    ],
+    strict=True,
+):
     """Integrate points onto the exit plane using
     non-uniform FFTs.
 
@@ -23,13 +28,14 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
         See ``jax-finufft`` for documentation.
     """
 
-    eps: float = field(static=True, default=1e-6)
+    pixel_rescaling_method: str = "bicubic"
+    eps: float = 1e-6
 
-    def __call__(
+    @override
+    def compute_raw_fourier_projected_potential(
         self,
         potential: RealVoxelGridPotential | RealVoxelCloudPotential,
-        wavelength_in_angstroms: Float[Array, ""],
-        config: ImageConfig,
+        config: InstrumentConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Rasterize image with non-uniform FFTs."""
         if isinstance(potential, RealVoxelGridPotential):
@@ -53,10 +59,7 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
             raise ValueError(
                 "Supported density representations are RealVoxelGrid and VoxelCloud."
             )
-        # Rescale the voxel size to the ImageConfig.pixel_size
-        return config.rescale_to_pixel_size(
-            fourier_projection, potential.voxel_size, is_real=False
-        )
+        return fourier_projection
 
 
 def project_with_nufft(

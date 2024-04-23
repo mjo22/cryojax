@@ -4,37 +4,31 @@ from ._assembly import (
     compute_helical_lattice_rotations as compute_helical_lattice_rotations,
     HelicalAssembly as HelicalAssembly,
 )
-from ._config import ImageConfig as ImageConfig
 from ._detector import (
     AbstractDetector as AbstractDetector,
     AbstractDQE as AbstractDQE,
     GaussianDetector as GaussianDetector,
+    IdealCountingDQE as IdealCountingDQE,
     IdealDQE as IdealDQE,
     PoissonDetector as PoissonDetector,
 )
-from ._dose import ElectronDose as ElectronDose
+from ._ensemble import (
+    AbstractConformationalVariable as AbstractConformationalVariable,
+    AbstractStructuralEnsemble as AbstractStructuralEnsemble,
+    DiscreteConformationalVariable as DiscreteConformationalVariable,
+    DiscreteStructuralEnsemble as DiscreteStructuralEnsemble,
+    SingleStructureEnsemble as SingleStructureEnsemble,
+)
 from ._ice import (
     AbstractIce as AbstractIce,
     GaussianIce as GaussianIce,
 )
-from ._instrument import Instrument as Instrument
-from ._integrators import (
-    AbstractPotentialIntegrator as AbstractPotentialIntegrator,
-    extract_slice as extract_slice,
-    extract_slice_with_cubic_spline as extract_slice_with_cubic_spline,
-    FourierSliceExtract as FourierSliceExtract,
-    NufftProject as NufftProject,
-    project_with_nufft as project_with_nufft,
-)
-from ._optics import (
-    AbstractOptics as AbstractOptics,
-    CTF as CTF,
-    WeakPhaseOptics as WeakPhaseOptics,
-)
+from ._instrument_config import InstrumentConfig as InstrumentConfig
 from ._pipeline import (
-    AbstractPipeline as AbstractPipeline,
-    AssemblyPipeline as AssemblyPipeline,
-    ImagePipeline as ImagePipeline,
+    AbstractImagingPipeline as AbstractImagingPipeline,
+    ContrastImagingPipeline as ContrastImagingPipeline,
+    ElectronCountsImagingPipeline as ElectronCountsImagingPipeline,
+    IntensityImagingPipeline as IntensityImagingPipeline,
 )
 from ._pose import (
     AbstractPose as AbstractPose,
@@ -44,7 +38,7 @@ from ._pose import (
 )
 from ._potential import (
     AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
-    AbstractScatteringPotential as AbstractScatteringPotential,
+    AbstractPotentialRepresentation as AbstractPotentialRepresentation,
     AbstractVoxelPotential as AbstractVoxelPotential,
     build_real_space_voxels_from_atoms as build_real_space_voxels_from_atoms,
     evaluate_3d_atom_potential as evaluate_3d_atom_potential,
@@ -54,11 +48,25 @@ from ._potential import (
     RealVoxelCloudPotential as RealVoxelCloudPotential,
     RealVoxelGridPotential as RealVoxelGridPotential,
 )
-from ._specimen import (
-    AbstractConformation as AbstractConformation,
-    AbstractEnsemble as AbstractEnsemble,
-    AbstractSpecimen as AbstractSpecimen,
-    DiscreteConformation as DiscreteConformation,
-    DiscreteEnsemble as DiscreteEnsemble,
-    Specimen as Specimen,
+from ._projection_methods import (
+    AbstractPotentialProjectionMethod as AbstractPotentialProjectionMethod,
+    extract_slice as extract_slice,
+    extract_slice_with_cubic_spline as extract_slice_with_cubic_spline,
+    FourierSliceExtract as FourierSliceExtract,
+    NufftProject as NufftProject,
+    project_with_nufft as project_with_nufft,
+)
+from ._scattering_theory import (
+    AbstractLinearScatteringTheory as AbstractLinearScatteringTheory,
+    AbstractScatteringTheory as AbstractScatteringTheory,
+    LinearScatteringTheory as LinearScatteringTheory,
+    LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
+)
+from ._transfer_theory import (
+    AberratedCTF as AberratedCTF,
+    AbstractCTF as AbstractCTF,
+    AbstractTransferFunction as AbstractTransferFunction,
+    AbstractTransferTheory as AbstractTransferTheory,
+    ContrastTransferTheory as ContrastTransferTheory,
+    IdealCTF as IdealCTF,
 )

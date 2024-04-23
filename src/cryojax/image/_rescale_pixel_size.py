@@ -2,10 +2,14 @@
 Routines for rescaling image pixel size.
 """
 
+from typing import Optional
+
 import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate
-from jaxtyping import Array, Float
+from jaxtyping import Array, Complex, Float
+
+from ._fft import irfftn, rfftn
 
 
 def rescale_pixel_size(
@@ -63,3 +67,51 @@ def rescale_pixel_size(
     )
 
     return rescaled_image
+
+
+def maybe_rescale_pixel_size(
+    real_or_fourier_image: (
+        Float[Array, "padded_y_dim padded_x_dim"]
+        | Complex[Array, "padded_y_dim padded_x_dim//2+1"]
+    ),
+    current_pixel_size: Float[Array, ""],
+    new_pixel_size: Float[Array, ""],
+    is_real: bool = True,
+    shape_in_real_space: Optional[tuple[int, int]] = None,
+    method: str = "bicubic",
+) -> (
+    Float[Array, "padded_y_dim padded_x_dim"]
+    | Complex[Array, "padded_y_dim padded_x_dim//2+1"]
+):
+    """Rescale the image pixel size using real-space interpolation. Only
+    interpolate if the `pixel_size` is not the `current_pixel_size`."""
+    if is_real:
+        rescale_fn = lambda im: rescale_pixel_size(
+            im, current_pixel_size, new_pixel_size, method=method
+        )
+    else:
+        if shape_in_real_space is None:
+            rescale_fn = lambda im: rfftn(
+                rescale_pixel_size(
+                    irfftn(im),
+                    current_pixel_size,
+                    new_pixel_size,
+                    method=method,
+                )
+            )
+        else:
+            rescale_fn = lambda im: rfftn(
+                rescale_pixel_size(
+                    irfftn(im, s=shape_in_real_space),
+                    current_pixel_size,
+                    new_pixel_size,
+                    method=method,
+                )
+            )
+    null_fn = lambda im: im
+    return jax.lax.cond(
+        jnp.isclose(current_pixel_size, new_pixel_size),
+        null_fn,
+        rescale_fn,
+        real_or_fourier_image,
+    )

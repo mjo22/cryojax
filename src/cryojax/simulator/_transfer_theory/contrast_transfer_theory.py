@@ -1,27 +1,37 @@
-"""
-Models of instrument optics.
-"""
-
 from abc import abstractmethod
-from typing import ClassVar, Optional
+from typing import Optional
 from typing_extensions import override
 
 import jax.numpy as jnp
-from equinox import AbstractClassVar, AbstractVar, field, Module
+from equinox import field
 from jaxtyping import Array, Complex, Float
 
-from .._errors import error_if_negative, error_if_not_fractional, error_if_not_positive
-from ..constants import convert_keV_to_angstroms
-from ..coordinates import cartesian_to_polar
-from ..image.operators import (
-    AbstractFourierOperator,
+from ..._errors import error_if_negative, error_if_not_fractional, error_if_not_positive
+from ...constants import convert_keV_to_angstroms
+from ...image.operators import (
     Constant,
     FourierOperatorLike,
 )
-from ._config import ImageConfig
+from .._instrument_config import InstrumentConfig
+from .base_transfer_theory import AbstractTransferFunction, AbstractTransferTheory
+from .common_functions import compute_aberrated_phase_shifts
 
 
-class CTF(AbstractFourierOperator, strict=True):
+class AbstractCTF(AbstractTransferFunction, strict=True):
+    """An abstract base class for a transfer function."""
+
+    @abstractmethod
+    def __call__(
+        self,
+        frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
+        *,
+        wavelength_in_angstroms: Optional[Float[Array, ""] | float] = None,
+        defocus_offset: Float[Array, ""] | float = 0.0,
+    ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
+        raise NotImplementedError
+
+
+class AberratedCTF(AbstractCTF, strict=True):
     """Compute the Contrast Transfer Function (CTF) in for a weakly
     scattering specimen.
     """
@@ -66,21 +76,21 @@ class CTF(AbstractFourierOperator, strict=True):
         else:
             wavelength_in_angstroms = jnp.asarray(wavelength_in_angstroms)
         # Compute phase shifts for CTF
-        phase_shifts = _compute_phase_shifts(
+        phase_shifts = compute_aberrated_phase_shifts(
             frequency_grid_in_angstroms,
             self.defocus_u_in_angstroms + jnp.asarray(defocus_offset),
             self.defocus_v_in_angstroms + jnp.asarray(defocus_offset),
             astigmatism_angle,
             wavelength_in_angstroms,
             spherical_aberration_in_angstroms,
-            self.amplitude_contrast_ratio,
             phase_shift,
+            amplitude_contrast_ratio=self.amplitude_contrast_ratio,
         )
         # Compute the CTF
         return jnp.sin(phase_shifts).at[0, 0].set(0.0)
 
 
-CTF.__init__.__doc__ = """**Arguments:**
+AberratedCTF.__init__.__doc__ = """**Arguments:**
 
 - `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
 - `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
@@ -92,116 +102,63 @@ CTF.__init__.__doc__ = """**Arguments:**
 """
 
 
-class AbstractOptics(Module, strict=True):
-    """Base class for an optics model."""
+class IdealCTF(AbstractCTF, strict=True):
+    """Compute a perfect CTF, where frequency content is delivered equally
+    over all frequencies.
+    """
 
-    ctf: AbstractVar[CTF]
-    envelope: AbstractVar[FourierOperatorLike]
-
-    is_linear: AbstractClassVar[bool]
-
-    @property
-    def wavelength_in_angstroms(self) -> Float[Array, ""]:
-        return self.ctf.wavelength_in_angstroms
-
-    @abstractmethod
     def __call__(
         self,
-        fourier_phase_in_exit_plane: Complex[
-            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
-        ],
-        config: ImageConfig,
-        wavelength_in_angstroms: Float[Array, ""] | float,
+        frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
+        *,
+        wavelength_in_angstroms: Optional[Float[Array, ""] | float] = None,
         defocus_offset: Float[Array, ""] | float = 0.0,
-    ) -> (
-        Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
-        | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
-    ):
-        """Pass an image through the optics model."""
-        raise NotImplementedError
+    ) -> Float[Array, "y_dim x_dim"]:
+        return jnp.ones(frequency_grid_in_angstroms.shape[0:2])
 
 
-class WeakPhaseOptics(AbstractOptics, strict=True):
+class ContrastTransferTheory(AbstractTransferTheory, strict=True):
     """An optics model in the weak-phase approximation. Here, compute the image
     contrast by applying the CTF directly to the exit plane phase shifts.
     """
 
-    ctf: CTF
+    transfer_function: AbstractCTF
     envelope: FourierOperatorLike
-
-    is_linear: ClassVar[bool] = True
 
     def __init__(
         self,
-        ctf: CTF,
+        transfer_function: AbstractCTF,
         envelope: Optional[FourierOperatorLike] = None,
     ):
-        self.ctf = ctf
+        self.transfer_function = transfer_function
         self.envelope = envelope or Constant(1.0)
 
     @override
     def __call__(
         self,
-        fourier_phase_in_exit_plane: Complex[
+        fourier_phase_at_exit_plane: Complex[
             Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
         ],
-        config: ImageConfig,
-        wavelength_in_angstroms: Float[Array, ""] | float,
+        config: InstrumentConfig,
         defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Apply the CTF directly to the phase shifts in the exit plane."""
         frequency_grid = config.wrapped_padded_frequency_grid_in_angstroms.get()
         # Compute the CTF
-        ctf = self.envelope(frequency_grid) * self.ctf(
+        ctf = self.envelope(frequency_grid) * self.transfer_function(
             frequency_grid,
-            wavelength_in_angstroms=wavelength_in_angstroms,
+            wavelength_in_angstroms=config.wavelength_in_angstroms,
             defocus_offset=defocus_offset,
         )
         # ... compute the contrast as the CTF multiplied by the exit plane
         # phase shifts
-        fourier_contrast_in_detector_plane = ctf * fourier_phase_in_exit_plane
+        fourier_contrast_at_detector_plane = ctf * fourier_phase_at_exit_plane
 
-        return fourier_contrast_in_detector_plane
+        return fourier_contrast_at_detector_plane
 
 
-WeakPhaseOptics.__init__.__doc__ = """**Arguments:**
+ContrastTransferTheory.__init__.__doc__ = """**Arguments:**
 
-- `ctf`: The contrast transfer function model.
+- `transfer_function`: The contrast transfer function model.
 - `envelope`: The envelope function of the optics model.
 """
-
-
-def _compute_phase_shifts(
-    frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-    defocus_u_in_angstroms: Float[Array, ""],
-    defocus_v_in_angstroms: Float[Array, ""],
-    astigmatism_angle: Float[Array, ""],
-    wavelength_in_angstroms: Float[Array, ""],
-    spherical_aberration_in_angstroms: Float[Array, ""],
-    amplitude_contrast_ratio: Float[Array, ""],
-    phase_shift: Float[Array, ""],
-) -> Float[Array, "y_dim x_dim"]:
-    k_sqr, azimuth = cartesian_to_polar(frequency_grid_in_angstroms, square=True)
-    defocus = 0.5 * (
-        defocus_u_in_angstroms
-        + defocus_v_in_angstroms
-        + (defocus_u_in_angstroms - defocus_v_in_angstroms)
-        * jnp.cos(2.0 * (azimuth - astigmatism_angle))
-    )
-    amplitude_contrast_phase_shifts = jnp.arctan(
-        amplitude_contrast_ratio / jnp.sqrt(1.0 - amplitude_contrast_ratio**2)
-    )
-    defocus_phase_shifts = -0.5 * defocus * wavelength_in_angstroms * k_sqr
-    aberration_phase_shifts = (
-        0.25
-        * spherical_aberration_in_angstroms
-        * (wavelength_in_angstroms**3)
-        * (k_sqr**2)
-    )
-    phase_shifts = (
-        (2 * jnp.pi) * (defocus_phase_shifts + aberration_phase_shifts)
-        - phase_shift
-        - amplitude_contrast_phase_shifts
-    )
-
-    return phase_shifts

@@ -7,12 +7,11 @@ from typing import Optional
 
 import jax
 import jax.numpy as jnp
-from equinox import field
 from jaxtyping import Array, Float
 
 from ...rotations import SO3
+from .._ensemble import AbstractConformationalVariable, AbstractStructuralEnsemble
 from .._pose import AbstractPose, EulerAnglePose
-from .._specimen import AbstractConformation, AbstractSpecimen
 from .assembly import AbstractAssembly
 
 
@@ -27,23 +26,23 @@ class HelicalAssembly(AbstractAssembly, strict=True):
     image, pointing out-of-plane (i.e. along the z direction).
     """
 
-    subunit: AbstractSpecimen
+    subunit: AbstractStructuralEnsemble
     rise: Float[Array, ""]
     twist: Float[Array, ""]
 
     pose: AbstractPose
-    conformation: Optional[AbstractConformation]
+    conformation: Optional[AbstractConformationalVariable]
 
-    n_subunits: int = field(static=True)
-    n_start: int = field(static=True)
+    n_subunits: int
+    n_start: int
 
     def __init__(
         self,
-        subunit: AbstractSpecimen,
+        subunit: AbstractStructuralEnsemble,
         rise: Float[Array, ""] | float,
         twist: Float[Array, ""] | float,
         pose: Optional[AbstractPose] = None,
-        conformation: Optional[AbstractConformation] = None,
+        conformation: Optional[AbstractConformationalVariable] = None,
         n_start: int = 1,
         n_subunits: int = 1,
     ):

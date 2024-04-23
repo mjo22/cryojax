@@ -7,6 +7,6 @@ from .nufft_project import (
     NufftProject as NufftProject,
     project_with_nufft as project_with_nufft,
 )
-from .potential_integrator import (
-    AbstractPotentialIntegrator as AbstractPotentialIntegrator,
+from .projection_method import (
+    AbstractPotentialProjectionMethod as AbstractPotentialProjectionMethod,
 )

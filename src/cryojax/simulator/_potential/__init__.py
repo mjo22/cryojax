@@ -1,5 +1,5 @@
-from .scattering_potential import (
-    AbstractScatteringPotential as AbstractScatteringPotential,
+from .base_potential import (
+    AbstractPotentialRepresentation as AbstractPotentialRepresentation,
 )
 from .voxel_potential import (
     AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,

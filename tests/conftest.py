@@ -1,6 +1,5 @@
 import os
 
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
@@ -73,12 +72,19 @@ def pixel_size():
 
 
 @pytest.fixture
-def config(pixel_size):
-    return cs.ImageConfig((65, 66), pixel_size, pad_scale=1.1)
+def voltage_in_kilovolts():
+    return 300.0
 
 
 @pytest.fixture
-def integrator():
+def config(pixel_size, voltage_in_kilovolts):
+    return cs.InstrumentConfig(
+        (65, 66), pixel_size, voltage_in_kilovolts, pad_scale=1.1
+    )
+
+
+@pytest.fixture
+def projection_method():
     return cs.FourierSliceExtract(interpolation_order=1)
 
 
@@ -104,14 +110,13 @@ def masks(config):
 
 
 @pytest.fixture
-def instrument():
-    voltage_in_kilovolts = 300.0
-    return cs.Instrument(
-        voltage_in_kilovolts,
-        optics=cs.WeakPhaseOptics(cs.CTF()),
-        dose=cs.ElectronDose(electrons_per_angstrom_squared=1000.0),
-        detector=cs.GaussianDetector(cs.IdealDQE(fraction_detected_electrons=1.0)),
-    )
+def transfer_theory():
+    return cs.ContrastTransferTheory(transfer_function=cs.AberratedCTF())
+
+
+@pytest.fixture
+def detector():
+    return cs.PoissonDetector(cs.IdealDQE())
 
 
 @pytest.fixture
@@ -126,8 +131,8 @@ def pose():
 
 
 @pytest.fixture
-def specimen(potential, integrator, pose):
-    return cs.Specimen(potential, integrator, pose)
+def specimen(potential, pose):
+    return cs.SingleStructureEnsemble(potential, pose)
 
 
 @pytest.fixture
@@ -136,41 +141,30 @@ def solvent():
 
 
 @pytest.fixture
-def noiseless_model(config, specimen, instrument):
-    instrument = eqx.tree_at(lambda ins: ins.detector, instrument, None)
-    return cs.ImagePipeline(config=config, specimen=specimen, instrument=instrument)
-
-
-@pytest.fixture
-def noisy_model(config, specimen, instrument, solvent):
-    return cs.ImagePipeline(
-        config=config,
-        specimen=specimen,
-        instrument=instrument,
-        solvent=solvent,
+def theory(specimen, projection_method, transfer_theory, solvent):
+    return cs.LinearScatteringTheory(
+        specimen, projection_method, transfer_theory, solvent
     )
 
 
 @pytest.fixture
-def filtered_model(config, specimen, instrument, solvent, filters):
-    return cs.ImagePipeline(
-        config=config,
-        specimen=specimen,
-        instrument=instrument,
-        solvent=solvent,
-        filter=filters,
+def theory_with_solvent(specimen, projection_method, transfer_theory, solvent):
+    return cs.LinearScatteringTheory(
+        specimen, projection_method, transfer_theory, solvent
     )
 
 
 @pytest.fixture
-def filtered_and_masked_model(config, specimen, instrument, solvent, filters, masks):
-    return cs.ImagePipeline(
+def noiseless_model(config, theory):
+    return cs.IntensityImagingPipeline(config=config, scattering_theory=theory)
+
+
+@pytest.fixture
+def noisy_model(config, theory_with_solvent, detector):
+    return cs.ElectronCountsImagingPipeline(
         config=config,
-        specimen=specimen,
-        instrument=instrument,
-        solvent=solvent,
-        filter=filters,
-        mask=masks,
+        scattering_theory=theory_with_solvent,
+        detector=detector,
     )
 
 
