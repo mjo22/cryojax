@@ -3,8 +3,7 @@ Transformations used for reparameterizing cryojax models.
 """
 
 from abc import abstractmethod
-from typing import Any, Callable, Optional, Sequence, Union
-from typing_extensions import overload
+from typing import Any, Callable, Sequence
 
 import equinox as eqx
 import jax
@@ -25,76 +24,6 @@ def _resolve_transform(x: Any) -> Any:
         return x.get()
     else:
         return x
-
-
-def _apply_transform(
-    pytree: PyTree,
-    where: Callable[[PyTree], Union[Any, Sequence[Any]]],
-    replace_fn: Callable[[Any], "AbstractParameterTransform"],
-    is_leaf: Optional[Callable[[Any], bool]] = None,
-) -> PyTree:
-    return eqx.tree_at(where, pytree, replace_fn=replace_fn, is_leaf=is_leaf)
-
-
-@overload
-def insert_transforms(
-    pytree: PyTree,
-    wheres: Sequence[Callable[[PyTree], Union[Any, Sequence[Any]]]],
-    replace_fns: Sequence[Callable[[Any], "AbstractParameterTransform"]],
-    *,
-    is_leaf: Optional[Callable[[Any], bool]] = None,
-) -> PyTree: ...
-
-
-@overload
-def insert_transforms(
-    pytree: PyTree,
-    wheres: Callable[[PyTree], Union[Any, Sequence[Any]]],
-    replace_fns: Callable[[Any], "AbstractParameterTransform"],
-    *,
-    is_leaf: Optional[Callable[[Any], bool]] = None,
-) -> PyTree: ...
-
-
-def insert_transforms(
-    pytree: PyTree,
-    wheres: (
-        Callable[[PyTree], Union[Any, Sequence[Any]]]
-        | Sequence[Callable[[PyTree], Union[Any, Sequence[Any]]]]
-    ),
-    replace_fns: (
-        Callable[[Any], "AbstractParameterTransform"]
-        | Sequence[Callable[[Any], "AbstractParameterTransform"]]
-    ),
-    *,
-    is_leaf: Optional[Callable[[Any], bool]] = None,
-) -> PyTree:
-    """Applies an `AbstractParameterTransform` to pytree node(s).
-
-    This function performs a sequence of `equinox.tree_at` calls to apply each
-    `replace_fn` in `replace_fns` to each `where` in `wheres`.
-    """
-    if isinstance(replace_fns, Callable) and isinstance(wheres, Callable):
-        where, replace_fn = wheres, replace_fns
-        return _apply_transform(pytree, where, replace_fn, is_leaf=is_leaf)
-    elif isinstance(replace_fns, Sequence) and isinstance(wheres, Sequence):
-        if len(replace_fns) != len(wheres):
-            raise TypeError(
-                "If arguments `wheres` and `replace_fns` are sequences, they "
-                "must be sequences of the same length. Got "
-                f"`wheres, replace_fns = {wheres}, {replace_fns}`."
-            )
-        transformed_pytree = pytree
-        for where, replace_fn in zip(wheres, replace_fns):
-            transformed_pytree = _apply_transform(
-                pytree, where, replace_fn, is_leaf=is_leaf
-            )
-        return transformed_pytree
-    else:
-        raise TypeError(
-            "Input arguments `wheres` and `replace_fns` must both either be functions "
-            f"or sequences. Got `wheres, replace_fns = {wheres}, {replace_fns}`."
-        )
 
 
 def resolve_transforms(pytree: PyTree) -> PyTree:
@@ -173,9 +102,7 @@ class RescalingTransform(AbstractParameterTransform, strict=True):
         """**Arguments:**
 
         - `parameter`: The parameter to be rescaled.
-
         - `scaling`: The scale factor.
-
         - `shift`: The shift.
         """
         self.scaling = jnp.asarray(scaling)
@@ -195,7 +122,6 @@ class ComposedTransform(AbstractParameterTransform, strict=True):
     **Attributes:**
 
     - `transformed_parameter`: The transformed parameter.
-
     - `transforms`: The sequence of `AbstractParameterTransform`s.
     """
 
@@ -210,7 +136,6 @@ class ComposedTransform(AbstractParameterTransform, strict=True):
         """**Arguments:**
 
         - `parameter`: The parameter to be transformed.
-
         - `transform_fns`: A sequence of functions that take in
                            a parameter and return an `AbstractParameterTransform`.
         """
