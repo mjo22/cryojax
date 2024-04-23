@@ -13,11 +13,11 @@ from ._detector import (
     PoissonDetector as PoissonDetector,
 )
 from ._ensemble import (
-    AbstractConformation as AbstractConformation,
-    AbstractPotentialEnsemble as AbstractPotentialEnsemble,
-    BaseEnsemble as BaseEnsemble,
-    DiscreteConformation as DiscreteConformation,
-    DiscreteEnsemble as DiscreteEnsemble,
+    AbstractConformationalVariable as AbstractConformationalVariable,
+    AbstractStructuralEnsemble as AbstractStructuralEnsemble,
+    DiscreteConformationalVariable as DiscreteConformationalVariable,
+    DiscreteStructuralEnsemble as DiscreteStructuralEnsemble,
+    SingleStructureEnsemble as SingleStructureEnsemble,
 )
 from ._ice import (
     AbstractIce as AbstractIce,
@@ -38,7 +38,7 @@ from ._pose import (
 )
 from ._potential import (
     AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
-    AbstractSpecimenPotential as AbstractSpecimenPotential,
+    AbstractPotentialRepresentation as AbstractPotentialRepresentation,
     AbstractVoxelPotential as AbstractVoxelPotential,
     build_real_space_voxels_from_atoms as build_real_space_voxels_from_atoms,
     evaluate_3d_atom_potential as evaluate_3d_atom_potential,
@@ -63,8 +63,10 @@ from ._scattering_theory import (
     LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
 )
 from ._transfer_theory import (
+    AberratedCTF as AberratedCTF,
+    AbstractCTF as AbstractCTF,
     AbstractTransferFunction as AbstractTransferFunction,
     AbstractTransferTheory as AbstractTransferTheory,
-    ContrastTransferFunction as ContrastTransferFunction,
     ContrastTransferTheory as ContrastTransferTheory,
+    IdealCTF as IdealCTF,
 )

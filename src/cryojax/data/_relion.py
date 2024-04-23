@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from jaxtyping import Array, Float, Int
 
-from ..simulator import ContrastTransferFunction, EulerAnglePose, InstrumentConfig
+from ..simulator import AberratedCTF, EulerAnglePose, InstrumentConfig
 from ._dataset import AbstractDataset
 from ._io import read_and_validate_starfile
 from ._particle_stack import AbstractParticleStack
@@ -41,14 +41,14 @@ class RelionParticleStack(AbstractParticleStack):
     image_stack: Float[Array, "... y_dim x_dim"]
     config: InstrumentConfig
     pose: EulerAnglePose
-    ctf: ContrastTransferFunction
+    ctf: AberratedCTF
 
     def __init__(
         self,
         image_stack: Float[Array, "... y_dim x_dim"],
         config: InstrumentConfig,
         pose: EulerAnglePose,
-        ctf: ContrastTransferFunction,
+        ctf: AberratedCTF,
     ):
         # Set image stack and config as is
         self.image_stack = jnp.asarray(image_stack)
@@ -243,7 +243,7 @@ class RelionDataset(AbstractDataset):
             pixel_size,
             jnp.asarray(voltage_in_kilovolts),
         )
-        ctf = ContrastTransferFunction(
+        ctf = AberratedCTF(
             defocus_u_in_angstroms=defocus_u_in_angstroms,
             defocus_v_in_angstroms=defocus_v_in_angstroms,
             astigmatism_angle=astigmatism_angle,

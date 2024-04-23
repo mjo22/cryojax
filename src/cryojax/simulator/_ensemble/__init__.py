@@ -1,11 +1,11 @@
 from .base_conformation import (
-    AbstractConformation as AbstractConformation,
+    AbstractConformationalVariable as AbstractConformationalVariable,
 )
 from .base_ensemble import (
-    AbstractPotentialEnsemble as AbstractPotentialEnsemble,
-    BaseEnsemble as BaseEnsemble,
+    AbstractStructuralEnsemble as AbstractStructuralEnsemble,
+    SingleStructureEnsemble as SingleStructureEnsemble,
 )
 from .discrete_ensemble import (
-    DiscreteConformation as DiscreteConformation,
-    DiscreteEnsemble as DiscreteEnsemble,
+    DiscreteConformationalVariable as DiscreteConformationalVariable,
+    DiscreteStructuralEnsemble as DiscreteStructuralEnsemble,
 )

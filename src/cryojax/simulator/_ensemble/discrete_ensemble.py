@@ -11,50 +11,50 @@ from jaxtyping import Array, Int
 
 from ..._errors import error_if_negative
 from .._pose import AbstractPose, EulerAnglePose
-from .._potential import AbstractSpecimenPotential
-from .base_conformation import AbstractConformation
-from .base_ensemble import AbstractPotentialEnsemble
+from .._potential import AbstractPotentialRepresentation
+from .base_conformation import AbstractConformationalVariable
+from .base_ensemble import AbstractStructuralEnsemble
 
 
-class DiscreteConformation(AbstractConformation, strict=True):
-    """
-    A conformational variable wrapped in a Module.
-    """
+class DiscreteConformationalVariable(AbstractConformationalVariable, strict=True):
+    """A conformational variable as a discrete index."""
 
     value: Int[Array, ""] = field(converter=error_if_negative)
 
 
-class DiscreteEnsemble(AbstractPotentialEnsemble, strict=True):
-    """
-    Abstraction of an ensemble with discrete conformational
+class DiscreteStructuralEnsemble(AbstractStructuralEnsemble, strict=True):
+    """Abstraction of an ensemble with discrete conformational
     heterogeneity.
     """
 
-    state_space: tuple[AbstractSpecimenPotential, ...]
+    conformational_space: tuple[AbstractPotentialRepresentation, ...]
     pose: AbstractPose
-    conformation: DiscreteConformation
+    conformation: DiscreteConformationalVariable
 
     def __init__(
         self,
-        state_space: tuple[AbstractSpecimenPotential, ...],
+        conformational_space: tuple[AbstractPotentialRepresentation, ...],
         pose: Optional[AbstractPose] = None,
-        conformation: Optional[DiscreteConformation] = None,
+        conformation: Optional[DiscreteConformationalVariable] = None,
     ):
         """**Arguments:**
 
-        - `state_space`: A tuple of specimen potential representations.
+        - `conformational_space`: A tuple of `AbstractPotential` representations.
         - `pose`: The pose of the specimen.
         - `conformation`: A conformation with a discrete index at which to evaluate
                           the scattering potential tuple.
         """
-        self.state_space = state_space
+        self.conformational_space = conformational_space
         self.pose = pose or EulerAnglePose()
-        self.conformation = conformation or DiscreteConformation(0)
+        self.conformation = conformation or DiscreteConformationalVariable(0)
 
     @override
-    def get_potential(self) -> AbstractSpecimenPotential:
+    def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
         """Get the scattering potential at configured conformation."""
-        funcs = [lambda i=i: self.state_space[i] for i in range(len(self.state_space))]
+        funcs = [
+            lambda i=i: self.conformational_space[i]
+            for i in range(len(self.conformational_space))
+        ]
         potential = jax.lax.switch(self.conformation.value, funcs)
 
         return potential

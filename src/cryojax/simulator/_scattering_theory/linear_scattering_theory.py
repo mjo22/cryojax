@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
 from .._assembly import AbstractAssembly
-from .._ensemble import AbstractConformation, AbstractPotentialEnsemble
+from .._ensemble import AbstractConformationalVariable, AbstractStructuralEnsemble
 from .._ice import AbstractIce
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
@@ -61,7 +61,7 @@ class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
 class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
     """Base linear image formation theory."""
 
-    potential_ensemble: AbstractPotentialEnsemble
+    potential_ensemble: AbstractStructuralEnsemble
     projection_method: AbstractPotentialProjectionMethod
     transfer_theory: ContrastTransferTheory
     solvent: Optional[AbstractIce] = None
@@ -171,7 +171,9 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
         # Get the assembly subunits
         subunits = self.assembly.subunits
         # Setup vmap over the pose and conformation
-        is_vmap = lambda x: isinstance(x, (AbstractPose, AbstractConformation))
+        is_vmap = lambda x: isinstance(
+            x, (AbstractPose, AbstractConformationalVariable)
+        )
         to_vmap = jax.tree_util.tree_map(is_vmap, subunits, is_leaf=is_vmap)
         vmap, novmap = eqx.partition(subunits, to_vmap)
 

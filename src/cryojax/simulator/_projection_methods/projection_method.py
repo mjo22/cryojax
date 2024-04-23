@@ -11,10 +11,10 @@ from jaxtyping import Array, Complex
 
 from ...image import maybe_rescale_pixel_size
 from .._instrument_config import InstrumentConfig
-from .._potential import AbstractSpecimenPotential, AbstractVoxelPotential
+from .._potential import AbstractPotentialRepresentation, AbstractVoxelPotential
 
 
-PotentialT = TypeVar("PotentialT", bound="AbstractSpecimenPotential")
+PotentialT = TypeVar("PotentialT", bound="AbstractPotentialRepresentation")
 VoxelPotentialT = TypeVar("VoxelPotentialT", bound="AbstractVoxelPotential")
 
 

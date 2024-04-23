@@ -14,7 +14,7 @@ from equinox import AbstractVar
 from jaxtyping import Array, Float
 
 from ...rotations import SO3
-from .._ensemble import AbstractConformation, AbstractPotentialEnsemble
+from .._ensemble import AbstractConformationalVariable, AbstractStructuralEnsemble
 from .._pose import AbstractPose
 
 
@@ -31,9 +31,9 @@ class AbstractAssembly(eqx.Module, strict=True):
            and `AbstractAssembly.rotations` properties.
     """
 
-    subunit: AbstractVar[AbstractPotentialEnsemble]
+    subunit: AbstractVar[AbstractStructuralEnsemble]
     pose: AbstractVar[AbstractPose]
-    conformation: AbstractVar[Optional[AbstractConformation]]
+    conformation: AbstractVar[Optional[AbstractConformationalVariable]]
 
     n_subunits: AbstractVar[int]
 
@@ -93,7 +93,7 @@ class AbstractAssembly(eqx.Module, strict=True):
         return make_assembly_poses(transformed_rotations, transformed_positions)
 
     @cached_property
-    def subunits(self) -> AbstractPotentialEnsemble:
+    def subunits(self) -> AbstractStructuralEnsemble:
         """Draw a realization of all of the subunits in the lab frame."""
         # Compute a list of subunits, configured at the correct conformations
         if self.subunit.conformation is not None:

@@ -1,5 +1,5 @@
 from .base_potential import (
-    AbstractSpecimenPotential as AbstractSpecimenPotential,
+    AbstractPotentialRepresentation as AbstractPotentialRepresentation,
 )
 from .voxel_potential import (
     AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,

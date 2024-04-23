@@ -9,60 +9,54 @@ from typing_extensions import override
 from equinox import AbstractVar, Module
 
 from .._pose import AbstractPose, EulerAnglePose
-from .._potential import AbstractSpecimenPotential
-from .base_conformation import AbstractConformation
+from .._potential import AbstractPotentialRepresentation
+from .base_conformation import AbstractConformationalVariable
 
 
-class AbstractPotentialEnsemble(Module, strict=True):
-    """
-    Abstraction of a of biological specimen.
+class AbstractStructuralEnsemble(Module, strict=True):
+    """A map from a pose and conformational variable to an `AbstractPotential`."""
 
-    **Attributes:**
-
-    - `state_space`: The state space of the scattering potential.
-    - `pose`: The pose of the scattering potential
-    """
-
-    state_space: AbstractVar[Any]
+    conformational_space: AbstractVar[Any]
     pose: AbstractVar[AbstractPose]
-    conformation: AbstractVar[Optional[AbstractConformation]]
+    conformation: AbstractVar[Optional[AbstractConformationalVariable]]
 
     @abstractmethod
-    def get_potential(self) -> AbstractSpecimenPotential:
+    def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
         """Get the scattering potential in the center of mass
         frame."""
         raise NotImplementedError
 
-    def get_potential_in_lab_frame(self) -> AbstractSpecimenPotential:
+    def get_potential_in_lab_frame(self) -> AbstractPotentialRepresentation:
         """Get the scattering potential in the lab frame."""
-        potential = self.get_potential()
+        potential = self.get_potential_at_conformation()
         return potential.rotate_to_pose(self.pose)
 
 
-class BaseEnsemble(AbstractPotentialEnsemble, strict=True):
-    """Abstraction of a biological specimen with one conformation."""
+class SingleStructureEnsemble(AbstractStructuralEnsemble, strict=True):
+    """An "ensemble" with one conformation."""
 
-    state_space: AbstractSpecimenPotential
+    conformational_space: AbstractPotentialRepresentation
     pose: AbstractPose
     conformation: None
 
     def __init__(
         self,
-        state_space: AbstractSpecimenPotential,
+        conformational_space: AbstractPotentialRepresentation,
         pose: Optional[AbstractPose] = None,
     ):
         """**Arguments:**
 
-        - `state_space`: The scattering potential representation of the
+        - `conformational_space`: The scattering potential representation of the
                          specimen as a single scattering potential object.
         - `pose`: The pose of the specimen.
         """
-        self.state_space = state_space
+        self.conformational_space = conformational_space
         self.pose = pose or EulerAnglePose()
         self.conformation = None
 
     @override
-    def get_potential(self) -> AbstractSpecimenPotential:
+    def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
         """Get the scattering potential in the center of mass
-        frame."""
-        return self.state_space
+        frame.
+        """
+        return self.conformational_space

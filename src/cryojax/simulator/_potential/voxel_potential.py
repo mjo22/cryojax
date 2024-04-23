@@ -9,7 +9,6 @@ from typing import (
     cast,
     ClassVar,
     Optional,
-    overload,
 )
 from typing_extensions import override, Self
 
@@ -31,10 +30,10 @@ from ...image import (
 )
 from ...image.operators import AbstractFilter
 from .._pose import AbstractPose
-from .base_potential import AbstractSpecimenPotential
+from .base_potential import AbstractPotentialRepresentation
 
 
-class AbstractVoxelPotential(AbstractSpecimenPotential, strict=True):
+class AbstractVoxelPotential(AbstractPotentialRepresentation, strict=True):
     """Abstract interface for a voxel-based scattering potential representation."""
 
     voxel_size: AbstractVar[Float[Array, ""]]
@@ -329,26 +328,6 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
                 self.wrapped_coordinate_grid_in_pixels.get(), inverse=False
             ),
         )
-
-    @overload
-    @classmethod
-    def from_real_voxel_grid(
-        cls,
-        real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
-        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
-        *,
-        coordinate_grid: Optional[CoordinateGrid] = None,
-    ) -> Self: ...
-
-    @overload
-    @classmethod
-    def from_real_voxel_grid(
-        cls,
-        real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
-        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
-        *,
-        crop_scale: Optional[float] = None,
-    ) -> Self: ...
 
     @classmethod
     def from_real_voxel_grid(
