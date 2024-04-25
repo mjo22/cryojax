@@ -165,7 +165,7 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
             )
             # Apply in-plane translation through phase shifts
             fourier_phase_shifts_at_exit_plane *= ensemble.pose.compute_shifts(
-                instrument_config.wrapped_padded_frequency_grid_in_pixels.get()
+                instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
             )
 
             return fourier_phase_shifts_at_exit_plane
@@ -227,7 +227,7 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
             )
             # Apply in-plane translation through phase shifts
             fourier_phase_shifts_at_exit_plane *= ensemble.pose.compute_shifts(
-                instrument_config.wrapped_padded_frequency_grid_in_pixels.get()
+                instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
             )
 
             fourier_contrast_at_detector_plane = self.transfer_theory(
