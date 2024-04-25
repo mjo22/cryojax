@@ -61,7 +61,7 @@ class AbstractImagingPipeline(Module, strict=True):
                           `normalize = True` are not applied.
         - `get_real`: If `True`, return the image in real space.
         - `normalize`: If `True`, normalize the image to mean zero
-                       and standard deviation 1.
+                       and standard deviation one.
         """
         raise NotImplementedError
 

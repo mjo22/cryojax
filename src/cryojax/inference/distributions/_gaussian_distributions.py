@@ -7,11 +7,10 @@ from typing_extensions import override
 
 import jax.numpy as jnp
 import jax.random as jr
-import numpy as np
-from equinox import field
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..._errors import error_if_not_positive
+from ...image import rescale_image
 from ...image.operators import Constant, FourierOperatorLike
 from ...simulator import AbstractImagingPipeline
 from ._base_distribution import AbstractDistribution
@@ -26,26 +25,32 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
 
     imaging_pipeline: AbstractImagingPipeline
     variance: FourierOperatorLike
-    contrast_scale: Float[Array, ""] = field(converter=error_if_not_positive)
+    contrast_scale: Float[Array, ""]
 
     def __init__(
         self,
         imaging_pipeline: AbstractImagingPipeline,
         variance: Optional[FourierOperatorLike] = None,
-        contrast_scale: float | Float[Array, ""] = 1.0,
+        contrast_scale: float | Float[Array, ""] = 100.0,
     ):
         """**Arguments:**
 
         - `imaging_pipeline`: The image formation model.
         - `variance`: The variance of each fourier mode. By default,
                       `cryojax.image.operators.Constant(1.0)`.
-        - `contrast_scale`: The standard deviation of an image simulated
-                            from `imaging_pipeline`, excluding the noise. By default,
-                            `1.0`.
+        - `contrast_scale`: A scale factor for the standard deviation of the underlying
+                            signal simulated from `imaging_pipeline`. The standard
+                            deviation of the signal is rescaled to be equal to
+                            `contrast_scale / jnp.sqrt(n_pixels)`, where the inverse
+                            square root of `n_pixels` is included so that the
+                            scale of the signal does not depend on the number of pixels.
+                            As a result, a good starting value for `contrast_scale` should
+                            be on the order of the extent of the object.
+                            By default, `contrast_scale = 100.0`.
         """
         self.imaging_pipeline = imaging_pipeline
         self.variance = variance or Constant(1.0)
-        self.contrast_scale = jnp.asarray(contrast_scale)
+        self.contrast_scale = error_if_not_positive(jnp.asarray(contrast_scale))
 
     @override
     def render(
@@ -63,8 +68,15 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         ]
     ):
         """Render the image formation model."""
-        return self.contrast_scale * self.imaging_pipeline.render(
-            normalize=True, get_real=get_real
+        n_pixels = self.imaging_pipeline.instrument_config.n_pixels
+        shape = self.imaging_pipeline.instrument_config.shape
+        simulated_image = self.imaging_pipeline.render(get_real=get_real)
+        return rescale_image(
+            simulated_image,
+            std=self.contrast_scale / jnp.sqrt(n_pixels),
+            mean=0.0,
+            is_real=get_real,
+            shape_in_real_space=shape,
         )
 
     @override
@@ -84,13 +96,13 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
     ):
         """Sample from the gaussian noise model."""
         pipeline = self.imaging_pipeline
-        N_pix = np.prod(pipeline.instrument_config.padded_shape)
         freqs = (
             pipeline.instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
         )
         # Compute the zero mean variance and scale up to be independent of the number of
         # pixels
-        std = jnp.sqrt(N_pix * self.variance(freqs))
+        padded_n_pixels = pipeline.instrument_config.padded_n_pixels
+        std = jnp.sqrt(padded_n_pixels * self.variance(freqs))
         noise = pipeline.postprocess(
             std
             * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0).astype(complex),
@@ -115,10 +127,10 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         - `observed` : The observed data in fourier space.
         """
         pipeline = self.imaging_pipeline
-        N_pix = np.prod(pipeline.instrument_config.shape)
+        n_pixels = pipeline.instrument_config.n_pixels
         freqs = pipeline.instrument_config.wrapped_frequency_grid_in_angstroms.get()
         # Compute the variance and scale up to be independent of the number of pixels
-        variance = N_pix * self.variance(freqs)
+        variance = n_pixels * self.variance(freqs)
         # Create simulated data
         simulated = self.render(get_real=False)
         # Compute residuals
@@ -130,7 +142,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         # real space (parseval's theorem)
         log_likelihood_per_mode = (
             squared_standard_normal_per_mode - jnp.log(2 * jnp.pi * variance) / 2
-        ) / N_pix
+        ) / n_pixels
         # Compute log-likelihood, throwing away the zero mode. Need to take care
         # to compute the loss function in fourier space for a real-valued function.
         log_likelihood = -1.0 * (
