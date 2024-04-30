@@ -23,13 +23,13 @@ class AbstractDistribution(Module, strict=True):
 
     @abstractmethod
     def sample(
-        self, key: PRNGKeyArray, *, get_real: bool = True
+        self, rng_key: PRNGKeyArray, *, get_real: bool = True
     ) -> Inexact[Array, "y_dim x_dim"]:
         """Sample from the distribution.
 
         **Arguments:**
 
-        - `key` : The RNG key or key(s). See `AbstractPipeline.sample` for
+        - `rng_key` : The RNG key or key(s). See `AbstractPipeline.sample` for
                   more documentation.
         """
         raise NotImplementedError

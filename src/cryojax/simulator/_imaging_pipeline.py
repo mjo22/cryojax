@@ -66,7 +66,7 @@ class AbstractImagingPipeline(Module, strict=True):
     @abstractmethod
     def sample(
         self,
-        key: PRNGKeyArray,
+        rng_key: PRNGKeyArray,
         *,
         postprocess: bool = True,
         get_real: bool = True,
@@ -94,7 +94,7 @@ class AbstractImagingPipeline(Module, strict=True):
 
         **Arguments:**
 
-        - `key`: The random number generator key.
+        - `rng_key`: The random number generator key.
         """
         raise NotImplementedError
 
@@ -252,7 +252,7 @@ class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
 
     @override
     def sample(
-        self, key: PRNGKeyArray, *, postprocess: bool = True, get_real: bool = True
+        self, rng_key: PRNGKeyArray, *, postprocess: bool = True, get_real: bool = True
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -272,7 +272,7 @@ class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
         # Compute the squared wavefunction
         fourier_contrast_at_detector_plane = (
             self.scattering_theory.compute_fourier_contrast_at_detector_plane(
-                self.instrument_config, key
+                self.instrument_config, rng_key
             )
         )
 
@@ -349,7 +349,7 @@ class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
 
     @override
     def sample(
-        self, key: PRNGKeyArray, *, postprocess: bool = True, get_real: bool = True
+        self, rng_key: PRNGKeyArray, *, postprocess: bool = True, get_real: bool = True
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -370,7 +370,7 @@ class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
         theory = self.scattering_theory
         fourier_squared_wavefunction_at_detector_plane = (
             theory.compute_fourier_squared_wavefunction_at_detector_plane(
-                self.instrument_config, key
+                self.instrument_config, rng_key
             )
         )
 
@@ -455,7 +455,7 @@ class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
 
     @override
     def sample(
-        self, key: PRNGKeyArray, *, postprocess: bool = True, get_real: bool = True
+        self, rng_key: PRNGKeyArray, *, postprocess: bool = True, get_real: bool = True
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -472,7 +472,7 @@ class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
             "{self.instrument_config.padded_x_dim//2+1}",
         ]
     ):
-        keys = jax.random.split(key)
+        keys = jax.random.split(rng_key)
         # Compute the squared wavefunction
         theory = self.scattering_theory
         fourier_squared_wavefunction_at_detector_plane = (

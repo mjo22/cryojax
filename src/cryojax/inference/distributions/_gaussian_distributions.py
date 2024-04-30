@@ -86,7 +86,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
 
     @override
     def sample(
-        self, key: PRNGKeyArray, *, get_real: bool = True
+        self, rng_key: PRNGKeyArray, *, get_real: bool = True
     ) -> (
         Float[
             Array,
@@ -110,7 +110,10 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         std = jnp.sqrt(padded_n_pixels * self.variance_function(freqs))
         noise = pipeline.postprocess(
             std
-            * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0).astype(complex),
+            * jr.normal(rng_key, shape=freqs.shape[0:-1])
+            .at[0, 0]
+            .set(0.0)
+            .astype(complex),
             get_real=get_real,
         )
         image = self.render(get_real=get_real)
