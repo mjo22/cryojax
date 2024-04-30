@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Optional
 
-from equinox import AbstractVar, Module
+from equinox import Module
 from jaxtyping import Array, Complex, Float
 
 from ...image.operators import (
@@ -26,8 +26,6 @@ class AbstractTransferFunction(AbstractFourierOperator, strict=True):
 
 class AbstractTransferTheory(Module, strict=True):
     """Base class for a transfer theory."""
-
-    transfer_function: AbstractVar[AbstractTransferFunction]
 
     @abstractmethod
     def __call__(

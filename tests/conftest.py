@@ -109,7 +109,7 @@ def masks(config):
 
 @pytest.fixture
 def transfer_theory():
-    return cs.ContrastTransferTheory(transfer_function=cs.ContrastTransferFunction())
+    return cs.ContrastTransferTheory(ctf=cs.ContrastTransferFunction())
 
 
 @pytest.fixture

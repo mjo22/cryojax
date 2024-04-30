@@ -24,33 +24,34 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
     """
 
     imaging_pipeline: AbstractImagingPipeline
-    variance: FourierOperatorLike
-    contrast_scale: Float[Array, ""]
+    variance_function: FourierOperatorLike
+    signal_scale_factor: Float[Array, ""]
 
     def __init__(
         self,
         imaging_pipeline: AbstractImagingPipeline,
-        variance: Optional[FourierOperatorLike] = None,
-        contrast_scale: float | Float[Array, ""] = 100.0,
+        variance_function: Optional[FourierOperatorLike] = None,
+        signal_scale_factor: float | Float[Array, ""] = 1.0,
     ):
         """**Arguments:**
 
         - `imaging_pipeline`: The image formation model.
-        - `variance`: The variance of each fourier mode. By default,
-                      `cryojax.image.operators.Constant(1.0)`.
-        - `contrast_scale`: A scale factor for the standard deviation of the underlying
-                            signal simulated from `imaging_pipeline`. The standard
-                            deviation of the signal is rescaled to be equal to
-                            `contrast_scale / jnp.sqrt(n_pixels)`, where the inverse
-                            square root of `n_pixels` is included so that the
-                            scale of the signal does not depend on the number of pixels.
-                            As a result, a good starting value for `contrast_scale` should
-                            be on the order of the extent of the object.
-                            By default, `contrast_scale = 100.0`.
+        - `variance_function`: The variance of each fourier mode. By default,
+                               `cryojax.image.operators.Constant(1.0)`.
+        - `signal_scale_factor`: A scale factor for the standard deviation of the
+                                 underlying signal simulated from `imaging_pipeline`.
+                                 The standard deviation of the signal is rescaled to be
+                                 equal to `signal_scale_factor / jnp.sqrt(n_pixels)`,
+                                 where the inverse square root of `n_pixels` is included
+                                 so that the scale of the signal does not depend on the
+                                 number of pixels. As a result, a good starting value for
+                                 `signal_scale_factor` should be on the order of the
+                                 extent of the object in pixels. By default,
+                                 `signal_scale_factor = 100.0`.
         """
         self.imaging_pipeline = imaging_pipeline
-        self.variance = variance or Constant(1.0)
-        self.contrast_scale = error_if_not_positive(jnp.asarray(contrast_scale))
+        self.variance_function = variance_function or Constant(1.0)
+        self.signal_scale_factor = error_if_not_positive(jnp.asarray(signal_scale_factor))
 
     @override
     def render(
@@ -73,7 +74,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         simulated_image = self.imaging_pipeline.render(get_real=get_real)
         return rescale_image(
             simulated_image,
-            std=self.contrast_scale / jnp.sqrt(n_pixels),
+            std=self.signal_scale_factor / jnp.sqrt(n_pixels),
             mean=0.0,
             is_real=get_real,
             shape_in_real_space=shape,
@@ -102,7 +103,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         # Compute the zero mean variance and scale up to be independent of the number of
         # pixels
         padded_n_pixels = pipeline.instrument_config.padded_n_pixels
-        std = jnp.sqrt(padded_n_pixels * self.variance(freqs))
+        std = jnp.sqrt(padded_n_pixels * self.variance_function(freqs))
         noise = pipeline.postprocess(
             std
             * jr.normal(key, shape=freqs.shape[0:-1]).at[0, 0].set(0.0).astype(complex),
@@ -130,7 +131,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         n_pixels = pipeline.instrument_config.n_pixels
         freqs = pipeline.instrument_config.wrapped_frequency_grid_in_angstroms.get()
         # Compute the variance and scale up to be independent of the number of pixels
-        variance = n_pixels * self.variance(freqs)
+        variance = n_pixels * self.variance_function(freqs)
         # Create simulated data
         simulated = self.render(get_real=False)
         # Compute residuals

@@ -7,8 +7,8 @@ from ...coordinates import cartesian_to_polar
 # Not currently public API
 def compute_phase_shifts(
     frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-    defocus_u_in_angstroms: Float[Array, ""],
-    defocus_v_in_angstroms: Float[Array, ""],
+    defocus_axis_1_in_angstroms: Float[Array, ""],
+    defocus_axis_2_in_angstroms: Float[Array, ""],
     astigmatism_angle: Float[Array, ""],
     wavelength_in_angstroms: Float[Array, ""],
     spherical_aberration_in_angstroms: Float[Array, ""],
@@ -16,9 +16,9 @@ def compute_phase_shifts(
 ) -> Float[Array, "y_dim x_dim"]:
     k_sqr, azimuth = cartesian_to_polar(frequency_grid_in_angstroms, square=True)
     defocus = 0.5 * (
-        defocus_u_in_angstroms
-        + defocus_v_in_angstroms
-        + (defocus_u_in_angstroms - defocus_v_in_angstroms)
+        defocus_axis_1_in_angstroms
+        + defocus_axis_2_in_angstroms
+        + (defocus_axis_1_in_angstroms - defocus_axis_2_in_angstroms)
         * jnp.cos(2.0 * (azimuth - astigmatism_angle))
     )
     defocus_phase_shifts = -0.5 * defocus * wavelength_in_angstroms * k_sqr
@@ -38,8 +38,8 @@ def compute_phase_shifts(
 # Not currently public API
 def compute_phase_shifts_with_amplitude_contrast_ratio(
     frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-    defocus_u_in_angstroms: Float[Array, ""],
-    defocus_v_in_angstroms: Float[Array, ""],
+    defocus_axis_1_in_angstroms: Float[Array, ""],
+    defocus_axis_2_in_angstroms: Float[Array, ""],
     astigmatism_angle: Float[Array, ""],
     wavelength_in_angstroms: Float[Array, ""],
     spherical_aberration_in_angstroms: Float[Array, ""],
@@ -48,8 +48,8 @@ def compute_phase_shifts_with_amplitude_contrast_ratio(
 ) -> Float[Array, "y_dim x_dim"]:
     phase_shifts = compute_phase_shifts(
         frequency_grid_in_angstroms,
-        defocus_u_in_angstroms,
-        defocus_v_in_angstroms,
+        defocus_axis_1_in_angstroms,
+        defocus_axis_2_in_angstroms,
         astigmatism_angle,
         wavelength_in_angstroms,
         spherical_aberration_in_angstroms,

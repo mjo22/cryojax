@@ -36,12 +36,10 @@ class ContrastTransferFunction(AbstractContrastTransferFunction, strict=True):
     spherical aberration correction and amplitude contrast ratio.
     """
 
-    defocus_u_in_angstroms: Float[Array, ""] = field(
+    defocus_in_angstroms: Float[Array, ""] = field(
         default=10000.0, converter=error_if_not_positive
     )
-    defocus_v_in_angstroms: Float[Array, ""] = field(
-        default=10000.0, converter=error_if_not_positive
-    )
+    astigmatism_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
     astigmatism_angle: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
     voltage_in_kilovolts: Float[Array, ""] | float = field(
         default=300.0, static=True
@@ -75,11 +73,19 @@ class ContrastTransferFunction(AbstractContrastTransferFunction, strict=True):
             )
         else:
             wavelength_in_angstroms = jnp.asarray(wavelength_in_angstroms)
+        defocus_axis_1_in_angstroms = self.defocus_in_angstroms + jnp.asarray(
+            defocus_offset
+        )
+        defocus_axis_2_in_angstroms = (
+            self.defocus_in_angstroms
+            + self.astigmatism_in_angstroms
+            + jnp.asarray(defocus_offset)
+        )
         # Compute phase shifts for CTF
         phase_shifts = compute_phase_shifts_with_amplitude_contrast_ratio(
             frequency_grid_in_angstroms,
-            self.defocus_u_in_angstroms + jnp.asarray(defocus_offset),
-            self.defocus_v_in_angstroms + jnp.asarray(defocus_offset),
+            defocus_axis_1_in_angstroms,
+            defocus_axis_2_in_angstroms,
             astigmatism_angle,
             wavelength_in_angstroms,
             spherical_aberration_in_angstroms,
@@ -122,15 +128,15 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
     contrast by applying the CTF directly to the exit plane phase shifts.
     """
 
-    transfer_function: AbstractContrastTransferFunction
+    ctf: AbstractContrastTransferFunction
     envelope: FourierOperatorLike
 
     def __init__(
         self,
-        transfer_function: AbstractContrastTransferFunction,
+        ctf: AbstractContrastTransferFunction,
         envelope: Optional[FourierOperatorLike] = None,
     ):
-        self.transfer_function = transfer_function
+        self.ctf = ctf
         self.envelope = envelope or Constant(1.0)
 
     @override
@@ -150,20 +156,20 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
             instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
         )
         # Compute the CTF
-        ctf = self.envelope(frequency_grid) * self.transfer_function(
+        ctf_array = self.envelope(frequency_grid) * self.ctf(
             frequency_grid,
             wavelength_in_angstroms=instrument_config.wavelength_in_angstroms,
             defocus_offset=defocus_offset,
         )
         # ... compute the contrast as the CTF multiplied by the exit plane
         # phase shifts
-        fourier_contrast_at_detector_plane = ctf * fourier_phase_at_exit_plane
+        fourier_contrast_at_detector_plane = ctf_array * fourier_phase_at_exit_plane
 
         return fourier_contrast_at_detector_plane
 
 
 ContrastTransferTheory.__init__.__doc__ = """**Arguments:**
 
-- `transfer_function`: The contrast transfer function model.
+- `ctf`: The contrast transfer function model.
 - `envelope`: The envelope function of the optics model.
 """

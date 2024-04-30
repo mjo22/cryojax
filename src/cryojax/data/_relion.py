@@ -41,26 +41,23 @@ class RelionParticleStack(AbstractParticleStack):
     image_stack: Float[Array, "... y_dim x_dim"]
     instrument_config: InstrumentConfig
     pose: EulerAnglePose
-    transfer_function: ContrastTransferFunction
+    ctf: ContrastTransferFunction
 
     def __init__(
         self,
         image_stack: Float[Array, "... y_dim x_dim"],
         instrument_config: InstrumentConfig,
         pose: EulerAnglePose,
-        transfer_function: ContrastTransferFunction,
+        ctf: ContrastTransferFunction,
     ):
         # Set image stack and config as is
         self.image_stack = jnp.asarray(image_stack)
         self.instrument_config = instrument_config
         # Set CTF using the defocus offset in the EulerAnglePose
-        self.transfer_function = eqx.tree_at(
-            lambda tf: (tf.defocus_u_in_angstroms, tf.defocus_v_in_angstroms),
-            transfer_function,
-            (
-                transfer_function.defocus_u_in_angstroms + pose.offset_z_in_angstroms,
-                transfer_function.defocus_v_in_angstroms + pose.offset_z_in_angstroms,
-            ),
+        self.ctf = eqx.tree_at(
+            lambda tf: tf.defocus_in_angstroms,
+            ctf,
+            ctf.defocus_in_angstroms + pose.offset_z_in_angstroms,
         )
         # Set defocus offset to zero
         self.pose = eqx.tree_at(
@@ -78,11 +75,10 @@ RelionParticleStack.__init__.__doc__ = """**Arguments:**
 - `pose`: The pose, represented by euler angles. Any subset of pytree leaves may
           have a batch dimension. Upon instantiation, `pose.offset_z_in_angstroms`
           is set to zero.
-- `transfer_function`: The contrast transfer function. Any subset of pytree leaves may
+- `ctf`: The contrast transfer function. Any subset of pytree leaves may
                        have a batch dimension. Upon instantiation,
-                       `transfer_function.defocus_u_in_angstroms` is set to
-                       `transfer_function.defocus_u_in_angstroms + pose.offset_z_in_angstroms` (and
-                        also for `transfer_function.defocus_v_in_angstroms`).
+                       `ctf.defocus_in_angstroms` is set to
+                       `ctf.defocus_in_angstroms + pose.offset_z_in_angstroms`.
 """  # noqa: E501
 
 
@@ -226,8 +222,10 @@ class RelionDataset(AbstractDataset):
             image_stack = np.asarray(mrc.data[particle_index])  # type: ignore
         # Read metadata into a RelionParticleStack
         # ... particle data
-        defocus_u_in_angstroms = jnp.asarray(particle_blocks["rlnDefocusU"])
-        defocus_v_in_angstroms = jnp.asarray(particle_blocks["rlnDefocusV"])
+        defocus_in_angstroms = jnp.asarray(particle_blocks["rlnDefocusU"])
+        astigmatism_in_angstroms = jnp.asarray(
+            particle_blocks["rlnDefocusV"]
+        ) - jnp.asarray(particle_blocks["rlnDefocusU"])
         astigmatism_angle = jnp.asarray(particle_blocks["rlnDefocusAngle"])
         phase_shift = jnp.asarray(particle_blocks["rlnPhaseShift"])
         # ... optics group data
@@ -242,9 +240,9 @@ class RelionDataset(AbstractDataset):
             pixel_size,
             jnp.asarray(voltage_in_kilovolts),
         )
-        transfer_function = ContrastTransferFunction(
-            defocus_u_in_angstroms=defocus_u_in_angstroms,
-            defocus_v_in_angstroms=defocus_v_in_angstroms,
+        ctf = ContrastTransferFunction(
+            defocus_in_angstroms=defocus_in_angstroms,
+            astigmatism_in_angstroms=astigmatism_in_angstroms,
             astigmatism_angle=astigmatism_angle,
             voltage_in_kilovolts=voltage_in_kilovolts,
             spherical_aberration_in_mm=spherical_aberration_in_mm,
@@ -317,9 +315,7 @@ class RelionDataset(AbstractDataset):
             tuple([jnp.asarray(value) for value in pose_parameter_values]),
         )
 
-        return RelionParticleStack(
-            jnp.asarray(image_stack), instrument_config, pose, transfer_function
-        )
+        return RelionParticleStack(jnp.asarray(image_stack), instrument_config, pose, ctf)
 
     @final
     def __len__(self) -> int:

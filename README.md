@@ -83,13 +83,13 @@ from cryojax.image import operators as op
 # Initialize the scattering theory. First, instantiate fourier slice extraction
 projection_method = cxs.FourierSliceExtraction(interpolation_order=1)
 # ... next, the contrast transfer theory
-transfer_function = cxs.ContrastTransferFunction(
-    defocus_u_in_angstroms=10000.0,
-    defocus_v_in_angstroms=9800.0,
+ctf = cxs.ContrastTransferFunction(
+    defocus_in_angstroms=9800.0,
+    astigmatism_in_angstroms=200.0,
     astigmatism_angle=10.0,
     amplitude_contrast_ratio=0.1
 )
-transfer_theory = cxs.ContrastTransferTheory(transfer_function, envelope=op.FourierGaussian(b_factor=5.0))
+transfer_theory = cxs.ContrastTransferTheory(ctf, envelope=op.FourierGaussian(b_factor=5.0))
 # ... now for the scattering theory
 scattering_theory = cxs.LinearScatteringTheory(structural_ensemble, projection_method, transfer_theory)
 ```
