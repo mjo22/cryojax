@@ -8,7 +8,6 @@ from .transforms import (
     AbstractParameterTransform as AbstractParameterTransform,
     ComposedTransform as ComposedTransform,
     ExpTransform as ExpTransform,
-    insert_transforms as insert_transforms,
     RescalingTransform as RescalingTransform,
     resolve_transforms as resolve_transforms,
 )

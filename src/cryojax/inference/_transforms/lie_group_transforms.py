@@ -68,7 +68,6 @@ class SO3Transform(AbstractLieGroupTransform, strict=True):
     **Attributes:**
 
     - `transformed_parameter`: The local tangent vector.
-
     - `group_element`: The element of SO3.
     """
 
@@ -100,7 +99,6 @@ class SE3Transform(AbstractLieGroupTransform, strict=True):
     **Attributes:**
 
     - `transformed_parameter`: The local tangent vector.
-
     - `group_element`: The element of SE3.
     """
 
