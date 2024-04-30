@@ -31,7 +31,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         self,
         imaging_pipeline: AbstractImagingPipeline,
         variance_function: Optional[FourierOperatorLike] = None,
-        signal_scale_factor: float | Float[Array, ""] = 1.0,
+        signal_scale_factor: Optional[float | Float[Array, ""]] = None,
     ):
         """**Arguments:**
 
@@ -47,10 +47,14 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
                                  number of pixels. As a result, a good starting value for
                                  `signal_scale_factor` should be on the order of the
                                  extent of the object in pixels. By default,
-                                 `signal_scale_factor = 100.0`.
-        """
+                                 `signal_scale_factor = sqrt(imaging_pipeline.instrument_config.n_pixels)`.
+        """  # noqa: E501
         self.imaging_pipeline = imaging_pipeline
         self.variance_function = variance_function or Constant(1.0)
+        if signal_scale_factor is None:
+            signal_scale_factor = jnp.sqrt(
+                jnp.asarray(imaging_pipeline.instrument_config.n_pixels, dtype=float)
+            )
         self.signal_scale_factor = error_if_not_positive(jnp.asarray(signal_scale_factor))
 
     @override
