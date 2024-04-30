@@ -10,7 +10,7 @@ import jax
 from equinox import AbstractVar, Module
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
-from ..image import irfftn, normalize_image, rfftn
+from ..image import irfftn, rfftn
 from ..image.operators import AbstractFilter, AbstractMask
 from ._detector import AbstractDetector
 from ._instrument_config import InstrumentConfig
@@ -34,7 +34,6 @@ class AbstractImagingPipeline(Module, strict=True):
         *,
         postprocess: bool = True,
         get_real: bool = True,
-        normalize: bool = False,
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -57,11 +56,10 @@ class AbstractImagingPipeline(Module, strict=True):
 
         - `postprocess`: If `True`, view the cropped, filtered, and masked image.
                           If `postprocess = False`, `ImagePipeline.filter`,
-                          `ImagePipeline.mask`, and normalization with
-                          `normalize = True` are not applied.
+                          `ImagePipeline.mask`, and cropping to `InstrumentConfig.shape`
+                          are not applied. Instead, an image at the shape
+                          `Instrument.padded_shape` is returned.
         - `get_real`: If `True`, return the image in real space.
-        - `normalize`: If `True`, normalize the image to mean zero
-                       and standard deviation one.
         """
         raise NotImplementedError
 
@@ -72,7 +70,6 @@ class AbstractImagingPipeline(Module, strict=True):
         *,
         postprocess: bool = True,
         get_real: bool = True,
-        normalize: bool = False,
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -110,7 +107,6 @@ class AbstractImagingPipeline(Module, strict=True):
         ],
         *,
         get_real: bool = True,
-        normalize: bool = False,
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Complex[
@@ -130,10 +126,6 @@ class AbstractImagingPipeline(Module, strict=True):
             # minimize moving back and forth between real and fourier space
             if self.filter is not None:
                 image = self.filter(image)
-            if normalize:
-                image = normalize_image(
-                    image, is_real=False, shape_in_real_space=instrument_config.shape
-                )
             return irfftn(image, s=instrument_config.shape) if get_real else image
         else:
             # ... otherwise, apply filter, crop, and mask, again trying to
@@ -155,20 +147,11 @@ class AbstractImagingPipeline(Module, strict=True):
             if self.mask is not None:
                 image = self.mask(image)
             if is_filter_applied or self.filter is None:
-                # ... normalize and return if the filter has already been applied
-                if normalize:
-                    image = normalize_image(image, is_real=True)
                 return image if get_real else rfftn(image)
             else:
-                # ... otherwise, apply the filter here, normalize, and return. assume
+                # ... otherwise, apply the filter here and return. assume
                 # the filter is the same size as the non-padded coordinates
                 image = self.filter(rfftn(image))
-                if normalize:
-                    image = normalize_image(
-                        image,
-                        is_real=False,
-                        shape_in_real_space=instrument_config.shape,
-                    )
                 return irfftn(image, s=instrument_config.shape) if get_real else image
 
     def _maybe_postprocess(
@@ -181,7 +164,6 @@ class AbstractImagingPipeline(Module, strict=True):
         *,
         postprocess: bool = True,
         get_real: bool = True,
-        normalize: bool = False,
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -200,11 +182,7 @@ class AbstractImagingPipeline(Module, strict=True):
     ):
         instrument_config = self.instrument_config
         if postprocess:
-            return self.postprocess(
-                image,
-                get_real=get_real,
-                normalize=normalize,
-            )
+            return self.postprocess(image, get_real=get_real)
         else:
             return irfftn(image, s=instrument_config.padded_shape) if get_real else image
 
@@ -244,11 +222,7 @@ class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
 
     @override
     def render(
-        self,
-        *,
-        postprocess: bool = True,
-        get_real: bool = True,
-        normalize: bool = False,
+        self, *, postprocess: bool = True, get_real: bool = True
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -273,20 +247,12 @@ class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
         )
 
         return self._maybe_postprocess(
-            fourier_contrast_at_detector_plane,
-            postprocess=postprocess,
-            get_real=get_real,
-            normalize=normalize,
+            fourier_contrast_at_detector_plane, postprocess=postprocess, get_real=get_real
         )
 
     @override
     def sample(
-        self,
-        key: PRNGKeyArray,
-        *,
-        postprocess: bool = True,
-        get_real: bool = True,
-        normalize: bool = False,
+        self, key: PRNGKeyArray, *, postprocess: bool = True, get_real: bool = True
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -311,10 +277,7 @@ class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
         )
 
         return self._maybe_postprocess(
-            fourier_contrast_at_detector_plane,
-            postprocess=postprocess,
-            get_real=get_real,
-            normalize=normalize,
+            fourier_contrast_at_detector_plane, postprocess=postprocess, get_real=get_real
         )
 
 
@@ -352,11 +315,7 @@ class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
 
     @override
     def render(
-        self,
-        *,
-        postprocess: bool = True,
-        get_real: bool = True,
-        normalize: bool = False,
+        self, *, postprocess: bool = True, get_real: bool = True
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -386,17 +345,11 @@ class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
             fourier_squared_wavefunction_at_detector_plane,
             postprocess=postprocess,
             get_real=get_real,
-            normalize=normalize,
         )
 
     @override
     def sample(
-        self,
-        key: PRNGKeyArray,
-        *,
-        postprocess: bool = True,
-        get_real: bool = True,
-        normalize: bool = False,
+        self, key: PRNGKeyArray, *, postprocess: bool = True, get_real: bool = True
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -425,11 +378,10 @@ class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
             fourier_squared_wavefunction_at_detector_plane,
             postprocess=postprocess,
             get_real=get_real,
-            normalize=normalize,
         )
 
 
-class ElectronCountsImagingPipeline(AbstractImagingPipeline, strict=True):
+class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
     """An image formation pipeline that returns electron counts, given a
     model for the detector.
 
@@ -467,11 +419,7 @@ class ElectronCountsImagingPipeline(AbstractImagingPipeline, strict=True):
 
     @override
     def render(
-        self,
-        *,
-        postprocess: bool = True,
-        get_real: bool = True,
-        normalize: bool = False,
+        self, *, postprocess: bool = True, get_real: bool = True
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -502,20 +450,12 @@ class ElectronCountsImagingPipeline(AbstractImagingPipeline, strict=True):
         )
 
         return self._maybe_postprocess(
-            fourier_expected_electron_events,
-            postprocess=postprocess,
-            get_real=get_real,
-            normalize=normalize,
+            fourier_expected_electron_events, postprocess=postprocess, get_real=get_real
         )
 
     @override
     def sample(
-        self,
-        key: PRNGKeyArray,
-        *,
-        postprocess: bool = True,
-        get_real: bool = True,
-        normalize: bool = False,
+        self, key: PRNGKeyArray, *, postprocess: bool = True, get_real: bool = True
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -551,5 +491,4 @@ class ElectronCountsImagingPipeline(AbstractImagingPipeline, strict=True):
             fourier_detector_readout,
             postprocess=postprocess,
             get_real=get_real,
-            normalize=normalize,
         )

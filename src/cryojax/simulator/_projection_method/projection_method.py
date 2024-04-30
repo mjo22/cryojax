@@ -69,8 +69,8 @@ class AbstractVoxelPotentialProjectionMethod(
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
         raw_fourier_projected_potential = self.compute_raw_fourier_projected_potential(
-            potential,
-            instrument_config,  # type: ignore
+            potential,  # type: ignore
+            instrument_config,
         )
         return maybe_rescale_pixel_size(
             potential.voxel_size * raw_fourier_projected_potential,

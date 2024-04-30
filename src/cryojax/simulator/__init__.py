@@ -15,7 +15,7 @@ from ._detector import (
 from ._imaging_pipeline import (
     AbstractImagingPipeline as AbstractImagingPipeline,
     ContrastImagingPipeline as ContrastImagingPipeline,
-    ElectronCountsImagingPipeline as ElectronCountsImagingPipeline,
+    ElectronCountingImagingPipeline as ElectronCountingImagingPipeline,
     IntensityImagingPipeline as IntensityImagingPipeline,
 )
 from ._instrument_config import InstrumentConfig as InstrumentConfig

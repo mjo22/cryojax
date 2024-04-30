@@ -52,7 +52,7 @@ class AbstractVoxelPotential(AbstractPotentialRepresentation, strict=True):
         real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
     ) -> Self:
-        """Load an `AbstractVoxels` from real-valued 3D electron
+        """Load an `AbstractVoxelPotential` from real-valued 3D electron
         scattering potential.
         """
         raise NotImplementedError
@@ -71,7 +71,7 @@ class AbstractVoxelPotential(AbstractPotentialRepresentation, strict=True):
         ] = None,
         **kwargs: Any,
     ) -> Self:
-        """Load an `AbstractVoxels` from atom positions and identities."""
+        """Load an `AbstractVoxelPotential` from atom positions and identities."""
         raise NotImplementedError
 
 

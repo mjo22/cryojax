@@ -159,7 +159,7 @@ def noiseless_model(config, theory):
 
 @pytest.fixture
 def noisy_model(config, theory_with_solvent, detector):
-    return cs.ElectronCountsImagingPipeline(
+    return cs.ElectronCountingImagingPipeline(
         instrument_config=config,
         scattering_theory=theory_with_solvent,
         detector=detector,

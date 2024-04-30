@@ -6,7 +6,7 @@ import pytest
 
 import cryojax.simulator as cs
 from cryojax.data import read_array_with_spacing_from_mrc
-from cryojax.image import irfftn
+from cryojax.image import irfftn, normalize_image
 
 
 def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.HelicalAssembly:
@@ -112,7 +112,7 @@ def test_c6_rotation(
             pipeline,
             pose,
         )
-        return pipeline.render(normalize=True)
+        return normalize_image(pipeline.render())
 
     np.testing.assert_allclose(
         compute_rotated_image(pipeline, cs.EulerAnglePose()),
@@ -158,7 +158,7 @@ def test_agree_with_3j9g_assembly(
             pipeline,
             pose,
         )
-        return pipeline.render(normalize=True)
+        return normalize_image(pipeline.render())
 
     @eqx.filter_jit
     def compute_rotated_image_with_3j9g(
@@ -167,7 +167,7 @@ def test_agree_with_3j9g_assembly(
         pipeline = eqx.tree_at(
             lambda m: m.scattering_theory.structural_ensemble.pose, pipeline, pose
         )
-        return pipeline.render(normalize=True)
+        return normalize_image(pipeline.render())
 
     pose = cs.EulerAnglePose(*translation, 0.0, *euler_angles)
     reference_image = compute_rotated_image_with_3j9g(
