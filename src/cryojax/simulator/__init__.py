@@ -25,10 +25,10 @@ from ._pose import (
     EulerAnglePose as EulerAnglePose,
     QuaternionPose as QuaternionPose,
 )
-from ._potential_integration_method import (
+from ._potential_integrator import (
     AbstractFourierVoxelExtraction as AbstractFourierVoxelExtraction,
-    AbstractPotentialIntegrationMethod as AbstractPotentialIntegrationMethod,
-    AbstractVoxelPotentialIntegrationMethod as AbstractVoxelPotentialIntegrationMethod,
+    AbstractPotentialIntegrator as AbstractPotentialIntegrator,
+    AbstractVoxelPotentialIntegrator as AbstractVoxelPotentialIntegrator,
     FourierSliceExtraction as FourierSliceExtraction,
     NufftProjection as NufftProjection,
 )

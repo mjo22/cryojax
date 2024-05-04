@@ -18,7 +18,7 @@ PotentialT = TypeVar("PotentialT")
 VoxelPotentialT = TypeVar("VoxelPotentialT", bound="AbstractVoxelPotential")
 
 
-class AbstractPotentialIntegrationMethod(Module, Generic[PotentialT], strict=True):
+class AbstractPotentialIntegrator(Module, Generic[PotentialT], strict=True):
     """Base class for a method of integrating a potential directly onto
     an imaging plane."""
 
@@ -42,8 +42,8 @@ class AbstractPotentialIntegrationMethod(Module, Generic[PotentialT], strict=Tru
         raise NotImplementedError
 
 
-class AbstractVoxelPotentialIntegrationMethod(
-    AbstractPotentialIntegrationMethod[AbstractVoxelPotential],
+class AbstractVoxelPotentialIntegrator(
+    AbstractPotentialIntegrator[AbstractVoxelPotential],
     Generic[VoxelPotentialT],
     strict=True,
 ):

@@ -19,11 +19,11 @@ from .._potential_representation import (
     FourierVoxelGridPotential,
     FourierVoxelGridPotentialInterpolator,
 )
-from .projection_method import AbstractVoxelPotentialIntegrationMethod
+from .base_potential_integrator import AbstractVoxelPotentialIntegrator
 
 
 class AbstractFourierVoxelExtraction(
-    AbstractVoxelPotentialIntegrationMethod[
+    AbstractVoxelPotentialIntegrator[
         FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator
     ],
     strict=True,

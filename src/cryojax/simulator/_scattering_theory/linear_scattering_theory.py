@@ -10,7 +10,7 @@ from jaxtyping import Array, Complex, PRNGKeyArray
 
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
-from .._potential_integration_method import AbstractPotentialIntegrationMethod
+from .._potential_integrator import AbstractPotentialIntegrator
 from .._solvent import AbstractIce
 from .._structural_ensemble import (
     AbstractConformationalVariable,
@@ -63,7 +63,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
     """Base linear image formation theory."""
 
     structural_ensemble: AbstractStructuralEnsemble
-    integration_method: AbstractPotentialIntegrationMethod
+    potential_integrator: AbstractPotentialIntegrator
     transfer_theory: ContrastTransferTheory
     solvent: Optional[AbstractIce] = None
 
@@ -78,7 +78,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
         # Compute the phase shifts in the exit plane
         fourier_phase_shifts_at_exit_plane = (
             _compute_phase_shifts_from_projected_potential(
-                self.structural_ensemble, self.integration_method, instrument_config
+                self.structural_ensemble, self.potential_integrator, instrument_config
             )
         )
 
@@ -116,7 +116,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
 LinearScatteringTheory.__init__.__doc__ = """**Arguments:**
 
 - `structural_ensemble`: The structural ensemble of scattering potentials.
-- `integration_method`: The method for integrating the scattering potential.
+- `potential_integrator`: The method for integrating the scattering potential.
 - `transfer_theory`: The contrast transfer theory.
 - `solvent`: The model for the solvent.
 """
@@ -128,7 +128,7 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
     """
 
     structural_ensemble_batcher: AbstractStructuralEnsembleBatcher
-    integration_method: AbstractPotentialIntegrationMethod
+    potential_integrator: AbstractPotentialIntegrator
     transfer_theory: ContrastTransferTheory
     solvent: Optional[AbstractIce] = None
 
@@ -145,7 +145,7 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
             ensemble = eqx.combine(ensemble_vmap, ensemble_no_vmap)
             fourier_phase_shifts_at_exit_plane = (
                 _compute_phase_shifts_from_projected_potential(
-                    ensemble, self.integration_method, instrument_config
+                    ensemble, self.potential_integrator, instrument_config
                 )
             )
             return fourier_phase_shifts_at_exit_plane
@@ -196,7 +196,7 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
             ensemble = eqx.combine(ensemble_vmap, ensemble_no_vmap)
             fourier_phase_shifts_at_exit_plane = (
                 _compute_phase_shifts_from_projected_potential(
-                    ensemble, self.integration_method, instrument_config
+                    ensemble, self.potential_integrator, instrument_config
                 )
             )
             fourier_contrast_at_detector_plane = self.transfer_theory(
@@ -248,20 +248,22 @@ LinearSuperpositionScatteringTheory.__init__.__doc__ = """**Arguments:**
 - `structural_ensemble_batcher`: The batcher that computes the states that over which to
                                  compute a superposition of images. Most commonly, this
                                  would be an `AbstractAssembly` concrete class.
-- `integration_method`: The method for integrating the specimen potential.
+- `potential_integrator`: The method for integrating the specimen potential.
 - `transfer_theory`: The contrast transfer theory.
 - `solvent`: The model for the solvent.
 """
 
 
 def _compute_phase_shifts_from_projected_potential(
-    structural_ensemble, integration_method, instrument_config
+    structural_ensemble, potential_integrator, instrument_config
 ):
     # Get potential in the lab frame
     potential = structural_ensemble.get_potential_in_lab_frame()
     # Compute the phase shifts in the exit plane
-    fourier_projected_potential = integration_method.compute_fourier_integrated_potential(
-        potential, instrument_config
+    fourier_projected_potential = (
+        potential_integrator.compute_fourier_integrated_potential(
+            potential, instrument_config
+        )
     )
     # Compute in-plane translation through fourier phase shifts
     translational_phase_shifts = structural_ensemble.pose.compute_shifts(

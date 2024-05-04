@@ -10,13 +10,11 @@ from jaxtyping import Array, Complex, Float
 
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import RealVoxelCloudPotential, RealVoxelGridPotential
-from .projection_method import AbstractVoxelPotentialIntegrationMethod
+from .base_potential_integrator import AbstractVoxelPotentialIntegrator
 
 
 class NufftProjection(
-    AbstractVoxelPotentialIntegrationMethod[
-        RealVoxelGridPotential | RealVoxelCloudPotential
-    ],
+    AbstractVoxelPotentialIntegrator[RealVoxelGridPotential | RealVoxelCloudPotential],
     strict=True,
 ):
     """Integrate points onto the exit plane using
