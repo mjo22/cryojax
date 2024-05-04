@@ -1,5 +1,5 @@
 """
-Methods for integrating the scattering potential onto the exit plane.
+Methods for integrating the scattering potential directly onto the exit plane.
 """
 
 from abc import abstractmethod
@@ -18,11 +18,12 @@ PotentialT = TypeVar("PotentialT")
 VoxelPotentialT = TypeVar("VoxelPotentialT", bound="AbstractVoxelPotential")
 
 
-class AbstractPotentialProjectionMethod(Module, Generic[PotentialT], strict=True):
-    """Base class for a method of extracting projections of a potential."""
+class AbstractPotentialIntegrationMethod(Module, Generic[PotentialT], strict=True):
+    """Base class for a method of integrating a potential directly onto
+    an imaging plane."""
 
     @abstractmethod
-    def compute_fourier_projected_potential(
+    def compute_fourier_integrated_potential(
         self,
         potential: PotentialT,
         instrument_config: InstrumentConfig,
@@ -41,17 +42,17 @@ class AbstractPotentialProjectionMethod(Module, Generic[PotentialT], strict=True
         raise NotImplementedError
 
 
-class AbstractVoxelPotentialProjectionMethod(
-    AbstractPotentialProjectionMethod[AbstractVoxelPotential],
+class AbstractVoxelPotentialIntegrationMethod(
+    AbstractPotentialIntegrationMethod[AbstractVoxelPotential],
     Generic[VoxelPotentialT],
     strict=True,
 ):
-    """Base class for a method of extracting projections of a voxel-based potential."""
+    """Base class for a method of integrating a voxel-based potential."""
 
     pixel_rescaling_method: AbstractVar[str]
 
     @abstractmethod
-    def compute_raw_fourier_projected_potential(
+    def compute_raw_fourier_image(
         self,
         potential: VoxelPotentialT,
         instrument_config: InstrumentConfig,
@@ -61,19 +62,19 @@ class AbstractVoxelPotentialProjectionMethod(
         raise NotImplementedError
 
     @override
-    def compute_fourier_projected_potential(
+    def compute_fourier_integrated_potential(
         self,
         potential: AbstractVoxelPotential,
         instrument_config: InstrumentConfig,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        raw_fourier_projected_potential = self.compute_raw_fourier_projected_potential(
+        fourier_projected_potential_without_postprocess = self.compute_raw_fourier_image(
             potential,  # type: ignore
             instrument_config,
         )
         return maybe_rescale_pixel_size(
-            potential.voxel_size * raw_fourier_projected_potential,
+            potential.voxel_size * fourier_projected_potential_without_postprocess,
             potential.voxel_size,
             instrument_config.pixel_size,
             is_real=False,

@@ -25,6 +25,13 @@ from ._pose import (
     EulerAnglePose as EulerAnglePose,
     QuaternionPose as QuaternionPose,
 )
+from ._potential_integration_method import (
+    AbstractFourierVoxelExtraction as AbstractFourierVoxelExtraction,
+    AbstractPotentialIntegrationMethod as AbstractPotentialIntegrationMethod,
+    AbstractVoxelPotentialIntegrationMethod as AbstractVoxelPotentialIntegrationMethod,
+    FourierSliceExtraction as FourierSliceExtraction,
+    NufftProjection as NufftProjection,
+)
 from ._potential_representation import (
     AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
     AbstractPotentialRepresentation as AbstractPotentialRepresentation,
@@ -36,14 +43,6 @@ from ._potential_representation import (
     FourierVoxelGridPotentialInterpolator as FourierVoxelGridPotentialInterpolator,
     RealVoxelCloudPotential as RealVoxelCloudPotential,
     RealVoxelGridPotential as RealVoxelGridPotential,
-)
-from ._projection_method import (
-    AbstractPotentialProjectionMethod as AbstractPotentialProjectionMethod,
-    extract_slice as extract_slice,
-    extract_slice_with_cubic_spline as extract_slice_with_cubic_spline,
-    FourierSliceExtraction as FourierSliceExtraction,
-    NufftProjection as NufftProjection,
-    project_with_nufft as project_with_nufft,
 )
 from ._scattering_theory import (
     AbstractLinearScatteringTheory as AbstractLinearScatteringTheory,

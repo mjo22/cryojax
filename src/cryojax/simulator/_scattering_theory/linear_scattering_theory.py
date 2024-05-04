@@ -10,7 +10,7 @@ from jaxtyping import Array, Complex, PRNGKeyArray
 
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
-from .._projection_method import AbstractPotentialProjectionMethod
+from .._potential_integration_method import AbstractPotentialIntegrationMethod
 from .._solvent import AbstractIce
 from .._structural_ensemble import (
     AbstractConformationalVariable,
@@ -22,7 +22,9 @@ from .base_scattering_theory import AbstractScatteringTheory
 
 
 class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
-    """Base class for a scattering theory in linear image formation theory."""
+    """Base class for a scattering theory in linear image formation theory
+    (the weak-phase approximation).
+    """
 
     @abstractmethod
     def compute_fourier_phase_shifts_at_exit_plane(
@@ -61,7 +63,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
     """Base linear image formation theory."""
 
     structural_ensemble: AbstractStructuralEnsemble
-    projection_method: AbstractPotentialProjectionMethod
+    integration_method: AbstractPotentialIntegrationMethod
     transfer_theory: ContrastTransferTheory
     solvent: Optional[AbstractIce] = None
 
@@ -73,21 +75,10 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        # Get potential in the lab frame
-        potential = self.structural_ensemble.get_potential_in_lab_frame()
         # Compute the phase shifts in the exit plane
-        fourier_projected_potential = (
-            self.projection_method.compute_fourier_projected_potential(
-                potential, instrument_config
-            )
-        )
         fourier_phase_shifts_at_exit_plane = (
-            instrument_config.wavelength_in_angstroms * fourier_projected_potential
-        )
-        # Apply in-plane translation through phase shifts
-        fourier_phase_shifts_at_exit_plane *= (
-            self.structural_ensemble.pose.compute_shifts(
-                instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
+            _compute_phase_shifts_from_projected_potential(
+                self.structural_ensemble, self.integration_method, instrument_config
             )
         )
 
@@ -124,8 +115,8 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
 
 LinearScatteringTheory.__init__.__doc__ = """**Arguments:**
 
-- `structural_ensemble`: The specimen potential ensemble.
-- `projection_method`: The method for computing projections of the specimen potential.
+- `structural_ensemble`: The structural ensemble of scattering potentials.
+- `integration_method`: The method for integrating the scattering potential.
 - `transfer_theory`: The contrast transfer theory.
 - `solvent`: The model for the solvent.
 """
@@ -137,7 +128,7 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
     """
 
     structural_ensemble_batcher: AbstractStructuralEnsembleBatcher
-    projection_method: AbstractPotentialProjectionMethod
+    integration_method: AbstractPotentialIntegrationMethod
     transfer_theory: ContrastTransferTheory
     solvent: Optional[AbstractIce] = None
 
@@ -152,22 +143,11 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
         @partial(eqx.filter_vmap, in_axes=(0, None, None))
         def compute_image_stack(ensemble_vmap, ensemble_no_vmap, instrument_config):
             ensemble = eqx.combine(ensemble_vmap, ensemble_no_vmap)
-            # Get potential in the lab frame
-            potential = ensemble.get_potential_in_lab_frame()
-            # Compute the phase shifts in the exit plane
-            fourier_projected_potential = (
-                self.projection_method.compute_fourier_projected_potential(
-                    potential, instrument_config
+            fourier_phase_shifts_at_exit_plane = (
+                _compute_phase_shifts_from_projected_potential(
+                    ensemble, self.integration_method, instrument_config
                 )
             )
-            fourier_phase_shifts_at_exit_plane = (
-                instrument_config.wavelength_in_angstroms * fourier_projected_potential
-            )
-            # Apply in-plane translation through phase shifts
-            fourier_phase_shifts_at_exit_plane *= ensemble.pose.compute_shifts(
-                instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
-            )
-
             return fourier_phase_shifts_at_exit_plane
 
         @eqx.filter_jit
@@ -214,22 +194,11 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
         @partial(eqx.filter_vmap, in_axes=(0, None, None))
         def compute_image_stack(ensemble_vmap, ensemble_no_vmap, instrument_config):
             ensemble = eqx.combine(ensemble_vmap, ensemble_no_vmap)
-            # Get potential in the lab frame
-            potential = ensemble.get_potential_in_lab_frame()
-            # Compute the phase shifts in the exit plane
-            fourier_projected_potential = (
-                self.projection_method.compute_fourier_projected_potential(
-                    potential, instrument_config
+            fourier_phase_shifts_at_exit_plane = (
+                _compute_phase_shifts_from_projected_potential(
+                    ensemble, self.integration_method, instrument_config
                 )
             )
-            fourier_phase_shifts_at_exit_plane = (
-                instrument_config.wavelength_in_angstroms * fourier_projected_potential
-            )
-            # Apply in-plane translation through phase shifts
-            fourier_phase_shifts_at_exit_plane *= ensemble.pose.compute_shifts(
-                instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
-            )
-
             fourier_contrast_at_detector_plane = self.transfer_theory(
                 fourier_phase_shifts_at_exit_plane, instrument_config
             )
@@ -279,7 +248,29 @@ LinearSuperpositionScatteringTheory.__init__.__doc__ = """**Arguments:**
 - `structural_ensemble_batcher`: The batcher that computes the states that over which to
                                  compute a superposition of images. Most commonly, this
                                  would be an `AbstractAssembly` concrete class.
-- `projection_method`: The method for computing projections of the specimen potential.
+- `integration_method`: The method for integrating the specimen potential.
 - `transfer_theory`: The contrast transfer theory.
 - `solvent`: The model for the solvent.
 """
+
+
+def _compute_phase_shifts_from_projected_potential(
+    structural_ensemble, integration_method, instrument_config
+):
+    # Get potential in the lab frame
+    potential = structural_ensemble.get_potential_in_lab_frame()
+    # Compute the phase shifts in the exit plane
+    fourier_projected_potential = integration_method.compute_fourier_integrated_potential(
+        potential, instrument_config
+    )
+    # Compute in-plane translation through fourier phase shifts
+    translational_phase_shifts = structural_ensemble.pose.compute_shifts(
+        instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
+    )
+    # The phase shifts in the exit plane multiplies the wavelength x
+    # projected potential (here with units of inverse angstroms) x the translation
+    return (
+        instrument_config.wavelength_in_angstroms
+        * fourier_projected_potential
+        * translational_phase_shifts
+    )

@@ -10,29 +10,50 @@ from jaxtyping import Array, Complex, Float
 
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import RealVoxelCloudPotential, RealVoxelGridPotential
-from .projection_method import AbstractVoxelPotentialProjectionMethod
+from .projection_method import AbstractVoxelPotentialIntegrationMethod
 
 
 class NufftProjection(
-    AbstractVoxelPotentialProjectionMethod[
+    AbstractVoxelPotentialIntegrationMethod[
         RealVoxelGridPotential | RealVoxelCloudPotential
     ],
     strict=True,
 ):
     """Integrate points onto the exit plane using
     non-uniform FFTs.
-
-    Attributes
-    ----------
-    eps : `float`
-        See ``jax-finufft`` for documentation.
     """
 
     pixel_rescaling_method: str = "bicubic"
     eps: float = 1e-6
 
+    def project_voxel_cloud_with_nufft(
+        self,
+        weights: Float[Array, " size"],
+        coordinate_list: Float[Array, "size 2"] | Float[Array, "size 3"],
+        shape: tuple[int, int],
+    ) -> Complex[Array, "{shape[0]} {shape[1]}"]:
+        """Project and interpolate 3D volume point cloud
+        onto imaging plane using a non-uniform FFT.
+
+        **Arguments:**
+
+        - `weights`:
+            Density point cloud.
+        - `coordinates`:
+            Coordinate system of point cloud.
+        - `shape`:
+            Shape of the imaging plane in pixels.
+            ``width, height = shape[0], shape[1]``
+            is the size of the desired imaging plane.
+
+        **Returns:**
+
+        The output image in fourier space.
+        """
+        return _project_with_nufft(weights, coordinate_list, shape, self.eps)
+
     @override
-    def compute_raw_fourier_projected_potential(
+    def compute_raw_fourier_image(
         self,
         potential: RealVoxelGridPotential | RealVoxelCloudPotential,
         instrument_config: InstrumentConfig,
@@ -42,20 +63,18 @@ class NufftProjection(
         """Rasterize image with non-uniform FFTs."""
         if isinstance(potential, RealVoxelGridPotential):
             shape = potential.shape
-            fourier_projection = project_with_nufft(
+            fourier_projection = self.project_voxel_cloud_with_nufft(
                 potential.real_voxel_grid.ravel(),
                 potential.wrapped_coordinate_grid_in_pixels.get().reshape(
                     (math.prod(shape), 3)
                 ),
                 instrument_config.padded_shape,
-                eps=self.eps,
             )
         elif isinstance(potential, RealVoxelCloudPotential):
-            fourier_projection = project_with_nufft(
+            fourier_projection = self.project_voxel_cloud_with_nufft(
                 potential.voxel_weights,
                 potential.wrapped_coordinate_list_in_pixels.get(),
                 instrument_config.padded_shape,
-                eps=self.eps,
             )
         else:
             raise ValueError(
@@ -64,32 +83,17 @@ class NufftProjection(
         return fourier_projection
 
 
-def project_with_nufft(
-    weights: Float[Array, " size"],
-    coordinate_list: Float[Array, "size 2"] | Float[Array, "size 3"],
-    shape: tuple[int, int],
-    eps: float = 1e-6,
-) -> Complex[Array, "{shape[0]} {shape[1]}"]:
-    """
-    Project and interpolate 3D volume point cloud
-    onto imaging plane using a non-uniform FFT.
+NufftProjection.__init__.__doc__ = """**Arguments:**
 
-    Arguments
-    ---------
-    weights : shape `(N,)`
-        Density point cloud.
-    coordinates : shape `(N, 2)` or shape `(N, 3)`
-        Coordinate system of point cloud.
-    shape :
-        Shape of the imaging plane in pixels.
-        ``width, height = shape[0], shape[1]``
-        is the size of the desired imaging plane.
+- `pixel_rescaling_method`:
+    Method for interpolating the final image to the `InstrumentConfig`
+    pixel size. See `cryojax.image._rescale_pixel_size` for documentation.
+- `eps` : `float`
+    See ``jax-finufft`` for documentation.
+"""
 
-    Returns
-    -------
-    projection :
-        The output image in fourier space.
-    """
+
+def _project_with_nufft(weights, coordinate_list, shape, eps=1e-6):
     from jax_finufft import nufft1
 
     weights, coordinate_list = (

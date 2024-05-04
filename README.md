@@ -81,7 +81,7 @@ Next, build the *scattering theory*. The simplest `scattering_theory` is the `Li
 from cryojax.image import operators as op
 
 # Initialize the scattering theory. First, instantiate fourier slice extraction
-projection_method = cxs.FourierSliceExtraction(interpolation_order=1)
+integration_method = cxs.FourierSliceExtraction(interpolation_order=1)
 # ... next, the contrast transfer theory
 ctf = cxs.ContrastTransferFunction(
     defocus_in_angstroms=9800.0,
@@ -91,7 +91,7 @@ ctf = cxs.ContrastTransferFunction(
 )
 transfer_theory = cxs.ContrastTransferTheory(ctf, envelope=op.FourierGaussian(b_factor=5.0))
 # ... now for the scattering theory
-scattering_theory = cxs.LinearScatteringTheory(structural_ensemble, projection_method, transfer_theory)
+scattering_theory = cxs.LinearScatteringTheory(structural_ensemble, integration_method, transfer_theory)
 ```
 
 The `ContrastTransferFunction` has parameters used in CTFFIND4, which take their default values if not
