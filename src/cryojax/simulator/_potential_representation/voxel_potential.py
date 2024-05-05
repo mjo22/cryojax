@@ -52,7 +52,7 @@ class AbstractVoxelPotential(AbstractPotentialRepresentation, strict=True):
         real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
         voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
     ) -> Self:
-        """Load an `AbstractVoxels` from real-valued 3D electron
+        """Load an `AbstractVoxelPotential` from real-valued 3D electron
         scattering potential.
         """
         raise NotImplementedError
@@ -71,7 +71,7 @@ class AbstractVoxelPotential(AbstractPotentialRepresentation, strict=True):
         ] = None,
         **kwargs: Any,
     ) -> Self:
-        """Load an `AbstractVoxels` from atom positions and identities."""
+        """Load an `AbstractVoxelPotential` from atom positions and identities."""
         raise NotImplementedError
 
 
@@ -183,9 +183,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
         - `**kwargs`: Passed to `AbstractFourierVoxelGridPotential.from_real_voxel_grid`
         """
-        form_factors = (
-            form_factors if form_factors is None else jnp.asarray(form_factors)
-        )
+        form_factors = form_factors if form_factors is None else jnp.asarray(form_factors)
         a_vals, b_vals = get_form_factor_params(
             jnp.asarray(atom_identities), form_factors
         )
@@ -280,9 +278,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 
     @property
     def shape(self) -> tuple[int, int, int]:
-        return cast(
-            tuple[int, int, int], tuple([s - 2 for s in self.coefficients.shape])
-        )
+        return cast(tuple[int, int, int], tuple([s - 2 for s in self.coefficients.shape]))
 
 
 class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
@@ -387,9 +383,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
         - `**kwargs`: Passed to `RealVoxelGridPotential.from_real_voxel_grid`
         """
-        form_factors = (
-            form_factors if form_factors is None else jnp.asarray(form_factors)
-        )
+        form_factors = form_factors if form_factors is None else jnp.asarray(form_factors)
         a_vals, b_vals = get_form_factor_params(
             jnp.asarray(atom_identities), form_factors
         )
@@ -530,9 +524,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
         - `**kwargs`: Passed to `RealVoxelCloudPotential.from_real_voxel_grid`
         """
-        form_factors = (
-            form_factors if form_factors is None else jnp.asarray(form_factors)
-        )
+        form_factors = form_factors if form_factors is None else jnp.asarray(form_factors)
         a_vals, b_vals = get_form_factor_params(
             jnp.asarray(atom_identities), form_factors
         )

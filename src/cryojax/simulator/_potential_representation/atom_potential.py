@@ -1,7 +1,4 @@
 """
-Atomic-based electron density representations.
-"""
-
 from typing import Any, ClassVar, Type
 
 import equinox as eqx
@@ -14,9 +11,9 @@ from .scattering_potential import AbstractScatteringPotential
 
 
 class AtomCloud(AbstractScatteringPotential):
-    """
+    '''
     Abstraction of a point cloud of atoms.
-    """
+    '''
 
     weights: Array = field(converter=jnp.asarray)
     coordinate_list: Array = field(converter=jnp.asarray)
@@ -38,11 +35,12 @@ class AtomCloud(AbstractScatteringPotential):
         filename: str,
         **kwargs: Any,
     ) -> "AtomCloud":
-        """
+        '''
         Load an Atom Cloud
 
         TODO: What is the file format appropriate here? Q. for Michael...
-        """
+        '''
 
         raise NotImplementedError
         # return cls.from_mrc(filename, config=config, **kwargs)
+"""

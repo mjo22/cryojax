@@ -24,9 +24,7 @@ def test_voxel_electron_potential_loaders():
     for potential in [real_potential, fourier_potential, cloud_potential]:
         assert potential.voxel_size == jnp.asarray(voxel_size)
 
-    assert isinstance(
-        fourier_potential.wrapped_frequency_slice_in_pixels, FrequencySlice
-    )
+    assert isinstance(fourier_potential.wrapped_frequency_slice_in_pixels, FrequencySlice)
     assert isinstance(
         fourier_potential.wrapped_frequency_slice_in_pixels.get(),
         Float[Array, "1 _ _ 3"],

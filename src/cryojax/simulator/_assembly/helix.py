@@ -10,8 +10,11 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float
 
 from ...rotations import SO3
-from .._ensemble import AbstractConformationalVariable, AbstractStructuralEnsemble
 from .._pose import AbstractPose, EulerAnglePose
+from .._structural_ensemble import (
+    AbstractConformationalVariable,
+    AbstractStructuralEnsemble,
+)
 from .assembly import AbstractAssembly
 
 

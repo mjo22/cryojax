@@ -8,7 +8,7 @@ import cryojax.simulator as cs
 from cryojax.coordinates import cartesian_to_polar, make_frequencies
 from cryojax.data import read_array_with_spacing_from_mrc
 from cryojax.image import irfftn, powerspectrum
-from cryojax.simulator import AberratedCTF, EulerAnglePose
+from cryojax.simulator import ContrastTransferFunction, EulerAnglePose
 
 
 jax.config.update("jax_enable_x64", True)
@@ -36,9 +36,9 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
     freqs = make_frequencies(shape, pixel_size)
     k_sqr, theta = cartesian_to_polar(freqs, square=True)
     # Compute cryojax CTF
-    optics = AberratedCTF(
-        defocus_u_in_angstroms=defocus1,
-        defocus_v_in_angstroms=defocus2,
+    optics = ContrastTransferFunction(
+        defocus_in_angstroms=defocus1,
+        astigmatism_in_angstroms=defocus2 - defocus1,
         astigmatism_angle=asti_angle,
         voltage_in_kilovolts=kV,
         spherical_aberration_in_mm=cs,
@@ -55,9 +55,9 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
         astig_angle=asti_angle,
         pixel_size=pixel_size,
     )
-    cisTEM_ctf = np.vectorize(
-        lambda k_sqr, theta: cisTEM_optics.Evaluate(k_sqr, theta)
-    )(k_sqr.ravel() * pixel_size**2, theta.ravel()).reshape(freqs.shape[0:2])
+    cisTEM_ctf = np.vectorize(lambda k_sqr, theta: cisTEM_optics.Evaluate(k_sqr, theta))(
+        k_sqr.ravel() * pixel_size**2, theta.ravel()
+    ).reshape(freqs.shape[0:2])
     cisTEM_ctf[0, 0] = 0.0
 
     # Compute cryojax and cisTEM power spectrum
@@ -122,11 +122,11 @@ def test_compute_projection_with_cistem(
         real_voxel_grid, voxel_size
     )
     pose = cs.EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
-    projection_method = cs.FourierSliceExtract()
+    projection_method = cs.FourierSliceExtraction()
     box_size = potential.shape[0]
     config = cs.InstrumentConfig((box_size, box_size), pixel_size, 300.0)
     cryojax_projection = irfftn(
-        projection_method.compute_raw_fourier_projected_potential(
+        projection_method.compute_raw_fourier_image(
             potential.rotate_to_pose(pose), config
         )
         .at[0, 0]

@@ -121,9 +121,7 @@ class SE3Transform(AbstractLieGroupTransform, strict=True):
     def get(self) -> Float[Array, "6"]:
         """An implementation of the `jaxlie.manifold.rplus`."""
         local_tangent = self.transformed_parameter
-        group_element = jax.lax.stop_gradient(self.group_element) @ SE3.exp(
-            local_tangent
-        )
+        group_element = jax.lax.stop_gradient(self.group_element) @ SE3.exp(local_tangent)
         return QuaternionPose.from_rotation_and_translation(
             group_element.rotation, group_element.xyz
         )

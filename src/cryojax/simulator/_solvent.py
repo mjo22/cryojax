@@ -20,8 +20,10 @@ class AbstractIce(Module, strict=True):
 
     @abstractmethod
     def sample_fourier_phase_shifts_from_ice(
-        self, key: PRNGKeyArray, config: InstrumentConfig
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+        self, key: PRNGKeyArray, instrument_config: InstrumentConfig
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
         """Sample a stochastic realization of the phase shifts due to the ice
         at the exit plane."""
         raise NotImplementedError
@@ -30,14 +32,17 @@ class AbstractIce(Module, strict=True):
         self,
         key: PRNGKeyArray,
         fourier_phase_at_exit_plane: Complex[
-            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
         ],
-        config: InstrumentConfig,
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+        instrument_config: InstrumentConfig,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
         """Compute the combined phase of the ice and the specimen."""
         # Sample the realization of the phase due to the ice.
         fourier_ice_phase_at_exit_plane = self.sample_fourier_phase_shifts_from_ice(
-            key, config
+            key, instrument_config
         )
 
         return fourier_phase_at_exit_plane + fourier_ice_phase_at_exit_plane
@@ -61,12 +66,14 @@ class GaussianIce(AbstractIce, strict=True):
 
     @override
     def sample_fourier_phase_shifts_from_ice(
-        self, key: PRNGKeyArray, config: InstrumentConfig
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+        self, key: PRNGKeyArray, instrument_config: InstrumentConfig
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
         """Sample a realization of the ice phase shifts as colored gaussian noise."""
-        N_pix = np.prod(config.padded_shape)
+        N_pix = np.prod(instrument_config.padded_shape)
         frequency_grid_in_angstroms = (
-            config.wrapped_padded_frequency_grid_in_angstroms.get()
+            instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
         )
         # Compute standard deviation, scaling up by the variance by the number
         # of pixels to make the realization independent pixel-independent in real-space.

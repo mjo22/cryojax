@@ -143,9 +143,7 @@ def _make_coordinates_or_frequencies_1d(
 ) -> Float[Array, " size"]:
     """One-dimensional coordinates in real or fourier space"""
     if real_space:
-        make_1d = (
-            lambda size, dx: jnp.fft.fftshift(jnp.fft.fftfreq(size, 1 / dx)) * size
-        )
+        make_1d = lambda size, dx: jnp.fft.fftshift(jnp.fft.fftfreq(size, 1 / dx)) * size
     else:
         if rfftfreq is None:
             raise ValueError("Argument rfftfreq cannot be None if real_space=False.")

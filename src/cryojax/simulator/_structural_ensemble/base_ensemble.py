@@ -9,7 +9,7 @@ from typing_extensions import override
 from equinox import AbstractVar, Module
 
 from .._pose import AbstractPose, EulerAnglePose
-from .._potential import AbstractPotentialRepresentation
+from .._potential_representation import AbstractPotentialRepresentation
 from .base_conformation import AbstractConformationalVariable
 
 

@@ -121,9 +121,7 @@ def irfftn(
     axes: Optional[tuple[int, ...]] = None,
     **kwargs: Any,
 ) -> (
-    Float[Array, "y_dim x_dim"]
-    | Float[Array, "z_dim y_dim x_dim"]
-    | Float[Array, " *s"]
+    Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"] | Float[Array, " *s"]
 ):
     """
     Helper routine to compute the inverse fourier transform

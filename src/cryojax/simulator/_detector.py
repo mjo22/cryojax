@@ -61,9 +61,7 @@ class IdealCountingDQE(AbstractDQE, strict=True):
         pixel_size: Optional[Float[Array, ""]] = None,
     ) -> Float[Array, "y_dim x_dim"]:
         if pixel_size is None:
-            frequency_grid_in_nyquist_units = (
-                frequency_grid_in_angstroms_or_pixels / 0.5
-            )
+            frequency_grid_in_nyquist_units = frequency_grid_in_angstroms_or_pixels / 0.5
         else:
             frequency_grid_in_nyquist_units = (
                 frequency_grid_in_angstroms_or_pixels * pixel_size
@@ -113,15 +111,18 @@ class AbstractDetector(Module, strict=True):
     def compute_expected_electron_events(
         self,
         fourier_squared_wavefunction_at_detector_plane: Complex[
-            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
         ],
-        config: InstrumentConfig,
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+        instrument_config: InstrumentConfig,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
         """Compute the expected electron events from the detector."""
         fourier_expected_electron_events = (
             self._compute_expected_events_or_detector_readout(
                 fourier_squared_wavefunction_at_detector_plane,
-                config,
+                instrument_config,
                 key=None,
             )
         )
@@ -132,14 +133,17 @@ class AbstractDetector(Module, strict=True):
         self,
         key: PRNGKeyArray,
         fourier_squared_wavefunction_at_detector_plane: Complex[
-            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
         ],
-        config: InstrumentConfig,
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+        instrument_config: InstrumentConfig,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
         """Measure the readout from the detector."""
         fourier_detector_readout = self._compute_expected_events_or_detector_readout(
             fourier_squared_wavefunction_at_detector_plane,
-            config,
+            instrument_config,
             key,
         )
 
@@ -148,17 +152,21 @@ class AbstractDetector(Module, strict=True):
     def _compute_expected_events_or_detector_readout(
         self,
         fourier_squared_wavefunction_at_detector_plane: Complex[
-            Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
         ],
-        config: InstrumentConfig,
+        instrument_config: InstrumentConfig,
         key: Optional[PRNGKeyArray] = None,
-    ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
         """Pass the image through the detector model."""
-        N_pix = np.prod(config.padded_shape)
-        frequency_grid = config.wrapped_padded_frequency_grid_in_pixels.get()
+        N_pix = np.prod(instrument_config.padded_shape)
+        frequency_grid = instrument_config.wrapped_padded_frequency_grid_in_pixels.get()
         # Compute the time-integrated electron flux in pixels
         electrons_per_pixel = (
-            config.electrons_per_angstrom_squared * config.pixel_size**2
+            instrument_config.electrons_per_angstrom_squared
+            * instrument_config.pixel_size**2
         )
         # ... now the total number of electrons over the entire image
         electrons_per_image = N_pix * electrons_per_pixel
@@ -179,7 +187,7 @@ class AbstractDetector(Module, strict=True):
             # ... otherwise, go to real space, sample, go back to fourier,
             # and return.
             expected_electron_events = irfftn(
-                fourier_expected_electron_events, s=config.padded_shape
+                fourier_expected_electron_events, s=instrument_config.padded_shape
             )
             return rfftn(
                 self.sample_readout_from_expected_events(key, expected_electron_events)
@@ -195,9 +203,9 @@ class GaussianDetector(AbstractDetector, strict=True):
     def sample_readout_from_expected_events(
         self, key: PRNGKeyArray, expected_electron_events: Float[Array, "y_dim x_dim"]
     ) -> Float[Array, "y_dim x_dim"]:
-        return expected_electron_events + jnp.sqrt(
-            expected_electron_events
-        ) * jr.normal(key, expected_electron_events.shape)
+        return expected_electron_events + jnp.sqrt(expected_electron_events) * jr.normal(
+            key, expected_electron_events.shape
+        )
 
 
 class PoissonDetector(AbstractDetector, strict=True):

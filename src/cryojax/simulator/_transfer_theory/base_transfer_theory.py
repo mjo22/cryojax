@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Optional
 
-from equinox import AbstractVar, Module
+from equinox import Module
 from jaxtyping import Array, Complex, Float
 
 from ...image.operators import (
@@ -27,20 +27,30 @@ class AbstractTransferFunction(AbstractFourierOperator, strict=True):
 class AbstractTransferTheory(Module, strict=True):
     """Base class for a transfer theory."""
 
-    transfer_function: AbstractVar[AbstractTransferFunction]
-
     @abstractmethod
     def __call__(
         self,
         fourier_phase_or_wavefunction_at_exit_plane: (
-            Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
-            | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
+            Complex[
+                Array,
+                "{instrument_config.padded_y_dim} "
+                "{instrument_config.padded_x_dim//2+1}",
+            ]
+            | Complex[
+                Array,
+                "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+            ]
         ),
-        config: InstrumentConfig,
+        instrument_config: InstrumentConfig,
         defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> (
-        Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]
-        | Complex[Array, "{config.padded_y_dim} {config.padded_x_dim}"]
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Complex[
+            Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+        ]
     ):
         """Pass an image through the transfer theory."""
         raise NotImplementedError
