@@ -35,7 +35,7 @@ class AbstractDistribution(Module, strict=True):
         raise NotImplementedError
 
     @abstractmethod
-    def render(self, *, get_real: bool = True) -> Inexact[Array, "y_dim x_dim"]:
+    def compute_signal(self, *, get_real: bool = True) -> Inexact[Array, "y_dim x_dim"]:
         """Render the image formation model."""
         raise NotImplementedError
 
