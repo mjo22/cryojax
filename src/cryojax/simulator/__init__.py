@@ -33,14 +33,13 @@ from ._potential_integrator import (
     NufftProjection as NufftProjection,
 )
 from ._potential_representation import (
+    AbstractAtomicPotential as AbstractAtomicPotential,
     AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
     AbstractPotentialRepresentation as AbstractPotentialRepresentation,
     AbstractVoxelPotential as AbstractVoxelPotential,
-    build_real_space_voxels_from_atoms as build_real_space_voxels_from_atoms,
-    evaluate_3d_atom_potential as evaluate_3d_atom_potential,
-    evaluate_3d_real_space_gaussian as evaluate_3d_real_space_gaussian,
     FourierVoxelGridPotential as FourierVoxelGridPotential,
     FourierVoxelGridPotentialInterpolator as FourierVoxelGridPotentialInterpolator,
+    GaussianMixtureAtomicPotential as GaussianMixtureAtomicPotential,
     RealVoxelCloudPotential as RealVoxelCloudPotential,
     RealVoxelGridPotential as RealVoxelGridPotential,
 )

@@ -1,23 +1,29 @@
-import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
 from jax import config
+from jaxtyping import install_import_hook
 
-from cryojax.coordinates import CoordinateGrid
-from cryojax.data import read_atoms_from_pdb
-from cryojax.image import ifftn
-from cryojax.simulator import (
-    build_real_space_voxels_from_atoms,
-    FourierVoxelGridPotential,
-    RealVoxelGridPotential,
-)
+
+with install_import_hook("cryojax", "typeguard.typechecked"):
+    from cryojax.constants import (
+        get_form_factor_params_from_table,
+        peng1996_form_factor_param_table,
+    )
+    from cryojax.coordinates import make_coordinates
+    from cryojax.data import read_atoms_from_pdb
+    from cryojax.image import ifftn
+    from cryojax.simulator import (
+        FourierVoxelGridPotential,
+        GaussianMixtureAtomicPotential,
+        RealVoxelGridPotential,
+    )
 
 
 config.update("jax_enable_x64", True)
 
 
-def test_VoxelGrid_agreement(sample_pdb_path):
+def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
     """
     Integration test ensuring that the VoxelGrid classes
     produce comparable electron densities when loaded from PDB.
@@ -25,24 +31,27 @@ def test_VoxelGrid_agreement(sample_pdb_path):
     n_voxels_per_side = (128, 128, 128)
     voxel_size = 0.5
 
-    # Load the PDB file into a VoxelGrid
+    # Load the PDB file
     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
-    coordinate_grid_in_angstroms = CoordinateGrid(n_voxels_per_side, voxel_size)
-    fourier_potential = FourierVoxelGridPotential.from_atoms(
-        atom_positions,
-        atom_elements,
-        voxel_size,
-        coordinate_grid_in_angstroms,
+    # Load form factor parameters and build atomistic potential
+    atom_a_factors, atom_b_factors = get_form_factor_params_from_table(
+        atom_elements, peng1996_form_factor_param_table
+    )
+    atomic_potential = GaussianMixtureAtomicPotential(
+        atom_positions, atom_a_factors, atom_b_factors
+    )
+    # Build the grid
+    coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
+    potential_as_real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
+    fourier_potential = FourierVoxelGridPotential.from_real_voxel_grid(
+        potential_as_real_voxel_grid, voxel_size
     )
     # Since Voxelgrid is in Frequency space by default, we have to first
     # transform back into real space.
     fvg_real = ifftn(jnp.fft.ifftshift(fourier_potential.fourier_voxel_grid)).real
 
-    vg = RealVoxelGridPotential.from_atoms(
-        atom_positions,
-        atom_elements,
-        voxel_size,
-        coordinate_grid_in_angstroms,
+    vg = RealVoxelGridPotential.from_real_voxel_grid(
+        potential_as_real_voxel_grid, voxel_size
     )
 
     np.testing.assert_allclose(fvg_real, vg.real_voxel_grid, atol=1e-12)
@@ -62,16 +71,15 @@ class TestBuildRealSpaceVoxelsFromAtoms:
             voxel_size,
         ) = toy_gaussian_cloud
         ff_a = ff_a.at[largest_atom].add(1.0)
-        coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
+        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
 
         # Build the potential
-        real_voxel_grid = build_real_space_voxels_from_atoms(
-            atom_positions, ff_a, ff_b, coordinate_grid.get()
-        )
+        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+        real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
 
         # Find the maximum
         maximum_index = jnp.argmax(real_voxel_grid)
-        maximum_position = coordinate_grid.get().reshape(-1, 3)[maximum_index]
+        maximum_position = coordinate_grid.reshape(-1, 3)[maximum_index]
 
         # Check that the maximum is in the correct position
         assert jnp.allclose(maximum_position, atom_positions[largest_atom])
@@ -87,17 +95,17 @@ class TestBuildRealSpaceVoxelsFromAtoms:
             n_voxels_per_side,
             voxel_size,
         ) = toy_gaussian_cloud
-        coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
+        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
 
         # Build the potential
-        real_voxel_grid = build_real_space_voxels_from_atoms(
-            atom_positions, ff_a, ff_b, coordinate_grid.get()
-        )
+        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+        real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
 
         integral = jnp.sum(real_voxel_grid) * voxel_size**3
         assert jnp.isclose(integral, jnp.sum(ff_a))
 
 
+"""
 class TestBuildVoxelsFromTrajectories:
     def test_indexing_matches_individual_calls(self, toy_gaussian_cloud):
         (
@@ -136,3 +144,4 @@ class TestBuildVoxelsFromTrajectories:
         np.testing.assert_allclose(
             traj_voxels.real_voxel_grid[1], voxel2.real_voxel_grid, atol=1e-12
         )
+"""

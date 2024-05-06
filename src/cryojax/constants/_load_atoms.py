@@ -5,18 +5,14 @@ Large amounts of the code are adapted from the ioSPI package
 
 import importlib.resources as pkg_resources
 import os
-from functools import partial
-from typing import Optional
 
-import jax
 import jax.numpy as jnp
+import numpy as np
 from jaxtyping import Array, Float, Int
 
 
-def _load_element_form_factor_params():
-    """
-    Internal function to load the atomic form factor parameters.
-    """
+def _load_peng1996_element_form_factor_param_table():
+    """Internal function to load the atomic form factor parameter table."""
     with pkg_resources.as_file(
         pkg_resources.files("cryojax").joinpath("constants")
     ) as path:
@@ -25,31 +21,30 @@ def _load_element_form_factor_params():
     return jnp.asarray(atom_form_factor_params)
 
 
-default_form_factor_params = _load_element_form_factor_params()
+peng1996_form_factor_param_table = _load_peng1996_element_form_factor_param_table()
 
 
-@partial(jax.jit, static_argnums=(1,))
-def get_form_factor_params(
-    atom_names: Int[Array, " size"],
-    form_factor_params: Optional[Float[Array, "2 N k"]] = None,
-):
-    """
-    Gets the parameters for the form factor for each atom in atom_names.
+def get_form_factor_params_from_table(
+    atom_identities: Int[Array, " n_atoms"] | Int[np.ndarray, " n_atoms"],
+    form_factor_param_table: (
+        Float[Array, "n_params n_elements n_form_factors"]
+        | Float[np.ndarray, "n_params n_elements n_form_factors"]
+    ),
+) -> Float[Array, "n_params n_atoms n_form_factors"]:
+    """Gets the parameters for the form factor for each atom in
+    `atom_names`.
 
-    Parameters
-    ----------
-    atom_names : npt.NDArray[int]
+    **Arguments:**
+
+    - `atom_identitites`:
         Array containing the index of the one-hot encoded atom names.
         By default, Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.
-    a_params : npt.NDArray[float], optional
-        Array containing the strength of the Gaussian for each form factor
-    b_params : npt.NDArray[float], optional
-        Array containing the scaling of the Gaussian for each form factor
-    """
+    - `form_factor_params`:
+        Array containing the table of form factors.
 
-    if form_factor_params is None:
-        data = default_form_factor_params[:, atom_names]
-        return data[0], data[1]
-    else:
-        data = form_factor_params[:, atom_names]
-        return data[0], data[1]
+    **Returns:**
+
+    The particular form factor parameters stored in `form_factor_param_table` for
+    `atom_identities`.
+    """
+    return jnp.asarray(form_factor_param_table)[:, jnp.asarray(atom_identities)]

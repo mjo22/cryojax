@@ -8,6 +8,23 @@
             members:
                 - rotate_to_pose
 
+## Atomistic scattering potentials
+
+???+ abstract "`cryojax.simulator.AbstractAtomicPotential`"
+
+    ::: cryojax.simulator.AbstractAtomicPotential
+        options:
+            members:
+                - atom_positions
+                - rotate_to_pose
+                - as_real_voxel_grid
+
+::: cryojax.simulator.GaussianMixtureAtomicPotential
+        options:
+            members:
+                - __init__
+                - as_real_voxel_grid
+
 ## Voxel-based scattering potentials
 
 ???+ abstract "`cryojax.simulator.AbstractVoxelPotential`"
@@ -20,7 +37,6 @@
                 - shape
                 - rotate_to_pose
                 - from_real_voxel_grid
-                - from_atoms
 
 ### Fourier-space voxel representations
 
@@ -44,7 +60,6 @@
                 - __init__
                 - wrapped_frequency_slice_in_angstroms
                 - from_real_voxel_grid
-                - from_atoms
 
 ---
 
@@ -54,7 +69,6 @@
                 - __init__
                 - wrapped_frequency_slice_in_angstroms
                 - from_real_voxel_grid
-                - from_atoms
 
 ### Real-space voxel representations
 
@@ -64,7 +78,6 @@
                 - __init__
                 - wrapped_coordinate_grid_in_angstroms
                 - from_real_voxel_grid
-                - from_atoms
 
 ---
 
@@ -74,22 +87,3 @@
                 - __init__
                 - wrapped_coordinate_list_in_angstroms
                 - from_real_voxel_grid
-                - from_atoms
-
-### Pure function API
-
-::: cryojax.simulator.build_real_space_voxels_from_atoms
-        options:
-            heading_level: 5
-
----
-
-::: cryojax.simulator.evaluate_3d_atom_potential
-        options:
-            heading_level: 5
-
----
-
-::: cryojax.simulator.evaluate_3d_real_space_gaussian
-        options:
-            heading_level: 5

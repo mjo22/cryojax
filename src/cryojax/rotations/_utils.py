@@ -10,9 +10,7 @@ def convert_quaternion_to_euler_angles(
 
     Adapted from https://github.com/chrisflesher/jax-scipy-spatial/.
     """
-    if len(convention) != 3 or not all(
-        [axis in ["x", "y", "z"] for axis in convention]
-    ):
+    if len(convention) != 3 or not all([axis in ["x", "y", "z"] for axis in convention]):
         raise ValueError(
             f"`convention` should be a string of three characters, each "
             f"of which is 'x', 'y', or 'z'. Instead, got '{convention}'"
