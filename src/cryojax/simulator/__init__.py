@@ -34,7 +34,6 @@ from ._potential_integrator import (
 )
 from ._potential_representation import (
     AbstractAtomicPotential as AbstractAtomicPotential,
-    AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
     AbstractPotentialRepresentation as AbstractPotentialRepresentation,
     AbstractVoxelPotential as AbstractVoxelPotential,
     FourierVoxelGridPotential as FourierVoxelGridPotential,

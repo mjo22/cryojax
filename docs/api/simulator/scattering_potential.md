@@ -10,7 +10,7 @@
 
 ## Atomistic scattering potentials
 
-???+ abstract "`cryojax.simulator.AbstractAtomicPotential`"
+??? abstract "`cryojax.simulator.AbstractAtomicPotential`"
 
     ::: cryojax.simulator.AbstractAtomicPotential
         options:
@@ -27,7 +27,7 @@
 
 ## Voxel-based scattering potentials
 
-???+ abstract "`cryojax.simulator.AbstractVoxelPotential`"
+??? abstract "`cryojax.simulator.AbstractVoxelPotential`"
 
     ::: cryojax.simulator.AbstractVoxelPotential
         options:
@@ -40,16 +40,9 @@
 
 ### Fourier-space voxel representations
 
-??? abstract "`cryojax.simulator.AbstractFourierVoxelGridPotential`"
-
-    ::: cryojax.simulator.AbstractFourierVoxelGridPotential
-        options:
-            members:
-                - __init__
-
 !!! info "Fourier-space conventions"
     - The `fourier_voxel_grid` and `wrapped_frequency_slice` arguments to
-    `FourierVoxelGrid.__init__` should be loaded with the zero frequency
+    `FourierVoxelGridPotential.__init__` should be loaded with the zero frequency
     component in the center of the box.
     - The parameters in an `AbstractPose` represent a rotation in real-space. This means that when calling `FourierVoxelGridPotential.rotate_to_pose`,
     frequencies are rotated by the inverse rotation as stored in the pose.

@@ -51,6 +51,7 @@ class AbstractVoxelPotential(AbstractPotentialRepresentation, strict=True):
         raise NotImplementedError
 
 
+# Not public API
 class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     """Abstract interface of a 3D scattering potential voxel grid
     in fourier-space.
