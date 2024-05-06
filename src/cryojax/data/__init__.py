@@ -1,7 +1,7 @@
 from ._dataset import AbstractDataset as AbstractDataset
 from ._io import (
     clean_gemmi_structure as clean_gemmi_structure,
-    extract_atom_positions_and_names as extract_atom_positions_and_names,
+    extract_atom_positions_and_numbers as extract_atom_positions_and_numbers,
     extract_gemmi_atoms as extract_gemmi_atoms,
     get_atom_info_from_gemmi_model as get_atom_info_from_gemmi_model,
     get_atom_info_from_mdtraj as get_atom_info_from_mdtraj,
