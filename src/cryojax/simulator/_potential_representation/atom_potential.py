@@ -78,7 +78,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         atom_a_factors, atom_b_factors = get_tabulated_scattering_factor_parameters(
             atom_identities, peng1996_scattering_factor_parameter_table
         )
-        potential = GaussianAtomicPotential(
+        potential = GaussianMixtureAtomicPotential(
             atom_positions, atom_a_factors, atom_b_factors
         )
         ```
