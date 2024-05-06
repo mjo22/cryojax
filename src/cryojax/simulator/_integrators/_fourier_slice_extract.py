@@ -50,6 +50,7 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
     def __call__(
         self,
         potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
+        wavelength_in_angstroms: Float[Array, ""],
         config: ImageConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Compute a projection of the real-space potential by extracting
@@ -95,11 +96,11 @@ class FourierSliceExtract(AbstractPotentialIntegrator, strict=True):
 
 
 def extract_slice(
-    fourier_voxel_grid: Complex[Array, "N N N"],
-    frequency_slice: Float[Array, "1 N N 3"],
+    fourier_voxel_grid: Complex[Array, "dim dim dim"],
+    frequency_slice: Float[Array, "1 dim dim 3"],
     interpolation_order: int = 1,
     **kwargs: Any,
-) -> Complex[Array, "N N//2+1"]:
+) -> Complex[Array, "dim dim//2+1"]:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using the fourier slice theorem.
@@ -140,10 +141,10 @@ def extract_slice(
 
 
 def extract_slice_with_cubic_spline(
-    spline_coefficients: Complex[Array, "N N N"],
-    frequency_slice: Float[Array, "1 N-2 N-2 3"],
+    spline_coefficients: Complex[Array, "dim+2 dim+2 dim+2"],
+    frequency_slice: Float[Array, "1 dim dim 3"],
     **kwargs: Any,
-) -> Complex[Array, " N-2 (N-2)//2+1"]:
+) -> Complex[Array, "dim dim//2+1"]:
     """
     Project and interpolate 3D volume point cloud
     onto imaging plane using the fourier slice theorem, using cubic

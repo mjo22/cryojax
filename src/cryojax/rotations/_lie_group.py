@@ -12,7 +12,6 @@ import jax.numpy as jnp
 from equinox import AbstractClassVar, field
 from jaxtyping import Array, Float, PRNGKeyArray
 
-from ..typing import RealNumber
 from ._rotation import AbstractRotation
 
 
@@ -82,7 +81,7 @@ class SO3(AbstractMatrixLieGroup, strict=True):
     tangent_dimension: ClassVar[int] = 3
     matrix_dimension: ClassVar[int] = 3
 
-    wxyz: Float[Array, "... 4"] = field(converter=jnp.asarray)
+    wxyz: Float[Array, "4"] = field(converter=jnp.asarray)
 
     @override
     def apply(self, target: Float[Array, "3"]) -> Float[Array, "3"]:
@@ -112,17 +111,17 @@ class SO3(AbstractMatrixLieGroup, strict=True):
         )
 
     @classmethod
-    def from_x_radians(cls, angle: RealNumber) -> Self:
+    def from_x_radians(cls, angle: Float[Array, ""]) -> Self:
         """Generates a x-axis rotation."""
         return cls.exp(jnp.asarray([angle, 0.0, 0.0]))
 
     @classmethod
-    def from_y_radians(cls, angle: RealNumber) -> Self:
+    def from_y_radians(cls, angle: Float[Array, ""]) -> Self:
         """Generates a x-axis rotation."""
         return cls.exp(jnp.asarray([0.0, angle, 0.0]))
 
     @classmethod
-    def from_z_radians(cls, angle: RealNumber) -> Self:
+    def from_z_radians(cls, angle: Float[Array, ""]) -> Self:
         """Generates a x-axis rotation."""
         return cls.exp(jnp.asarray([0.0, 0.0, angle]))
 
@@ -360,7 +359,7 @@ class SE3(AbstractMatrixLieGroup, strict=True):
     matrix_dimension: ClassVar[int] = 4
 
     rotation: SO3
-    xyz: Float[Array, "... 3"]
+    xyz: Float[Array, "3"]
 
     @override
     def apply(self, target: Float[Array, "3"]) -> Float[Array, "3"]:

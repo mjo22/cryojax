@@ -92,11 +92,11 @@ ctf = cs.CTF(
     defocus_u_in_angstroms=10000.0,
     defocus_v_in_angstroms=9800.0,
     astigmatism_angle=10.0,
-    voltage_in_kilovolts=300.0,
     amplitude_contrast_ratio=0.1)
 optics = cs.WeakPhaseOptics(ctf, envelope=op.FourierGaussian(b_factor=5.0))  # b_factor is given in Angstroms^2
 # ... these are stored in the Instrument
-instrument = cs.Instrument(optics)
+voltage_in_kilovolts = 300.0,
+instrument = cs.Instrument(voltage_in_kilovolts, optics)
 ```
 
 The `CTF` has parameters used in CTFFIND4, which take their default values if not

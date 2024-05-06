@@ -3,17 +3,11 @@ Using non-uniform FFTs for computing volume projections.
 """
 
 import math
-from typing import Union
 
 import jax.numpy as jnp
 from equinox import field
-from jaxtyping import Array, Complex
+from jaxtyping import Array, Complex, Float
 
-from ...typing import (
-    PointCloudCoords2D,
-    PointCloudCoords3D,
-    RealPointCloud,
-)
 from .._config import ImageConfig
 from .._potential import RealVoxelCloudPotential, RealVoxelGridPotential
 from ._potential_integrator import AbstractPotentialIntegrator
@@ -34,6 +28,7 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
     def __call__(
         self,
         potential: RealVoxelGridPotential | RealVoxelCloudPotential,
+        wavelength_in_angstroms: Float[Array, ""],
         config: ImageConfig,
     ) -> Complex[Array, "{config.padded_y_dim} {config.padded_x_dim//2+1}"]:
         """Rasterize image with non-uniform FFTs."""
@@ -65,8 +60,8 @@ class NufftProject(AbstractPotentialIntegrator, strict=True):
 
 
 def project_with_nufft(
-    weights: RealPointCloud,
-    coordinate_list: Union[PointCloudCoords2D, PointCloudCoords3D],
+    weights: Float[Array, " size"],
+    coordinate_list: Float[Array, "size 2"] | Float[Array, "size 3"],
     shape: tuple[int, int],
     eps: float = 1e-6,
 ) -> Complex[Array, "{shape[0]} {shape[1]}"]:

@@ -7,6 +7,5 @@ from . import (
     io as io,
     rotations as rotations,
     simulator as simulator,
-    typing as typing,
 )
 from .cryojax_version import __version__ as __version__

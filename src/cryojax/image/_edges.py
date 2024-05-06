@@ -8,25 +8,25 @@ from typing import Any, overload
 import jax.numpy as jnp
 from jaxtyping import Array, Inexact
 
-from ..typing import Image, Volume
-
 
 @overload
 def crop_to_shape(
-    image_or_volume: Image,
+    image_or_volume: Inexact[Array, "y_dim x_dim"],
     shape: tuple[int, int],
 ) -> Inexact[Array, " {shape[0]} {shape[1]}"]: ...
 
 
 @overload
 def crop_to_shape(
-    image_or_volume: Volume,
+    image_or_volume: Inexact[Array, "z_dim y_dim x_dim"],
     shape: tuple[int, int, int],
 ) -> Inexact[Array, " {shape[0]} {shape[1]} {shape[2]}"]: ...
 
 
 def crop_to_shape(
-    image_or_volume: Image | Volume,
+    image_or_volume: (
+        Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+    ),
     shape: tuple[int, int] | tuple[int, int, int],
 ) -> (
     Inexact[Array, " {shape[0]} {shape[1]}"]
@@ -74,7 +74,7 @@ def crop_to_shape(
 
 
 def crop_to_shape_with_center(
-    image: Image,
+    image: Inexact[Array, "y_dim x_dim"],
     shape: tuple[int, int],
     center: tuple[int, int],
 ) -> Inexact[Array, "{shape[0]} {shape[1]}"]:
@@ -109,7 +109,7 @@ def crop_to_shape_with_center(
 
 @overload
 def pad_to_shape(
-    image_or_volume: Image,
+    image_or_volume: Inexact[Array, "y_dim x_dim"],
     shape: tuple[int, int],
     **kwargs: Any,
 ) -> Inexact[Array, " {shape[0]} {shape[1]}"]: ...
@@ -117,14 +117,16 @@ def pad_to_shape(
 
 @overload
 def pad_to_shape(
-    image_or_volume: Volume,
+    image_or_volume: Inexact[Array, "z_dim y_dim x_dim"],
     shape: tuple[int, int, int],
     **kwargs: Any,
 ) -> Inexact[Array, " {shape[0]} {shape[1]} {shape[2]}"]: ...
 
 
 def pad_to_shape(
-    image_or_volume: Image | Volume,
+    image_or_volume: (
+        Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+    ),
     shape: tuple[int, int] | tuple[int, int, int],
     **kwargs: Any,
 ) -> (
@@ -170,7 +172,7 @@ def pad_to_shape(
 
 
 def resize_with_crop_or_pad(
-    image: Image, shape: tuple[int, int], **kwargs
+    image: Inexact[Array, "y_dim x_dim"], shape: tuple[int, int], **kwargs
 ) -> Inexact[Array, " {shape[0]} {shape[1]}"]:
     """Resize an image to a new shape using padding and cropping."""
     if image.ndim != 2 or len(shape) != 2:

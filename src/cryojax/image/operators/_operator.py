@@ -9,9 +9,7 @@ from typing_extensions import override
 import jax
 import jax.numpy as jnp
 from equinox import AbstractVar, field, Module, Partial
-from jaxtyping import Array, Shaped
-
-from ...typing import Image, RealNumber, Volume
+from jaxtyping import Array, Float, Inexact
 
 
 class AbstractImageOperator(Module, strict=True):
@@ -66,9 +64,13 @@ class AbstractImageMultiplier(Module, strict=True):
         computed upon instantiation.
     """
 
-    buffer: AbstractVar[Image | Volume]
+    buffer: AbstractVar[
+        Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+    ]
 
-    def __call__(self, image: Image | Volume) -> Image | Volume:
+    def __call__(
+        self, image: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+    ) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
         return image * jax.lax.stop_gradient(self.buffer)
 
     def __mul__(self, other) -> "AbstractImageMultiplier":
@@ -81,10 +83,10 @@ class AbstractImageMultiplier(Module, strict=True):
 class Constant(AbstractImageOperator, strict=True):
     """An operator that is a constant."""
 
-    value: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    value: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
 
     @override
-    def __call__(self, *args: Any, **kwargs: Any) -> RealNumber:
+    def __call__(self, *args: Any, **kwargs: Any) -> Float[Array, ""]:
         return self.value
 
 
@@ -97,10 +99,14 @@ Constant.__init__.__doc__ = """**Arguments:**
 class Lambda(AbstractImageOperator, strict=True):
     """An operator that calls a custom function."""
 
-    fn: Callable[[Array], Image | Volume] = field(static=True)
+    fn: Callable[
+        [Array], Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+    ] = field(static=True)
 
     @override
-    def __call__(self, *args: Any, **kwargs: Any) -> Image | Volume:
+    def __call__(
+        self, *args: Any, **kwargs: Any
+    ) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
         return self.fn(*args, **kwargs)
 
 
@@ -115,11 +121,15 @@ class Empirical(AbstractImageOperator, strict=True):
     computing one from a model.
     """
 
-    array: Shaped[Image, "..."] | Shaped[Volume, "..."] | Shaped[RealNumber, "..."]
-    amplitude: Shaped[RealNumber, "..."] = field(default=1.0, converter=jnp.asarray)
+    array: (
+        Inexact[Array, "... y_dim x_dim"]
+        | Inexact[Array, "... z_dim y_dim x_dim"]
+        | Float[Array, "..."]
+    )
+    amplitude: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
 
     @override
-    def __call__(self, *args: Any, **kwargs: Any) -> Image:
+    def __call__(self, *args: Any, **kwargs: Any) -> Inexact[Array, "y_dim x_dim"]:
         """Return the scaled and offset measurement."""
         return self.amplitude * jax.lax.stop_gradient(self.array)
 
@@ -134,7 +144,7 @@ Empirical.__init__.__doc__ = """**Arguments:**
 class ProductImageMultiplier(AbstractImageMultiplier, strict=True):
     """A helper to represent the product of two operators."""
 
-    buffer: Image | Volume
+    buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
     operator1: AbstractImageMultiplier
     operator2: AbstractImageMultiplier

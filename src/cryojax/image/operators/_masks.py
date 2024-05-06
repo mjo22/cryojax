@@ -7,13 +7,8 @@ from typing import overload
 import jax
 import jax.numpy as jnp
 from equinox import field
+from jaxtyping import Array, Float
 
-from ...typing import (
-    ImageCoords,
-    RealImage,
-    RealVolume,
-    VolumeCoords,
-)
 from ._operator import AbstractImageMultiplier
 
 
@@ -23,12 +18,18 @@ class AbstractMask(AbstractImageMultiplier, strict=True):
     """
 
     @overload
-    def __call__(self, image: RealImage) -> RealImage: ...
+    def __call__(
+        self, image: Float[Array, "y_dim x_dim"]
+    ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
-    def __call__(self, image: RealVolume) -> RealVolume: ...
+    def __call__(
+        self, image: Float[Array, "z_dim y_dim x_dim"]
+    ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
-    def __call__(self, image: RealImage | RealVolume) -> RealImage | RealVolume:
+    def __call__(
+        self, image: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
+    ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
         return image * jax.lax.stop_gradient(self.buffer)
 
 
@@ -37,9 +38,11 @@ class CustomMask(AbstractImageMultiplier, strict=True):
     Pass a custom mask as an array.
     """
 
-    buffer: RealImage | RealVolume
+    buffer: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
 
-    def __init__(self, mask: RealImage | RealVolume):
+    def __init__(
+        self, mask: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
+    ):
         self.buffer = mask
 
 
@@ -59,14 +62,16 @@ class CircularMask(AbstractMask, strict=True):
         By default, ``0.05``.
     """
 
-    buffer: RealImage | RealVolume
+    buffer: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
 
     radius: float = field(static=True)
     rolloff: float = field(static=True)
 
     def __init__(
         self,
-        coordinate_grid_in_angstroms: ImageCoords | VolumeCoords,
+        coordinate_grid_in_angstroms: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
         radius: float,
         rolloff: float = 0.05,
     ) -> None:
@@ -79,25 +84,27 @@ class CircularMask(AbstractMask, strict=True):
 
 @overload
 def _compute_circular_mask(
-    coordinate_grid_in_angstroms: ImageCoords,
+    coordinate_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
     radius: float,
     rolloff: float,
-) -> RealImage: ...
+) -> Float[Array, "y_dim x_dim"]: ...
 
 
 @overload
 def _compute_circular_mask(
-    coordinate_grid_in_angstroms: VolumeCoords,
+    coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"],
     radius: float,
     rolloff: float,
-) -> RealVolume: ...
+) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
 
 def _compute_circular_mask(
-    coordinate_grid_in_angstroms: ImageCoords | VolumeCoords,
+    coordinate_grid_in_angstroms: (
+        Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+    ),
     radius: float,
     rolloff: float = 0.05,
-) -> RealImage | RealVolume:
+) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
     """
     Create a circular mask.
 

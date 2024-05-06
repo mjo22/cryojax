@@ -2,14 +2,9 @@
 Scattering methods for the gaussian mixtures of atoms.
 """
 
+'''
 import jax.numpy as jnp
 
-from ...typing import (
-    ComplexImage,
-    ImageCoords,
-    PointCloudCoords2D,
-    RealNumber,
-)
 from .._potential._atom_potential import AtomCloud
 from ._potential_integrator import AbstractPotentialIntegrator
 
@@ -118,3 +113,4 @@ def _build_pixel_grid(
     )[:-1]
     grid_1d *= pixel_size
     return jnp.expand_dims(grid_1d, axis=(0, -1))
+'''

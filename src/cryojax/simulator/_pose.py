@@ -11,16 +11,9 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 from equinox import AbstractVar, field, Module
-from jaxtyping import Array, Float, Shaped
+from jaxtyping import Array, Complex, Float
 
 from ..rotations import SO3
-from ..typing import (
-    ComplexImage,
-    ImageCoords,
-    PointCloudCoords3D,
-    RealNumber,
-    VolumeCoords,
-)
 
 
 class AbstractPose(Module, strict=True):
@@ -36,30 +29,34 @@ class AbstractPose(Module, strict=True):
            `AbstractPose.from_rotation` class method.
     """
 
-    offset_x_in_angstroms: AbstractVar[Shaped[RealNumber, "..."]]
-    offset_y_in_angstroms: AbstractVar[Shaped[RealNumber, "..."]]
-    offset_z_in_angstroms: AbstractVar[Shaped[RealNumber, "..."]]
+    offset_x_in_angstroms: AbstractVar[Float[Array, ""]]
+    offset_y_in_angstroms: AbstractVar[Float[Array, ""]]
+    offset_z_in_angstroms: AbstractVar[Float[Array, ""]]
 
     @overload
     def rotate_coordinates(
-        self, volume_coordinates: VolumeCoords, inverse: bool = False
-    ) -> VolumeCoords: ...
+        self,
+        volume_coordinates: Float[Array, "z_dim y_dim x_dim 3"],
+        inverse: bool = False,
+    ) -> Float[Array, "z_dim y_dim x_dim 3"]: ...
 
     @overload
     def rotate_coordinates(
-        self, volume_coordinates: PointCloudCoords3D, inverse: bool = False
-    ) -> PointCloudCoords3D: ...
+        self, volume_coordinates: Float[Array, "size 3"], inverse: bool = False
+    ) -> Float[Array, "size 3"]: ...
 
     def rotate_coordinates(
         self,
-        volume_coordinates: VolumeCoords | PointCloudCoords3D,
+        volume_coordinates: (
+            Float[Array, "z_dim y_dim x_dim 3"] | Float[Array, "size 3"]
+        ),
         inverse: bool = False,
-    ) -> VolumeCoords | PointCloudCoords3D:
+    ) -> Float[Array, "z_dim y_dim x_dim 3"] | Float[Array, "size 3"]:
         """Rotate coordinates from a particular convention."""
         rotation = self.rotation.inverse() if inverse else self.rotation
-        if isinstance(volume_coordinates, PointCloudCoords3D):  # type: ignore
+        if isinstance(volume_coordinates, Float[Array, "size 3"]):  # type: ignore
             rotated_volume_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
-        elif isinstance(volume_coordinates, VolumeCoords):  # type: ignore
+        elif isinstance(volume_coordinates, Float[Array, "z_dim y_dim x_dim 3"]):  # type: ignore
             rotated_volume_coordinates = jax.vmap(jax.vmap(jax.vmap(rotation.apply)))(
                 volume_coordinates
             )
@@ -71,7 +68,9 @@ class AbstractPose(Module, strict=True):
             )
         return rotated_volume_coordinates
 
-    def compute_shifts(self, frequency_grid_in_angstroms: ImageCoords) -> ComplexImage:
+    def compute_shifts(
+        self, frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"]
+    ) -> Complex[Array, "y_dim x_dim"]:
         """Compute the phase shifts from the in-plane translation,
         given a frequency grid coordinate system.
         """
@@ -136,19 +135,13 @@ class EulerAnglePose(AbstractPose, strict=True):
     given by a zyz extrinsic rotations.
     """
 
-    offset_x_in_angstroms: Shaped[RealNumber, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_y_in_angstroms: Shaped[RealNumber, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_z_in_angstroms: Shaped[RealNumber, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
+    offset_x_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
 
-    view_phi: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
-    view_theta: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
-    view_psi: Shaped[RealNumber, "..."] = field(default=0.0, converter=jnp.asarray)
+    view_phi: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    view_theta: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    view_psi: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
 
     @cached_property
     @override
@@ -193,19 +186,11 @@ EulerAnglePose.__init__.__doc__ = """**Arguments:**
 class QuaternionPose(AbstractPose, strict=True):
     """An `AbstractPose` represented by unit quaternions."""
 
-    offset_x_in_angstroms: Shaped[RealNumber, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_y_in_angstroms: Shaped[RealNumber, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_z_in_angstroms: Shaped[RealNumber, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
+    offset_x_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
 
-    wxyz: Float[Array, "... 4"] = field(
-        default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray
-    )
+    wxyz: Float[Array, "4"] = field(default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray)
 
     @cached_property
     @override
@@ -243,17 +228,11 @@ class AxisAnglePose(AbstractPose, strict=True):
     the matrix exponential.
     """
 
-    offset_x_in_angstroms: Shaped[RealNumber, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_y_in_angstroms: Shaped[RealNumber, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
-    offset_z_in_angstroms: Shaped[RealNumber, "..."] = field(
-        default=0.0, converter=jnp.asarray
-    )
+    offset_x_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_y_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_z_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
 
-    euler_vector: Float[Array, "... 3"] = field(
+    euler_vector: Float[Array, "3"] = field(
         default=(0.0, 0.0, 0.0), converter=jnp.asarray
     )
 

@@ -5,81 +5,89 @@ Helper routines to compute power spectra.
 from typing import Optional, overload
 
 import jax.numpy as jnp
-from jaxtyping import Array, Float
+from jaxtyping import Array, Complex, Float
 
-from ..typing import (
-    ComplexImage,
-    ComplexVolume,
-    RealImage,
-    RealNumber,
-    RealVolume,
-)
 from ._average import radial_average
 
 
-RealVector = Float[Array, "N"]
-
-
 @overload
 def powerspectrum(
-    fourier_image: ComplexImage,
-    radial_frequency_grid: RealImage,
-    pixel_size: RealNumber | float,
+    fourier_image: Complex[Array, "y_dim x_dim"],
+    radial_frequency_grid: Float[Array, "y_dim x_dim"],
+    pixel_size: Float[Array, ""] | float,
     *,
-    k_min: Optional[RealNumber | float] = None,
-    k_max: Optional[RealNumber | float] = None,
-) -> tuple[RealVector, RealVector]: ...
+    k_min: Optional[Float[Array, ""] | float] = None,
+    k_max: Optional[Float[Array, ""] | float] = None,
+) -> tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]: ...
 
 
 @overload
 def powerspectrum(
-    fourier_image: ComplexVolume,
-    radial_frequency_grid: RealVolume,
-    pixel_size: RealNumber | float,
+    fourier_image: Complex[Array, "z_dim y_dim x_dim"],
+    radial_frequency_grid: Float[Array, "z_dim y_dim x_dim"],
+    pixel_size: Float[Array, ""] | float,
     *,
-    k_min: Optional[RealNumber | float] = None,
-    k_max: Optional[RealNumber | float] = None,
-) -> tuple[RealVector, RealVector]: ...
+    k_min: Optional[Float[Array, ""] | float] = None,
+    k_max: Optional[Float[Array, ""] | float] = None,
+) -> tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]: ...
 
 
 @overload
 def powerspectrum(
-    fourier_image: ComplexImage,
-    radial_frequency_grid: RealImage,
-    pixel_size: RealNumber | float,
+    fourier_image: Complex[Array, "y_dim x_dim"],
+    radial_frequency_grid: Float[Array, "y_dim x_dim"],
+    pixel_size: Float[Array, ""] | float,
     *,
     to_grid: bool = False,
     interpolation_mode: str = "nearest",
-    k_min: Optional[RealNumber | float] = None,
-    k_max: Optional[RealNumber | float] = None,
-) -> tuple[RealVector, RealVector] | tuple[RealVector, RealImage, RealVector]: ...
-
-
-@overload
-def powerspectrum(
-    fourier_image: ComplexVolume,
-    radial_frequency_grid: RealVolume,
-    pixel_size: RealNumber | float,
-    *,
-    to_grid: bool = False,
-    interpolation_mode: str = "nearest",
-    k_min: Optional[RealNumber | float] = None,
-    k_max: Optional[RealNumber | float] = None,
-) -> tuple[RealVector, RealVector] | tuple[RealVector, RealVolume, RealVector]: ...
-
-
-def powerspectrum(
-    fourier_image: ComplexImage | ComplexVolume,
-    radial_frequency_grid: RealImage | RealVolume,
-    pixel_size: RealNumber | float = 1.0,
-    *,
-    to_grid: bool = False,
-    interpolation_mode: str = "nearest",
-    k_min: Optional[RealNumber | float] = None,
-    k_max: Optional[RealNumber | float] = None,
+    k_min: Optional[Float[Array, ""] | float] = None,
+    k_max: Optional[Float[Array, ""] | float] = None,
 ) -> (
-    tuple[RealVector, RealVector]
-    | tuple[RealVector, RealImage | RealVolume, RealVector]
+    tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]
+    | tuple[
+        Float[Array, " n_bins"], Float[Array, "y_dim x_dim"], Float[Array, " n_bins"]
+    ]
+): ...
+
+
+@overload
+def powerspectrum(
+    fourier_image: Complex[Array, "z_dim y_dim x_dim"],
+    radial_frequency_grid: Float[Array, "z_dim y_dim x_dim"],
+    pixel_size: Float[Array, ""] | float,
+    *,
+    to_grid: bool = False,
+    interpolation_mode: str = "nearest",
+    k_min: Optional[Float[Array, ""] | float] = None,
+    k_max: Optional[Float[Array, ""] | float] = None,
+) -> (
+    tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]
+    | tuple[
+        Float[Array, " n_bins"],
+        Float[Array, "z_dim y_dim x_dim"],
+        Float[Array, " n_bins"],
+    ]
+): ...
+
+
+def powerspectrum(
+    fourier_image: Complex[Array, "y_dim x_dim"] | Complex[Array, "z_dim y_dim x_dim"],
+    radial_frequency_grid: (
+        Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
+    ),
+    pixel_size: Float[Array, ""] | float = 1.0,
+    *,
+    to_grid: bool = False,
+    interpolation_mode: str = "nearest",
+    k_min: Optional[Float[Array, ""] | float] = None,
+    k_max: Optional[Float[Array, ""] | float] = None,
+) -> (
+    tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]
+    | tuple[
+        Float[Array, " n_bins"],
+        Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"],
+        Float[Array, " n_bins"],
+    ]
 ):
     """
     Compute the power spectrum of an image averaged on a set
