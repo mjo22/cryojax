@@ -3,6 +3,7 @@ Atomistic representation of the scattering potential.
 """
 
 from abc import abstractmethod
+from functools import partial
 from typing_extensions import override, Self
 
 import equinox as eqx
@@ -180,12 +181,15 @@ def _build_real_space_voxels_from_atoms(
     """
     voxel_grid_buffer = jnp.zeros(coordinate_grid_in_angstroms.shape[:-1])
 
-    # TODO: Look into forcing JAX to do in-place updates with equinox.internal.while_loop
+    # TODO: Look into forcing JAX to do in-place updates
+    # Below is a first attempt at this with `donate_argnums`, however
+    # equinox.internal.while_loop / equinox.internal.scan could also be
+    # options
+    @partial(jax.jit, donate_argnums=1)
     def add_gaussian_to_potential(i, potential):
-        potential += _evaluate_3d_atom_potential(
+        return potential + _evaluate_3d_atom_potential(
             coordinate_grid_in_angstroms, atom_positions[i], ff_a[i], ff_b[i]
         )
-        return potential
 
     voxel_grid = jax.lax.fori_loop(
         0, atom_positions.shape[0], add_gaussian_to_potential, voxel_grid_buffer

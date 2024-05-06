@@ -1,5 +1,8 @@
 from . import operators as operators
 from ._average import radial_average as radial_average
+from ._downsample import (
+    downsample_with_fourier_cropping as downsample_with_fourier_cropping,
+)
 from ._edges import (
     crop_to_shape as crop_to_shape,
     crop_to_shape_with_center as crop_to_shape_with_center,
