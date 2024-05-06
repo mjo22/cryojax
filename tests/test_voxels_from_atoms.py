@@ -7,8 +7,8 @@ from jaxtyping import install_import_hook
 
 with install_import_hook("cryojax", "typeguard.typechecked"):
     from cryojax.constants import (
-        get_form_factor_params_from_table,
-        peng1996_form_factor_param_table,
+        get_tabulated_scattering_factor_parameters,
+        peng1996_scattering_factor_parameter_table,
     )
     from cryojax.coordinates import make_coordinates
     from cryojax.data import read_atoms_from_pdb
@@ -33,9 +33,9 @@ def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
 
     # Load the PDB file
     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
-    # Load form factor parameters and build atomistic potential
-    atom_a_factors, atom_b_factors = get_form_factor_params_from_table(
-        atom_elements, peng1996_form_factor_param_table
+    # Load scattering factor parameters and build atomistic potential
+    atom_a_factors, atom_b_factors = get_tabulated_scattering_factor_parameters(
+        atom_elements, peng1996_scattering_factor_parameter_table
     )
     atomic_potential = GaussianMixtureAtomicPotential(
         atom_positions, atom_a_factors, atom_b_factors

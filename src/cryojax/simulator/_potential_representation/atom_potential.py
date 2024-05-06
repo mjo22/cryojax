@@ -31,7 +31,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
     def as_real_voxel_grid(
         self, coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]:
-        """Build a voxel grid in real space of an `AbstractAtomicPotential`."""
+        """Return a voxel grid in real space of an `AbstractAtomicPotential`."""
         raise NotImplementedError
 
 
@@ -49,14 +49,14 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         ```python
         from cryojax.constants import (
-            peng1996_form_factor_param_table,
-            get_form_factor_params_from_table,
+            peng1996_scattering_factor_parameter_table,
+            get_tabulated_scattering_factor_parameters,
         )
 
         atom_positions = ...   # Load positions of atoms
         atom_identities = ...  # Load one-hot encoded atom names
-        atom_a_factors, atom_b_factors = get_form_factor_params_from_table(
-            atom_identities, peng1996_form_factor_param_table
+        atom_a_factors, atom_b_factors = get_tabulated_scattering_factor_parameters(
+            atom_identities, peng1996_scattering_factor_parameter_table
         )
         potential = GaussianAtomicPotential(
             atom_positions, atom_a_factors, atom_b_factors
@@ -134,8 +134,8 @@ def _evaluate_3d_real_space_gaussian(
 def _evaluate_3d_atom_potential(
     coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"],
     atom_position: Float[Array, "3"],
-    atomic_as: Float[Array, " n_form_factors"],
-    atomic_bs: Float[Array, " n_form_factors"],
+    atomic_as: Float[Array, " n_scattering_factors"],
+    atomic_bs: Float[Array, " n_scattering_factors"],
 ) -> Float[Array, "z_dim y_dim x_dim"]:
     """Evaluates the electron potential of a single atom on a 3D grid.
 

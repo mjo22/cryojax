@@ -3,7 +3,7 @@ from jaxtyping import Float, Int
 
 from .gemmi import (
     clean_gemmi_structure,
-    extract_atom_positions_and_names,
+    extract_atom_positions_and_numbers,
     extract_gemmi_atoms,
 )
 
@@ -30,9 +30,9 @@ def read_atoms_from_cif(
     Returns
     -------
     atom_positions: list of numpy arrays
-        List of coordinates containing atomic positions
-    atom_element_names: list of strings
-        List of atomic element names
+        Array of coordinates containing atomic positions
+    atom_element_numbers: array of ints
+        Array of atomic element numbers
     """
     import gemmi
 
@@ -46,5 +46,5 @@ def read_atoms_from_cif(
         chain_naming = gemmi.HowToNameCopiedChain.AddNumber
         model = gemmi.make_assembly(assembly, model, chain_naming)
     atoms = extract_gemmi_atoms(model)
-    atom_positions, atom_element_names = extract_atom_positions_and_names(atoms)
+    atom_positions, atom_element_names = extract_atom_positions_and_numbers(atoms)
     return atom_positions, atom_element_names

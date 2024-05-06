@@ -29,8 +29,8 @@ def get_atom_info_from_gemmi_model(
 
     """
     atoms = extract_gemmi_atoms(model)
-    atom_positions, atom_element_names = extract_atom_positions_and_names(atoms)
-    return atom_positions, atom_element_names
+    atom_positions, atom_element_numbers = extract_atom_positions_and_numbers(atoms)
+    return atom_positions, atom_element_numbers
 
 
 def clean_gemmi_structure(structure=None):
@@ -92,7 +92,7 @@ def extract_gemmi_atoms(model, chains=None, split_chains=False):
     return atoms
 
 
-def extract_atom_positions_and_names(
+def extract_atom_positions_and_numbers(
     atoms,
 ) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, " N"]]:
     """

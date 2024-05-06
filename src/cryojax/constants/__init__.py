@@ -1,5 +1,5 @@
-from ._load_atoms import (
-    get_form_factor_params_from_table as get_form_factor_params_from_table,
-    peng1996_form_factor_param_table as peng1996_form_factor_param_table,
+from ._scattering_factor_parameters import (
+    get_tabulated_scattering_factor_parameters as get_tabulated_scattering_factor_parameters,  # noqa: E501
+    peng1996_scattering_factor_parameter_table as peng1996_scattering_factor_parameter_table,  # noqa: E501
 )
 from ._unit_conversions import convert_keV_to_angstroms as convert_keV_to_angstroms
