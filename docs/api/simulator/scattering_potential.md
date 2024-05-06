@@ -8,9 +8,9 @@
             members:
                 - rotate_to_pose
 
-## Atomistic scattering potentials
+## Atom-based scattering potentials
 
-??? abstract "`cryojax.simulator.AbstractAtomicPotential`"
+???+ abstract "`cryojax.simulator.AbstractAtomicPotential`"
 
     ::: cryojax.simulator.AbstractAtomicPotential
         options:

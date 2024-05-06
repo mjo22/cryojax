@@ -17,7 +17,27 @@ from .base_potential import AbstractPotentialRepresentation
 
 
 class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
-    """Abstract interface for an atom-based scattering potential representation."""
+    r"""Abstract interface for an atom-based scattering potential representation.
+
+    !!! info
+        In, `cryojax`, potentials should be built in units of *inverse length squared*,
+        $[L]^{-2}$. This rescaled potential is defined to be
+
+        $$v(\mathbf{x}) = \frac{2 m e}{\hbar^2} V(\mathbf{x}),$$
+
+        where $V$ is the electrostatic potential energy, $\mathbf{x}$ is a positional
+        coordinate, $m$ is the electron mass, and $e$ is the electron charge.
+
+        For a single atom, this re-scaled potential has the advantage that the fourier
+        transform of this quantity for a single atom is the electron scattering factor
+        (at least in the the first-born approximation).
+
+        **References**:
+
+        - *Chapter 69, Page 2003, Equation 69.6* from Hawkes, Peter W., and Erwin Kasper.
+        Principles of Electron Optics, Volume 4: Advanced Wave Optics. Academic Press,
+        2022.
+    """
 
     atom_positions: eqx.AbstractVar[Float[Array, "n_atoms 3"]]
 
@@ -32,7 +52,6 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
     def as_real_voxel_grid(
         self, coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]:
-        """Return a voxel grid in real space of an `AbstractAtomicPotential`."""
         raise NotImplementedError
 
 
@@ -98,6 +117,16 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     def as_real_voxel_grid(
         self, coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]:
+        """Return a voxel grid in real space of an `AbstractAtomicPotential`.
+
+        **Arguments:**
+
+        - `coordinate_grid_in_angstroms`: The coordinate system of the grid.
+
+        **Returns:**
+
+        The voxel grid evaluated on the `coordinate_grid_in_angstroms`.
+        """
         return _build_real_space_voxels_from_atoms(
             self.atom_positions,
             self.atom_a_factors,
