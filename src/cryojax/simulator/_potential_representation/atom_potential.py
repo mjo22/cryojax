@@ -16,6 +16,8 @@ from .base_potential import AbstractPotentialRepresentation
 
 
 class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
+    """Abstract interface for an atom-based scattering potential representation."""
+
     atom_positions: eqx.AbstractVar[Float[Array, "n_atoms 3"]]
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
@@ -155,6 +157,7 @@ def _evaluate_3d_atom_potential(
     )
 
 
+@eqx.filter_jit
 def _build_real_space_voxels_from_atoms(
     atom_positions: Float[Array, "n_atoms 3"],
     ff_a: Float[Array, "n_atoms n_gaussians_per_atom"],

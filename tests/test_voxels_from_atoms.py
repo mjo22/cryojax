@@ -118,7 +118,7 @@ class TestBuildVoxelsFromTrajectories:
         second_set_of_positions = atom_positions + 1.0
         traj = jnp.stack([atom_positions, second_set_of_positions], axis=0)
 
-        coordinate_grid = CoordinateGrid(n_voxels_per_side, voxel_size)
+        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
 
         # Build the trajectory $density
         elements = jnp.array([1, 1, 2, 6])
