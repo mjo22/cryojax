@@ -17,27 +17,38 @@ from .base_potential import AbstractPotentialRepresentation
 
 
 class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
-    r"""Abstract interface for an atom-based scattering potential representation.
+    """Abstract interface for an atom-based scattering potential representation.
 
     !!! info
         In, `cryojax`, potentials should be built in units of *inverse length squared*,
         $[L]^{-2}$. This rescaled potential is defined to be
 
-        $$v(\mathbf{x}) = \frac{2 m e}{\hbar^2} V(\mathbf{x}),$$
+        $$v(\\mathbf{x}) = \\frac{1}{4 \\pi} \\frac{2 m e}{\\hbar^2} V(\\mathbf{x}),$$
 
-        where $V$ is the electrostatic potential energy, $\mathbf{x}$ is a positional
+        where $V$ is the electrostatic potential energy, $\\mathbf{x}$ is a positional
         coordinate, $m$ is the electron mass, and $e$ is the electron charge.
 
-        For a single atom, this re-scaled potential has the advantage that the fourier
-        transform of this quantity for a single atom is the electron scattering factor
-        (at least in the the first-born approximation).
+        For a single atom, this re-scaled potential has the advantage (among other reasons)
+        that under usual scattering approximations (i.e. the first-born approximation), the
+        fourier transform of this quantity is closely related to tabulated electron scattering
+        factors. In particular, for a single atom with scattering factor $f^{(e)}(\\mathbf{q})$
+        and scattering vector $\\mathbf{q}$, its re-scaled potential is equal to
+
+        $$v(\\mathbf{x}) = \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
+
+        where $\\mathcal{F}^{-1}$ is the inverse fourier transform. The inverse fourier
+        transform is evaluated at $2\\mathbf{x}$ because $2 \\mathbf{q}$ gives the spatial
+        frequency $\\boldsymbol{\\xi}$ in the usual crystallographic fourier transform convention,
+
+        $$\\mathcal{F}[f](\\boldsymbol{\\xi}) = \\int d^3\\mathbf{x} \\ \\exp(2\\pi i \\mathbf{x}\\cdot\\boldsymbol{\\xi}) f(\\mathbf{x}).$$
 
         **References**:
 
-        - *Chapter 69, Page 2003, Equation 69.6* from Hawkes, Peter W., and Erwin Kasper.
+        - For the definition of the re-scaled potential, see
+        *Chapter 69, Page 2003, Equation 69.6* from Hawkes, Peter W., and Erwin Kasper.
         Principles of Electron Optics, Volume 4: Advanced Wave Optics. Academic Press,
         2022.
-    """
+    """  # noqa: E501
 
     atom_positions: eqx.AbstractVar[Float[Array, "n_atoms 3"]]
 
@@ -119,14 +130,28 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     ) -> Float[Array, "z_dim y_dim x_dim"]:
         """Return a voxel grid in real space of an `AbstractAtomicPotential`.
 
+        In the notation of Peng et al. (1996), tabulated `atom_a_factors` and
+        `atom_b_factors` parameterize the elastic electron scattering factors,
+        defined as
+
+        $$f^{(e)}(\\mathbf{q}) = \\sum\\limits_{i = 1}^n a_i \\exp(- b_i |\\mathbf{q}|^2),$$
+
+        where $a_i$ are the `atom_a_factors`, $b_i$ are the `atom_b_factors`, and $n = 5$
+        for Peng et al. (1996). Under usual scattering approximations (i.e. the first-born approximation),
+        the re-scaled electrostatic potential energy $v(\\mathbf{x})$ is then given by
+        $\\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
+
+        $$v(\\mathbf{x}) = \\sum\\limits_{i = 1}^n \\frac{a_i}{(b_i / \\pi)^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{b_i / (2\\pi)^2}).$$
+
         **Arguments:**
 
         - `coordinate_grid_in_angstroms`: The coordinate system of the grid.
 
         **Returns:**
 
-        The voxel grid evaluated on the `coordinate_grid_in_angstroms`.
-        """
+        The re-scaled potential $v(\\mathbf{x})$ as a voxel grid evaluated on the
+        `coordinate_grid_in_angstroms`.
+        """  # noqa: E501
         return _build_real_space_voxels_from_atoms(
             self.atom_positions,
             self.atom_a_factors,
