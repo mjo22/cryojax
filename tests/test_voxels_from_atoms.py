@@ -95,7 +95,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         )
 
         integral = jnp.sum(real_voxel_grid) * voxel_size**3
-        assert jnp.isclose(integral, jnp.sum(ff_a))
+        assert jnp.isclose(integral, jnp.sum(ff_a) * 4 * jnp.pi)
         
     def test_fourier_transform(self, toy_gaussian_cloud):
         (
