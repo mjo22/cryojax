@@ -29,9 +29,7 @@ def test_fft(model, request):
     # Run tests with an image
     np.testing.assert_allclose(image, ifftn(fftn(image)).real)
     # ... test zero mode separately
-    np.testing.assert_allclose(
-        fftn(image)[1:, 1:], fftn(ifftn(fftn(image)).real)[1:, 1:]
-    )
+    np.testing.assert_allclose(fftn(image)[1:, 1:], fftn(ifftn(fftn(image)).real)[1:, 1:])
     np.testing.assert_allclose(
         fftn(image)[0, 0], fftn(ifftn(fftn(image)).real)[0, 0], atol=1e-12
     )

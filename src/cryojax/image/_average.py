@@ -113,9 +113,7 @@ def radial_average(
                 average_as_profile,
             ).reshape(radial_grid.shape)
         else:
-            raise ValueError(
-                f"interpolation_mode = {interpolation_mode} not supported."
-            )
+            raise ValueError(f"interpolation_mode = {interpolation_mode} not supported.")
         return average_as_profile, average_as_grid
     else:
         return average_as_profile

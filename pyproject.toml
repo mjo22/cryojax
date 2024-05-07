@@ -27,6 +27,7 @@ dependencies = [
     "starfile",
     "pandas",
     "typing_extensions>=4.5.0",
+    "tqdm",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +46,7 @@ version-file = "src/cryojax/cryojax_version.py"
 [tool.ruff]
 extend-include = ["*.ipynb"]
 lint.fixable = ["I001", "F401"]
+line-length = 90
 lint.ignore = ["E402", "E721", "E731", "E741", "F722"]
 lint.ignore-init-module-imports = true
 lint.select = ["E", "F", "I001"]
@@ -55,6 +57,9 @@ combine-as-imports = true
 extra-standard-library = ["typing_extensions"]
 lines-after-imports = 2
 order-by-type = false
+
+[tool.black]
+line-length = 90
 
 [tool.pyright]
 reportIncompatibleMethodOverride = true

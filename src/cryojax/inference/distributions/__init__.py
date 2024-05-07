@@ -1,7 +1,7 @@
-from ._distribution import (
+from ._base_distribution import (
     AbstractDistribution as AbstractDistribution,
     AbstractMarginalDistribution as AbstractMarginalDistribution,
 )
 from ._gaussian_distributions import (
-    IndependentFourierGaussian as IndependentFourierGaussian,
+    IndependentGaussianFourierModes as IndependentGaussianFourierModes,
 )

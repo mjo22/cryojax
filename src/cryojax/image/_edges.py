@@ -24,9 +24,7 @@ def crop_to_shape(
 
 
 def crop_to_shape(
-    image_or_volume: (
-        Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
-    ),
+    image_or_volume: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"],
     shape: tuple[int, int] | tuple[int, int, int],
 ) -> (
     Inexact[Array, " {shape[0]} {shape[1]}"]
@@ -124,9 +122,7 @@ def pad_to_shape(
 
 
 def pad_to_shape(
-    image_or_volume: (
-        Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
-    ),
+    image_or_volume: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"],
     shape: tuple[int, int] | tuple[int, int, int],
     **kwargs: Any,
 ) -> (

@@ -106,9 +106,7 @@ class SO3(AbstractMatrixLieGroup, strict=True):
 
     def inverse(self) -> Self:
         # Negate complex terms.
-        return eqx.tree_at(
-            lambda R: R.wxyz, self, self.wxyz * jnp.array([1, -1, -1, -1])
-        )
+        return eqx.tree_at(lambda R: R.wxyz, self, self.wxyz * jnp.array([1, -1, -1, -1]))
 
     @classmethod
     def from_x_radians(cls, angle: Float[Array, ""]) -> Self:
@@ -306,9 +304,7 @@ class SO3(AbstractMatrixLieGroup, strict=True):
 
     @override
     def normalize(self) -> Self:
-        return eqx.tree_at(
-            lambda R: R.wxyz, self, self.wxyz / jnp.linalg.norm(self.wxyz)
-        )
+        return eqx.tree_at(lambda R: R.wxyz, self, self.wxyz / jnp.linalg.norm(self.wxyz))
 
     @classmethod
     def sample_uniform(cls, key: PRNGKeyArray) -> Self:

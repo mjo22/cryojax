@@ -21,9 +21,7 @@ def test_translation_agreement():
     offset = jnp.asarray((0.0, -1.4, 4.5))
     quat = cs.QuaternionPose.from_rotation_and_translation(rotation, offset)
     axis_angle = cs.AxisAnglePose.from_rotation_and_translation(rotation, offset)
-    np.testing.assert_allclose(
-        quat.rotation.as_matrix(), axis_angle.rotation.as_matrix()
-    )
+    np.testing.assert_allclose(quat.rotation.as_matrix(), axis_angle.rotation.as_matrix())
     np.testing.assert_allclose(quat.offset_in_angstroms, axis_angle.offset_in_angstroms)
 
 
@@ -34,17 +32,19 @@ def test_pose_conversion():
     euler = cs.EulerAnglePose.from_rotation(rotation)
     axis_angle = cs.AxisAnglePose.from_rotation(rotation)
     np.testing.assert_allclose(quat.rotation.as_matrix(), euler.rotation.as_matrix())
-    np.testing.assert_allclose(
-        quat.rotation.as_matrix(), axis_angle.rotation.as_matrix()
-    )
+    np.testing.assert_allclose(quat.rotation.as_matrix(), axis_angle.rotation.as_matrix())
 
 
 def test_default_pose_images(noiseless_model):
     euler = cs.EulerAnglePose()
     quat = cs.QuaternionPose()
 
-    model_euler = eqx.tree_at(lambda m: m.specimen.pose, noiseless_model, euler)
-    model_quat = eqx.tree_at(lambda m: m.specimen.pose, noiseless_model, quat)
+    model_euler = eqx.tree_at(
+        lambda m: m.scattering_theory.structural_ensemble.pose, noiseless_model, euler
+    )
+    model_quat = eqx.tree_at(
+        lambda m: m.scattering_theory.structural_ensemble.pose, noiseless_model, quat
+    )
     np.testing.assert_allclose(model_euler.render(), model_quat.render())
 
 

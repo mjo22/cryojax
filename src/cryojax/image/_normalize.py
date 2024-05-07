@@ -104,7 +104,7 @@ def compute_mean_and_std_from_fourier_image(
     else:
         N_modes = N1 * N2
     # The mean is just the zero mode divided by the number of modes
-    mean = fourier_image[0, 0] / N_modes
+    mean = fourier_image[0, 0].real / N_modes
     # The standard deviation is square root norm squared of the zero mean image
     std = (
         jnp.sqrt(

@@ -1,9 +1,9 @@
 # Scattering potential representations
 
-`cryojax` provides different options for how to represent scattering potentials in cryo-EM.
+`cryojax` provides different options for how to represent spatial potential energy distributions in cryo-EM.
 
-???+ abstract "`cryojax.simulator.AbstractScatteringPotential`"
-    ::: cryojax.simulator.AbstractScatteringPotential
+???+ abstract "`cryojax.simulator.AbstractPotentialRepresentation`"
+    ::: cryojax.simulator.AbstractPotentialRepresentation
         options:
             members:
                 - rotate_to_pose

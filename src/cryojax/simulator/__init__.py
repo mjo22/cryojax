@@ -2,53 +2,39 @@ from ._assembly import (
     AbstractAssembly as AbstractAssembly,
     compute_helical_lattice_positions as compute_helical_lattice_positions,
     compute_helical_lattice_rotations as compute_helical_lattice_rotations,
-    Helix as Helix,
-)
-from ._config import ImageConfig as ImageConfig
-from ._conformation import (
-    AbstractConformation as AbstractConformation,
-    DiscreteConformation as DiscreteConformation,
+    HelicalAssembly as HelicalAssembly,
 )
 from ._detector import (
     AbstractDetector as AbstractDetector,
     AbstractDQE as AbstractDQE,
     GaussianDetector as GaussianDetector,
+    IdealCountingDQE as IdealCountingDQE,
     IdealDQE as IdealDQE,
     PoissonDetector as PoissonDetector,
 )
-from ._dose import ElectronDose as ElectronDose
-from ._ice import (
-    AbstractIce as AbstractIce,
-    GaussianIce as GaussianIce,
+from ._imaging_pipeline import (
+    AbstractImagingPipeline as AbstractImagingPipeline,
+    ContrastImagingPipeline as ContrastImagingPipeline,
+    ElectronCountingImagingPipeline as ElectronCountingImagingPipeline,
+    IntensityImagingPipeline as IntensityImagingPipeline,
 )
-from ._instrument import Instrument as Instrument
-from ._integrators import (
-    AbstractPotentialIntegrator as AbstractPotentialIntegrator,
-    extract_slice as extract_slice,
-    extract_slice_with_cubic_spline as extract_slice_with_cubic_spline,
-    FourierSliceExtract as FourierSliceExtract,
-    NufftProject as NufftProject,
-    project_with_nufft as project_with_nufft,
-)
-from ._optics import (
-    AbstractOptics as AbstractOptics,
-    CTF as CTF,
-    WeakPhaseOptics as WeakPhaseOptics,
-)
-from ._pipeline import (
-    AbstractPipeline as AbstractPipeline,
-    AssemblyPipeline as AssemblyPipeline,
-    ImagePipeline as ImagePipeline,
-)
+from ._instrument_config import InstrumentConfig as InstrumentConfig
 from ._pose import (
     AbstractPose as AbstractPose,
     AxisAnglePose as AxisAnglePose,
     EulerAnglePose as EulerAnglePose,
     QuaternionPose as QuaternionPose,
 )
-from ._potential import (
+from ._potential_integrator import (
+    AbstractFourierVoxelExtraction as AbstractFourierVoxelExtraction,
+    AbstractPotentialIntegrator as AbstractPotentialIntegrator,
+    AbstractVoxelPotentialIntegrator as AbstractVoxelPotentialIntegrator,
+    FourierSliceExtraction as FourierSliceExtraction,
+    NufftProjection as NufftProjection,
+)
+from ._potential_representation import (
     AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
-    AbstractScatteringPotential as AbstractScatteringPotential,
+    AbstractPotentialRepresentation as AbstractPotentialRepresentation,
     AbstractVoxelPotential as AbstractVoxelPotential,
     build_real_space_voxels_from_atoms as build_real_space_voxels_from_atoms,
     evaluate_3d_atom_potential as evaluate_3d_atom_potential,
@@ -58,9 +44,29 @@ from ._potential import (
     RealVoxelCloudPotential as RealVoxelCloudPotential,
     RealVoxelGridPotential as RealVoxelGridPotential,
 )
-from ._specimen import (
-    AbstractEnsemble as AbstractEnsemble,
-    AbstractSpecimen as AbstractSpecimen,
-    DiscreteEnsemble as DiscreteEnsemble,
-    Specimen as Specimen,
+from ._scattering_theory import (
+    AbstractLinearScatteringTheory as AbstractLinearScatteringTheory,
+    AbstractScatteringTheory as AbstractScatteringTheory,
+    LinearScatteringTheory as LinearScatteringTheory,
+    LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
+)
+from ._solvent import (
+    AbstractIce as AbstractIce,
+    GaussianIce as GaussianIce,
+)
+from ._structural_ensemble import (
+    AbstractConformationalVariable as AbstractConformationalVariable,
+    AbstractStructuralEnsemble as AbstractStructuralEnsemble,
+    AbstractStructuralEnsembleBatcher as AbstractStructuralEnsembleBatcher,
+    DiscreteConformationalVariable as DiscreteConformationalVariable,
+    DiscreteStructuralEnsemble as DiscreteStructuralEnsemble,
+    SingleStructureEnsemble as SingleStructureEnsemble,
+)
+from ._transfer_theory import (
+    AbstractContrastTransferFunction as AbstractContrastTransferFunction,
+    AbstractTransferFunction as AbstractTransferFunction,
+    AbstractTransferTheory as AbstractTransferTheory,
+    ContrastTransferFunction as ContrastTransferFunction,
+    ContrastTransferTheory as ContrastTransferTheory,
+    IdealContrastTransferFunction as IdealContrastTransferFunction,
 )
