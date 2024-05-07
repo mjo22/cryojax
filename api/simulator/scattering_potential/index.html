@@ -15,12 +15,12 @@
         <link rel="canonical" href="https://mjo22.github.io/cryojax/api/simulator/scattering_potential/">
       
       
-        <link rel="prev" href="../../../examples/simulate-micrograph/">
+        <link rel="prev" href="../../../examples/cross-correlation-search/">
       
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.17">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.21">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.bcfcd587.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.66ac8b77.min.css">
       
       
 
@@ -129,7 +129,7 @@
         <a href="https://github.com/mjo22/cryojax" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
   </div>
   <div class="md-source__repository">
     mjo22/cryojax
@@ -177,7 +177,7 @@
       <a href="https://github.com/mjo22/cryojax" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
   </div>
   <div class="md-source__repository">
     mjo22/cryojax
@@ -392,6 +392,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/cross-correlation-search/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Run a cross-correlation search
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -502,9 +523,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#cryojax.simulator.AbstractScatteringPotential" class="md-nav__link">
+  <a href="#cryojax.simulator.AbstractPotentialRepresentation" class="md-nav__link">
     <span class="md-ellipsis">
-      AbstractScatteringPotential
+      AbstractPotentialRepresentation
     </span>
   </a>
   
@@ -650,20 +671,20 @@
 
 
 <h1 id="scattering-potential-representations">Scattering potential representations<a class="headerlink" href="#scattering-potential-representations" title="Permanent link">¤</a></h1>
-<p><code>cryojax</code> provides different options for how to represent scattering potentials in cryo-EM.</p>
+<p><code>cryojax</code> provides different options for how to represent spatial potential energy distributions in cryo-EM.</p>
 <details class="abstract" open="open">
-<summary><code>cryojax.simulator.AbstractScatteringPotential</code></summary>
+<summary><code>cryojax.simulator.AbstractPotentialRepresentation</code></summary>
 
 
 <div class="doc doc-object doc-class">
 
 
 
-<h4 id="cryojax.simulator.AbstractScatteringPotential" class="doc doc-heading">
-          <code>cryojax.simulator.AbstractScatteringPotential</code>
+<h4 id="cryojax.simulator.AbstractPotentialRepresentation" class="doc doc-heading">
+          <code>cryojax.simulator.AbstractPotentialRepresentation</code>
 
 
-<a href="#cryojax.simulator.AbstractScatteringPotential" class="headerlink" title="Permanent link">¤</a></h4>
+<a href="#cryojax.simulator.AbstractPotentialRepresentation" class="headerlink" title="Permanent link">¤</a></h4>
 
 
   <div class="doc doc-contents first">
@@ -671,7 +692,8 @@
             Bases: <code>equinox.<span title="equinox.Module">Module</span></code></p>
 
   
-      <p>Abstract interface for an electron scattering potential.</p>
+      <p>Abstract interface for the spatial potential energy distribution of a
+scatterer.</p>
 
 
   
@@ -691,22 +713,22 @@
 
 
 
-<h5 id="cryojax.simulator.AbstractScatteringPotential.rotate_to_pose" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractScatteringPotential</span><span class="o">.</span><span class="n">rotate_to_pose</span><span class="p">(</span><span class="n">pose</span><span class="p">:</span> <span class="n">AbstractPose</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
+<h5 id="cryojax.simulator.AbstractPotentialRepresentation.rotate_to_pose" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractPotentialRepresentation</span><span class="o">.</span><span class="n">rotate_to_pose</span><span class="p">(</span><span class="n">pose</span><span class="p">:</span> <span class="n">AbstractPose</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#cryojax.simulator.AbstractScatteringPotential.rotate_to_pose" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.AbstractPotentialRepresentation.rotate_to_pose" class="headerlink" title="Permanent link">¤</a></h5>
 
 
   <div class="doc doc-contents ">
   
-      <p>Return a new <code>AbstractScatteringPotential</code> at the given pose.</p>
+      <p>Return a new <code>AbstractPotentialRepresentation</code> at the given pose.</p>
 <p><strong>Arguments:</strong></p>
 <ul>
-<li><code>pose</code>: The pose at which to view the <code>AbstractScatteringPotential</code>.</li>
+<li><code>pose</code>: The pose at which to view the <code>AbstractPotentialRepresentation</code>.</li>
 </ul>
 
   </div>
@@ -739,7 +761,7 @@
 
   <div class="doc doc-contents first">
           <p class="doc doc-class-bases">
-            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential">_potential</span>.<span title="cryojax.simulator._potential._scattering_potential">_scattering_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential._scattering_potential.AbstractScatteringPotential" href="#cryojax.simulator.AbstractScatteringPotential">AbstractScatteringPotential</a></code></p>
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.base_potential">base_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.base_potential.AbstractPotentialRepresentation" href="#cryojax.simulator.AbstractPotentialRepresentation">AbstractPotentialRepresentation</a></code></p>
 
   
       <p>Abstract interface for a voxel-based scattering potential representation.</p>
@@ -834,10 +856,10 @@
 
   <div class="doc doc-contents ">
   
-      <p>Return a new <code>AbstractScatteringPotential</code> at the given pose.</p>
+      <p>Return a new <code>AbstractPotentialRepresentation</code> at the given pose.</p>
 <p><strong>Arguments:</strong></p>
 <ul>
-<li><code>pose</code>: The pose at which to view the <code>AbstractScatteringPotential</code>.</li>
+<li><code>pose</code>: The pose at which to view the <code>AbstractPotentialRepresentation</code>.</li>
 </ul>
 
   </div>
@@ -862,7 +884,7 @@
 
   <div class="doc doc-contents ">
   
-      <p>Load an <code>AbstractVoxels</code> from real-valued 3D electron
+      <p>Load an <code>AbstractVoxelPotential</code> from real-valued 3D electron
 scattering potential.</p>
 
   </div>
@@ -887,7 +909,7 @@ scattering potential.</p>
 
   <div class="doc doc-contents ">
   
-      <p>Load an <code>AbstractVoxels</code> from atom positions and identities.</p>
+      <p>Load an <code>AbstractVoxelPotential</code> from atom positions and identities.</p>
 
   </div>
 
@@ -919,7 +941,7 @@ scattering potential.</p>
 
   <div class="doc doc-contents first">
           <p class="doc doc-class-bases">
-            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential">_potential</span>.<span title="cryojax.simulator._potential._voxel_potential">_voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential._voxel_potential.AbstractVoxelPotential" href="#cryojax.simulator.AbstractVoxelPotential">AbstractVoxelPotential</a></code></p>
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.voxel_potential">voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.voxel_potential.AbstractVoxelPotential" href="#cryojax.simulator.AbstractVoxelPotential">AbstractVoxelPotential</a></code></p>
 
   
       <p>Abstract interface of a 3D scattering potential voxel grid
@@ -992,7 +1014,7 @@ frequencies are rotated by the inverse rotation as stored in the pose.</li>
 
   <div class="doc doc-contents first">
           <p class="doc doc-class-bases">
-            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential">_potential</span>.<span title="cryojax.simulator._potential._voxel_potential">_voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential._voxel_potential.AbstractFourierVoxelGridPotential" href="#cryojax.simulator.AbstractFourierVoxelGridPotential">AbstractFourierVoxelGridPotential</a></code></p>
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.voxel_potential">voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.voxel_potential.AbstractFourierVoxelGridPotential" href="#cryojax.simulator.AbstractFourierVoxelGridPotential">AbstractFourierVoxelGridPotential</a></code></p>
 
   
       <p>A 3D scattering potential voxel grid in fourier-space.</p>
@@ -1143,7 +1165,7 @@ identities.</p>
 
   <div class="doc doc-contents first">
           <p class="doc doc-class-bases">
-            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential">_potential</span>.<span title="cryojax.simulator._potential._voxel_potential">_voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential._voxel_potential.AbstractFourierVoxelGridPotential" href="#cryojax.simulator.AbstractFourierVoxelGridPotential">AbstractFourierVoxelGridPotential</a></code></p>
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.voxel_potential">voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.voxel_potential.AbstractFourierVoxelGridPotential" href="#cryojax.simulator.AbstractFourierVoxelGridPotential">AbstractFourierVoxelGridPotential</a></code></p>
 
   
       <p>A 3D scattering potential voxel grid in fourier-space, represented
@@ -1307,7 +1329,7 @@ identities.</p>
 
   <div class="doc doc-contents first">
           <p class="doc doc-class-bases">
-            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential">_potential</span>.<span title="cryojax.simulator._potential._voxel_potential">_voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential._voxel_potential.AbstractVoxelPotential" href="#cryojax.simulator.AbstractVoxelPotential">AbstractVoxelPotential</a></code></p>
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.voxel_potential">voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.voxel_potential.AbstractVoxelPotential" href="#cryojax.simulator.AbstractVoxelPotential">AbstractVoxelPotential</a></code></p>
 
   
       <p>Abstraction of a 3D scattering potential voxel grid in real-space.</p>
@@ -1453,7 +1475,7 @@ scattering potential voxel grid.</p>
 
   <div class="doc doc-contents first">
           <p class="doc doc-class-bases">
-            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential">_potential</span>.<span title="cryojax.simulator._potential._voxel_potential">_voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential._voxel_potential.AbstractVoxelPotential" href="#cryojax.simulator.AbstractVoxelPotential">AbstractVoxelPotential</a></code></p>
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.voxel_potential">voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.voxel_potential.AbstractVoxelPotential" href="#cryojax.simulator.AbstractVoxelPotential">AbstractVoxelPotential</a></code></p>
 
   
       <p>Abstraction of a 3D electron scattering potential voxel point cloud.</p>
@@ -1463,7 +1485,8 @@ scattering potential voxel grid.</p>
 of storing the whole voxel grid, a <code>RealVoxelCloudPotential</code> need
 only store points of non-zero scattering potential. Therefore,
 a <code>RealVoxelCloudPotential</code> stores a point cloud of scattering potential
-voxel values.</p>
+voxel values. Instantiating with the <code>from_real_voxel_grid</code> constructor
+will automatically mask points of zero scattering potential.</p>
 </div>
 
 
@@ -1532,7 +1555,7 @@ voxel values.</p>
 
 
 <h5 id="cryojax.simulator.RealVoxelCloudPotential.from_real_voxel_grid" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="n">from_real_voxel_grid</span><span class="p">(</span><span class="n">real_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">coordinate_grid_in_pixels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CoordinateGrid</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-05</span><span class="p">,</span> <span class="n">atol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-08</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="n">from_real_voxel_grid</span><span class="p">(</span><span class="n">real_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">coordinate_grid_in_pixels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CoordinateGrid</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-05</span><span class="p">,</span> <span class="n">atol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-08</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">fill_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
@@ -1549,10 +1572,15 @@ scattering potential voxel grid.</p>
 <ul>
 <li><code>real_voxel_grid</code>: An electron scattering potential voxel grid in real space.</li>
 <li><code>voxel_size</code>: The voxel size of <code>real_voxel_grid</code>.</li>
-<li><code>rtol</code>: Argument passed to <code>jnp.isclose</code>, used for removing
-        points of zero scattering potential.</li>
-<li><code>atol</code>: Argument passed to <code>jnp.isclose</code>, used for removing
-        points of zero scattering potential.</li>
+<li><code>rtol</code>: Argument passed to <code>jnp.isclose</code>, used for masking
+          voxels of zero scattering potential.</li>
+<li><code>atol</code>: Argument passed to <code>jnp.isclose</code>, used for masking
+          voxels of zero scattering potential.</li>
+<li><code>size</code>: Argument passed to <code>jnp.where</code>, used for fixing the size
+          of the masked scattering potential. This argument is required
+          for using this function with a JAX transformation.</li>
+<li><code>fill_value</code>: Argument passed to <code>jnp.where</code>, used if <code>size</code> is specified and
+                the mask has fewer than the indicated number of elements.</li>
 </ul>
 
   </div>
@@ -1733,7 +1761,7 @@ Factors" by Peng et al.</p>
     <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.1e8ae164.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.a7c05c9e.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       

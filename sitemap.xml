@@ -2,37 +2,42 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://mjo22.github.io/cryojax/</loc>
-         <lastmod>2024-04-11</lastmod>
+         <lastmod>2024-05-07</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://mjo22.github.io/cryojax/api/simulator/scattering_potential/</loc>
-         <lastmod>2024-04-11</lastmod>
+         <lastmod>2024-05-07</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/examples/cross-correlation-search/</loc>
+         <lastmod>2024-05-07</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://mjo22.github.io/cryojax/examples/read-dataset/</loc>
-         <lastmod>2024-04-11</lastmod>
+         <lastmod>2024-05-07</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://mjo22.github.io/cryojax/examples/simulate-helix/</loc>
-         <lastmod>2024-04-11</lastmod>
+         <lastmod>2024-05-07</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://mjo22.github.io/cryojax/examples/simulate-image/</loc>
-         <lastmod>2024-04-11</lastmod>
+         <lastmod>2024-05-07</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://mjo22.github.io/cryojax/examples/simulate-micrograph/</loc>
-         <lastmod>2024-04-11</lastmod>
+         <lastmod>2024-05-07</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://mjo22.github.io/cryojax/examples/test-multiatom/</loc>
-         <lastmod>2024-04-11</lastmod>
+         <lastmod>2024-05-07</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
