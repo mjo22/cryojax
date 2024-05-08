@@ -34,7 +34,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         factors. In particular, for a single atom with scattering factor $f^{(e)}(\\mathbf{q})$
         and scattering vector $\\mathbf{q}$, its rescaled potential is equal to
 
-        $$v(\\mathbf{x}) = \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
+        $$v(\\mathbf{x}) = 8 \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
 
         where $\\mathcal{F}^{-1}$ is the inverse fourier transform. The inverse fourier
         transform is evaluated at $2\\mathbf{x}$ because $2 \\mathbf{q}$ gives the spatial
@@ -44,7 +44,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
 
         **References**:
 
-        - For the definition of the rescaled potential, see
+        - For the definition of the rescaled potential (up to the factor of $4 \\pi$), see
         *Chapter 69, Page 2003, Equation 69.6* from Hawkes, Peter W., and Erwin Kasper.
         Principles of Electron Optics, Volume 4: Advanced Wave Optics. Academic Press,
         2022.
@@ -140,9 +140,9 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         where $a_i$ are the `atom_a_factors`, $b_i$ are the `atom_b_factors`, and $n = 5$
         for Peng et al. (1996). Under usual scattering approximations (i.e. the first-born approximation),
         the rescaled electrostatic potential energy $v(\\mathbf{x})$ is then given by
-        $\\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
+        $8 \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
 
-        $$v(\\mathbf{x}) = \\sum\\limits_{i = 1}^n \\frac{a_i}{(b_i / \\pi)^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{b_i / (2\\pi)^2}).$$
+        $$v(\\mathbf{x}) = \\sum\\limits_{i = 1}^n \\frac{a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
 
         **Arguments:**
 
