@@ -273,6 +273,6 @@ def _compute_phase_shifts_from_projected_potential(
     # The phase shifts in the exit plane multiplies the interaction constant x
     # projected potential x the translation.
     interaction_constant = convert_wavelength_to_interaction_constant(
-        instrument_config.wavelength
+        instrument_config.wavelength_in_angstroms
     )
     return interaction_constant * fourier_projected_potential * translational_phase_shifts
