@@ -23,7 +23,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         In, `cryojax`, potentials should be built in units of *inverse length squared*,
         $[L]^{-2}$. This rescaled potential is defined to be
 
-        $$v(\\mathbf{x}) = \\frac{1}{4 \\pi} \\frac{2 m e}{\\hbar^2} V(\\mathbf{x}),$$
+        $$v(\\mathbf{x}) = \\frac{2 m e}{\\hbar^2} V(\\mathbf{x}),$$
 
         where $V$ is the electrostatic potential energy, $\\mathbf{x}$ is a positional
         coordinate, $m$ is the electron mass, and $e$ is the electron charge.
@@ -34,7 +34,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         factors. In particular, for a single atom with scattering factor $f^{(e)}(\\mathbf{q})$
         and scattering vector $\\mathbf{q}$, its rescaled potential is equal to
 
-        $$v(\\mathbf{x}) = 8 \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
+        $$v(\\mathbf{x}) = 32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
 
         where $\\mathcal{F}^{-1}$ is the inverse fourier transform. The inverse fourier
         transform is evaluated at $2\\mathbf{x}$ because $2 \\mathbf{q}$ gives the spatial
@@ -44,10 +44,14 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
 
         **References**:
 
-        - For the definition of the rescaled potential (up to the factor of $4 \\pi$), see
-        *Chapter 69, Page 2003, Equation 69.6* from Hawkes, Peter W., and Erwin Kasper.
+        - For the definition of the rescaled potential, see
+        Chapter 69, Page 2003, Equation 69.6 from *Hawkes, Peter W., and Erwin Kasper.
         Principles of Electron Optics, Volume 4: Advanced Wave Optics. Academic Press,
-        2022.
+        2022.*
+        - To work out the correspondence between the rescaled potential and the electron
+        scattering factors, see the supplementary information from *Vulović, Miloš, et al.
+        "Image formation modeling in cryo-electron microscopy." Journal of structural
+        biology 183.1 (2013): 19-32.*
     """  # noqa: E501
 
     atom_positions: eqx.AbstractVar[Float[Array, "n_atoms 3"]]
@@ -142,7 +146,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         the rescaled electrostatic potential energy $v(\\mathbf{x})$ is then given by
         $8 \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
 
-        $$v(\\mathbf{x}) = \\sum\\limits_{i = 1}^n \\frac{a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
+        $$v(\\mathbf{x}) = \\sum\\limits_{i = 1}^n \\frac{4 \\pi a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
 
         **Arguments:**
 
@@ -184,7 +188,7 @@ def _evaluate_3d_real_space_gaussian(
     sq_distances = jnp.sum(
         b_inverse * (coordinate_grid_in_angstroms - atom_position) ** 2, axis=-1
     )
-    return jnp.exp(-jnp.pi * sq_distances) * a * b_inverse ** (3.0 / 2.0)
+    return 4 * jnp.pi * jnp.exp(-jnp.pi * sq_distances) * a * b_inverse ** (3.0 / 2.0)
 
 
 def _evaluate_3d_atom_potential(

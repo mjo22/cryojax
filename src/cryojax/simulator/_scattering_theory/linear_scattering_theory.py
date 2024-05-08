@@ -8,6 +8,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
+from ...constants import convert_wavelength_to_interaction_constant
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
 from .._potential_integrator import AbstractPotentialIntegrator
@@ -269,10 +270,9 @@ def _compute_phase_shifts_from_projected_potential(
     translational_phase_shifts = structural_ensemble.pose.compute_shifts(
         instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
     )
-    # The phase shifts in the exit plane multiplies the wavelength x
-    # projected potential (here with units of inverse angstroms) x the translation
-    return (
-        instrument_config.wavelength_in_angstroms
-        * fourier_projected_potential
-        * translational_phase_shifts
+    # The phase shifts in the exit plane multiplies the interaction constant x
+    # projected potential x the translation.
+    interaction_constant = convert_wavelength_to_interaction_constant(
+        instrument_config.wavelength
     )
+    return interaction_constant * fourier_projected_potential * translational_phase_shifts
