@@ -32,7 +32,7 @@ def downsample_with_fourier_cropping(
 
     - `image_or_volume`: The image or volume array to downsample.
     - `downsample_factor`: A scale factor at which to downsample `image_or_volume`
-                           by.
+                           by. Must be a value greater than `1`.
 
     **Returns:**
 
@@ -40,6 +40,8 @@ def downsample_with_fourier_cropping(
     `downsample_factor`.
     """
     downsampling_factor = float(downsampling_factor)
+    if downsampling_factor < 1.0:
+        raise ValueError("`downsampling_factor` must be greater than 1.0")
     if image_or_volume.ndim == 2:
         image = image_or_volume
         new_shape = (

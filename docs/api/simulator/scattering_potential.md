@@ -16,13 +16,13 @@
         options:
             members:
                 - atom_positions
-                - rotate_to_pose
                 - as_real_voxel_grid
 
 ::: cryojax.simulator.GaussianMixtureAtomicPotential
         options:
             members:
                 - __init__
+                - rotate_to_pose
                 - as_real_voxel_grid
 
 ## Voxel-based scattering potentials
@@ -35,7 +35,6 @@
                 - voxel_size
                 - is_real
                 - shape
-                - rotate_to_pose
                 - from_real_voxel_grid
 
 ### Fourier-space voxel representations
@@ -51,8 +50,10 @@
         options:
             members:
                 - __init__
-                - wrapped_frequency_slice_in_angstroms
                 - from_real_voxel_grid
+                - rotate_to_pose
+                - wrapped_frequency_slice_in_angstroms
+                - shape
 
 ---
 
@@ -60,8 +61,11 @@
         options:
             members:
                 - __init__
-                - wrapped_frequency_slice_in_angstroms
                 - from_real_voxel_grid
+                - rotate_to_pose
+                - wrapped_frequency_slice_in_angstroms
+                - shape
+
 
 ### Real-space voxel representations
 
@@ -69,8 +73,10 @@
         options:
             members:
                 - __init__
-                - wrapped_coordinate_grid_in_angstroms
                 - from_real_voxel_grid
+                - rotate_to_pose
+                - wrapped_coordinate_grid_in_angstroms
+                - shape
 
 ---
 
@@ -78,5 +84,7 @@
         options:
             members:
                 - __init__
-                - wrapped_coordinate_list_in_angstroms
                 - from_real_voxel_grid
+                - rotate_to_pose
+                - wrapped_coordinate_list_in_angstroms
+                - shape

@@ -70,10 +70,13 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     @cached_property
     def wrapped_frequency_slice_in_angstroms(self) -> FrequencySlice:
-        """The `wrapped_frequency_slice` in angstroms."""
+        """The `wrapped_frequency_slice_in_pixels` in angstroms."""
         return self.wrapped_frequency_slice_in_pixels / self.voxel_size
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
+        """Return a new potential with a rotated
+        `wrapped_frequency_slice_in_pixels`.
+        """
         return eqx.tree_at(
             lambda d: d.wrapped_frequency_slice_in_pixels.array,
             self,
@@ -113,7 +116,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
         )
         # Pad template
         if pad_scale < 1.0:
-            raise ValueError("pad_scale must be greater than 1.0")
+            raise ValueError("`pad_scale` must be greater than 1.0")
         # ... always pad to even size to avoid interpolation issues in
         # fourier slice extraction.
         padded_shape = cast(
@@ -170,6 +173,7 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
 
     @property
     def shape(self) -> tuple[int, int, int]:
+        """The shape of the `fourier_voxel_grid`."""
         return cast(tuple[int, int, int], self.fourier_voxel_grid.shape)
 
 
@@ -217,6 +221,9 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 
     @property
     def shape(self) -> tuple[int, int, int]:
+        """The shape of the original `fourier_voxel_grid` from which
+        `coefficients` were computed.
+        """
         return cast(tuple[int, int, int], tuple([s - 2 for s in self.coefficients.shape]))
 
 
@@ -248,14 +255,18 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
 
     @property
     def shape(self) -> tuple[int, int, int]:
+        """The shape of the `real_voxel_grid`."""
         return cast(tuple[int, int, int], self.real_voxel_grid.shape)
 
     @cached_property
     def wrapped_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
-        """The `coordinate_grid` in angstroms."""
+        """The `wrapped_coordinate_grid_in_pixels` in angstroms."""
         return self.voxel_size * self.wrapped_coordinate_grid_in_pixels  # type: ignore
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
+        """Return a new potential with a rotated
+        `wrapped_coordinate_grid_in_pixels`.
+        """
         return eqx.tree_at(
             lambda d: d.wrapped_coordinate_grid_in_pixels.array,
             self,
@@ -281,7 +292,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         - `real_voxel_grid`: An electron scattering potential voxel grid in real space.
         - `voxel_size`: The voxel size of `real_voxel_grid`.
         - `crop_scale`: Scale factor at which to crop `real_voxel_grid`.
-                      Must be a value less than `1.0`.
+                        Must be a value greater than `1`.
         """
         # Cast to jax array
         real_voxel_grid, voxel_size = (
@@ -292,11 +303,11 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
         if coordinate_grid_in_pixels is None:
             # Option for cropping template
             if crop_scale is not None:
-                if crop_scale > 1.0:
-                    raise ValueError("crop_scale must be less than 1.0")
+                if crop_scale < 1.0:
+                    raise ValueError("`crop_scale` must be greater than 1.0")
                 cropped_shape = cast(
                     tuple[int, int, int],
-                    tuple([int(s * crop_scale) for s in real_voxel_grid.shape[-3:]]),
+                    tuple([int(s / crop_scale) for s in real_voxel_grid.shape[-3:]]),
                 )
                 real_voxel_grid = crop_to_shape(real_voxel_grid, cropped_shape)
             coordinate_grid_in_pixels = CoordinateGrid(real_voxel_grid.shape[-3:])
@@ -341,14 +352,18 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
 
     @property
     def shape(self) -> tuple[int]:
+        """The shape of `voxel_weights`."""
         return cast(tuple[int], self.voxel_weights.shape)
 
     @cached_property
     def wrapped_coordinate_list_in_angstroms(self) -> CoordinateList:
-        """The `coordinate_list` in angstroms."""
+        """The `wrapped_coordinate_list_in_pixels` in angstroms."""
         return self.voxel_size * self.wrapped_coordinate_list_in_pixels  # type: ignore
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
+        """Return a new potential with a rotated
+        `wrapped_coordinate_list_in_pixels`.
+        """
         return eqx.tree_at(
             lambda d: d.wrapped_coordinate_list_in_pixels.array,
             self,

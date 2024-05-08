@@ -28,11 +28,11 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         where $V$ is the electrostatic potential energy, $\\mathbf{x}$ is a positional
         coordinate, $m$ is the electron mass, and $e$ is the electron charge.
 
-        For a single atom, this re-scaled potential has the advantage (among other reasons)
+        For a single atom, this rescaled potential has the advantage (among other reasons)
         that under usual scattering approximations (i.e. the first-born approximation), the
         fourier transform of this quantity is closely related to tabulated electron scattering
         factors. In particular, for a single atom with scattering factor $f^{(e)}(\\mathbf{q})$
-        and scattering vector $\\mathbf{q}$, its re-scaled potential is equal to
+        and scattering vector $\\mathbf{q}$, its rescaled potential is equal to
 
         $$v(\\mathbf{x}) = \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
 
@@ -44,7 +44,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
 
         **References**:
 
-        - For the definition of the re-scaled potential, see
+        - For the definition of the rescaled potential, see
         *Chapter 69, Page 2003, Equation 69.6* from Hawkes, Peter W., and Erwin Kasper.
         Principles of Electron Optics, Volume 4: Advanced Wave Optics. Academic Press,
         2022.
@@ -53,6 +53,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
     atom_positions: eqx.AbstractVar[Float[Array, "n_atoms 3"]]
 
     def rotate_to_pose(self, pose: AbstractPose) -> Self:
+        """Return a new potential with rotated `atom_positions`."""
         return eqx.tree_at(
             lambda d: d.atom_positions,
             self,
@@ -113,7 +114,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     ):
         """**Arguments:**
 
-        - `atom_positions`: The coordinates of the atoms.
+        - `atom_positions`: The coordinates of the atoms in units of angstroms.
         - `atom_a_factors`: The strength for each atom and for each gaussian per atom.
                             This has units of angstroms.
         - `atom_b_factors`: The variance (up to numerical constants) for each atom and
@@ -138,7 +139,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         where $a_i$ are the `atom_a_factors`, $b_i$ are the `atom_b_factors`, and $n = 5$
         for Peng et al. (1996). Under usual scattering approximations (i.e. the first-born approximation),
-        the re-scaled electrostatic potential energy $v(\\mathbf{x})$ is then given by
+        the rescaled electrostatic potential energy $v(\\mathbf{x})$ is then given by
         $\\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
 
         $$v(\\mathbf{x}) = \\sum\\limits_{i = 1}^n \\frac{a_i}{(b_i / \\pi)^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{b_i / (2\\pi)^2}).$$
@@ -149,7 +150,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         **Returns:**
 
-        The re-scaled potential $v(\\mathbf{x})$ as a voxel grid evaluated on the
+        The rescaled potential $v(\\mathbf{x})$ as a voxel grid evaluated on the
         `coordinate_grid_in_angstroms`.
         """  # noqa: E501
         return _build_real_space_voxels_from_atoms(
