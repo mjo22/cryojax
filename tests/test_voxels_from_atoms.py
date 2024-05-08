@@ -148,7 +148,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
 
         integral = jnp.sum(real_voxel_grid) * voxel_size**3
-        assert jnp.isclose(integral, jnp.sum(ff_a))
+        assert jnp.isclose(integral, jnp.sum(4 * jnp.pi * ff_a))
 
 
 class TestBuildVoxelsFromTrajectories:
