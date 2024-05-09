@@ -57,6 +57,7 @@ def clean_gemmi_structure(structure=None):
 
     return structure
 
+
 def center_gemmi_model(model):
     """
     Translates model so that its center of mass coincides with the origin.
@@ -67,7 +68,7 @@ def center_gemmi_model(model):
         Gemmi model
     """
     import gemmi
-    
+
     com = model.calculate_center_of_mass()
     model.transform_pos_and_adp(
         gemmi.Transform(
@@ -76,6 +77,7 @@ def center_gemmi_model(model):
         )
     )
     return model
+
 
 def extract_gemmi_atoms(model, chains=None, split_chains=False):
     """
