@@ -28,10 +28,11 @@ dependencies = [
     "pandas",
     "typing_extensions>=4.5.0",
     "tqdm",
+    "gemmi",
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "pycistem", "gemmi"]
+test = ["pytest", "pycistem"]
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
