@@ -1,7 +1,7 @@
 from .cif import read_atoms_from_cif as read_atoms_from_cif
 from .gemmi import (
-    clean_gemmi_structure as clean_gemmi_structure,
     center_gemmi_model as center_gemmi_model,
+    clean_gemmi_structure as clean_gemmi_structure,
     extract_atom_positions_and_numbers as extract_atom_positions_and_numbers,
     extract_gemmi_atoms as extract_gemmi_atoms,
     get_atom_info_from_gemmi_model as get_atom_info_from_gemmi_model,

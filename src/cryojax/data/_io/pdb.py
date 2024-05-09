@@ -7,8 +7,8 @@ import numpy as np
 from jaxtyping import Float, Int
 
 from .gemmi import (
-    clean_gemmi_structure,
     center_gemmi_model,
+    clean_gemmi_structure,
     extract_atom_positions_and_numbers,
     extract_gemmi_atoms,
 )
