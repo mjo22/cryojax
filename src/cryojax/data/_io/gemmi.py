@@ -58,6 +58,27 @@ def clean_gemmi_structure(structure=None):
     return structure
 
 
+def center_gemmi_model(model):
+    """
+    Translates model so that its center of mass coincides with the origin.
+
+    Parameters
+    ----------
+    model : Gemmi Class
+        Gemmi model
+    """
+    import gemmi
+
+    com = model.calculate_center_of_mass()
+    model.transform_pos_and_adp(
+        gemmi.Transform(
+            gemmi.Mat33(),  # rotation matrix is identity
+            gemmi.Vec3(-1 * com.x, -1 * com.y, -1 * com.z),
+        )
+    )
+    return model
+
+
 def extract_gemmi_atoms(model, chains=None, split_chains=False):
     """
     Extract Gemmi atoms from the input Gemmi model, separated by chain.
