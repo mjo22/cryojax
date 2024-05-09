@@ -15,7 +15,11 @@ from .gemmi import (
 
 
 def read_atoms_from_pdb(
-    path: str, i_model: int = 0, clean: bool = True, center: bool = True, assemble: bool = True
+    path: str,
+    i_model: int = 0,
+    clean: bool = True,
+    center: bool = True,
+    assemble: bool = True,
 ) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, " N"]]:
     """Read atomic information from a PDB file using Gemmi
 
