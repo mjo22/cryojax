@@ -8,13 +8,14 @@ from jaxtyping import Float, Int
 
 from .gemmi import (
     clean_gemmi_structure,
+    center_gemmi_model,
     extract_atom_positions_and_numbers,
     extract_gemmi_atoms,
 )
 
 
 def read_atoms_from_pdb(
-    path: str, i_model: int = 0, clean: bool = True, assemble: bool = True
+    path: str, i_model: int = 0, clean: bool = True, center: bool = True, assemble: bool = True
 ) -> tuple[Float[np.ndarray, "N 3"], Int[np.ndarray, " N"]]:
     """Read atomic information from a PDB file using Gemmi
 
@@ -28,6 +29,9 @@ def read_atoms_from_pdb(
     clean : bool
         Optional, default: True
         If True, use Gemmi remove_* methods to clean up structure.
+    center : bool
+        Optional, default: True
+        If True, center the model so that its center of mass coincides with the origin.
     assemble: bool
         Optional, default: True
         If True, use Gemmi make_assembly to build biological object.
@@ -50,6 +54,8 @@ def read_atoms_from_pdb(
     structure = gemmi.read_structure(path)
     if clean:
         structure = clean_gemmi_structure(structure)
+    if center:
+        model = center_gemmi_model(structure[i_model])
     model = structure[i_model]
     if assemble:
         assembly = structure.assemblies[i_model]
