@@ -45,6 +45,7 @@ from ._potential_representation import (
 from ._scattering_theory import (
     AbstractLinearScatteringTheory as AbstractLinearScatteringTheory,
     AbstractScatteringTheory as AbstractScatteringTheory,
+    compute_phase_shifts_from_integrated_potential as compute_phase_shifts_from_integrated_potential,  # noqa: E501
     LinearScatteringTheory as LinearScatteringTheory,
     LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
 )

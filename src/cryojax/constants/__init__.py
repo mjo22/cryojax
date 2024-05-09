@@ -4,5 +4,4 @@ from ._scattering_factor_parameters import (
 )
 from ._unit_conversions import (
     convert_keV_to_angstroms as convert_keV_to_angstroms,
-    convert_wavelength_to_interaction_constant as convert_wavelength_to_interaction_constant,  # noqa: E501
 )

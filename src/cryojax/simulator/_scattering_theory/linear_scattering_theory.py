@@ -8,7 +8,6 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
-from ...constants import convert_wavelength_to_interaction_constant
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
 from .._potential_integrator import AbstractPotentialIntegrator
@@ -20,6 +19,7 @@ from .._structural_ensemble import (
 )
 from .._transfer_theory import ContrastTransferTheory
 from .base_scattering_theory import AbstractScatteringTheory
+from .common_functions import compute_phase_shifts_from_integrated_potential
 
 
 class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
@@ -261,7 +261,7 @@ def _compute_phase_shifts_from_projected_potential(
     # Get potential in the lab frame
     potential = structural_ensemble.get_potential_in_lab_frame()
     # Compute the phase shifts in the exit plane
-    fourier_projected_potential = (
+    fourier_integrated_potential = (
         potential_integrator.compute_fourier_integrated_potential(
             potential, instrument_config
         )
@@ -270,9 +270,8 @@ def _compute_phase_shifts_from_projected_potential(
     translational_phase_shifts = structural_ensemble.pose.compute_shifts(
         instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
     )
-    # The phase shifts in the exit plane multiplies the interaction constant x
-    # projected potential x the translation.
-    interaction_constant = convert_wavelength_to_interaction_constant(
-        instrument_config.wavelength_in_angstroms
+    # Compute the phase shifts in exit plane and multiply by the translation.
+    phase_shifts_in_exit_plane = compute_phase_shifts_from_integrated_potential(
+        fourier_integrated_potential, instrument_config.wavelength_in_angstroms
     )
-    return interaction_constant * fourier_projected_potential * translational_phase_shifts
+    return phase_shifts_in_exit_plane * translational_phase_shifts
