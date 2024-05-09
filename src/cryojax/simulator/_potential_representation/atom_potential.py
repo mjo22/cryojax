@@ -144,7 +144,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         where $a_i$ are the `atom_a_factors`, $b_i$ are the `atom_b_factors`, and $n = 5$
         for Peng et al. (1996). Under usual scattering approximations (i.e. the first-born approximation),
         the rescaled electrostatic potential energy $v(\\mathbf{x})$ is then given by
-        $8 \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
+        $32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
 
         $$v(\\mathbf{x}) = \\sum\\limits_{i = 1}^n \\frac{4 \\pi a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
 
