@@ -78,7 +78,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
     ]:
         # Compute the phase shifts in the exit plane
         fourier_phase_shifts_at_exit_plane = (
-            _compute_phase_shifts_from_projected_potential(
+            _compute_phase_shifts_from_integrated_potential(
                 self.structural_ensemble, self.potential_integrator, instrument_config
             )
         )
@@ -145,7 +145,7 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
         def compute_image_stack(ensemble_vmap, ensemble_no_vmap, instrument_config):
             ensemble = eqx.combine(ensemble_vmap, ensemble_no_vmap)
             fourier_phase_shifts_at_exit_plane = (
-                _compute_phase_shifts_from_projected_potential(
+                _compute_phase_shifts_from_integrated_potential(
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
@@ -196,7 +196,7 @@ class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict
         def compute_image_stack(ensemble_vmap, ensemble_no_vmap, instrument_config):
             ensemble = eqx.combine(ensemble_vmap, ensemble_no_vmap)
             fourier_phase_shifts_at_exit_plane = (
-                _compute_phase_shifts_from_projected_potential(
+                _compute_phase_shifts_from_integrated_potential(
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
@@ -255,7 +255,7 @@ LinearSuperpositionScatteringTheory.__init__.__doc__ = """**Arguments:**
 """
 
 
-def _compute_phase_shifts_from_projected_potential(
+def _compute_phase_shifts_from_integrated_potential(
     structural_ensemble, potential_integrator, instrument_config
 ):
     # Get potential in the lab frame

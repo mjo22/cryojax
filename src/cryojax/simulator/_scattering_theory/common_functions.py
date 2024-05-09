@@ -5,9 +5,9 @@ from jaxtyping import Array, Float, Inexact
 
 
 def compute_phase_shifts_from_integrated_potential(
-    integrated_potential: Inexact[Array, "_ _"],
+    integrated_potential: Inexact[Array, "y_dim x_dim"],
     wavelength_in_angstroms: Float[Array, ""] | float,
-) -> Float[Array, ""]:
+) -> Inexact[Array, "y_dim x_dim"]:
     """Given an integrated potential, compute a phase shift distribution.
 
     !!! info
