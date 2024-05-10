@@ -75,19 +75,20 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     """An atomistic representation of scattering potential as a mixture of
     gaussians.
 
-    The naming and numerical convention of parameters `atom_a_factors` and
+    The naming and numerical convention of parameters `atom_strengths` and
     `atom_b_factors` follows "Robust Parameterization of Elastic and Absorptive
-    Electron Atomic Scattering Factors" by Peng et al. (1996).
+    Electron Atomic Scattering Factors" by Peng et al. (1996), where $a_i$ are
+    the `atom_strengths` and $b_i$ are the `atom_b_factors`.
     """
 
     atom_positions: Float[Array, "n_atoms 3"]
-    atom_a_factors: Float[Array, "n_atoms n_gaussians_per_atom"]
+    atom_strengths: Float[Array, "n_atoms n_gaussians_per_atom"]
     atom_b_factors: Float[Array, "n_atoms n_gaussians_per_atom"]
 
     def __init__(
         self,
         atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
-        atom_a_factors: (
+        atom_strengths: (
             Float[Array, "n_atoms n_gaussians_per_atom"]
             | Float[np.ndarray, "n_atoms n_gaussians_per_atom"]
         ),
@@ -99,14 +100,14 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         """**Arguments:**
 
         - `atom_positions`: The coordinates of the atoms in units of angstroms.
-        - `atom_a_factors`: The strength for each atom and for each gaussian per atom.
+        - `atom_strengths`: The strength for each atom and for each gaussian per atom.
                             This has units of angstroms.
         - `atom_b_factors`: The variance (up to numerical constants) for each atom and
                             for each gaussian per atom. This has units of angstroms
                             squared.
         """
         self.atom_positions = jnp.asarray(atom_positions)
-        self.atom_a_factors = jnp.asarray(atom_a_factors)
+        self.atom_strengths = jnp.asarray(atom_strengths)
         self.atom_b_factors = jnp.asarray(atom_b_factors)
 
     @override
@@ -126,7 +127,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         """  # noqa: E501
         return _build_real_space_voxels_from_atoms(
             self.atom_positions,
-            self.atom_a_factors,
+            self.atom_strengths,
             self.atom_b_factors,
             coordinate_grid_in_angstroms,
         )
@@ -137,11 +138,11 @@ class AbstractParameterizedAtomicPotential(AbstractAtomicPotential, strict=True)
 
 
 class PengParameterizedAtomicPotential(AbstractParameterizedAtomicPotential, strict=True):
-    """An atomistic representation of scattering potential as a mixture of
-    five gaussians, by Lian-Mao Peng.
+    """The scattering potential parameterized as a mixture of five gaussians,
+    through work by Lian-Mao Peng.
 
-    Parameters `a_scattering_factors` and `b_scattering_factors` are referred
-    to as $b_i$ and $b_i$ respectively in "Robust Parameterization of Elastic
+    Parameters `atom_a_parameters` and `atom_b_parameters` are referred
+    to as $a_i$ and $b_i$ respectively in "Robust Parameterization of Elastic
     and Absorptive Electron Atomic Scattering Factors" by Peng et al. (1996).
 
     !!! info
@@ -157,11 +158,11 @@ class PengParameterizedAtomicPotential(AbstractParameterizedAtomicPotential, str
 
         atom_positions = ...   # Load positions of atoms
         atom_identities = ...  # Load one-hot encoded atom names
-        a_scattering_factors, b_scattering_factors = get_tabulated_scattering_factor_parameters(
+        atom_a_parameters, atom_b_parameters = get_tabulated_scattering_factor_parameters(
             atom_identities, peng_element_scattering_factor_parameter_table
         )
         potential = PengParameterizedAtomicPotential(
-            atom_positions, a_scattering_factors, b_scattering_factors
+            atom_positions, atom_a_parameters, atom_b_parameters
         )
         ```
 
@@ -175,26 +176,26 @@ class PengParameterizedAtomicPotential(AbstractParameterizedAtomicPotential, str
     """  # noqa: E501
 
     atom_positions: Float[Array, "n_atoms 3"]
-    a_scattering_factors: Float[Array, "n_atoms 5"]
-    b_scattering_factors: Float[Array, "n_atoms 5"]
+    atom_a_parameters: Float[Array, "n_atoms 5"]
+    atom_b_parameters: Float[Array, "n_atoms 5"]
 
     def __init__(
         self,
         atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
-        a_scattering_factors: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
-        b_scattering_factors: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
+        atom_a_parameters: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
+        atom_b_parameters: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
     ):
         """**Arguments:**
 
         - `atom_positions`: The coordinates of the atoms in units of angstroms.
-        - `a_scattering_factors`: The scattering factors parameter $a_i$ from
-                                  Peng et al. (1996)
-        - `b_scattering_factors`: The scattering factors parameter $b_i$ from
-                                  Peng et al. (1996)
+        - `atom_a_parameters`: The scattering factors parameter $a_i$ from
+                               Peng et al. (1996)
+        - `atom_b_parameters`: The scattering factors parameter $b_i$ from
+                               Peng et al. (1996)
         """
         self.atom_positions = jnp.asarray(atom_positions)
-        self.a_scattering_factors = jnp.asarray(a_scattering_factors)
-        self.b_scattering_factors = jnp.asarray(b_scattering_factors)
+        self.atom_a_parameters = jnp.asarray(atom_a_parameters)
+        self.atom_b_parameters = jnp.asarray(atom_b_parameters)
 
     @override
     def as_real_voxel_grid(
@@ -202,13 +203,13 @@ class PengParameterizedAtomicPotential(AbstractParameterizedAtomicPotential, str
     ) -> Float[Array, "z_dim y_dim x_dim"]:
         """Return a voxel grid in real space of the potential.
 
-        In the notation of Peng et al. (1996), tabulated `a_scattering_factors` and
-        `b_scattering_factors` parameterize the elastic electron scattering factors,
+        In the notation of Peng et al. (1996), tabulated `atom_a_parameters` and
+        `atom_b_parameters` parameterize the elastic electron scattering factors,
         defined as
 
         $$f^{(e)}(\\mathbf{q}) = \\sum\\limits_{i = 1}^5 a_i \\exp(- b_i |\\mathbf{q}|^2),$$
 
-        where $a_i$ are the `a_scattering_factors` and $b_i$ are the `b_scattering_factors`.
+        where $a_i$ are the `atom_a_parameters` and $b_i$ are the `atom_b_parameters`.
         Under usual scattering approximations (i.e. the first-born approximation),
         the rescaled electrostatic potential energy $v(\\mathbf{x})$ is then given by
         $32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
@@ -226,8 +227,8 @@ class PengParameterizedAtomicPotential(AbstractParameterizedAtomicPotential, str
         """  # noqa: E501
         return _build_real_space_voxels_from_atoms(
             self.atom_positions,
-            self.a_scattering_factors,
-            self.b_scattering_factors,
+            self.atom_a_parameters,
+            self.atom_b_parameters,
             coordinate_grid_in_angstroms,
         )
 
