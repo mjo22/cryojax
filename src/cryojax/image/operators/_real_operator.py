@@ -52,16 +52,16 @@ RealOperatorLike = AbstractRealOperator | AbstractImageOperator
 
 
 class Gaussian2D(AbstractRealOperator, strict=True):
-    r"""This operator represents a simple gaussian.
+    """This operator represents a simple gaussian in 2D.
     Specifically, this is
 
-    $$g(r) = \frac{\kappa}{2\pi \beta} \exp(- (r - r_0)^2 / (2 \beta))$$
+    $$g(r) = \\frac{\\kappa}{2\\pi \beta} \\exp(- (r - r_0)^2 / (2 \\sigma))$$
 
     where $r^2 = x^2 + y^2$.
     """
 
     amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
-    b_factor: Float[Array, ""] = field(default=1.0, converter=error_if_not_positive)
+    variance: Float[Array, ""] = field(default=1.0, converter=error_if_not_positive)
     offset: Float[Array, "2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
 
     @override
@@ -69,8 +69,8 @@ class Gaussian2D(AbstractRealOperator, strict=True):
         self, coords: Float[Array, "y_dim x_dim 2"]
     ) -> Float[Array, "y_dim x_dim"]:
         r_sqr = jnp.sum((coords - self.offset) ** 2, axis=-1)
-        scaling = (self.amplitude / jnp.sqrt(2 * jnp.pi * self.b_factor)) * jnp.exp(
-            -0.5 * r_sqr / self.b_factor
+        scaling = (self.amplitude / jnp.sqrt(2 * jnp.pi * self.variance)) * jnp.exp(
+            -0.5 * r_sqr / self.variance
         )
         return scaling
 
@@ -79,7 +79,7 @@ Gaussian2D.__init__.__doc__ = """**Arguments:**
 
 - `amplitude`: The amplitude of the operator, equal to $\\kappa$
                in the above equation.
-- `b_factor`: The variance of the gaussian, equal to $\\beta$
+- `variance`: The variance of the gaussian, equal to $\\sigma$
               in the above equation.
 - `offset`: An offset to the origin, equal to $r_0$
             in the above equation.

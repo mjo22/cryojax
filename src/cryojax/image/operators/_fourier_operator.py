@@ -164,17 +164,11 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
     Specifically, this is
 
     .. math::
-        P(k) = \kappa \exp(- \beta k^2 / 2),
+        P(k) = \kappa \exp(- \beta k^2 / 4),
 
     where :math:`k^2 = k_x^2 + k_y^2` is the length of the
     wave vector. Here, :math:`\beta` has dimensions of length
-    squared. In 2D, the real-space version of this function is given
-    by
-
-    .. math::
-        g(r) = \frac{\kappa}{2\pi \beta} \exp(- r^2 / (2 \beta)),
-
-    where :math:`r^2 = x^2 + y^2`.
+    squared.
     """
 
     amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
@@ -195,7 +189,7 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
         self, freqs: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
         k_sqr = jnp.sum(freqs**2, axis=-1)
-        scaling = self.amplitude * jnp.exp(-0.5 * self.b_factor * k_sqr)
+        scaling = self.amplitude * jnp.exp(-0.25 * self.b_factor * k_sqr)
         return scaling
 
 
