@@ -2,8 +2,8 @@ from .base_scattering_theory import AbstractScatteringTheory as AbstractScatteri
 from .common_functions import (
     compute_phase_shifts_from_integrated_potential as compute_phase_shifts_from_integrated_potential,  # noqa: E501
 )
-from .linear_scattering_theory import (
-    AbstractLinearScatteringTheory as AbstractLinearScatteringTheory,
-    LinearScatteringTheory as LinearScatteringTheory,
+from .weak_phase_scattering_theory import (
+    AbstractWeakPhaseScatteringTheory as AbstractWeakPhaseScatteringTheory,
     LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
+    WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
 )

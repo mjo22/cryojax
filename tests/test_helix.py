@@ -137,7 +137,7 @@ def test_agree_with_3j9g_assembly(
         cs.FourierSliceExtraction(),
         cs.ContrastTransferTheory(cs.IdealContrastTransferFunction()),
     )
-    theory = cs.LinearScatteringTheory(
+    theory = cs.WeakPhaseScatteringTheory(
         specimen_39jg,
         cs.FourierSliceExtraction(),
         cs.ContrastTransferTheory(cs.IdealContrastTransferFunction()),
