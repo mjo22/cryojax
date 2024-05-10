@@ -269,7 +269,7 @@ def _compute_phase_shifts_from_integrated_potential(
     )
     # Compute in-plane translation through fourier phase shifts
     translational_phase_shifts = structural_ensemble.pose.compute_shifts(
-        instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
+        instrument_config.padded_frequency_grid_in_angstroms
     )
     # Compute the phase shifts in exit plane and multiply by the translation.
     phase_shifts_in_exit_plane = compute_phase_shifts_from_integrated_potential(

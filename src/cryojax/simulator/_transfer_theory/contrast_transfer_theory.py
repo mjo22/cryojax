@@ -152,9 +152,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
         """Apply the CTF directly to the phase shifts in the exit plane."""
-        frequency_grid = (
-            instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
-        )
+        frequency_grid = instrument_config.padded_frequency_grid_in_angstroms
         # Compute the CTF
         ctf_array = self.envelope(frequency_grid) * self.ctf(
             frequency_grid,

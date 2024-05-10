@@ -40,7 +40,7 @@
 ### Fourier-space voxel representations
 
 !!! info "Fourier-space conventions"
-    - The `fourier_voxel_grid` and `wrapped_frequency_slice` arguments to
+    - The `fourier_voxel_grid` and `frequency_slice` arguments to
     `FourierVoxelGridPotential.__init__` should be loaded with the zero frequency
     component in the center of the box.
     - The parameters in an `AbstractPose` represent a rotation in real-space. This means that when calling `FourierVoxelGridPotential.rotate_to_pose`,
@@ -52,7 +52,7 @@
                 - __init__
                 - from_real_voxel_grid
                 - rotate_to_pose
-                - wrapped_frequency_slice_in_angstroms
+                - frequency_slice_in_angstroms
                 - shape
 
 ---
@@ -63,7 +63,7 @@
                 - __init__
                 - from_real_voxel_grid
                 - rotate_to_pose
-                - wrapped_frequency_slice_in_angstroms
+                - frequency_slice_in_angstroms
                 - shape
 
 
@@ -75,7 +75,7 @@
                 - __init__
                 - from_real_voxel_grid
                 - rotate_to_pose
-                - wrapped_coordinate_grid_in_angstroms
+                - coordinate_grid_in_angstroms
                 - shape
 
 ---
@@ -86,5 +86,5 @@
                 - __init__
                 - from_real_voxel_grid
                 - rotate_to_pose
-                - wrapped_coordinate_list_in_angstroms
+                - coordinate_list_in_angstroms
                 - shape
