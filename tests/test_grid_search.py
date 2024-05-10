@@ -8,7 +8,7 @@ from jaxtyping import Array, install_import_hook
 
 with install_import_hook("cryojax", "typeguard.typechecked"):
     import cryojax.inference as cxi
-    from cryojax.coordinates import make_coordinates
+    from cryojax.coordinates import make_coordinate_grid
 
 
 class ExampleModule(eqx.Module):
@@ -74,7 +74,7 @@ def cost_fn(grid_point, variance_plus_offset):
 def test_run_grid_search(batch_size):
     # Compute full landscape of simple analytic "cost function"
     dim = 200
-    coords = make_coordinates((dim, dim))
+    coords = make_coordinate_grid((dim, dim))
     variance, offset = jnp.asarray(10.0), jnp.asarray((2.0, -1.0))
     landscape = jax.vmap(jax.vmap(cost_fn, in_axes=[0, None]), in_axes=[0, None])(
         coords, (variance, offset)
