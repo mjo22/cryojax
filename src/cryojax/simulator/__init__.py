@@ -34,11 +34,13 @@ from ._potential_integrator import (
 )
 from ._potential_representation import (
     AbstractAtomicPotential as AbstractAtomicPotential,
+    AbstractParameterizedAtomicPotential as AbstractParameterizedAtomicPotential,
     AbstractPotentialRepresentation as AbstractPotentialRepresentation,
     AbstractVoxelPotential as AbstractVoxelPotential,
     FourierVoxelGridPotential as FourierVoxelGridPotential,
     FourierVoxelGridPotentialInterpolator as FourierVoxelGridPotentialInterpolator,
     GaussianMixtureAtomicPotential as GaussianMixtureAtomicPotential,
+    PengParameterizedAtomicPotential as PengParameterizedAtomicPotential,
     RealVoxelCloudPotential as RealVoxelCloudPotential,
     RealVoxelGridPotential as RealVoxelGridPotential,
 )

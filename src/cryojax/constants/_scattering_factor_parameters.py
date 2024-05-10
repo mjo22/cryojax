@@ -11,7 +11,7 @@ import numpy as np
 from jaxtyping import Array, Float, Int
 
 
-def _load_peng1996_scattering_factor_parameter_table():
+def _load_peng_element_scattering_factor_parameter_table():
     """Internal function to load the atomic scattering factor parameter
     table."""
     with pkg_resources.as_file(
@@ -24,8 +24,8 @@ def _load_peng1996_scattering_factor_parameter_table():
     return jnp.asarray(atom_scattering_factor_params)
 
 
-peng1996_scattering_factor_parameter_table = (
-    _load_peng1996_scattering_factor_parameter_table()
+peng_element_scattering_factor_parameter_table = (
+    _load_peng_element_scattering_factor_parameter_table()
 )
 
 
@@ -34,7 +34,7 @@ def get_tabulated_scattering_factor_parameters(
     scattering_factor_parameter_table: (
         Float[Array, "n_params n_elements n_scattering_factors"]
         | Float[np.ndarray, "n_params n_elements n_scattering_factors"]
-    ) = peng1996_scattering_factor_parameter_table,
+    ) = peng_element_scattering_factor_parameter_table,
 ) -> Float[Array, "n_params n_atoms n_scattering_factors"]:
     """Gets the parameters for the scattering factor for each atom in
     `atom_names`.

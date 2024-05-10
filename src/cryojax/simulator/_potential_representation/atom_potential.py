@@ -78,26 +78,6 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     The naming and numerical convention of parameters `atom_a_factors` and
     `atom_b_factors` follows "Robust Parameterization of Elastic and Absorptive
     Electron Atomic Scattering Factors" by Peng et al. (1996).
-
-    !!! info
-        In order to load a `GaussianMixtureAtomicPotential` from tabulated scattering
-        factors, use the `cryojax.constants` submodule.
-
-        ```python
-        from cryojax.constants import (
-            peng1996_scattering_factor_parameter_table,
-            get_tabulated_scattering_factor_parameters,
-        )
-
-        atom_positions = ...   # Load positions of atoms
-        atom_identities = ...  # Load one-hot encoded atom names
-        atom_a_factors, atom_b_factors = get_tabulated_scattering_factor_parameters(
-            atom_identities, peng1996_scattering_factor_parameter_table
-        )
-        potential = GaussianMixtureAtomicPotential(
-            atom_positions, atom_a_factors, atom_b_factors
-        )
-        ```
     """
 
     atom_positions: Float[Array, "n_atoms 3"]
@@ -133,20 +113,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     def as_real_voxel_grid(
         self, coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]:
-        """Return a voxel grid in real space of an `AbstractAtomicPotential`.
-
-        In the notation of Peng et al. (1996), tabulated `atom_a_factors` and
-        `atom_b_factors` parameterize the elastic electron scattering factors,
-        defined as
-
-        $$f^{(e)}(\\mathbf{q}) = \\sum\\limits_{i = 1}^n a_i \\exp(- b_i |\\mathbf{q}|^2),$$
-
-        where $a_i$ are the `atom_a_factors`, $b_i$ are the `atom_b_factors`, and $n = 5$
-        for Peng et al. (1996). Under usual scattering approximations (i.e. the first-born approximation),
-        the rescaled electrostatic potential energy $v(\\mathbf{x})$ is then given by
-        $32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
-
-        $$v(\\mathbf{x}) = \\sum\\limits_{i = 1}^n \\frac{4 \\pi a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
+        """Return a voxel grid in real space of the potential.
 
         **Arguments:**
 
@@ -161,6 +128,106 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             self.atom_positions,
             self.atom_a_factors,
             self.atom_b_factors,
+            coordinate_grid_in_angstroms,
+        )
+
+
+class AbstractParameterizedAtomicPotential(AbstractAtomicPotential, strict=True):
+    pass
+
+
+class PengParameterizedAtomicPotential(AbstractParameterizedAtomicPotential, strict=True):
+    """An atomistic representation of scattering potential as a mixture of
+    five gaussians, by Lian-Mao Peng.
+
+    Parameters `a_scattering_factors` and `b_scattering_factors` are referred
+    to as $b_i$ and $b_i$ respectively in "Robust Parameterization of Elastic
+    and Absorptive Electron Atomic Scattering Factors" by Peng et al. (1996).
+
+    !!! info
+        In order to load a `PengParameterizedAtomicPotential` from tabulated
+        scattering factors, use the `cryojax.constants` submodule.
+
+        ```python
+        from cryojax.constants import (
+            peng_element_scattering_factor_parameter_table,
+            get_tabulated_scattering_factor_parameters,
+        )
+        from cryojax.simulator import PengParameterizedAtomicPotential
+
+        atom_positions = ...   # Load positions of atoms
+        atom_identities = ...  # Load one-hot encoded atom names
+        a_scattering_factors, b_scattering_factors = get_tabulated_scattering_factor_parameters(
+            atom_identities, peng_element_scattering_factor_parameter_table
+        )
+        potential = PengParameterizedAtomicPotential(
+            atom_positions, a_scattering_factors, b_scattering_factors
+        )
+        ```
+
+    **References:**
+
+    - Peng, L-M. "Electron atomic scattering factors and scattering potentials of crystals."
+      Micron 30.6 (1999): 625-648.
+    - Peng, L-M., et al. "Robust parameterization of elastic and absorptive electron atomic
+      scattering factors." Acta Crystallographica Section A: Foundations of Crystallography
+      52.2 (1996): 257-276.
+    """  # noqa: E501
+
+    atom_positions: Float[Array, "n_atoms 3"]
+    a_scattering_factors: Float[Array, "n_atoms 5"]
+    b_scattering_factors: Float[Array, "n_atoms 5"]
+
+    def __init__(
+        self,
+        atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
+        a_scattering_factors: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
+        b_scattering_factors: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
+    ):
+        """**Arguments:**
+
+        - `atom_positions`: The coordinates of the atoms in units of angstroms.
+        - `a_scattering_factors`: The scattering factors parameter $a_i$ from
+                                  Peng et al. (1996)
+        - `b_scattering_factors`: The scattering factors parameter $b_i$ from
+                                  Peng et al. (1996)
+        """
+        self.atom_positions = jnp.asarray(atom_positions)
+        self.a_scattering_factors = jnp.asarray(a_scattering_factors)
+        self.b_scattering_factors = jnp.asarray(b_scattering_factors)
+
+    @override
+    def as_real_voxel_grid(
+        self, coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"]
+    ) -> Float[Array, "z_dim y_dim x_dim"]:
+        """Return a voxel grid in real space of the potential.
+
+        In the notation of Peng et al. (1996), tabulated `a_scattering_factors` and
+        `b_scattering_factors` parameterize the elastic electron scattering factors,
+        defined as
+
+        $$f^{(e)}(\\mathbf{q}) = \\sum\\limits_{i = 1}^5 a_i \\exp(- b_i |\\mathbf{q}|^2),$$
+
+        where $a_i$ are the `a_scattering_factors` and $b_i$ are the `b_scattering_factors`.
+        Under usual scattering approximations (i.e. the first-born approximation),
+        the rescaled electrostatic potential energy $v(\\mathbf{x})$ is then given by
+        $32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
+
+        $$v(\\mathbf{x}) = \\sum\\limits_{i = 1}^5 \\frac{4 \\pi a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
+
+        **Arguments:**
+
+        - `coordinate_grid_in_angstroms`: The coordinate system of the grid.
+
+        **Returns:**
+
+        The rescaled potential $v(\\mathbf{x})$ as a voxel grid evaluated on the
+        `coordinate_grid_in_angstroms`.
+        """  # noqa: E501
+        return _build_real_space_voxels_from_atoms(
+            self.atom_positions,
+            self.a_scattering_factors,
+            self.b_scattering_factors,
             coordinate_grid_in_angstroms,
         )
 
