@@ -14,7 +14,7 @@ def test_conformation(potential, pose, projection_method, transfer_theory, confi
     ensemble = DiscreteStructuralEnsemble(
         potential, pose, conformation=DiscreteConformationalVariable(0)
     )
-    theory = cxs.LinearScatteringTheory(ensemble, projection_method, transfer_theory)
+    theory = cxs.WeakPhaseScatteringTheory(ensemble, projection_method, transfer_theory)
     _ = theory.compute_fourier_phase_shifts_at_exit_plane(config)
 
 
@@ -28,7 +28,7 @@ def test_conformation_vmap(potential, pose, projection_method, transfer_theory, 
             jnp.asarray((0, 1, 2, 1, 0))
         ),
     )
-    theory = cxs.LinearScatteringTheory(ensemble, projection_method, transfer_theory)
+    theory = cxs.WeakPhaseScatteringTheory(ensemble, projection_method, transfer_theory)
     # Setup vmap
     is_vmap = lambda x: isinstance(x, DiscreteConformationalVariable)
     to_vmap = jtu.tree_map(is_vmap, theory, is_leaf=is_vmap)

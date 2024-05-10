@@ -140,14 +140,14 @@ def solvent():
 
 @pytest.fixture
 def theory(specimen, projection_method, transfer_theory, solvent):
-    return cs.LinearScatteringTheory(
+    return cs.WeakPhaseScatteringTheory(
         specimen, projection_method, transfer_theory, solvent
     )
 
 
 @pytest.fixture
 def theory_with_solvent(specimen, projection_method, transfer_theory, solvent):
-    return cs.LinearScatteringTheory(
+    return cs.WeakPhaseScatteringTheory(
         specimen, projection_method, transfer_theory, solvent
     )
 

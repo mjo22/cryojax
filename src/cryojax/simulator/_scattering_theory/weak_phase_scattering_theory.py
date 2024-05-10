@@ -22,7 +22,7 @@ from .base_scattering_theory import AbstractScatteringTheory
 from .common_functions import compute_phase_shifts_from_integrated_potential
 
 
-class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
+class AbstractWeakPhaseScatteringTheory(AbstractScatteringTheory, strict=True):
     """Base class for a scattering theory in linear image formation theory
     (the weak-phase approximation).
     """
@@ -60,7 +60,7 @@ class AbstractLinearScatteringTheory(AbstractScatteringTheory, strict=True):
         return fourier_squared_wavefunction_at_detector_plane
 
 
-class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
+class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
     """Base linear image formation theory."""
 
     structural_ensemble: AbstractStructuralEnsemble
@@ -114,7 +114,7 @@ class LinearScatteringTheory(AbstractLinearScatteringTheory, strict=True):
         return fourier_contrast_at_detector_plane
 
 
-LinearScatteringTheory.__init__.__doc__ = """**Arguments:**
+WeakPhaseScatteringTheory.__init__.__doc__ = """**Arguments:**
 
 - `structural_ensemble`: The structural ensemble of scattering potentials.
 - `potential_integrator`: The method for integrating the scattering potential.
@@ -123,9 +123,10 @@ LinearScatteringTheory.__init__.__doc__ = """**Arguments:**
 """
 
 
-class LinearSuperpositionScatteringTheory(AbstractLinearScatteringTheory, strict=True):
+class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
     """Compute the superposition of images of the structural ensemble batch returned by
-    the `AbstractStructuralEnsembleBatcher`.
+    the `AbstractStructuralEnsembleBatcher`. This must operate in the weak phase
+    approximation.
     """
 
     structural_ensemble_batcher: AbstractStructuralEnsembleBatcher

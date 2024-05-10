@@ -43,11 +43,11 @@ from ._potential_representation import (
     RealVoxelGridPotential as RealVoxelGridPotential,
 )
 from ._scattering_theory import (
-    AbstractLinearScatteringTheory as AbstractLinearScatteringTheory,
     AbstractScatteringTheory as AbstractScatteringTheory,
+    AbstractWeakPhaseScatteringTheory as AbstractWeakPhaseScatteringTheory,
     compute_phase_shifts_from_integrated_potential as compute_phase_shifts_from_integrated_potential,  # noqa: E501
-    LinearScatteringTheory as LinearScatteringTheory,
     LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
+    WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
 )
 from ._solvent import (
     AbstractIce as AbstractIce,
