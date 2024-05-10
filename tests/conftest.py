@@ -96,13 +96,13 @@ def potential(sample_mrc_path):
 
 @pytest.fixture
 def filters(config):
-    return op.LowpassFilter(config.wrapped_padded_frequency_grid_in_pixels.get())
+    return op.LowpassFilter(config.padded_frequency_grid_in_pixels)
 
 
 @pytest.fixture
 def masks(config):
     return op.CircularMask(
-        config.wrapped_padded_coordinate_grid_in_angstroms.get(),
+        config.padded_coordinate_grid_in_angstroms,
         radius=20 * float(config.pixel_size),
     )
 

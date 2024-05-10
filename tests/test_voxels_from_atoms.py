@@ -15,7 +15,7 @@ with install_import_hook("cryojax", "typeguard.typechecked"):
         get_tabulated_scattering_factor_parameters,
         peng1996_scattering_factor_parameter_table,
     )
-    from cryojax.coordinates import make_coordinates
+    from cryojax.coordinates import make_coordinate_grid
     from cryojax.data import read_atoms_from_pdb
     from cryojax.image import ifftn
     from cryojax.simulator import (
@@ -46,7 +46,7 @@ def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
         atom_positions, atom_a_factors, atom_b_factors
     )
     # Build the grid
-    coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
+    coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
     potential_as_real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
     fourier_potential = FourierVoxelGridPotential.from_real_voxel_grid(
         potential_as_real_voxel_grid, voxel_size
@@ -78,10 +78,10 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     )
     downsampled_voxel_size = voxel_size * downsampling_factor
     # Create coordinate grid at each specification
-    low_resolution_coordinate_grid = make_coordinates(
+    low_resolution_coordinate_grid = make_coordinate_grid(
         downsampled_shape, downsampled_voxel_size
     )
-    high_resolution_coordinate_grid = make_coordinates(shape, voxel_size)
+    high_resolution_coordinate_grid = make_coordinate_grid(shape, voxel_size)
     # Load the PDB file
     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
     # Load scattering factor parameters and build atomistic potential
@@ -119,7 +119,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
             voxel_size,
         ) = toy_gaussian_cloud
         ff_a = ff_a.at[largest_atom].add(1.0)
-        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
+        coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
 
         # Build the potential
         atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
@@ -143,7 +143,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
             n_voxels_per_side,
             voxel_size,
         ) = toy_gaussian_cloud
-        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
+        coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
 
         # Build the potential
         atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
@@ -160,7 +160,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
             n_voxels_per_side,
             voxel_size,
         ) = toy_gaussian_cloud
-        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
+        coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
         # Build the potential
         atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
         real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
@@ -217,7 +217,7 @@ class TestBuildVoxelsFromTrajectories:
         ) = toy_gaussian_cloud
         second_set_of_positions = atom_positions + 1.0
         traj = jnp.stack([atom_positions, second_set_of_positions], axis=0)
-        coordinate_grid = make_coordinates(n_voxels_per_side, voxel_size)
+        coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
 
         make_voxel_grids = jax.vmap(
             lambda pos, ff_a, ff_b, coords: GaussianMixtureAtomicPotential(

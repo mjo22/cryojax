@@ -72,9 +72,7 @@ class GaussianIce(AbstractIce, strict=True):
     ]:
         """Sample a realization of the ice phase shifts as colored gaussian noise."""
         N_pix = np.prod(instrument_config.padded_shape)
-        frequency_grid_in_angstroms = (
-            instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
-        )
+        frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
         # Compute standard deviation, scaling up by the variance by the number
         # of pixels to make the realization independent pixel-independent in real-space.
         std = jnp.sqrt(N_pix * self.variance(frequency_grid_in_angstroms))

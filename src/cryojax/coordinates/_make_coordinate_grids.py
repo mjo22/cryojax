@@ -1,32 +1,29 @@
 """
-Functions for creating and operating on coordinate systems.
+Functions for creating coordinate systems.
 """
 
 from typing import Optional
 
 import jax.numpy as jnp
 import numpy as np
-from jaxtyping import Array, Float, Inexact
+from jaxtyping import Array, Float
 
 
-def make_coordinates(
-    shape: tuple[int, ...], grid_spacing: float | Float[np.ndarray, ""] = 1.0
+def make_coordinate_grid(
+    shape: tuple[int, ...],
+    grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
 ) -> Float[Array, "*shape ndim"]:
     """
     Create a real-space cartesian coordinate system on a grid.
 
-    Arguments
-    ---------
-    shape :
-        Shape of the voxel grid, with
-        ``ndim = len(shape)``.
-    grid_spacing :
-        The grid spacing, in units of length.
+    **Arguments:**
 
-    Returns
-    -------
-    coordinate_grid :
-        Cartesian coordinate system in real space.
+    - `shape`: Shape of the voxel grid, with `ndim = len(shape)`.
+    - `grid_spacing`: The grid spacing, in units of length.
+
+    **Returns:**
+
+    A cartesian coordinate system in real space.
     """
     coordinate_grid = _make_coordinates_or_frequencies(
         shape, grid_spacing=grid_spacing, real_space=True
@@ -34,31 +31,26 @@ def make_coordinates(
     return coordinate_grid
 
 
-def make_frequencies(
+def make_frequency_grid(
     shape: tuple[int, ...],
-    grid_spacing: float | Float[np.ndarray, ""] = 1.0,
+    grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
     half_space: bool = True,
 ) -> Float[Array, "*shape ndim"]:
-    """
-    Create a fourier-space cartesian coordinate system on a grid.
+    """Create a fourier-space cartesian coordinate system on a grid.
     The zero-frequency component is in the beginning.
 
     Arguments
     ---------
-    shape :
-        Shape of the voxel grid, with
-        ``ndim = len(shape)``.
-    grid_spacing :
-        The grid spacing, in units of length.
-    half_space :
+    - `shape`: Shape of the voxel grid, with `ndim = len(shape)`.
+    - `grid_spacing`: The grid spacing, in units of length.
+    - `half_space`:
         Return a frequency grid on the half space.
-        ``shape[-1]`` is the axis on which the negative
+        `shape[-1]` is the axis on which the negative
         frequencies are omitted.
 
-    Returns
-    -------
-    frequency_grid :
-        Cartesian coordinate system in frequency space.
+    **Returns:**
+
+    A cartesian coordinate system in frequency space.
     """
     frequency_grid = _make_coordinates_or_frequencies(
         shape,
@@ -69,33 +61,39 @@ def make_frequencies(
     return frequency_grid
 
 
-def cartesian_to_polar(
-    freqs: Float[Array, "y_dim x_dim 2"], square: bool = False
-) -> tuple[Inexact[Array, "y_dim x_dim"], Inexact[Array, "y_dim x_dim"]]:
-    """
-    Convert from cartesian to polar coordinates.
+def make_frequency_slice(
+    shape: tuple[int, int],
+    grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
+    half_space: bool = True,
+) -> Float[Array, "1 {shape[0]} {shape[1]} 3"]:
+    """Create a fourier-space cartesian coordinate system on a grid. The
+    zero-frequency component is in the *center*. This is different
+    than in [`make_frequency_grid`][].
 
-    Arguments
-    ---------
-    freqs :
-        The cartesian coordinate system.
-    square :
-        If ``True``, return the square of the
-        radial coordinate :math:`|r|^2`. Otherwise,
-        return :math:`|r|`.
+    **Returns:**
+
+    The central, $q_z = 0$ slice of a 3D frequency grid `$(q_x, q_y, q_z)$`.
     """
-    theta = jnp.arctan2(freqs[..., 0], freqs[..., 1])
-    k_sqr = jnp.sum(jnp.square(freqs), axis=-1)
-    if square:
-        return k_sqr, theta
+    frequency_slice = make_frequency_grid(shape, grid_spacing, half_space=half_space)
+    if half_space:
+        frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0,))
     else:
-        kr = jnp.sqrt(k_sqr)
-        return kr, theta
+        frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0, 1))
+    frequency_slice = jnp.expand_dims(
+        jnp.pad(
+            frequency_slice,
+            ((0, 0), (0, 0), (0, 1)),
+            mode="constant",
+            constant_values=0.0,
+        ),
+        axis=0,
+    )
+    return frequency_slice
 
 
 def _make_coordinates_or_frequencies(
     shape: tuple[int, ...],
-    grid_spacing: float | Float[np.ndarray, ""] = 1.0,
+    grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
     real_space: bool = False,
     half_space: bool = True,
 ) -> Float[Array, "*shape ndim"]:
@@ -137,7 +135,7 @@ def _make_coordinates_or_frequencies(
 
 def _make_coordinates_or_frequencies_1d(
     size: int,
-    grid_spacing: float | Float[np.ndarray, ""],
+    grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""],
     real_space: bool = False,
     rfftfreq: Optional[bool] = None,
 ) -> Float[Array, " size"]:

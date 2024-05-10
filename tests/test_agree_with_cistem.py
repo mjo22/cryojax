@@ -5,7 +5,7 @@ import pytest
 from pycistem.core import AnglesAndShifts, CTF as cisCTF, Image  # pyright: ignore
 
 import cryojax.simulator as cs
-from cryojax.coordinates import cartesian_to_polar, make_frequencies
+from cryojax.coordinates import cartesian_to_polar, make_frequency_grid
 from cryojax.data import read_array_with_spacing_from_mrc
 from cryojax.image import irfftn, powerspectrum
 from cryojax.simulator import ContrastTransferFunction, EulerAnglePose
@@ -33,7 +33,7 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
 
     Modified from https://github.com/jojoelfe/contrasttransferfunction"""
     shape = (512, 512)
-    freqs = make_frequencies(shape, pixel_size)
+    freqs = make_frequency_grid(shape, pixel_size)
     k_sqr, theta = cartesian_to_polar(freqs, square=True)
     # Compute cryojax CTF
     optics = ContrastTransferFunction(
