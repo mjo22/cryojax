@@ -21,7 +21,7 @@ with install_import_hook("cryojax", "typeguard.typechecked"):
     from cryojax.simulator import (
         FourierVoxelGridPotential,
         GaussianMixtureAtomicPotential,
-        PengParameterizedAtomicPotential,
+        PengTabulatedAtomicPotential,
         RealVoxelGridPotential,
     )
 
@@ -43,7 +43,7 @@ def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
     atom_a_factors, atom_b_factors = get_tabulated_scattering_factor_parameters(
         atom_elements, peng_element_scattering_factor_parameter_table
     )
-    atomic_potential = PengParameterizedAtomicPotential(
+    atomic_potential = PengTabulatedAtomicPotential(
         atom_positions, atom_a_factors, atom_b_factors
     )
     # Build the grid
@@ -89,7 +89,7 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     atom_a_factors, atom_b_factors = get_tabulated_scattering_factor_parameters(
         atom_elements, peng_element_scattering_factor_parameter_table
     )
-    atomic_potential = PengParameterizedAtomicPotential(
+    atomic_potential = PengTabulatedAtomicPotential(
         atom_positions, atom_a_factors, atom_b_factors
     )
     # Build the grids

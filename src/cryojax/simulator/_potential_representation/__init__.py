@@ -1,8 +1,8 @@
 from .atom_potential import (
     AbstractAtomicPotential as AbstractAtomicPotential,
-    AbstractParameterizedAtomicPotential as AbstractParameterizedAtomicPotential,
+    AbstractTabulatedAtomicPotential as AbstractTabulatedAtomicPotential,
     GaussianMixtureAtomicPotential as GaussianMixtureAtomicPotential,
-    PengParameterizedAtomicPotential as PengParameterizedAtomicPotential,
+    PengTabulatedAtomicPotential as PengTabulatedAtomicPotential,
 )
 from .base_potential import (
     AbstractPotentialRepresentation as AbstractPotentialRepresentation,
