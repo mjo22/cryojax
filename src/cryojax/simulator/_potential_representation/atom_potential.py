@@ -83,24 +83,24 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     """An atomistic representation of scattering potential as a mixture of
     gaussians.
 
-    The naming and numerical convention of parameters `atom_strengths` and
-    `atom_b_factors` follows "Robust Parameterization of Elastic and Absorptive
+    The naming and numerical convention of parameters `gaussian_strengths` and
+    `gaussian_widths` follows "Robust Parameterization of Elastic and Absorptive
     Electron Atomic Scattering Factors" by Peng et al. (1996), where $a_i$ are
-    the `atom_strengths` and $b_i$ are the `atom_b_factors`.
+    the `gaussian_strengths` and $b_i$ are the `gaussian_widths`.
     """
 
     atom_positions: Float[Array, "n_atoms 3"]
-    atom_strengths: Float[Array, "n_atoms n_gaussians_per_atom"]
-    atom_b_factors: Float[Array, "n_atoms n_gaussians_per_atom"]
+    gaussian_strengths: Float[Array, "n_atoms n_gaussians_per_atom"]
+    gaussian_widths: Float[Array, "n_atoms n_gaussians_per_atom"]
 
     def __init__(
         self,
         atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
-        atom_strengths: (
+        gaussian_strengths: (
             Float[Array, "n_atoms n_gaussians_per_atom"]
             | Float[np.ndarray, "n_atoms n_gaussians_per_atom"]
         ),
-        atom_b_factors: (
+        gaussian_widths: (
             Float[Array, "n_atoms n_gaussians_per_atom"]
             | Float[np.ndarray, "n_atoms n_gaussians_per_atom"]
         ),
@@ -108,15 +108,15 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         """**Arguments:**
 
         - `atom_positions`: The coordinates of the atoms in units of angstroms.
-        - `atom_strengths`: The strength for each atom and for each gaussian per atom.
-                            This has units of angstroms.
-        - `atom_b_factors`: The variance (up to numerical constants) for each atom and
-                            for each gaussian per atom. This has units of angstroms
-                            squared.
+        - `gaussian_strengths`: The strength for each atom and for each gaussian per atom.
+                                This has units of angstroms.
+        - `gaussian_widths`: The variance (up to numerical constants) for each atom and
+                             for each gaussian per atom. This has units of angstroms
+                             squared.
         """
         self.atom_positions = jnp.asarray(atom_positions)
-        self.atom_strengths = jnp.asarray(atom_strengths)
-        self.atom_b_factors = jnp.asarray(atom_b_factors)
+        self.gaussian_strengths = jnp.asarray(gaussian_strengths)
+        self.gaussian_widths = jnp.asarray(gaussian_widths)
 
     @override
     def as_real_voxel_grid(
@@ -142,8 +142,8 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         """  # noqa: E501
         return _build_real_space_voxels_from_atoms(
             self.atom_positions,
-            self.atom_strengths,
-            self.atom_b_factors,
+            self.gaussian_strengths,
+            self.gaussian_widths,
             coordinate_grid_in_angstroms,
             batch_size=batch_size,
             progress_bar=progress_bar,
@@ -152,7 +152,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
 
 class AbstractTabulatedAtomicPotential(AbstractAtomicPotential, strict=True):
-    atom_b_factors: eqx.AbstractVar[Float[Array, " n_atoms"]]
+    b_factors: eqx.AbstractVar[Float[Array, " n_atoms"]]
 
 
 class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
@@ -197,14 +197,14 @@ class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True
     atom_positions: Float[Array, "n_atoms 3"]
     scattering_factor_a: Float[Array, "n_atoms 5"]
     scattering_factor_b: Float[Array, "n_atoms 5"]
-    atom_b_factors: Float[Array, " n_atoms"]
+    b_factors: Float[Array, " n_atoms"]
 
     def __init__(
         self,
         atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
         scattering_factor_a: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
         scattering_factor_b: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
-        atom_b_factors: Optional[
+        b_factors: Optional[
             Float[Array, " n_atoms"] | Float[np.ndarray, " n_atoms"]
         ] = None,
     ):
@@ -215,15 +215,15 @@ class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True
                                  Peng et al. (1996)
         - `scattering_factor_b`: The scattering factors parameter "$b_i$" from
                                  Peng et al. (1996)
-        - `atom_b_factors`: The B factors applied to each atom.
+        - `b_factors`: The B-factors applied to each atom.
         """
         self.atom_positions = jnp.asarray(atom_positions)
         self.scattering_factor_a = jnp.asarray(scattering_factor_a)
         self.scattering_factor_b = error_if_not_positive(jnp.asarray(scattering_factor_b))
-        if atom_b_factors is None:
+        if b_factors is None:
             n_atoms = atom_positions.shape[0]
-            atom_b_factors = jnp.full((n_atoms,), 0.0, dtype=float)
-        self.atom_b_factors = error_if_negative(jnp.asarray(atom_b_factors))
+            b_factors = jnp.full((n_atoms,), 0.0, dtype=float)
+        self.b_factors = error_if_negative(jnp.asarray(b_factors))
 
     @override
     def as_real_voxel_grid(
@@ -254,7 +254,7 @@ class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True
 
         $$U(\\mathbf{x}) = \\sum\\limits_{i = 1}^5 \\frac{4 \\pi a_i}{(2\\pi ((b_i + B / 4) / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 ((b_i + B / 4) / 8 \\pi^2)}),$$
 
-        where $B$ is the `atom_b_factors`.
+        where $B$ is the `b_factors`.
 
         **Arguments:**
 
@@ -270,7 +270,7 @@ class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True
         return _build_real_space_voxels_from_atoms(
             self.atom_positions,
             self.scattering_factor_a,
-            self.scattering_factor_b + self.atom_b_factors[:, None] / 4,
+            self.scattering_factor_b + self.b_factors[:, None] / 4,
             coordinate_grid_in_angstroms,
             batch_size=batch_size,
             progress_bar=progress_bar,
