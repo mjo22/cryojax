@@ -1,5 +1,6 @@
 """Routines for downsampling arrays"""
 
+import math
 from typing import overload
 
 import jax.numpy as jnp
@@ -71,7 +72,10 @@ def downsample_with_fourier_cropping(
 
 
 def _downsample_array_to_shape(array, new_shape):
+    n_pixels, new_n_pixels = array.size, math.prod(new_shape)
     fourier_array = jnp.fft.fftshift(jnp.fft.fftn(array))
-    cropped_fourier_array = crop_to_shape(fourier_array, new_shape)
+    cropped_fourier_array = (new_n_pixels / n_pixels) * crop_to_shape(
+        fourier_array, new_shape
+    )
     downsampled_array = jnp.fft.ifftn(jnp.fft.ifftshift(cropped_fourier_array))
     return downsampled_array

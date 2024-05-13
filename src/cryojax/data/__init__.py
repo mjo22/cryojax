@@ -11,6 +11,8 @@ from ._io import (
     read_array_with_spacing_from_mrc as read_array_with_spacing_from_mrc,
     read_atoms_from_cif as read_atoms_from_cif,
     read_atoms_from_pdb as read_atoms_from_pdb,
+    read_atoms_with_b_factors_from_cif as read_atoms_with_b_factors_from_cif,
+    read_atoms_with_b_factors_from_pdb as read_atoms_with_b_factors_from_pdb,
     write_image_stack_to_mrc as write_image_stack_to_mrc,
     write_image_to_mrc as write_image_to_mrc,
     write_volume_to_mrc as write_volume_to_mrc,

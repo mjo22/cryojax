@@ -40,11 +40,11 @@ def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
     # Load the PDB file
     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
     # Load scattering factor parameters and build atomistic potential
-    atom_a_factors, atom_b_factors = get_tabulated_scattering_factor_parameters(
+    scattering_factor_a, scattering_factor_b = get_tabulated_scattering_factor_parameters(
         atom_elements, peng_element_scattering_factor_parameter_table
     )
     atomic_potential = PengTabulatedAtomicPotential(
-        atom_positions, atom_a_factors, atom_b_factors
+        atom_positions, scattering_factor_a, scattering_factor_b
     )
     # Build the grid
     coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
@@ -104,6 +104,29 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     )
 
     assert low_resolution_potential_grid.shape == downsampled_potential_grid.shape
+
+
+@pytest.mark.parametrize("batch_size", (2, 3, 4))
+def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, batch_size):
+    shape = (64, 64, 64)
+    voxel_size = 0.5
+
+    # Load the PDB file
+    atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
+    # Load scattering factor parameters and build atomistic potential
+    scattering_factor_a, scattering_factor_b = get_tabulated_scattering_factor_parameters(
+        atom_elements, peng_element_scattering_factor_parameter_table
+    )
+    atomic_potential = PengTabulatedAtomicPotential(
+        atom_positions, scattering_factor_a, scattering_factor_b
+    )
+    # Build the grid
+    coordinate_grid = make_coordinate_grid(shape, voxel_size)
+    voxels = atomic_potential.as_real_voxel_grid(coordinate_grid)
+    voxels_with_batching = atomic_potential.as_real_voxel_grid(
+        coordinate_grid, batch_size=batch_size
+    )
+    np.testing.assert_allclose(voxels, voxels_with_batching)
 
 
 class TestBuildRealSpaceVoxelsFromAtoms:

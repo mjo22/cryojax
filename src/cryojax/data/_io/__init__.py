@@ -1,4 +1,3 @@
-from .cif import read_atoms_from_cif as read_atoms_from_cif
 from .gemmi import (
     center_gemmi_model as center_gemmi_model,
     clean_gemmi_structure as clean_gemmi_structure,
@@ -17,5 +16,10 @@ from .mrc import (
     write_image_to_mrc as write_image_to_mrc,
     write_volume_to_mrc as write_volume_to_mrc,
 )
-from .pdb import read_atoms_from_pdb as read_atoms_from_pdb
+from .pdb_and_cif import (
+    read_atoms_from_cif as read_atoms_from_cif,
+    read_atoms_from_pdb as read_atoms_from_pdb,
+    read_atoms_with_b_factors_from_cif as read_atoms_with_b_factors_from_cif,
+    read_atoms_with_b_factors_from_pdb as read_atoms_with_b_factors_from_pdb,
+)
 from .starfile import read_and_validate_starfile as read_and_validate_starfile

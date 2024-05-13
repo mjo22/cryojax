@@ -33,7 +33,7 @@ def get_atom_info_from_gemmi_model(
     return atom_positions, atom_element_numbers
 
 
-def clean_gemmi_structure(structure=None):
+def clean_gemmi_structure(structure):
     """
     Clean Gemmi Structure.
 
@@ -48,12 +48,11 @@ def clean_gemmi_structure(structure=None):
         Same object, cleaned up of unnecessary atoms.
 
     """
-    if structure is not None:
-        structure.remove_alternative_conformations()
-        structure.remove_hydrogens()
-        structure.remove_waters()
-        structure.remove_ligands_and_waters()
-        structure.remove_empty_chains()
+    structure.remove_alternative_conformations()
+    structure.remove_hydrogens()
+    structure.remove_waters()
+    structure.remove_ligands_and_waters()
+    structure.remove_empty_chains()
 
     return structure
 
@@ -141,3 +140,25 @@ def extract_atom_positions_and_numbers(
     positions = np.array([at.pos.tolist() for ch in atoms for at in ch])
     atomic_numbers = np.array([at.element.atomic_number for ch in atoms for at in ch])
     return positions, atomic_numbers
+
+
+def extract_atom_b_factors(atoms) -> Float[np.ndarray, "N 3"]:
+    """
+    Interpret Gemmi atoms and extract a single parameter type.
+
+    Parameters
+    ----------
+    atoms : list (of list(s)) of Gemmi atoms
+        Gemmi atom objects associated with each chain
+
+    Returns
+    -------
+    b_factors :
+        Gemmi b factors
+    """
+    # if list of Gemmi atoms, convert into a list of list
+    if type(atoms[0]) != list:
+        atoms = [atoms]
+
+    b_factors = np.array([at.b_iso for ch in atoms for at in ch])
+    return b_factors

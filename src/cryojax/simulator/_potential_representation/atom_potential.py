@@ -4,6 +4,7 @@ Atomistic representation of the scattering potential.
 
 from abc import abstractmethod
 from functools import partial
+from typing import Optional
 from typing_extensions import override, Self
 
 import equinox as eqx
@@ -12,6 +13,8 @@ import jax.numpy as jnp
 import numpy as np
 from jaxtyping import Array, Float
 
+from ..._errors import error_if_negative, error_if_not_positive
+from ..._loop import fori_loop_tqdm_decorator
 from .._pose import AbstractPose
 from .base_potential import AbstractPotentialRepresentation
 
@@ -23,7 +26,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         In, `cryojax`, potentials should be built in units of *inverse length squared*,
         $[L]^{-2}$. This rescaled potential is defined to be
 
-        $$v(\\mathbf{x}) = \\frac{2 m e}{\\hbar^2} V(\\mathbf{x}),$$
+        $$U(\\mathbf{x}) = \\frac{2 m e}{\\hbar^2} V(\\mathbf{x}),$$
 
         where $V$ is the electrostatic potential energy, $\\mathbf{x}$ is a positional
         coordinate, $m$ is the electron mass, and $e$ is the electron charge.
@@ -34,7 +37,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         factors. In particular, for a single atom with scattering factor $f^{(e)}(\\mathbf{q})$
         and scattering vector $\\mathbf{q}$, its rescaled potential is equal to
 
-        $$v(\\mathbf{x}) = 32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
+        $$U(\\mathbf{x}) = 32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
 
         where $\\mathcal{F}^{-1}$ is the inverse fourier transform. The inverse fourier
         transform is evaluated at $2\\mathbf{x}$ because $2 \\mathbf{q}$ gives the spatial
@@ -66,7 +69,12 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
 
     @abstractmethod
     def as_real_voxel_grid(
-        self, coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"]
+        self,
+        coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"],
+        *,
+        batch_size: Optional[int] = None,
+        progress_bar: bool = False,
+        print_every: Optional[int] = None,
     ) -> Float[Array, "z_dim y_dim x_dim"]:
         raise NotImplementedError
 
@@ -112,17 +120,24 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
     @override
     def as_real_voxel_grid(
-        self, coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"]
+        self,
+        coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"],
+        *,
+        batch_size: Optional[int] = None,
+        progress_bar: bool = False,
+        print_every: Optional[int] = None,
     ) -> Float[Array, "z_dim y_dim x_dim"]:
         """Return a voxel grid in real space of the potential.
 
         **Arguments:**
 
         - `coordinate_grid_in_angstroms`: The coordinate system of the grid.
+        - `batch_size`: The number of atoms over which to compute the potential
+                        in parallel.
 
         **Returns:**
 
-        The rescaled potential $v(\\mathbf{x})$ as a voxel grid evaluated on the
+        The rescaled potential $U(\\mathbf{x})$ as a voxel grid evaluated on the
         `coordinate_grid_in_angstroms`.
         """  # noqa: E501
         return _build_real_space_voxels_from_atoms(
@@ -130,11 +145,14 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             self.atom_strengths,
             self.atom_b_factors,
             coordinate_grid_in_angstroms,
+            batch_size=batch_size,
+            progress_bar=progress_bar,
+            print_every=print_every,
         )
 
 
 class AbstractTabulatedAtomicPotential(AbstractAtomicPotential, strict=True):
-    pass
+    atom_b_factors: eqx.AbstractVar[Float[Array, " n_atoms"]]
 
 
 class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
@@ -179,28 +197,42 @@ class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True
     atom_positions: Float[Array, "n_atoms 3"]
     scattering_factor_a: Float[Array, "n_atoms 5"]
     scattering_factor_b: Float[Array, "n_atoms 5"]
+    atom_b_factors: Float[Array, " n_atoms"]
 
     def __init__(
         self,
         atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
         scattering_factor_a: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
         scattering_factor_b: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
+        atom_b_factors: Optional[
+            Float[Array, " n_atoms"] | Float[np.ndarray, " n_atoms"]
+        ] = None,
     ):
         """**Arguments:**
 
         - `atom_positions`: The coordinates of the atoms in units of angstroms.
-        - `scattering_factor_a`: The scattering factors parameter $a_i$ from
-                               Peng et al. (1996)
-        - `scattering_factor_b`: The scattering factors parameter $b_i$ from
-                               Peng et al. (1996)
+        - `scattering_factor_a`: The scattering factors parameter "$a_i$" from
+                                 Peng et al. (1996)
+        - `scattering_factor_b`: The scattering factors parameter "$b_i$" from
+                                 Peng et al. (1996)
+        - `atom_b_factors`: The B factors applied to each atom.
         """
         self.atom_positions = jnp.asarray(atom_positions)
         self.scattering_factor_a = jnp.asarray(scattering_factor_a)
-        self.scattering_factor_b = jnp.asarray(scattering_factor_b)
+        self.scattering_factor_b = error_if_not_positive(jnp.asarray(scattering_factor_b))
+        if atom_b_factors is None:
+            n_atoms = atom_positions.shape[0]
+            atom_b_factors = jnp.full((n_atoms,), 0.0, dtype=float)
+        self.atom_b_factors = error_if_negative(jnp.asarray(atom_b_factors))
 
     @override
     def as_real_voxel_grid(
-        self, coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"]
+        self,
+        coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"],
+        *,
+        batch_size: Optional[int] = None,
+        progress_bar: bool = False,
+        print_every: Optional[int] = None,
     ) -> Float[Array, "z_dim y_dim x_dim"]:
         """Return a voxel grid in real space of the potential.
 
@@ -210,27 +242,39 @@ class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True
 
         $$f^{(e)}(\\mathbf{q}) = \\sum\\limits_{i = 1}^5 a_i \\exp(- b_i |\\mathbf{q}|^2),$$
 
-        where $a_i$ are the `scattering_factor_a` and $b_i$ are the `scattering_factor_b`.
+        where $a_i$ is the `scattering_factor_a` and $b_i$ is the `scattering_factor_b`.
         Under usual scattering approximations (i.e. the first-born approximation),
-        the rescaled electrostatic potential energy $v(\\mathbf{x})$ is then given by
+        the rescaled electrostatic potential energy $U(\\mathbf{x})$ is then given by
         $32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
 
-        $$v(\\mathbf{x}) = \\sum\\limits_{i = 1}^5 \\frac{4 \\pi a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
+        $$U(\\mathbf{x}) = \\sum\\limits_{i = 1}^5 \\frac{4 \\pi a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
+
+        We additionally give the option to modulate this expression with a constant B-factor,
+        giving the expression
+
+        $$U(\\mathbf{x}) = \\sum\\limits_{i = 1}^5 \\frac{4 \\pi a_i}{(2\\pi ((b_i + B / 4) / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 ((b_i + B / 4) / 8 \\pi^2)}),$$
+
+        where $B$ is the `atom_b_factors`.
 
         **Arguments:**
 
         - `coordinate_grid_in_angstroms`: The coordinate system of the grid.
+        - `batch_size`: The number of atoms over which to compute the potential
+                        in parallel with `jax.vmap`.
 
         **Returns:**
 
-        The rescaled potential $v(\\mathbf{x})$ as a voxel grid evaluated on the
+        The rescaled potential $U(\\mathbf{x})$ as a voxel grid evaluated on the
         `coordinate_grid_in_angstroms`.
         """  # noqa: E501
         return _build_real_space_voxels_from_atoms(
             self.atom_positions,
             self.scattering_factor_a,
-            self.scattering_factor_b,
+            self.scattering_factor_b + self.atom_b_factors[:, None] / 4,
             coordinate_grid_in_angstroms,
+            batch_size=batch_size,
+            progress_bar=progress_bar,
+            print_every=print_every,
         )
 
 
@@ -292,6 +336,10 @@ def _build_real_space_voxels_from_atoms(
     ff_a: Float[Array, "n_atoms n_gaussians_per_atom"],
     ff_b: Float[Array, "n_atoms n_gaussians_per_atom"],
     coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"],
+    *,
+    batch_size: Optional[int] = None,
+    progress_bar: bool = False,
+    print_every: Optional[int] = None,
 ) -> Float[Array, "z_dim y_dim x_dim"]:
     """
     Build a voxel representation of an atomic model.
@@ -314,13 +362,56 @@ def _build_real_space_voxels_from_atoms(
     # equinox.internal.while_loop / equinox.internal.scan could also be
     # options
     @partial(jax.jit, donate_argnums=1)
-    def add_gaussian_to_potential(i, potential):
+    def brute_force_body_fun(atom_index, potential):
         return potential + _evaluate_3d_atom_potential(
-            coordinate_grid_in_angstroms, atom_positions[i], ff_a[i], ff_b[i]
+            coordinate_grid_in_angstroms,
+            atom_positions[atom_index],
+            ff_a[atom_index],
+            ff_b[atom_index],
         )
 
-    voxel_grid = jax.lax.fori_loop(
-        0, atom_positions.shape[0], add_gaussian_to_potential, voxel_grid_buffer
-    )
+    def evaluate_3d_atom_potential_batch(atom_index_batch):
+        vmap_evaluate_3d_atom_potential = jax.vmap(
+            _evaluate_3d_atom_potential, in_axes=[None, 0, 0, 0]
+        )
+        return jnp.sum(
+            vmap_evaluate_3d_atom_potential(
+                coordinate_grid_in_angstroms,
+                jnp.take(atom_positions, atom_index_batch, axis=0),
+                jnp.take(ff_a, atom_index_batch, axis=0),
+                jnp.take(ff_b, atom_index_batch, axis=0),
+            ),
+            axis=0,
+        )
+
+    @partial(jax.jit, donate_argnums=1)
+    def batched_body_fun(iteration_index, potential):
+        atom_index_batch = jnp.linspace(
+            iteration_index * batch_size,
+            (iteration_index + 1) * batch_size - 1,
+            batch_size,  # type: ignore
+            dtype=int,
+        )
+        return potential + evaluate_3d_atom_potential_batch(atom_index_batch)
+
+    # Get the number of iterations of the loop (the number of atoms)
+    n_atoms = atom_positions.shape[0]
+    # Set the logic for the loop based on the batch size
+    if batch_size is None:
+        n_iterations = n_atoms
+        body_fun = brute_force_body_fun
+        if progress_bar:
+            body_fun = fori_loop_tqdm_decorator(n_iterations, print_every)(body_fun)
+        voxel_grid = jax.lax.fori_loop(0, n_atoms, body_fun, voxel_grid_buffer)
+    else:
+        n_iterations = n_atoms // batch_size
+        body_fun = batched_body_fun
+        if progress_bar:
+            body_fun = fori_loop_tqdm_decorator(n_iterations, print_every)(body_fun)
+        voxel_grid = jax.lax.fori_loop(0, n_iterations, body_fun, voxel_grid_buffer)
+        if n_atoms % batch_size > 0:
+            voxel_grid += evaluate_3d_atom_potential_batch(
+                jnp.arange(n_atoms - n_atoms % batch_size, n_atoms)
+            )
 
     return voxel_grid
