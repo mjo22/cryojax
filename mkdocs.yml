@@ -65,5 +65,6 @@ nav:
             - Read a particle stack: 'examples/read-dataset.ipynb'
         - Intermediate:
             - Simulate a batch of images: 'examples/simulate-micrograph.ipynb'
+            - Run a cross-correlation search: 'examples/cross-correlation-search.ipynb'
     - Simulator API:
         - 'api/simulator/scattering_potential.md'

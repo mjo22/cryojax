@@ -71,7 +71,7 @@ def test_superposition_pipeline_without_conformation(sample_subunit_mrc_path, co
         instrument_config=config, scattering_theory=theory
     )
     _ = pipeline.render()
-    _ = pipeline.sample(jax.random.PRNGKey(0))
+    _ = pipeline.render(jax.random.PRNGKey(0))
 
 
 def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, config):
@@ -85,7 +85,7 @@ def test_superposition_pipeline_with_conformation(sample_subunit_mrc_path, confi
         instrument_config=config, scattering_theory=theory
     )
     _ = pipeline.render()
-    _ = pipeline.sample(jax.random.PRNGKey(0))
+    _ = pipeline.render(jax.random.PRNGKey(0))
 
 
 @pytest.mark.parametrize(

@@ -168,5 +168,5 @@ def noisy_model(config, theory_with_solvent, detector):
 
 @pytest.fixture
 def test_image(noisy_model):
-    image = noisy_model.sample(jr.PRNGKey(1234))
+    image = noisy_model.render(jr.PRNGKey(1234))
     return rfftn(image)

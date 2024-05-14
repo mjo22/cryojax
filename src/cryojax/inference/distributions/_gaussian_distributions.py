@@ -58,7 +58,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         self.signal_scale_factor = error_if_not_positive(jnp.asarray(signal_scale_factor))
 
     @override
-    def render(
+    def compute_signal(
         self, *, get_real: bool = True
     ) -> (
         Float[
@@ -114,7 +114,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
             .astype(complex),
             get_real=get_real,
         )
-        image = self.render(get_real=get_real)
+        image = self.compute_signal(get_real=get_real)
         return image + noise
 
     @override
@@ -138,7 +138,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         # Compute the variance and scale up to be independent of the number of pixels
         variance = n_pixels * self.variance_function(freqs)
         # Create simulated data
-        simulated = self.render(get_real=False)
+        simulated = self.compute_signal(get_real=False)
         # Compute residuals
         residuals = simulated - observed
         # Compute standard normal random variables
