@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.21">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.22">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.66ac8b77.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.732c4fb1.min.css">
       
       
 
@@ -291,6 +291,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../examples/compute-potential/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Compute a scattering potential
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../examples/simulate-image/" class="md-nav__link">
         
   
@@ -532,6 +553,57 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#atom-based-scattering-potentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      Atom-based scattering potentials
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Atom-based scattering potentials">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cryojax.simulator.AbstractAtomicPotential" class="md-nav__link">
+    <span class="md-ellipsis">
+      AbstractAtomicPotential
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cryojax.simulator.GaussianMixtureAtomicPotential" class="md-nav__link">
+    <span class="md-ellipsis">
+      GaussianMixtureAtomicPotential
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cryojax.simulator.AbstractTabulatedAtomicPotential" class="md-nav__link">
+    <span class="md-ellipsis">
+      AbstractTabulatedAtomicPotential
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cryojax.simulator.PengAtomicPotential" class="md-nav__link">
+    <span class="md-ellipsis">
+      PengAtomicPotential
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#voxel-based-scattering-potentials" class="md-nav__link">
     <span class="md-ellipsis">
       Voxel-based scattering potentials
@@ -559,15 +631,6 @@
   
     <nav class="md-nav" aria-label="Fourier-space voxel representations">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cryojax.simulator.AbstractFourierVoxelGridPotential" class="md-nav__link">
-    <span class="md-ellipsis">
-      AbstractFourierVoxelGridPotential
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#cryojax.simulator.FourierVoxelGridPotential" class="md-nav__link">
@@ -622,15 +685,6 @@
         
       </ul>
     </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pure-function-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      Pure function API
-    </span>
-  </a>
   
 </li>
         
@@ -743,8 +797,477 @@ scatterer.</p>
 
 
 </div></details>
-<h2 id="voxel-based-scattering-potentials">Voxel-based scattering potentials<a class="headerlink" href="#voxel-based-scattering-potentials" title="Permanent link">¤</a></h2>
+<h2 id="atom-based-scattering-potentials">Atom-based scattering potentials<a class="headerlink" href="#atom-based-scattering-potentials" title="Permanent link">¤</a></h2>
 <details class="abstract" open="open">
+<summary><code>cryojax.simulator.AbstractAtomicPotential</code></summary>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.AbstractAtomicPotential" class="doc doc-heading">
+          <code>cryojax.simulator.AbstractAtomicPotential</code>
+
+
+<a href="#cryojax.simulator.AbstractAtomicPotential" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.base_potential">base_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.base_potential.AbstractPotentialRepresentation" href="#cryojax.simulator.AbstractPotentialRepresentation">AbstractPotentialRepresentation</a></code></p>
+
+  
+      <p>Abstract interface for an atom-based scattering potential representation.</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>In, <code>cryojax</code>, potentials should be built in units of <em>inverse length squared</em>,
+<span class="arithmatex">\([L]^{-2}\)</span>. This rescaled potential is defined to be</p>
+<div class="arithmatex">\[U(\mathbf{x}) = \frac{2 m e}{\hbar^2} V(\mathbf{x}),\]</div>
+<p>where <span class="arithmatex">\(V\)</span> is the electrostatic potential energy, <span class="arithmatex">\(\mathbf{x}\)</span> is a positional
+coordinate, <span class="arithmatex">\(m\)</span> is the electron mass, and <span class="arithmatex">\(e\)</span> is the electron charge.</p>
+<p>For a single atom, this rescaled potential has the advantage (among other reasons)
+that under usual scattering approximations (i.e. the first-born approximation), the
+fourier transform of this quantity is closely related to tabulated electron scattering
+factors. In particular, for a single atom with scattering factor <span class="arithmatex">\(f^{(e)}(\mathbf{q})\)</span>
+and scattering vector <span class="arithmatex">\(\mathbf{q}\)</span>, its rescaled potential is equal to</p>
+<div class="arithmatex">\[U(\mathbf{x}) = 32 \pi \mathcal{F}^{-1}[f^{(e)}](2 \mathbf{x}),\]</div>
+<p>where <span class="arithmatex">\(\mathcal{F}^{-1}\)</span> is the inverse fourier transform. The inverse fourier
+transform is evaluated at <span class="arithmatex">\(2\mathbf{x}\)</span> because <span class="arithmatex">\(2 \mathbf{q}\)</span> gives the spatial
+frequency <span class="arithmatex">\(\boldsymbol{\xi}\)</span> in the usual crystallographic fourier transform convention,</p>
+<div class="arithmatex">\[\mathcal{F}[f](\boldsymbol{\xi}) = \int d^3\mathbf{x} \ \exp(2\pi i \mathbf{x}\cdot\boldsymbol{\xi}) f(\mathbf{x}).\]</div>
+<p><strong>References</strong>:</p>
+<ul>
+<li>For the definition of the rescaled potential, see
+Chapter 69, Page 2003, Equation 69.6 from <em>Hawkes, Peter W., and Erwin Kasper.
+Principles of Electron Optics, Volume 4: Advanced Wave Optics. Academic Press,
+2022.</em></li>
+<li>To work out the correspondence between the rescaled potential and the electron
+scattering factors, see the supplementary information from <em>Vulović, Miloš, et al.
+"Image formation modeling in cryo-electron microscopy." Journal of structural
+biology 183.1 (2013): 19-32.</em></li>
+</ul>
+</div>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="cryojax.simulator.AbstractAtomicPotential.atom_positions" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractAtomicPotential</span><span class="o">.</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">eqx</span><span class="o">.</span><span class="n">AbstractVar</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#cryojax.simulator.AbstractAtomicPotential.atom_positions" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  </div>
+
+</div>
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="cryojax.simulator.AbstractAtomicPotential.as_real_voxel_grid" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">progress_bar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">print_every</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim&#39;</span><span class="p">]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
+  </span>
+
+<a href="#cryojax.simulator.AbstractAtomicPotential.as_real_voxel_grid" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div></details>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.GaussianMixtureAtomicPotential" class="doc doc-heading">
+          <code>cryojax.simulator.GaussianMixtureAtomicPotential</code>
+
+
+<a href="#cryojax.simulator.GaussianMixtureAtomicPotential" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.atom_potential">atom_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.atom_potential.AbstractAtomicPotential" href="#cryojax.simulator.AbstractAtomicPotential">AbstractAtomicPotential</a></code></p>
+
+  
+      <p>An atomistic representation of scattering potential as a mixture of
+gaussians.</p>
+<p>The naming and numerical convention of parameters <code>gaussian_strengths</code> and
+<code>gaussian_widths</code> follows "Robust Parameterization of Elastic and Absorptive
+Electron Atomic Scattering Factors" by Peng et al. (1996), where <span class="arithmatex">\(a_i\)</span> are
+the <code>gaussian_strengths</code> and <span class="arithmatex">\(b_i\)</span> are the <code>gaussian_widths</code>.</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>In order to load a <code>GaussianMixtureAtomicPotential</code> from tabulated
+scattering factors, use the <code>cryojax.constants</code> submodule.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">cryojax.constants</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">peng_element_scattering_factor_parameter_table</span><span class="p">,</span>
+    <span class="n">get_tabulated_scattering_factor_parameters</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">cryojax.io</span> <span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
+<span class="kn">from</span> <span class="nn">cryojax.simulator</span> <span class="kn">import</span> <span class="n">GaussianMixtureAtomicPotential</span>
+
+<span class="c1"># Load positions of atoms and one-hot encoded atom names</span>
+<span class="n">atom_positions</span><span class="p">,</span> <span class="n">atom_identities</span> <span class="o">=</span> <span class="n">read_atoms_from_pdb</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">scattering_factor_a</span><span class="p">,</span> <span class="n">scattering_factor_b</span> <span class="o">=</span> <span class="n">get_tabulated_scattering_factor_parameters</span><span class="p">(</span>
+    <span class="n">atom_identities</span><span class="p">,</span> <span class="n">peng_element_scattering_factor_parameter_table</span>
+<span class="p">)</span>
+<span class="n">potential</span> <span class="o">=</span> <span class="n">GaussianMixtureAtomicPotential</span><span class="p">(</span>
+    <span class="n">atom_positions</span><span class="p">,</span> <span class="n">scattering_factor_a</span><span class="p">,</span> <span class="n">scattering_factor_b</span>
+<span class="p">)</span>
+</code></pre></div>
+</div>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="cryojax.simulator.GaussianMixtureAtomicPotential.__init__" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureAtomicPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">gaussian_strengths</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">],</span> <span class="n">gaussian_widths</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">])</span></code>
+
+<a href="#cryojax.simulator.GaussianMixtureAtomicPotential.__init__" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p><strong>Arguments:</strong></p>
+<ul>
+<li><code>atom_positions</code>: The coordinates of the atoms in units of angstroms.</li>
+<li><code>gaussian_strengths</code>: The strength for each atom and for each gaussian per atom.
+                        This has units of angstroms.</li>
+<li><code>gaussian_widths</code>: The variance (up to numerical constants) for each atom and
+                     for each gaussian per atom. This has units of angstroms
+                     squared.</li>
+</ul>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="cryojax.simulator.GaussianMixtureAtomicPotential.rotate_to_pose" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureAtomicPotential</span><span class="o">.</span><span class="n">rotate_to_pose</span><span class="p">(</span><span class="n">pose</span><span class="p">:</span> <span class="n">AbstractPose</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
+
+<a href="#cryojax.simulator.GaussianMixtureAtomicPotential.rotate_to_pose" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return a new potential with rotated <code>atom_positions</code>.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="cryojax.simulator.GaussianMixtureAtomicPotential.as_real_voxel_grid" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">progress_bar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">print_every</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.simulator.GaussianMixtureAtomicPotential.as_real_voxel_grid" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return a voxel grid in real space of the potential.</p>
+<p>See [<code>PengAtomicPotential.as_real_voxel_grid</code>][PengAtomicPotential.as_real_voxel_grid] for the numerical
+conventions used when computing the sum of gaussians.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>coordinate_grid_in_angstroms</code>: The coordinate system of the grid.</li>
+<li><code>batch_size</code>: The number of atoms over which to compute the potential
+                in parallel.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The rescaled potential <span class="arithmatex">\(U(\mathbf{x})\)</span> as a voxel grid evaluated on the
+<code>coordinate_grid_in_angstroms</code>.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div><details class="abstract">
+<summary><code>cryojax.simulator.AbstractTabulatedAtomicPotential</code></summary>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.AbstractTabulatedAtomicPotential" class="doc doc-heading">
+          <code>cryojax.simulator.AbstractTabulatedAtomicPotential</code>
+
+
+<a href="#cryojax.simulator.AbstractTabulatedAtomicPotential" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.atom_potential">atom_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.atom_potential.AbstractAtomicPotential" href="#cryojax.simulator.AbstractAtomicPotential">AbstractAtomicPotential</a></code></p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="cryojax.simulator.AbstractTabulatedAtomicPotential.b_factors" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractTabulatedAtomicPotential</span><span class="o">.</span><span class="n">b_factors</span><span class="p">:</span> <span class="n">eqx</span><span class="o">.</span><span class="n">AbstractVar</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]]]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#cryojax.simulator.AbstractTabulatedAtomicPotential.b_factors" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div></details>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.PengAtomicPotential" class="doc doc-heading">
+          <code>cryojax.simulator.PengAtomicPotential</code>
+
+
+<a href="#cryojax.simulator.PengAtomicPotential" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.atom_potential">atom_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.atom_potential.AbstractTabulatedAtomicPotential" href="#cryojax.simulator.AbstractTabulatedAtomicPotential">AbstractTabulatedAtomicPotential</a></code></p>
+
+  
+      <p>The scattering potential parameterized as a mixture of five gaussians
+per atom, through work by Lian-Mao Peng.</p>
+<p>To load this object, the following pattern can be used:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">cryojax.io</span> <span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
+<span class="kn">from</span> <span class="nn">cryojax.simulator</span> <span class="kn">import</span> <span class="n">PengAtomicPotential</span>
+
+<span class="c1"># Load positions of atoms and one-hot encoded atom names</span>
+<span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;example.pdb&quot;</span>
+<span class="n">atom_positions</span><span class="p">,</span> <span class="n">atom_identities</span> <span class="o">=</span> <span class="n">read_atoms_from_pdb</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+<span class="n">potential</span> <span class="o">=</span> <span class="n">PengAtomicPotential</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">,</span> <span class="n">atom_identities</span><span class="p">)</span>
+</code></pre></div>
+<p>Alternatively, use the following to load with B-factors:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">cryojax.io</span> <span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
+<span class="kn">from</span> <span class="nn">cryojax.simulator</span> <span class="kn">import</span> <span class="n">PengAtomicPotential</span>
+
+<span class="c1"># Load positions of atoms, encoded atom names, and B-factors</span>
+<span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;example.pdb&quot;</span>
+<span class="n">atom_positions</span><span class="p">,</span> <span class="n">atom_identities</span><span class="p">,</span> <span class="n">b_factors</span> <span class="o">=</span> <span class="n">read_atoms_from_pdb</span><span class="p">(</span>
+    <span class="n">filename</span><span class="p">,</span> <span class="n">get_b_factors</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="n">potential</span> <span class="o">=</span> <span class="n">PengAtomicPotential</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">,</span> <span class="n">atom_identities</span><span class="p">,</span> <span class="n">b_factors</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>References:</strong></p>
+<ul>
+<li>Peng, L-M. "Electron atomic scattering factors and scattering potentials of crystals."
+  Micron 30.6 (1999): 625-648.</li>
+<li>Peng, L-M., et al. "Robust parameterization of elastic and absorptive electron atomic
+  scattering factors." Acta Crystallographica Section A: Foundations of Crystallography
+  52.2 (1996): 257-276.</li>
+</ul>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="cryojax.simulator.PengAtomicPotential.__init__" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">atom_identities</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Int</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">],</span> <span class="n">b_factors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#cryojax.simulator.PengAtomicPotential.__init__" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p><strong>Arguments:</strong></p>
+<ul>
+<li><code>atom_positions</code>: The coordinates of the atoms in units of angstroms.</li>
+<li><code>atom_identities</code>: Array containing the index of the one-hot encoded atom names.
+                     Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.</li>
+<li><code>b_factors</code>: The B-factors applied to each atom.</li>
+</ul>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="cryojax.simulator.PengAtomicPotential.rotate_to_pose" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="o">.</span><span class="n">rotate_to_pose</span><span class="p">(</span><span class="n">pose</span><span class="p">:</span> <span class="n">AbstractPose</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
+
+<a href="#cryojax.simulator.PengAtomicPotential.rotate_to_pose" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return a new potential with rotated <code>atom_positions</code>.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="cryojax.simulator.PengAtomicPotential.as_real_voxel_grid" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">progress_bar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">print_every</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.simulator.PengAtomicPotential.as_real_voxel_grid" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return a voxel grid in real space of the potential.</p>
+<p>Through the work of Peng et al. (1996), tabulated elastic electron scattering factors
+are defined as</p>
+<div class="arithmatex">\[f^{(e)}(\mathbf{q}) = \sum\limits_{i = 1}^5 a_i \exp(- b_i |\mathbf{q}|^2),\]</div>
+<p>where <span class="arithmatex">\(a_i\)</span> is stored as <code>PengAtomicPotential.scattering_factor_a</code> and <span class="arithmatex">\(b_i\)</span> is
+stored as <code>PengAtomicPotential.scattering_factor_b</code>.
+Under usual scattering approximations (i.e. the first-born approximation),
+the rescaled electrostatic potential energy <span class="arithmatex">\(U(\mathbf{x})\)</span> is then given by
+<span class="arithmatex">\(32 \pi \mathcal{F}^{-1}[f^{(e)}](2 \mathbf{x})\)</span>, which is computed analytically as</p>
+<div class="arithmatex">\[U(\mathbf{x}) = \sum\limits_{i = 1}^5 \frac{4 \pi a_i}{(2\pi (b_i / 8 \pi^2))^{3/2}} \exp(- \frac{|\mathbf{x}|^2}{2 (b_i / 8 \pi^2)}).\]</div>
+<p>We additionally give the option to modulate this expression with a constant B-factor,
+giving the expression</p>
+<div class="arithmatex">\[U(\mathbf{x}) = \sum\limits_{i = 1}^5 \frac{4 \pi a_i}{(2\pi ((b_i + B / 4) / 8 \pi^2))^{3/2}} \exp(- \frac{|\mathbf{x}|^2}{2 ((b_i + B / 4) / 8 \pi^2)}),\]</div>
+<p>where <span class="arithmatex">\(B\)</span> is stored as <code>PengAtomicPotential.b_factors</code>.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>coordinate_grid_in_angstroms</code>: The coordinate system of the grid.</li>
+<li><code>batch_size</code>: The number of atoms over which to compute the potential
+                in parallel with <code>jax.vmap</code>.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The rescaled potential <span class="arithmatex">\(U(\mathbf{x})\)</span> as a voxel grid evaluated on the
+<code>coordinate_grid_in_angstroms</code>.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div><h2 id="voxel-based-scattering-potentials">Voxel-based scattering potentials<a class="headerlink" href="#voxel-based-scattering-potentials" title="Permanent link">¤</a></h2>
+<details class="abstract">
 <summary><code>cryojax.simulator.AbstractVoxelPotential</code></summary>
 
 
@@ -844,33 +1367,6 @@ scatterer.</p>
 
 
 
-<h5 id="cryojax.simulator.AbstractVoxelPotential.rotate_to_pose" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractVoxelPotential</span><span class="o">.</span><span class="n">rotate_to_pose</span><span class="p">(</span><span class="n">pose</span><span class="p">:</span> <span class="n">AbstractPose</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
-  </span>
-
-<a href="#cryojax.simulator.AbstractVoxelPotential.rotate_to_pose" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-  <div class="doc doc-contents ">
-  
-      <p>Return a new <code>AbstractPotentialRepresentation</code> at the given pose.</p>
-<p><strong>Arguments:</strong></p>
-<ul>
-<li><code>pose</code>: The pose at which to view the <code>AbstractPotentialRepresentation</code>.</li>
-</ul>
-
-  </div>
-
-</div>
-
-
-<div class="doc doc-object doc-function">
-
-
-
 <h5 id="cryojax.simulator.AbstractVoxelPotential.from_real_voxel_grid" class="doc doc-heading">
           <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractVoxelPotential</span><span class="o">.</span><span class="n">from_real_voxel_grid</span><span class="p">(</span><span class="n">real_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
   
@@ -892,30 +1388,6 @@ scattering potential.</p>
 </div>
 
 
-<div class="doc doc-object doc-function">
-
-
-
-<h5 id="cryojax.simulator.AbstractVoxelPotential.from_atoms" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractVoxelPotential</span><span class="o">.</span><span class="n">from_atoms</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">atom_identities</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Int</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">CoordinateGrid</span><span class="p">,</span> <span class="n">form_factors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
-      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
-  </span>
-
-<a href="#cryojax.simulator.AbstractVoxelPotential.from_atoms" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-  <div class="doc doc-contents ">
-  
-      <p>Load an <code>AbstractVoxelPotential</code> from atom positions and identities.</p>
-
-  </div>
-
-</div>
-
-
 
   </div>
 
@@ -924,76 +1396,11 @@ scattering potential.</p>
 
 </div></details>
 <h3 id="fourier-space-voxel-representations">Fourier-space voxel representations<a class="headerlink" href="#fourier-space-voxel-representations" title="Permanent link">¤</a></h3>
-<details class="abstract">
-<summary><code>cryojax.simulator.AbstractFourierVoxelGridPotential</code></summary>
-
-
-<div class="doc doc-object doc-class">
-
-
-
-<h4 id="cryojax.simulator.AbstractFourierVoxelGridPotential" class="doc doc-heading">
-          <code>cryojax.simulator.AbstractFourierVoxelGridPotential</code>
-
-
-<a href="#cryojax.simulator.AbstractFourierVoxelGridPotential" class="headerlink" title="Permanent link">¤</a></h4>
-
-
-  <div class="doc doc-contents first">
-          <p class="doc doc-class-bases">
-            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.voxel_potential">voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.voxel_potential.AbstractVoxelPotential" href="#cryojax.simulator.AbstractVoxelPotential">AbstractVoxelPotential</a></code></p>
-
-  
-      <p>Abstract interface of a 3D scattering potential voxel grid
-in fourier-space.</p>
-
-
-  
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-
-<h5 id="cryojax.simulator.AbstractFourierVoxelGridPotential.__init__" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractFourierVoxelGridPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">fourier_voxel_grid</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">wrapped_frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">FrequencySlice</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span></code>
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
-  </span>
-
-<a href="#cryojax.simulator.AbstractFourierVoxelGridPotential.__init__" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-  <div class="doc doc-contents ">
-
-  </div>
-
-</div>
-
-
-
-  </div>
-
-  </div>
-
-
-</div></details>
 <div class="admonition info">
 <p class="admonition-title">Fourier-space conventions</p>
 <ul>
-<li>The <code>fourier_voxel_grid</code> and <code>wrapped_frequency_slice</code> arguments to
-<code>FourierVoxelGrid.__init__</code> should be loaded with the zero frequency
+<li>The <code>fourier_voxel_grid</code> and <code>frequency_slice</code> arguments to
+<code>FourierVoxelGridPotential.__init__</code> should be loaded with the zero frequency
 component in the center of the box.</li>
 <li>The parameters in an <code>AbstractPose</code> represent a rotation in real-space. This means that when calling <code>FourierVoxelGridPotential.rotate_to_pose</code>,
 frequencies are rotated by the inverse rotation as stored in the pose.</li>
@@ -1014,7 +1421,7 @@ frequencies are rotated by the inverse rotation as stored in the pose.</li>
 
   <div class="doc doc-contents first">
           <p class="doc doc-class-bases">
-            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.voxel_potential">voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.voxel_potential.AbstractFourierVoxelGridPotential" href="#cryojax.simulator.AbstractFourierVoxelGridPotential">AbstractFourierVoxelGridPotential</a></code></p>
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.voxel_potential">voxel_potential</span>.<span title="cryojax.simulator._potential_representation.voxel_potential.AbstractFourierVoxelGridPotential">AbstractFourierVoxelGridPotential</span></code></p>
 
   
       <p>A 3D scattering potential voxel grid in fourier-space.</p>
@@ -1034,20 +1441,41 @@ frequencies are rotated by the inverse rotation as stored in the pose.</li>
 
 
 
-<h5 id="cryojax.simulator.FourierVoxelGridPotential.wrapped_frequency_slice_in_angstroms" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotential</span><span class="o">.</span><span class="n">wrapped_frequency_slice_in_angstroms</span><span class="p">:</span> <span class="n">FrequencySlice</span></code>
+<h5 id="cryojax.simulator.FourierVoxelGridPotential.frequency_slice_in_angstroms" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotential</span><span class="o">.</span><span class="n">frequency_slice_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">]</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-cached"><code>cached</code></small>
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#cryojax.simulator.FourierVoxelGridPotential.wrapped_frequency_slice_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.FourierVoxelGridPotential.frequency_slice_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
 
 
   <div class="doc doc-contents ">
   
-      <p>The <code>wrapped_frequency_slice</code> in angstroms.</p>
+      <p>The <code>frequency_slice_in_pixels</code> in angstroms.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="cryojax.simulator.FourierVoxelGridPotential.shape" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotential</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#cryojax.simulator.FourierVoxelGridPotential.shape" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>The shape of the <code>fourier_voxel_grid</code>.</p>
   </div>
 
 </div>
@@ -1060,7 +1488,7 @@ frequencies are rotated by the inverse rotation as stored in the pose.</li>
 
 
 <h5 id="cryojax.simulator.FourierVoxelGridPotential.__init__" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">fourier_voxel_grid</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">wrapped_frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">FrequencySlice</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span></code>
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">fourier_voxel_grid</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span></code>
 
 <a href="#cryojax.simulator.FourierVoxelGridPotential.__init__" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -1070,8 +1498,7 @@ frequencies are rotated by the inverse rotation as stored in the pose.</li>
       <p><strong>Arguments:</strong></p>
 <ul>
 <li><code>fourier_voxel_grid</code>: The cubic voxel grid in fourier space.</li>
-<li><code>wrapped_frequency_slice_in_pixels</code>: Frequency slice coordinate system,
-                                       wrapped in a <code>FrequencySlice</code> object.</li>
+<li><code>frequency_slice_in_pixels</code>: Frequency slice coordinate system.</li>
 <li><code>voxel_size</code>: The voxel size.</li>
 </ul>
 
@@ -1119,24 +1546,15 @@ scattering potential voxel grid.</p>
 
 
 
-<h5 id="cryojax.simulator.FourierVoxelGridPotential.from_atoms" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotential</span><span class="o">.</span><span class="n">from_atoms</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">atom_identities</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Int</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">CoordinateGrid</span><span class="p">,</span> <span class="n">form_factors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
-  </span>
+<h5 id="cryojax.simulator.FourierVoxelGridPotential.rotate_to_pose" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotential</span><span class="o">.</span><span class="n">rotate_to_pose</span><span class="p">(</span><span class="n">pose</span><span class="p">:</span> <span class="n">AbstractPose</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
 
-<a href="#cryojax.simulator.FourierVoxelGridPotential.from_atoms" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.FourierVoxelGridPotential.rotate_to_pose" class="headerlink" title="Permanent link">¤</a></h5>
 
 
   <div class="doc doc-contents ">
   
-      <p>Load an <code>AbstractFourierVoxelGridPotential</code> from atom positions and
-identities.</p>
-<p><strong>Arguments:</strong></p>
-<ul>
-<li><code>**kwargs</code>: Passed to <code>AbstractFourierVoxelGridPotential.from_real_voxel_grid</code></li>
-</ul>
+      <p>Return a new potential with a rotated <code>frequency_slice_in_pixels</code>.</p>
 
   </div>
 
@@ -1165,7 +1583,7 @@ identities.</p>
 
   <div class="doc doc-contents first">
           <p class="doc doc-class-bases">
-            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.voxel_potential">voxel_potential</span>.<a class="autorefs autorefs-internal" title="cryojax.simulator._potential_representation.voxel_potential.AbstractFourierVoxelGridPotential" href="#cryojax.simulator.AbstractFourierVoxelGridPotential">AbstractFourierVoxelGridPotential</a></code></p>
+            Bases: <code>cryojax.<span title="cryojax.simulator">simulator</span>.<span title="cryojax.simulator._potential_representation">_potential_representation</span>.<span title="cryojax.simulator._potential_representation.voxel_potential">voxel_potential</span>.<span title="cryojax.simulator._potential_representation.voxel_potential.AbstractFourierVoxelGridPotential">AbstractFourierVoxelGridPotential</span></code></p>
 
   
       <p>A 3D scattering potential voxel grid in fourier-space, represented
@@ -1186,20 +1604,42 @@ by spline coefficients.</p>
 
 
 
-<h5 id="cryojax.simulator.FourierVoxelGridPotentialInterpolator.wrapped_frequency_slice_in_angstroms" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotentialInterpolator</span><span class="o">.</span><span class="n">wrapped_frequency_slice_in_angstroms</span><span class="p">:</span> <span class="n">FrequencySlice</span></code>
+<h5 id="cryojax.simulator.FourierVoxelGridPotentialInterpolator.frequency_slice_in_angstroms" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotentialInterpolator</span><span class="o">.</span><span class="n">frequency_slice_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">]</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-cached"><code>cached</code></small>
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#cryojax.simulator.FourierVoxelGridPotentialInterpolator.wrapped_frequency_slice_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.FourierVoxelGridPotentialInterpolator.frequency_slice_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
 
 
   <div class="doc doc-contents ">
   
-      <p>The <code>wrapped_frequency_slice</code> in angstroms.</p>
+      <p>The <code>frequency_slice_in_pixels</code> in angstroms.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="cryojax.simulator.FourierVoxelGridPotentialInterpolator.shape" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotentialInterpolator</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#cryojax.simulator.FourierVoxelGridPotentialInterpolator.shape" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>The shape of the original <code>fourier_voxel_grid</code> from which
+<code>coefficients</code> were computed.</p>
   </div>
 
 </div>
@@ -1212,7 +1652,7 @@ by spline coefficients.</p>
 
 
 <h5 id="cryojax.simulator.FourierVoxelGridPotentialInterpolator.__init__" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotentialInterpolator</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">fourier_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">wrapped_frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">FrequencySlice</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span></code>
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotentialInterpolator</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">fourier_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span></code>
 
 <a href="#cryojax.simulator.FourierVoxelGridPotentialInterpolator.__init__" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -1234,7 +1674,7 @@ but it is not stored in the class. For example,</p>
 <p><strong>Arguments:</strong></p>
 <ul>
 <li><code>fourier_voxel_grid</code>: The cubic voxel grid in fourier space.</li>
-<li><code>wrapped_frequency_slice_in_pixels</code>: Frequency slice coordinate system,
+<li><code>frequency_slice_in_pixels</code>: Frequency slice coordinate system,
                                        wrapped in a <code>FrequencySlice</code> object.</li>
 <li><code>voxel_size</code>: The voxel size.</li>
 </ul>
@@ -1283,24 +1723,15 @@ scattering potential voxel grid.</p>
 
 
 
-<h5 id="cryojax.simulator.FourierVoxelGridPotentialInterpolator.from_atoms" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotentialInterpolator</span><span class="o">.</span><span class="n">from_atoms</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">atom_identities</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Int</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">CoordinateGrid</span><span class="p">,</span> <span class="n">form_factors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
-  </span>
+<h5 id="cryojax.simulator.FourierVoxelGridPotentialInterpolator.rotate_to_pose" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierVoxelGridPotentialInterpolator</span><span class="o">.</span><span class="n">rotate_to_pose</span><span class="p">(</span><span class="n">pose</span><span class="p">:</span> <span class="n">AbstractPose</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
 
-<a href="#cryojax.simulator.FourierVoxelGridPotentialInterpolator.from_atoms" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.FourierVoxelGridPotentialInterpolator.rotate_to_pose" class="headerlink" title="Permanent link">¤</a></h5>
 
 
   <div class="doc doc-contents ">
   
-      <p>Load an <code>AbstractFourierVoxelGridPotential</code> from atom positions and
-identities.</p>
-<p><strong>Arguments:</strong></p>
-<ul>
-<li><code>**kwargs</code>: Passed to <code>AbstractFourierVoxelGridPotential.from_real_voxel_grid</code></li>
-</ul>
+      <p>Return a new potential with a rotated <code>frequency_slice_in_pixels</code>.</p>
 
   </div>
 
@@ -1349,20 +1780,41 @@ identities.</p>
 
 
 
-<h5 id="cryojax.simulator.RealVoxelGridPotential.wrapped_coordinate_grid_in_angstroms" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelGridPotential</span><span class="o">.</span><span class="n">wrapped_coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">CoordinateGrid</span></code>
+<h5 id="cryojax.simulator.RealVoxelGridPotential.coordinate_grid_in_angstroms" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelGridPotential</span><span class="o">.</span><span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim 3&#39;</span><span class="p">]</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-cached"><code>cached</code></small>
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#cryojax.simulator.RealVoxelGridPotential.wrapped_coordinate_grid_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.RealVoxelGridPotential.coordinate_grid_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
 
 
   <div class="doc doc-contents ">
   
-      <p>The <code>coordinate_grid</code> in angstroms.</p>
+      <p>The <code>coordinate_grid_in_pixels</code> in angstroms.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="cryojax.simulator.RealVoxelGridPotential.shape" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelGridPotential</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#cryojax.simulator.RealVoxelGridPotential.shape" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>The shape of the <code>real_voxel_grid</code>.</p>
   </div>
 
 </div>
@@ -1375,7 +1827,7 @@ identities.</p>
 
 
 <h5 id="cryojax.simulator.RealVoxelGridPotential.__init__" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelGridPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">real_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">wrapped_coordinate_grid_in_pixels</span><span class="p">:</span> <span class="n">CoordinateGrid</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span></code>
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelGridPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">real_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">coordinate_grid_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim 3&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span></code>
 
 <a href="#cryojax.simulator.RealVoxelGridPotential.__init__" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -1385,8 +1837,7 @@ identities.</p>
       <p><strong>Arguments:</strong></p>
 <ul>
 <li><code>real_voxel_grid</code>: The voxel grid in fourier space.</li>
-<li><code>wrapped_coordinate_grid_in_pixels</code>: A coordinate grid, wrapped into a
-                                       <code>CoordinateGrid</code> object.</li>
+<li><code>coordinate_grid_in_pixels</code>: A coordinate grid.</li>
 <li><code>voxel_size</code>: The voxel size.</li>
 </ul>
 
@@ -1400,7 +1851,7 @@ identities.</p>
 
 
 <h5 id="cryojax.simulator.RealVoxelGridPotential.from_real_voxel_grid" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelGridPotential</span><span class="o">.</span><span class="n">from_real_voxel_grid</span><span class="p">(</span><span class="n">real_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">coordinate_grid_in_pixels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CoordinateGrid</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">crop_scale</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelGridPotential</span><span class="o">.</span><span class="n">from_real_voxel_grid</span><span class="p">(</span><span class="n">real_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">coordinate_grid_in_pixels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim 3&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">crop_scale</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
@@ -1418,7 +1869,7 @@ scattering potential voxel grid.</p>
 <li><code>real_voxel_grid</code>: An electron scattering potential voxel grid in real space.</li>
 <li><code>voxel_size</code>: The voxel size of <code>real_voxel_grid</code>.</li>
 <li><code>crop_scale</code>: Scale factor at which to crop <code>real_voxel_grid</code>.
-              Must be a value less than <code>1.0</code>.</li>
+                Must be a value greater than <code>1</code>.</li>
 </ul>
 
   </div>
@@ -1430,23 +1881,16 @@ scattering potential voxel grid.</p>
 
 
 
-<h5 id="cryojax.simulator.RealVoxelGridPotential.from_atoms" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelGridPotential</span><span class="o">.</span><span class="n">from_atoms</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">atom_identities</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Int</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">CoordinateGrid</span><span class="p">,</span> <span class="n">form_factors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
-  </span>
+<h5 id="cryojax.simulator.RealVoxelGridPotential.rotate_to_pose" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelGridPotential</span><span class="o">.</span><span class="n">rotate_to_pose</span><span class="p">(</span><span class="n">pose</span><span class="p">:</span> <span class="n">AbstractPose</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
 
-<a href="#cryojax.simulator.RealVoxelGridPotential.from_atoms" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.RealVoxelGridPotential.rotate_to_pose" class="headerlink" title="Permanent link">¤</a></h5>
 
 
   <div class="doc doc-contents ">
   
-      <p>Load a <code>RealVoxelGridPotential</code> from atom positions and identities.</p>
-<p><strong>Arguments:</strong></p>
-<ul>
-<li><code>**kwargs</code>: Passed to <code>RealVoxelGridPotential.from_real_voxel_grid</code></li>
-</ul>
+      <p>Return a new potential with a rotated
+<code>coordinate_grid_in_pixels</code>.</p>
 
   </div>
 
@@ -1504,20 +1948,41 @@ will automatically mask points of zero scattering potential.</p>
 
 
 
-<h5 id="cryojax.simulator.RealVoxelCloudPotential.wrapped_coordinate_list_in_angstroms" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="n">wrapped_coordinate_list_in_angstroms</span><span class="p">:</span> <span class="n">CoordinateList</span></code>
+<h5 id="cryojax.simulator.RealVoxelCloudPotential.coordinate_list_in_angstroms" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="n">coordinate_list_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;size 3&#39;</span><span class="p">]</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-cached"><code>cached</code></small>
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#cryojax.simulator.RealVoxelCloudPotential.wrapped_coordinate_list_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.RealVoxelCloudPotential.coordinate_list_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
 
 
   <div class="doc doc-contents ">
   
-      <p>The <code>coordinate_list</code> in angstroms.</p>
+      <p>The <code>coordinate_list_in_pixels</code> in angstroms.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="cryojax.simulator.RealVoxelCloudPotential.shape" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#cryojax.simulator.RealVoxelCloudPotential.shape" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>The shape of <code>voxel_weights</code>.</p>
   </div>
 
 </div>
@@ -1530,7 +1995,7 @@ will automatically mask points of zero scattering potential.</p>
 
 
 <h5 id="cryojax.simulator.RealVoxelCloudPotential.__init__" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">voxel_weights</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; size&#39;</span><span class="p">],</span> <span class="n">wrapped_coordinate_list_in_pixels</span><span class="p">:</span> <span class="n">CoordinateList</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span></code>
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">voxel_weights</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; size&#39;</span><span class="p">],</span> <span class="n">coordinate_list_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;size 3&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span></code>
 
 <a href="#cryojax.simulator.RealVoxelCloudPotential.__init__" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -1540,8 +2005,7 @@ will automatically mask points of zero scattering potential.</p>
       <p><strong>Arguments:</strong></p>
 <ul>
 <li><code>voxel_weights</code>: A point-cloud of voxel scattering potential values.</li>
-<li><code>wrapped_coordinate_list_in_pixels</code>: Coordinate list for the <code>voxel_weights</code>,
-                                       wrapped in a <code>CoordinateList</code> object.</li>
+<li><code>coordinate_list_in_pixels</code>: Coordinate list for the <code>voxel_weights</code>.</li>
 <li><code>voxel_size</code>: The voxel size.</li>
 </ul>
 
@@ -1555,7 +2019,7 @@ will automatically mask points of zero scattering potential.</p>
 
 
 <h5 id="cryojax.simulator.RealVoxelCloudPotential.from_real_voxel_grid" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="n">from_real_voxel_grid</span><span class="p">(</span><span class="n">real_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">coordinate_grid_in_pixels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CoordinateGrid</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-05</span><span class="p">,</span> <span class="n">atol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-08</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">fill_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="n">from_real_voxel_grid</span><span class="p">(</span><span class="n">real_voxel_grid</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">coordinate_grid_in_pixels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim 3&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-05</span><span class="p">,</span> <span class="n">atol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-08</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">fill_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
@@ -1592,23 +2056,16 @@ scattering potential voxel grid.</p>
 
 
 
-<h5 id="cryojax.simulator.RealVoxelCloudPotential.from_atoms" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="n">from_atoms</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">atom_identities</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Int</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">CoordinateGrid</span><span class="p">,</span> <span class="n">form_factors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
-  </span>
+<h5 id="cryojax.simulator.RealVoxelCloudPotential.rotate_to_pose" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">RealVoxelCloudPotential</span><span class="o">.</span><span class="n">rotate_to_pose</span><span class="p">(</span><span class="n">pose</span><span class="p">:</span> <span class="n">AbstractPose</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
 
-<a href="#cryojax.simulator.RealVoxelCloudPotential.from_atoms" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.RealVoxelCloudPotential.rotate_to_pose" class="headerlink" title="Permanent link">¤</a></h5>
 
 
   <div class="doc doc-contents ">
   
-      <p>Load a <code>RealVoxelCloudPotential</code> from atom positions and identities.</p>
-<p><strong>Arguments:</strong></p>
-<ul>
-<li><code>**kwargs</code>: Passed to <code>RealVoxelCloudPotential.from_real_voxel_grid</code></li>
-</ul>
+      <p>Return a new potential with a rotated
+<code>coordinate_list_in_pixels</code>.</p>
 
   </div>
 
@@ -1620,96 +2077,6 @@ scattering potential voxel grid.</p>
 
   </div>
 
-
-</div><h3 id="pure-function-api">Pure function API<a class="headerlink" href="#pure-function-api" title="Permanent link">¤</a></h3>
-
-
-
-<div class="doc doc-object doc-function">
-
-
-
-<h5 id="cryojax.simulator.build_real_space_voxels_from_atoms" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">build_real_space_voxels_from_atoms</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">ff_a</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">],</span> <span class="n">ff_b</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_form_factors&#39;</span><span class="p">],</span> <span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim 3&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">]</span></code>
-
-<a href="#cryojax.simulator.build_real_space_voxels_from_atoms" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-  <div class="doc doc-contents first">
-  
-      <p>Build a voxel representation of an atomic model.</p>
-<p><strong>Arguments</strong></p>
-<ul>
-<li><code>atom_coords</code>: The coordinates of the atoms.</li>
-<li><code>ff_a</code>: Intensity values for each Gaussian in the atom</li>
-<li><code>ff_b</code> : The inverse scale factors for each Gaussian in the atom</li>
-<li><code>coordinate_grid</code> : The coordinates of each voxel in the grid.</li>
-</ul>
-<p><strong>Returns:</strong></p>
-<p>The voxel representation of the atomic model.</p>
-
-  </div>
-
-</div><hr />
-
-
-
-<div class="doc doc-object doc-function">
-
-
-
-<h5 id="cryojax.simulator.evaluate_3d_atom_potential" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">evaluate_3d_atom_potential</span><span class="p">(</span><span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">],</span> <span class="n">atom_position</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">atomic_as</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_form_factors&#39;</span><span class="p">],</span> <span class="n">atomic_bs</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_form_factors&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim&#39;</span><span class="p">]</span></code>
-
-<a href="#cryojax.simulator.evaluate_3d_atom_potential" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-  <div class="doc doc-contents first">
-  
-      <p>Evaluates the electron potential of a single atom on a 3D grid.</p>
-<p><strong>Arguments:</strong></p>
-<ul>
-<li><code>coordinate_grid_in_angstroms</code>: The coordinate system of the grid.</li>
-<li><code>atom_position</code>: The location of the atom.</li>
-<li><code>atomic_as</code>: The intensity values for each gaussian in the atom.</li>
-<li><code>atomic_bs</code>: The inverse scale factors for each gaussian in the atom.</li>
-</ul>
-<p><strong>Returns:</strong></p>
-<p>The potential of the atom evaluated on the grid.</p>
-
-  </div>
-
-</div><hr />
-
-
-
-<div class="doc doc-object doc-function">
-
-
-
-<h5 id="cryojax.simulator.evaluate_3d_real_space_gaussian" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">evaluate_3d_real_space_gaussian</span><span class="p">(</span><span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">],</span> <span class="n">atom_position</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">a</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim&#39;</span><span class="p">]</span></code>
-
-<a href="#cryojax.simulator.evaluate_3d_real_space_gaussian" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-  <div class="doc doc-contents first">
-  
-      <p>Evaluate a gaussian on a 3D grid.
-The naming convention for parameters follows "Robust
-Parameterization of Elastic and Absorptive Electron Atomic Scattering
-Factors" by Peng et al.</p>
-<p><strong>Arguments:</strong></p>
-<ul>
-<li><code>coordinate_grid</code>: The coordinate system of the grid.</li>
-<li><code>pos</code>: The center of the gaussian.</li>
-<li><code>a</code>: A scale factor.</li>
-<li><code>b</code>: The scale of the gaussian.</li>
-</ul>
-<p><strong>Returns:</strong></p>
-<p>The potential of the gaussian on the grid.</p>
-
-  </div>
 
 </div>
 
@@ -1761,7 +2128,7 @@ Factors" by Peng et al.</p>
     <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.a7c05c9e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.5cfa9459.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       
