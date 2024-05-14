@@ -12,7 +12,7 @@ from jaxtyping import Array, Float
 
 from .._errors import error_if_not_positive
 from ..constants import convert_keV_to_angstroms
-from ..coordinates import CoordinateGrid, FrequencyGrid
+from ..coordinates import make_coordinate_grid, make_frequency_grid
 from ..image import (
     crop_to_shape,
     pad_to_shape,
@@ -87,53 +87,91 @@ class InstrumentConfig(Module, strict=True):
     def wavelength_in_angstroms(self) -> Float[Array, ""]:
         return convert_keV_to_angstroms(self.voltage_in_kilovolts)
 
-    @cached_property
-    def wrapped_coordinate_grid_in_pixels(self) -> CoordinateGrid:
-        return CoordinateGrid(shape=self.shape)
+    @property
+    def wavenumber_in_inverse_angstroms(self) -> Float[Array, ""]:
+        return 2 * jnp.pi / self.wavelength_in_angstroms
 
     @cached_property
-    def wrapped_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
-        return self.pixel_size * self.wrapped_coordinate_grid_in_pixels  # type: ignore
+    def coordinate_grid_in_pixels(
+        self,
+    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim} 2"]:
+        return make_coordinate_grid(shape=self.shape)
 
     @cached_property
-    def wrapped_frequency_grid_in_pixels(self) -> FrequencyGrid:
-        return FrequencyGrid(shape=self.shape)
+    def coordinate_grid_in_angstroms(
+        self,
+    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim} 2"]:
+        return _safe_multiply_by_constant(self.coordinate_grid_in_pixels, self.pixel_size)
 
     @cached_property
-    def wrapped_frequency_grid_in_angstroms(self) -> FrequencyGrid:
-        return self.wrapped_frequency_grid_in_pixels / self.pixel_size
+    def frequency_grid_in_pixels(
+        self,
+    ) -> Float[Array, "{self.y_dim} {self.x_dim//2+1} 2"]:
+        return make_frequency_grid(shape=self.shape)
 
     @cached_property
-    def wrapped_full_frequency_grid_in_pixels(self) -> FrequencyGrid:
-        return FrequencyGrid(shape=self.shape, half_space=False)
+    def frequency_grid_in_angstroms(
+        self,
+    ) -> Float[Array, "{self.y_dim} {self.x_dim//2+1} 2"]:
+        return _safe_multiply_by_constant(
+            self.frequency_grid_in_pixels, 1 / self.pixel_size
+        )
 
     @cached_property
-    def wrapped_full_frequency_grid_in_angstroms(self) -> FrequencyGrid:
-        return self.wrapped_full_frequency_grid_in_pixels / self.pixel_size
+    def full_frequency_grid_in_pixels(
+        self,
+    ) -> Float[Array, "{self.y_dim} {self.x_dim} 2"]:
+        return make_frequency_grid(shape=self.shape, half_space=False)
 
     @cached_property
-    def wrapped_padded_coordinate_grid_in_pixels(self) -> CoordinateGrid:
-        return CoordinateGrid(shape=self.padded_shape)
+    def full_frequency_grid_in_angstroms(
+        self,
+    ) -> Float[Array, "{self.y_dim} {self.x_dim} 2"]:
+        return _safe_multiply_by_constant(
+            self.full_frequency_grid_in_pixels, 1 / self.pixel_size
+        )
 
     @cached_property
-    def wrapped_padded_coordinate_grid_in_angstroms(self) -> CoordinateGrid:
-        return self.pixel_size * self.wrapped_padded_coordinate_grid_in_pixels  # type: ignore
+    def padded_coordinate_grid_in_pixels(
+        self,
+    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim} 2"]:
+        return make_coordinate_grid(shape=self.padded_shape)
 
     @cached_property
-    def wrapped_padded_frequency_grid_in_pixels(self) -> FrequencyGrid:
-        return FrequencyGrid(shape=self.padded_shape)
+    def padded_coordinate_grid_in_angstroms(
+        self,
+    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim} 2"]:
+        return _safe_multiply_by_constant(
+            self.padded_coordinate_grid_in_pixels, self.pixel_size
+        )
 
     @cached_property
-    def wrapped_padded_frequency_grid_in_angstroms(self) -> FrequencyGrid:
-        return self.wrapped_padded_frequency_grid_in_pixels / self.pixel_size
+    def padded_frequency_grid_in_pixels(
+        self,
+    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim//2+1} 2"]:
+        return make_frequency_grid(shape=self.padded_shape)
 
     @cached_property
-    def wrapped_padded_full_frequency_grid_in_pixels(self) -> FrequencyGrid:
-        return FrequencyGrid(shape=self.padded_shape, half_space=False)
+    def padded_frequency_grid_in_angstroms(
+        self,
+    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim//2+1} 2"]:
+        return _safe_multiply_by_constant(
+            self.padded_frequency_grid_in_pixels, 1 / self.pixel_size
+        )
 
     @cached_property
-    def wrapped_padded_full_frequency_grid_in_angstroms(self) -> FrequencyGrid:
-        return self.wrapped_padded_full_frequency_grid_in_pixels / self.pixel_size
+    def padded_full_frequency_grid_in_pixels(
+        self,
+    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim} 2"]:
+        return make_frequency_grid(shape=self.padded_shape, half_space=False)
+
+    @cached_property
+    def padded_full_frequency_grid_in_angstroms(
+        self,
+    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim} 2"]:
+        return _safe_multiply_by_constant(
+            self.padded_full_frequency_grid_in_pixels, 1 / self.pixel_size
+        )
 
     def crop_to_shape(
         self, image: Float[Array, "y_dim x_dim"]
@@ -178,3 +216,12 @@ class InstrumentConfig(Module, strict=True):
     @property
     def padded_n_pixels(self) -> int:
         return math.prod(self.padded_shape)
+
+
+def _safe_multiply_by_constant(
+    grid: Float[Array, "y_dim x_dim 2"], constant: Float[Array, ""]
+) -> Float[Array, "y_dim x_dim 2"]:
+    """Multiplies a coordinate grid by a constant in a
+    safe way for gradient computation.
+    """
+    return jnp.where(grid != 0.0, jnp.asarray(constant) * grid, 0.0)

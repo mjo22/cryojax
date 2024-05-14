@@ -60,6 +60,7 @@ nav:
     - 'index.md'
     - Examples:
         - Introductory:
+            - Compute a scattering potential: 'examples/compute-potential.ipynb'
             - Simulate an image: 'examples/simulate-image.ipynb'
             - Read a particle stack: 'examples/read-dataset.ipynb'
         - Intermediate:

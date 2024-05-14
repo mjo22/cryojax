@@ -101,9 +101,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
     ):
         """Sample from the gaussian noise model."""
         pipeline = self.imaging_pipeline
-        freqs = (
-            pipeline.instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
-        )
+        freqs = pipeline.instrument_config.padded_frequency_grid_in_angstroms
         # Compute the zero mean variance and scale up to be independent of the number of
         # pixels
         padded_n_pixels = pipeline.instrument_config.padded_n_pixels
@@ -136,7 +134,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         """
         pipeline = self.imaging_pipeline
         n_pixels = pipeline.instrument_config.n_pixels
-        freqs = pipeline.instrument_config.wrapped_frequency_grid_in_angstroms.get()
+        freqs = pipeline.instrument_config.frequency_grid_in_angstroms
         # Compute the variance and scale up to be independent of the number of pixels
         variance = n_pixels * self.variance_function(freqs)
         # Create simulated data

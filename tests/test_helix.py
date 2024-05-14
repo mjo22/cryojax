@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 
 import cryojax.simulator as cs
-from cryojax.data import read_array_with_spacing_from_mrc
 from cryojax.image import irfftn, normalize_image
+from cryojax.io import read_array_with_spacing_from_mrc
 
 
 def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.HelicalAssembly:
@@ -137,7 +137,7 @@ def test_agree_with_3j9g_assembly(
         cs.FourierSliceExtraction(),
         cs.ContrastTransferTheory(cs.IdealContrastTransferFunction()),
     )
-    theory = cs.LinearScatteringTheory(
+    theory = cs.WeakPhaseScatteringTheory(
         specimen_39jg,
         cs.FourierSliceExtraction(),
         cs.ContrastTransferTheory(cs.IdealContrastTransferFunction()),

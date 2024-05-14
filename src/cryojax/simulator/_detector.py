@@ -162,7 +162,7 @@ class AbstractDetector(Module, strict=True):
     ]:
         """Pass the image through the detector model."""
         N_pix = np.prod(instrument_config.padded_shape)
-        frequency_grid = instrument_config.wrapped_padded_frequency_grid_in_pixels.get()
+        frequency_grid = instrument_config.padded_frequency_grid_in_pixels
         # Compute the time-integrated electron flux in pixels
         electrons_per_pixel = (
             instrument_config.electrons_per_angstrom_squared

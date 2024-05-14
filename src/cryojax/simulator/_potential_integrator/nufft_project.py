@@ -63,15 +63,13 @@ class NufftProjection(
             shape = potential.shape
             fourier_projection = self.project_voxel_cloud_with_nufft(
                 potential.real_voxel_grid.ravel(),
-                potential.wrapped_coordinate_grid_in_pixels.get().reshape(
-                    (math.prod(shape), 3)
-                ),
+                potential.coordinate_grid_in_pixels.reshape((math.prod(shape), 3)),
                 instrument_config.padded_shape,
             )
         elif isinstance(potential, RealVoxelCloudPotential):
             fourier_projection = self.project_voxel_cloud_with_nufft(
                 potential.voxel_weights,
-                potential.wrapped_coordinate_list_in_pixels.get(),
+                potential.coordinate_list_in_pixels,
                 instrument_config.padded_shape,
             )
         else:

@@ -11,7 +11,7 @@ import jax.numpy as jnp
 from equinox import field
 from jaxtyping import Array, Complex, Float, Inexact
 
-from ...coordinates import make_frequencies
+from ...coordinates import make_frequency_grid
 from .._edges import resize_with_crop_or_pad
 from .._fft import irfftn, rfftn
 from .._spectrum import powerspectrum
@@ -219,7 +219,7 @@ def _compute_whitening_filter(
         The whitening filter.
     """
     # Make coordinates
-    micrograph_frequency_grid_in_angstroms = make_frequencies(micrograph.shape)
+    micrograph_frequency_grid_in_angstroms = make_frequency_grid(micrograph.shape)
     # Transform to fourier space
     fourier_micrograph = rfftn(micrograph)
     # Compute norms

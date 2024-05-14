@@ -13,6 +13,7 @@ from jaxtyping import Array, Complex, PRNGKeyArray
 
 from ..image.operators import FourierOperatorLike
 from ._instrument_config import InstrumentConfig
+from ._scattering_theory import compute_phase_shifts_from_integrated_potential
 
 
 class AbstractIce(Module, strict=True):
@@ -54,9 +55,9 @@ class GaussianIce(AbstractIce, strict=True):
     **Attributes:**
 
     - `variance` : A function that computes the variance
-                 of the ice, modeled as colored gaussian noise.
-                 The dimensions of this function are a squared
-                 phase contrast.
+                   of the ice, modeled as colored gaussian noise.
+                   The dimensions of this function are the square
+                   of the dimensions of an integrated potential.
     """
 
     variance: FourierOperatorLike
@@ -72,16 +73,18 @@ class GaussianIce(AbstractIce, strict=True):
     ]:
         """Sample a realization of the ice phase shifts as colored gaussian noise."""
         N_pix = np.prod(instrument_config.padded_shape)
-        frequency_grid_in_angstroms = (
-            instrument_config.wrapped_padded_frequency_grid_in_angstroms.get()
-        )
+        frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
         # Compute standard deviation, scaling up by the variance by the number
         # of pixels to make the realization independent pixel-independent in real-space.
         std = jnp.sqrt(N_pix * self.variance(frequency_grid_in_angstroms))
-        ice_phase_at_exit_plane = std * jr.normal(
+        ice_integrated_potential_at_exit_plane = std * jr.normal(
             key,
             shape=frequency_grid_in_angstroms.shape[0:-1],
             dtype=complex,
         ).at[0, 0].set(0.0)
+        ice_phase_shifts_at_exit_plane = compute_phase_shifts_from_integrated_potential(
+            ice_integrated_potential_at_exit_plane,
+            instrument_config.wavelength_in_angstroms,
+        )
 
-        return ice_phase_at_exit_plane
+        return ice_phase_shifts_at_exit_plane

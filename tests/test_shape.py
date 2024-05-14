@@ -3,8 +3,8 @@ import numpy as np
 import pytest
 
 import cryojax.simulator as cs
-from cryojax.data import read_array_with_spacing_from_mrc
 from cryojax.image import crop_to_shape
+from cryojax.io import read_array_with_spacing_from_mrc
 
 
 jax.config.update("jax_enable_x64", True)
@@ -26,15 +26,10 @@ def test_fourier_shape(model, request):
     model = request.getfixturevalue(model)
     image = model.render(get_real=False)
     padded_image = model.render(postprocess=False, get_real=False)
-    assert (
-        image.shape
-        == model.instrument_config.wrapped_frequency_grid_in_pixels.get().shape[0:2]
-    )
+    assert image.shape == model.instrument_config.frequency_grid_in_pixels.shape[0:2]
     assert (
         padded_image.shape
-        == model.instrument_config.wrapped_padded_frequency_grid_in_pixels.get().shape[
-            0:2
-        ]
+        == model.instrument_config.padded_frequency_grid_in_pixels.shape[0:2]
     )
 
 
@@ -50,7 +45,7 @@ def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
     method = cs.FourierSliceExtraction()
     specimen = cs.SingleStructureEnsemble(potential, pose)
     transfer_theory = cs.ContrastTransferTheory(cs.ContrastTransferFunction())
-    theory = cs.LinearScatteringTheory(specimen, method, transfer_theory)
+    theory = cs.WeakPhaseScatteringTheory(specimen, method, transfer_theory)
     config_control = cs.InstrumentConfig(
         control_shape, pixel_size, voltage_in_kilovolts=300.0
     )

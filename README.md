@@ -55,7 +55,7 @@ First, instantiate the spatial potential energy distribution representation and 
 import jax
 import jax.numpy as jnp
 import cryojax.simulator as cxs
-from cryojax.data import read_array_with_spacing_from_mrc
+from cryojax.io import read_array_with_spacing_from_mrc
 
 # Instantiate the scattering potential
 filename = "example_scattering_potential.mrc"
@@ -73,9 +73,9 @@ pose = cxs.EulerAnglePose(
 structural_ensemble = cxs.SingleStructureEnsemble(potential, pose)
 ```
 
-Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool. Then, the representation of a biological specimen is instantiated, which also includes a pose and conformational heterogeneity. Here, the `SingleStructureEnsemble` class takes a pose but has no heterogeneity.
+Here, the 3D scattering potential array is read from `filename` (see the documentation [here](https://mjo22.github.io/cryojax/examples/compute-potential/) for an example of how to generate the potential). Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`, and subsequently the representation of a biological specimen is instantiated, which also includes a pose and conformational heterogeneity. Here, the `SingleStructureEnsemble` class takes a pose but has no heterogeneity.
 
-Next, build the *scattering theory*. The simplest `scattering_theory` is the `LinearScatteringTheory`. This represents the usual image formation pipeline in cryo-EM, which forms images by computing projections of the potential and convolving the result with a contrast transfer function.
+Next, build the *scattering theory*. The simplest `scattering_theory` is the `WeakPhaseScatteringTheory`. This represents the usual image formation pipeline in cryo-EM, which forms images by computing projections of the potential and convolving the result with a contrast transfer function.
 
 ```python
 from cryojax.image import operators as op
@@ -91,7 +91,7 @@ ctf = cxs.ContrastTransferFunction(
 )
 transfer_theory = cxs.ContrastTransferTheory(ctf, envelope=op.FourierGaussian(b_factor=5.0))
 # ... now for the scattering theory
-scattering_theory = cxs.LinearScatteringTheory(structural_ensemble, potential_integrator, transfer_theory)
+scattering_theory = cxs.WeakPhaseScatteringTheory(structural_ensemble, potential_integrator, transfer_theory)
 ```
 
 The `ContrastTransferFunction` has parameters used in CTFFIND4, which take their default values if not

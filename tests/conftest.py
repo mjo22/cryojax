@@ -10,8 +10,8 @@ from jaxtyping import install_import_hook
 with install_import_hook("cryojax", "typeguard.typechecked"):
     import cryojax as cryojax
     import cryojax.simulator as cs
-    from cryojax.data import read_array_with_spacing_from_mrc
     from cryojax.image import operators as op, rfftn
+    from cryojax.io import read_array_with_spacing_from_mrc
 
 
 # jax.config.update("jax_numpy_dtype_promotion", "strict")
@@ -96,13 +96,13 @@ def potential(sample_mrc_path):
 
 @pytest.fixture
 def filters(config):
-    return op.LowpassFilter(config.wrapped_padded_frequency_grid_in_pixels.get())
+    return op.LowpassFilter(config.padded_frequency_grid_in_pixels)
 
 
 @pytest.fixture
 def masks(config):
     return op.CircularMask(
-        config.wrapped_padded_coordinate_grid_in_angstroms.get(),
+        config.padded_coordinate_grid_in_angstroms,
         radius=20 * float(config.pixel_size),
     )
 
@@ -140,14 +140,14 @@ def solvent():
 
 @pytest.fixture
 def theory(specimen, projection_method, transfer_theory, solvent):
-    return cs.LinearScatteringTheory(
+    return cs.WeakPhaseScatteringTheory(
         specimen, projection_method, transfer_theory, solvent
     )
 
 
 @pytest.fixture
 def theory_with_solvent(specimen, projection_method, transfer_theory, solvent):
-    return cs.LinearScatteringTheory(
+    return cs.WeakPhaseScatteringTheory(
         specimen, projection_method, transfer_theory, solvent
     )
 

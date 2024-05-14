@@ -33,22 +33,23 @@ from ._potential_integrator import (
     NufftProjection as NufftProjection,
 )
 from ._potential_representation import (
-    AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
+    AbstractAtomicPotential as AbstractAtomicPotential,
     AbstractPotentialRepresentation as AbstractPotentialRepresentation,
+    AbstractTabulatedAtomicPotential as AbstractTabulatedAtomicPotential,
     AbstractVoxelPotential as AbstractVoxelPotential,
-    build_real_space_voxels_from_atoms as build_real_space_voxels_from_atoms,
-    evaluate_3d_atom_potential as evaluate_3d_atom_potential,
-    evaluate_3d_real_space_gaussian as evaluate_3d_real_space_gaussian,
     FourierVoxelGridPotential as FourierVoxelGridPotential,
     FourierVoxelGridPotentialInterpolator as FourierVoxelGridPotentialInterpolator,
+    GaussianMixtureAtomicPotential as GaussianMixtureAtomicPotential,
+    PengAtomicPotential as PengAtomicPotential,
     RealVoxelCloudPotential as RealVoxelCloudPotential,
     RealVoxelGridPotential as RealVoxelGridPotential,
 )
 from ._scattering_theory import (
-    AbstractLinearScatteringTheory as AbstractLinearScatteringTheory,
     AbstractScatteringTheory as AbstractScatteringTheory,
-    LinearScatteringTheory as LinearScatteringTheory,
+    AbstractWeakPhaseScatteringTheory as AbstractWeakPhaseScatteringTheory,
+    compute_phase_shifts_from_integrated_potential as compute_phase_shifts_from_integrated_potential,  # noqa: E501
     LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
+    WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
 )
 from ._solvent import (
     AbstractIce as AbstractIce,
