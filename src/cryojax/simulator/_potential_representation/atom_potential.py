@@ -41,7 +41,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         factors. In particular, for a single atom with scattering factor $f^{(e)}(\\mathbf{q})$
         and scattering vector $\\mathbf{q}$, its rescaled potential is equal to
 
-        $$U(\\mathbf{x}) = 4 \\pi 8 \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
+        $$U(\\mathbf{x}) = 32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
 
         where $\\mathcal{F}^{-1}$ is the inverse fourier transform. The inverse fourier
         transform is evaluated at $2\\mathbf{x}$ because $2 \\mathbf{q}$ gives the spatial
@@ -188,10 +188,6 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
     """The scattering potential parameterized as a mixture of five gaussians
     per atom, through work by Lian-Mao Peng.
 
-    Fields `scattering_factor_a` and `scattering_factor_b` are referred
-    to as $a_i$ and $b_i$ respectively in "Robust Parameterization of Elastic
-    and Absorptive Electron Atomic Scattering Factors" by Peng et al. (1996).
-
     To load this object, the following pattern can be used:
 
     ```python
@@ -271,16 +267,16 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
     ) -> Float[Array, "z_dim y_dim x_dim"]:
         """Return a voxel grid in real space of the potential.
 
-        In the notation of Peng et al. (1996), tabulated `scattering_factor_a` and
-        `scattering_factor_b` parameterize the elastic electron scattering factors,
-        defined as
+        Through the work of Peng et al. (1996), tabulated elastic electron scattering factors
+        are defined as
 
         $$f^{(e)}(\\mathbf{q}) = \\sum\\limits_{i = 1}^5 a_i \\exp(- b_i |\\mathbf{q}|^2),$$
 
-        where $a_i$ is the `scattering_factor_a` and $b_i$ is the `scattering_factor_b`.
+        where $a_i$ is stored as `PengAtomicPotential.scattering_factor_a` and $b_i$ is
+        stored as `PengAtomicPotential.scattering_factor_b`.
         Under usual scattering approximations (i.e. the first-born approximation),
         the rescaled electrostatic potential energy $U(\\mathbf{x})$ is then given by
-        $4 \\pi 8 \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
+        $32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
 
         $$U(\\mathbf{x}) = \\sum\\limits_{i = 1}^5 \\frac{4 \\pi a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
 
@@ -289,7 +285,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
 
         $$U(\\mathbf{x}) = \\sum\\limits_{i = 1}^5 \\frac{4 \\pi a_i}{(2\\pi ((b_i + B / 4) / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 ((b_i + B / 4) / 8 \\pi^2)}),$$
 
-        where $B$ is the `b_factors`.
+        where $B$ is stored as `PengAtomicPotential.b_factors`.
 
         **Arguments:**
 
