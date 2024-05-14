@@ -2,7 +2,7 @@ from .atom_potential import (
     AbstractAtomicPotential as AbstractAtomicPotential,
     AbstractTabulatedAtomicPotential as AbstractTabulatedAtomicPotential,
     GaussianMixtureAtomicPotential as GaussianMixtureAtomicPotential,
-    PengTabulatedAtomicPotential as PengTabulatedAtomicPotential,
+    PengAtomicPotential as PengAtomicPotential,
 )
 from .base_potential import (
     AbstractPotentialRepresentation as AbstractPotentialRepresentation,

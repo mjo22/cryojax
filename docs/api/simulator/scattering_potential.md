@@ -25,6 +25,23 @@
                 - rotate_to_pose
                 - as_real_voxel_grid
 
+
+??? abstract "`cryojax.simulator.AbstractTabulatedAtomicPotential`"
+
+    ::: cryojax.simulator.AbstractTabulatedAtomicPotential
+        options:
+            members:
+                - b_factors
+
+
+::: cryojax.simulator.PengAtomicPotential
+        options:
+            members:
+                - __init__
+                - rotate_to_pose
+                - as_real_voxel_grid
+
+
 ## Voxel-based scattering potentials
 
 ??? abstract "`cryojax.simulator.AbstractVoxelPotential`"

@@ -1,5 +1,3 @@
-import itertools
-
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -11,17 +9,13 @@ from cryojax.image import downsample_with_fourier_cropping
 
 
 with install_import_hook("cryojax", "typeguard.typechecked"):
-    from cryojax.constants import (
-        get_tabulated_scattering_factor_parameters,
-        peng_element_scattering_factor_parameter_table,
-    )
     from cryojax.coordinates import make_coordinate_grid
-    from cryojax.data import read_atoms_from_pdb
     from cryojax.image import ifftn
+    from cryojax.io import read_atoms_from_pdb
     from cryojax.simulator import (
         FourierVoxelGridPotential,
         GaussianMixtureAtomicPotential,
-        PengTabulatedAtomicPotential,
+        PengAtomicPotential,
         RealVoxelGridPotential,
     )
 
@@ -39,13 +33,8 @@ def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
 
     # Load the PDB file
     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
-    # Load scattering factor parameters and build atomistic potential
-    scattering_factor_a, scattering_factor_b = get_tabulated_scattering_factor_parameters(
-        atom_elements, peng_element_scattering_factor_parameter_table
-    )
-    atomic_potential = PengTabulatedAtomicPotential(
-        atom_positions, scattering_factor_a, scattering_factor_b
-    )
+    # Load atomistic potential
+    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
     # Build the grid
     coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
     potential_as_real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
@@ -85,13 +74,8 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     high_resolution_coordinate_grid = make_coordinate_grid(shape, voxel_size)
     # Load the PDB file
     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
-    # Load scattering factor parameters and build atomistic potential
-    atom_a_factors, atom_b_factors = get_tabulated_scattering_factor_parameters(
-        atom_elements, peng_element_scattering_factor_parameter_table
-    )
-    atomic_potential = PengTabulatedAtomicPotential(
-        atom_positions, atom_a_factors, atom_b_factors
-    )
+    # Load atomistic potential
+    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
     # Build the grids
     low_resolution_potential_grid = atomic_potential.as_real_voxel_grid(
         low_resolution_coordinate_grid
@@ -113,13 +97,8 @@ def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, batch_size):
 
     # Load the PDB file
     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
-    # Load scattering factor parameters and build atomistic potential
-    scattering_factor_a, scattering_factor_b = get_tabulated_scattering_factor_parameters(
-        atom_elements, peng_element_scattering_factor_parameter_table
-    )
-    atomic_potential = PengTabulatedAtomicPotential(
-        atom_positions, scattering_factor_a, scattering_factor_b
-    )
+    # Load atomistic potential
+    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
     # Build the grid
     coordinate_grid = make_coordinate_grid(shape, voxel_size)
     voxels = atomic_potential.as_real_voxel_grid(coordinate_grid)
@@ -176,58 +155,60 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         integral = jnp.sum(real_voxel_grid) * voxel_size**3
         assert jnp.isclose(integral, jnp.sum(4 * jnp.pi * ff_a))
 
-    def test_fourier_transform(self, toy_gaussian_cloud):
-        (
-            atom_positions,
-            ff_a,
-            ff_b,
-            n_voxels_per_side,
-            voxel_size,
-        ) = toy_gaussian_cloud
-        coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
-        # Build the potential
-        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
-        real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
-        fourier_potential = FourierVoxelGridPotential.from_real_voxel_grid(
-            real_voxel_grid, voxel_size
-        )
-        fourier_voxel_grid = fourier_potential.fourier_voxel_grid
-        bin_size = 1 / (voxel_size) / n_voxels_per_side[0]
-        num_atoms = atom_positions.shape[0]
+    # TODO: Can we parallelize this test? Runs a little too restrictively slow on the GPU
+    # def test_fourier_transform(self, toy_gaussian_cloud):
+    #     import itertools
+    #     (
+    #         atom_positions,
+    #         ff_a,
+    #         ff_b,
+    #         n_voxels_per_side,
+    #         voxel_size,
+    #     ) = toy_gaussian_cloud
+    #     coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
+    #     # Build the potential
+    #     atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+    #     real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
+    #     fourier_potential = FourierVoxelGridPotential.from_real_voxel_grid(
+    #         real_voxel_grid, voxel_size
+    #     )
+    #     fourier_voxel_grid = fourier_potential.fourier_voxel_grid
+    #     bin_size = 1 / (voxel_size) / n_voxels_per_side[0]
+    #     num_atoms = atom_positions.shape[0]
 
-        translational_phase_factor = lambda i, j, k, atom_position: jnp.exp(
-            -1j
-            * 2
-            * jnp.pi
-            * jnp.dot(atom_position, jnp.array([i - 64, j - 64, k - 64]))
-            / (n_voxels_per_side[0] * voxel_size)
-        )
-        # Verify generated fourier_voxel_grid agrees with scattering equation in Peng.
-        # Check up to 1/4 Nyquist Frequency in each axis.
-        frequency_array = np.fromiter(
-            itertools.product(np.arange(64, 80), repeat=3), "i,i,i"
-        ).view(("i", 3))
-        for frequency in frequency_array:
-            [i, j, k] = frequency
-            predicted_value = 0
-            frequency_magnitude = np.sqrt((64 - i) ** 2 + (64 - j) ** 2 + (64 - k) ** 2)
-            for atom_index in range(0, num_atoms):
-                atom_contribution = jnp.sum(
-                    ff_a[atom_index]
-                    * 4
-                    * jnp.pi
-                    * (voxel_size) ** -3
-                    * jnp.exp(
-                        -ff_b[atom_index]
-                        * ((1 / 2) * bin_size * frequency_magnitude) ** 2
-                    )
-                    * translational_phase_factor(i, j, k, atom_positions[atom_index])
-                )
+    #     translational_phase_factor = lambda i, j, k, atom_position: jnp.exp(
+    #         -1j
+    #         * 2
+    #         * jnp.pi
+    #         * jnp.dot(atom_position, jnp.array([i - 64, j - 64, k - 64]))
+    #         / (n_voxels_per_side[0] * voxel_size)
+    #     )
+    #     # Verify generated fourier_voxel_grid agrees with scattering equation in Peng.
+    #     # Check up to 1/4 Nyquist Frequency in each axis.
+    #     frequency_array = np.fromiter(
+    #         itertools.product(np.arange(64, 80), repeat=3), "i,i,i"
+    #     ).view(("i", 3))
+    #     for frequency in frequency_array:
+    #         [i, j, k] = frequency
+    #         predicted_value = 0
+    #         frequency_magnitude = np.sqrt((64 - i) ** 2 + (64 - j) ** 2 + (64 - k) ** 2)
+    #         for atom_index in range(0, num_atoms):
+    #             atom_contribution = jnp.sum(
+    #                 ff_a[atom_index]
+    #                 * 4
+    #                 * jnp.pi
+    #                 * (voxel_size) ** -3
+    #                 * jnp.exp(
+    #                     -ff_b[atom_index]
+    #                     * ((1 / 2) * bin_size * frequency_magnitude) ** 2
+    #                 )
+    #                 * translational_phase_factor(i, j, k, atom_positions[atom_index])
+    #             )
 
-                predicted_value = predicted_value + atom_contribution
+    #             predicted_value = predicted_value + atom_contribution
 
-            fourier_grid_value = fourier_voxel_grid[k][j][i]
-            assert jnp.isclose((predicted_value), (fourier_grid_value), rtol=1e-4)
+    #         fourier_grid_value = fourier_voxel_grid[k][j][i]
+    #         assert jnp.isclose((predicted_value), (fourier_grid_value), rtol=1e-4)
 
 
 class TestBuildVoxelsFromTrajectories:

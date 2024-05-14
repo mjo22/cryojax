@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 
 import cryojax.simulator as cs
-from cryojax.data import read_array_with_spacing_from_mrc
 from cryojax.image import irfftn, normalize_image
+from cryojax.io import read_array_with_spacing_from_mrc
 
 
 def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.HelicalAssembly:

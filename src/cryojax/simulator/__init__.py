@@ -40,7 +40,7 @@ from ._potential_representation import (
     FourierVoxelGridPotential as FourierVoxelGridPotential,
     FourierVoxelGridPotentialInterpolator as FourierVoxelGridPotentialInterpolator,
     GaussianMixtureAtomicPotential as GaussianMixtureAtomicPotential,
-    PengTabulatedAtomicPotential as PengTabulatedAtomicPotential,
+    PengAtomicPotential as PengAtomicPotential,
     RealVoxelCloudPotential as RealVoxelCloudPotential,
     RealVoxelGridPotential as RealVoxelGridPotential,
 )

@@ -48,7 +48,7 @@ First, instantiate the spatial potential energy distribution representation and 
 import jax
 import jax.numpy as jnp
 import cryojax.simulator as cxs
-from cryojax.data import read_array_with_spacing_from_mrc
+from cryojax.io import read_array_with_spacing_from_mrc
 
 # Instantiate the scattering potential
 filename = "example_scattering_potential.mrc"

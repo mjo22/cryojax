@@ -11,10 +11,14 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Int
 
 from ..._errors import error_if_negative, error_if_not_positive
 from ..._loop import fori_loop_tqdm_decorator
+from ...constants import (
+    get_tabulated_scattering_factor_parameters,
+    peng_element_scattering_factor_parameter_table,
+)
 from .._pose import AbstractPose
 from .base_potential import AbstractPotentialRepresentation
 
@@ -87,7 +91,29 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     `gaussian_widths` follows "Robust Parameterization of Elastic and Absorptive
     Electron Atomic Scattering Factors" by Peng et al. (1996), where $a_i$ are
     the `gaussian_strengths` and $b_i$ are the `gaussian_widths`.
-    """
+
+    !!! info
+        In order to load a `GaussianMixtureAtomicPotential` from tabulated
+        scattering factors, use the `cryojax.constants` submodule.
+
+        ```python
+        from cryojax.constants import (
+            peng_element_scattering_factor_parameter_table,
+            get_tabulated_scattering_factor_parameters,
+        )
+        from cryojax.io import read_atoms_from_pdb
+        from cryojax.simulator import GaussianMixtureAtomicPotential
+
+        # Load positions of atoms and one-hot encoded atom names
+        atom_positions, atom_identities = read_atoms_from_pdb(...)
+        scattering_factor_a, scattering_factor_b = get_tabulated_scattering_factor_parameters(
+            atom_identities, peng_element_scattering_factor_parameter_table
+        )
+        potential = GaussianMixtureAtomicPotential(
+            atom_positions, scattering_factor_a, scattering_factor_b
+        )
+        ```
+    """  # noqa: E501
 
     atom_positions: Float[Array, "n_atoms 3"]
     gaussian_strengths: Float[Array, "n_atoms n_gaussians_per_atom"]
@@ -116,7 +142,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         """
         self.atom_positions = jnp.asarray(atom_positions)
         self.gaussian_strengths = jnp.asarray(gaussian_strengths)
-        self.gaussian_widths = jnp.asarray(gaussian_widths)
+        self.gaussian_widths = error_if_not_positive(jnp.asarray(gaussian_widths))
 
     @override
     def as_real_voxel_grid(
@@ -128,6 +154,9 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         print_every: Optional[int] = None,
     ) -> Float[Array, "z_dim y_dim x_dim"]:
         """Return a voxel grid in real space of the potential.
+
+        See [`PengAtomicPotential.as_real_voxel_grid`][] for the numerical
+        conventions used when computing the sum of gaussians.
 
         **Arguments:**
 
@@ -152,38 +181,25 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
 
 class AbstractTabulatedAtomicPotential(AbstractAtomicPotential, strict=True):
-    b_factors: eqx.AbstractVar[Float[Array, " n_atoms"]]
+    b_factors: eqx.AbstractVar[Optional[Float[Array, " n_atoms"]]]
 
 
-class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
+class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
     """The scattering potential parameterized as a mixture of five gaussians
     per atom, through work by Lian-Mao Peng.
 
-    Parameters `scattering_factor_a` and `scattering_factor_b` are referred
+    Fields `scattering_factor_a` and `scattering_factor_b` are referred
     to as $a_i$ and $b_i$ respectively in "Robust Parameterization of Elastic
     and Absorptive Electron Atomic Scattering Factors" by Peng et al. (1996).
 
-    !!! info
-        In order to load a `PengTabulatedAtomicPotential` from tabulated
-        scattering factors, use the `cryojax.constants` submodule.
+    ```python
+    from cryojax.data import read_atoms_from_pdb
+    from cryojax.simulator import PengAtomicPotential
 
-        ```python
-        from cryojax.constants import (
-            peng_element_scattering_factor_parameter_table,
-            get_tabulated_scattering_factor_parameters,
-        )
-        from cryojax.data import read_atoms_from_pdb
-        from cryojax.simulator import PengTabulatedAtomicPotential
-
-        # Load positions of atoms and one-hot encoded atom names
-        atom_positions, atom_identities = read_atoms_from_pdb(...)
-        scattering_factor_a, scattering_factor_b = get_tabulated_scattering_factor_parameters(
-            atom_identities, peng_element_scattering_factor_parameter_table
-        )
-        potential = PengTabulatedAtomicPotential(
-            atom_positions, scattering_factor_a, scattering_factor_b
-        )
-        ```
+    # Load positions of atoms and one-hot encoded atom names
+    atom_positions, atom_identities = read_atoms_from_pdb(...)
+    potential = PengAtomicPotential(atom_positions, atom_identities)
+    ```
 
     **References:**
 
@@ -197,13 +213,12 @@ class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True
     atom_positions: Float[Array, "n_atoms 3"]
     scattering_factor_a: Float[Array, "n_atoms 5"]
     scattering_factor_b: Float[Array, "n_atoms 5"]
-    b_factors: Float[Array, " n_atoms"]
+    b_factors: Optional[Float[Array, " n_atoms"]]
 
     def __init__(
         self,
         atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
-        scattering_factor_a: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
-        scattering_factor_b: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
+        atom_identities: Int[Array, " n_atoms"] | Int[np.ndarray, " n_atoms"],
         b_factors: Optional[
             Float[Array, " n_atoms"] | Float[np.ndarray, " n_atoms"]
         ] = None,
@@ -211,19 +226,22 @@ class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True
         """**Arguments:**
 
         - `atom_positions`: The coordinates of the atoms in units of angstroms.
-        - `scattering_factor_a`: The scattering factors parameter "$a_i$" from
-                                 Peng et al. (1996)
-        - `scattering_factor_b`: The scattering factors parameter "$b_i$" from
-                                 Peng et al. (1996)
+        - `atom_identities`: Array containing the index of the one-hot encoded atom names.
+                             Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.
         - `b_factors`: The B-factors applied to each atom.
         """
         self.atom_positions = jnp.asarray(atom_positions)
+        scattering_factor_a, scattering_factor_b = (
+            get_tabulated_scattering_factor_parameters(
+                atom_identities, peng_element_scattering_factor_parameter_table
+            )
+        )
         self.scattering_factor_a = jnp.asarray(scattering_factor_a)
-        self.scattering_factor_b = error_if_not_positive(jnp.asarray(scattering_factor_b))
+        self.scattering_factor_b = jnp.asarray(scattering_factor_b)
         if b_factors is None:
-            n_atoms = atom_positions.shape[0]
-            b_factors = jnp.full((n_atoms,), 0.0, dtype=float)
-        self.b_factors = error_if_negative(jnp.asarray(b_factors))
+            self.b_factors = None
+        else:
+            self.b_factors = error_if_negative(jnp.asarray(b_factors))
 
     @override
     def as_real_voxel_grid(
@@ -267,10 +285,14 @@ class PengTabulatedAtomicPotential(AbstractTabulatedAtomicPotential, strict=True
         The rescaled potential $U(\\mathbf{x})$ as a voxel grid evaluated on the
         `coordinate_grid_in_angstroms`.
         """  # noqa: E501
+        if self.b_factors is None:
+            gaussian_widths = self.scattering_factor_b
+        else:
+            gaussian_widths = self.scattering_factor_b + self.b_factors[:, None] / 4
         return _build_real_space_voxels_from_atoms(
             self.atom_positions,
             self.scattering_factor_a,
-            self.scattering_factor_b + self.b_factors[:, None] / 4,
+            gaussian_widths,
             coordinate_grid_in_angstroms,
             batch_size=batch_size,
             progress_bar=progress_bar,
