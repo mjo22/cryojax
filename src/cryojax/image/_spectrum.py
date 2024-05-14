@@ -2,7 +2,7 @@
 Helper routines to compute power spectra.
 """
 
-from typing import Optional, overload
+from typing import Literal, Optional, overload
 
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
@@ -16,6 +16,8 @@ def powerspectrum(
     radial_frequency_grid: Float[Array, "y_dim x_dim"],
     pixel_size: Float[Array, ""] | float,
     *,
+    to_grid: Literal[False] = False,
+    interpolation_mode: str = "nearest",
     k_min: Optional[Float[Array, ""] | float] = None,
     k_max: Optional[Float[Array, ""] | float] = None,
 ) -> tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]: ...
@@ -27,6 +29,8 @@ def powerspectrum(
     radial_frequency_grid: Float[Array, "z_dim y_dim x_dim"],
     pixel_size: Float[Array, ""] | float,
     *,
+    to_grid: Literal[False] = False,
+    interpolation_mode: str = "nearest",
     k_min: Optional[Float[Array, ""] | float] = None,
     k_max: Optional[Float[Array, ""] | float] = None,
 ) -> tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]: ...
@@ -38,14 +42,13 @@ def powerspectrum(
     radial_frequency_grid: Float[Array, "y_dim x_dim"],
     pixel_size: Float[Array, ""] | float,
     *,
-    to_grid: bool = False,
+    to_grid: Literal[True] = True,
     interpolation_mode: str = "nearest",
     k_min: Optional[Float[Array, ""] | float] = None,
     k_max: Optional[Float[Array, ""] | float] = None,
-) -> (
-    tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]
-    | tuple[Float[Array, " n_bins"], Float[Array, "y_dim x_dim"], Float[Array, " n_bins"]]
-): ...
+) -> tuple[
+    Float[Array, " n_bins"], Float[Array, "y_dim x_dim"], Float[Array, " n_bins"]
+]: ...
 
 
 @overload
@@ -54,18 +57,15 @@ def powerspectrum(
     radial_frequency_grid: Float[Array, "z_dim y_dim x_dim"],
     pixel_size: Float[Array, ""] | float,
     *,
-    to_grid: bool = False,
+    to_grid: Literal[True] = True,
     interpolation_mode: str = "nearest",
     k_min: Optional[Float[Array, ""] | float] = None,
     k_max: Optional[Float[Array, ""] | float] = None,
-) -> (
-    tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]
-    | tuple[
-        Float[Array, " n_bins"],
-        Float[Array, "z_dim y_dim x_dim"],
-        Float[Array, " n_bins"],
-    ]
-): ...
+) -> tuple[
+    Float[Array, " n_bins"],
+    Float[Array, "z_dim y_dim x_dim"],
+    Float[Array, " n_bins"],
+]: ...
 
 
 def powerspectrum(

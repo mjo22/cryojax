@@ -41,7 +41,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         factors. In particular, for a single atom with scattering factor $f^{(e)}(\\mathbf{q})$
         and scattering vector $\\mathbf{q}$, its rescaled potential is equal to
 
-        $$U(\\mathbf{x}) = 32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
+        $$U(\\mathbf{x}) = 4 \\pi 8 \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
 
         where $\\mathcal{F}^{-1}$ is the inverse fourier transform. The inverse fourier
         transform is evaluated at $2\\mathbf{x}$ because $2 \\mathbf{q}$ gives the spatial
@@ -192,13 +192,30 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
     to as $a_i$ and $b_i$ respectively in "Robust Parameterization of Elastic
     and Absorptive Electron Atomic Scattering Factors" by Peng et al. (1996).
 
+    To load this object, the following pattern can be used:
+
     ```python
-    from cryojax.data import read_atoms_from_pdb
+    from cryojax.io import read_atoms_from_pdb
     from cryojax.simulator import PengAtomicPotential
 
     # Load positions of atoms and one-hot encoded atom names
-    atom_positions, atom_identities = read_atoms_from_pdb(...)
+    filename = "example.pdb"
+    atom_positions, atom_identities = read_atoms_from_pdb(filename)
     potential = PengAtomicPotential(atom_positions, atom_identities)
+    ```
+
+    Alternatively, use the following to load with B-factors:
+
+    ```python
+    from cryojax.io import read_atoms_from_pdb
+    from cryojax.simulator import PengAtomicPotential
+
+    # Load positions of atoms, encoded atom names, and B-factors
+    filename = "example.pdb"
+    atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
+        filename, get_b_factors=True
+    )
+    potential = PengAtomicPotential(atom_positions, atom_identities, b_factors)
     ```
 
     **References:**
@@ -263,7 +280,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         where $a_i$ is the `scattering_factor_a` and $b_i$ is the `scattering_factor_b`.
         Under usual scattering approximations (i.e. the first-born approximation),
         the rescaled electrostatic potential energy $U(\\mathbf{x})$ is then given by
-        $32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
+        $4 \\pi 8 \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
 
         $$U(\\mathbf{x}) = \\sum\\limits_{i = 1}^5 \\frac{4 \\pi a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
 

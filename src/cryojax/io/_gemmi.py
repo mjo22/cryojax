@@ -154,7 +154,7 @@ def extract_atom_b_factors(atoms) -> Float[np.ndarray, "N 3"]:
     Returns
     -------
     b_factors :
-        Gemmi b factors
+        Gemmi B-factors
     """
     # if list of Gemmi atoms, convert into a list of list
     if type(atoms[0]) != list:

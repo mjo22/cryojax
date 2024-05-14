@@ -19,7 +19,5 @@ from ._mrc import (
 from ._pdb_and_cif import (
     read_atoms_from_cif as read_atoms_from_cif,
     read_atoms_from_pdb as read_atoms_from_pdb,
-    read_atoms_with_b_factors_from_cif as read_atoms_with_b_factors_from_cif,
-    read_atoms_with_b_factors_from_pdb as read_atoms_with_b_factors_from_pdb,
 )
 from ._starfile import read_and_validate_starfile as read_and_validate_starfile
