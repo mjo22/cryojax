@@ -73,7 +73,7 @@ pose = cxs.EulerAnglePose(
 structural_ensemble = cxs.SingleStructureEnsemble(potential, pose)
 ```
 
-Here, the 3D scattering potential array is read from `filename`. Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`. The scattering potential can be generated with an external program, such as the [cisTEM](https://github.com/timothygrant80/cisTEM) simulate tool. Then, the representation of a biological specimen is instantiated, which also includes a pose and conformational heterogeneity. Here, the `SingleStructureEnsemble` class takes a pose but has no heterogeneity.
+Here, the 3D scattering potential array is read from `filename` (see the documentation [here](https://mjo22.github.io/cryojax/examples/compute-potential/) for an example of how to generate the potential). Then, the abstraction of the scattering potential is then loaded in fourier-space into a `FourierVoxelGridPotential`, and subsequently the representation of a biological specimen is instantiated, which also includes a pose and conformational heterogeneity. Here, the `SingleStructureEnsemble` class takes a pose but has no heterogeneity.
 
 Next, build the *scattering theory*. The simplest `scattering_theory` is the `WeakPhaseScatteringTheory`. This represents the usual image formation pipeline in cryo-EM, which forms images by computing projections of the potential and convolving the result with a contrast transfer function.
 
