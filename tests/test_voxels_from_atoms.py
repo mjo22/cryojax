@@ -57,10 +57,10 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     agree with downsampled versions.
     """
     # Parameters for rasterization
-    shape = (64, 64, 64)
-    voxel_size = 0.5
+    shape = (128, 128, 128)
+    voxel_size = 0.25
     # Downsampling parameters
-    downsampling_factor = 1.05
+    downsampling_factor = 2
     downsampled_shape = (
         int(shape[0] / downsampling_factor),
         int(shape[1] / downsampling_factor),
