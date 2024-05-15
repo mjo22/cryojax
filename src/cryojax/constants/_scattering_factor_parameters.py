@@ -56,6 +56,4 @@ def get_tabulated_scattering_factor_parameters(
     """
     # TODO: Do we need to subtract 1 from the `atom_identities` array
     # if the table is zero-indexed?
-    return jnp.asarray(scattering_factor_parameter_table)[
-        :, jnp.asarray(atom_identities) - 1
-    ]
+    return jnp.asarray(scattering_factor_parameter_table)[:, jnp.asarray(atom_identities)]

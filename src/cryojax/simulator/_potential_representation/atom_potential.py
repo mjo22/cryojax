@@ -424,6 +424,16 @@ def _build_real_space_voxels_from_atoms(
             ff_b[atom_index],
         )
 
+    @partial(jax.jit, donate_argnums=1)
+    def batched_body_fun(iteration_index, potential):
+        atom_index_batch = jnp.linspace(
+            iteration_index * batch_size,
+            (iteration_index + 1) * batch_size - 1,
+            batch_size,  # type: ignore
+            dtype=int,
+        )
+        return potential + evaluate_3d_atom_potential_batch(atom_index_batch)
+
     def evaluate_3d_atom_potential_batch(atom_index_batch):
         vmap_evaluate_3d_atom_potential = jax.vmap(
             _evaluate_3d_atom_potential, in_axes=[None, 0, 0, 0]
@@ -438,31 +448,24 @@ def _build_real_space_voxels_from_atoms(
             axis=0,
         )
 
-    @partial(jax.jit, donate_argnums=1)
-    def batched_body_fun(iteration_index, potential):
-        atom_index_batch = jnp.linspace(
-            iteration_index * batch_size,
-            (iteration_index + 1) * batch_size - 1,
-            batch_size,  # type: ignore
-            dtype=int,
-        )
-        return potential + evaluate_3d_atom_potential_batch(atom_index_batch)
-
-    # Get the number of iterations of the loop (the number of atoms)
+    # Get the number of atoms
     n_atoms = atom_positions.shape[0]
     # Set the logic for the loop based on the batch size
     if batch_size is None:
+        # ... if there is no batch size, loop over all atoms
         n_iterations = n_atoms
         body_fun = brute_force_body_fun
         if progress_bar:
             body_fun = fori_loop_tqdm_decorator(n_iterations, print_every)(body_fun)
         voxel_grid = jax.lax.fori_loop(0, n_atoms, body_fun, voxel_grid_buffer)
     else:
+        # ... if there is a batch size, loop over batches of atoms
         n_iterations = n_atoms // batch_size
         body_fun = batched_body_fun
         if progress_bar:
             body_fun = fori_loop_tqdm_decorator(n_iterations, print_every)(body_fun)
         voxel_grid = jax.lax.fori_loop(0, n_iterations, body_fun, voxel_grid_buffer)
+        # ... and take care of any remaining atoms after the loop
         if n_atoms % batch_size > 0:
             voxel_grid += evaluate_3d_atom_potential_batch(
                 jnp.arange(n_atoms - n_atoms % batch_size, n_atoms)
