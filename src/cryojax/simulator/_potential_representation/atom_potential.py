@@ -35,19 +35,25 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         where $V$ is the electrostatic potential energy, $\\mathbf{x}$ is a positional
         coordinate, $m$ is the electron mass, and $e$ is the electron charge.
 
-        For a single atom, this rescaled potential has the advantage (among other reasons)
-        that under usual scattering approximations (i.e. the first-born approximation), the
+        For a single atom, this rescaled potential has the advantage that under usual
+        scattering approximations (i.e. the first-born approximation), the
         fourier transform of this quantity is closely related to tabulated electron scattering
         factors. In particular, for a single atom with scattering factor $f^{(e)}(\\mathbf{q})$
         and scattering vector $\\mathbf{q}$, its rescaled potential is equal to
 
-        $$U(\\mathbf{x}) = 32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x}),$$
+        $$U(\\mathbf{x}) = 4 \\pi \\mathcal{F}^{-1}[f^{(e)}(\\boldsymbol{\\xi} / 2)](\\mathbf{x}),$$
 
-        where $\\mathcal{F}^{-1}$ is the inverse fourier transform. The inverse fourier
-        transform is evaluated at $2\\mathbf{x}$ because $2 \\mathbf{q}$ gives the spatial
-        frequency $\\boldsymbol{\\xi}$ in the usual crystallographic fourier transform convention,
+        where $\\boldsymbol{\\xi} = 2 \\mathbf{q}$ is the wave vector coordinate and
+        $\\mathcal{F}^{-1}$ is the inverse fourier transform operator in the convention
 
-        $$\\mathcal{F}[f](\\boldsymbol{\\xi}) = \\int d^3\\mathbf{x} \\ \\exp(2\\pi i \\mathbf{x}\\cdot\\boldsymbol{\\xi}) f(\\mathbf{x}).$$
+        $$\\mathcal{F}[f](\\boldsymbol{\\xi}) = \\int d^3\\mathbf{x} \\ \\exp(2\\pi i \\boldsymbol{\\xi}\\cdot\\mathbf{x}) f(\\mathbf{x}).$$
+
+        The rescaled potential $U$ gives the following time-independent schrodinger equation
+        for the scattering problem,
+
+        $$(\\nabla^2 + k^2) \\psi(\\mathbf{x}) = - U(\\mathbf{x}) \\psi(\\mathbf{x}),$$
+
+        where $k$ is the incident wavenumber of the electron beam.
 
         **References**:
 
@@ -155,14 +161,18 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     ) -> Float[Array, "z_dim y_dim x_dim"]:
         """Return a voxel grid in real space of the potential.
 
-        See [`PengAtomicPotential.as_real_voxel_grid`][] for the numerical
-        conventions used when computing the sum of gaussians.
+        See [`PengAtomicPotential.as_real_voxel_grid`](scattering_potential.md#cryojax.simulator.PengAtomicPotential.as_real_voxel_grid)
+        for the numerical conventions used when computing the sum of gaussians.
 
         **Arguments:**
 
         - `coordinate_grid_in_angstroms`: The coordinate system of the grid.
         - `batch_size`: The number of atoms over which to compute the potential
                         in parallel.
+        - `progress_bar`: Add a [`tqdm`](https://github.com/tqdm/tqdm) progress bar to the
+                          computation.
+        - `print_every`: An interval for the number of iterations at which to update the
+                         tqdm progress bar.
 
         **Returns:**
 
@@ -273,25 +283,34 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         $$f^{(e)}(\\mathbf{q}) = \\sum\\limits_{i = 1}^5 a_i \\exp(- b_i |\\mathbf{q}|^2),$$
 
         where $a_i$ is stored as `PengAtomicPotential.scattering_factor_a` and $b_i$ is
-        stored as `PengAtomicPotential.scattering_factor_b`.
+        stored as `PengAtomicPotential.scattering_factor_b` for the scattering vector $\\mathbf{q}$.
         Under usual scattering approximations (i.e. the first-born approximation),
         the rescaled electrostatic potential energy $U(\\mathbf{x})$ is then given by
-        $32 \\pi \\mathcal{F}^{-1}[f^{(e)}](2 \\mathbf{x})$, which is computed analytically as
+        $4 \\pi \\mathcal{F}^{-1}[f^{(e)}(\\boldsymbol{\\xi} / 2)](\\mathbf{x})$, which is computed
+        analytically as
 
-        $$U(\\mathbf{x}) = \\sum\\limits_{i = 1}^5 \\frac{4 \\pi a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
+        $$U(\\mathbf{x}) = 4 \\pi \\sum\\limits_{i = 1}^5 \\frac{a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
 
-        We additionally give the option to modulate this expression with a constant B-factor,
-        giving the expression
+        Including an additional B-factor (denoted by $B$ and stored as `PengAtomicPotential.b_factors`) gives
+        the expression for the potential $U(\\mathbf{x})$ of a single atom type and its fourier transform pair
+        $\\tilde{U}(\\boldsymbol{\\xi}) \\equiv \\mathcal{F}[U](\\boldsymbol{\\xi})$,
 
-        $$U(\\mathbf{x}) = \\sum\\limits_{i = 1}^5 \\frac{4 \\pi a_i}{(2\\pi ((b_i + B / 4) / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 ((b_i + B / 4) / 8 \\pi^2)}),$$
+        $$U(\\mathbf{x}) = 4 \\pi \\sum\\limits_{i = 1}^5 \\frac{a_i}{(2\\pi ((b_i + B) / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
 
-        where $B$ is stored as `PengAtomicPotential.b_factors`.
+        $$\\tilde{U}(\\boldsymbol{\\xi}) = 4 \\pi \\sum\\limits_{i = 1}^5 a_i \\exp(- (b_i + B) |\\boldsymbol{\\xi}|^2 / 4),$$
+
+        where $\\mathbf{q} = \\boldsymbol{\\xi} / 2$ gives the relationship between the wave vector and the
+        scattering vector.
 
         **Arguments:**
 
         - `coordinate_grid_in_angstroms`: The coordinate system of the grid.
         - `batch_size`: The number of atoms over which to compute the potential
                         in parallel with `jax.vmap`.
+        - `progress_bar`: Add a [`tqdm`](https://github.com/tqdm/tqdm) progress bar to the
+                          computation.
+        - `print_every`: An interval for the number of iterations at which to update the
+                         tqdm progress bar.
 
         **Returns:**
 
@@ -301,7 +320,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         if self.b_factors is None:
             gaussian_widths = self.scattering_factor_b
         else:
-            gaussian_widths = self.scattering_factor_b + self.b_factors[:, None] / 4
+            gaussian_widths = self.scattering_factor_b + self.b_factors[:, None]
         return _build_real_space_voxels_from_atoms(
             self.atom_positions,
             self.scattering_factor_a,
