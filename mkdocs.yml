@@ -68,4 +68,5 @@ nav:
             - Run a cross-correlation search: 'examples/cross-correlation-search.ipynb'
     - Simulator API:
         - 'api/simulator/scattering_potential.md'
+        - 'api/simulator/instrument_config.md'
         - 'api/simulator/potential_integrators.md'

@@ -1,4 +1,4 @@
-# Potential integration methods
+# Scattering potential integration methods
 
 `cryojax` provides different methods for integrating [scattering potentials](./scattering_potential.md#scattering-potential-representations) onto a plane.
 
@@ -28,9 +28,14 @@
             members:
                 - __init__
                 - compute_fourier_integrated_potential
+                - extract_voxels_from_spline_coefficients
+                - extract_voxels_from_grid_points
+
+---
 
 ::: cryojax.simulator.NufftProjection
         options:
             members:
                 - __init__
                 - compute_fourier_integrated_potential
+                - project_voxel_cloud_with_nufft

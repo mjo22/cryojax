@@ -3,9 +3,10 @@ Methods for integrating the scattering potential directly onto the exit plane.
 """
 
 from abc import abstractmethod
-from typing import Generic, TypeVar
+from typing import Generic, Optional, TypeVar
 
-from equinox import AbstractVar, Module
+import jax.numpy as jnp
+from equinox import AbstractVar, error_if, Module
 from jaxtyping import Array, Complex
 
 from ...image import maybe_rescale_pixel_size
@@ -38,21 +39,34 @@ class AbstractVoxelPotentialIntegrator(
 ):
     """Base class for a method of integrating a voxel-based potential."""
 
-    pixel_rescaling_method: AbstractVar[str]
+    pixel_rescaling_method: AbstractVar[Optional[str]]
 
-    def _convert_fourier_raw_image_to_integrated_potential(
+    def _convert_raw_image_to_integrated_potential(
         self,
-        fourier_projected_potential_without_postprocess,
+        fourier_integrated_potential_without_postprocess,
         potential,
         instrument_config,
     ):
         """Return the integrated potential in fourier space at the
         `instrument_config.pixel_size` and the `instrument_config.padded_shape.`
         """
-        return maybe_rescale_pixel_size(
-            potential.voxel_size * fourier_projected_potential_without_postprocess,
-            potential.voxel_size,
-            instrument_config.pixel_size,
-            is_real=False,
-            shape_in_real_space=instrument_config.padded_shape,
-        )
+        if self.pixel_rescaling_method is None:
+            fourier_integrated_potential = error_if(
+                potential.voxel_size * fourier_integrated_potential_without_postprocess,
+                ~jnp.isclose(potential.voxel_size, instrument_config.pixel_size),
+                f"Tried to use {type(self).__name__} with `{type(potential).__name__}."
+                "voxel_size != InstrumentConfig.pixel_size`. If this is true, then "
+                f"`{type(self).__name__}.pixel_rescaling_method` must not be set to "
+                f"`None`. Try setting `{type(self).__name__}.pixel_rescaling_method = "
+                "'bicubic'`.",
+            )
+            return fourier_integrated_potential
+        else:
+            fourier_integrated_potential = maybe_rescale_pixel_size(
+                potential.voxel_size * fourier_integrated_potential_without_postprocess,
+                potential.voxel_size,
+                instrument_config.pixel_size,
+                is_real=False,
+                shape_in_real_space=instrument_config.padded_shape,
+            )
+            return fourier_integrated_potential

@@ -3,8 +3,10 @@ Using the fourier slice theorem for computing volume projections.
 """
 
 from abc import abstractmethod
+from typing import Optional
 from typing_extensions import override
 
+import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
@@ -32,92 +34,28 @@ class AbstractFourierVoxelExtraction(
     from a 3D voxel grid.
     """
 
-    pixel_rescaling_method: str
-    interpolation_order: int
-    interpolation_mode: str
-    interpolation_cval: complex
-
-    def __init__(
-        self,
-        *,
-        pixel_rescaling_method: str = "bicubic",
-        interpolation_order: int = 1,
-        interpolation_mode: str = "fill",
-        interpolation_cval: complex = 0.0 + 0.0j,
-    ):
-        """**Arguments:**
-
-        - `pixel_rescaling_method`:
-            Method for rescaling the final image to the `InstrumentConfig`
-            pixel size. See `cryojax.image._rescale_pixel_size` for documentation.
-        - `interpolation_order`:
-            The interpolation order. This can be ``0` (nearest-neighbor), `1`
-            (linear), or `3` (cubic).
-            Note that this argument is ignored if a `FourierVoxelGridInterpolator`
-            is passed.
-        - `interpolation_mode`:
-            Specify how to handle out of bounds indexing.
-        - `interpolation_cval`:
-            Value for filling out-of-bounds indices. Used only when
-            `interpolation_mode = "fill"`.
-        """
-        self.pixel_rescaling_method = pixel_rescaling_method
-        self.interpolation_order = interpolation_order
-        self.interpolation_mode = interpolation_mode
-        self.interpolation_cval = interpolation_cval
+    interpolation_order: eqx.AbstractVar[int]
+    interpolation_mode: eqx.AbstractVar[str]
+    interpolation_cval: eqx.AbstractVar[complex]
 
     @abstractmethod
     def extract_voxels_from_spline_coefficients(
         self,
         spline_coefficients: Complex[Array, "dim+2 dim+2 dim+2"],
-        frequency_slice: Float[Array, "1 dim dim 3"],
-        instrument_config: InstrumentConfig,
+        frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
+        voxel_size: Float[Array, ""],
+        wavelength_in_angstroms: Float[Array, ""],
     ) -> Complex[Array, "dim dim//2+1"]:
-        """Extract voxels values from the spline coefficients of the
-        fourier-space voxel grid.
-
-        **Arguments:**
-
-        - `fourier_voxel_grid`:
-            Density grid in fourier space. The zero frequency component
-            should be in the center.
-        - `frequency_slice`:
-            Frequency central slice coordinate system, with the zero
-            frequency component in the corner.
-        - `instrument_config`:
-            The `InstrumentConfig`.
-
-        **Returns:**
-
-        The output image in fourier space.
-        """
         raise NotImplementedError
 
     @abstractmethod
     def extract_voxels_from_grid_points(
         self,
         fourier_voxel_grid: Complex[Array, "dim dim dim"],
-        frequency_slice: Float[Array, "1 dim dim 3"],
-        instrument_config: InstrumentConfig,
+        frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
+        voxel_size: Float[Array, ""],
+        wavelength_in_angstroms: Float[Array, ""],
     ) -> Complex[Array, "dim dim//2+1"]:
-        """Extract voxels values from the potential as a fourier-space
-        voxel grid.
-
-        **Arguments:**
-
-        - `fourier_voxel_grid`:
-            Density grid in fourier space. The zero frequency component
-            should be in the center.
-        - `frequency_slice`:
-            Frequency central slice coordinate system, with the zero
-            frequency component in the corner.
-        - `instrument_config`:
-            The `InstrumentConfig`.
-
-        **Returns:**
-
-        The output image in fourier space.
-        """
         raise NotImplementedError
 
     @override
@@ -135,6 +73,11 @@ class AbstractFourierVoxelExtraction(
 
         - `potential`: The scattering potential representation.
         - `instrument_config`: The configuration of the resulting image.
+
+        **Returns:**
+
+        The extracted fourier voxels of the `potential`, at the
+        `instrument_config.padded_shape` and the `instrument_config.pixel_size`.
         """
         frequency_slice = potential.frequency_slice_in_pixels
         N = frequency_slice.shape[1]
@@ -145,11 +88,17 @@ class AbstractFourierVoxelExtraction(
         # Compute the fourier projection
         if isinstance(potential, FourierVoxelGridPotentialInterpolator):
             fourier_projection = self.extract_voxels_from_spline_coefficients(
-                potential.coefficients, frequency_slice, instrument_config
+                potential.coefficients,
+                frequency_slice,
+                potential.voxel_size,
+                instrument_config.wavelength_in_angstroms,
             )
         elif isinstance(potential, FourierVoxelGridPotential):
             fourier_projection = self.extract_voxels_from_grid_points(
-                potential.fourier_voxel_grid, frequency_slice, instrument_config
+                potential.fourier_voxel_grid,
+                frequency_slice,
+                potential.voxel_size,
+                instrument_config.wavelength_in_angstroms,
             )
         else:
             raise ValueError(
@@ -164,7 +113,7 @@ class AbstractFourierVoxelExtraction(
                     irfftn(fourier_projection, s=(N, N))
                 )
             )
-        return self._convert_fourier_raw_image_to_integrated_potential(
+        return self._convert_raw_image_to_integrated_potential(
             fourier_projection, potential, instrument_config
         )
 
@@ -177,16 +126,73 @@ class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
     `cryojax.image.map_coordinates` and `cryojax.image.map_coordinates_with_cubic_spline`.
     """
 
+    pixel_rescaling_method: Optional[str]
+    interpolation_order: int
+    interpolation_mode: str
+    interpolation_cval: complex
+
+    def __init__(
+        self,
+        *,
+        pixel_rescaling_method: Optional[str] = None,
+        interpolation_order: int = 1,
+        interpolation_mode: str = "fill",
+        interpolation_cval: complex = 0.0 + 0.0j,
+    ):
+        """**Arguments:**
+
+        - `pixel_rescaling_method`:
+            Method for rescaling the final image to the `InstrumentConfig`
+            pixel size. See `cryojax.image.rescale_pixel_size` for documentation.
+        - `interpolation_order`:
+            The interpolation order. This can be `0` (nearest-neighbor), `1`
+            (linear), or `3` (cubic).
+            Note that this argument is ignored when using this object with a
+            `FourierVoxelGridInterpolator`.
+        - `interpolation_mode`:
+            Specify how to handle out of bounds indexing.
+        - `interpolation_cval`:
+            Value for filling out-of-bounds indices. Used only when
+            `interpolation_mode = "fill"`.
+        """
+        self.pixel_rescaling_method = pixel_rescaling_method
+        self.interpolation_order = interpolation_order
+        self.interpolation_mode = interpolation_mode
+        self.interpolation_cval = interpolation_cval
+
     @override
     def extract_voxels_from_spline_coefficients(
         self,
         spline_coefficients: Complex[Array, "dim+2 dim+2 dim+2"],
-        frequency_slice: Float[Array, "1 dim dim 3"],
-        instrument_config: InstrumentConfig,
+        frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
+        voxel_size: Float[Array, ""],
+        wavelength_in_angstroms: Float[Array, ""],
     ) -> Complex[Array, "dim dim//2+1"]:
+        """Extract a fourier slice using the interpolation defined by
+        `spline_coefficients` at coordinates `frequency_slice_in_pixels`.
+
+        **Arguments:**
+
+        - `fourier_voxel_grid`:
+            Density grid in fourier space. The zero frequency component
+            should be in the center.
+        - `frequency_slice_in_pixels`:
+            Frequency central slice coordinate system, with the zero
+            frequency component in the corner.
+        - `voxel_size`:
+            The voxel size of the `fourier_voxel_grid`. This argument is
+            not used in this class.
+        - `wavelength_in_angstroms`:
+            The wavelength of the incident electron beam. This argument is
+            not used in this class.
+
+        **Returns:**
+
+        The interpolated fourier slice at coordinates `frequency_slice_in_pixels`.
+        """
         return _extract_slice_with_cubic_spline(
             spline_coefficients,
-            frequency_slice,
+            frequency_slice_in_pixels,
             mode=self.interpolation_mode,
             cval=self.interpolation_cval,
         )
@@ -195,12 +201,35 @@ class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
     def extract_voxels_from_grid_points(
         self,
         fourier_voxel_grid: Complex[Array, "dim dim dim"],
-        frequency_slice: Float[Array, "1 dim dim 3"],
-        instrument_config: InstrumentConfig,
+        frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
+        voxel_size: Float[Array, ""],
+        wavelength_in_angstroms: Float[Array, ""],
     ) -> Complex[Array, "dim dim//2+1"]:
+        """Extract a fourier slice of the  `fourier_voxel_grid` at coordinates
+        `frequency_slice_in_pixels`.
+
+        **Arguments:**
+
+        - `fourier_voxel_grid`:
+            Density grid in fourier space. The zero frequency component
+            should be in the center.
+        - `frequency_slice_in_pixels`:
+            Frequency central slice coordinate system, with the zero
+            frequency component in the corner.
+        - `voxel_size`:
+            The voxel size of the `fourier_voxel_grid`. This argument is
+            not used in this class.
+        - `wavelength_in_angstroms`:
+            The wavelength of the incident electron beam. This argument is
+            not used in this class.
+
+        **Returns:**
+
+        The interpolated fourier slice at coordinates `frequency_slice_in_pixels`.
+        """
         return _extract_slice(
             fourier_voxel_grid,
-            frequency_slice,
+            frequency_slice_in_pixels,
             interpolation_order=self.interpolation_order,
             mode=self.interpolation_mode,
             cval=self.interpolation_cval,

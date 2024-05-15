@@ -3,6 +3,7 @@ Using non-uniform FFTs for computing volume projections.
 """
 
 import math
+from typing import Optional
 from typing_extensions import override
 
 import jax.numpy as jnp
@@ -21,16 +22,19 @@ class NufftProjection(
     non-uniform FFTs.
     """
 
-    pixel_rescaling_method: str
+    pixel_rescaling_method: Optional[str]
     eps: float
 
-    def __init__(self, *, pixel_rescaling_method: str = "bicubic", eps: float = 1e-6):
+    def __init__(
+        self, *, pixel_rescaling_method: Optional[str] = None, eps: float = 1e-6
+    ):
         """**Arguments:**
 
         - `pixel_rescaling_method`: Method for interpolating the final image to
                                     the `InstrumentConfig` pixel size. See
-                                    `cryojax.image._rescale_pixel_size` for documentation.
-        - `eps`: See ``jax-finufft`` for documentation.
+                                    `cryojax.image.rescale_pixel_size` for documentation.
+        - `eps`: See [`jax-finufft`](https://github.com/flatironinstitute/jax-finufft)
+                 for documentation.
         """
         self.pixel_rescaling_method = pixel_rescaling_method
         self.eps = eps
@@ -38,7 +42,7 @@ class NufftProjection(
     def project_voxel_cloud_with_nufft(
         self,
         weights: Float[Array, " size"],
-        coordinate_list: Float[Array, "size 2"] | Float[Array, "size 3"],
+        coordinate_list_in_angstroms: Float[Array, "size 2"] | Float[Array, "size 3"],
         shape: tuple[int, int],
     ) -> Complex[Array, "{shape[0]} {shape[1]}"]:
         """Project and interpolate 3D volume point cloud
@@ -48,7 +52,7 @@ class NufftProjection(
 
         - `weights`:
             Density point cloud.
-        - `coordinates`:
+        - `coordinate_list_in_angstroms`:
             Coordinate system of point cloud.
         - `shape`:
             Shape of the imaging plane in pixels.
@@ -57,9 +61,10 @@ class NufftProjection(
 
         **Returns:**
 
-        The output image in fourier space.
+        The projection of the density point cloud defined by `weights` and
+        `coordinate_list_in_angstroms`.
         """
-        return _project_with_nufft(weights, coordinate_list, shape, self.eps)
+        return _project_with_nufft(weights, coordinate_list_in_angstroms, shape, self.eps)
 
     @override
     def compute_fourier_integrated_potential(
@@ -76,6 +81,11 @@ class NufftProjection(
 
         - `potential`: The scattering potential representation.
         - `instrument_config`: The configuration of the resulting image.
+
+        **Returns:**
+
+        The projection integral of the `potential` in fourier space, at the
+        `instrument_config.padded_shape` and the `instrument_config.pixel_size`.
         """
         if isinstance(potential, RealVoxelGridPotential):
             shape = potential.shape
@@ -94,7 +104,7 @@ class NufftProjection(
             raise ValueError(
                 "Supported density representations are RealVoxelGrid and VoxelCloud."
             )
-        return self._convert_fourier_raw_image_to_integrated_potential(
+        return self._convert_raw_image_to_integrated_potential(
             fourier_projection, potential, instrument_config
         )
 

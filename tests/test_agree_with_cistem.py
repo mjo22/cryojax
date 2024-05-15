@@ -122,12 +122,15 @@ def test_compute_projection_with_cistem(
         real_voxel_grid, voxel_size
     )
     pose = cs.EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
-    projection_method = cs.FourierSliceExtraction()
+    projection_method = cs.FourierSliceExtraction(pixel_rescaling_method=None)
     box_size = potential.shape[0]
     config = cs.InstrumentConfig((box_size, box_size), voxel_size, 300.0)
     cryojax_projection = irfftn(
-        projection_method.compute_fourier_integrated_potential(
-            potential.rotate_to_pose(pose), config
+        (
+            projection_method.compute_fourier_integrated_potential(
+                potential.rotate_to_pose(pose), config
+            )
+            / voxel_size
         )
         .at[0, 0]
         .set(0.0 + 0.0j)
@@ -140,7 +143,6 @@ def test_compute_projection_with_cistem(
     pycistem_angles.Init(phi, theta, psi, 0.0, 0.0)
     pycistem_model = _compute_projection(pycistem_volume, pycistem_angles, box_size)
     pycistem_projection = np.asarray(pycistem_model.real_values)
-    pycistem_projection *= np.asarray(voxel_size)
 
     np.testing.assert_allclose(cryojax_projection, pycistem_projection, atol=1e-5)
 
