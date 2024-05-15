@@ -21,8 +21,19 @@ class NufftProjection(
     non-uniform FFTs.
     """
 
-    pixel_rescaling_method: str = "bicubic"
-    eps: float = 1e-6
+    pixel_rescaling_method: str
+    eps: float
+
+    def __init__(self, *, pixel_rescaling_method: str = "bicubic", eps: float = 1e-6):
+        """**Arguments:**
+
+        - `pixel_rescaling_method`: Method for interpolating the final image to
+                                    the `InstrumentConfig` pixel size. See
+                                    `cryojax.image._rescale_pixel_size` for documentation.
+        - `eps`: See ``jax-finufft`` for documentation.
+        """
+        self.pixel_rescaling_method = pixel_rescaling_method
+        self.eps = eps
 
     def project_voxel_cloud_with_nufft(
         self,
@@ -51,14 +62,21 @@ class NufftProjection(
         return _project_with_nufft(weights, coordinate_list, shape, self.eps)
 
     @override
-    def compute_raw_fourier_image(
+    def compute_fourier_integrated_potential(
         self,
         potential: RealVoxelGridPotential | RealVoxelCloudPotential,
         instrument_config: InstrumentConfig,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        """Rasterize image with non-uniform FFTs."""
+        """Compute the integrated scattering potential at the `InstrumentConfig` settings
+        of a voxel-based representation in real-space, using non-uniform FFTs.
+
+        **Arguments:**
+
+        - `potential`: The scattering potential representation.
+        - `instrument_config`: The configuration of the resulting image.
+        """
         if isinstance(potential, RealVoxelGridPotential):
             shape = potential.shape
             fourier_projection = self.project_voxel_cloud_with_nufft(
@@ -76,17 +94,9 @@ class NufftProjection(
             raise ValueError(
                 "Supported density representations are RealVoxelGrid and VoxelCloud."
             )
-        return fourier_projection
-
-
-NufftProjection.__init__.__doc__ = """**Arguments:**
-
-- `pixel_rescaling_method`:
-    Method for interpolating the final image to the `InstrumentConfig`
-    pixel size. See `cryojax.image._rescale_pixel_size` for documentation.
-- `eps` : `float`
-    See ``jax-finufft`` for documentation.
-"""
+        return self._convert_fourier_raw_image_to_integrated_potential(
+            fourier_projection, potential, instrument_config
+        )
 
 
 def _project_with_nufft(weights, coordinate_list, shape, eps=1e-6):

@@ -30,15 +30,41 @@ class AbstractFourierVoxelExtraction(
 ):
     """Integrate points to the exit plane by extracting a voxel surface
     from a 3D voxel grid.
-
-    This extracts values using resampling techniques housed in
-    `cryojax.image._map_coordinates`. See here for more documentation.
     """
 
-    pixel_rescaling_method: str = "bicubic"
-    interpolation_order: int = 1
-    interpolation_mode: str = "fill"
-    interpolation_cval: complex = 0.0 + 0.0j
+    pixel_rescaling_method: str
+    interpolation_order: int
+    interpolation_mode: str
+    interpolation_cval: complex
+
+    def __init__(
+        self,
+        *,
+        pixel_rescaling_method: str = "bicubic",
+        interpolation_order: int = 1,
+        interpolation_mode: str = "fill",
+        interpolation_cval: complex = 0.0 + 0.0j,
+    ):
+        """**Arguments:**
+
+        - `pixel_rescaling_method`:
+            Method for rescaling the final image to the `InstrumentConfig`
+            pixel size. See `cryojax.image._rescale_pixel_size` for documentation.
+        - `interpolation_order`:
+            The interpolation order. This can be ``0` (nearest-neighbor), `1`
+            (linear), or `3` (cubic).
+            Note that this argument is ignored if a `FourierVoxelGridInterpolator`
+            is passed.
+        - `interpolation_mode`:
+            Specify how to handle out of bounds indexing.
+        - `interpolation_cval`:
+            Value for filling out-of-bounds indices. Used only when
+            `interpolation_mode = "fill"`.
+        """
+        self.pixel_rescaling_method = pixel_rescaling_method
+        self.interpolation_order = interpolation_order
+        self.interpolation_mode = interpolation_mode
+        self.interpolation_cval = interpolation_cval
 
     @abstractmethod
     def extract_voxels_from_spline_coefficients(
@@ -95,15 +121,20 @@ class AbstractFourierVoxelExtraction(
         raise NotImplementedError
 
     @override
-    def compute_raw_fourier_image(
+    def compute_fourier_integrated_potential(
         self,
         potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
         instrument_config: InstrumentConfig,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        """Compute a projection of the real-space potential by extracting
-        a central slice in fourier space.
+        """Compute the integrated scattering potential at the `InstrumentConfig` settings
+        of a voxel-based representation in fourier-space, using fourier slice extraction.
+
+        **Arguments:**
+
+        - `potential`: The scattering potential representation.
+        - `instrument_config`: The configuration of the resulting image.
         """
         frequency_slice = potential.frequency_slice_in_pixels
         N = frequency_slice.shape[1]
@@ -133,30 +164,17 @@ class AbstractFourierVoxelExtraction(
                     irfftn(fourier_projection, s=(N, N))
                 )
             )
-        return fourier_projection
-
-
-AbstractFourierVoxelExtraction.__init__.__doc__ = """**Arguments:**
-
-- `pixel_rescaling_method`:
-    Method for rescaling the final image to the `InstrumentConfig`
-    pixel size. See `cryojax.image._rescale_pixel_size` for documentation.
-- `interpolation_order`:
-    The interpolation order. This can be ``0`` (nearest-neighbor), ``1``
-    (linear), or ``3`` (cubic).
-    Note that this argument is ignored if a ``FourierVoxelGridInterpolator``
-    is passed.
-- `interpolation_mode`:
-    Specify how to handle out of bounds indexing.
-- `interpolation_cval`:
-    Value for filling out-of-bounds indices. Used only when
-    ``interpolation_mode = "fill"``.
-"""
+        return self._convert_fourier_raw_image_to_integrated_potential(
+            fourier_projection, potential, instrument_config
+        )
 
 
 class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
     """Integrate points to the exit plane using the
-    Fourier-projection slice theorem.
+    Fourier projection-slice theorem.
+
+    This extracts slices using interpolation methods housed in
+    `cryojax.image.map_coordinates` and `cryojax.image.map_coordinates_with_cubic_spline`.
     """
 
     @override
