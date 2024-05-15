@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.22">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.23">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.732c4fb1.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6543a935.min.css">
       
       
 
@@ -577,7 +577,7 @@
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>This tutorial demonstrates how to use <code>cryojax</code> to build a scattering potential from a PDB entry. Specifically, the tutorial will build a voxel grid, take some steps to validate it, then save the result to be used in subsequent tutorials.</p>
-<p>The scattering potential will be built using the tabulation of atomic scattering factors from the work of Lian-Mao Peng, which fits the potential from single atoms to a sum of five gaussians. See the <code>cryojax</code> documentation <a href="https://mjo22.github.io/cryojax/examples/compute-potential/">here</a> for more information.</p>
+<p>The scattering potential will be built using the tabulation of atomic scattering factors from the work of Lian-Mao Peng, which fits the potential from single atoms to a sum of five gaussians. See the <code>cryojax</code> documentation <a href="https://mjo22.github.io/cryojax/api/simulator/scattering_potential/#atom-based-scattering-potentials">here</a> for more information.</p>
 <p><em>References:</em></p>
 <ul>
 <li>Peng, L-M., et al. "Robust parameterization of elastic and absorptive electron atomic scattering factors." Acta Crystallographica Section A: Foundations of Crystallography 52.2 (1996): 257-276.</li>
@@ -609,7 +609,7 @@
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>First, load the atomic positions and identities from a PDB entry. Here, we use a structure of GroEL (PDB ID 5w0s). This is loaded into a <code>PengAtomicPotential</code> object, which represents the potential for individual atoms as a sum of five gaussians.</p>
+<p>First, load the atomic positions and identities from a PDB entry. Here, a structure of GroEL (PDB ID 5w0s) is used. This is loaded into a <code>PengAtomicPotential</code> object.</p>
 </div>
 </div>
 </div>
@@ -725,10 +725,10 @@
 coordinates, <span class="arithmatex">\(m\)</span> is the electron mass, and <span class="arithmatex">\(e\)</span> is the electron charge.</p>
 <p>In the following, we will compute projections of the potential, which we will
 define to be</p>
-<div class="arithmatex">\[U_z(x, y) = \int_{-\infty}^z dz \ U(x, y, z),\]</div>
+<div class="arithmatex">\[U_z(x, y) = \int_{-\infty}^z dz' \ U(x, y, z'),\]</div>
 <p>where in practice the integration domain is taken to be between <span class="arithmatex">\(z\)</span>-planes above and below where the potential has sufficiently decayed. In this tutorial, this integral is computed with fourier slice extraction.</p>
 </div>
-<p>Now, let's validate that what we see is reasonable. In order to do this, we will first compute a few different projections of the potential.</p>
+<p>Now, let's validate that what we see is reasonable. The first validation step is to compute a few different projections of the potential.</p>
 </div>
 </div>
 </div>
@@ -839,7 +839,7 @@ define to be</p>
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Another good sanity check is to make sure the potential is relatively weak compared to a typical incident electron beam energy in cryo-EM. For an electron beam with incident wavenumber <span class="arithmatex">\(k\)</span>, this can be checked with the condition</p>
+<p>Another good sanity check is to check that the potential is relatively weak compared to a typical incident electron beam energy in cryo-EM. For an electron beam with incident wavenumber <span class="arithmatex">\(k\)</span>, this can be checked with the condition</p>
 <div class="arithmatex">\[U/k^2 &lt;&lt; 1,\]</div>
 <p>where again <span class="arithmatex">\(U = 2 m e V / \hbar^2\)</span> is the rescaled potential. Below, we consider an incident energy of <span class="arithmatex">\(300 \ \textrm{keV}\)</span>.</p>
 </div>
@@ -949,7 +949,7 @@ define to be</p>
     <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.5cfa9459.min.js"></script>
+      <script src="../../assets/javascripts/bundle.ebd0bdb7.min.js"></script>
       
         <script src="../../javascripts/mathjax.js"></script>
       
