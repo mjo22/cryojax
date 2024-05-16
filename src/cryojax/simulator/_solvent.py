@@ -54,16 +54,17 @@ class GaussianIce(AbstractIce, strict=True):
 
     **Attributes:**
 
-    - `variance` : A function that computes the variance
-                   of the ice, modeled as colored gaussian noise.
-                   The dimensions of this function are the square
-                   of the dimensions of an integrated potential.
+    - `variance_function` :
+        A function that computes the variance
+        of the ice, modeled as colored gaussian noise.
+        The dimensions of this function are the square
+        of the dimensions of an integrated potential.
     """
 
-    variance: FourierOperatorLike
+    variance_function: FourierOperatorLike
 
-    def __init__(self, variance: FourierOperatorLike):
-        self.variance = variance
+    def __init__(self, variance_function: FourierOperatorLike):
+        self.variance_function = variance_function
 
     @override
     def sample_fourier_phase_shifts_from_ice(
@@ -76,7 +77,7 @@ class GaussianIce(AbstractIce, strict=True):
         frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
         # Compute standard deviation, scaling up by the variance by the number
         # of pixels to make the realization independent pixel-independent in real-space.
-        std = jnp.sqrt(N_pix * self.variance(frequency_grid_in_angstroms))
+        std = jnp.sqrt(N_pix * self.variance_function(frequency_grid_in_angstroms))
         ice_integrated_potential_at_exit_plane = std * jr.normal(
             key,
             shape=frequency_grid_in_angstroms.shape[0:-1],
