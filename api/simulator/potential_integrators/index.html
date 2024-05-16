@@ -1,0 +1,1162 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The documentation for cryoJAX.">
+      
+      
+        <meta name="author" content="Michael O'Brien">
+      
+      
+        <link rel="canonical" href="https://mjo22.github.io/cryojax/api/simulator/potential_integrators/">
+      
+      
+        <link rel="prev" href="../instrument_config/">
+      
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.23">
+    
+    
+      
+        <title>Scattering potential integration methods - cryoJAX</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../_static/custom_css.css">
+    
+      <link rel="stylesheet" href="../../../css/ansi-colours.css">
+    
+      <link rel="stylesheet" href="../../../css/jupyter-cells.css">
+    
+      <link rel="stylesheet" href="../../../css/pandas-dataframe.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#scattering-potential-integration-methods" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="cryoJAX" class="md-header__button md-logo" aria-label="cryoJAX" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m20.79 13.95-2.33.62-2-1.13v-2.88l2-1.13 2.33.62.52-1.93-1.77-.47.46-1.77-1.93-.52-.62 2.33-2 1.13L13 7.38V5.12l1.71-1.71L13.29 2 12 3.29 10.71 2 9.29 3.41 11 5.12v2.26L8.5 8.82l-2-1.13-.58-2.33L4 5.88l.47 1.77-1.77.47.52 1.93 2.33-.62 2 1.13v2.89l-2 1.13-2.33-.62-.52 1.93 1.77.47L4 18.12l1.93.52.62-2.33 2-1.13L11 16.62v2.26l-1.71 1.71L10.71 22 12 20.71 13.29 22l1.41-1.41-1.7-1.71v-2.26l2.5-1.45 2 1.13.62 2.33 1.88-.51-.47-1.77 1.77-.47-.51-1.93M9.5 10.56 12 9.11l2.5 1.45v2.88L12 14.89l-2.5-1.45v-2.88Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            cryoJAX
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Scattering potential integration methods
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mjo22/cryojax" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mjo22/cryojax
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="cryoJAX" class="md-nav__button md-logo" aria-label="cryoJAX" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m20.79 13.95-2.33.62-2-1.13v-2.88l2-1.13 2.33.62.52-1.93-1.77-.47.46-1.77-1.93-.52-.62 2.33-2 1.13L13 7.38V5.12l1.71-1.71L13.29 2 12 3.29 10.71 2 9.29 3.41 11 5.12v2.26L8.5 8.82l-2-1.13-.58-2.33L4 5.88l.47 1.77-1.77.47.52 1.93 2.33-.62 2 1.13v2.89l-2 1.13-2.33-.62-.52 1.93 1.77.47L4 18.12l1.93.52.62-2.33 2-1.13L11 16.62v2.26l-1.71 1.71L10.71 22 12 20.71 13.29 22l1.41-1.41-1.7-1.71v-2.26l2.5-1.45 2 1.13.62 2.33 1.88-.51-.47-1.77 1.77-.47-.51-1.93M9.5 10.56 12 9.11l2.5 1.45v2.88L12 14.89l-2.5-1.45v-2.88Z"/></svg>
+
+    </a>
+    cryoJAX
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mjo22/cryojax" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mjo22/cryojax
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Welcome to cryoJAX!
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Examples
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Examples
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Introductory
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            Introductory
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/compute-potential/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Compute a scattering potential
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/simulate-image/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Simulate an image
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/read-dataset/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read a particle stack
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Intermediate
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Intermediate
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/simulate-micrograph/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Simulate a batch of images
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/cross-correlation-search/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Run a cross-correlation search
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Simulator API
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Simulator API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scattering_potential/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Scattering potential representations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../instrument_config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuring images
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Scattering potential integration methods
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Scattering potential integration methods
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cryojax.simulator.AbstractPotentialIntegrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      AbstractPotentialIntegrator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-methods-for-voxel-based-potentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      Integration methods for voxel-based potentials
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integration methods for voxel-based potentials">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cryojax.simulator.AbstractVoxelPotentialIntegrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      AbstractVoxelPotentialIntegrator
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cryojax.simulator.FourierSliceExtraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      FourierSliceExtraction
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cryojax.simulator.NufftProjection" class="md-nav__link">
+    <span class="md-ellipsis">
+      NufftProjection
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+<h1 id="scattering-potential-integration-methods">Scattering potential integration methods<a class="headerlink" href="#scattering-potential-integration-methods" title="Permanent link">¤</a></h1>
+<p><code>cryojax</code> provides different methods for integrating <a href="../scattering_potential/#scattering-potential-representations">scattering potentials</a> onto a plane.</p>
+<details class="abstract" open="open">
+<summary><code>cryojax.simulator.AbstractPotentialIntegrator</code></summary>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.AbstractPotentialIntegrator" class="doc doc-heading">
+            <code>cryojax.simulator.AbstractPotentialIntegrator</code>
+
+
+<a href="#cryojax.simulator.AbstractPotentialIntegrator" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+      <p>Base class for a method of integrating a potential onto
+the exit plane.</p>
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.AbstractPotentialIntegrator.compute_fourier_integrated_potential" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractPotentialIntegrator</span><span class="o">.</span><span class="n">compute_fourier_integrated_potential</span><span class="p">(</span><span class="n">potential</span><span class="p">:</span> <span class="n">PotentialT</span><span class="p">,</span> <span class="n">instrument_config</span><span class="p">:</span> <span class="n">InstrumentConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> {instrument_config.padded_x_dim//2+1}&#39;</span><span class="p">]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
+  </span>
+
+<a href="#cryojax.simulator.AbstractPotentialIntegrator.compute_fourier_integrated_potential" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div></details>
+<h2 id="integration-methods-for-voxel-based-potentials">Integration methods for voxel-based potentials<a class="headerlink" href="#integration-methods-for-voxel-based-potentials" title="Permanent link">¤</a></h2>
+<details class="abstract">
+<summary><code>cryojax.simulator.AbstractVoxelPotentialIntegrator</code></summary>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.AbstractVoxelPotentialIntegrator" class="doc doc-heading">
+            <code>cryojax.simulator.AbstractVoxelPotentialIntegrator</code>
+
+
+<a href="#cryojax.simulator.AbstractVoxelPotentialIntegrator" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+      <p>Base class for a method of integrating a voxel-based potential.</p>
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="cryojax.simulator.AbstractVoxelPotentialIntegrator.pixel_rescaling_method" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractVoxelPotentialIntegrator</span><span class="o">.</span><span class="n">pixel_rescaling_method</span><span class="p">:</span> <span class="n">AbstractVar</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+<a href="#cryojax.simulator.AbstractVoxelPotentialIntegrator.pixel_rescaling_method" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div></details>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.FourierSliceExtraction" class="doc doc-heading">
+            <code>cryojax.simulator.FourierSliceExtraction</code>
+
+
+<a href="#cryojax.simulator.FourierSliceExtraction" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+      <p>Integrate points to the exit plane using the Fourier projection-slice theorem.</p>
+<p>This extracts slices using interpolation methods housed in
+<code>cryojax.image.map_coordinates</code> and <code>cryojax.image.map_coordinates_with_cubic_spline</code>.</p>
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.FourierSliceExtraction.__init__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">pixel_rescaling_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">interpolation_order</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">interpolation_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;fill&#39;</span><span class="p">,</span> <span class="n">interpolation_cval</span><span class="p">:</span> <span class="nb">complex</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="o">+</span> <span class="mi">0</span><span class="n">j</span><span class="p">)</span></code>
+
+<a href="#cryojax.simulator.FourierSliceExtraction.__init__" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+      <p><strong>Arguments:</strong></p>
+<ul>
+<li><code>pixel_rescaling_method</code>:
+    Method for rescaling the final image to the <code>InstrumentConfig</code>
+    pixel size. See <code>cryojax.image.rescale_pixel_size</code> for documentation.</li>
+<li><code>interpolation_order</code>:
+    The interpolation order. This can be <code>0</code> (nearest-neighbor), <code>1</code>
+    (linear), or <code>3</code> (cubic).
+    Note that this argument is ignored when using this object with a
+    <code>FourierVoxelGridInterpolator</code>.</li>
+<li><code>interpolation_mode</code>:
+    Specify how to handle out of bounds indexing. See
+    <code>cryojax.image.map_coordinates</code> for documentation.</li>
+<li><code>interpolation_cval</code>:
+    Value for filling out-of-bounds indices. Used only when
+    <code>interpolation_mode = "fill"</code>.</li>
+</ul>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.FourierSliceExtraction.compute_fourier_integrated_potential" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="n">compute_fourier_integrated_potential</span><span class="p">(</span><span class="n">potential</span><span class="p">:</span> <span class="n">FourierVoxelGridPotential</span> <span class="o">|</span> <span class="n">FourierVoxelGridPotentialInterpolator</span><span class="p">,</span> <span class="n">instrument_config</span><span class="p">:</span> <span class="n">InstrumentConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> {instrument_config.padded_x_dim//2+1}&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.simulator.FourierSliceExtraction.compute_fourier_integrated_potential" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+      <p>Compute the integrated scattering potential at the <code>InstrumentConfig</code> settings
+of a voxel-based representation in fourier-space, using fourier slice extraction.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>potential</code>: The scattering potential representation.</li>
+<li><code>instrument_config</code>: The configuration of the resulting image.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The extracted fourier voxels of the <code>potential</code>, at the
+<code>instrument_config.padded_shape</code> and the <code>instrument_config.pixel_size</code>.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.FourierSliceExtraction.extract_voxels_from_spline_coefficients" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="n">extract_voxels_from_spline_coefficients</span><span class="p">(</span><span class="n">spline_coefficients</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim+2 dim+2 dim+2&#39;</span><span class="p">],</span> <span class="n">frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">],</span> <span class="n">wavelength_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim//2+1&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.simulator.FourierSliceExtraction.extract_voxels_from_spline_coefficients" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+      <p>Extract a fourier slice using the interpolation defined by
+<code>spline_coefficients</code> at coordinates <code>frequency_slice_in_pixels</code>.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>spline_coefficients</code>:
+    Spline coefficients of the density grid in fourier space.
+    The coefficients should be computed from a <code>fourier_voxel_grid</code>
+    with the zero frequency component in the center. These are
+    typically computed with the function
+    <code>cryojax.image.compute_spline_coefficients</code>.</li>
+<li><code>frequency_slice_in_pixels</code>:
+    Frequency central slice coordinate system. The zero
+    frequency component should be in the center.</li>
+<li><code>voxel_size</code>:
+    The voxel size of the <code>fourier_voxel_grid</code>. This argument is
+    not used in the <code>FourierSliceExtraction</code> class.</li>
+<li><code>wavelength_in_angstroms</code>:
+    The wavelength of the incident electron beam. This argument is
+    not used in the <code>FourierSliceExtraction</code> class.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The interpolated fourier slice at coordinates <code>frequency_slice_in_pixels</code>.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.FourierSliceExtraction.extract_voxels_from_grid_points" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="n">extract_voxels_from_grid_points</span><span class="p">(</span><span class="n">fourier_voxel_grid</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">],</span> <span class="n">wavelength_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim//2+1&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.simulator.FourierSliceExtraction.extract_voxels_from_grid_points" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+      <p>Extract a fourier slice of the <code>fourier_voxel_grid</code> at coordinates
+<code>frequency_slice_in_pixels</code>.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>fourier_voxel_grid</code>:
+    Density grid in fourier space. The zero frequency component
+    should be in the center.</li>
+<li><code>frequency_slice_in_pixels</code>:
+    Frequency central slice coordinate system. The zero
+    frequency component should be in the center.</li>
+<li><code>voxel_size</code>:
+    The voxel size of the <code>fourier_voxel_grid</code>. This argument is
+    not used in the <code>FourierSliceExtraction</code> class.</li>
+<li><code>wavelength_in_angstroms</code>:
+    The wavelength of the incident electron beam. This argument is
+    not used in the <code>FourierSliceExtraction</code> class.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The interpolated fourier slice at coordinates <code>frequency_slice_in_pixels</code>.</p>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div><hr />
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.NufftProjection" class="doc doc-heading">
+            <code>cryojax.simulator.NufftProjection</code>
+
+
+<a href="#cryojax.simulator.NufftProjection" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+      <p>Integrate points onto the exit plane using non-uniform FFTs.</p>
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.NufftProjection.__init__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">NufftProjection</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">pixel_rescaling_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-06</span><span class="p">)</span></code>
+
+<a href="#cryojax.simulator.NufftProjection.__init__" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+      <p><strong>Arguments:</strong></p>
+<ul>
+<li><code>pixel_rescaling_method</code>: Method for interpolating the final image to
+                            the <code>InstrumentConfig</code> pixel size. See
+                            <code>cryojax.image.rescale_pixel_size</code> for documentation.</li>
+<li><code>eps</code>: See <a href="https://github.com/flatironinstitute/jax-finufft"><code>jax-finufft</code></a>
+         for documentation.</li>
+</ul>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.NufftProjection.compute_fourier_integrated_potential" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">NufftProjection</span><span class="o">.</span><span class="n">compute_fourier_integrated_potential</span><span class="p">(</span><span class="n">potential</span><span class="p">:</span> <span class="n">RealVoxelGridPotential</span> <span class="o">|</span> <span class="n">RealVoxelCloudPotential</span><span class="p">,</span> <span class="n">instrument_config</span><span class="p">:</span> <span class="n">InstrumentConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> {instrument_config.padded_x_dim//2+1}&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.simulator.NufftProjection.compute_fourier_integrated_potential" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+      <p>Compute the integrated scattering potential at the <code>InstrumentConfig</code> settings
+of a voxel-based representation in real-space, using non-uniform FFTs.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>potential</code>: The scattering potential representation.</li>
+<li><code>instrument_config</code>: The configuration of the resulting image.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The projection integral of the <code>potential</code> in fourier space, at the
+<code>instrument_config.padded_shape</code> and the <code>instrument_config.pixel_size</code>.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.NufftProjection.project_voxel_cloud_with_nufft" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">NufftProjection</span><span class="o">.</span><span class="n">project_voxel_cloud_with_nufft</span><span class="p">(</span><span class="n">weights</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; size&#39;</span><span class="p">],</span> <span class="n">coordinate_list_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;size 2&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;size 3&#39;</span><span class="p">],</span> <span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{shape[0]}</span><span class="s1"> {shape[1]//2+1}&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.simulator.NufftProjection.project_voxel_cloud_with_nufft" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+      <p>Project and interpolate 3D volume point cloud
+onto imaging plane using a non-uniform FFT.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>weights</code>:
+    Density point cloud.</li>
+<li><code>coordinate_list_in_angstroms</code>:
+    Coordinate system of point cloud.</li>
+<li><code>shape</code>:
+    Shape of the real-space imaging plane in pixels.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The fourier-space projection of the density point cloud defined by <code>weights</code> and
+<code>coordinate_list_in_angstroms</code>.</p>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.ebd0bdb7.min.js"></script>
+      
+        <script src="../../../javascripts/mathjax.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
