@@ -44,7 +44,7 @@ plugins:
             paths: [src]  # search packages in the src folder
             options:
               annotations_path: full
-              group_by_category: true
+              group_by_category: false
               inherited_members: true
               show_root_heading: true
               show_root_members_full_path: true
@@ -53,6 +53,7 @@ plugins:
               show_signature_annotations: true
               signature_crossrefs: true
               show_source: false
+              show_bases: false
               members_order: source
               heading_level: 4
 

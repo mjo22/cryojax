@@ -10,18 +10,11 @@
 
 ## Integration methods for voxel-based potentials
 
-???+ abstract "`cryojax.simulator.AbstractVoxelPotentialIntegrator`"
+??? abstract "`cryojax.simulator.AbstractVoxelPotentialIntegrator`"
     ::: cryojax.simulator.AbstractVoxelPotentialIntegrator
         options:
             members:
                 - pixel_rescaling_method
-
-??? abstract "`cryojax.simulator.AbstractFourierVoxelExtraction`"
-    ::: cryojax.simulator.AbstractFourierVoxelExtraction
-        options:
-            members:
-                - extract_voxels_from_spline_coefficients
-                - extract_voxels_from_grid_points
 
 ::: cryojax.simulator.FourierSliceExtraction
         options:

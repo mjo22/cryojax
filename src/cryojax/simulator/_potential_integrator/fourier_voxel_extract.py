@@ -102,8 +102,8 @@ class AbstractFourierVoxelExtraction(
             )
         else:
             raise ValueError(
-                "Supported density representations are FourierVoxelGrid and "
-                "FourierVoxelGridInterpolator."
+                "Supported types for `potential` are `FourierVoxelGridPotential` and "
+                "`FourierVoxelGridPotentialInterpolator`."
             )
 
         # Resize the image to match the InstrumentConfig.padded_shape
@@ -119,8 +119,7 @@ class AbstractFourierVoxelExtraction(
 
 
 class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
-    """Integrate points to the exit plane using the
-    Fourier projection-slice theorem.
+    """Integrate points to the exit plane using the Fourier projection-slice theorem.
 
     This extracts slices using interpolation methods housed in
     `cryojax.image.map_coordinates` and `cryojax.image.map_coordinates_with_cubic_spline`.
@@ -150,7 +149,8 @@ class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
             Note that this argument is ignored when using this object with a
             `FourierVoxelGridInterpolator`.
         - `interpolation_mode`:
-            Specify how to handle out of bounds indexing.
+            Specify how to handle out of bounds indexing. See
+            `cryojax.image.map_coordinates` for documentation.
         - `interpolation_cval`:
             Value for filling out-of-bounds indices. Used only when
             `interpolation_mode = "fill"`.
@@ -173,18 +173,21 @@ class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
 
         **Arguments:**
 
-        - `fourier_voxel_grid`:
-            Density grid in fourier space. The zero frequency component
-            should be in the center.
+        - `spline_coefficients`:
+            Spline coefficients of the density grid in fourier space.
+            The coefficients should be computed from a `fourier_voxel_grid`
+            with the zero frequency component in the center. These are
+            typically computed with the function
+            `cryojax.image.compute_spline_coefficients`.
         - `frequency_slice_in_pixels`:
-            Frequency central slice coordinate system, with the zero
-            frequency component in the corner.
+            Frequency central slice coordinate system. The zero
+            frequency component should be in the center.
         - `voxel_size`:
             The voxel size of the `fourier_voxel_grid`. This argument is
-            not used in this class.
+            not used in the `FourierSliceExtraction` class.
         - `wavelength_in_angstroms`:
             The wavelength of the incident electron beam. This argument is
-            not used in this class.
+            not used in the `FourierSliceExtraction` class.
 
         **Returns:**
 
@@ -205,7 +208,7 @@ class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
         voxel_size: Float[Array, ""],
         wavelength_in_angstroms: Float[Array, ""],
     ) -> Complex[Array, "dim dim//2+1"]:
-        """Extract a fourier slice of the  `fourier_voxel_grid` at coordinates
+        """Extract a fourier slice of the `fourier_voxel_grid` at coordinates
         `frequency_slice_in_pixels`.
 
         **Arguments:**
@@ -214,14 +217,14 @@ class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
             Density grid in fourier space. The zero frequency component
             should be in the center.
         - `frequency_slice_in_pixels`:
-            Frequency central slice coordinate system, with the zero
-            frequency component in the corner.
+            Frequency central slice coordinate system. The zero
+            frequency component should be in the center.
         - `voxel_size`:
             The voxel size of the `fourier_voxel_grid`. This argument is
-            not used in this class.
+            not used in the `FourierSliceExtraction` class.
         - `wavelength_in_angstroms`:
             The wavelength of the incident electron beam. This argument is
-            not used in this class.
+            not used in the `FourierSliceExtraction` class.
 
         **Returns:**
 

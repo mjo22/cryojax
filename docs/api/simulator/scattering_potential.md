@@ -26,14 +26,6 @@
                 - as_real_voxel_grid
 
 
-??? abstract "`cryojax.simulator.AbstractTabulatedAtomicPotential`"
-
-    ::: cryojax.simulator.AbstractTabulatedAtomicPotential
-        options:
-            members:
-                - b_factors
-
-
 ::: cryojax.simulator.PengAtomicPotential
         options:
             members:

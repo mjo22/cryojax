@@ -18,9 +18,7 @@ class NufftProjection(
     AbstractVoxelPotentialIntegrator[RealVoxelGridPotential | RealVoxelCloudPotential],
     strict=True,
 ):
-    """Integrate points onto the exit plane using
-    non-uniform FFTs.
-    """
+    """Integrate points onto the exit plane using non-uniform FFTs."""
 
     pixel_rescaling_method: Optional[str]
     eps: float
@@ -44,7 +42,7 @@ class NufftProjection(
         weights: Float[Array, " size"],
         coordinate_list_in_angstroms: Float[Array, "size 2"] | Float[Array, "size 3"],
         shape: tuple[int, int],
-    ) -> Complex[Array, "{shape[0]} {shape[1]}"]:
+    ) -> Complex[Array, "{shape[0]} {shape[1]//2+1}"]:
         """Project and interpolate 3D volume point cloud
         onto imaging plane using a non-uniform FFT.
 
@@ -55,13 +53,11 @@ class NufftProjection(
         - `coordinate_list_in_angstroms`:
             Coordinate system of point cloud.
         - `shape`:
-            Shape of the imaging plane in pixels.
-            ``width, height = shape[0], shape[1]``
-            is the size of the desired imaging plane.
+            Shape of the real-space imaging plane in pixels.
 
         **Returns:**
 
-        The projection of the density point cloud defined by `weights` and
+        The fourier-space projection of the density point cloud defined by `weights` and
         `coordinate_list_in_angstroms`.
         """
         return _project_with_nufft(weights, coordinate_list_in_angstroms, shape, self.eps)
@@ -102,7 +98,8 @@ class NufftProjection(
             )
         else:
             raise ValueError(
-                "Supported density representations are RealVoxelGrid and VoxelCloud."
+                "Supported types for `potential` are `RealVoxelGridPotential` and "
+                "`RealVoxelCloudPotential`."
             )
         return self._convert_raw_image_to_integrated_potential(
             fourier_projection, potential, instrument_config
