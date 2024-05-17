@@ -19,9 +19,9 @@ class GaussianMixtureProjection(
     AbstractPotentialIntegrator[GaussianMixtureAtomicPotential | PengAtomicPotential],
     strict=True,
 ):
-    upsampling_factor: Optional[float | int]
+    upsampling_factor: Optional[int]
 
-    def __init__(self, *, upsampling_factor: Optional[float | int] = None):
+    def __init__(self, *, upsampling_factor: Optional[int] = None):
         """**Arguments:**
 
         - `upsampling_factor`:
@@ -62,8 +62,8 @@ class GaussianMixtureProjection(
         if self.upsampling_factor is not None:
             pixel_size = instrument_config.pixel_size / self.upsampling_factor
             shape = (
-                int(instrument_config.padded_y_dim * self.upsampling_factor),
-                int(instrument_config.padded_x_dim * self.upsampling_factor),
+                instrument_config.padded_y_dim * self.upsampling_factor,
+                instrument_config.padded_x_dim * self.upsampling_factor,
             )
         else:
             pixel_size = instrument_config.pixel_size
