@@ -95,15 +95,15 @@ class GaussianMixtureProjection(
         projection = _evaluate_2d_real_space_gaussian(
             grid_x, grid_y, potential.atom_positions, gaussian_amplitudes, gaussian_widths
         )
-        fourier_projection = rfftn(projection)
 
         if self.upsampling_factor is not None:
             fourier_projection = downsample_to_shape_with_fourier_cropping(
-                fourier_projection,
-                downsampled_shape_in_real_space=instrument_config.padded_shape,
-                is_real=False,
-                half_space=True,
+                projection,
+                downsampled_shape=instrument_config.padded_shape,
+                get_real=False,
             )
+        else:
+            fourier_projection = rfftn(projection)
 
         return fourier_projection
 
