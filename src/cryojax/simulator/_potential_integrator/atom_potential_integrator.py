@@ -1,10 +1,11 @@
 from typing import Optional
 from typing_extensions import override
 
+import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
-from ...coordinates._make_coordinate_grids import make_coordinate_grid
+from ...coordinates._make_coordinate_grids import _make_coordinates_or_frequencies_1d
 from ...image import downsample_with_fourier_cropping, rfftn
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import (
@@ -54,10 +55,13 @@ class GaussianMixtureProjection(
             instrument_config.padded_x_dim * self.upsampling_factor,
         )
 
-        coordinate_grid_in_angstroms = make_coordinate_grid(
-            shape,
-            pixel_size,
+        grid_x = _make_coordinates_or_frequencies_1d(
+            shape[1], pixel_size, real_space=True
         )
+        grid_y = _make_coordinates_or_frequencies_1d(
+            shape[0], pixel_size, real_space=True
+        )
+
         if isinstance(potential, PengAtomicPotential):
             if potential.b_factors is None:
                 gaussian_widths = potential.scattering_factor_b
@@ -79,7 +83,8 @@ class GaussianMixtureProjection(
             )
 
         projection = _evaluate_2d_real_space_gaussian(
-            coordinate_grid_in_angstroms,
+            grid_x,
+            grid_y,
             potential.atom_positions,
             gaussian_amplitudes,
             gaussian_widths,
@@ -93,8 +98,10 @@ class GaussianMixtureProjection(
         return rfftn(projection)
 
 
+@jax.jit
 def _evaluate_2d_real_space_gaussian(
-    coordinate_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
+    grid_x: Float[Array, " x_dim"],
+    grid_y: Float[Array, " y_dim"],
     atom_positions: Float[Array, "n_atoms 3"],
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
@@ -103,7 +110,8 @@ def _evaluate_2d_real_space_gaussian(
 
     **Arguments:**
 
-    - `coordinate_grid`: The coordinate system of the grid.
+    - `grid_x`: The x-coordinates of the grid.
+    - `grid_y`: The y-coordinates of the grid.
     - `pos`: The center of the gaussian.
     - `a`: A scale factor.
     - `b`: The scale of the gaussian.
@@ -114,10 +122,6 @@ def _evaluate_2d_real_space_gaussian(
     """
 
     b_inverse = 4.0 * jnp.pi / b
-    grid_x = coordinate_grid_in_angstroms[0, :, 0]
-    grid_y = coordinate_grid_in_angstroms[:, 0, 1]
-
-    print(a.shape, b.shape, atom_positions.shape, grid_x.shape, grid_y.shape)
 
     gauss_x = (
         jnp.exp(
