@@ -51,7 +51,7 @@ class GaussianMixtureProjection(
 
         **Returns:**
         The Fourier transform of the integrated potential.
-        """
+        """  # noqa: E501
 
         pixel_size = instrument_config.pixel_size / self.upsampling_factor
         shape = (
@@ -102,8 +102,8 @@ class GaussianMixtureProjection(
 def _evaluate_2d_real_space_gaussian(
     coordinate_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
     atom_position: Float[Array, "3"],
-    a: Float[Array, "n_gauss"],
-    b: Float[Array, "n_gauss"],
+    a: Float[Array, " n_gaussians_per_atom"],
+    b: Float[Array, " n_gaussians_per_atom"],
 ) -> Float[Array, "y_dim x_dim"]:
     """Evaluate a gaussian on a 3D grid.
 

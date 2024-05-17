@@ -51,9 +51,7 @@ def test_downsampled_gmm_potential_agreement(sample_pdb_path):
     """Integration test ensuring that rasterized voxel grids roughly
     agree with downsampled versions.
     """
-    atom_positions, atom_identities = read_atoms_from_pdb(
-        sample_pdb_path
-    )
+    atom_positions, atom_identities = read_atoms_from_pdb(sample_pdb_path)
     atom_potential = PengAtomicPotential(atom_positions, atom_identities)
 
     # Parameters for rasterization
@@ -94,14 +92,10 @@ def test_peng_vs_gmm_agreement(sample_pdb_path):
     gaussians are identical"""
 
     # Load atoms and build potentials
-    atom_positions, atom_identities = read_atoms_from_pdb(
-        sample_pdb_path
-    )
+    atom_positions, atom_identities = read_atoms_from_pdb(sample_pdb_path)
     atom_potential = PengAtomicPotential(atom_positions, atom_identities)
 
-    gaussian_widths = (
-        atom_potential.scattering_factor_b
-    )
+    gaussian_widths = atom_potential.scattering_factor_b
     gaussian_amplitudes = atom_potential.scattering_factor_a
 
     gmm_potential = GaussianMixtureAtomicPotential(

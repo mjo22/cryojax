@@ -157,7 +157,7 @@ def extract_atom_positions_and_numbers(
     return positions, atomic_numbers
 
 
-def extract_atom_b_factors(atoms) -> Float[np.ndarray, "N"]:
+def extract_atom_b_factors(atoms) -> Float[np.ndarray, " N"]:
     """
     Interpret Gemmi atoms and extract a single parameter type.
 
