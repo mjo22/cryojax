@@ -27,7 +27,7 @@ jobs:
           pip install mkdocs-same-dir
           pip install pymdown-extensions
           pip install mkdocs-pymdownx-material-extras
-          pip install mkdocs-autorefs  
+          pip install mkdocs-autorefs
           pip install mkdocs-simple-plugin
           pip install mkdocstrings-python
           pip install mknotebooks
