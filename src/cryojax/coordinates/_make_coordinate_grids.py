@@ -37,7 +37,7 @@ def make_frequency_grid(
     half_space: bool = True,
 ) -> Float[Array, "*shape ndim"]:
     """Create a fourier-space cartesian coordinate system on a grid.
-    The zero-frequency component is in the beginning.
+    The zero-frequency component is in the corner.
 
     Arguments
     ---------
@@ -89,6 +89,58 @@ def make_frequency_slice(
         axis=0,
     )
     return frequency_slice
+
+
+def make_1d_coordinate_grid(
+    size: int,
+    grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
+) -> Float[Array, "*shape ndim"]:
+    """
+    Create a 1D real-space cartesian coordinate array.
+
+    **Arguments:**
+
+    - `size`: Size of the coordinate array.
+    - `grid_spacing`: The grid spacing, in units of length.
+
+    **Returns:**
+
+    A 1D cartesian coordinate array in real space.
+    """
+    coordinate_array = _make_coordinates_or_frequencies_1d(
+        size, grid_spacing=grid_spacing, real_space=True
+    )
+    return coordinate_array
+
+
+def make_1d_frequency_grid(
+    size: int,
+    grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
+    half_space: bool = True,
+) -> Float[Array, "*shape ndim"]:
+    """Create a 1D fourier-space cartesian coordinate array.
+    If `half_space = False`, the zero-frequency component is in the beginning.
+
+    Arguments
+    ---------
+    - `size`: Size of the coordinate array.
+    - `grid_spacing`: The grid spacing, in units of length.
+    - `half_space`:
+        Return a frequency grid on the half space.
+        `shape[-1]` is the axis on which the negative
+        frequencies are omitted.
+
+    **Returns:**
+
+    A 1D cartesian coordinate array in frequency space.
+    """
+    frequency_array = _make_coordinates_or_frequencies_1d(
+        size,
+        grid_spacing=grid_spacing,
+        real_space=False,
+        rfftfreq=half_space,
+    )
+    return frequency_array
 
 
 def _make_coordinates_or_frequencies(
