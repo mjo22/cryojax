@@ -24,7 +24,7 @@ class GaussianMixtureProjection(
     def __init__(
         self,
         *,
-        upsampling_factor: float | int = 1,
+        upsampling_factor: int = 1,
     ):
         """**Arguments:**
         `upsampling_factor`: The factor by which to upsample the computation of the images. If `upsampling_factor` is greater than 1, the images will be computed at a higher resolution and then downsampled to the original resolution. This can be useful for reducing aliasing artifacts in the images.
