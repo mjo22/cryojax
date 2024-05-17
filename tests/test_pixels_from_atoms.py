@@ -39,7 +39,7 @@ def test_atom_potential_integrator(sample_pdb_path):
     # ... compute the integrated volumetric_potential
     fourier_integrated_potential = (
         potential_integrator.compute_fourier_integrated_potential(
-            atom_potential, instrument_config, batch_size=1
+            atom_potential, instrument_config
         )
     )
     projection = irfftn(fourier_integrated_potential)
@@ -78,10 +78,10 @@ def test_downsampled_gmm_potential_agreement(sample_pdb_path):
     )
     # ... compute the integrated volumetric_potential
     image_from_hires = integrator_int_hires.compute_fourier_integrated_potential(
-        atom_potential, instrument_config, batch_size=1
+        atom_potential, instrument_config
     )
     image_lowres = integrator_int_lowres.compute_fourier_integrated_potential(
-        atom_potential, instrument_config, batch_size=1
+        atom_potential, instrument_config
     )
 
     assert image_from_hires.shape == image_lowres.shape
@@ -114,41 +114,13 @@ def test_peng_vs_gmm_agreement(sample_pdb_path):
     # Compute projections
     integrator = GaussianMixtureProjection(upsampling_factor=1)
     projection_gmm = integrator.compute_fourier_integrated_potential(
-        gmm_potential, instrument_config, batch_size=1
+        gmm_potential, instrument_config
     )
     projection_peng = integrator.compute_fourier_integrated_potential(
-        atom_potential, instrument_config, batch_size=1
+        atom_potential, instrument_config
     )
 
     np.testing.assert_allclose(projection_gmm, projection_peng)
-
-
-@pytest.mark.parametrize("batch_size", (2, 3, 4))
-def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, batch_size):
-    shape = (64, 64)
-    pixel_size = 0.5
-
-    # Load the PDB file
-    atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
-    # Load atomistic potential
-    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
-    # Build the instrument configuration
-    instrument_config = InstrumentConfig(
-        shape=shape,
-        pixel_size=pixel_size,
-        voltage_in_kilovolts=300.0,
-    )
-    # Build the potential integrators
-    integrator = GaussianMixtureProjection()
-
-    # Compute projections
-    projection_batching = integrator.compute_fourier_integrated_potential(
-        atomic_potential, instrument_config, batch_size=batch_size
-    )
-    projection = integrator.compute_fourier_integrated_potential(
-        atomic_potential, instrument_config, batch_size=1
-    )
-    np.testing.assert_allclose(projection, projection_batching)
 
 
 class TestBuildRealSpaceVoxelsFromAtoms:
@@ -215,7 +187,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         integrator = GaussianMixtureProjection()
         # Compute projections
         projection = integrator.compute_fourier_integrated_potential(
-            atomic_potential, instrument_config, batch_size=1
+            atomic_potential, instrument_config
         )
         projection = irfftn(projection)
 

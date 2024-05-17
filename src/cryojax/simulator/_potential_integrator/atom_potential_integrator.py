@@ -1,9 +1,6 @@
-from functools import partial
 from typing import Optional
 from typing_extensions import override
 
-import equinox as eqx
-import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
@@ -38,7 +35,6 @@ class GaussianMixtureProjection(
         self,
         potential: GaussianMixtureAtomicPotential | PengAtomicPotential,
         instrument_config: InstrumentConfig,
-        batch_size: Optional[int] = None,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
@@ -47,7 +43,6 @@ class GaussianMixtureProjection(
         **Arguments:**
         - `potential`: The atomic potential to project.
         - `instrument_config`: The configuration of the imaging instrument.
-        - `batch_size`: The number of atoms to process in each batch. This can be used to reduce memory usage.
 
         **Returns:**
         The Fourier transform of the integrated potential.
@@ -83,12 +78,11 @@ class GaussianMixtureProjection(
                 " `GaussianMixtureAtomicPotential`."
             )
 
-        projection = _build_real_space_pixels_from_atoms(
+        projection = _evaluate_2d_real_space_gaussian(
+            coordinate_grid_in_angstroms,
             potential.atom_positions,
             gaussian_amplitudes,
             gaussian_widths,
-            coordinate_grid_in_angstroms,
-            batch_size=batch_size,
         )
 
         if self.upsampling_factor > 1:
@@ -101,9 +95,9 @@ class GaussianMixtureProjection(
 
 def _evaluate_2d_real_space_gaussian(
     coordinate_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-    atom_position: Float[Array, "3"],
-    a: Float[Array, " n_gaussians_per_atom"],
-    b: Float[Array, " n_gaussians_per_atom"],
+    atom_positions: Float[Array, "n_atoms 3"],
+    a: Float[Array, "n_atoms n_gaussians_per_atom"],
+    b: Float[Array, "n_atoms n_gaussians_per_atom"],
 ) -> Float[Array, "y_dim x_dim"]:
     """Evaluate a gaussian on a 3D grid.
 
@@ -119,104 +113,30 @@ def _evaluate_2d_real_space_gaussian(
     The potential of the gaussian on the grid.
     """
 
-    a = a.reshape(-1, 1)
-    b = b.reshape(-1, 1)
-
     b_inverse = 4.0 * jnp.pi / b
     grid_x = coordinate_grid_in_angstroms[0, :, 0]
     grid_y = coordinate_grid_in_angstroms[:, 0, 1]
 
-    gauss_x = (
-        jnp.exp(-jnp.pi * b_inverse * ((grid_x - atom_position[0]) ** 2)[None, :])
-        * a
-        * b_inverse
-    )
-    gauss_y = jnp.exp(-jnp.pi * b_inverse * ((grid_y - atom_position[1]) ** 2))
+    print(a.shape, b.shape, atom_positions.shape, grid_x.shape, grid_y.shape)
 
-    image = 4 * jnp.pi * jnp.matmul(gauss_y.T, gauss_x)
+    gauss_x = (
+        jnp.exp(
+            -jnp.pi
+            * b_inverse[None, :, :]
+            * ((grid_x[:, None] - atom_positions.T[0, :]) ** 2)[:, :, None]
+        )
+        * a[None, :, :]
+        * b_inverse[None, :, :]
+    )
+    gauss_y = jnp.exp(
+        -jnp.pi
+        * b_inverse[None, :, :]
+        * ((grid_y[:, None] - atom_positions.T[1, :]) ** 2)[:, :, None]
+    )
+
+    gauss_x = jnp.transpose(gauss_x, (2, 1, 0))
+    gauss_y = jnp.transpose(gauss_y, (2, 0, 1))
+
+    image = 4 * jnp.pi * jnp.sum(jnp.matmul(gauss_y, gauss_x), axis=0)
 
     return image
-
-
-@eqx.filter_jit
-def _build_real_space_pixels_from_atoms(
-    atom_positions: Float[Array, "n_atoms 3"],
-    ff_a: Float[Array, "n_atoms n_gaussians_per_atom"],
-    ff_b: Float[Array, "n_atoms n_gaussians_per_atom"],
-    coordinate_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-    *,
-    batch_size: Optional[int] = None,
-) -> Float[Array, "y_dim x_dim"]:
-    """
-    Build a pixel representation of an atomic model.
-
-    **Arguments**
-
-    - `atom_coords`: The coordinates of the atoms.
-    - `ff_a`: Intensity values for each Gaussian in the atom
-    - `ff_b` : The inverse scale factors for each Gaussian in the atom
-    - `coordinate_grid` : The coordinates of each pixel in the grid.
-
-    **Returns:**
-
-    The pixel representation of the atomic model.
-    """
-    pixel_grid_buffer = jnp.zeros(coordinate_grid_in_angstroms.shape[:-1])
-
-    # TODO: Look into forcing JAX to do in-place updates
-    # Below is a first attempt at this with `donate_argnums`, however
-    # equinox.internal.while_loop / equinox.internal.scan could also be
-    # options
-    @partial(jax.jit, donate_argnums=1)
-    def brute_force_body_fun(atom_index, potential):
-        return potential + _evaluate_2d_real_space_gaussian(
-            coordinate_grid_in_angstroms,
-            atom_positions[atom_index],
-            ff_a[atom_index],
-            ff_b[atom_index],
-        )
-
-    @partial(jax.jit, donate_argnums=1)
-    def batched_body_fun(iteration_index, potential):
-        atom_index_batch = jnp.linspace(
-            iteration_index * batch_size,
-            (iteration_index + 1) * batch_size - 1,
-            batch_size,  # type: ignore
-            dtype=int,
-        )
-        return potential + evaluate_2d_atom_potential_batch(atom_index_batch)
-
-    def evaluate_2d_atom_potential_batch(atom_index_batch):
-        vmap_evaluate_2d_atom_potential = jax.vmap(
-            _evaluate_2d_real_space_gaussian, in_axes=[None, 0, 0, 0]
-        )
-        return jnp.sum(
-            vmap_evaluate_2d_atom_potential(
-                coordinate_grid_in_angstroms,
-                jnp.take(atom_positions, atom_index_batch, axis=0),
-                jnp.take(ff_a, atom_index_batch, axis=0),
-                jnp.take(ff_b, atom_index_batch, axis=0),
-            ),
-            axis=0,
-        )
-
-    # Get the number of atoms
-    n_atoms = atom_positions.shape[0]
-    # Set the logic for the loop based on the batch size
-    if batch_size is None:
-        # ... if there is no batch size, loop over all atoms
-        n_iterations = n_atoms
-        body_fun = brute_force_body_fun
-        pixel_grid = jax.lax.fori_loop(0, n_atoms, body_fun, pixel_grid_buffer)
-    else:
-        # ... if there is a batch size, loop over batches of atoms
-        n_iterations = n_atoms // batch_size
-        body_fun = batched_body_fun
-        pixel_grid = jax.lax.fori_loop(0, n_iterations, body_fun, pixel_grid_buffer)
-        # ... and take care of any remaining atoms after the loop
-        if n_atoms % batch_size > 0:
-            pixel_grid += evaluate_2d_atom_potential_batch(
-                jnp.arange(n_atoms - n_atoms % batch_size, n_atoms)
-            )
-
-    return pixel_grid
