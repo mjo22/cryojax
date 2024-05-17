@@ -48,11 +48,26 @@ def clean_gemmi_structure(structure):
         Same object, cleaned up of unnecessary atoms.
 
     """
-    structure.remove_alternative_conformations()
-    structure.remove_hydrogens()
-    structure.remove_waters()
-    structure.remove_ligands_and_waters()
-    structure.remove_empty_chains()
+    try:
+        structure.remove_alternative_conformations()
+    except RuntimeError:
+        Warning("Alternative conformations could not be removed.")
+    try:
+        structure.remove_hydrogens()
+    except RuntimeError:
+        Warning("Hydrogens could not be removed.")
+    try:
+        structure.remove_waters()
+    except RuntimeError:
+        Warning("Waters could not be removed.")
+    try:
+        structure.remove_ligands_and_waters()
+    except RuntimeError:
+        Warning("Ligands and waters could not be removed.")
+    try:
+        structure.remove_empty_chains()
+    except RuntimeError:
+        Warning("Empty chains could not be removed.")
 
     return structure
 
@@ -142,7 +157,7 @@ def extract_atom_positions_and_numbers(
     return positions, atomic_numbers
 
 
-def extract_atom_b_factors(atoms) -> Float[np.ndarray, "N 3"]:
+def extract_atom_b_factors(atoms) -> Float[np.ndarray, "N"]:
     """
     Interpret Gemmi atoms and extract a single parameter type.
 

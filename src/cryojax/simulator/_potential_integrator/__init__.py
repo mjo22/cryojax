@@ -1,3 +1,6 @@
+from .atom_potential_integrator import (
+    GaussianMixtureProjection as GaussianMixtureProjection,
+)
 from .base_potential_integrator import (
     AbstractPotentialIntegrator as AbstractPotentialIntegrator,
     AbstractVoxelPotentialIntegrator as AbstractVoxelPotentialIntegrator,
