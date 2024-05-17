@@ -32,3 +32,11 @@
                 - __init__
                 - compute_fourier_integrated_potential
                 - project_voxel_cloud_with_nufft
+
+## Integration methods for atom-based potentials
+
+::: cryojax.simulator.GaussianMixtureProjection
+        options:
+            members:
+                - __init__
+                - compute_fourier_integrated_potential
