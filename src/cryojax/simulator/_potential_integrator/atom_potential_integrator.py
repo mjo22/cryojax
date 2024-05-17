@@ -47,7 +47,8 @@ class GaussianMixtureProjection(
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        """Compute a projection from the atomic potential and transform it to Fourier space
+        """Compute a projection from the atomic potential and transform it to Fourier
+        space.
 
         **Arguments:**
 
