@@ -7,12 +7,14 @@ import jax.numpy as jnp
 from jaxtyping import Array, Inexact
 
 from ._edges import crop_to_shape
+from ._fft import fftn, ifftn
 
 
 @overload
 def downsample_with_fourier_cropping(
     image_or_volume: Inexact[Array, "_ _ _"],
     downsampling_factor: float | int,
+    get_real: bool = True,
 ) -> Inexact[Array, "_ _ _"]: ...
 
 
@@ -20,20 +22,25 @@ def downsample_with_fourier_cropping(
 def downsample_with_fourier_cropping(
     image_or_volume: Inexact[Array, "_ _"],
     downsampling_factor: float | int,
+    get_real: bool = True,
 ) -> Inexact[Array, "_ _"]: ...
 
 
 def downsample_with_fourier_cropping(
     image_or_volume: Inexact[Array, "_ _"] | Inexact[Array, "_ _ _"],
     downsampling_factor: float | int,
+    get_real: bool = True,
 ) -> Inexact[Array, "_ _"] | Inexact[Array, "_ _ _"]:
     """Downsample an array using fourier cropping.
 
     **Arguments:**
 
     - `image_or_volume`: The image or volume array to downsample.
-    - `downsample_factor`: A scale factor at which to downsample `image_or_volume`
-                           by. Must be a value greater than `1`.
+    - `downsample_factor`:
+        A scale factor at which to downsample `image_or_volume`
+        by. Must be a value greater than `1`.
+    - `get_real`:
+        If `False`, the `image_or_volume` is returned in fourier space.
 
     **Returns:**
 
@@ -49,7 +56,9 @@ def downsample_with_fourier_cropping(
             int(image.shape[0] / downsampling_factor),
             int(image.shape[1] / downsampling_factor),
         )
-        downsampled_array = _downsample_array_to_shape(image, new_shape)
+        downsampled_array = downsample_to_shape_with_fourier_cropping(
+            image, new_shape, get_real=get_real
+        )
     elif image_or_volume.ndim == 3:
         volume = image_or_volume
         new_shape = (
@@ -57,25 +66,71 @@ def downsample_with_fourier_cropping(
             int(volume.shape[1] / downsampling_factor),
             int(volume.shape[2] / downsampling_factor),
         )
-        downsampled_array = _downsample_array_to_shape(volume, new_shape)
+        downsampled_array = downsample_to_shape_with_fourier_cropping(
+            volume, new_shape, get_real=get_real
+        )
     else:
         raise ValueError(
             "`downsample_with_fourier_cropping` can only crop images and volumes. "
             f"Got an array with number of dimensions {image_or_volume.ndim}."
         )
 
-    return (
-        downsampled_array.real
-        if jnp.issubdtype(image_or_volume.dtype, jnp.floating)
-        else downsampled_array
-    )
+    if get_real:
+        return (
+            downsampled_array.real
+            if jnp.issubdtype(image_or_volume.dtype, jnp.floating)
+            else downsampled_array
+        )
+    else:
+        return downsampled_array
 
 
-def _downsample_array_to_shape(array, new_shape):
-    n_pixels, new_n_pixels = array.size, math.prod(new_shape)
-    fourier_array = jnp.fft.fftshift(jnp.fft.fftn(array))
+@overload
+def downsample_to_shape_with_fourier_cropping(
+    image_or_volume: Inexact[Array, "_ _"],
+    downsampled_shape: tuple[int, int],
+    get_real: bool = True,
+) -> Inexact[Array, "_ _"]: ...
+
+
+@overload
+def downsample_to_shape_with_fourier_cropping(
+    image_or_volume: Inexact[Array, "_ _ _"],
+    downsampled_shape: tuple[int, int, int],
+    get_real: bool = True,
+) -> Inexact[Array, "_ _ _"]: ...
+
+
+def downsample_to_shape_with_fourier_cropping(
+    image_or_volume: Inexact[Array, "_ _"] | Inexact[Array, "_ _ _"],
+    downsampled_shape: tuple[int, int] | tuple[int, int, int],
+    get_real: bool = True,
+) -> Inexact[Array, "_ _"] | Inexact[Array, "_ _ _"]:
+    """Downsample an array to a specified shape using fourier cropping.
+
+    **Arguments:**
+
+    - `image_or_volume`: The image or volume array to downsample.
+    - `downsampled_shape`:
+        The new shape after fourier cropping.
+    - `get_real`:
+        If `False`, the `image_or_volume` is returned in fourier space.
+
+    **Returns:**
+
+    The downsampled `image_or_volume`, at the new real-space shape
+    `downsampled_shape`. If `get_real = False`, return
+    the downsampled array in fourier space assuming hermitian symmetry,
+    with the zero frequency component in the corner.
+    """
+    n_pixels, new_n_pixels = image_or_volume.size, math.prod(downsampled_shape)
+    fourier_array = jnp.fft.fftshift(fftn(image_or_volume))
     cropped_fourier_array = (new_n_pixels / n_pixels) * crop_to_shape(
-        fourier_array, new_shape
+        fourier_array, downsampled_shape
     )
-    downsampled_array = jnp.fft.ifftn(jnp.fft.ifftshift(cropped_fourier_array))
-    return downsampled_array
+    if get_real:
+        return ifftn(jnp.fft.ifftshift(cropped_fourier_array))
+    else:
+        return jnp.fft.ifftshift(cropped_fourier_array)[
+            ..., : downsampled_shape[-1] // 2 + 1
+        ]

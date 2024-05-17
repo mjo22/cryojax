@@ -97,8 +97,9 @@ def _map_coordinates_nn_or_linear(
 
     if len(coordinates) != input_arr.ndim:
         raise ValueError(
-            "coordinates must be a sequence of length input.ndim, but "
-            "{} != {}".format(len(coordinates), input_arr.ndim)
+            "coordinates must be a sequence of length input.ndim, but " "{} != {}".format(
+                len(coordinates), input_arr.ndim
+            )
         )
 
     if order == 0:

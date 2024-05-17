@@ -30,6 +30,7 @@ from ._potential_integrator import (
     AbstractPotentialIntegrator as AbstractPotentialIntegrator,
     AbstractVoxelPotentialIntegrator as AbstractVoxelPotentialIntegrator,
     FourierSliceExtraction as FourierSliceExtraction,
+    GaussianMixtureProjection as GaussianMixtureProjection,
     NufftProjection as NufftProjection,
 )
 from ._potential_representation import (
