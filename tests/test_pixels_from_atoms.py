@@ -20,13 +20,12 @@ with install_import_hook("cryojax", "typeguard.typechecked"):
 config.update("jax_enable_x64", True)
 
 
-def test_atom_potential_integrator(sample_pdb_path):
+@pytest.mark.parametrize("shape", ((64, 64), (63, 63), (63, 64), (64, 63)))
+def test_atom_potential_integrator_shape(sample_pdb_path, shape):
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path, get_b_factors=True
     )
     atom_potential = PengAtomicPotential(atom_positions, atom_identities, b_factors)
-
-    shape = (64, 64)
     pixel_size = 0.5
 
     potential_integrator = GaussianMixtureProjection(upsampling_factor=2)
@@ -42,9 +41,8 @@ def test_atom_potential_integrator(sample_pdb_path):
             atom_potential, instrument_config
         )
     )
-    projection = irfftn(fourier_integrated_potential)
 
-    assert projection.shape == shape
+    assert fourier_integrated_potential.shape == (shape[0], shape[1] // 2 + 1)
 
 
 def test_downsampled_gmm_potential_agreement(sample_pdb_path):

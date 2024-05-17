@@ -5,8 +5,8 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
-from ...coordinates._make_coordinate_grids import _make_coordinates_or_frequencies_1d
-from ...image import downsample_with_fourier_cropping, rfftn
+from ...coordinates import make_1d_coordinate_grid
+from ...image import downsample_to_shape_with_fourier_cropping, rfftn
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import (
     GaussianMixtureAtomicPotential,
@@ -21,15 +21,23 @@ class GaussianMixtureProjection(
 ):
     upsampling_factor: Optional[float | int]
 
-    def __init__(
-        self,
-        *,
-        upsampling_factor: float | int = 1,
-    ):
+    def __init__(self, *, upsampling_factor: Optional[float | int] = None):
         """**Arguments:**
-        `upsampling_factor`: The factor by which to upsample the computation of the images. If `upsampling_factor` is greater than 1, the images will be computed at a higher resolution and then downsampled to the original resolution. This can be useful for reducing aliasing artifacts in the images.
+
+        - `upsampling_factor`:
+            The factor by which to upsample the computation of the images.
+            If `upsampling_factor` is greater than 1, the images will be computed
+            at a higher resolution and then downsampled to the original resolution.
+            This can be useful for reducing aliasing artifacts in the images.
         """  # noqa: E501
         self.upsampling_factor = upsampling_factor
+
+    def __check_init__(self):
+        if self.upsampling_factor is not None and self.upsampling_factor < 1:
+            raise AttributeError(
+                "`GaussianMixtureProjection.upsampling_factor` must "
+                f"be greater than `1`. Got a value of {self.upsampling_factor}."
+            )
 
     @override
     def compute_fourier_integrated_potential(
@@ -42,25 +50,27 @@ class GaussianMixtureProjection(
         """Compute a projection from the atomic potential and transform it to Fourier space
 
         **Arguments:**
+
         - `potential`: The atomic potential to project.
         - `instrument_config`: The configuration of the imaging instrument.
 
         **Returns:**
+
         The Fourier transform of the integrated potential.
         """  # noqa: E501
 
-        pixel_size = instrument_config.pixel_size / self.upsampling_factor
-        shape = (
-            instrument_config.padded_y_dim * self.upsampling_factor,
-            instrument_config.padded_x_dim * self.upsampling_factor,
-        )
+        if self.upsampling_factor is not None:
+            pixel_size = instrument_config.pixel_size / self.upsampling_factor
+            shape = (
+                int(instrument_config.padded_y_dim * self.upsampling_factor),
+                int(instrument_config.padded_x_dim * self.upsampling_factor),
+            )
+        else:
+            pixel_size = instrument_config.pixel_size
+            shape = instrument_config.padded_shape
 
-        grid_x = _make_coordinates_or_frequencies_1d(
-            shape[1], pixel_size, real_space=True
-        )
-        grid_y = _make_coordinates_or_frequencies_1d(
-            shape[0], pixel_size, real_space=True
-        )
+        grid_x = make_1d_coordinate_grid(shape[1], pixel_size)
+        grid_y = make_1d_coordinate_grid(shape[0], pixel_size)
 
         if isinstance(potential, PengAtomicPotential):
             if potential.b_factors is None:
@@ -83,19 +93,19 @@ class GaussianMixtureProjection(
             )
 
         projection = _evaluate_2d_real_space_gaussian(
-            grid_x,
-            grid_y,
-            potential.atom_positions,
-            gaussian_amplitudes,
-            gaussian_widths,
+            grid_x, grid_y, potential.atom_positions, gaussian_amplitudes, gaussian_widths
         )
+        fourier_projection = rfftn(projection)
 
-        if self.upsampling_factor > 1:
-            projection = downsample_with_fourier_cropping(
-                projection, self.upsampling_factor
+        if self.upsampling_factor is not None:
+            fourier_projection = downsample_to_shape_with_fourier_cropping(
+                fourier_projection,
+                downsampled_shape_in_real_space=instrument_config.padded_shape,
+                is_real=False,
+                half_space=True,
             )
-        # Go to fourier space in cryojax's conventions
-        return rfftn(projection)
+
+        return fourier_projection
 
 
 @jax.jit
