@@ -263,7 +263,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        n_batches: int = 128**3,
+        n_batches: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         """Return a voxel grid in real space of the potential.
 
