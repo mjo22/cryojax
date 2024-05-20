@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.23">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.24">
     
     
       
@@ -918,7 +918,7 @@ biology 183.1 (2013): 19-32.</em></li>
 
 
 <h5 id="cryojax.simulator.AbstractAtomicPotential.as_real_voxel_grid" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">progress_bar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">print_every</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{shape[0]}</span><span class="s1"> </span><span class="si">{shape[1]}</span><span class="s1"> </span><span class="si">{shape[2]}</span><span class="s1">&#39;</span><span class="p">]</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -959,10 +959,10 @@ biology 183.1 (2013): 19-32.</em></li>
 
       <p>An atomistic representation of scattering potential as a mixture of
 gaussians.</p>
-<p>The naming and numerical convention of parameters <code>gaussian_strengths</code> and
+<p>The naming and numerical convention of parameters <code>gaussian_amplitudes</code> and
 <code>gaussian_widths</code> follows "Robust Parameterization of Elastic and Absorptive
 Electron Atomic Scattering Factors" by Peng et al. (1996), where <span class="arithmatex">\(a_i\)</span> are
-the <code>gaussian_strengths</code> and <span class="arithmatex">\(b_i\)</span> are the <code>gaussian_widths</code>.</p>
+the <code>gaussian_amplitudes</code> and <span class="arithmatex">\(b_i\)</span> are the <code>gaussian_widths</code>.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
 <p>In order to load a <code>GaussianMixtureAtomicPotential</code> from tabulated
@@ -1000,7 +1000,7 @@ scattering factors, use the <code>cryojax.constants</code> submodule.</p>
 
 
 <h5 id="cryojax.simulator.GaussianMixtureAtomicPotential.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureAtomicPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">gaussian_strengths</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">],</span> <span class="n">gaussian_widths</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">])</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureAtomicPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">gaussian_amplitudes</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">],</span> <span class="n">gaussian_widths</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms n_gaussians_per_atom&#39;</span><span class="p">])</span></code>
 
 <a href="#cryojax.simulator.GaussianMixtureAtomicPotential.__init__" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -1010,11 +1010,13 @@ scattering factors, use the <code>cryojax.constants</code> submodule.</p>
       <p><strong>Arguments:</strong></p>
 <ul>
 <li><code>atom_positions</code>: The coordinates of the atoms in units of angstroms.</li>
-<li><code>gaussian_strengths</code>: The strength for each atom and for each gaussian per atom.
-                        This has units of angstroms.</li>
-<li><code>gaussian_widths</code>: The variance (up to numerical constants) for each atom and
-                     for each gaussian per atom. This has units of angstroms
-                     squared.</li>
+<li><code>gaussian_amplitudes</code>:
+    The strength for each atom and for each gaussian per atom.
+    This has units of angstroms.</li>
+<li><code>gaussian_widths</code>:
+    The variance (up to numerical constants) for each atom and
+    for each gaussian per atom. This has units of angstroms
+    squared.</li>
 </ul>
 
     </div>
@@ -1052,7 +1054,7 @@ scattering factors, use the <code>cryojax.constants</code> submodule.</p>
 
 
 <h5 id="cryojax.simulator.GaussianMixtureAtomicPotential.as_real_voxel_grid" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">progress_bar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">print_every</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{shape[0]}</span><span class="s1"> </span><span class="si">{shape[1]}</span><span class="s1"> </span><span class="si">{shape[2]}</span><span class="s1">&#39;</span><span class="p">]</span></code>
 
 <a href="#cryojax.simulator.GaussianMixtureAtomicPotential.as_real_voxel_grid" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -1064,17 +1066,15 @@ scattering factors, use the <code>cryojax.constants</code> submodule.</p>
 for the numerical conventions used when computing the sum of gaussians.</p>
 <p><strong>Arguments:</strong></p>
 <ul>
-<li><code>coordinate_grid_in_angstroms</code>: The coordinate system of the grid.</li>
-<li><code>batch_size</code>: The number of atoms over which to compute the potential
-                in parallel.</li>
-<li><code>progress_bar</code>: Add a <a href="https://github.com/tqdm/tqdm"><code>tqdm</code></a> progress bar to the
-                  computation.</li>
-<li><code>print_every</code>: An interval for the number of iterations at which to update the
-                 tqdm progress bar.</li>
+<li><code>shape</code>: The shape of the resulting voxel grid.</li>
+<li><code>voxel_size</code>: The voxel size of the resulting voxel grid.</li>
+<li><code>batch_size</code>:
+    The number of z-planes to evaluate in parallel with
+    <code>jax.vmap</code>. By default, <code>1</code>.</li>
 </ul>
 <p><strong>Returns:</strong></p>
-<p>The rescaled potential <span class="arithmatex">\(U(\mathbf{x})\)</span> as a voxel grid evaluated on the
-<code>coordinate_grid_in_angstroms</code>.</p>
+<p>The rescaled potential <span class="arithmatex">\(U(\mathbf{x})\)</span> as a voxel grid of shape <code>shape</code>
+and voxel size <code>voxel_size</code>.</p>
 
     </div>
 
@@ -1199,7 +1199,7 @@ per atom, through work by Lian-Mao Peng.</p>
 
 
 <h5 id="cryojax.simulator.PengAtomicPotential.as_real_voxel_grid" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">progress_bar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">print_every</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{shape[0]}</span><span class="s1"> </span><span class="si">{shape[1]}</span><span class="s1"> </span><span class="si">{shape[2]}</span><span class="s1">&#39;</span><span class="p">]</span></code>
 
 <a href="#cryojax.simulator.PengAtomicPotential.as_real_voxel_grid" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -1226,17 +1226,15 @@ the expression for the potential <span class="arithmatex">\(U(\mathbf{x})\)</spa
 scattering vector.</p>
 <p><strong>Arguments:</strong></p>
 <ul>
-<li><code>coordinate_grid_in_angstroms</code>: The coordinate system of the grid.</li>
-<li><code>batch_size</code>: The number of atoms over which to compute the potential
-                in parallel with <code>jax.vmap</code>.</li>
-<li><code>progress_bar</code>: Add a <a href="https://github.com/tqdm/tqdm"><code>tqdm</code></a> progress bar to the
-                  computation.</li>
-<li><code>print_every</code>: An interval for the number of iterations at which to update the
-                 tqdm progress bar.</li>
+<li><code>shape</code>: The shape of the resulting voxel grid.</li>
+<li><code>voxel_size</code>: The voxel size of the resulting voxel grid.</li>
+<li><code>batch_size</code>:
+    The number of z-planes to evaluate in parallel with
+    <code>jax.vmap</code>. By default, <code>1</code>.</li>
 </ul>
 <p><strong>Returns:</strong></p>
-<p>The rescaled potential <span class="arithmatex">\(U(\mathbf{x})\)</span> as a voxel grid evaluated on the
-<code>coordinate_grid_in_angstroms</code>.</p>
+<p>The rescaled potential <span class="arithmatex">\(U(\mathbf{x})\)</span> as a voxel grid of shape <code>shape</code>
+and voxel size <code>voxel_size</code>.</p>
 
     </div>
 
@@ -2160,7 +2158,7 @@ scattering potential voxel grid.</p>
     <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.ebd0bdb7.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.081f42fc.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       

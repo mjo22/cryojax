@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.23">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.24">
     
     
       
@@ -636,6 +636,30 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#integration-methods-for-atom-based-potentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      Integration methods for atom-based potentials
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integration methods for atom-based potentials">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cryojax.simulator.GaussianMixtureProjection" class="md-nav__link">
+    <span class="md-ellipsis">
+      GaussianMixtureProjection
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1099,6 +1123,95 @@ onto imaging plane using a non-uniform FFT.</p>
 
     </div>
 
+</div><h2 id="integration-methods-for-atom-based-potentials">Integration methods for atom-based potentials<a class="headerlink" href="#integration-methods-for-atom-based-potentials" title="Permanent link">¤</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.GaussianMixtureProjection" class="doc doc-heading">
+            <code>cryojax.simulator.GaussianMixtureProjection</code>
+
+
+<a href="#cryojax.simulator.GaussianMixtureProjection" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.GaussianMixtureProjection.__init__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureProjection</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">upsampling_factor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#cryojax.simulator.GaussianMixtureProjection.__init__" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+      <p><strong>Arguments:</strong></p>
+<ul>
+<li><code>upsampling_factor</code>:
+    The factor by which to upsample the computation of the images.
+    If <code>upsampling_factor</code> is greater than 1, the images will be computed
+    at a higher resolution and then downsampled to the original resolution.
+    This can be useful for reducing aliasing artifacts in the images.</li>
+</ul>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.GaussianMixtureProjection.compute_fourier_integrated_potential" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureProjection</span><span class="o">.</span><span class="n">compute_fourier_integrated_potential</span><span class="p">(</span><span class="n">potential</span><span class="p">:</span> <span class="n">GaussianMixtureAtomicPotential</span> <span class="o">|</span> <span class="n">PengAtomicPotential</span><span class="p">,</span> <span class="n">instrument_config</span><span class="p">:</span> <span class="n">InstrumentConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> {instrument_config.padded_x_dim//2+1}&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.simulator.GaussianMixtureProjection.compute_fourier_integrated_potential" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+      <p>Compute a projection from the atomic potential and transform it to Fourier
+space.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>potential</code>: The atomic potential to project.</li>
+<li><code>instrument_config</code>: The configuration of the imaging instrument.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The Fourier transform of the integrated potential.</p>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
 </div>
 
 
@@ -1149,7 +1262,7 @@ onto imaging plane using a non-uniform FFT.</p>
     <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.ebd0bdb7.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.081f42fc.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       
