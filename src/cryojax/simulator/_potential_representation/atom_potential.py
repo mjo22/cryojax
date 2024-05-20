@@ -81,7 +81,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        batch_size: int = 1,
+        n_batches: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         raise NotImplementedError
 
@@ -152,7 +152,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        batch_size: int = 1,
+        n_batches: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         """Return a voxel grid in real space of the potential.
 
@@ -178,7 +178,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             self.atom_positions,
             self.gaussian_strengths,
             self.gaussian_widths,
-            batch_size=batch_size,
+            n_batches=n_batches,
         )
 
 
@@ -263,7 +263,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        batch_size: int = 1,
+        n_batches: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         """Return a voxel grid in real space of the potential.
 
@@ -316,7 +316,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
             self.atom_positions,
             gaussian_strengths,
             gaussian_widths,
-            batch_size=batch_size,
+            n_batches=n_batches,
         )
 
 
@@ -327,7 +327,7 @@ def _build_real_space_voxel_potential_from_atoms(
     atom_positions: Float[Array, "n_atoms 3"],
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
-    batch_size: int,
+    n_batches: int,
 ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
     # Evaluate 1D gaussians for each of x, y, and z dimensions
     z_dim, y_dim, x_dim = shape
@@ -345,6 +345,7 @@ def _build_real_space_voxel_potential_from_atoms(
     )
     # ... reshape indices into an axis to loop over and an axis to
     # vmap over
+    batch_size = n_voxels // n_batches
     iteration_indices = voxel_indices[: n_voxels - n_voxels % batch_size].reshape(
         n_voxels // batch_size, batch_size
     )
@@ -400,7 +401,7 @@ def _evaluate_gaussians_for_all_atoms(
 
 
 def _evaluate_gaussian_potential_of_voxel(
-    voxel_index: Int[Array, " n_voxels"],
+    voxel_index: Int[Array, ""],
     grid_x: Float[Array, " x_dim"],
     grid_y: Float[Array, " y_dim"],
     grid_z: Float[Array, " z_dim"],

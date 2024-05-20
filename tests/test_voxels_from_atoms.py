@@ -86,21 +86,21 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     assert low_resolution_potential_grid.shape == downsampled_potential_grid.shape
 
 
-# @pytest.mark.parametrize("batch_size", (2, 3, 4))
-# def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, batch_size):
-#     shape = (64, 64, 64)
-#     voxel_size = 0.5
-#
-#     # Load the PDB file
-#     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
-#     # Load atomistic potential
-#     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
-#     # Build the grid
-#     voxels = atomic_potential.as_real_voxel_grid(shape, voxel_size)
-#     voxels_with_batching = atomic_potential.as_real_voxel_grid(
-#         shape, voxel_size, batch_size=batch_size
-#     )
-#     np.testing.assert_allclose(voxels, voxels_with_batching)
+@pytest.mark.parametrize("n_batches", (1, 2, 3))
+def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, n_batches):
+    shape = (64, 64, 64)
+    voxel_size = 0.5
+
+    # Load the PDB file
+    atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
+    # Load atomistic potential
+    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
+    # Build the grid
+    voxels = atomic_potential.as_real_voxel_grid(shape, voxel_size)
+    voxels_with_batching = atomic_potential.as_real_voxel_grid(
+        shape, voxel_size, n_batches=n_batches
+    )
+    np.testing.assert_allclose(voxels, voxels_with_batching)
 
 
 class TestBuildRealSpaceVoxelsFromAtoms:
@@ -225,7 +225,7 @@ class TestBuildVoxelsFromTrajectories:
             lambda pos, ff_a, ff_b: GaussianMixtureAtomicPotential(
                 pos, ff_a, ff_b
             ).as_real_voxel_grid(n_voxels_per_side, voxel_size),
-            in_axes=[0, None, None, None],
+            in_axes=[0, None, None],
         )
         traj_voxels = make_voxel_grids(traj, ff_a, ff_b)
 
