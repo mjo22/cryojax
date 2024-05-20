@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from functools import partial
 from typing import Optional
 from typing_extensions import override
 
@@ -142,9 +141,8 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        @partial(eqx.filter_vmap, in_axes=(0, None, None))
-        def compute_image_stack(ensemble_vmap, ensemble_no_vmap, instrument_config):
-            ensemble = eqx.combine(ensemble_vmap, ensemble_no_vmap)
+        def compute_image(ensemble_mapped, ensemble_no_mapped, instrument_config):
+            ensemble = eqx.combine(ensemble_mapped, ensemble_no_mapped)
             fourier_phase_shifts_at_exit_plane = (
                 _compute_phase_shifts_from_integrated_potential(
                     ensemble, self.potential_integrator, instrument_config
@@ -154,10 +152,13 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
 
         @eqx.filter_jit
         def compute_image_superposition(
-            ensemble_vmap, ensemble_no_vmap, instrument_config
+            ensemble_mapped, ensemble_no_mapped, instrument_config
         ):
             return jnp.sum(
-                compute_image_stack(ensemble_vmap, ensemble_no_vmap, instrument_config),
+                jax.lax.map(
+                    lambda x: compute_image(x, ensemble_no_mapped, instrument_config),
+                    ensemble_mapped,
+                ),
                 axis=0,
             )
 
@@ -166,12 +167,14 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             self.structural_ensemble_batcher.get_batched_structural_ensemble()
         )
         # Setup vmap over the pose and conformation
-        is_vmap = lambda x: isinstance(x, (AbstractPose, AbstractConformationalVariable))
-        to_vmap = jax.tree_util.tree_map(is_vmap, ensemble_batch, is_leaf=is_vmap)
-        vmap, novmap = eqx.partition(ensemble_batch, to_vmap)
+        is_mapped = lambda x: isinstance(
+            x, (AbstractPose, AbstractConformationalVariable)
+        )
+        to_mapped = jax.tree_util.tree_map(is_mapped, ensemble_batch, is_leaf=is_mapped)
+        mapped, no_mapped = eqx.partition(ensemble_batch, to_mapped)
 
         fourier_phase_shifts_at_exit_plane = compute_image_superposition(
-            vmap, novmap, instrument_config
+            mapped, no_mapped, instrument_config
         )
 
         if rng_key is not None:
@@ -193,9 +196,8 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        @partial(eqx.filter_vmap, in_axes=(0, None, None))
-        def compute_image_stack(ensemble_vmap, ensemble_no_vmap, instrument_config):
-            ensemble = eqx.combine(ensemble_vmap, ensemble_no_vmap)
+        def compute_image(ensemble_mapped, ensemble_no_mapped, instrument_config):
+            ensemble = eqx.combine(ensemble_mapped, ensemble_no_mapped)
             fourier_phase_shifts_at_exit_plane = (
                 _compute_phase_shifts_from_integrated_potential(
                     ensemble, self.potential_integrator, instrument_config
@@ -209,10 +211,13 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
 
         @eqx.filter_jit
         def compute_image_superposition(
-            ensemble_vmap, ensemble_no_vmap, instrument_config
+            ensemble_mapped, ensemble_no_mapped, instrument_config
         ):
             return jnp.sum(
-                compute_image_stack(ensemble_vmap, ensemble_no_vmap, instrument_config),
+                jax.lax.map(
+                    lambda x: compute_image(x, ensemble_no_mapped, instrument_config),
+                    ensemble_mapped,
+                ),
                 axis=0,
             )
 
@@ -221,12 +226,14 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             self.structural_ensemble_batcher.get_batched_structural_ensemble()
         )
         # Setup vmap over the pose and conformation
-        is_vmap = lambda x: isinstance(x, (AbstractPose, AbstractConformationalVariable))
-        to_vmap = jax.tree_util.tree_map(is_vmap, ensemble_batch, is_leaf=is_vmap)
-        vmap, novmap = eqx.partition(ensemble_batch, to_vmap)
+        is_mapped = lambda x: isinstance(
+            x, (AbstractPose, AbstractConformationalVariable)
+        )
+        to_mapped = jax.tree_util.tree_map(is_mapped, ensemble_batch, is_leaf=is_mapped)
+        mapped, no_mapped = eqx.partition(ensemble_batch, to_mapped)
 
         fourier_contrast_at_detector_plane = compute_image_superposition(
-            vmap, novmap, instrument_config
+            mapped, no_mapped, instrument_config
         )
 
         if rng_key is not None:
