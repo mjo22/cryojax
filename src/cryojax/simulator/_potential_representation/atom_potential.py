@@ -81,7 +81,8 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        batch_size: Optional[int] = None,
+        *,
+        batch_size: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         raise NotImplementedError
 
@@ -90,10 +91,10 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     """An atomistic representation of scattering potential as a mixture of
     gaussians.
 
-    The naming and numerical convention of parameters `gaussian_strengths` and
+    The naming and numerical convention of parameters `gaussian_amplitudes` and
     `gaussian_widths` follows "Robust Parameterization of Elastic and Absorptive
     Electron Atomic Scattering Factors" by Peng et al. (1996), where $a_i$ are
-    the `gaussian_strengths` and $b_i$ are the `gaussian_widths`.
+    the `gaussian_amplitudes` and $b_i$ are the `gaussian_widths`.
 
     !!! info
         In order to load a `GaussianMixtureAtomicPotential` from tabulated
@@ -119,13 +120,13 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     """  # noqa: E501
 
     atom_positions: Float[Array, "n_atoms 3"]
-    gaussian_strengths: Float[Array, "n_atoms n_gaussians_per_atom"]
+    gaussian_amplitudes: Float[Array, "n_atoms n_gaussians_per_atom"]
     gaussian_widths: Float[Array, "n_atoms n_gaussians_per_atom"]
 
     def __init__(
         self,
         atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
-        gaussian_strengths: (
+        gaussian_amplitudes: (
             Float[Array, "n_atoms n_gaussians_per_atom"]
             | Float[np.ndarray, "n_atoms n_gaussians_per_atom"]
         ),
@@ -137,14 +138,16 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         """**Arguments:**
 
         - `atom_positions`: The coordinates of the atoms in units of angstroms.
-        - `gaussian_strengths`: The strength for each atom and for each gaussian per atom.
-                                This has units of angstroms.
-        - `gaussian_widths`: The variance (up to numerical constants) for each atom and
-                             for each gaussian per atom. This has units of angstroms
-                             squared.
+        - `gaussian_amplitudes`:
+            The strength for each atom and for each gaussian per atom.
+            This has units of angstroms.
+        - `gaussian_widths`:
+            The variance (up to numerical constants) for each atom and
+            for each gaussian per atom. This has units of angstroms
+            squared.
         """
         self.atom_positions = jnp.asarray(atom_positions)
-        self.gaussian_strengths = jnp.asarray(gaussian_strengths)
+        self.gaussian_amplitudes = jnp.asarray(gaussian_amplitudes)
         self.gaussian_widths = error_if_not_positive(jnp.asarray(gaussian_widths))
 
     @override
@@ -152,7 +155,8 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        batch_size: Optional[int] = None,
+        *,
+        batch_size: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         """Return a voxel grid in real space of the potential.
 
@@ -164,8 +168,8 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
         - `batch_size`:
-            The number of voxels to evaluate in parallel with
-            `jax.vmap`. By default, `shape[1] * shape[2]`.
+            The number of z-planes to evaluate in parallel with
+            `jax.vmap`. By default, `1`.
 
         **Returns:**
 
@@ -176,7 +180,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             shape,
             jnp.asarray(voxel_size),
             self.atom_positions,
-            self.gaussian_strengths,
+            self.gaussian_amplitudes,
             self.gaussian_widths,
             batch_size=batch_size,
         )
@@ -263,7 +267,8 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        batch_size: Optional[int] = None,
+        *,
+        batch_size: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         """Return a voxel grid in real space of the potential.
 
@@ -297,15 +302,15 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
         - `batch_size`:
-            The number of voxels to evaluate in parallel with
-            `jax.vmap`. By default, `shape[1] * shape[2]`.
+            The number of z-planes to evaluate in parallel with
+            `jax.vmap`. By default, `1`.
 
         **Returns:**
 
         The rescaled potential $U(\\mathbf{x})$ as a voxel grid of shape `shape`
         and voxel size `voxel_size`.
         """  # noqa: E501
-        gaussian_strengths = self.scattering_factor_a
+        gaussian_amplitudes = self.scattering_factor_a
         if self.b_factors is None:
             gaussian_widths = self.scattering_factor_b
         else:
@@ -314,7 +319,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
             shape,
             jnp.asarray(voxel_size),
             self.atom_positions,
-            gaussian_strengths,
+            gaussian_amplitudes,
             gaussian_widths,
             batch_size=batch_size,
         )
@@ -327,55 +332,57 @@ def _build_real_space_voxel_potential_from_atoms(
     atom_positions: Float[Array, "n_atoms 3"],
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
-    batch_size: Optional[int] = None,
+    batch_size: int,
 ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
-    if batch_size is None:
-        batch_size = shape[1] * shape[2]
-    # Evaluate 1D gaussians for each of x, y, and z dimensions
+    # Make coordinate systems for each of x, y, and z dimensions
     z_dim, y_dim, x_dim = shape
     grid_x, grid_y, grid_z = [
         make_1d_coordinate_grid(dim, voxel_size) for dim in [x_dim, y_dim, z_dim]
     ]
+    # Evaluate 1D gaussians for each of x, y, and z dimensions
     gauss_x, gauss_y, gauss_z = _evaluate_gaussians_for_all_atoms(
         grid_x, grid_y, grid_z, atom_positions, a, b
     )
-    # Compute the 3D voxel grid by vmapping over voxels
-    n_voxels = z_dim * y_dim * x_dim
-    if batch_size > n_voxels:
-        raise ValueError(
-            "The batch size `batch_size` in the voxel grid "
-            "computation exceeds the number of voxels `n_voxels`. "
-            f"Got `batch_size` equal to {batch_size} and `n_voxels` "
-            f"equal to {n_voxels}."
+    # Get function to compute voxel grid at a single z-plane
+    compute_potential_at_z_plane = jax.jit(
+        lambda gauss_z_at_plane: _evaluate_gaussian_potential_at_z_plane(
+            gauss_x, gauss_y, gauss_z_at_plane
         )
-    # ... generate indiex for each voxel
-    voxel_indices = jnp.arange(n_voxels, dtype=int)
-    # ... create vmapped function
-    evaluate_gaussian_potential = jax.vmap(
-        _evaluate_gaussian_potential_of_voxel, in_axes=[0, None, None, None]
     )
-    # ... reshape indices into an axis to loop over and an axis to
-    # vmap over
-    iteration_indices = voxel_indices[: n_voxels - n_voxels % batch_size].reshape(
-        n_voxels // batch_size, batch_size
-    )
-    # ... compute the flat voxel grid
-    flat_voxel_grid = jax.lax.map(
-        lambda idxs: evaluate_gaussian_potential(idxs, gauss_x, gauss_y, gauss_z),
-        iteration_indices,
-    )
-    # ... take care of extra grid indices for `n_voxels % batch_size != 0`
-    flat_voxel_grid = jnp.append(
-        flat_voxel_grid,
-        evaluate_gaussian_potential(
-            jnp.atleast_1d(voxel_indices[n_voxels - n_voxels % batch_size :]),
-            gauss_x,
-            gauss_y,
-            gauss_z,
-        ),
-    )
+    # Map over z-planes
+    if batch_size > z_dim:
+        raise ValueError(
+            "The `batch_size` when building a voxel grid must be an "
+            "integer less than or equal to the z-dimension of the grid, "
+            "or `shape[0]`."
+        )
+    elif batch_size == 1:
+        potential_as_voxel_grid = jax.lax.map(compute_potential_at_z_plane, gauss_z)
+    elif batch_size > 1:
+        compute_potential_at_z_planes = jax.vmap(compute_potential_at_z_plane, in_axes=0)
+        gauss_z_per_batch = gauss_z[: z_dim - z_dim % batch_size, ...].reshape(
+            (z_dim // batch_size, batch_size, *gauss_z.shape[1:])
+        )
+        potential_as_voxel_grid = jax.lax.map(
+            compute_potential_at_z_planes, gauss_z_per_batch
+        ).reshape(((z_dim // batch_size) * batch_size, y_dim, x_dim))
+        if z_dim % batch_size != 0:
+            potential_as_voxel_grid = jnp.concatenate(
+                [
+                    potential_as_voxel_grid,
+                    compute_potential_at_z_planes(
+                        gauss_z[z_dim - z_dim % batch_size :, ...]
+                    ),
+                ],
+                axis=0,
+            )
+    else:
+        raise ValueError(
+            "The `batch_size` when building a voxel grid must be an "
+            "integer greater than 1."
+        )
 
-    return flat_voxel_grid.reshape(shape)
+    return potential_as_voxel_grid
 
 
 @eqx.filter_jit
@@ -415,14 +422,12 @@ def _evaluate_gaussians_for_all_atoms(
     return 4 * jnp.pi * a * b_inverse ** (3.0 / 2.0) * gauss_x, gauss_y, gauss_z
 
 
-def _evaluate_gaussian_potential_of_voxel(
-    voxel_index: Int[Array, ""],
+def _evaluate_gaussian_potential_at_z_plane(
     gauss_x: Float[Array, "dim_x n_atoms n_gaussians_per_atom"],
     gauss_y: Float[Array, "dim_y n_atoms n_gaussians_per_atom"],
-    gauss_z: Float[Array, "dim_z n_atoms n_gaussians_per_atom"],
-) -> Float[Array, ""]:
-    shape = (gauss_z.shape[0], gauss_y.shape[0], gauss_x.shape[0])
-    index_z, index_y, index_x = jnp.unravel_index(voxel_index, shape)
-    return jnp.sum(
-        jnp.sum(gauss_x[index_x] * gauss_y[index_y] * gauss_z[index_z], axis=1), axis=0
-    )
+    gauss_z_at_plane: Float[Array, "n_atoms n_gaussians_per_atom"],
+) -> Float[Array, "dim_y dim_x"]:
+    gauss_x = jnp.transpose(gauss_x, (2, 1, 0))
+    gauss_yz = jnp.transpose(gauss_y * gauss_z_at_plane[None, :, :], (2, 0, 1))
+
+    return jnp.sum(jnp.matmul(gauss_yz, gauss_x), axis=0)

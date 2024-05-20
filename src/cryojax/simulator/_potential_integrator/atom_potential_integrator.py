@@ -84,7 +84,7 @@ class GaussianMixtureProjection(
             gaussian_amplitudes = potential.scattering_factor_a
 
         elif isinstance(potential, GaussianMixtureAtomicPotential):
-            gaussian_amplitudes = potential.gaussian_strengths
+            gaussian_amplitudes = potential.gaussian_amplitudes
             gaussian_widths = potential.gaussian_widths
 
         else:

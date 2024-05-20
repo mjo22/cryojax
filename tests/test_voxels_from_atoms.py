@@ -86,8 +86,8 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     assert low_resolution_potential_grid.shape == downsampled_potential_grid.shape
 
 
-@pytest.mark.parametrize("n_batches", (1, 2, 3))
-def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, n_batches):
+@pytest.mark.parametrize("batch_size", (1, 2, 3))
+def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, batch_size):
     shape = (128, 128, 128)
     voxel_size = 0.5
 
@@ -98,7 +98,7 @@ def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, n_batches):
     # Build the grid
     voxels = atomic_potential.as_real_voxel_grid(shape, voxel_size)
     voxels_with_batching = atomic_potential.as_real_voxel_grid(
-        shape, voxel_size, n_batches=n_batches
+        shape, voxel_size, batch_size=batch_size
     )
     np.testing.assert_allclose(voxels, voxels_with_batching)
 
