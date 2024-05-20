@@ -103,6 +103,19 @@ def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, batch_size):
     np.testing.assert_allclose(voxels, voxels_with_batching)
 
 
+@pytest.mark.parametrize("shape", ((128, 127, 126),))
+def test_compute_rectangular_voxel_grid(sample_pdb_path, shape):
+    voxel_size = 0.5
+
+    # Load the PDB file
+    atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
+    # Load atomistic potential
+    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
+    # Build the grid
+    voxels = atomic_potential.as_real_voxel_grid(shape, voxel_size)
+    assert voxels.shape == shape
+
+
 class TestBuildRealSpaceVoxelsFromAtoms:
     @pytest.mark.parametrize("largest_atom", range(0, 3))
     def test_maxima_are_in_right_positions(self, toy_gaussian_cloud, largest_atom):
