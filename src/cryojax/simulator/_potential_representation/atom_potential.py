@@ -81,6 +81,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
+        batch_size: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         raise NotImplementedError
 
@@ -151,6 +152,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
+        batch_size: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         """Return a voxel grid in real space of the potential.
 
@@ -161,6 +163,9 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
+        - `batch_size`:
+            The number of voxels to evaluate in parallel with
+            `jax.vmap`.
 
         **Returns:**
 
@@ -173,6 +178,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             self.atom_positions,
             self.gaussian_strengths,
             self.gaussian_widths,
+            batch_size=batch_size,
         )
 
 
@@ -257,6 +263,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
+        batch_size: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         """Return a voxel grid in real space of the potential.
 
@@ -289,6 +296,9 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
 
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
+        - `batch_size`:
+            The number of voxels to evaluate in parallel with
+            `jax.vmap`.
 
         **Returns:**
 
@@ -306,6 +316,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
             self.atom_positions,
             gaussian_strengths,
             gaussian_widths,
+            batch_size=batch_size,
         )
 
 
@@ -316,80 +327,90 @@ def _build_real_space_voxel_potential_from_atoms(
     atom_positions: Float[Array, "n_atoms 3"],
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
+    batch_size: int,
 ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
     # Evaluate 1D gaussians for each of x, y, and z dimensions
     z_dim, y_dim, x_dim = shape
     grid_x, grid_y, grid_z = [
         make_1d_coordinate_grid(dim, voxel_size) for dim in [x_dim, y_dim, z_dim]
     ]
-    gauss_x, gauss_y, gauss_z = _compute_1d_gaussian_potential_per_voxel(
-        grid_x, grid_y, grid_z, atom_positions, b
+    # Compute the 3D voxel grid by vmapping over voxels
+    n_voxels = z_dim * y_dim * x_dim
+    # ... generate indiex for each voxel
+    voxel_indices = jnp.arange(n_voxels, dtype=int)
+    # ... create vmapped function
+    evaluate_gaussian_potential = jax.vmap(
+        _evaluate_gaussian_potential_of_voxel,
+        in_axes=[0, None, None, None, None, None, None],
     )
-    # Compute the 3D voxel grid using a nested vmap outer product
-    evaluate_3d_gaussian_potential = jax.vmap(
-        jax.vmap(
-            jax.vmap(
-                _evaluate_3d_gaussian_potential_of_voxel,
-                in_axes=[0, None, None, None, None],
-            ),
-            in_axes=[None, 0, None, None, None],
+    # ... reshape indices into an axis to loop over and an axis to
+    # vmap over
+    iteration_indices = voxel_indices[: n_voxels - n_voxels % batch_size].reshape(
+        n_voxels // batch_size, batch_size
+    )
+    # ... compute the flat voxel grid
+    flat_voxel_grid = jax.lax.map(
+        lambda idxs: evaluate_gaussian_potential(
+            idxs, grid_x, grid_y, grid_z, atom_positions, a, b
         ),
-        in_axes=[None, None, 0, None, None],
+        iteration_indices,
     )
-    return evaluate_3d_gaussian_potential(gauss_x, gauss_y, gauss_z, a, b)
+    # ... take care of extra grid indices for `n_voxels % batch_size != 0`
+    flat_voxel_grid = jnp.append(
+        flat_voxel_grid,
+        evaluate_gaussian_potential(
+            voxel_indices[n_voxels - n_voxels % batch_size :],
+            grid_x,
+            grid_y,
+            grid_z,
+            atom_positions,
+            a,
+            b,
+        ),
+    )
+
+    return flat_voxel_grid.reshape(shape)
 
 
 @eqx.filter_jit
-def _compute_1d_gaussian_potential_per_voxel(
-    grid_x: Float[Array, " x_dim"],
-    grid_y: Float[Array, " y_dim"],
-    grid_z: Float[Array, " z_dim"],
+def _evaluate_gaussians_for_all_atoms(
+    grid_x_at_voxel: Float[Array, ""],
+    grid_y_at_voxel: Float[Array, ""],
+    grid_z_at_voxel: Float[Array, ""],
     atom_positions: Float[Array, "n_atoms 3"],
+    a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
-) -> tuple[
-    Float[Array, "x_dim n_atoms n_gaussians_per_atom"],
-    Float[Array, "y_dim n_atoms n_gaussians_per_atom"],
-    Float[Array, "z_dim n_atoms n_gaussians_per_atom"],
-]:
+) -> Float[Array, "n_atoms n_gaussians_per_atom"]:
     """Evaluate 1D gaussian arrays in x, y, and z dimensions
     for each atom and each gaussian per atom.
     """
     # Evaluate each gaussian on a 1D grid
     b_inverse = 4.0 * jnp.pi / b
     gauss_x = jnp.exp(
-        -jnp.pi
-        * b_inverse[None, :, :]
-        * ((grid_x[:, None] - atom_positions.T[0, :]) ** 2)[:, :, None]
+        -jnp.pi * b_inverse * ((grid_x_at_voxel - atom_positions[:, 0]) ** 2)[:, None]
     )
     gauss_y = jnp.exp(
-        -jnp.pi
-        * b_inverse[None, :, :]
-        * ((grid_y[:, None] - atom_positions.T[1, :]) ** 2)[:, :, None]
+        -jnp.pi * b_inverse * ((grid_y_at_voxel - atom_positions[:, 1]) ** 2)[:, None]
     )
     gauss_z = jnp.exp(
-        -jnp.pi
-        * b_inverse[None, :, :]
-        * ((grid_z[:, None] - atom_positions.T[2, :]) ** 2)[:, :, None]
+        -jnp.pi * b_inverse * ((grid_z_at_voxel - atom_positions[:, 2]) ** 2)[:, None]
     )
 
-    return gauss_x, gauss_y, gauss_z
+    return 4 * jnp.pi * a * b_inverse ** (3.0 / 2.0) * gauss_x * gauss_y * gauss_z
 
 
-def _evaluate_3d_gaussian_potential_of_voxel(
-    gauss_x_at_voxel: Float[Array, "n_atoms n_gaussians_per_atom"],
-    gauss_y_at_voxel: Float[Array, "n_atoms n_gaussians_per_atom"],
-    gauss_z_at_voxel: Float[Array, "n_atoms n_gaussians_per_atom"],
+def _evaluate_gaussian_potential_of_voxel(
+    voxel_index: Int[Array, " n_voxels"],
+    grid_x: Float[Array, " x_dim"],
+    grid_y: Float[Array, " y_dim"],
+    grid_z: Float[Array, " z_dim"],
+    atom_positions: Float[Array, "n_atoms 3"],
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
 ) -> Float[Array, ""]:
-    b_inverse = 4.0 * jnp.pi / b
-    potential_per_atom_per_gaussian_at_voxel = (
-        4
-        * jnp.pi
-        * a
-        * b_inverse ** (3.0 / 2.0)
-        * gauss_x_at_voxel
-        * gauss_y_at_voxel
-        * gauss_z_at_voxel
+    shape = (grid_z.size, grid_y.size, grid_x.size)
+    index_z, index_y, index_x = jnp.unravel_index(voxel_index, shape)
+    potential_per_atom_per_gaussian_at_voxel = _evaluate_gaussians_for_all_atoms(
+        grid_x[index_x], grid_y[index_y], grid_z[index_z], atom_positions, a, b
     )
     return jnp.sum(jnp.sum(potential_per_atom_per_gaussian_at_voxel, axis=1), axis=0)
