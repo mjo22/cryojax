@@ -88,7 +88,7 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
 
 @pytest.mark.parametrize("n_batches", (1, 2, 3))
 def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, n_batches):
-    shape = (64, 64, 64)
+    shape = (128, 128, 128)
     voxel_size = 0.5
 
     # Load the PDB file

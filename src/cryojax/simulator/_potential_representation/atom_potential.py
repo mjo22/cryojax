@@ -163,8 +163,8 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
-        - `batch_size`:
-            The number of voxels to evaluate in parallel with
+        - `n_batches`:
+            The number of batches of voxels to evaluate in parallel with
             `jax.vmap`.
 
         **Returns:**
@@ -263,7 +263,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        n_batches: int = 1,
+        n_batches: int = 128**3,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         """Return a voxel grid in real space of the potential.
 
@@ -296,8 +296,8 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
 
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
-        - `batch_size`:
-            The number of voxels to evaluate in parallel with
+        - `n_batches`:
+            The number of batches of voxels to evaluate in parallel with
             `jax.vmap`.
 
         **Returns:**
@@ -336,6 +336,13 @@ def _build_real_space_voxel_potential_from_atoms(
     ]
     # Compute the 3D voxel grid by vmapping over voxels
     n_voxels = z_dim * y_dim * x_dim
+    if n_batches > n_voxels:
+        raise ValueError(
+            "The number of batches `n_batches` in the voxel grid "
+            "computation exceeds the number of voxels `n_voxels`. "
+            f"Got `n_batches` equal to {n_batches} and `n_voxels` "
+            f"equal to {n_voxels}."
+        )
     # ... generate indiex for each voxel
     voxel_indices = jnp.arange(n_voxels, dtype=int)
     # ... create vmapped function
@@ -360,7 +367,7 @@ def _build_real_space_voxel_potential_from_atoms(
     flat_voxel_grid = jnp.append(
         flat_voxel_grid,
         evaluate_gaussian_potential(
-            voxel_indices[n_voxels - n_voxels % batch_size :],
+            jnp.atleast_1d(voxel_indices[n_voxels - n_voxels % batch_size :]),
             grid_x,
             grid_y,
             grid_z,
