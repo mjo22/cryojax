@@ -36,8 +36,9 @@ def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
     # Build the grid
-    coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
-    potential_as_real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
+    potential_as_real_voxel_grid = atomic_potential.as_real_voxel_grid(
+        n_voxels_per_side, voxel_size
+    )
     fourier_potential = FourierVoxelGridPotential.from_real_voxel_grid(
         potential_as_real_voxel_grid, voxel_size
     )
@@ -67,21 +68,16 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
         int(shape[2] / downsampling_factor),
     )
     downsampled_voxel_size = voxel_size * downsampling_factor
-    # Create coordinate grid at each specification
-    low_resolution_coordinate_grid = make_coordinate_grid(
-        downsampled_shape, downsampled_voxel_size
-    )
-    high_resolution_coordinate_grid = make_coordinate_grid(shape, voxel_size)
     # Load the PDB file
     atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
     # Build the grids
     low_resolution_potential_grid = atomic_potential.as_real_voxel_grid(
-        low_resolution_coordinate_grid
+        downsampled_shape, downsampled_voxel_size
     )
     high_resolution_potential_grid = atomic_potential.as_real_voxel_grid(
-        high_resolution_coordinate_grid
+        shape, voxel_size
     )
     downsampled_potential_grid = downsample_with_fourier_cropping(
         high_resolution_potential_grid, downsampling_factor
@@ -90,9 +86,9 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     assert low_resolution_potential_grid.shape == downsampled_potential_grid.shape
 
 
-@pytest.mark.parametrize("batch_size", (2, 3, 4))
+@pytest.mark.parametrize("batch_size", (1, 2, 3))
 def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, batch_size):
-    shape = (64, 64, 64)
+    shape = (128, 128, 128)
     voxel_size = 0.5
 
     # Load the PDB file
@@ -100,12 +96,24 @@ def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, batch_size):
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
     # Build the grid
-    coordinate_grid = make_coordinate_grid(shape, voxel_size)
-    voxels = atomic_potential.as_real_voxel_grid(coordinate_grid)
+    voxels = atomic_potential.as_real_voxel_grid(shape, voxel_size)
     voxels_with_batching = atomic_potential.as_real_voxel_grid(
-        coordinate_grid, batch_size=batch_size
+        shape, voxel_size, batch_size=batch_size
     )
     np.testing.assert_allclose(voxels, voxels_with_batching)
+
+
+@pytest.mark.parametrize("shape", ((128, 127, 126),))
+def test_compute_rectangular_voxel_grid(sample_pdb_path, shape):
+    voxel_size = 0.5
+
+    # Load the PDB file
+    atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
+    # Load atomistic potential
+    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
+    # Build the grid
+    voxels = atomic_potential.as_real_voxel_grid(shape, voxel_size)
+    assert voxels.shape == shape
 
 
 class TestBuildRealSpaceVoxelsFromAtoms:
@@ -122,11 +130,13 @@ class TestBuildRealSpaceVoxelsFromAtoms:
             voxel_size,
         ) = toy_gaussian_cloud
         ff_a = ff_a.at[largest_atom].add(1.0)
-        coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
 
         # Build the potential
         atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
-        real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
+        real_voxel_grid = atomic_potential.as_real_voxel_grid(
+            n_voxels_per_side, voxel_size
+        )
+        coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
 
         # Find the maximum
         maximum_index = jnp.argmax(real_voxel_grid)
@@ -146,11 +156,12 @@ class TestBuildRealSpaceVoxelsFromAtoms:
             n_voxels_per_side,
             voxel_size,
         ) = toy_gaussian_cloud
-        coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
 
         # Build the potential
         atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
-        real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
+        real_voxel_grid = atomic_potential.as_real_voxel_grid(
+            n_voxels_per_side, voxel_size
+        )
 
         integral = jnp.sum(real_voxel_grid) * voxel_size**3
         assert jnp.isclose(integral, jnp.sum(4 * jnp.pi * ff_a))
@@ -222,23 +233,22 @@ class TestBuildVoxelsFromTrajectories:
         ) = toy_gaussian_cloud
         second_set_of_positions = atom_positions + 1.0
         traj = jnp.stack([atom_positions, second_set_of_positions], axis=0)
-        coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
 
         make_voxel_grids = jax.vmap(
-            lambda pos, ff_a, ff_b, coords: GaussianMixtureAtomicPotential(
+            lambda pos, ff_a, ff_b: GaussianMixtureAtomicPotential(
                 pos, ff_a, ff_b
-            ).as_real_voxel_grid(coords),
-            in_axes=[0, None, None, None],
+            ).as_real_voxel_grid(n_voxels_per_side, voxel_size),
+            in_axes=[0, None, None],
         )
-        traj_voxels = make_voxel_grids(traj, ff_a, ff_b, coordinate_grid)
+        traj_voxels = make_voxel_grids(traj, ff_a, ff_b)
 
         voxel1 = GaussianMixtureAtomicPotential(
             atom_positions, ff_a, ff_b
-        ).as_real_voxel_grid(coordinate_grid)
+        ).as_real_voxel_grid(n_voxels_per_side, voxel_size)
 
         voxel2 = GaussianMixtureAtomicPotential(
             second_set_of_positions, ff_a, ff_b
-        ).as_real_voxel_grid(coordinate_grid)
+        ).as_real_voxel_grid(n_voxels_per_side, voxel_size)
 
         np.testing.assert_allclose(traj_voxels[0], voxel1, atol=1e-12)
         np.testing.assert_allclose(traj_voxels[1], voxel2, atol=1e-12)
