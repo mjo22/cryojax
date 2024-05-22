@@ -423,8 +423,10 @@ def _extract_ewald_sphere_surface_with_cubic_spline(
 
 
 def _get_ewald_sphere_surface_from_slice(
-    frequency_slice_in_pixels, voxel_size, wavelength
-):
+    frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
+    voxel_size: Float[Array, ""],
+    wavelength: Float[Array, ""],
+) -> Float[Array, "1 dim dim 3"]:
     frequency_slice_with_zero_in_corner = jnp.fft.ifftshift(
         frequency_slice_in_pixels, axes=(0, 1, 2)
     )
