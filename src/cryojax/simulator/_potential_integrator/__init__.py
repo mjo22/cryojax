@@ -7,6 +7,7 @@ from .base_potential_integrator import (
 )
 from .fourier_voxel_extract import (
     AbstractFourierVoxelExtraction as AbstractFourierVoxelExtraction,
+    EwaldSphereExtraction as EwaldSphereExtraction,
     FourierSliceExtraction as FourierSliceExtraction,
 )
 from .nufft_project import (
