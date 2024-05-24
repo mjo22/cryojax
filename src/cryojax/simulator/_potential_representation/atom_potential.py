@@ -409,37 +409,28 @@ def _evaluate_gaussians_for_all_atoms(
     Float[Array, "dim_y n_atoms n_gaussians_per_atom"],
     Float[Array, "dim_z n_atoms n_gaussians_per_atom"],
 ]:
-    """Evaluate 1D gaussian arrays in x, y, and z dimensions
+    """Evaluate 1D averaged gaussians in x, y, and z dimensions
     for each atom and each gaussian per atom.
     """
     # Evaluate each gaussian on a 1D grid
+    x, y, z = atom_positions.T
+    delta_x, delta_y, delta_z = (
+        grid_x[:, None] - x,
+        grid_y[:, None] - y,
+        grid_z[:, None] - z,
+    )
     b_inverse = 2 * jnp.pi / jnp.sqrt(b)
-    gauss_x = (2 / voxel_size) * (
-        jsp.special.erf(
-            b_inverse[None, :, :]
-            * (grid_x[:, None] - atom_positions.T[0, :] + voxel_size)[:, :, None]
-        )
-        - jsp.special.erf(
-            b_inverse[None, :, :] * (grid_x[:, None] - atom_positions.T[0, :])[:, :, None]
-        )
+    gauss_x = (1 / (2 * voxel_size)) * (
+        jsp.special.erf(b_inverse[None, :, :] * (delta_x + voxel_size)[:, :, None])
+        - jsp.special.erf(b_inverse[None, :, :] * delta_x[:, :, None])
     )
-    gauss_y = (2 / voxel_size) * (
-        jsp.special.erf(
-            b_inverse[None, :, :]
-            * (grid_y[:, None] - atom_positions.T[1, :] + voxel_size)[:, :, None]
-        )
-        - jsp.special.erf(
-            b_inverse[None, :, :] * (grid_y[:, None] - atom_positions.T[1, :])[:, :, None]
-        )
+    gauss_y = (1 / (2 * voxel_size)) * (
+        jsp.special.erf(b_inverse[None, :, :] * (delta_y + voxel_size)[:, :, None])
+        - jsp.special.erf(b_inverse[None, :, :] * delta_y[:, :, None])
     )
-    gauss_z = (2 / voxel_size) * (
-        jsp.special.erf(
-            b_inverse[None, :, :]
-            * (grid_z[:, None] - atom_positions.T[2, :] + voxel_size)[:, :, None]
-        )
-        - jsp.special.erf(
-            b_inverse[None, :, :] * (grid_z[:, None] - atom_positions.T[2, :])[:, :, None]
-        )
+    gauss_z = (1 / (2 * voxel_size)) * (
+        jsp.special.erf(b_inverse[None, :, :] * (delta_z + voxel_size)[:, :, None])
+        - jsp.special.erf(b_inverse[None, :, :] * delta_z[:, :, None])
     )
 
     return 4 * jnp.pi * a * gauss_x, gauss_y, gauss_z
