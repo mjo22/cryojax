@@ -301,11 +301,11 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         In practice, for a discretization on a grid with voxel size $\\Delta r$ and grid point $\\mathbf{r}_{\\ell}$,
         the potential is evaluated as the average value inside the voxel
 
-        $$U_{\\ell} = 4 \\pi \\frac{1}{\\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\int_{r^{\\ell}_k}^{r^{\\ell}_k+\\Delta r} dr_k \\ \\frac{1}{{\\sqrt{2\\pi ((b_i + B) / 8 \\pi^2)}}} \\exp(- \\frac{(r_k - r^0_k)^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
+        $$U_{\\ell} = 4 \\pi \\frac{1}{\\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{j = 1}^3 \\int_{r^{\\ell}_j-\\Delta r/2}^{r^{\\ell}_j+\\Delta r/2} dr_j \\ \\frac{1}{{\\sqrt{2\\pi ((b_i + B) / 8 \\pi^2)}}} \\exp(- \\frac{(r_j - r^0_j)^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
 
-        where $k$ indexes the components of the spatial coordinate vector $\\mathbf{r}$. The above expression is evaluated using the error function as
+        where $j$ indexes the components of the spatial coordinate vector $\\mathbf{r}$. The above expression is evaluated using the error function as
 
-        $$U_{\\ell} = 4 \\pi \\frac{1}{(2 \\Delta r)^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\textrm{erf}(\\frac{r_k^{\\ell} - r_k^0 + \\Delta r}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}) - \\textrm{erf}(\\frac{r_k^{\\ell} - r^0_k}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}).$$
+        $$U_{\\ell} = 4 \\pi \\frac{1}{(2 \\Delta r)^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{j = 1}^3 \\textrm{erf}(\\frac{r_j^{\\ell} - r_j^0 + \\Delta r / 2}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}) - \\textrm{erf}(\\frac{r_j^{\\ell} - r^0_j - \\Delta r / 2}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}).$$
 
         **Arguments:**
 
@@ -443,11 +443,16 @@ def _evaluate_gaussian_integrals_for_all_atoms_and_intervals(
         jsp.special.erf(scaling[None, :, :] * (delta + voxel_size)[:, :, None])
         - jsp.special.erf(scaling[None, :, :] * delta[:, :, None])
     )
-    # Compute outer product of grid points minus atomic positions
+    # Compute outer product of left edge of grid points minus atomic positions
+    left_edge_grid_x, left_edge_grid_y, left_edge_grid_z = (
+        grid_x - voxel_size / 2,
+        grid_y - voxel_size / 2,
+        grid_z - voxel_size / 2,
+    )
     delta_x, delta_y, delta_z = (
-        grid_x[:, None] - atom_positions[:, 0],
-        grid_y[:, None] - atom_positions[:, 1],
-        grid_z[:, None] - atom_positions[:, 2],
+        left_edge_grid_x[:, None] - atom_positions[:, 0],
+        left_edge_grid_y[:, None] - atom_positions[:, 1],
+        left_edge_grid_z[:, None] - atom_positions[:, 2],
     )
     # Compute gaussian integrals for each grid point, each atom, and
     # each gaussian per atom
