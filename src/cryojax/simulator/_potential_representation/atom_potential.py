@@ -301,11 +301,11 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         In practice, for a discretization on a grid with voxel size $\\Delta r$ and grid point $\\mathbf{r}_{\\ell}$,
         the potential is evaluated as the average value inside the voxel
 
-        $$U_{\\ell} = \\frac{4 \\pi}{\\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\int_{r^{\\ell}_k}^{r^{\\ell}_k+\\Delta r} dr_k \\ \\frac{1}{{\\sqrt{2\\pi ((b_i + B) / 8 \\pi^2)}}} \\exp(- \\frac{(r_k - r^0_k)^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
+        $$U_{\\ell} = 4 \\pi \\frac{1}{\\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\int_{r^{\\ell}_k}^{r^{\\ell}_k+\\Delta r} dr_k \\ \\frac{1}{{\\sqrt{2\\pi ((b_i + B) / 8 \\pi^2)}}} \\exp(- \\frac{(r_k - r^0_k)^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
 
         where $k$ indexes the components of the spatial coordinate vector $\\mathbf{r}$. The above expression is evaluated using the error function as
 
-        $$U_{\\ell} = \\frac{4 \\pi}{8 \\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\textrm{erf}(\\frac{r_k^{\\ell} - r_k^0 + \\Delta r}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}) - \\textrm{erf}(\\frac{r_k^{\\ell} - r^0_k}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}).$$
+        $$U_{\\ell} = 4 \\pi \\frac{1}{(2 \\Delta r)^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\textrm{erf}(\\frac{r_k^{\\ell} - r_k^0 + \\Delta r}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}) - \\textrm{erf}(\\frac{r_k^{\\ell} - r^0_k}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}).$$
 
         **Arguments:**
 
@@ -349,14 +349,20 @@ def _build_real_space_voxel_potential_from_atoms(
     grid_x, grid_y, grid_z = [
         make_1d_coordinate_grid(dim, voxel_size) for dim in [x_dim, y_dim, z_dim]
     ]
-    # Evaluate 1D gaussians for each of x, y, and z dimensions
-    gauss_x, gauss_y, gauss_z = _evaluate_gaussians_for_all_atoms(
+    # Evaluate 1D gaussian integrals for each of x, y, and z dimensions
+    (
+        gaussian_integrals_times_prefactor_per_atom_per_interval_x,
+        gaussian_integrals_per_atom_per_interval_y,
+        gaussian_integrals_per_atom_per_interval_z,
+    ) = _evaluate_gaussian_integrals_for_all_atoms_and_intervals(
         grid_x, grid_y, grid_z, atom_positions, a, b, voxel_size
     )
     # Get function to compute voxel grid at a single z-plane
     compute_potential_at_z_plane = jax.jit(
-        lambda gauss_z_at_plane: _evaluate_gaussian_potential_at_z_plane(
-            gauss_x, gauss_y, gauss_z_at_plane
+        lambda gaussian_integrals_per_atom_z: _evaluate_gaussian_potential_at_z_plane(
+            gaussian_integrals_times_prefactor_per_atom_per_interval_x,
+            gaussian_integrals_per_atom_per_interval_y,
+            gaussian_integrals_per_atom_z,
         )
     )
     # Map over z-planes
@@ -367,21 +373,40 @@ def _build_real_space_voxel_potential_from_atoms(
             "or `shape[0]`."
         )
     elif batch_size == 1:
-        potential_as_voxel_grid = jax.lax.map(compute_potential_at_z_plane, gauss_z)
-    elif batch_size > 1:
-        compute_potential_at_z_planes = jax.vmap(compute_potential_at_z_plane, in_axes=0)
-        gauss_z_per_batch = gauss_z[: z_dim - z_dim % batch_size, ...].reshape(
-            (z_dim // batch_size, batch_size, *gauss_z.shape[1:])
-        )
+        # ... compute the volume iteratively
         potential_as_voxel_grid = jax.lax.map(
-            compute_potential_at_z_planes, gauss_z_per_batch
+            compute_potential_at_z_plane, gaussian_integrals_per_atom_per_interval_z
+        )
+    elif batch_size > 1:
+        # ... compute the volume by tuning how many z-planes to batch over
+        compute_potential_at_z_planes = jax.vmap(compute_potential_at_z_plane, in_axes=0)
+        # ... reshape the number of grid points into an iterative dimension and a batching
+        # dimension
+        gaussian_integrals_per_atom_per_batch_z = (
+            gaussian_integrals_per_atom_per_interval_z[
+                : z_dim - z_dim % batch_size, ...
+            ].reshape(
+                (
+                    z_dim // batch_size,
+                    batch_size,
+                    *gaussian_integrals_per_atom_per_interval_z.shape[1:],
+                )
+            )
+        )
+        # .. compute the volume, batching over z-plane
+        potential_as_voxel_grid = jax.lax.map(
+            compute_potential_at_z_planes, gaussian_integrals_per_atom_per_batch_z
         ).reshape(((z_dim // batch_size) * batch_size, y_dim, x_dim))
+        # ... if the batch size is divisible by the z-dimension, need to take care
+        # of the remainder
         if z_dim % batch_size != 0:
             potential_as_voxel_grid = jnp.concatenate(
                 [
                     potential_as_voxel_grid,
                     compute_potential_at_z_planes(
-                        gauss_z[z_dim - z_dim % batch_size :, ...]
+                        gaussian_integrals_per_atom_per_interval_z[
+                            z_dim - z_dim % batch_size :, ...
+                        ]
                     ),
                 ],
                 axis=0,
@@ -396,7 +421,7 @@ def _build_real_space_voxel_potential_from_atoms(
 
 
 @eqx.filter_jit
-def _evaluate_gaussians_for_all_atoms(
+def _evaluate_gaussian_integrals_for_all_atoms_and_intervals(
     grid_x: Float[Array, " dim_x"],
     grid_y: Float[Array, " dim_y"],
     grid_z: Float[Array, " dim_z"],
@@ -412,36 +437,48 @@ def _evaluate_gaussians_for_all_atoms(
     """Evaluate 1D averaged gaussians in x, y, and z dimensions
     for each atom and each gaussian per atom.
     """
-    # Evaluate each gaussian on a 1D grid
-    x, y, z = atom_positions.T
+    # Define function to compute integrals for each dimension
+    scaling = 2 * jnp.pi / jnp.sqrt(b)
+    integration_kernel_1d = lambda delta: (
+        jsp.special.erf(scaling[None, :, :] * (delta + voxel_size)[:, :, None])
+        - jsp.special.erf(scaling[None, :, :] * delta[:, :, None])
+    )
+    # Compute outer product of grid points minus atomic positions
     delta_x, delta_y, delta_z = (
-        grid_x[:, None] - x,
-        grid_y[:, None] - y,
-        grid_z[:, None] - z,
+        grid_x[:, None] - atom_positions[:, 0],
+        grid_y[:, None] - atom_positions[:, 1],
+        grid_z[:, None] - atom_positions[:, 2],
     )
-    b_inverse = 2 * jnp.pi / jnp.sqrt(b)
-    gauss_x = (1 / (2 * voxel_size)) * (
-        jsp.special.erf(b_inverse[None, :, :] * (delta_x + voxel_size)[:, :, None])
-        - jsp.special.erf(b_inverse[None, :, :] * delta_x[:, :, None])
+    # Compute gaussian integrals for each grid point, each atom, and
+    # each gaussian per atom
+    gauss_x, gauss_y, gauss_z = (
+        integration_kernel_1d(delta_x),
+        integration_kernel_1d(delta_y),
+        integration_kernel_1d(delta_z),
     )
-    gauss_y = (1 / (2 * voxel_size)) * (
-        jsp.special.erf(b_inverse[None, :, :] * (delta_y + voxel_size)[:, :, None])
-        - jsp.special.erf(b_inverse[None, :, :] * delta_y[:, :, None])
-    )
-    gauss_z = (1 / (2 * voxel_size)) * (
-        jsp.special.erf(b_inverse[None, :, :] * (delta_z + voxel_size)[:, :, None])
-        - jsp.special.erf(b_inverse[None, :, :] * delta_z[:, :, None])
-    )
-
-    return 4 * jnp.pi * a * gauss_x, gauss_y, gauss_z
+    # Compute the prefactors for each atom and each gaussian per atom
+    # for the potential
+    prefactor = (4 * jnp.pi * a) / (2 * voxel_size) ** 3
+    # Multiply the prefactor onto one of the gaussians for efficiency
+    return prefactor * gauss_x, gauss_y, gauss_z
 
 
 def _evaluate_gaussian_potential_at_z_plane(
-    gauss_x: Float[Array, "dim_x n_atoms n_gaussians_per_atom"],
-    gauss_y: Float[Array, "dim_y n_atoms n_gaussians_per_atom"],
-    gauss_z_at_plane: Float[Array, "n_atoms n_gaussians_per_atom"],
+    gaussian_integrals_per_atom_per_interval_x: Float[
+        Array, "dim_x n_atoms n_gaussians_per_atom"
+    ],
+    gaussian_integrals_per_atom_per_interval_y: Float[
+        Array, "dim_y n_atoms n_gaussians_per_atom"
+    ],
+    gaussian_integrals_per_atom_z: Float[Array, "n_atoms n_gaussians_per_atom"],
 ) -> Float[Array, "dim_y dim_x"]:
-    gauss_x = jnp.transpose(gauss_x, (2, 1, 0))
-    gauss_yz = jnp.transpose(gauss_y * gauss_z_at_plane[None, :, :], (2, 0, 1))
-
+    # Prepare matrices with dimensions of the number of atoms and the number of grid
+    # points. There are as many matrices as number of gaussians per atom
+    gauss_x = jnp.transpose(gaussian_integrals_per_atom_per_interval_x, (2, 1, 0))
+    gauss_yz = jnp.transpose(
+        gaussian_integrals_per_atom_per_interval_y
+        * gaussian_integrals_per_atom_z[None, :, :],
+        (2, 0, 1),
+    )
+    # Compute matrix multiplication then sum over the number of gaussians per atom
     return jnp.sum(jnp.matmul(gauss_yz, gauss_x), axis=0)
