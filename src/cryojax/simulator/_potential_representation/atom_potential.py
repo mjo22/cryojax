@@ -301,11 +301,11 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         In practice, for a discretization on a grid with voxel size $\\Delta r$ and grid point $\\mathbf{r}_{\\ell}$,
         the potential is evaluated as the average value inside the voxel
 
-        $$U_{\\ell} = \\frac{4 \\pi}{\\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\int_{r_{\\ell}^k}^{r_{\\ell}^k+\\Delta r} dx \\ \\frac{1}{{\\sqrt{2\\pi ((b_i + B) / 8 \\pi^2)}}} \\exp(- \\frac{(r^k - r_0^k)^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
+        $$U_{\\ell} = \\frac{4 \\pi}{\\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\int_{r^{\\ell}_k}^{r^{\\ell}_k+\\Delta r} dr_k \\ \\frac{1}{{\\sqrt{2\\pi ((b_i + B) / 8 \\pi^2)}}} \\exp(- \\frac{(r_k - r^0_k)^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
 
-        where $k$ indexes the coordinates $\\mathbf{r} = (r^1, r^2, r^3)$. The above expression is evaluated using the error function as
+        where $k$ indexes the components of the spatial coordinate vector $\\mathbf{r}$. The above expression is evaluated using the error function as
 
-        $$U_{\\ell} = \\frac{4 \\pi}{8 \\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\textrm{erf}(\\frac{r_{\\ell}^k - r_0^k + \\Delta r}{\\sqrt{2 (b_i / 8\\pi^2)}}) - \\textrm{erf}(\\frac{r_{\\ell}^k - r_0^k}{\\sqrt{2 (b_i / 8\\pi^2)}}).$$
+        $$U_{\\ell} = \\frac{4 \\pi}{8 \\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\textrm{erf}(\\frac{r_k^{\\ell} - r_k^0 + \\Delta r}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}) - \\textrm{erf}(\\frac{r_k^{\\ell} - r^0_k}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}).$$
 
         **Arguments:**
 
