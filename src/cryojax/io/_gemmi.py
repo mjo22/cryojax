@@ -48,10 +48,10 @@ def clean_gemmi_structure(structure):
         Same object, cleaned up of unnecessary atoms.
 
     """
-    try:
-        structure.remove_alternative_conformations()
-    except RuntimeError:
-        Warning("Alternative conformations could not be removed.")
+    # try:
+    #     structure.remove_alternative_conformations()
+    # except RuntimeError:
+    #     Warning("Alternative conformations could not be removed.")
     try:
         structure.remove_hydrogens()
     except RuntimeError:
