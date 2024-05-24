@@ -20,7 +20,7 @@ def compute_phase_shifts_from_integrated_potential(
         constant. However, in `cryojax`, the potential is rescaled
         to units of inverse length squared as
 
-        $$U(\\mathbf{x}) = \\frac{2 m e}{\\hbar^2} V(\\mathbf{x}).$$
+        $$U(x, y, z) = \\frac{2 m e}{\\hbar^2} V(x, y, z).$$
 
         With this rescaling of the potential, the phase shifts are equal to
 

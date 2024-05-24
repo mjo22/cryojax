@@ -9,6 +9,7 @@ from typing_extensions import override, Self
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import jax.scipy as jsp
 import numpy as np
 from jaxtyping import Array, Float, Int
 
@@ -29,9 +30,9 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         In, `cryojax`, potentials should be built in units of *inverse length squared*,
         $[L]^{-2}$. This rescaled potential is defined to be
 
-        $$U(\\mathbf{x}) = \\frac{2 m e}{\\hbar^2} V(\\mathbf{x}),$$
+        $$U(\\mathbf{r}) = \\frac{2 m e}{\\hbar^2} V(\\mathbf{r}),$$
 
-        where $V$ is the electrostatic potential energy, $\\mathbf{x}$ is a positional
+        where $V$ is the electrostatic potential energy, $\\mathbf{r}$ is a positional
         coordinate, $m$ is the electron mass, and $e$ is the electron charge.
 
         For a single atom, this rescaled potential has the advantage that under usual
@@ -40,17 +41,17 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         factors. In particular, for a single atom with scattering factor $f^{(e)}(\\mathbf{q})$
         and scattering vector $\\mathbf{q}$, its rescaled potential is equal to
 
-        $$U(\\mathbf{x}) = 4 \\pi \\mathcal{F}^{-1}[f^{(e)}(\\boldsymbol{\\xi} / 2)](\\mathbf{x}),$$
+        $$U(\\mathbf{r}) = 4 \\pi \\mathcal{F}^{-1}[f^{(e)}(\\boldsymbol{\\xi} / 2)](\\mathbf{r}),$$
 
         where $\\boldsymbol{\\xi} = 2 \\mathbf{q}$ is the wave vector coordinate and
         $\\mathcal{F}^{-1}$ is the inverse fourier transform operator in the convention
 
-        $$\\mathcal{F}[f](\\boldsymbol{\\xi}) = \\int d^3\\mathbf{x} \\ \\exp(2\\pi i \\boldsymbol{\\xi}\\cdot\\mathbf{x}) f(\\mathbf{x}).$$
+        $$\\mathcal{F}[f](\\boldsymbol{\\xi}) = \\int d^3\\mathbf{r} \\ \\exp(2\\pi i \\boldsymbol{\\xi}\\cdot\\mathbf{r}) f(\\mathbf{r}).$$
 
         The rescaled potential $U$ gives the following time-independent schrodinger equation
         for the scattering problem,
 
-        $$(\\nabla^2 + k^2) \\psi(\\mathbf{x}) = - U(\\mathbf{x}) \\psi(\\mathbf{x}),$$
+        $$(\\nabla^2 + k^2) \\psi(\\mathbf{r}) = - U(\\mathbf{r}) \\psi(\\mathbf{r}),$$
 
         where $k$ is the incident wavenumber of the electron beam.
 
@@ -173,7 +174,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         **Returns:**
 
-        The rescaled potential $U(\\mathbf{x})$ as a voxel grid of shape `shape`
+        The rescaled potential $U(\\mathbf{r})$ as a voxel grid of shape `shape`
         and voxel size `voxel_size`.
         """  # noqa: E501
         return _build_real_space_voxel_potential_from_atoms(
@@ -280,22 +281,31 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         where $a_i$ is stored as `PengAtomicPotential.scattering_factor_a` and $b_i$ is
         stored as `PengAtomicPotential.scattering_factor_b` for the scattering vector $\\mathbf{q}$.
         Under usual scattering approximations (i.e. the first-born approximation),
-        the rescaled electrostatic potential energy $U(\\mathbf{x})$ is then given by
-        $4 \\pi \\mathcal{F}^{-1}[f^{(e)}(\\boldsymbol{\\xi} / 2)](\\mathbf{x})$, which is computed
+        the rescaled electrostatic potential energy $U(\\mathbf{r})$ is then given by
+        $4 \\pi \\mathcal{F}^{-1}[f^{(e)}(\\boldsymbol{\\xi} / 2)](\\mathbf{r})$, which is computed
         analytically as
 
-        $$U(\\mathbf{x}) = 4 \\pi \\sum\\limits_{i = 1}^5 \\frac{a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
+        $$U(\\mathbf{r}) = 4 \\pi \\sum\\limits_{i = 1}^5 \\frac{a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{r} - \\mathbf{r}_0|^2}{2 (b_i / 8 \\pi^2)}),$$
 
-        Including an additional B-factor (denoted by $B$ and stored as `PengAtomicPotential.b_factors`) gives
-        the expression for the potential $U(\\mathbf{x})$ of a single atom type and its fourier transform pair
-        $\\tilde{U}(\\boldsymbol{\\xi}) \\equiv \\mathcal{F}[U](\\boldsymbol{\\xi})$,
+        where $\\mathbf{r}_0$ is the position of the atom. Including an additional B-factor (denoted by
+        $B$ and stored as `PengAtomicPotential.b_factors`) gives the expression for the potential
+        $U(\\mathbf{r})$ of a single atom type and its fourier transform pair $\\tilde{U}(\\boldsymbol{\\xi}) \\equiv \\mathcal{F}[U](\\boldsymbol{\\xi})$,
 
-        $$U(\\mathbf{x}) = 4 \\pi \\sum\\limits_{i = 1}^5 \\frac{a_i}{(2\\pi ((b_i + B) / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
+        $$U(\\mathbf{r}) = 4 \\pi \\sum\\limits_{i = 1}^5 \\frac{a_i}{(2\\pi ((b_i + B) / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{r} - \\mathbf{r}_0|^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
 
-        $$\\tilde{U}(\\boldsymbol{\\xi}) = 4 \\pi \\sum\\limits_{i = 1}^5 a_i \\exp(- (b_i + B) |\\boldsymbol{\\xi}|^2 / 4),$$
+        $$\\tilde{U}(\\boldsymbol{\\xi}) = 4 \\pi \\sum\\limits_{i = 1}^5 a_i \\exp(- (b_i + B) |\\boldsymbol{\\xi}|^2 / 4) \\exp(2 \\pi i \\boldsymbol{\\xi}\\cdot\\mathbf{r}_0),$$
 
         where $\\mathbf{q} = \\boldsymbol{\\xi} / 2$ gives the relationship between the wave vector and the
         scattering vector.
+
+        In practice, for a discretization on a grid with voxel size $\\Delta r$ and grid point $\\mathbf{r}_{\\ell}$,
+        the potential is evaluated as the average value inside the voxel
+
+        $$U_{\\ell} = \\frac{4 \\pi}{\\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\int_{r_{\\ell}^k}^{r_{\\ell}^k+\\Delta r} dx \\ \\frac{1}{{\\sqrt{2\\pi ((b_i + B) / 8 \\pi^2)}}} \\exp(- \\frac{(r^k - r_0^k)^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
+
+        where $k$ indexes the coordinates $\\mathbf{r} = (r^1, r^2, r^3)$. The above expression is evaluated using the error function as
+
+        $$U_{\\ell} = \\frac{4 \\pi}{8 \\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{k = 1}^3 \\textrm{erf}(\\frac{r_{\\ell}^k - r_0^k + \\Delta r}{\\sqrt{2 (b_i / 8\\pi^2)}}) - \\textrm{erf}(\\frac{r_{\\ell}^k - r_0^k}{\\sqrt{2 (b_i / 8\\pi^2)}}).$$
 
         **Arguments:**
 
@@ -307,7 +317,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
 
         **Returns:**
 
-        The rescaled potential $U(\\mathbf{x})$ as a voxel grid of shape `shape`
+        The rescaled potential $U(\\mathbf{r})$ as a voxel grid of shape `shape`
         and voxel size `voxel_size`.
         """  # noqa: E501
         gaussian_amplitudes = self.scattering_factor_a
@@ -341,7 +351,7 @@ def _build_real_space_voxel_potential_from_atoms(
     ]
     # Evaluate 1D gaussians for each of x, y, and z dimensions
     gauss_x, gauss_y, gauss_z = _evaluate_gaussians_for_all_atoms(
-        grid_x, grid_y, grid_z, atom_positions, a, b
+        grid_x, grid_y, grid_z, atom_positions, a, b, voxel_size
     )
     # Get function to compute voxel grid at a single z-plane
     compute_potential_at_z_plane = jax.jit(
@@ -393,6 +403,7 @@ def _evaluate_gaussians_for_all_atoms(
     atom_positions: Float[Array, "n_atoms 3"],
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
+    voxel_size: Float[Array, ""],
 ) -> tuple[
     Float[Array, "dim_x n_atoms n_gaussians_per_atom"],
     Float[Array, "dim_y n_atoms n_gaussians_per_atom"],
@@ -402,24 +413,36 @@ def _evaluate_gaussians_for_all_atoms(
     for each atom and each gaussian per atom.
     """
     # Evaluate each gaussian on a 1D grid
-    b_inverse = 4.0 * jnp.pi / b
-    gauss_x = jnp.exp(
-        -jnp.pi
-        * b_inverse[None, :, :]
-        * ((grid_x[:, None] - atom_positions.T[0, :]) ** 2)[:, :, None]
+    b_inverse = 2 * jnp.pi / jnp.sqrt(b)
+    gauss_x = (2 / voxel_size) * (
+        jsp.special.erf(
+            b_inverse[None, :, :]
+            * (grid_x[:, None] - atom_positions.T[0, :] + voxel_size)[:, :, None]
+        )
+        - jsp.special.erf(
+            b_inverse[None, :, :] * (grid_x[:, None] - atom_positions.T[0, :])[:, :, None]
+        )
     )
-    gauss_y = jnp.exp(
-        -jnp.pi
-        * b_inverse[None, :, :]
-        * ((grid_y[:, None] - atom_positions.T[1, :]) ** 2)[:, :, None]
+    gauss_y = (2 / voxel_size) * (
+        jsp.special.erf(
+            b_inverse[None, :, :]
+            * (grid_y[:, None] - atom_positions.T[1, :] + voxel_size)[:, :, None]
+        )
+        - jsp.special.erf(
+            b_inverse[None, :, :] * (grid_y[:, None] - atom_positions.T[1, :])[:, :, None]
+        )
     )
-    gauss_z = jnp.exp(
-        -jnp.pi
-        * b_inverse[None, :, :]
-        * ((grid_z[:, None] - atom_positions.T[2, :]) ** 2)[:, :, None]
+    gauss_z = (2 / voxel_size) * (
+        jsp.special.erf(
+            b_inverse[None, :, :]
+            * (grid_z[:, None] - atom_positions.T[2, :] + voxel_size)[:, :, None]
+        )
+        - jsp.special.erf(
+            b_inverse[None, :, :] * (grid_z[:, None] - atom_positions.T[2, :])[:, :, None]
+        )
     )
 
-    return 4 * jnp.pi * a * b_inverse ** (3.0 / 2.0) * gauss_x, gauss_y, gauss_z
+    return 4 * jnp.pi * a * gauss_x, gauss_y, gauss_z
 
 
 def _evaluate_gaussian_potential_at_z_plane(
