@@ -3,7 +3,7 @@ Atomistic representation of the scattering potential.
 """
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Callable, Optional
 from typing_extensions import override, Self
 
 import equinox as eqx
@@ -82,8 +82,6 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        *,
-        batch_size: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         raise NotImplementedError
 
@@ -157,9 +155,9 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
         *,
-        batch_size: int = 1,
+        z_planes_in_parallel: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
-        """Return a voxel grid in real space of the potential.
+        """Return a voxel grid of the potential in real space.
 
         See [`PengAtomicPotential.as_real_voxel_grid`](scattering_potential.md#cryojax.simulator.PengAtomicPotential.as_real_voxel_grid)
         for the numerical conventions used when computing the sum of gaussians.
@@ -168,13 +166,13 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
-        - `batch_size`:
+        - `z_planes_in_parallel`:
             The number of z-planes to evaluate in parallel with
             `jax.vmap`. By default, `1`.
 
         **Returns:**
 
-        The rescaled potential $U(\\mathbf{r})$ as a voxel grid of shape `shape`
+        The rescaled potential $U_{\\ell}$ as a voxel grid of shape `shape`
         and voxel size `voxel_size`.
         """  # noqa: E501
         return _build_real_space_voxel_potential_from_atoms(
@@ -183,7 +181,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             self.atom_positions,
             self.gaussian_amplitudes,
             self.gaussian_widths,
-            batch_size=batch_size,
+            z_planes_in_parallel=z_planes_in_parallel,
         )
 
 
@@ -269,9 +267,9 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
         *,
-        batch_size: int = 1,
+        z_planes_in_parallel: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
-        """Return a voxel grid in real space of the potential.
+        """Return a voxel grid of the potential in real space.
 
         Through the work of Peng et al. (1996), tabulated elastic electron scattering factors
         are defined as
@@ -311,13 +309,13 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
 
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
-        - `batch_size`:
+        - `z_planes_in_parallel`:
             The number of z-planes to evaluate in parallel with
             `jax.vmap`. By default, `1`.
 
         **Returns:**
 
-        The rescaled potential $U(\\mathbf{r})$ as a voxel grid of shape `shape`
+        The rescaled potential $U_{\\ell}$ as a voxel grid of shape `shape`
         and voxel size `voxel_size`.
         """  # noqa: E501
         gaussian_amplitudes = self.scattering_factor_a
@@ -331,7 +329,7 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
             self.atom_positions,
             gaussian_amplitudes,
             gaussian_widths,
-            batch_size=batch_size,
+            z_planes_in_parallel=z_planes_in_parallel,
         )
 
 
@@ -342,7 +340,7 @@ def _build_real_space_voxel_potential_from_atoms(
     atom_positions: Float[Array, "n_atoms 3"],
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
-    batch_size: int,
+    z_planes_in_parallel: int,
 ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
     # Make coordinate systems for each of x, y, and z dimensions
     z_dim, y_dim, x_dim = shape
@@ -351,69 +349,42 @@ def _build_real_space_voxel_potential_from_atoms(
     ]
     # Evaluate 1D gaussian integrals for each of x, y, and z dimensions
     (
-        gaussian_integrals_times_prefactor_per_atom_per_interval_x,
-        gaussian_integrals_per_atom_per_interval_y,
-        gaussian_integrals_per_atom_per_interval_z,
+        gaussian_integrals_times_prefactor_per_interval_per_atom_x,
+        gaussian_integrals_per_interval_per_atom_y,
+        gaussian_integrals_per_interval_per_atom_z,
     ) = _evaluate_gaussian_integrals_for_all_atoms_and_intervals(
         grid_x, grid_y, grid_z, atom_positions, a, b, voxel_size
     )
     # Get function to compute voxel grid at a single z-plane
     compute_potential_at_z_plane = jax.jit(
         lambda gaussian_integrals_per_atom_z: _evaluate_gaussian_potential_at_z_plane(
-            gaussian_integrals_times_prefactor_per_atom_per_interval_x,
-            gaussian_integrals_per_atom_per_interval_y,
+            gaussian_integrals_times_prefactor_per_interval_per_atom_x,
+            gaussian_integrals_per_interval_per_atom_y,
             gaussian_integrals_per_atom_z,
         )
     )
     # Map over z-planes
-    if batch_size > z_dim:
+    if z_planes_in_parallel > z_dim:
         raise ValueError(
-            "The `batch_size` when building a voxel grid must be an "
+            "The `z_planes_in_parallel` when building a voxel grid must be an "
             "integer less than or equal to the z-dimension of the grid, "
-            "or `shape[0]`."
+            "which is equal to `shape[0]`."
         )
-    elif batch_size == 1:
+    elif z_planes_in_parallel == 1:
         # ... compute the volume iteratively
         potential_as_voxel_grid = jax.lax.map(
-            compute_potential_at_z_plane, gaussian_integrals_per_atom_per_interval_z
+            compute_potential_at_z_plane, gaussian_integrals_per_interval_per_atom_z
         )
-    elif batch_size > 1:
+    elif z_planes_in_parallel > 1:
         # ... compute the volume by tuning how many z-planes to batch over
-        compute_potential_at_z_planes = jax.vmap(compute_potential_at_z_plane, in_axes=0)
-        # ... reshape the number of grid points into an iterative dimension and a batching
-        # dimension
-        gaussian_integrals_per_atom_per_batch_z = (
-            gaussian_integrals_per_atom_per_interval_z[
-                : z_dim - z_dim % batch_size, ...
-            ].reshape(
-                (
-                    z_dim // batch_size,
-                    batch_size,
-                    *gaussian_integrals_per_atom_per_interval_z.shape[1:],
-                )
-            )
+        potential_as_voxel_grid = _batched_map(
+            compute_potential_at_z_plane,
+            gaussian_integrals_per_interval_per_atom_z,
+            z_planes_in_parallel,
         )
-        # .. compute the volume, batching over z-plane
-        potential_as_voxel_grid = jax.lax.map(
-            compute_potential_at_z_planes, gaussian_integrals_per_atom_per_batch_z
-        ).reshape(((z_dim // batch_size) * batch_size, y_dim, x_dim))
-        # ... if the batch size is divisible by the z-dimension, need to take care
-        # of the remainder
-        if z_dim % batch_size != 0:
-            potential_as_voxel_grid = jnp.concatenate(
-                [
-                    potential_as_voxel_grid,
-                    compute_potential_at_z_planes(
-                        gaussian_integrals_per_atom_per_interval_z[
-                            z_dim - z_dim % batch_size :, ...
-                        ]
-                    ),
-                ],
-                axis=0,
-            )
     else:
         raise ValueError(
-            "The `batch_size` when building a voxel grid must be an "
+            "The `z_planes_in_parallel` when building a voxel grid must be an "
             "integer greater than 1."
         )
 
@@ -439,7 +410,7 @@ def _evaluate_gaussian_integrals_for_all_atoms_and_intervals(
     """
     # Define function to compute integrals for each dimension
     scaling = 2 * jnp.pi / jnp.sqrt(b)
-    integration_kernel_1d = lambda delta: (
+    integration_kernel = lambda delta: (
         jsp.special.erf(scaling[None, :, :] * (delta + voxel_size)[:, :, None])
         - jsp.special.erf(scaling[None, :, :] * delta[:, :, None])
     )
@@ -457,9 +428,9 @@ def _evaluate_gaussian_integrals_for_all_atoms_and_intervals(
     # Compute gaussian integrals for each grid point, each atom, and
     # each gaussian per atom
     gauss_x, gauss_y, gauss_z = (
-        integration_kernel_1d(delta_x),
-        integration_kernel_1d(delta_y),
-        integration_kernel_1d(delta_z),
+        integration_kernel(delta_x),
+        integration_kernel(delta_y),
+        integration_kernel(delta_z),
     )
     # Compute the prefactors for each atom and each gaussian per atom
     # for the potential
@@ -469,21 +440,48 @@ def _evaluate_gaussian_integrals_for_all_atoms_and_intervals(
 
 
 def _evaluate_gaussian_potential_at_z_plane(
-    gaussian_integrals_per_atom_per_interval_x: Float[
+    gaussian_integrals_per_interval_per_atom_x: Float[
         Array, "dim_x n_atoms n_gaussians_per_atom"
     ],
-    gaussian_integrals_per_atom_per_interval_y: Float[
+    gaussian_integrals_per_interval_per_atom_y: Float[
         Array, "dim_y n_atoms n_gaussians_per_atom"
     ],
     gaussian_integrals_per_atom_z: Float[Array, "n_atoms n_gaussians_per_atom"],
 ) -> Float[Array, "dim_y dim_x"]:
     # Prepare matrices with dimensions of the number of atoms and the number of grid
     # points. There are as many matrices as number of gaussians per atom
-    gauss_x = jnp.transpose(gaussian_integrals_per_atom_per_interval_x, (2, 1, 0))
+    gauss_x = jnp.transpose(gaussian_integrals_per_interval_per_atom_x, (2, 1, 0))
     gauss_yz = jnp.transpose(
-        gaussian_integrals_per_atom_per_interval_y
+        gaussian_integrals_per_interval_per_atom_y
         * gaussian_integrals_per_atom_z[None, :, :],
         (2, 0, 1),
     )
     # Compute matrix multiplication then sum over the number of gaussians per atom
     return jnp.sum(jnp.matmul(gauss_yz, gauss_x), axis=0)
+
+
+def _batched_map(fun: Callable, xs: Array, batch_size: int):
+    """Like `jax.lax.map`, but map over leading axis of `xs` in
+    chunks of size `batch_size` with `jax.vmap`
+    """
+    # ... create vmapped function
+    vmapped_fun = jax.vmap(fun, in_axes=0)
+    # ... reshape into an iterative dimension and a batching dimension
+    batch_dim, shape = xs.shape[0], xs.shape[1:]
+    n_batches = batch_dim // batch_size
+    xs_per_batch = xs[: batch_dim - batch_dim % batch_size, ...].reshape(
+        (n_batches, batch_size, *shape)
+    )
+    # .. compute the result and reshape back into one leading dimension
+    result_per_batch = jax.lax.map(vmapped_fun, xs_per_batch)
+    result = result_per_batch.reshape(
+        (n_batches * batch_size, *result_per_batch.shape[2:])
+    )
+    # ... if the batch dimension is not divisible by the batch size, need
+    # to take care of the remainder
+    if batch_dim % batch_size != 0:
+        result = jnp.concatenate(
+            [result, vmapped_fun(xs[batch_dim - batch_dim % batch_size :, ...])],
+            axis=0,
+        )
+    return result
