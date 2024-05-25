@@ -560,10 +560,10 @@ def _batched_map(
     # ... if the batch dimension is not divisible by the batch size, need
     # to take care of the remainder
     if batch_dim % batch_size != 0:
-        result_for_remainder = fun(
+        remainder = fun(
             jtu.tree_map(lambda x: x[batch_dim - batch_dim % batch_size :, ...], xs)
         )
         if is_batch_axis_contracted:
-            result_for_remainder = result_for_remainder[None, ...]
-        result = jnp.concatenate([result, result_for_remainder], axis=0)
+            remainder = remainder[None, ...]
+        result = jnp.concatenate([result, remainder], axis=0)
     return result
