@@ -86,8 +86,13 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     assert low_resolution_potential_grid.shape == downsampled_potential_grid.shape
 
 
-@pytest.mark.parametrize("batch_size", (1, 2, 3))
-def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, batch_size):
+@pytest.mark.parametrize(
+    "z_planes_in_parallel,atom_groups_in_series",
+    ((1, 1), (2, 1), (3, 1), (1, 2), (1, 3), (2, 2)),
+)
+def test_z_plane_batched_vs_non_batched_loop_agreement(
+    sample_pdb_path, z_planes_in_parallel, atom_groups_in_series
+):
     shape = (128, 128, 128)
     voxel_size = 0.5
 
@@ -98,7 +103,10 @@ def test_batched_vs_non_batched_loop_agreement(sample_pdb_path, batch_size):
     # Build the grid
     voxels = atomic_potential.as_real_voxel_grid(shape, voxel_size)
     voxels_with_batching = atomic_potential.as_real_voxel_grid(
-        shape, voxel_size, batch_size=batch_size
+        shape,
+        voxel_size,
+        z_planes_in_parallel=z_planes_in_parallel,
+        atom_groups_in_series=atom_groups_in_series,
     )
     np.testing.assert_allclose(voxels, voxels_with_batching)
 
