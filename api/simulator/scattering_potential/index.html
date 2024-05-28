@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.24">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.25">
     
     
       
@@ -850,21 +850,21 @@ scatterer.</p>
 <p class="admonition-title">Info</p>
 <p>In, <code>cryojax</code>, potentials should be built in units of <em>inverse length squared</em>,
 <span class="arithmatex">\([L]^{-2}\)</span>. This rescaled potential is defined to be</p>
-<div class="arithmatex">\[U(\mathbf{x}) = \frac{2 m e}{\hbar^2} V(\mathbf{x}),\]</div>
-<p>where <span class="arithmatex">\(V\)</span> is the electrostatic potential energy, <span class="arithmatex">\(\mathbf{x}\)</span> is a positional
+<div class="arithmatex">\[U(\mathbf{r}) = \frac{2 m e}{\hbar^2} V(\mathbf{r}),\]</div>
+<p>where <span class="arithmatex">\(V\)</span> is the electrostatic potential energy, <span class="arithmatex">\(\mathbf{r}\)</span> is a positional
 coordinate, <span class="arithmatex">\(m\)</span> is the electron mass, and <span class="arithmatex">\(e\)</span> is the electron charge.</p>
 <p>For a single atom, this rescaled potential has the advantage that under usual
 scattering approximations (i.e. the first-born approximation), the
 fourier transform of this quantity is closely related to tabulated electron scattering
 factors. In particular, for a single atom with scattering factor <span class="arithmatex">\(f^{(e)}(\mathbf{q})\)</span>
 and scattering vector <span class="arithmatex">\(\mathbf{q}\)</span>, its rescaled potential is equal to</p>
-<div class="arithmatex">\[U(\mathbf{x}) = 4 \pi \mathcal{F}^{-1}[f^{(e)}(\boldsymbol{\xi} / 2)](\mathbf{x}),\]</div>
+<div class="arithmatex">\[U(\mathbf{r}) = 4 \pi \mathcal{F}^{-1}[f^{(e)}(\boldsymbol{\xi} / 2)](\mathbf{r}),\]</div>
 <p>where <span class="arithmatex">\(\boldsymbol{\xi} = 2 \mathbf{q}\)</span> is the wave vector coordinate and
 <span class="arithmatex">\(\mathcal{F}^{-1}\)</span> is the inverse fourier transform operator in the convention</p>
-<div class="arithmatex">\[\mathcal{F}[f](\boldsymbol{\xi}) = \int d^3\mathbf{x} \ \exp(2\pi i \boldsymbol{\xi}\cdot\mathbf{x}) f(\mathbf{x}).\]</div>
+<div class="arithmatex">\[\mathcal{F}[f](\boldsymbol{\xi}) = \int d^3\mathbf{r} \ \exp(2\pi i \boldsymbol{\xi}\cdot\mathbf{r}) f(\mathbf{r}).\]</div>
 <p>The rescaled potential <span class="arithmatex">\(U\)</span> gives the following time-independent schrodinger equation
 for the scattering problem,</p>
-<div class="arithmatex">\[(\nabla^2 + k^2) \psi(\mathbf{x}) = - U(\mathbf{x}) \psi(\mathbf{x}),\]</div>
+<div class="arithmatex">\[(\nabla^2 + k^2) \psi(\mathbf{r}) = - U(\mathbf{r}) \psi(\mathbf{r}),\]</div>
 <p>where <span class="arithmatex">\(k\)</span> is the incident wavenumber of the electron beam.</p>
 <p><strong>References</strong>:</p>
 <ul>
@@ -918,7 +918,7 @@ biology 183.1 (2013): 19-32.</em></li>
 
 
 <h5 id="cryojax.simulator.AbstractAtomicPotential.as_real_voxel_grid" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{shape[0]}</span><span class="s1"> </span><span class="si">{shape[1]}</span><span class="s1"> </span><span class="si">{shape[2]}</span><span class="s1">&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{shape[0]}</span><span class="s1"> </span><span class="si">{shape[1]}</span><span class="s1"> </span><span class="si">{shape[2]}</span><span class="s1">&#39;</span><span class="p">]</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -1054,26 +1054,31 @@ scattering factors, use the <code>cryojax.constants</code> submodule.</p>
 
 
 <h5 id="cryojax.simulator.GaussianMixtureAtomicPotential.as_real_voxel_grid" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{shape[0]}</span><span class="s1"> </span><span class="si">{shape[1]}</span><span class="s1"> </span><span class="si">{shape[2]}</span><span class="s1">&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">z_planes_in_parallel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">atom_groups_in_series</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{shape[0]}</span><span class="s1"> </span><span class="si">{shape[1]}</span><span class="s1"> </span><span class="si">{shape[2]}</span><span class="s1">&#39;</span><span class="p">]</span></code>
 
 <a href="#cryojax.simulator.GaussianMixtureAtomicPotential.as_real_voxel_grid" class="headerlink" title="Permanent link">¤</a></h5>
 
 
     <div class="doc doc-contents ">
 
-      <p>Return a voxel grid in real space of the potential.</p>
+      <p>Return a voxel grid of the potential in real space.</p>
 <p>See <a href="./#cryojax.simulator.PengAtomicPotential.as_real_voxel_grid"><code>PengAtomicPotential.as_real_voxel_grid</code></a>
 for the numerical conventions used when computing the sum of gaussians.</p>
 <p><strong>Arguments:</strong></p>
 <ul>
 <li><code>shape</code>: The shape of the resulting voxel grid.</li>
 <li><code>voxel_size</code>: The voxel size of the resulting voxel grid.</li>
-<li><code>batch_size</code>:
+<li><code>z_planes_in_parallel</code>:
     The number of z-planes to evaluate in parallel with
     <code>jax.vmap</code>. By default, <code>1</code>.</li>
+<li><code>atom_groups_in_series</code>:
+    The number of iterations used to evaluate the volume,
+    where the iteration is taken over groups of atoms.
+    This is useful if <code>z_planes_in_parallel = 1</code>
+    and GPU memory is exhausted. By default, <code>1</code>.</li>
 </ul>
 <p><strong>Returns:</strong></p>
-<p>The rescaled potential <span class="arithmatex">\(U(\mathbf{x})\)</span> as a voxel grid of shape <code>shape</code>
+<p>The rescaled potential <span class="arithmatex">\(U_{\ell}\)</span> as a voxel grid of shape <code>shape</code>
 and voxel size <code>voxel_size</code>.</p>
 
     </div>
@@ -1199,41 +1204,51 @@ per atom, through work by Lian-Mao Peng.</p>
 
 
 <h5 id="cryojax.simulator.PengAtomicPotential.as_real_voxel_grid" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{shape[0]}</span><span class="s1"> </span><span class="si">{shape[1]}</span><span class="s1"> </span><span class="si">{shape[2]}</span><span class="s1">&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="o">.</span><span class="n">as_real_voxel_grid</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">z_planes_in_parallel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">atom_groups_in_series</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{shape[0]}</span><span class="s1"> </span><span class="si">{shape[1]}</span><span class="s1"> </span><span class="si">{shape[2]}</span><span class="s1">&#39;</span><span class="p">]</span></code>
 
 <a href="#cryojax.simulator.PengAtomicPotential.as_real_voxel_grid" class="headerlink" title="Permanent link">¤</a></h5>
 
 
     <div class="doc doc-contents ">
 
-      <p>Return a voxel grid in real space of the potential.</p>
+      <p>Return a voxel grid of the potential in real space.</p>
 <p>Through the work of Peng et al. (1996), tabulated elastic electron scattering factors
 are defined as</p>
 <div class="arithmatex">\[f^{(e)}(\mathbf{q}) = \sum\limits_{i = 1}^5 a_i \exp(- b_i |\mathbf{q}|^2),\]</div>
 <p>where <span class="arithmatex">\(a_i\)</span> is stored as <code>PengAtomicPotential.scattering_factor_a</code> and <span class="arithmatex">\(b_i\)</span> is
 stored as <code>PengAtomicPotential.scattering_factor_b</code> for the scattering vector <span class="arithmatex">\(\mathbf{q}\)</span>.
 Under usual scattering approximations (i.e. the first-born approximation),
-the rescaled electrostatic potential energy <span class="arithmatex">\(U(\mathbf{x})\)</span> is then given by
-<span class="arithmatex">\(4 \pi \mathcal{F}^{-1}[f^{(e)}(\boldsymbol{\xi} / 2)](\mathbf{x})\)</span>, which is computed
+the rescaled electrostatic potential energy <span class="arithmatex">\(U(\mathbf{r})\)</span> is then given by
+<span class="arithmatex">\(4 \pi \mathcal{F}^{-1}[f^{(e)}(\boldsymbol{\xi} / 2)](\mathbf{r})\)</span>, which is computed
 analytically as</p>
-<div class="arithmatex">\[U(\mathbf{x}) = 4 \pi \sum\limits_{i = 1}^5 \frac{a_i}{(2\pi (b_i / 8 \pi^2))^{3/2}} \exp(- \frac{|\mathbf{x}|^2}{2 (b_i / 8 \pi^2)}).\]</div>
-<p>Including an additional B-factor (denoted by <span class="arithmatex">\(B\)</span> and stored as <code>PengAtomicPotential.b_factors</code>) gives
-the expression for the potential <span class="arithmatex">\(U(\mathbf{x})\)</span> of a single atom type and its fourier transform pair
-<span class="arithmatex">\(\tilde{U}(\boldsymbol{\xi}) \equiv \mathcal{F}[U](\boldsymbol{\xi})\)</span>,</p>
-<div class="arithmatex">\[U(\mathbf{x}) = 4 \pi \sum\limits_{i = 1}^5 \frac{a_i}{(2\pi ((b_i + B) / 8 \pi^2))^{3/2}} \exp(- \frac{|\mathbf{x}|^2}{2 ((b_i + B) / 8 \pi^2)}),\]</div>
-<div class="arithmatex">\[\tilde{U}(\boldsymbol{\xi}) = 4 \pi \sum\limits_{i = 1}^5 a_i \exp(- (b_i + B) |\boldsymbol{\xi}|^2 / 4),\]</div>
+<div class="arithmatex">\[U(\mathbf{r}) = 4 \pi \sum\limits_{i = 1}^5 \frac{a_i}{(2\pi (b_i / 8 \pi^2))^{3/2}} \exp(- \frac{|\mathbf{r} - \mathbf{r}'|^2}{2 (b_i / 8 \pi^2)}),\]</div>
+<p>where <span class="arithmatex">\(\mathbf{r}'\)</span> is the position of the atom. Including an additional B-factor (denoted by
+<span class="arithmatex">\(B\)</span> and stored as <code>PengAtomicPotential.b_factors</code>) gives the expression for the potential
+<span class="arithmatex">\(U(\mathbf{r})\)</span> of a single atom type and its fourier transform pair <span class="arithmatex">\(\tilde{U}(\boldsymbol{\xi}) \equiv \mathcal{F}[U](\boldsymbol{\xi})\)</span>,</p>
+<div class="arithmatex">\[U(\mathbf{r}) = 4 \pi \sum\limits_{i = 1}^5 \frac{a_i}{(2\pi ((b_i + B) / 8 \pi^2))^{3/2}} \exp(- \frac{|\mathbf{r} - \mathbf{r}'|^2}{2 ((b_i + B) / 8 \pi^2)}),\]</div>
+<div class="arithmatex">\[\tilde{U}(\boldsymbol{\xi}) = 4 \pi \sum\limits_{i = 1}^5 a_i \exp(- (b_i + B) |\boldsymbol{\xi}|^2 / 4) \exp(2 \pi i \boldsymbol{\xi}\cdot\mathbf{r}'),\]</div>
 <p>where <span class="arithmatex">\(\mathbf{q} = \boldsymbol{\xi} / 2\)</span> gives the relationship between the wave vector and the
 scattering vector.</p>
+<p>In practice, for a discretization on a grid with voxel size <span class="arithmatex">\(\Delta r\)</span> and grid point <span class="arithmatex">\(\mathbf{r}_{\ell}\)</span>,
+the potential is evaluated as the average value inside the voxel</p>
+<div class="arithmatex">\[U_{\ell} = 4 \pi \frac{1}{\Delta r^3} \sum\limits_{i = 1}^5 a_i \prod\limits_{j = 1}^3 \int_{r^{\ell}_j-\Delta r/2}^{r^{\ell}_j+\Delta r/2} dr_j \ \frac{1}{{\sqrt{2\pi ((b_i + B) / 8 \pi^2)}}} \exp(- \frac{(r_j - r'_j)^2}{2 ((b_i + B) / 8 \pi^2)}),\]</div>
+<p>where <span class="arithmatex">\(j\)</span> indexes the components of the spatial coordinate vector <span class="arithmatex">\(\mathbf{r}\)</span>. The above expression is evaluated using the error function as</p>
+<div class="arithmatex">\[U_{\ell} = 4 \pi \frac{1}{(2 \Delta r)^3} \sum\limits_{i = 1}^5 a_i \prod\limits_{j = 1}^3 \textrm{erf}(\frac{r_j^{\ell} - r'_j + \Delta r / 2}{\sqrt{2 ((b_i + B) / 8\pi^2)}}) - \textrm{erf}(\frac{r_j^{\ell} - r'_j - \Delta r / 2}{\sqrt{2 ((b_i + B) / 8\pi^2)}}).\]</div>
 <p><strong>Arguments:</strong></p>
 <ul>
 <li><code>shape</code>: The shape of the resulting voxel grid.</li>
 <li><code>voxel_size</code>: The voxel size of the resulting voxel grid.</li>
-<li><code>batch_size</code>:
+<li><code>z_planes_in_parallel</code>:
     The number of z-planes to evaluate in parallel with
     <code>jax.vmap</code>. By default, <code>1</code>.</li>
+<li><code>atom_groups_in_series</code>:
+    The number of iterations used to evaluate the volume,
+    where the iteration is taken over groups of atoms.
+    This is useful if <code>z_planes_in_parallel = 1</code>
+    and GPU memory is exhausted. By default, <code>1</code>.</li>
 </ul>
 <p><strong>Returns:</strong></p>
-<p>The rescaled potential <span class="arithmatex">\(U(\mathbf{x})\)</span> as a voxel grid of shape <code>shape</code>
+<p>The rescaled potential <span class="arithmatex">\(U_{\ell}\)</span> as a voxel grid of shape <code>shape</code>
 and voxel size <code>voxel_size</code>.</p>
 
     </div>
