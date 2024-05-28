@@ -3,14 +3,16 @@ Atomistic representation of the scattering potential.
 """
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Callable, Optional
 from typing_extensions import override, Self
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import jax.scipy as jsp
+import jax.tree_util as jtu
 import numpy as np
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Float, Int, PyTree
 
 from ..._errors import error_if_negative, error_if_not_positive
 from ...constants import (
@@ -29,9 +31,9 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         In, `cryojax`, potentials should be built in units of *inverse length squared*,
         $[L]^{-2}$. This rescaled potential is defined to be
 
-        $$U(\\mathbf{x}) = \\frac{2 m e}{\\hbar^2} V(\\mathbf{x}),$$
+        $$U(\\mathbf{r}) = \\frac{2 m e}{\\hbar^2} V(\\mathbf{r}),$$
 
-        where $V$ is the electrostatic potential energy, $\\mathbf{x}$ is a positional
+        where $V$ is the electrostatic potential energy, $\\mathbf{r}$ is a positional
         coordinate, $m$ is the electron mass, and $e$ is the electron charge.
 
         For a single atom, this rescaled potential has the advantage that under usual
@@ -40,17 +42,17 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         factors. In particular, for a single atom with scattering factor $f^{(e)}(\\mathbf{q})$
         and scattering vector $\\mathbf{q}$, its rescaled potential is equal to
 
-        $$U(\\mathbf{x}) = 4 \\pi \\mathcal{F}^{-1}[f^{(e)}(\\boldsymbol{\\xi} / 2)](\\mathbf{x}),$$
+        $$U(\\mathbf{r}) = 4 \\pi \\mathcal{F}^{-1}[f^{(e)}(\\boldsymbol{\\xi} / 2)](\\mathbf{r}),$$
 
         where $\\boldsymbol{\\xi} = 2 \\mathbf{q}$ is the wave vector coordinate and
         $\\mathcal{F}^{-1}$ is the inverse fourier transform operator in the convention
 
-        $$\\mathcal{F}[f](\\boldsymbol{\\xi}) = \\int d^3\\mathbf{x} \\ \\exp(2\\pi i \\boldsymbol{\\xi}\\cdot\\mathbf{x}) f(\\mathbf{x}).$$
+        $$\\mathcal{F}[f](\\boldsymbol{\\xi}) = \\int d^3\\mathbf{r} \\ \\exp(2\\pi i \\boldsymbol{\\xi}\\cdot\\mathbf{r}) f(\\mathbf{r}).$$
 
         The rescaled potential $U$ gives the following time-independent schrodinger equation
         for the scattering problem,
 
-        $$(\\nabla^2 + k^2) \\psi(\\mathbf{x}) = - U(\\mathbf{x}) \\psi(\\mathbf{x}),$$
+        $$(\\nabla^2 + k^2) \\psi(\\mathbf{r}) = - U(\\mathbf{r}) \\psi(\\mathbf{r}),$$
 
         where $k$ is the incident wavenumber of the electron beam.
 
@@ -81,8 +83,6 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        *,
-        batch_size: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         raise NotImplementedError
 
@@ -156,9 +156,10 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
         *,
-        batch_size: int = 1,
+        z_planes_in_parallel: int = 1,
+        atom_groups_in_series: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
-        """Return a voxel grid in real space of the potential.
+        """Return a voxel grid of the potential in real space.
 
         See [`PengAtomicPotential.as_real_voxel_grid`](scattering_potential.md#cryojax.simulator.PengAtomicPotential.as_real_voxel_grid)
         for the numerical conventions used when computing the sum of gaussians.
@@ -167,13 +168,18 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
-        - `batch_size`:
+        - `z_planes_in_parallel`:
             The number of z-planes to evaluate in parallel with
             `jax.vmap`. By default, `1`.
+        - `atom_groups_in_series`:
+            The number of iterations used to evaluate the volume,
+            where the iteration is taken over groups of atoms.
+            This is useful if `z_planes_in_parallel = 1`
+            and GPU memory is exhausted. By default, `1`.
 
         **Returns:**
 
-        The rescaled potential $U(\\mathbf{x})$ as a voxel grid of shape `shape`
+        The rescaled potential $U_{\\ell}$ as a voxel grid of shape `shape`
         and voxel size `voxel_size`.
         """  # noqa: E501
         return _build_real_space_voxel_potential_from_atoms(
@@ -182,7 +188,8 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             self.atom_positions,
             self.gaussian_amplitudes,
             self.gaussian_widths,
-            batch_size=batch_size,
+            z_planes_in_parallel=z_planes_in_parallel,
+            atom_groups_in_series=atom_groups_in_series,
         )
 
 
@@ -268,9 +275,10 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
         *,
-        batch_size: int = 1,
+        z_planes_in_parallel: int = 1,
+        atom_groups_in_series: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
-        """Return a voxel grid in real space of the potential.
+        """Return a voxel grid of the potential in real space.
 
         Through the work of Peng et al. (1996), tabulated elastic electron scattering factors
         are defined as
@@ -280,34 +288,48 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         where $a_i$ is stored as `PengAtomicPotential.scattering_factor_a` and $b_i$ is
         stored as `PengAtomicPotential.scattering_factor_b` for the scattering vector $\\mathbf{q}$.
         Under usual scattering approximations (i.e. the first-born approximation),
-        the rescaled electrostatic potential energy $U(\\mathbf{x})$ is then given by
-        $4 \\pi \\mathcal{F}^{-1}[f^{(e)}(\\boldsymbol{\\xi} / 2)](\\mathbf{x})$, which is computed
+        the rescaled electrostatic potential energy $U(\\mathbf{r})$ is then given by
+        $4 \\pi \\mathcal{F}^{-1}[f^{(e)}(\\boldsymbol{\\xi} / 2)](\\mathbf{r})$, which is computed
         analytically as
 
-        $$U(\\mathbf{x}) = 4 \\pi \\sum\\limits_{i = 1}^5 \\frac{a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 (b_i / 8 \\pi^2)}).$$
+        $$U(\\mathbf{r}) = 4 \\pi \\sum\\limits_{i = 1}^5 \\frac{a_i}{(2\\pi (b_i / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{r} - \\mathbf{r}'|^2}{2 (b_i / 8 \\pi^2)}),$$
 
-        Including an additional B-factor (denoted by $B$ and stored as `PengAtomicPotential.b_factors`) gives
-        the expression for the potential $U(\\mathbf{x})$ of a single atom type and its fourier transform pair
-        $\\tilde{U}(\\boldsymbol{\\xi}) \\equiv \\mathcal{F}[U](\\boldsymbol{\\xi})$,
+        where $\\mathbf{r}'$ is the position of the atom. Including an additional B-factor (denoted by
+        $B$ and stored as `PengAtomicPotential.b_factors`) gives the expression for the potential
+        $U(\\mathbf{r})$ of a single atom type and its fourier transform pair $\\tilde{U}(\\boldsymbol{\\xi}) \\equiv \\mathcal{F}[U](\\boldsymbol{\\xi})$,
 
-        $$U(\\mathbf{x}) = 4 \\pi \\sum\\limits_{i = 1}^5 \\frac{a_i}{(2\\pi ((b_i + B) / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{x}|^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
+        $$U(\\mathbf{r}) = 4 \\pi \\sum\\limits_{i = 1}^5 \\frac{a_i}{(2\\pi ((b_i + B) / 8 \\pi^2))^{3/2}} \\exp(- \\frac{|\\mathbf{r} - \\mathbf{r}'|^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
 
-        $$\\tilde{U}(\\boldsymbol{\\xi}) = 4 \\pi \\sum\\limits_{i = 1}^5 a_i \\exp(- (b_i + B) |\\boldsymbol{\\xi}|^2 / 4),$$
+        $$\\tilde{U}(\\boldsymbol{\\xi}) = 4 \\pi \\sum\\limits_{i = 1}^5 a_i \\exp(- (b_i + B) |\\boldsymbol{\\xi}|^2 / 4) \\exp(2 \\pi i \\boldsymbol{\\xi}\\cdot\\mathbf{r}'),$$
 
         where $\\mathbf{q} = \\boldsymbol{\\xi} / 2$ gives the relationship between the wave vector and the
         scattering vector.
+
+        In practice, for a discretization on a grid with voxel size $\\Delta r$ and grid point $\\mathbf{r}_{\\ell}$,
+        the potential is evaluated as the average value inside the voxel
+
+        $$U_{\\ell} = 4 \\pi \\frac{1}{\\Delta r^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{j = 1}^3 \\int_{r^{\\ell}_j-\\Delta r/2}^{r^{\\ell}_j+\\Delta r/2} dr_j \\ \\frac{1}{{\\sqrt{2\\pi ((b_i + B) / 8 \\pi^2)}}} \\exp(- \\frac{(r_j - r'_j)^2}{2 ((b_i + B) / 8 \\pi^2)}),$$
+
+        where $j$ indexes the components of the spatial coordinate vector $\\mathbf{r}$. The above expression is evaluated using the error function as
+
+        $$U_{\\ell} = 4 \\pi \\frac{1}{(2 \\Delta r)^3} \\sum\\limits_{i = 1}^5 a_i \\prod\\limits_{j = 1}^3 \\textrm{erf}(\\frac{r_j^{\\ell} - r'_j + \\Delta r / 2}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}) - \\textrm{erf}(\\frac{r_j^{\\ell} - r'_j - \\Delta r / 2}{\\sqrt{2 ((b_i + B) / 8\\pi^2)}}).$$
 
         **Arguments:**
 
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
-        - `batch_size`:
+        - `z_planes_in_parallel`:
             The number of z-planes to evaluate in parallel with
             `jax.vmap`. By default, `1`.
+        - `atom_groups_in_series`:
+            The number of iterations used to evaluate the volume,
+            where the iteration is taken over groups of atoms.
+            This is useful if `z_planes_in_parallel = 1`
+            and GPU memory is exhausted. By default, `1`.
 
         **Returns:**
 
-        The rescaled potential $U(\\mathbf{x})$ as a voxel grid of shape `shape`
+        The rescaled potential $U_{\\ell}$ as a voxel grid of shape `shape`
         and voxel size `voxel_size`.
         """  # noqa: E501
         gaussian_amplitudes = self.scattering_factor_a
@@ -321,7 +343,8 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
             self.atom_positions,
             gaussian_amplitudes,
             gaussian_widths,
-            batch_size=batch_size,
+            z_planes_in_parallel=z_planes_in_parallel,
+            atom_groups_in_series=atom_groups_in_series,
         )
 
 
@@ -332,102 +355,215 @@ def _build_real_space_voxel_potential_from_atoms(
     atom_positions: Float[Array, "n_atoms 3"],
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
-    batch_size: int,
+    z_planes_in_parallel: int,
+    atom_groups_in_series: int,
 ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
     # Make coordinate systems for each of x, y, and z dimensions
     z_dim, y_dim, x_dim = shape
     grid_x, grid_y, grid_z = [
         make_1d_coordinate_grid(dim, voxel_size) for dim in [x_dim, y_dim, z_dim]
     ]
-    # Evaluate 1D gaussians for each of x, y, and z dimensions
-    gauss_x, gauss_y, gauss_z = _evaluate_gaussians_for_all_atoms(
-        grid_x, grid_y, grid_z, atom_positions, a, b
-    )
-    # Get function to compute voxel grid at a single z-plane
-    compute_potential_at_z_plane = jax.jit(
-        lambda gauss_z_at_plane: _evaluate_gaussian_potential_at_z_plane(
-            gauss_x, gauss_y, gauss_z_at_plane
+    # Get function to compute potential over a batch of atoms
+    compute_potential_for_atom_group = (
+        lambda xs: _build_real_space_voxel_potential_from_atom_group(
+            grid_x,
+            grid_y,
+            grid_z,
+            voxel_size,
+            xs[0],
+            xs[1],
+            xs[2],
+            z_planes_in_parallel,
         )
     )
-    # Map over z-planes
-    if batch_size > z_dim:
+    if atom_groups_in_series > atom_positions.shape[0]:
         raise ValueError(
-            "The `batch_size` when building a voxel grid must be an "
-            "integer less than or equal to the z-dimension of the grid, "
-            "or `shape[0]`."
+            "The `atom_groups_in_series` when building a voxel grid must "
+            "be an integer less than or equal to the number of atoms, "
+            f"which is equal to {atom_positions.shape[0]}."
         )
-    elif batch_size == 1:
-        potential_as_voxel_grid = jax.lax.map(compute_potential_at_z_plane, gauss_z)
-    elif batch_size > 1:
-        compute_potential_at_z_planes = jax.vmap(compute_potential_at_z_plane, in_axes=0)
-        gauss_z_per_batch = gauss_z[: z_dim - z_dim % batch_size, ...].reshape(
-            (z_dim // batch_size, batch_size, *gauss_z.shape[1:])
+    elif atom_groups_in_series == 1:
+        potential_as_voxel_grid = compute_potential_for_atom_group((atom_positions, a, b))
+    elif atom_groups_in_series > 1:
+        potential_as_voxel_grid = jnp.sum(
+            _batched_map(
+                compute_potential_for_atom_group,
+                (atom_positions, a, b),
+                batch_size=atom_positions.shape[0] // atom_groups_in_series,
+                is_batch_axis_contracted=True,
+            ),
+            axis=0,
         )
-        potential_as_voxel_grid = jax.lax.map(
-            compute_potential_at_z_planes, gauss_z_per_batch
-        ).reshape(((z_dim // batch_size) * batch_size, y_dim, x_dim))
-        if z_dim % batch_size != 0:
-            potential_as_voxel_grid = jnp.concatenate(
-                [
-                    potential_as_voxel_grid,
-                    compute_potential_at_z_planes(
-                        gauss_z[z_dim - z_dim % batch_size :, ...]
-                    ),
-                ],
-                axis=0,
-            )
     else:
         raise ValueError(
-            "The `batch_size` when building a voxel grid must be an "
-            "integer greater than 1."
+            "The `atom_groups_in_series` when building a voxel grid must be an "
+            "integer greater than or equal to 1."
         )
 
     return potential_as_voxel_grid
 
 
 @eqx.filter_jit
-def _evaluate_gaussians_for_all_atoms(
+def _build_real_space_voxel_potential_from_atom_group(
+    grid_x: Float[Array, " dim_x"],
+    grid_y: Float[Array, " dim_y"],
+    grid_z: Float[Array, " dim_z"],
+    voxel_size: Float[Array, ""],
+    atom_positions: Float[Array, "n_atoms_in_batch 3"],
+    a: Float[Array, "n_atoms_in_batch n_gaussians_per_atom"],
+    b: Float[Array, "n_atoms_in_batch n_gaussians_per_atom"],
+    z_planes_in_parallel: int,
+) -> Float[Array, "dim_z dim_y dim_x"]:
+    # Evaluate 1D gaussian integrals for each of x, y, and z dimensions
+    (
+        gaussian_integrals_times_prefactor_per_interval_per_atom_x,
+        gaussian_integrals_per_interval_per_atom_y,
+        gaussian_integrals_per_interval_per_atom_z,
+    ) = _evaluate_gaussian_integrals_for_all_atoms_and_intervals(
+        grid_x, grid_y, grid_z, atom_positions, a, b, voxel_size
+    )
+    # Get function to compute voxel grid at a single z-plane
+    compute_potential_at_z_plane = jax.jit(
+        lambda gaussian_integrals_per_atom_z: _evaluate_gaussian_potential_at_z_plane(
+            gaussian_integrals_times_prefactor_per_interval_per_atom_x,
+            gaussian_integrals_per_interval_per_atom_y,
+            gaussian_integrals_per_atom_z,
+        )
+    )
+    # Map over z-planes
+    if z_planes_in_parallel > grid_z.size:
+        raise ValueError(
+            "The `z_planes_in_parallel` when building a voxel grid must be an "
+            "integer less than or equal to the z-dimension of the grid, "
+            f"which is equal to {grid_z.size}."
+        )
+    elif z_planes_in_parallel == 1:
+        # ... compute the volume iteratively
+        potential_as_voxel_grid = jax.lax.map(
+            compute_potential_at_z_plane, gaussian_integrals_per_interval_per_atom_z
+        )
+    elif z_planes_in_parallel > 1:
+        # ... compute the volume by tuning how many z-planes to batch over
+        compute_potential_at_z_planes = jax.vmap(compute_potential_at_z_plane, in_axes=0)
+        potential_as_voxel_grid = _batched_map(
+            compute_potential_at_z_planes,
+            gaussian_integrals_per_interval_per_atom_z,
+            batch_size=z_planes_in_parallel,
+            is_batch_axis_contracted=False,
+        )
+    else:
+        raise ValueError(
+            "The `z_planes_in_parallel` when building a voxel grid must be an "
+            "integer greater than or equal to 1."
+        )
+
+    return potential_as_voxel_grid
+
+
+@eqx.filter_jit
+def _evaluate_gaussian_integrals_for_all_atoms_and_intervals(
     grid_x: Float[Array, " dim_x"],
     grid_y: Float[Array, " dim_y"],
     grid_z: Float[Array, " dim_z"],
     atom_positions: Float[Array, "n_atoms 3"],
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
+    voxel_size: Float[Array, ""],
 ) -> tuple[
     Float[Array, "dim_x n_atoms n_gaussians_per_atom"],
     Float[Array, "dim_y n_atoms n_gaussians_per_atom"],
     Float[Array, "dim_z n_atoms n_gaussians_per_atom"],
 ]:
-    """Evaluate 1D gaussian arrays in x, y, and z dimensions
+    """Evaluate 1D averaged gaussians in x, y, and z dimensions
     for each atom and each gaussian per atom.
     """
-    # Evaluate each gaussian on a 1D grid
-    b_inverse = 4.0 * jnp.pi / b
-    gauss_x = jnp.exp(
-        -jnp.pi
-        * b_inverse[None, :, :]
-        * ((grid_x[:, None] - atom_positions.T[0, :]) ** 2)[:, :, None]
+    # Define function to compute integrals for each dimension
+    scaling = 2 * jnp.pi / jnp.sqrt(b)
+    integration_kernel = lambda delta: (
+        jsp.special.erf(scaling[None, :, :] * (delta + voxel_size)[:, :, None])
+        - jsp.special.erf(scaling[None, :, :] * delta[:, :, None])
     )
-    gauss_y = jnp.exp(
-        -jnp.pi
-        * b_inverse[None, :, :]
-        * ((grid_y[:, None] - atom_positions.T[1, :]) ** 2)[:, :, None]
+    # Compute outer product of left edge of grid points minus atomic positions
+    left_edge_grid_x, left_edge_grid_y, left_edge_grid_z = (
+        grid_x - voxel_size / 2,
+        grid_y - voxel_size / 2,
+        grid_z - voxel_size / 2,
     )
-    gauss_z = jnp.exp(
-        -jnp.pi
-        * b_inverse[None, :, :]
-        * ((grid_z[:, None] - atom_positions.T[2, :]) ** 2)[:, :, None]
+    delta_x, delta_y, delta_z = (
+        left_edge_grid_x[:, None] - atom_positions[:, 0],
+        left_edge_grid_y[:, None] - atom_positions[:, 1],
+        left_edge_grid_z[:, None] - atom_positions[:, 2],
     )
-
-    return 4 * jnp.pi * a * b_inverse ** (3.0 / 2.0) * gauss_x, gauss_y, gauss_z
+    # Compute gaussian integrals for each grid point, each atom, and
+    # each gaussian per atom
+    gauss_x, gauss_y, gauss_z = (
+        integration_kernel(delta_x),
+        integration_kernel(delta_y),
+        integration_kernel(delta_z),
+    )
+    # Compute the prefactors for each atom and each gaussian per atom
+    # for the potential
+    prefactor = (4 * jnp.pi * a) / (2 * voxel_size) ** 3
+    # Multiply the prefactor onto one of the gaussians for efficiency
+    return prefactor * gauss_x, gauss_y, gauss_z
 
 
 def _evaluate_gaussian_potential_at_z_plane(
-    gauss_x: Float[Array, "dim_x n_atoms n_gaussians_per_atom"],
-    gauss_y: Float[Array, "dim_y n_atoms n_gaussians_per_atom"],
-    gauss_z_at_plane: Float[Array, "n_atoms n_gaussians_per_atom"],
+    gaussian_integrals_per_interval_per_atom_x: Float[
+        Array, "dim_x n_atoms n_gaussians_per_atom"
+    ],
+    gaussian_integrals_per_interval_per_atom_y: Float[
+        Array, "dim_y n_atoms n_gaussians_per_atom"
+    ],
+    gaussian_integrals_per_atom_z: Float[Array, "n_atoms n_gaussians_per_atom"],
 ) -> Float[Array, "dim_y dim_x"]:
-    gauss_x = jnp.transpose(gauss_x, (2, 1, 0))
-    gauss_yz = jnp.transpose(gauss_y * gauss_z_at_plane[None, :, :], (2, 0, 1))
-
+    # Prepare matrices with dimensions of the number of atoms and the number of grid
+    # points. There are as many matrices as number of gaussians per atom
+    gauss_x = jnp.transpose(gaussian_integrals_per_interval_per_atom_x, (2, 1, 0))
+    gauss_yz = jnp.transpose(
+        gaussian_integrals_per_interval_per_atom_y
+        * gaussian_integrals_per_atom_z[None, :, :],
+        (2, 0, 1),
+    )
+    # Compute matrix multiplication then sum over the number of gaussians per atom
     return jnp.sum(jnp.matmul(gauss_yz, gauss_x), axis=0)
+
+
+@eqx.filter_jit
+def _batched_map(
+    fun: Callable,
+    xs: PyTree[Array],
+    batch_size: int,
+    is_batch_axis_contracted: bool = False,
+):
+    """Like `jax.lax.map`, but map over leading axis of `xs` in
+    chunks of size `batch_size`. Assumes `fun` can be evaluated in
+    parallel over this leading axis.
+    """
+    # ... reshape into an iterative dimension and a batching dimension
+    batch_dim = jtu.tree_leaves(xs)[0].shape[0]
+    n_batches = batch_dim // batch_size
+    xs_per_batch = jtu.tree_map(
+        lambda x: x[: batch_dim - batch_dim % batch_size, ...].reshape(
+            (n_batches, batch_size, *x.shape[1:])
+        ),
+        xs,
+    )
+    # .. compute the result and reshape back into one leading dimension
+    result_per_batch = jax.lax.map(fun, xs_per_batch)
+    if is_batch_axis_contracted:
+        result = result_per_batch
+    else:
+        result = result_per_batch.reshape(
+            (n_batches * batch_size, *result_per_batch.shape[2:])
+        )
+    # ... if the batch dimension is not divisible by the batch size, need
+    # to take care of the remainder
+    if batch_dim % batch_size != 0:
+        remainder = fun(
+            jtu.tree_map(lambda x: x[batch_dim - batch_dim % batch_size :, ...], xs)
+        )
+        if is_batch_axis_contracted:
+            remainder = remainder[None, ...]
+        result = jnp.concatenate([result, remainder], axis=0)
+    return result
