@@ -10,7 +10,8 @@ from typing_extensions import override
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-from equinox import AbstractVar, field, Module
+import numpy as np
+from equinox import AbstractVar, Module
 from jaxtyping import Array, Complex, Float
 
 from ..rotations import convert_quaternion_to_euler_angles, SO3
@@ -22,8 +23,8 @@ class AbstractPose(Module, strict=True):
     Subclasses should choose a viewing convention,
     such as with Euler angles or Quaternions. In particular,
 
-        1. Define angular coordinates as dataclass fields, along
-           with other dataclass fields.
+        1. Define angular coordinates as dataclass fields and
+           write `__init__`.
 
         2. Overwrite the `AbstractPose.rotation` property and
            `AbstractPose.from_rotation` class method.
@@ -131,13 +132,40 @@ class EulerAnglePose(AbstractPose, strict=True):
     given by a zyz extrinsic rotations.
     """
 
-    offset_x_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Float[Array, ""]
+    offset_y_in_angstroms: Float[Array, ""]
+    offset_z_in_angstroms: Float[Array, ""]
 
-    view_phi: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    view_theta: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    view_psi: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    view_phi: Float[Array, ""]
+    view_theta: Float[Array, ""]
+    view_psi: Float[Array, ""]
+
+    def __init__(
+        self,
+        offset_x_in_angstroms: float | Float[Array, ""] = 0.0,
+        offset_y_in_angstroms: float | Float[Array, ""] = 0.0,
+        offset_z_in_angstroms: float | Float[Array, ""] = 0.0,
+        view_phi: float | Float[Array, ""] = 0.0,
+        view_theta: float | Float[Array, ""] = 0.0,
+        view_psi: float | Float[Array, ""] = 0.0,
+    ):
+        """**Arguments:**
+
+        - `offset_x_in_angstroms`: In-plane translation in x direction.
+        - `offset_y_in_angstroms`: In-plane translation in y direction.
+        - `offset_z_in_angstroms`:
+            Out-of-plane translation in the z direction. The translation is measured
+            relative to the configured defocus.
+        - `view_phi`: Angle to rotate about first rotation axis, which is the z axis.
+        - `view_theta`: Angle to rotate about second rotation axis, which is the y axis.
+        - `view_psi`: Angle to rotate about third rotation axis, which is the z axis.
+        """
+        self.offset_x_in_angstroms = jnp.asarray(offset_x_in_angstroms)
+        self.offset_y_in_angstroms = jnp.asarray(offset_y_in_angstroms)
+        self.offset_z_in_angstroms = jnp.asarray(offset_z_in_angstroms)
+        self.view_phi = jnp.asarray(view_phi)
+        self.view_theta = jnp.asarray(view_theta)
+        self.view_psi = jnp.asarray(view_psi)
 
     @cached_property
     @override
@@ -166,27 +194,38 @@ class EulerAnglePose(AbstractPose, strict=True):
         return cls(view_phi=view_phi, view_theta=view_theta, view_psi=view_psi)
 
 
-EulerAnglePose.__init__.__doc__ = """**Arguments:**
-
-- `offset_x_in_angstroms` : In-plane translation in x direction.
-- `offset_y_in_angstroms` : In-plane translation in y direction.
-- `offset_z_in_angstroms` : Out-of-plane translation in the z
-                            direction. The translation is measured
-                            relative to the configured defocus.
-- `view_phi`: Angle to rotate about first rotation axis, which is the z axis.
-- `view_theta`: Angle to rotate about second rotation axis, which is the y axis.
-- `view_psi`: Angle to rotate about third rotation axis, which is the z axis.
-"""
-
-
 class QuaternionPose(AbstractPose, strict=True):
     """An `AbstractPose` represented by unit quaternions."""
 
-    offset_x_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Float[Array, ""]
+    offset_y_in_angstroms: Float[Array, ""]
+    offset_z_in_angstroms: Float[Array, ""]
 
-    wxyz: Float[Array, "4"] = field(default=(1.0, 0.0, 0.0, 0.0), converter=jnp.asarray)
+    wxyz: Float[Array, "4"]
+
+    def __init__(
+        self,
+        offset_x_in_angstroms: float | Float[Array, ""] = 0.0,
+        offset_y_in_angstroms: float | Float[Array, ""] = 0.0,
+        offset_z_in_angstroms: float | Float[Array, ""] = 0.0,
+        wxyz: (
+            tuple[float, float, float, float] | Float[np.ndarray, "4"] | Float[Array, "4"]
+        ) = (1.0, 0.0, 0.0, 0.0),
+    ):
+        """**Arguments:**
+
+        - `offset_x_in_angstroms`: In-plane translation in x direction.
+        - `offset_y_in_angstroms`: In-plane translation in y direction.
+        - `offset_z_in_angstroms`:
+            Out-of-plane translation in the z direction. The translation is measured
+            relative to the configured defocus.
+        - `wxyz`:
+            The quaternion, represented as a vector $\\mathbf{q} = (q_w, q_x, q_y, q_z)$.
+        """
+        self.offset_x_in_angstroms = jnp.asarray(offset_x_in_angstroms)
+        self.offset_y_in_angstroms = jnp.asarray(offset_y_in_angstroms)
+        self.offset_z_in_angstroms = jnp.asarray(offset_z_in_angstroms)
+        self.wxyz = jnp.asarray(wxyz)
 
     @cached_property
     @override
@@ -202,17 +241,6 @@ class QuaternionPose(AbstractPose, strict=True):
         return cls(wxyz=rotation.wxyz)
 
 
-QuaternionPose.__init__.__doc__ = r"""**Arguments:**
-
-- `offset_x_in_angstroms` : In-plane translation in x direction.
-- `offset_y_in_angstroms` : In-plane translation in y direction.
-- `offset_z_in_angstroms` : Out-of-plane translation in the z
-                            direction. The translation is measured
-                            relative to the configured defocus.
-- `wxyz`: The quaternion, represented as a vector $\mathbf{q} = (q_w, q_x, q_y, q_z)$.
-"""
-
-
 class AxisAnglePose(AbstractPose, strict=True):
     """An `AbstractPose` parameterized in the axis-angle representation.
 
@@ -224,13 +252,36 @@ class AxisAnglePose(AbstractPose, strict=True):
     the matrix exponential.
     """
 
-    offset_x_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    offset_y_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    offset_z_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    offset_x_in_angstroms: Float[Array, ""]
+    offset_y_in_angstroms: Float[Array, ""]
+    offset_z_in_angstroms: Float[Array, ""]
 
-    euler_vector: Float[Array, "3"] = field(
-        default=(0.0, 0.0, 0.0), converter=jnp.asarray
-    )
+    euler_vector: Float[Array, "3"]
+
+    def __init__(
+        self,
+        offset_x_in_angstroms: float | Float[Array, ""] = 0.0,
+        offset_y_in_angstroms: float | Float[Array, ""] = 0.0,
+        offset_z_in_angstroms: float | Float[Array, ""] = 0.0,
+        euler_vector: (
+            tuple[float, float, float] | Float[np.ndarray, "3"] | Float[Array, "3"]
+        ) = (0.0, 0.0, 0.0),
+    ):
+        """**Arguments:**
+
+        - `offset_x_in_angstroms`: In-plane translation in x direction.
+        - `offset_y_in_angstroms`: In-plane translation in y direction.
+        - `offset_z_in_angstroms`:
+            Out-of-plane translation in the z direction. The translation is measured
+            relative to the configured defocus.
+        - `euler_vector`:
+            The axis-angle parameterization, represented as a
+            vector $\\boldsymbol{\\omega} = (\\omega_x, \\omega_y, \\omega_z)$.
+        """
+        self.offset_x_in_angstroms = jnp.asarray(offset_x_in_angstroms)
+        self.offset_y_in_angstroms = jnp.asarray(offset_y_in_angstroms)
+        self.offset_z_in_angstroms = jnp.asarray(offset_z_in_angstroms)
+        self.euler_vector = jnp.asarray(euler_vector)
 
     @cached_property
     @override
@@ -249,15 +300,3 @@ class AxisAnglePose(AbstractPose, strict=True):
         # Compute the euler vector from the logarithmic map
         euler_vector = jnp.rad2deg(rotation.log())
         return cls(euler_vector=euler_vector)
-
-
-AxisAnglePose.__init__.__doc__ = r"""**Arguments:**
-
-- `offset_x_in_angstroms` : In-plane translation in x direction.
-- `offset_y_in_angstroms` : In-plane translation in y direction.
-- `offset_z_in_angstroms` : Out-of-plane translation in the z
-                            direction. The translation is measured
-                            relative to the configured defocus.
-- `euler_vector`: The axis-angle parameterization, represented as a
-                  vector $\boldsymbol{\omega} = (\omega_x, \omega_y, \omega_z)$.
-"""
