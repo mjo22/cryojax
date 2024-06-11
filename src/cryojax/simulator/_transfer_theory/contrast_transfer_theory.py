@@ -36,22 +36,45 @@ class ContrastTransferFunction(AbstractContrastTransferFunction, strict=True):
     spherical aberration correction and amplitude contrast ratio.
     """
 
-    defocus_in_angstroms: Float[Array, ""] = field(
-        default=10000.0, converter=error_if_not_positive
-    )
-    astigmatism_in_angstroms: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    astigmatism_angle: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
-    voltage_in_kilovolts: Float[Array, ""] | float = field(
-        default=300.0, static=True
-    )  # Mark `static=True` so that the voltage is not part of the model pytree
-    # It is treated as part of the pytree upstream, in the Instrument!
-    spherical_aberration_in_mm: Float[Array, ""] = field(
-        default=2.7, converter=error_if_negative
-    )
-    amplitude_contrast_ratio: Float[Array, ""] = field(
-        default=0.1, converter=error_if_not_fractional
-    )
-    phase_shift: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    defocus_in_angstroms: Float[Array, ""]
+    astigmatism_in_angstroms: Float[Array, ""]
+    astigmatism_angle: Float[Array, ""]
+    voltage_in_kilovolts: Float[Array, ""] | float = field(static=True)
+    spherical_aberration_in_mm: Float[Array, ""]
+    amplitude_contrast_ratio: Float[Array, ""]
+    phase_shift: Float[Array, ""]
+
+    def __init__(
+        self,
+        defocus_in_angstroms: float | Float[Array, ""] = 10000.0,
+        astigmatism_in_angstroms: float | Float[Array, ""] = 0.0,
+        astigmatism_angle: float | Float[Array, ""] = 0.0,
+        voltage_in_kilovolts: float | Float[Array, ""] = 300.0,
+        spherical_aberration_in_mm: float | Float[Array, ""] = 2.7,
+        amplitude_contrast_ratio: float | Float[Array, ""] = 0.1,
+        phase_shift: float | Float[Array, ""] = 0.0,
+    ):
+        """**Arguments:**
+
+        - `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
+        - `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
+        - `astigmatism_angle`: The defocus angle.
+        - `voltage_in_kilovolts`:
+            The accelerating voltage in kV. This field is treated as *static*, i.e.
+            as part of the pytree. This is because the accelerating voltage is treated
+            as a traced value in the `InstrumentConfig`, since many modeling components
+            are interested in the accelerating voltage.
+        - `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
+        - `amplitude_contrast_ratio`: The amplitude contrast ratio.
+        - `phase_shift`: The additional phase shift.
+        """
+        self.defocus_in_angstroms = error_if_not_positive(defocus_in_angstroms)
+        self.astigmatism_in_angstroms = jnp.asarray(astigmatism_in_angstroms)
+        self.astigmatism_angle = jnp.asarray(astigmatism_angle)
+        self.voltage_in_kilovolts = voltage_in_kilovolts
+        self.spherical_aberration_in_mm = error_if_negative(spherical_aberration_in_mm)
+        self.amplitude_contrast_ratio = error_if_not_fractional(amplitude_contrast_ratio)
+        self.phase_shift = jnp.asarray(phase_shift)
 
     def __call__(
         self,
@@ -96,18 +119,6 @@ class ContrastTransferFunction(AbstractContrastTransferFunction, strict=True):
         return jnp.sin(phase_shifts).at[0, 0].set(0.0)
 
 
-ContrastTransferFunction.__init__.__doc__ = """**Arguments:**
-
-- `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
-- `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
-- `astigmatism_angle`: The defocus angle.
-- `voltage_in_kilovolts`: The accelerating voltage in kV.
-- `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
-- `amplitude_contrast_ratio`: The amplitude contrast ratio.
-- `phase_shift`: The additional phase shift.
-"""
-
-
 class IdealContrastTransferFunction(AbstractContrastTransferFunction, strict=True):
     """Compute a perfect CTF, where frequency content is delivered equally
     over all frequencies.
@@ -136,8 +147,14 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         ctf: AbstractContrastTransferFunction,
         envelope: Optional[FourierOperatorLike] = None,
     ):
+        """**Arguments:**
+
+        - `ctf`: The contrast transfer function model.
+        - `envelope`: The envelope function of the optics model.
+        """
+
         self.ctf = ctf
-        self.envelope = envelope or Constant(1.0)
+        self.envelope = envelope or Constant(jnp.asarray(1.0))
 
     @override
     def __call__(
@@ -164,10 +181,3 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         fourier_contrast_at_detector_plane = ctf_array * fourier_phase_at_exit_plane
 
         return fourier_contrast_at_detector_plane
-
-
-ContrastTransferTheory.__init__.__doc__ = """**Arguments:**
-
-- `ctf`: The contrast transfer function model.
-- `envelope`: The envelope function of the optics model.
-"""
