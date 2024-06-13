@@ -26,6 +26,16 @@
 
 ---
 
+::: cryojax.simulator.EwaldSphereExtraction
+        options:
+            members:
+                - __init__
+                - compute_fourier_integrated_potential
+                - extract_voxels_from_spline_coefficients
+                - extract_voxels_from_grid_points
+
+---
+
 ::: cryojax.simulator.NufftProjection
         options:
             members:
