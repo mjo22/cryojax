@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from typing import Optional
 from typing_extensions import override
 
@@ -17,21 +16,7 @@ from .base_transfer_theory import AbstractTransferFunction, AbstractTransferTheo
 from .common_functions import compute_phase_shifts_with_amplitude_contrast_ratio
 
 
-class AbstractContrastTransferFunction(AbstractTransferFunction, strict=True):
-    """An abstract base class for a transfer function."""
-
-    @abstractmethod
-    def __call__(
-        self,
-        frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-        *,
-        wavelength_in_angstroms: Optional[Float[Array, ""] | float] = None,
-        defocus_offset: Float[Array, ""] | float = 0.0,
-    ) -> Float[Array, "y_dim x_dim"]:
-        raise NotImplementedError
-
-
-class ContrastTransferFunction(AbstractContrastTransferFunction, strict=True):
+class ContrastTransferFunction(AbstractTransferFunction, strict=True):
     """Compute an astigmatic Contrast Transfer Function (CTF) with a
     spherical aberration correction and amplitude contrast ratio.
     """
@@ -119,32 +104,17 @@ class ContrastTransferFunction(AbstractContrastTransferFunction, strict=True):
         return jnp.sin(phase_shifts).at[0, 0].set(0.0)
 
 
-class IdealContrastTransferFunction(AbstractContrastTransferFunction, strict=True):
-    """Compute a perfect CTF, where frequency content is delivered equally
-    over all frequencies.
-    """
-
-    def __call__(
-        self,
-        frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-        *,
-        wavelength_in_angstroms: Optional[Float[Array, ""] | float] = None,
-        defocus_offset: Float[Array, ""] | float = 0.0,
-    ) -> Float[Array, "y_dim x_dim"]:
-        return jnp.ones(frequency_grid_in_angstroms.shape[0:2])
-
-
 class ContrastTransferTheory(AbstractTransferTheory, strict=True):
     """An optics model in the weak-phase approximation. Here, compute the image
     contrast by applying the CTF directly to the exit plane phase shifts.
     """
 
-    ctf: AbstractContrastTransferFunction
+    ctf: ContrastTransferFunction
     envelope: FourierOperatorLike
 
     def __init__(
         self,
-        ctf: AbstractContrastTransferFunction,
+        ctf: ContrastTransferFunction,
         envelope: Optional[FourierOperatorLike] = None,
     ):
         """**Arguments:**

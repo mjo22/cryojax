@@ -391,7 +391,7 @@ class HelicalRelionDataset(AbstractDataset):
 
     @final
     def __len__(self) -> int:
-        return len(self.dataset)
+        return self.dataset.data_blocks["particles"]["rlnHelicalTubeID"].max()
 
 
 def _validate_relion_data_blocks(data_blocks: dict[str, pd.DataFrame]):

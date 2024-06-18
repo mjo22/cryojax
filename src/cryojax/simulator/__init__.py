@@ -65,10 +65,8 @@ from ._structural_ensemble import (
     SingleStructureEnsemble as SingleStructureEnsemble,
 )
 from ._transfer_theory import (
-    AbstractContrastTransferFunction as AbstractContrastTransferFunction,
     AbstractTransferFunction as AbstractTransferFunction,
     AbstractTransferTheory as AbstractTransferTheory,
     ContrastTransferFunction as ContrastTransferFunction,
     ContrastTransferTheory as ContrastTransferTheory,
-    IdealContrastTransferFunction as IdealContrastTransferFunction,
 )
