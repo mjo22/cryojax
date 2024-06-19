@@ -23,19 +23,22 @@ def convert_quaternion_to_euler_angles(
     xyz_axis_to_array_axis = {"x": 0, "y": 1, "z": 2}
     axes = [xyz_axis_to_array_axis[axis] for axis in convention]
     xyzw = jnp.roll(wxyz, shift=-1)
-    angle_first = 0
-    angle_third = 2
-    i = axes[0]
-    j = axes[1]
-    k = axes[2]
-    symmetric = i == k
-    k = jnp.where(symmetric, 3 - i - j, k)
-    sign = jnp.array((i - j) * (j - k) * (k - i) // 2, dtype=xyzw.dtype)
+    angle_first, angle_third = (0, 2)
+    i, j, k = axes
     eps = 1e-7
-    a = jnp.where(symmetric, xyzw[3], xyzw[3] - xyzw[j])
-    b = jnp.where(symmetric, xyzw[i], xyzw[i] + xyzw[k] * sign)
-    c = jnp.where(symmetric, xyzw[j], xyzw[j] + xyzw[3])
-    d = jnp.where(symmetric, xyzw[k] * sign, xyzw[k] * sign - xyzw[i])
+    symmetric = i == k
+    if symmetric:
+        k = 3 - i - j
+        sign = -jnp.array((i - j) * (j - k) * (k - i) // 2, dtype=xyzw.dtype)
+        a, b, c, d = (xyzw[3], -xyzw[i], -xyzw[j], -xyzw[k] * sign)
+    else:
+        sign = -jnp.array((i - j) * (j - k) * (k - i) // 2, dtype=xyzw.dtype)
+        a, b, c, d = (
+            xyzw[3] + xyzw[j],
+            -xyzw[i] - xyzw[k] * sign,
+            -xyzw[j] + xyzw[3],
+            -xyzw[k] * sign + xyzw[i],
+        )
     angles = jnp.empty(3, dtype=xyzw.dtype)
     angles = angles.at[1].set(2 * jnp.arctan2(jnp.hypot(c, d), jnp.hypot(a, b)))
     case = jnp.where(jnp.abs(angles[1] - jnp.pi) <= eps, 2, 0)
@@ -51,9 +54,8 @@ def convert_quaternion_to_euler_angles(
     angles = angles.at[angle_third].set(
         jnp.where(case == 0, half_sum + half_diff, angles[angle_third])
     )
-    angles = angles.at[angle_third].set(
-        jnp.where(symmetric, angles[angle_third], angles[angle_third] * sign)
-    )
+    if not symmetric:
+        angles = angles.at[angle_third].set(angles[angle_third] * sign)
     angles = angles.at[1].set(jnp.where(symmetric, angles[1], angles[1] - jnp.pi / 2))
     angles = (angles + jnp.pi) % (2 * jnp.pi) - jnp.pi
-    return -jnp.rad2deg(angles)
+    return jnp.rad2deg(angles)

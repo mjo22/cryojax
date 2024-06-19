@@ -189,7 +189,7 @@ class EulerAnglePose(AbstractPose, strict=True):
     def from_rotation(cls, rotation: SO3):
         view_phi, view_theta, view_psi = convert_quaternion_to_euler_angles(
             rotation.wxyz,
-            "zyz",
+            convention="zyz",
         )
         return cls(view_phi=view_phi, view_theta=view_theta, view_psi=view_psi)
 

@@ -75,8 +75,7 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
 
 @pytest.mark.parametrize(
     "phi, theta, psi",
-    [(10.0, 90.0, 170.0)],
-    # [(10, 80, -20), (1.2, -90.5, 67), (-50, 62, -21)],
+    [(10.0, 90.0, 170.0), (10.0, 80.0, -20.0), (-1.2, 90.5, 67.0), (-50.0, 62.0, -21.0)],
 )
 def test_euler_matrix_with_cistem(phi, theta, psi):
     """Test zyz rotation matrix"""

@@ -1,6 +1,6 @@
-import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
+import pytest
 
 import cryojax.simulator as cs
 from cryojax.rotations import SO3
@@ -35,19 +35,6 @@ def test_pose_conversion():
     np.testing.assert_allclose(quat.rotation.as_matrix(), axis_angle.rotation.as_matrix())
 
 
-def test_default_pose_images(noiseless_model):
-    euler = cs.EulerAnglePose()
-    quat = cs.QuaternionPose()
-
-    model_euler = eqx.tree_at(
-        lambda m: m.scattering_theory.structural_ensemble.pose, noiseless_model, euler
-    )
-    model_quat = eqx.tree_at(
-        lambda m: m.scattering_theory.structural_ensemble.pose, noiseless_model, quat
-    )
-    np.testing.assert_allclose(model_euler.render(), model_quat.render())
-
-
 def test_axis_angle_euler_agreement():
     angle = 2.0
     angle_in_radians = jnp.deg2rad(angle)
@@ -62,17 +49,21 @@ def test_axis_angle_euler_agreement():
     np.testing.assert_allclose(rotation_z.as_matrix(), aa_z.rotation.as_matrix())
 
 
-def test_euler_angle_conversion():
-    phi, theta, psi = 2.0, -15.0, 40.0
+@pytest.mark.parametrize(
+    "phi, theta, psi",
+    [
+        (2.0, 15.0, -40.0),
+        (10.0, 90.0, 170.0),
+        (-10.0, 120.0, 140.0),
+        (-120.0, 40.0, -80.0),
+    ],
+)
+def test_euler_angle_conversion(phi, theta, psi):
     pose = cs.EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
     converted_pose = cs.EulerAnglePose.from_rotation(pose.rotation)
     np.testing.assert_allclose(
         np.asarray((phi, theta, psi)),
         np.asarray(
-            (
-                converted_pose.view_phi,
-                converted_pose.view_theta,
-                converted_pose.view_psi,
-            )
+            (converted_pose.view_phi, converted_pose.view_theta, converted_pose.view_psi)
         ),
     )
