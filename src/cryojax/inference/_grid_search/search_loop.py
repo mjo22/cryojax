@@ -30,7 +30,7 @@ def run_grid_search(
     *,
     is_leaf: Optional[Callable[[Any], bool]] = None,
     progress_bar: bool = False,
-    print_every: Optional[int] = None,
+    total_progress_bar_updates: int = 20,
 ) -> PyTree[Any]:
     """Run a grid search to minimize the function `fn`.
 
@@ -67,9 +67,9 @@ def run_grid_search(
                  This specifies what is to be treated as a leaf in `tree_grid`.
     - `progress_bar`: Add a [`tqdm`](https://github.com/tqdm/tqdm) progress bar to the
                       search loop.
-    - `print_every`: An interval for the number of iterations at which to update the
-                     tqdm progress bar. By default, this is 1/20 of the total number
-                     of iterations. Ignored if `progress_bar = False`.
+    - `total_progress_bar_updates`:
+        An interval for the number of iterations at which toupdate the
+        tqdm progress bar. By default, this is `20`. Ignored if `progress_bar = False`.
 
     **Returns:**
 
@@ -112,7 +112,7 @@ def run_grid_search(
             iteration_index * method.batch_size,
             (iteration_index + 1) * method.batch_size - 1,
             method.batch_size,  # type: ignore
-            dtype=int,
+            dtype=jnp.int32,
         )
         tree_grid_points = tree_grid_take(
             tree_grid,
@@ -131,19 +131,20 @@ def run_grid_search(
         n_iterations = grid_size
         body_fun = brute_force_body_fun
     else:
-        if grid_size % method.batch_size != 0:
-            raise ValueError(
-                "The size of the grid must be an integer multiple "
-                "of the `method.batch_size`. Found that the grid size "
-                f"is equal to {grid_size}, and the batch size is equal "
-                f"to {method.batch_size}."
-            )
         n_iterations = grid_size // method.batch_size
         body_fun = batched_body_fun
     # Run and unpack results
     if progress_bar:
+        print_every = n_iterations // total_progress_bar_updates
         body_fun = fori_loop_tqdm_decorator(n_iterations, print_every)(body_fun)
     final_carry = jax.lax.fori_loop(0, n_iterations, body_fun, init_carry)
+    if method.batch_size is not None and grid_size % method.batch_size != 0:
+        final_carry = jax.lax.fori_loop(
+            n_iterations,
+            n_iterations + (grid_size % method.batch_size),
+            batched_body_fun,
+            final_carry,
+        )
     dynamic_final_state, _ = final_carry
     final_state = eqx.combine(static_state, dynamic_final_state)
     # Return the solution

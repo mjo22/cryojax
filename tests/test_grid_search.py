@@ -70,12 +70,19 @@ def cost_fn(grid_point, variance_plus_offset):
     )
 
 
-@pytest.mark.parametrize("batch_size", [None, 1, 10])
-def test_run_grid_search(batch_size):
+@pytest.mark.parametrize(
+    "batch_size,dim,offset,variance",
+    [
+        (None, 200, (-1.0, 2.0), 10.0),
+        (1, 200, (-1.0, 2.0), 10.0),
+        (10, 200, (-1.0, 2.0), 10.0),
+        (33, 200, (99.0, 99.0), 10.0),
+    ],
+)
+def test_run_grid_search(batch_size, dim, offset, variance):
     # Compute full landscape of simple analytic "cost function"
-    dim = 200
     coords = make_coordinate_grid((dim, dim))
-    variance, offset = jnp.asarray(10.0), jnp.asarray((2.0, -1.0))
+    variance, offset = jnp.asarray(variance), jnp.asarray(offset)
     landscape = jax.vmap(jax.vmap(cost_fn, in_axes=[0, None]), in_axes=[0, None])(
         coords, (variance, offset)
     )

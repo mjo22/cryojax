@@ -183,7 +183,7 @@ class MinimumSearchMethod(
         # Initialize the state, just keeping track of the best function values
         # and their respective grid index
         state = MinimumState(
-            current_minimum_eval=jnp.full(f_struct.shape, jnp.inf),
+            current_minimum_eval=jnp.full(f_struct.shape, jnp.inf, dtype=float),
             current_best_raveled_index=jnp.full(f_struct.shape, 0, dtype=int),
         )
         return state
