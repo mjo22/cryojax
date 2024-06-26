@@ -17,7 +17,9 @@ from ._masks import (
     AbstractMask as AbstractMask,
     CircularCosineMask as CircularCosineMask,
     CustomMask as CustomMask,
+    Cylindrical2DCosineMask as Cylindrical2DCosineMask,
     SphericalCosineMask as SphericalCosineMask,
+    SquareCosineMask as SquareCosineMask,
 )
 from ._operator import (
     AbstractImageMultiplier as AbstractImageMultiplier,

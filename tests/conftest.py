@@ -104,6 +104,7 @@ def masks(config):
     return op.CircularCosineMask(
         config.padded_coordinate_grid_in_angstroms,
         radius_in_angstroms_or_pixels=20 * float(config.pixel_size),
+        rolloff_width_in_angstroms_or_pixels=3 * float(config.pixel_size),
     )
 
 
