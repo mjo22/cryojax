@@ -19,9 +19,7 @@ from ._operator import AbstractImageMultiplier
 
 
 class AbstractFilter(AbstractImageMultiplier, strict=True):
-    """
-    Base class for computing and applying an image filter.
-    """
+    """Base class for computing and applying an image filter."""
 
     @overload
     def __call__(
@@ -40,9 +38,7 @@ class AbstractFilter(AbstractImageMultiplier, strict=True):
 
 
 class CustomFilter(AbstractFilter, strict=True):
-    """
-    Pass a custom filter as an array.
-    """
+    """Pass a custom filter as an array."""
 
     buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
@@ -60,70 +56,104 @@ class InverseSincFilter(AbstractFilter, strict=True):
 
     def __init__(
         self,
-        frequency_grid: (
+        frequency_grid_in_angstroms_or_pixels: (
             Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
         ),
         grid_spacing: float = 1.0,
     ):
-        ndim = frequency_grid.ndim - 1
+        ndim = frequency_grid_in_angstroms_or_pixels.ndim - 1
         self.buffer = jax.lax.reciprocal(
             functools.reduce(
                 operator.mul,
-                [jnp.sinc(frequency_grid[..., i] * grid_spacing) for i in range(ndim)],
+                [
+                    jnp.sinc(frequency_grid_in_angstroms_or_pixels[..., i] * grid_spacing)
+                    for i in range(ndim)
+                ],
             )
         )
 
 
 class LowpassFilter(AbstractFilter, strict=True):
-    """
-    Apply a low-pass filter to an image.
-
-    Attributes
-    ----------
-    cutoff :
-        By default, ``0.95``. This cuts off modes as
-        a fraction of the Nyquist frequency. To keep
-        modes up to Nyquist, ``cutoff = 1.0``
-    rolloff :
-        By default, ``0.05``.
+    """Apply a low-pass filter to an image or volume, with
+    a cosine soft-edge.
     """
 
     buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
-    cutoff: float = field(static=True)
-    rolloff: float = field(static=True)
+    frequency_cutoff_fraction: float = field(static=True)
+    rolloff_fraction: float = field(static=True)
 
     def __init__(
         self,
-        frequency_grid: (
+        frequency_grid_in_angstroms_or_pixels: (
             Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
         ),
         grid_spacing: float = 1.0,
-        cutoff: float = 0.95,
-        rolloff: float = 0.05,
+        frequency_cutoff_fraction: float = 0.95,
+        rolloff_fraction: float = 0.05,
     ):
-        self.cutoff = cutoff
-        self.rolloff = rolloff
+        """**Arguments:**
+
+        - `frequency_grid_in_angstroms_or_pixels`:
+            The frequency grid of the image or volume.
+        - `grid_spacing`:
+            The pixel or voxel size of `frequency_grid_in_angstroms_or_pixels`.
+        - `frequency_cutoff_fraction`:
+            The cutoff frequency as a fraction of the Nyquist frequency.
+            By default, `0.95`.
+        - `rolloff_fraction`:
+            The rolloff width as a fraction of the Nyquist frequency.
+            By default, ``0.05``.
+        """
+        self.frequency_cutoff_fraction = frequency_cutoff_fraction
+        self.rolloff_fraction = rolloff_fraction
         self.buffer = _compute_lowpass_filter(
-            frequency_grid, grid_spacing, self.cutoff, self.rolloff
+            frequency_grid_in_angstroms_or_pixels,
+            grid_spacing,
+            self.frequency_cutoff_fraction,
+            self.rolloff_fraction,
         )
 
 
 class WhiteningFilter(AbstractFilter, strict=True):
-    """
-    Apply a whitening filter to an image.
+    """Compute a whitening filter from an image. This is taken
+    to be the inverse square root of the 2D radially averaged
+    power spectrum.
+
+    This implementation follows the cisTEM whitening filter
+    algorithm.
     """
 
-    buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+    buffer: Inexact[Array, "y_dim x_dim"]
 
     def __init__(
         self,
-        micrograph: Float[Array, "y_dim x_dim"],
+        image: Float[Array, "image_y_dim image_x_dim"],
         shape: Optional[tuple[int, int]] = None,
         interpolation_mode: str = "nearest",
     ):
+        """**Arguments:**
+
+        - `image`:
+            The image from which to compute the power spectrum.
+        - `shape`:
+            The shape of the resulting filter. This downsamples or
+            upsamples the filter by cropping or padding in real space.
+        - `interpolation_mode`:
+            The method of interpolating the binned, radially averaged
+            power spectrum onto a 2D grid. Either `nearest` or `linear`.
+        """
+        if shape is not None:
+            if shape[0] > image.shape[0] or shape[1] > image.shape[1]:
+                raise ValueError(
+                    "The requested shape at which to compute the "
+                    "whitening filter is larger than the shape of "
+                    "the image from which to compute the filter. "
+                    f"The requested shape was {shape} and the image "
+                    f"shape was {image.shape}."
+                )
         self.buffer = _compute_whitening_filter(
-            micrograph, shape, interpolation_mode=interpolation_mode
+            image, shape, interpolation_mode=interpolation_mode
         )
 
 
@@ -151,29 +181,6 @@ def _compute_lowpass_filter(
     cutoff: float = 0.667,
     rolloff: float = 0.05,
 ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
-    """
-    Create a low-pass filter.
-
-    Parameters
-    ----------
-    frequency_grid :
-        The frequency coordinate system at which to evaulate
-        the filter.
-    grid_spacing :
-        The grid spacing of ``frequency_grid``.
-    cutoff :
-        The cutoff frequency as a fraction of the Nyquist frequency,
-        By default, ``0.667``.
-    rolloff :
-        The rolloff width as a fraction of the Nyquist frequency.
-        By default, ``0.05``.
-
-    Returns
-    -------
-    mask : `Array`, shape `shape`
-        An array representing the low pass filter.
-    """
-
     k_max = 1.0 / (2.0 * grid_spacing)
     k_cut = cutoff * k_max
 
@@ -195,29 +202,8 @@ def _compute_lowpass_filter(
 def _compute_whitening_filter(
     micrograph: Float[Array, "y_dim x_dim"],
     shape: Optional[tuple[int, int]] = None,
-    interpolation_mode="nearest",
-) -> Float[Array, "y_dim x_dim"]:
-    """
-    Compute a whitening filter from a micrograph. This is taken
-    to be the inverse square root of the 2D radially averaged
-    power spectrum.
-
-    This implementation follows the cisTEM whitening filter
-    algorithm.
-
-    Parameters
-    ----------
-    micrograph :
-        The micrograph in real space.
-    shape :
-        The shape at which to compute the filter. This downsamples or
-        upsamples the filter by cropping or padding in real space.
-
-    Returns
-    -------
-    filter :
-        The whitening filter.
-    """
+    interpolation_mode: str = "nearest",
+) -> Float[Array, "{shape[0]} {shape[1]}"]:
     # Make coordinates
     micrograph_frequency_grid_in_angstroms = make_frequency_grid(micrograph.shape)
     # Transform to fourier space

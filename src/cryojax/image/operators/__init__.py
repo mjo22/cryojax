@@ -15,8 +15,9 @@ from ._fourier_operator import (
 )
 from ._masks import (
     AbstractMask as AbstractMask,
-    CircularMask as CircularMask,
+    CircularCosineMask as CircularCosineMask,
     CustomMask as CustomMask,
+    SphericalCosineMask as SphericalCosineMask,
 )
 from ._operator import (
     AbstractImageMultiplier as AbstractImageMultiplier,

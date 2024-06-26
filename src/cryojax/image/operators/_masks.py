@@ -13,9 +13,7 @@ from ._operator import AbstractImageMultiplier
 
 
 class AbstractMask(AbstractImageMultiplier, strict=True):
-    """
-    Base class for computing and applying an image mask.
-    """
+    """Base class for computing and applying an image mask."""
 
     @overload
     def __call__(
@@ -33,10 +31,8 @@ class AbstractMask(AbstractImageMultiplier, strict=True):
         return image * jax.lax.stop_gradient(self.buffer)
 
 
-class CustomMask(AbstractImageMultiplier, strict=True):
-    """
-    Pass a custom mask as an array.
-    """
+class CustomMask(AbstractMask, strict=True):
+    """Pass a custom mask as an array."""
 
     buffer: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
 
@@ -46,88 +42,102 @@ class CustomMask(AbstractImageMultiplier, strict=True):
         self.buffer = mask
 
 
-class CircularMask(AbstractMask, strict=True):
-    """
-    Apply a circular mask to an image.
-
-    See documentation for
-    ``cryojax.simulator.compute_circular_mask``
-    for more information.
-
-    Attributes
-    ----------
-    radius :
-        The radius of the mask in Angstroms.
-    rolloff :
-        By default, ``0.05``.
+class CircularCosineMask(AbstractMask, strict=True):
+    """Apply a circular mask to an image with a cosine
+    soft-edge.
     """
 
-    buffer: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
+    buffer: Float[Array, "y_dim x_dim"]
 
-    radius: float = field(static=True)
-    rolloff: float = field(static=True)
+    radius_in_angstroms_or_pixels: float = field(static=True)
+    rolloff_width_fraction: float = field(static=True)
 
     def __init__(
         self,
-        coordinate_grid_in_angstroms: (
-            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
-        ),
-        radius: float,
-        rolloff: float = 0.05,
-    ) -> None:
-        self.radius = radius
-        self.rolloff = rolloff
-        self.buffer = _compute_circular_mask(
-            coordinate_grid_in_angstroms, self.radius, self.rolloff
+        coordinate_grid_in_angstroms_or_pixels: Float[Array, "y_dim x_dim 2"],
+        radius_in_angstroms_or_pixels: float,
+        rolloff_width_fraction: float = 0.05,
+    ):
+        """**Arguments:**
+
+        - `coordinate_grid_in_angstroms_or_pixels`:
+            The image coordinates.
+        - `grid_spacing`:
+            The pixel or voxel size of `coordinate_grid_in_angstroms_or_pixels`.
+        - `radius_in_angstroms_or_pixels`:
+            The radius of the circular mask.
+        - `rolloff_width_fraction`:
+            The rolloff width as a fraction of the smallest box dimension.
+            By default, ``0.05``.
+        """
+        self.radius_in_angstroms_or_pixels = radius_in_angstroms_or_pixels
+        self.rolloff_width_fraction = rolloff_width_fraction
+        self.buffer = _compute_circular_or_spherical_mask(
+            coordinate_grid_in_angstroms_or_pixels,
+            self.radius_in_angstroms_or_pixels,
+            self.rolloff_width_fraction,
+        )
+
+
+class SphericalCosineMask(AbstractMask, strict=True):
+    """Apply a spherical mask to a volume with a cosine
+    soft-edge.
+    """
+
+    buffer: Float[Array, "z_dim y_dim x_dim"]
+
+    radius_in_angstroms_or_voxels: float = field(static=True)
+    rolloff_width_fraction: float = field(static=True)
+
+    def __init__(
+        self,
+        coordinate_grid_in_angstroms_or_voxels: Float[Array, "z_dim y_dim x_dim 3"],
+        radius_in_angstroms_or_voxels: float,
+        rolloff_width_fraction: float = 0.05,
+    ):
+        """**Arguments:**
+
+        - `coordinate_grid_in_angstroms_or_voxels`:
+            The volume coordinates.
+        - `grid_spacing`:
+            The pixel or voxel size of `coordinate_grid_in_angstroms_or_voxels`.
+        - `radius_in_angstroms_or_voxels`:
+            The radius of the spherical mask.
+        - `rolloff_width_fraction`:
+            The rolloff width as a fraction of the smallest box dimension.
+            By default, ``0.05``.
+        """
+        self.radius_in_angstroms_or_voxels = radius_in_angstroms_or_voxels
+        self.rolloff_width_fraction = rolloff_width_fraction
+        self.buffer = _compute_circular_or_spherical_mask(
+            coordinate_grid_in_angstroms_or_voxels,
+            self.radius_in_angstroms_or_voxels,
+            self.rolloff_width_fraction,
         )
 
 
 @overload
-def _compute_circular_mask(
-    coordinate_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
+def _compute_circular_or_spherical_mask(
+    coordinate_grid: Float[Array, "y_dim x_dim 2"],
     radius: float,
     rolloff: float,
 ) -> Float[Array, "y_dim x_dim"]: ...
 
 
 @overload
-def _compute_circular_mask(
-    coordinate_grid_in_angstroms: Float[Array, "z_dim y_dim x_dim 3"],
+def _compute_circular_or_spherical_mask(
+    coordinate_grid: Float[Array, "z_dim y_dim x_dim 3"],
     radius: float,
     rolloff: float,
 ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
 
-def _compute_circular_mask(
-    coordinate_grid_in_angstroms: (
-        Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
-    ),
+def _compute_circular_or_spherical_mask(
+    coordinate_grid: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"],
     radius: float,
     rolloff: float = 0.05,
 ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
-    """
-    Create a circular mask.
-
-    Parameters
-    ----------
-    coordinate_grid :
-        The image coordinates.
-    grid_spacing :
-        The grid spacing of ``coordinate_grid``.
-    cutoff :
-        The cutoff radius as a fraction of half
-        the smallest box dimension. By default, ``0.95``.
-    rolloff :
-        The rolloff width as a fraction of the smallest box dimension.
-        By default, ``0.05``.
-
-    Returns
-    -------
-    mask : `Array`, shape `shape`
-        An array representing the circular mask.
-    """
-
-    coords_norm = jnp.linalg.norm(coordinate_grid_in_angstroms, axis=-1)
+    coords_norm = jnp.linalg.norm(coordinate_grid, axis=-1)
     r_cut = radius
 
     coords_cut = coords_norm > r_cut
