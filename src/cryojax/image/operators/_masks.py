@@ -50,13 +50,13 @@ class CircularCosineMask(AbstractMask, strict=True):
     buffer: Float[Array, "y_dim x_dim"]
 
     radius_in_angstroms_or_pixels: float = field(static=True)
-    rolloff_width_fraction: float = field(static=True)
+    rolloff_width_in_angstroms_or_pixels: float = field(static=True)
 
     def __init__(
         self,
         coordinate_grid_in_angstroms_or_pixels: Float[Array, "y_dim x_dim 2"],
         radius_in_angstroms_or_pixels: float,
-        rolloff_width_fraction: float = 0.05,
+        rolloff_width_in_angstroms_or_pixels: float,
     ):
         """**Arguments:**
 
@@ -66,16 +66,15 @@ class CircularCosineMask(AbstractMask, strict=True):
             The pixel or voxel size of `coordinate_grid_in_angstroms_or_pixels`.
         - `radius_in_angstroms_or_pixels`:
             The radius of the circular mask.
-        - `rolloff_width_fraction`:
-            The rolloff width as a fraction of the smallest box dimension.
-            By default, ``0.05``.
+        - `rolloff_width_in_angstroms_or_pixels`:
+            The rolloff width of the soft edge.
         """
         self.radius_in_angstroms_or_pixels = radius_in_angstroms_or_pixels
-        self.rolloff_width_fraction = rolloff_width_fraction
+        self.rolloff_width_in_angstroms_or_pixels = rolloff_width_in_angstroms_or_pixels
         self.buffer = _compute_circular_or_spherical_mask(
             coordinate_grid_in_angstroms_or_pixels,
             self.radius_in_angstroms_or_pixels,
-            self.rolloff_width_fraction,
+            self.rolloff_width_in_angstroms_or_pixels,
         )
 
 
@@ -87,13 +86,13 @@ class SphericalCosineMask(AbstractMask, strict=True):
     buffer: Float[Array, "z_dim y_dim x_dim"]
 
     radius_in_angstroms_or_voxels: float = field(static=True)
-    rolloff_width_fraction: float = field(static=True)
+    rolloff_width_in_angstroms_or_pixels: float = field(static=True)
 
     def __init__(
         self,
         coordinate_grid_in_angstroms_or_voxels: Float[Array, "z_dim y_dim x_dim 3"],
         radius_in_angstroms_or_voxels: float,
-        rolloff_width_fraction: float = 0.05,
+        rolloff_width_in_angstroms_or_pixels: float,
     ):
         """**Arguments:**
 
@@ -103,16 +102,15 @@ class SphericalCosineMask(AbstractMask, strict=True):
             The pixel or voxel size of `coordinate_grid_in_angstroms_or_voxels`.
         - `radius_in_angstroms_or_voxels`:
             The radius of the spherical mask.
-        - `rolloff_width_fraction`:
-            The rolloff width as a fraction of the smallest box dimension.
-            By default, ``0.05``.
+        - `rolloff_width_in_angstroms_or_pixels`:
+            The rolloff width of the soft edge.
         """
         self.radius_in_angstroms_or_voxels = radius_in_angstroms_or_voxels
-        self.rolloff_width_fraction = rolloff_width_fraction
+        self.rolloff_width_in_angstroms_or_pixels = rolloff_width_in_angstroms_or_pixels
         self.buffer = _compute_circular_or_spherical_mask(
             coordinate_grid_in_angstroms_or_voxels,
             self.radius_in_angstroms_or_voxels,
-            self.rolloff_width_fraction,
+            self.rolloff_width_in_angstroms_or_pixels,
         )
 
 
@@ -120,7 +118,7 @@ class SphericalCosineMask(AbstractMask, strict=True):
 def _compute_circular_or_spherical_mask(
     coordinate_grid: Float[Array, "y_dim x_dim 2"],
     radius: float,
-    rolloff: float,
+    rolloff_width: float,
 ) -> Float[Array, "y_dim x_dim"]: ...
 
 
@@ -128,26 +126,36 @@ def _compute_circular_or_spherical_mask(
 def _compute_circular_or_spherical_mask(
     coordinate_grid: Float[Array, "z_dim y_dim x_dim 3"],
     radius: float,
-    rolloff: float,
+    rolloff_width: float,
 ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
 
 def _compute_circular_or_spherical_mask(
     coordinate_grid: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"],
     radius: float,
-    rolloff: float = 0.05,
+    rolloff_width: float,
 ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
-    coords_norm = jnp.linalg.norm(coordinate_grid, axis=-1)
-    r_cut = radius
+    radial_coordinate_grid = jnp.linalg.norm(coordinate_grid, axis=-1)
 
-    coords_cut = coords_norm > r_cut
+    def compute_mask_at_coordinate(radial_coordinate):
+        return jnp.where(
+            radial_coordinate <= radius,
+            1.0,
+            jnp.where(
+                radial_coordinate > radius + rolloff_width,
+                0.0,
+                0.5
+                * (
+                    1
+                    + jnp.cos(jnp.pi * (radial_coordinate_grid - radius) / rolloff_width)
+                ),
+            ),
+        )
 
-    rolloff_width = rolloff * coords_norm.max()
-    mask = 0.5 * (
-        1 + jnp.cos((coords_norm - r_cut - rolloff_width) / rolloff_width * jnp.pi)
+    compute_mask = (
+        jax.vmap(jax.vmap(compute_mask_at_coordinate))
+        if radial_coordinate_grid.ndim == 2
+        else jax.vmap(jax.vmap(jax.vmap(compute_mask_at_coordinate)))
     )
 
-    mask = jnp.where(coords_cut, 0.0, mask)
-    mask = jnp.where(coords_norm <= r_cut - rolloff_width, 1.0, mask)
-
-    return mask
+    return compute_mask(radial_coordinate_grid)

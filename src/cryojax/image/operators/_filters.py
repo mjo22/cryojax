@@ -161,8 +161,8 @@ class WhiteningFilter(AbstractFilter, strict=True):
 def _compute_lowpass_filter(
     frequency_grid: Float[Array, "y_dim x_dim 2"],
     grid_spacing: float,
-    cutoff: float,
-    rolloff: float,
+    cutoff_fraction: float,
+    rolloff_fraction: float,
 ) -> Float[Array, "y_dim x_dim"]: ...
 
 
@@ -170,69 +170,79 @@ def _compute_lowpass_filter(
 def _compute_lowpass_filter(
     frequency_grid: Float[Array, "z_dim y_dim x_dim 3"],
     grid_spacing: float,
-    cutoff: float,
-    rolloff: float,
+    cutoff_fraction: float,
+    rolloff_fraction: float,
 ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
 
 def _compute_lowpass_filter(
     frequency_grid: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"],
-    grid_spacing: float = 1.0,
-    cutoff: float = 0.667,
-    rolloff: float = 0.05,
+    grid_spacing: float,
+    cutoff_fraction: float,
+    rolloff_fraction: float,
 ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
     k_max = 1.0 / (2.0 * grid_spacing)
-    k_cut = cutoff * k_max
+    cutoff_radius = cutoff_fraction * k_max
+    rolloff_width = rolloff_fraction * k_max
 
-    freqs_norm = jnp.linalg.norm(frequency_grid, axis=-1)
+    radial_frequency_grid = jnp.linalg.norm(frequency_grid, axis=-1)
 
-    frequencies_cut = freqs_norm > k_cut
+    def compute_filter_at_frequency(radial_frequency):
+        return jnp.where(
+            radial_frequency <= cutoff_radius,
+            1.0,
+            jnp.where(
+                radial_frequency > cutoff_radius + rolloff_width,
+                0.0,
+                0.5
+                * (
+                    1
+                    + jnp.cos(jnp.pi * (radial_frequency - cutoff_radius) / rolloff_width)
+                ),
+            ),
+        )
 
-    rolloff_width = rolloff * k_max
-    mask = 0.5 * (
-        1 + jnp.cos((freqs_norm - k_cut - rolloff_width) / rolloff_width * jnp.pi)
+    compute_filter = (
+        jax.vmap(jax.vmap(compute_filter_at_frequency))
+        if radial_frequency_grid.ndim == 2
+        else jax.vmap(jax.vmap(jax.vmap(compute_filter_at_frequency)))
     )
 
-    mask = jnp.where(frequencies_cut, 0.0, mask)
-    mask = jnp.where(freqs_norm <= k_cut - rolloff_width, 1.0, mask)
-
-    return mask
+    return compute_filter(radial_frequency_grid)
 
 
 def _compute_whitening_filter(
-    micrograph: Float[Array, "y_dim x_dim"],
+    image: Float[Array, "y_dim x_dim"],
     shape: Optional[tuple[int, int]] = None,
     interpolation_mode: str = "nearest",
 ) -> Float[Array, "{shape[0]} {shape[1]}"]:
     # Make coordinates
-    micrograph_frequency_grid_in_angstroms = make_frequency_grid(micrograph.shape)
+    image_frequency_grid_in_angstroms = make_frequency_grid(image.shape)
     # Transform to fourier space
-    fourier_micrograph = rfftn(micrograph)
+    fourier_image = rfftn(image)
     # Compute norms
-    radial_frequency_grid = jnp.linalg.norm(
-        micrograph_frequency_grid_in_angstroms, axis=-1
-    )
+    radial_frequency_grid = jnp.linalg.norm(image_frequency_grid_in_angstroms, axis=-1)
     # Compute power spectrum
-    _, spectrum, _ = powerspectrum(
-        fourier_micrograph,
+    _, gridded_spectrum, _ = powerspectrum(
+        fourier_image,
         radial_frequency_grid,
         to_grid=True,
         interpolation_mode=interpolation_mode,
         k_max=jnp.sqrt(2) / 2.0,
     )  # type: ignore
     if shape is not None:
-        spectrum = rfftn(
+        gridded_spectrum = rfftn(
             resize_with_crop_or_pad(
-                irfftn(spectrum, s=micrograph.shape), shape, pad_mode="edge"
+                irfftn(gridded_spectrum, s=image.shape), shape, pad_mode="edge"
             )
         ).real
     # Compute inverse square root
-    filter = jax.lax.rsqrt(spectrum)
+    whitening_filter = jax.lax.rsqrt(gridded_spectrum)
     # Divide filter by maximum, excluding zero mode
-    maximum = jnp.max(jnp.delete(filter, jnp.asarray((0, 0), dtype=int)))
-    filter /= maximum
+    maximum = jnp.max(jnp.delete(whitening_filter, jnp.asarray((0, 0), dtype=int)))
+    whitening_filter /= maximum
     # Set zero mode manually to 1 (this diverges from the cisTEM
     # algorithm).
-    filter = filter.at[0, 0].set(1.0)
+    whitening_filter = whitening_filter.at[0, 0].set(1.0)
 
-    return filter
+    return whitening_filter
