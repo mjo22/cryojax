@@ -6,7 +6,7 @@ from pycistem.core import AnglesAndShifts, CTF as cisCTF, Image  # pyright: igno
 
 import cryojax.simulator as cs
 from cryojax.coordinates import cartesian_to_polar, make_frequency_grid
-from cryojax.image import irfftn, powerspectrum
+from cryojax.image import compute_radially_averaged_powerspectrum, irfftn
 from cryojax.io import read_array_with_spacing_from_mrc
 from cryojax.simulator import ContrastTransferFunction, EulerAnglePose
 
@@ -62,11 +62,11 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
 
     # Compute cryojax and cisTEM power spectrum
     radial_freqs = jnp.linalg.norm(freqs, axis=-1)
-    spectrum1D, _ = powerspectrum(
-        ctf, radial_freqs, pixel_size, k_max=1 / (2 * pixel_size)
+    spectrum1D, _ = compute_radially_averaged_powerspectrum(
+        ctf, radial_freqs, pixel_size, maximum_frequency=1 / (2 * pixel_size)
     )
-    cisTEM_spectrum1D, _ = powerspectrum(
-        cisTEM_ctf, radial_freqs, pixel_size, k_max=1 / (2 * pixel_size)
+    cisTEM_spectrum1D, _ = compute_radially_averaged_powerspectrum(
+        cisTEM_ctf, radial_freqs, pixel_size, maximum_frequency=1 / (2 * pixel_size)
     )
 
     np.testing.assert_allclose(ctf, cisTEM_ctf, atol=5e-2)

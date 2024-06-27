@@ -11,9 +11,10 @@ import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float, Inexact
 
 from ...coordinates import make_frequency_grid
+from .._average import interpolate_radial_average_on_grid
 from .._edges import resize_with_crop_or_pad
 from .._fft import irfftn, rfftn
-from .._spectrum import powerspectrum
+from .._spectrum import compute_radially_averaged_powerspectrum
 from ._operator import AbstractImageMultiplier
 
 
@@ -129,7 +130,8 @@ class WhiteningFilter(AbstractFilter, strict=True):
         self,
         image: Float[Array, "image_y_dim image_x_dim"],
         shape: Optional[tuple[int, int]] = None,
-        interpolation_mode: str = "nearest",
+        *,
+        interpolation_mode: str = "linear",
     ):
         """**Arguments:**
 
@@ -213,35 +215,37 @@ def _compute_lowpass_filter(
 def _compute_whitening_filter(
     image: Float[Array, "y_dim x_dim"],
     shape: Optional[tuple[int, int]] = None,
-    interpolation_mode: str = "nearest",
+    interpolation_mode: str = "linear",
 ) -> Float[Array, "{shape[0]} {shape[1]}"]:
     # Make coordinates
-    image_frequency_grid_in_angstroms = make_frequency_grid(image.shape)
+    frequency_grid = make_frequency_grid(image.shape)
     # Transform to fourier space
     fourier_image = rfftn(image)
     # Compute norms
-    radial_frequency_grid = jnp.linalg.norm(image_frequency_grid_in_angstroms, axis=-1)
+    radial_frequency_grid = jnp.linalg.norm(frequency_grid, axis=-1)
     # Compute power spectrum
-    _, gridded_spectrum, _ = powerspectrum(
-        fourier_image,
+    radially_averaged_powerspectrum, frequency_bins = (
+        compute_radially_averaged_powerspectrum(
+            fourier_image, radial_frequency_grid, maximum_frequency=jnp.sqrt(2) / 2
+        )
+    )
+    radially_averaged_powerspectrum_on_grid = interpolate_radial_average_on_grid(
+        radially_averaged_powerspectrum,
+        frequency_bins,
         radial_frequency_grid,
-        to_grid=True,
         interpolation_mode=interpolation_mode,
-        k_max=jnp.sqrt(2) / 2.0,
-    )  # type: ignore
+    )
     if shape is not None:
-        gridded_spectrum = rfftn(
+        radially_averaged_powerspectrum_on_grid = rfftn(
             resize_with_crop_or_pad(
-                irfftn(gridded_spectrum, s=image.shape), shape, pad_mode="edge"
+                irfftn(radially_averaged_powerspectrum_on_grid, s=image.shape),
+                shape,
+                pad_mode="edge",
             )
         ).real
     # Compute inverse square root
-    whitening_filter = jax.lax.rsqrt(gridded_spectrum)
-    # Divide filter by maximum, excluding zero mode
-    maximum = jnp.max(jnp.delete(whitening_filter, jnp.asarray((0, 0), dtype=int)))
-    whitening_filter /= maximum
-    # Set zero mode manually to 1 (this diverges from the cisTEM
-    # algorithm).
+    whitening_filter = jax.lax.rsqrt(radially_averaged_powerspectrum_on_grid)
+    # Set zero mode manually to 1, defining the filter to not affect this mode
     whitening_filter = whitening_filter.at[0, 0].set(1.0)
 
     return whitening_filter
