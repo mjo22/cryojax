@@ -1,5 +1,8 @@
 from . import operators as operators
-from ._average import radial_average as radial_average
+from ._average import (
+    compute_binned_radial_average as compute_binned_radial_average,
+    interpolate_radial_average_on_grid as interpolate_radial_average_on_grid,
+)
 from ._downsample import (
     downsample_to_shape_with_fourier_cropping as downsample_to_shape_with_fourier_cropping,  # noqa: E501
     downsample_with_fourier_cropping as downsample_with_fourier_cropping,
@@ -30,4 +33,6 @@ from ._rescale_pixel_size import (
     maybe_rescale_pixel_size as maybe_rescale_pixel_size,
     rescale_pixel_size as rescale_pixel_size,
 )
-from ._spectrum import powerspectrum as powerspectrum
+from ._spectrum import (
+    compute_radially_averaged_powerspectrum as compute_radially_averaged_powerspectrum,
+)

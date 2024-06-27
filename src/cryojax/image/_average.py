@@ -2,118 +2,87 @@
 Routines to compute radial averages of images.
 """
 
-from functools import partial
-from typing import overload
-
-import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Inexact
 
 
-@overload
-def radial_average(
-    image: Inexact[Array, "y_dim x_dim"],
-    radial_grid: Float[Array, "y_dim x_dim"],
-    bins: Float[Array, " n_bins"],
-) -> Inexact[Array, " n_bins"]: ...
-
-
-@overload
-def radial_average(
-    image: Inexact[Array, "z_dim y_dim x_dim"],
-    radial_grid: Float[Array, "z_dim y_dim x_dim"],
-    bins: Float[Array, " n_bins"],
-) -> Inexact[Array, " n_bins"]: ...
-
-
-@overload
-def radial_average(
-    image: Inexact[Array, "y_dim x_dim"],
-    radial_grid: Float[Array, "y_dim x_dim"],
-    bins: Float[Array, " n_bins"],
-    *,
-    to_grid: bool = False,
-    interpolation_mode: str = "nearest",
-) -> tuple[Inexact[Array, " n_bins"], Inexact[Array, "y_dim x_dim"]]: ...
-
-
-@overload
-def radial_average(
-    image: Inexact[Array, "z_dim y_dim x_dim"],
-    radial_grid: Float[Array, "z_dim y_dim x_dim"],
-    bins: Float[Array, " n_bins"],
-    *,
-    to_grid: bool = False,
-    interpolation_mode: str = "nearest",
-) -> tuple[Inexact[Array, " n_bins"], Inexact[Array, "z_dim y_dim x_dim"]]: ...
-
-
-@partial(jax.jit, static_argnames=["to_grid", "interpolation_mode"])
-def radial_average(
+def compute_binned_radial_average(
     image: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"],
-    radial_grid: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"],
+    radial_coordinate_grid: (
+        Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
+    ),
     bins: Float[Array, " n_bins"],
-    *,
-    to_grid: bool = False,
-    interpolation_mode: str = "nearest",
-) -> (
-    Inexact[Array, " n_bins"]
-    | tuple[
-        Inexact[Array, " n_bins"],
-        Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"],
-    ]
-):
-    """
-    Radially average vectors r with a given magnitude
-    coordinate system |r|.
+) -> Inexact[Array, " n_bins"]:
+    """Average vectors $\\mathbf{r}$ of constant radius $|\\mathbf{r}|$ into
+    discrete bins.
 
-    Arguments
-    ---------
-    image :
-        Two-dimensional image.
-    radial_grid :
-        Radial coordinate system of image.
-    bins :
-        Radial bins for averaging. These
-        must be evenly spaced.
-    to_grid :
-        If ``False``, evalulate the spectrum as a 1D
-        profile. Otherwise, evaluate the spectrum on the
-        grid.
-    interpolation_mode :
-        If ``"linear"``, evaluate on the grid using linear
-        interpolation. If ``False``,
+    **Arguments:**
 
-    Returns
-    -------
-    average :
-        Radial average of image.
+    - `image`:
+        Two-dimensional image or three-dimensional volume.
+    - `radial_coordinate_grid`:
+        Radial coordinate system of image or volume.
+    - `bins`:
+        Radial bins for averaging.
+
+    **Returns:**
+
+    The binned radial averaged of `image` in bins `bins`.
     """
-    bins = jnp.asarray(bins)
     # Discretize the radial grid
-    digitized_radial_grid = jnp.digitize(radial_grid, bins, right=True)
+    digitized_radial_grid = jnp.digitize(radial_coordinate_grid, bins, right=True)
     # Compute the radial profile as the average value of the image in each bin
-    average_as_profile = jnp.bincount(
+    binned_radial_average = jnp.bincount(
         digitized_radial_grid.ravel(),
         weights=image.ravel(),
         length=bins.size,
     ) / jnp.bincount(digitized_radial_grid.ravel(), length=bins.size)
-    # Interpolate to a grid or return the profile
-    if to_grid:
-        if interpolation_mode == "nearest":
-            average_as_grid = jnp.take(
-                average_as_profile,
-                digitized_radial_grid,
-                mode="clip",
-            )
-        elif interpolation_mode == "linear":
-            average_as_grid = jnp.interp(
-                radial_grid.ravel(),
-                bins,
-                average_as_profile,
-            ).reshape(radial_grid.shape)
-        else:
-            raise ValueError(f"interpolation_mode = {interpolation_mode} not supported.")
-        return average_as_profile, average_as_grid
+
+    return binned_radial_average
+
+
+def interpolate_radial_average_on_grid(
+    binned_radial_average: Inexact[Array, " n_bins"],
+    bins: Float[Array, " n_bins"],
+    radial_coordinate_grid: (
+        Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
+    ),
+    interpolation_mode: str = "linear",
+) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
+    """Interpolate a binned radially averaged profile onto a grid.
+
+    **Arguments:**
+
+    - `binned_radial_average`:
+        The binned, radially averaged profile.
+    - `bins`:
+        Radial bins over which `binned_radial_average` is computed.
+    - `radial_coordinate_grid`:
+        Radial coordinate system of image or volume.
+    - `interpolation_mode`:
+        If `"linear"`, evaluate the grid using linear
+        interpolation. If `"nearest"`, use nearest-neighbor
+        interpolation.
+
+    **Returns:**
+
+    The `binned_radial_average` evaluated on the `radial_coordinate_grid`.
+    """
+    if interpolation_mode == "nearest":
+        radial_average_on_grid = jnp.take(
+            binned_radial_average,
+            jnp.digitize(radial_coordinate_grid, bins, right=True),
+            mode="clip",
+        )
+    elif interpolation_mode == "linear":
+        radial_average_on_grid = jnp.interp(
+            radial_coordinate_grid.ravel(),
+            bins,
+            binned_radial_average,
+        ).reshape(radial_coordinate_grid.shape)
     else:
-        return average_as_profile
+        raise ValueError(
+            f"`interpolation_mode` = {interpolation_mode} not supported. Supported "
+            "interpolation modes are 'nearest' or 'linear'."
+        )
+    return radial_average_on_grid
