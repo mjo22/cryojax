@@ -80,7 +80,7 @@ class LowpassFilter(AbstractFilter, strict=True):
     buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
     frequency_cutoff_fraction: Float[Array, ""]
-    rolloff_fraction: Float[Array, ""]
+    rolloff_width_fraction: Float[Array, ""]
 
     def __init__(
         self,
@@ -89,7 +89,7 @@ class LowpassFilter(AbstractFilter, strict=True):
         ),
         grid_spacing: float | Float[Array, ""] = 1.0,
         frequency_cutoff_fraction: float | Float[Array, ""] = 0.95,
-        rolloff_fraction: float | Float[Array, ""] = 0.05,
+        rolloff_width_fraction: float | Float[Array, ""] = 0.05,
     ):
         """**Arguments:**
 
@@ -100,17 +100,17 @@ class LowpassFilter(AbstractFilter, strict=True):
         - `frequency_cutoff_fraction`:
             The cutoff frequency as a fraction of the Nyquist frequency.
             By default, `0.95`.
-        - `rolloff_fraction`:
+        - `rolloff_width_fraction`:
             The rolloff width as a fraction of the Nyquist frequency.
             By default, ``0.05``.
         """
         self.frequency_cutoff_fraction = jnp.asarray(frequency_cutoff_fraction)
-        self.rolloff_fraction = jnp.asarray(rolloff_fraction)
+        self.rolloff_width_fraction = jnp.asarray(rolloff_width_fraction)
         self.buffer = _compute_lowpass_filter(
             frequency_grid_in_angstroms_or_pixels,
             jnp.asarray(grid_spacing),
             self.frequency_cutoff_fraction,
-            self.rolloff_fraction,
+            self.rolloff_width_fraction,
         )
 
 
@@ -161,7 +161,7 @@ def _compute_lowpass_filter(
     frequency_grid: Float[Array, "y_dim x_dim 2"],
     grid_spacing: Float[Array, ""],
     cutoff_fraction: Float[Array, ""],
-    rolloff_fraction: Float[Array, ""],
+    rolloff_width_fraction: Float[Array, ""],
 ) -> Float[Array, "y_dim x_dim"]: ...
 
 
@@ -170,7 +170,7 @@ def _compute_lowpass_filter(
     frequency_grid: Float[Array, "z_dim y_dim x_dim 3"],
     grid_spacing: Float[Array, ""],
     cutoff_fraction: Float[Array, ""],
-    rolloff_fraction: Float[Array, ""],
+    rolloff_width_fraction: Float[Array, ""],
 ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
 
@@ -178,11 +178,11 @@ def _compute_lowpass_filter(
     frequency_grid: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"],
     grid_spacing: Float[Array, ""],
     cutoff_fraction: Float[Array, ""],
-    rolloff_fraction: Float[Array, ""],
+    rolloff_width_fraction: Float[Array, ""],
 ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
     k_max = 1.0 / (2.0 * grid_spacing)
     cutoff_radius = cutoff_fraction * k_max
-    rolloff_width = rolloff_fraction * k_max
+    rolloff_width = rolloff_width_fraction * k_max
 
     radial_frequency_grid = jnp.linalg.norm(frequency_grid, axis=-1)
 
