@@ -101,9 +101,10 @@ def filters(config):
 
 @pytest.fixture
 def masks(config):
-    return op.CircularMask(
+    return op.CircularCosineMask(
         config.padded_coordinate_grid_in_angstroms,
-        radius=20 * float(config.pixel_size),
+        radius_in_angstroms_or_pixels=20 * float(config.pixel_size),
+        rolloff_width_in_angstroms_or_pixels=3 * float(config.pixel_size),
     )
 
 
