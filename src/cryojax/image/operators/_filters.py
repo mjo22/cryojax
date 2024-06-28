@@ -128,15 +128,18 @@ class WhiteningFilter(AbstractFilter, strict=True):
 
     def __init__(
         self,
-        image: Float[Array, "image_y_dim image_x_dim"],
+        image_or_image_stack: (
+            Float[Array, "image_y_dim image_x_dim"]
+            | Float[Array, "n_images image_y_dim image_x_dim"]
+        ),
         shape: Optional[tuple[int, int]] = None,
         *,
         interpolation_mode: str = "linear",
     ):
         """**Arguments:**
 
-        - `image`:
-            The image from which to compute the power spectrum.
+        - `image_or_image_stack`:
+            The image (or stack of images) from which to compute the power spectrum.
         - `shape`:
             The shape of the resulting filter. This downsamples or
             upsamples the filter by cropping or padding in real space.
@@ -144,17 +147,22 @@ class WhiteningFilter(AbstractFilter, strict=True):
             The method of interpolating the binned, radially averaged
             power spectrum onto a 2D grid. Either `nearest` or `linear`.
         """
+        image_stack = (
+            jnp.expand_dims(image_or_image_stack, 0)
+            if image_or_image_stack.ndim == 2
+            else image_or_image_stack
+        )
         if shape is not None:
-            if shape[0] > image.shape[0] or shape[1] > image.shape[1]:
+            if shape[-2] > image_stack.shape[-2] or shape[-1] > image_stack.shape[-1]:
                 raise ValueError(
                     "The requested shape at which to compute the "
                     "whitening filter is larger than the shape of "
                     "the image from which to compute the filter. "
                     f"The requested shape was {shape} and the image "
-                    f"shape was {image.shape}."
+                    f"shape was {image_stack.shape[-2:]}."
                 )
         self.buffer = _compute_whitening_filter(
-            image, shape, interpolation_mode=interpolation_mode
+            image_stack, shape, interpolation_mode=interpolation_mode
         )
 
 
@@ -213,32 +221,45 @@ def _compute_lowpass_filter(
 
 
 def _compute_whitening_filter(
-    image: Float[Array, "y_dim x_dim"],
+    image_stack: Float[Array, "n_images y_dim x_dim"],
     shape: Optional[tuple[int, int]] = None,
     interpolation_mode: str = "linear",
 ) -> Float[Array, "{shape[0]} {shape[1]}"]:
     # Make coordinates
-    frequency_grid = make_frequency_grid(image.shape)
+    frequency_grid = make_frequency_grid(image_stack.shape[1:])
     # Transform to fourier space
-    fourier_image = rfftn(image)
+    fourier_image_stack = rfftn(image_stack, axes=(1, 2))
     # Compute norms
     radial_frequency_grid = jnp.linalg.norm(frequency_grid, axis=-1)
-    # Compute power spectrum
-    radially_averaged_powerspectrum, frequency_bins = (
-        compute_radially_averaged_powerspectrum(
-            fourier_image, radial_frequency_grid, maximum_frequency=jnp.sqrt(2) / 2
+    # Compute stack of power spectra
+    compute_radially_averaged_powerspectrum_stack = jax.vmap(
+        lambda im, freq: compute_radially_averaged_powerspectrum(
+            im, freq, maximum_frequency=jnp.sqrt(2) / 2
+        ),
+        in_axes=[0, None],
+        out_axes=(0, None),
+    )
+    radially_averaged_powerspectrum_stack, frequency_bins = (
+        compute_radially_averaged_powerspectrum_stack(
+            fourier_image_stack, radial_frequency_grid
         )
     )
+    # Take the mean over the stack
+    radially_averaged_powerspectrum = jnp.mean(
+        radially_averaged_powerspectrum_stack, axis=0
+    )
+    # Put onto a grid
     radially_averaged_powerspectrum_on_grid = interpolate_radial_average_on_grid(
         radially_averaged_powerspectrum,
         frequency_bins,
         radial_frequency_grid,
         interpolation_mode=interpolation_mode,
     )
+    # Resize to be the desired shape
     if shape is not None:
         radially_averaged_powerspectrum_on_grid = rfftn(
             resize_with_crop_or_pad(
-                irfftn(radially_averaged_powerspectrum_on_grid, s=image.shape),
+                irfftn(radially_averaged_powerspectrum_on_grid, s=image_stack.shape[1:]),
                 shape,
                 pad_mode="edge",
             )
