@@ -9,7 +9,7 @@ from jaxtyping import Array, Complex, Float, Inexact
 
 
 def ifftn(
-    ft: Complex[Array, "..."],
+    ft: Inexact[Array, "..."],
     s: Optional[tuple[int, ...]] = None,
     axes: Optional[tuple[int, ...]] = None,
 ) -> Complex[Array, "..."]:
@@ -55,7 +55,7 @@ def fftn(
 
 
 def irfftn(
-    ft: Complex[Array, "..."],
+    ft: Inexact[Array, "..."],
     s: Optional[tuple[int, ...]] = None,
     axes: Optional[tuple[int, ...]] = None,
 ) -> Float[Array, "..."]:

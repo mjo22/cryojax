@@ -125,7 +125,7 @@ def downsample_to_shape_with_fourier_cropping(
     """
     n_pixels, new_n_pixels = image_or_volume.size, math.prod(downsampled_shape)
     fourier_array = jnp.fft.fftshift(fftn(image_or_volume))
-    cropped_fourier_array = (new_n_pixels / n_pixels) * crop_to_shape(
+    cropped_fourier_array = jnp.sqrt(n_pixels / new_n_pixels) * crop_to_shape(
         fourier_array, downsampled_shape
     )
     if get_real:

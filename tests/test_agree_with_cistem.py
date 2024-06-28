@@ -132,7 +132,8 @@ def test_compute_projection_with_cistem(
             / voxel_size
         )
         .at[0, 0]
-        .set(0.0 + 0.0j),
+        .set(0.0 + 0.0j)
+        / np.sqrt(np.prod(config.shape)),
         s=config.padded_shape,
     )
     # pycistem
