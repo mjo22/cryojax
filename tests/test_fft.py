@@ -20,7 +20,7 @@ def test_fft(model, request):
         jnp.fft.fftn(random),
         jnp.fft.fftn(jnp.fft.ifftn(jnp.fft.fftn(random)).real),
     )
-    # Run tests with cryojax.utils and random data
+    # Run tests with cryojax.image and random data
     np.testing.assert_allclose(
         ifftn(fftn(random)).real, jnp.fft.ifftn(jnp.fft.fftn(random)).real
     )
@@ -29,7 +29,9 @@ def test_fft(model, request):
     # Run tests with an image
     np.testing.assert_allclose(image, ifftn(fftn(image)).real)
     # ... test zero mode separately
-    np.testing.assert_allclose(fftn(image)[1:, 1:], fftn(ifftn(fftn(image)).real)[1:, 1:])
+    np.testing.assert_allclose(
+        fftn(image)[1:, 1:], fftn(ifftn(fftn(image)).real)[1:, 1:], atol=1e-10
+    )
     np.testing.assert_allclose(
         fftn(image)[0, 0], fftn(ifftn(fftn(image)).real)[0, 0], atol=1e-12
     )

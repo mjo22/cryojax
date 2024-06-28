@@ -24,11 +24,7 @@ from ._map_coordinates import (
     map_coordinates as map_coordinates,
     map_coordinates_with_cubic_spline as map_coordinates_with_cubic_spline,
 )
-from ._normalize import (
-    compute_mean_and_std_from_fourier_image as compute_mean_and_std_from_fourier_image,
-    normalize_image as normalize_image,
-    rescale_image as rescale_image,
-)
+from ._normalize import normalize_image as normalize_image, rescale_image as rescale_image
 from ._rescale_pixel_size import (
     maybe_rescale_pixel_size as maybe_rescale_pixel_size,
     rescale_pixel_size as rescale_pixel_size,

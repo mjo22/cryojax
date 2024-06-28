@@ -172,7 +172,7 @@ class AbstractDetector(Module, strict=True):
         electrons_per_image = N_pix * electrons_per_pixel
         # Normalize the squared wavefunction to a set of probabilities
         fourier_squared_wavefunction_at_detector_plane /= (
-            fourier_squared_wavefunction_at_detector_plane[0, 0]
+            fourier_squared_wavefunction_at_detector_plane[0, 0] * jnp.sqrt(N_pix)
         )
         # Compute the noiseless signal by applying the DQE to the squared wavefunction
         fourier_signal = fourier_squared_wavefunction_at_detector_plane * jnp.sqrt(
