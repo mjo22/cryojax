@@ -81,10 +81,11 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         ]
     ):
         pipeline = self.imaging_pipeline
+        n_pixels = pipeline.instrument_config.padded_n_pixels
         freqs = pipeline.instrument_config.padded_frequency_grid_in_angstroms
         # Compute the zero mean variance and scale up to be independent of the number of
         # pixels
-        std = jnp.sqrt(self.variance_function(freqs))
+        std = jnp.sqrt(n_pixels * self.variance_function(freqs))
         noise = pipeline.postprocess(
             std
             * jr.normal(rng_key, shape=freqs.shape[0:-1])
@@ -132,9 +133,10 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         - `observed` : The observed data in fourier space.
         """
         pipeline = self.imaging_pipeline
+        n_pixels = pipeline.instrument_config.n_pixels
         freqs = pipeline.instrument_config.frequency_grid_in_angstroms
         # Compute the variance and scale up to be independent of the number of pixels
-        variance = self.variance_function(freqs)
+        variance = n_pixels * self.variance_function(freqs)
         # Create simulated data
         simulated = self.compute_signal(get_real=False)
         # Compute residuals
@@ -147,9 +149,13 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         )
         # Compute log-likelihood, throwing away the zero mode. Need to take care
         # to compute the loss function in fourier space for a real-valued function.
-        log_likelihood = -1.0 * (
-            jnp.sum(log_likelihood_per_mode[1:, 0])
-            + 2 * jnp.sum(log_likelihood_per_mode[:, 1:])
+        log_likelihood = (
+            -1.0
+            * (
+                jnp.sum(log_likelihood_per_mode[1:, 0])
+                + 2 * jnp.sum(log_likelihood_per_mode[:, 1:])
+            )
+            / n_pixels
         )
 
         return log_likelihood

@@ -69,12 +69,12 @@ def test_gaussian_limit():
     np.testing.assert_allclose(
         irfftn(
             jnp.abs(fourier_gaussian_detector_readout) ** 2
-            / (jnp.sqrt(n_pixels) * electrons_per_pixel**2),
+            / (n_pixels * electrons_per_pixel**2),
             s=config.padded_shape,
         ),
         irfftn(
             jnp.abs(fourier_poisson_detector_readout) ** 2
-            / (jnp.sqrt(n_pixels) * electrons_per_pixel**2),
+            / (n_pixels * electrons_per_pixel**2),
             s=config.padded_shape,
         ),
         rtol=1e-2,
