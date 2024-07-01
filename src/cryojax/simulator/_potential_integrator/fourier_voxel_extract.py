@@ -289,5 +289,4 @@ def _extract_surface_from_voxel_grid(
     # Set last line of frequencies to zero if image dimension is even
     if N % 2 == 0:
         projection = projection.at[:, -1].set(0.0 + 0.0j).at[N // 2, :].set(0.0 + 0.0j)
-    # Re-scale projection to account for "ortho" FFT normalization convention
-    return projection * N ** (1 / 2)
+    return projection

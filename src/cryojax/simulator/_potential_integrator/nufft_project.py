@@ -129,5 +129,4 @@ def _project_with_nufft(weights, coordinate_list, shape, eps=1e-6):
         projection = projection.at[:, -1].set(0.0 + 0.0j)
     if M1 % 2 == 0:
         projection = projection.at[M1 // 2, :].set(0.0 + 0.0j)
-    # Return projection in "ortho" FFT normalization convention
-    return projection / jnp.sqrt(M1 * M2)
+    return projection

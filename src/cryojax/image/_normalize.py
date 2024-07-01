@@ -2,6 +2,9 @@
 Image normalization routines.
 """
 
+import math
+from typing import Optional
+
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Inexact
 
@@ -11,6 +14,7 @@ def normalize_image(
     *,
     is_real: bool = True,
     half_space: bool = True,
+    shape_in_real_space: Optional[tuple[int, int]] = None,
 ) -> Inexact[Array, "y_dim x_dim"]:
     """
     Normalize so that the image is mean 0
@@ -22,6 +26,7 @@ def normalize_image(
         0.0,
         is_real=is_real,
         half_space=half_space,
+        shape_in_real_space=shape_in_real_space,
     )
 
 
@@ -32,6 +37,7 @@ def rescale_image(
     *,
     is_real: bool = True,
     half_space: bool = True,
+    shape_in_real_space: Optional[tuple[int, int]] = None,
 ) -> Inexact[Array, "y_dim x_dim"]:
     """Normalize so that the image is mean mu
     and standard deviation N in real space.
@@ -64,9 +70,24 @@ def rescale_image(
         rescaled_image = std * normalized_image + mean
     else:
         N1, N2 = image.shape
-        n_pixels, n_modes = N1 * (2 * N2 - 1) if half_space else N1 * N2, N1 * N2
+        n_pixels = (
+            (
+                N1 * (2 * N2 - 1)
+                if shape_in_real_space is None
+                else math.prod(shape_in_real_space)
+            )
+            if half_space
+            else N1 * N2
+        )
         image_with_zero_mean = image.at[0, 0].set(0.0)
-        image_std = jnp.linalg.norm(image_with_zero_mean) / jnp.sqrt(n_modes)
+        image_std = (
+            jnp.sqrt(
+                jnp.sum(jnp.abs(image_with_zero_mean[:, 0]) ** 2)
+                + 2 * jnp.sum(jnp.abs(image_with_zero_mean[:, 1:]) ** 2)
+            )
+            if half_space
+            else jnp.linalg.norm(image_with_zero_mean)
+        ) / n_pixels
         normalized_image = image_with_zero_mean / image_std
-        rescaled_image = (normalized_image * std).at[0, 0].set(mean * jnp.sqrt(n_pixels))
+        rescaled_image = (normalized_image * std).at[0, 0].set(mean * n_pixels)
     return rescaled_image

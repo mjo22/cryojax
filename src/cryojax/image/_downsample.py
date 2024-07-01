@@ -1,6 +1,5 @@
 """Routines for downsampling arrays"""
 
-import math
 from typing import overload
 
 import jax.numpy as jnp
@@ -123,11 +122,8 @@ def downsample_to_shape_with_fourier_cropping(
     the downsampled array in fourier space assuming hermitian symmetry,
     with the zero frequency component in the corner.
     """
-    n_pixels, new_n_pixels = image_or_volume.size, math.prod(downsampled_shape)
     fourier_array = jnp.fft.fftshift(fftn(image_or_volume))
-    cropped_fourier_array = jnp.sqrt(n_pixels / new_n_pixels) * crop_to_shape(
-        fourier_array, downsampled_shape
-    )
+    cropped_fourier_array = crop_to_shape(fourier_array, downsampled_shape)
     if get_real:
         return ifftn(jnp.fft.ifftshift(cropped_fourier_array))
     else:
