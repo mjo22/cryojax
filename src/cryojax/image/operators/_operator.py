@@ -64,14 +64,14 @@ class AbstractImageMultiplier(Module, strict=True):
         computed upon instantiation.
     """
 
-    buffer: AbstractVar[
+    array: AbstractVar[
         Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
     ]
 
     def __call__(
         self, image: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
     ) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
-        return image * jax.lax.stop_gradient(self.buffer)
+        return image * jax.lax.stop_gradient(self.array)
 
     def __mul__(self, other) -> "AbstractImageMultiplier":
         return ProductImageMultiplier(operator1=self, operator2=other)
@@ -144,7 +144,7 @@ Empirical.__init__.__doc__ = """**Arguments:**
 class ProductImageMultiplier(AbstractImageMultiplier, strict=True):
     """A helper to represent the product of two operators."""
 
-    buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+    array: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
     operator1: AbstractImageMultiplier
     operator2: AbstractImageMultiplier
@@ -156,7 +156,7 @@ class ProductImageMultiplier(AbstractImageMultiplier, strict=True):
     ):
         self.operator1 = operator1
         self.operator2 = operator2
-        self.buffer = operator1.buffer * operator2.buffer
+        self.array = operator1.array * operator2.array
 
     def __repr__(self):
         return f"{repr(self.operator1)} * {repr(self.operator2)}"

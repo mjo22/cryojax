@@ -27,18 +27,18 @@ class AbstractMask(AbstractImageMultiplier, strict=True):
     def __call__(
         self, image: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
     ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
-        return image * jax.lax.stop_gradient(self.buffer)
+        return image * jax.lax.stop_gradient(self.array)
 
 
 class CustomMask(AbstractMask, strict=True):
     """Pass a custom mask as an array."""
 
-    buffer: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
+    array: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
 
     def __init__(
         self, mask: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
     ):
-        self.buffer = mask
+        self.array = mask
 
 
 class CircularCosineMask(AbstractMask, strict=True):
@@ -46,7 +46,7 @@ class CircularCosineMask(AbstractMask, strict=True):
     soft-edge.
     """
 
-    buffer: Float[Array, "y_dim x_dim"]
+    array: Float[Array, "y_dim x_dim"]
 
     radius_in_angstroms_or_pixels: Float[Array, ""]
     rolloff_width_in_angstroms_or_pixels: Float[Array, ""]
@@ -72,7 +72,7 @@ class CircularCosineMask(AbstractMask, strict=True):
         self.rolloff_width_in_angstroms_or_pixels = jnp.asarray(
             rolloff_width_in_angstroms_or_pixels
         )
-        self.buffer = _compute_circular_or_spherical_mask(
+        self.array = _compute_circular_or_spherical_mask(
             coordinate_grid_in_angstroms_or_pixels,
             self.radius_in_angstroms_or_pixels,
             self.rolloff_width_in_angstroms_or_pixels,
@@ -84,7 +84,7 @@ class SquareCosineMask(AbstractMask, strict=True):
     soft-edge.
     """
 
-    buffer: Float[Array, "y_dim x_dim"]
+    array: Float[Array, "y_dim x_dim"]
 
     side_length_in_angstroms_or_pixels: Float[Array, ""]
     rolloff_width_in_angstroms_or_pixels: Float[Array, ""]
@@ -112,7 +112,7 @@ class SquareCosineMask(AbstractMask, strict=True):
         self.rolloff_width_in_angstroms_or_pixels = jnp.asarray(
             rolloff_width_in_angstroms_or_pixels
         )
-        self.buffer = _compute_square_mask(
+        self.array = _compute_square_mask(
             coordinate_grid_in_angstroms_or_pixels,
             self.side_length_in_angstroms_or_pixels,
             self.rolloff_width_in_angstroms_or_pixels,
@@ -125,7 +125,7 @@ class Cylindrical2DCosineMask(AbstractMask, strict=True):
     rotated at a given angle.
     """
 
-    buffer: Float[Array, "y_dim x_dim"]
+    array: Float[Array, "y_dim x_dim"]
 
     radius_in_angstroms_or_pixels: Float[Array, ""]
     in_plane_rotation_angle: Float[Array, ""]
@@ -157,7 +157,7 @@ class Cylindrical2DCosineMask(AbstractMask, strict=True):
             rolloff_width_in_angstroms_or_pixels
         )
         self.in_plane_rotation_angle = jnp.asarray(in_plane_rotation_angle)
-        self.buffer = _compute_cylindrical_mask_2d(
+        self.array = _compute_cylindrical_mask_2d(
             coordinate_grid_in_angstroms_or_pixels,
             self.radius_in_angstroms_or_pixels,
             self.in_plane_rotation_angle,
@@ -170,7 +170,7 @@ class SphericalCosineMask(AbstractMask, strict=True):
     soft-edge.
     """
 
-    buffer: Float[Array, "z_dim y_dim x_dim"]
+    array: Float[Array, "z_dim y_dim x_dim"]
 
     radius_in_angstroms_or_voxels: Float[Array, ""]
     rolloff_width_in_angstroms_or_pixels: Float[Array, ""]
@@ -196,7 +196,7 @@ class SphericalCosineMask(AbstractMask, strict=True):
         self.rolloff_width_in_angstroms_or_pixels = jnp.asarray(
             rolloff_width_in_angstroms_or_pixels
         )
-        self.buffer = _compute_circular_or_spherical_mask(
+        self.array = _compute_circular_or_spherical_mask(
             coordinate_grid_in_angstroms_or_voxels,
             self.radius_in_angstroms_or_voxels,
             self.rolloff_width_in_angstroms_or_pixels,

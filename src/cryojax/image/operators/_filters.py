@@ -34,25 +34,25 @@ class AbstractFilter(AbstractImageMultiplier, strict=True):
     def __call__(
         self, image: Complex[Array, "y_dim x_dim"] | Complex[Array, "z_dim y_dim x_dim"]
     ) -> Complex[Array, "y_dim x_dim"] | Complex[Array, "z_dim y_dim x_dim"]:
-        return image * jax.lax.stop_gradient(self.buffer)
+        return image * jax.lax.stop_gradient(self.array)
 
 
 class CustomFilter(AbstractFilter, strict=True):
     """Pass a custom filter as an array."""
 
-    buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+    array: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
     def __init__(
         self,
         filter: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"],
     ):
-        self.buffer = filter
+        self.array = filter
 
 
 class InverseSincFilter(AbstractFilter, strict=True):
     """Apply sinc-correction to an image."""
 
-    buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+    array: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
     def __init__(
         self,
@@ -62,7 +62,7 @@ class InverseSincFilter(AbstractFilter, strict=True):
         grid_spacing: float = 1.0,
     ):
         ndim = frequency_grid_in_angstroms_or_pixels.ndim - 1
-        self.buffer = jax.lax.reciprocal(
+        self.array = jax.lax.reciprocal(
             functools.reduce(
                 operator.mul,
                 [
@@ -78,7 +78,7 @@ class LowpassFilter(AbstractFilter, strict=True):
     a cosine soft-edge.
     """
 
-    buffer: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+    array: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
     frequency_cutoff_fraction: Float[Array, ""]
     rolloff_width_fraction: Float[Array, ""]
@@ -107,7 +107,7 @@ class LowpassFilter(AbstractFilter, strict=True):
         """
         self.frequency_cutoff_fraction = jnp.asarray(frequency_cutoff_fraction)
         self.rolloff_width_fraction = jnp.asarray(rolloff_width_fraction)
-        self.buffer = _compute_lowpass_filter(
+        self.array = _compute_lowpass_filter(
             frequency_grid_in_angstroms_or_pixels,
             jnp.asarray(grid_spacing),
             self.frequency_cutoff_fraction,
@@ -124,7 +124,7 @@ class WhiteningFilter(AbstractFilter, strict=True):
     algorithm.
     """
 
-    buffer: Inexact[Array, "y_dim x_dim"]
+    array: Inexact[Array, "y_dim x_dim"]
 
     def __init__(
         self,
@@ -161,7 +161,7 @@ class WhiteningFilter(AbstractFilter, strict=True):
                     f"The requested shape was {shape} and the image "
                     f"shape was {image_stack.shape[-2:]}."
                 )
-        self.buffer = _compute_whitening_filter(
+        self.array = _compute_whitening_filter(
             image_stack, shape, interpolation_mode=interpolation_mode
         )
 
