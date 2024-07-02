@@ -3,6 +3,7 @@ Filters to apply to images in Fourier space
 """
 
 import functools
+import math
 import operator
 from typing import Optional, overload
 
@@ -20,6 +21,9 @@ from ._operator import AbstractImageMultiplier
 
 class AbstractFilter(AbstractImageMultiplier, strict=True):
     """Base class for computing and applying an image filter."""
+
+    def get(self) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
+        return self.array
 
     @overload
     def __call__(
@@ -135,6 +139,7 @@ class WhiteningFilter(AbstractFilter, strict=True):
         shape: Optional[tuple[int, int]] = None,
         *,
         interpolation_mode: str = "linear",
+        get_squared: bool = False,
     ):
         """**Arguments:**
 
@@ -146,6 +151,9 @@ class WhiteningFilter(AbstractFilter, strict=True):
         - `interpolation_mode`:
             The method of interpolating the binned, radially averaged
             power spectrum onto a 2D grid. Either `nearest` or `linear`.
+        - `get_squared`:
+            If `False`, the whitening filter is the inverse square root of the image
+            power. If `True`, the filter is the inverse of the image power.
         """
         image_stack = (
             jnp.expand_dims(image_or_image_stack, 0)
@@ -162,7 +170,10 @@ class WhiteningFilter(AbstractFilter, strict=True):
                     f"shape was {image_stack.shape[-2:]}."
                 )
         self.array = _compute_whitening_filter(
-            image_stack, shape, interpolation_mode=interpolation_mode
+            image_stack,
+            shape,
+            interpolation_mode=interpolation_mode,
+            get_squared=get_squared,
         )
 
 
@@ -224,11 +235,13 @@ def _compute_whitening_filter(
     image_stack: Float[Array, "n_images y_dim x_dim"],
     shape: Optional[tuple[int, int]] = None,
     interpolation_mode: str = "linear",
+    get_squared: bool = False,
 ) -> Float[Array, "{shape[0]} {shape[1]}"]:
     # Make coordinates
     frequency_grid = make_frequency_grid(image_stack.shape[1:])
     # Transform to fourier space
-    fourier_image_stack = rfftn(image_stack, axes=(1, 2))
+    n_pixels = math.prod(image_stack.shape[1:]) if shape is None else math.prod(shape)
+    fourier_image_stack = rfftn(image_stack, axes=(1, 2)) / jnp.sqrt(n_pixels)
     # Compute norms
     radial_frequency_grid = jnp.linalg.norm(frequency_grid, axis=-1)
     # Compute stack of power spectra
@@ -265,7 +278,10 @@ def _compute_whitening_filter(
             )
         ).real
     # Compute inverse square root
-    whitening_filter = jax.lax.rsqrt(radially_averaged_powerspectrum_on_grid)
+    if get_squared:
+        whitening_filter = jax.lax.reciprocal(radially_averaged_powerspectrum_on_grid)
+    else:
+        whitening_filter = jax.lax.rsqrt(radially_averaged_powerspectrum_on_grid)
     # Set zero mode manually to 1, defining the filter to not affect this mode
     whitening_filter = whitening_filter.at[0, 0].set(1.0)
 

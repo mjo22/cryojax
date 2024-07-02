@@ -100,7 +100,7 @@ class AbstractImagingPipeline(Module, strict=True):
             is_filter_applied = True if self.filter is None else False
             if (
                 self.filter is not None
-                and self.filter.buffer.shape
+                and self.filter.array.shape
                 == instrument_config.padded_frequency_grid_in_pixels.shape[0:2]
             ):
                 # ... apply the filter here if it is the same size as the padded

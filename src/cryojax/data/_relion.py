@@ -282,7 +282,7 @@ class RelionDataset(AbstractDataset):
                 # replace the whole pandas.Series with 0.0
                 if (
                     particle_blocks["rlnAnglePsi"].nunique() == 1
-                    and particle_blocks["rlnAnglePsi"][0] == -999.0
+                    and particle_blocks["rlnAnglePsi"].iloc[0] == -999.0
                 ):
                     particle_blocks_for_psi = 0.0
                 # ... otherwise, replace -999.0 values with 0.0
