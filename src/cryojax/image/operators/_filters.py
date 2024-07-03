@@ -247,7 +247,7 @@ def _compute_whitening_filter(
     # Compute stack of power spectra
     compute_radially_averaged_powerspectrum_stack = jax.vmap(
         lambda im, freq: compute_radially_averaged_powerspectrum(
-            im, freq, maximum_frequency=jnp.sqrt(2) / 2
+            im, freq, maximum_frequency=math.sqrt(2) / 2
         ),
         in_axes=[0, None],
         out_axes=(0, None),

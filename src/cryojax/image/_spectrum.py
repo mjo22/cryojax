@@ -51,7 +51,7 @@ def compute_radially_averaged_powerspectrum(
         else maximum_frequency
     )
     q_step = 1.0 / (pixel_size * max(*squared_fourier_amplitudes.shape))
-    frequency_bins = jnp.arange(q_min, q_max + q_step, q_step)  # Left edges of bins
+    frequency_bins = jnp.linspace(q_min, q_max, 1 + int((q_max - q_min) / q_step))
     # Compute radially averaged power spectrum as a 1D profile
     radially_averaged_powerspectrum = compute_binned_radial_average(
         squared_fourier_amplitudes, radial_frequency_grid, frequency_bins
