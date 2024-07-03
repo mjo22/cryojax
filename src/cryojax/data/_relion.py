@@ -346,6 +346,9 @@ class HelicalRelionDataset(AbstractDataset):
     """
 
     dataset: RelionDataset
+    n_filaments: int
+    n_filaments_per_micrograph: Int[np.ndarray, " n_micrographs"]
+    micrograph_names: list[str]
 
     @final
     def __init__(
@@ -355,10 +358,49 @@ class HelicalRelionDataset(AbstractDataset):
         """**Arguments:**
 
         - `dataset`: The wrappped `RelionDataset`. This will be slightly
-                     modified to read one helix at a time.
+                     modified to read one helix at a time, rather than one
+                     image crop at a time.
         """
+        # Validate the STAR file and store the RelionDataset
         _validate_helical_relion_data_blocks(dataset.data_blocks)
         object.__setattr__(self, "dataset", dataset)
+        # Compute and store the number of filaments, number of filaments per micrograph
+        # and micrograph names
+        n_filaments_per_micrograph, micrograph_names = (
+            _get_number_of_filaments_per_micrograph_in_helical_data_blocks(
+                dataset.data_blocks
+            )
+        )
+        object.__setattr__(self, "n_filaments", int(np.sum(n_filaments_per_micrograph)))
+        object.__setattr__(self, "n_filaments_per_micrograph", n_filaments_per_micrograph)
+        object.__setattr__(self, "micrograph_names", micrograph_names)
+
+    def get_particle_data_blocks_at_filament_index(
+        self, filament_index: int | Int[np.ndarray, ""]
+    ) -> pd.DataFrame:
+        # Map the filament index to a micrograph index
+        last_index_of_filament_per_micrograph = (
+            np.cumsum(self.n_filaments_per_micrograph) - 1
+        )
+        micrograph_index = np.where(
+            last_index_of_filament_per_micrograph >= filament_index
+        )[0].min()
+        # Get the filament index in this particular micrograph
+        filament_index_in_micrograph = (
+            self.n_filaments_per_micrograph[micrograph_index] - 1
+        ) - (last_index_of_filament_per_micrograph[micrograph_index] - filament_index)
+        # .. get the data blocks only at the filament corresponding to the filament index
+        particle_data_blocks = self.dataset.data_blocks["particles"]
+        particle_data_blocks_at_micrograph = particle_data_blocks[
+            particle_data_blocks["rlnMicrographName"]
+            == self.micrograph_names[micrograph_index]
+        ]
+        particle_data_blocks_at_filament = particle_data_blocks_at_micrograph[
+            particle_data_blocks_at_micrograph["rlnHelicalTubeID"]
+            == filament_index_in_micrograph + 1
+        ]
+
+        return particle_data_blocks_at_filament
 
     @final
     def __getitem__(
@@ -371,27 +413,25 @@ class HelicalRelionDataset(AbstractDataset):
                 "`helical_particle_stack = helical_dataset[3]`. "
                 f"Got index {filament_index} of type {type(filament_index)}."
             )
-        # Read all images at a particular rlnHelicalTubeID
-        particle_dataframe = self.dataset.data_blocks["particles"]
-        # ... make sure the index is not out of bounds
-        n_filaments = particle_dataframe["rlnHelicalTubeID"].max()
-        if filament_index + 1 > n_filaments:
-            raise ValueError(
+        # Make sure the filament index is in-bounds
+        if filament_index + 1 > self.n_filaments:
+            raise IndexError(
                 "The index at which the `HelicalRelionDataset` was accessed was out of "
-                f"bounds! The number of filaments in the dataset is {n_filaments}, but "
-                f"you tried to access the index {filament_index}."
+                f"bounds! The number of filaments in the dataset is {self.n_filaments}, "
+                f"but you tried to access the index {filament_index}."
             )
-        # .. get the indices for a filament
-        particle_indices = np.squeeze(
-            np.argwhere(particle_dataframe["rlnHelicalTubeID"] == filament_index + 1)
+        # Get the particle stack indices corresponding to this filament
+        particle_data_blocks_at_filament = (
+            self.get_particle_data_blocks_at_filament_index(filament_index)
         )
-        # ... access the particle stack at these indices
+        particle_indices = np.asarray(particle_data_blocks_at_filament.index, dtype=int)
+        # Access the particle stack at these indices
         dataset = self.dataset[particle_indices]
         return dataset
 
     @final
     def __len__(self) -> int:
-        return self.dataset.data_blocks["particles"]["rlnHelicalTubeID"].max()
+        return self.n_filaments
 
 
 def _validate_relion_data_blocks(data_blocks: dict[str, pd.DataFrame]):
@@ -424,3 +464,21 @@ def _validate_helical_relion_data_blocks(data_blocks: dict[str, pd.DataFrame]):
             "Missing column 'rlnHelicalTubeID' in `starfile.read` output. "
             "This column must be present when using a `HelicalRelionDataset`."
         )
+
+
+def _get_number_of_filaments_per_micrograph_in_helical_data_blocks(
+    data_blocks: dict[str, pd.DataFrame],
+) -> tuple[Int[np.ndarray, " n_micrographs"], list[str]]:
+    particle_data_blocks = data_blocks["particles"]
+    micrograph_names = particle_data_blocks["rlnMicrographName"].unique().tolist()
+    n_filaments_per_micrograph = np.asarray(
+        tuple(
+            particle_data_blocks[
+                particle_data_blocks["rlnMicrographName"] == micrograph_name
+            ]["rlnHelicalTubeID"].max()
+            for micrograph_name in micrograph_names
+        ),
+        dtype=int,
+    )
+
+    return n_filaments_per_micrograph, micrograph_names
