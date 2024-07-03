@@ -375,7 +375,7 @@ class HelicalRelionDataset(AbstractDataset):
         object.__setattr__(self, "n_filaments_per_micrograph", n_filaments_per_micrograph)
         object.__setattr__(self, "micrograph_names", micrograph_names)
 
-    def get_particle_data_blocks_at_filament_index(
+    def get_data_blocks_at_filament_index(
         self, filament_index: int | Int[np.ndarray, ""]
     ) -> pd.DataFrame:
         # Map the filament index to a micrograph index
@@ -421,8 +421,8 @@ class HelicalRelionDataset(AbstractDataset):
                 f"but you tried to access the index {filament_index}."
             )
         # Get the particle stack indices corresponding to this filament
-        particle_data_blocks_at_filament = (
-            self.get_particle_data_blocks_at_filament_index(filament_index)
+        particle_data_blocks_at_filament = self.get_data_blocks_at_filament_index(
+            filament_index
         )
         particle_indices = np.asarray(particle_data_blocks_at_filament.index, dtype=int)
         # Access the particle stack at these indices
