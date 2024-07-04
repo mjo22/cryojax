@@ -64,7 +64,7 @@ def read_array_with_spacing_from_mrc(
 
 
 def write_image_to_mrc(
-    image: Float[Array, "y_dim x_dim"],
+    image: Float[Array, "y_dim x_dim"] | Float[np.ndarray, "y_dim x_dim"],
     pixel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
     filename: str | pathlib.Path,
     overwrite: bool = False,
@@ -99,7 +99,7 @@ def write_image_to_mrc(
 
 
 def write_image_stack_to_mrc(
-    image_stack: Float[Array, "M y_dim x_dim"],
+    image_stack: Float[Array, "M y_dim x_dim"] | Float[np.ndarray, "M y_dim x_dim"],
     pixel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
     filename: str | pathlib.Path,
     overwrite: bool = False,
@@ -135,7 +135,9 @@ def write_image_stack_to_mrc(
 
 
 def write_volume_to_mrc(
-    voxel_grid: Float[Array, "z_dim y_dim x_dim"],
+    voxel_grid: (
+        Float[Array, "z_dim y_dim x_dim"] | Float[np.ndarray, "z_dim y_dim x_dim"]
+    ),
     voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
     filename: str | pathlib.Path,
     overwrite: bool = False,
