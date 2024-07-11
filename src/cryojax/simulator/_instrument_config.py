@@ -102,14 +102,14 @@ class InstrumentConfig(Module, strict=True):
     @cached_property
     def coordinate_grid_in_pixels(
         self,
-    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim} 2"]:
+    ) -> Float[Array, "{self.y_dim} {self.x_dim} 2"]:
         """A spatial coordinate system for the `shape`."""
         return make_coordinate_grid(shape=self.shape)
 
     @cached_property
     def coordinate_grid_in_angstroms(
         self,
-    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim} 2"]:
+    ) -> Float[Array, "{self.y_dim} {self.x_dim} 2"]:
         """Convenience property for `pixel_size * coordinate_grid_in_pixels`"""
         return _safe_multiply_by_constant(self.coordinate_grid_in_pixels, self.pixel_size)
 

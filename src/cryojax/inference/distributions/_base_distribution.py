@@ -4,12 +4,14 @@ Base class for a cryojax distribution.
 
 from abc import abstractmethod
 
-from equinox import Module
+from equinox import AbstractVar, Module
 from jaxtyping import Array, Float, Inexact, PRNGKeyArray
 
 
 class AbstractDistribution(Module, strict=True):
     """An image formation model equipped with a probabilistic model."""
+
+    is_signal_normalized: AbstractVar[bool]
 
     @abstractmethod
     def log_likelihood(self, observed: Inexact[Array, "y_dim x_dim"]) -> Float[Array, ""]:
