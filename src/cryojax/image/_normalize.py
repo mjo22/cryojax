@@ -6,25 +6,24 @@ import math
 from typing import Optional
 
 import jax.numpy as jnp
-from jaxtyping import Array, Float, Inexact
+from jaxtyping import Array, Bool, Float, Inexact
 
 
 def normalize_image(
     image: Inexact[Array, "y_dim x_dim"],
     *,
     is_real: bool = True,
+    where: Optional[Bool[Array, "y_dim x_dim"]] = None,
     half_space: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
 ) -> Inexact[Array, "y_dim x_dim"]:
-    """
-    Normalize so that the image is mean 0
-    and standard deviation 1 in real space.
-    """
+    """Normalize so that the image is mean 0 and standard deviation 1 in real space."""
     return rescale_image(
         image,
         1.0,
         0.0,
         is_real=is_real,
+        where=where,
         half_space=half_space,
         shape_in_real_space=shape_in_real_space,
     )
@@ -36,11 +35,12 @@ def rescale_image(
     mean: float | Float[Array, ""],
     *,
     is_real: bool = True,
+    where: Optional[Bool[Array, "y_dim x_dim"]] = None,
     half_space: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
 ) -> Inexact[Array, "y_dim x_dim"]:
-    """Normalize so that the image is mean mu
-    and standard deviation N in real space.
+    """Normalize so that the image is mean `mean`
+    and standard deviation `std` in real space.
 
     Parameters
     ----------
@@ -56,6 +56,10 @@ def rescale_image(
     is_real : `bool`
         If ``True``, the given ``image`` is in real
         space. If ``False``, it is in Fourier space.
+    where :
+        As in `where` argument in `jax.numpy.std` and
+        `jax.numpy.mean`. This argument is ignored if
+        `is_real = False`.
 
     Returns
     -------
@@ -66,7 +70,9 @@ def rescale_image(
     image = jnp.asarray(image)
     # First normalize image to zero mean and unit standard deviation
     if is_real:
-        normalized_image = (image - image.mean()) / image.std()
+        normalized_image = (image - jnp.mean(image, where=where)) / jnp.std(
+            image, where=where
+        )
         rescaled_image = std * normalized_image + mean
     else:
         N1, N2 = image.shape

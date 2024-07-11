@@ -7,9 +7,11 @@ from typing_extensions import override
 
 import jax.numpy as jnp
 import jax.random as jr
+from equinox import field
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..._errors import error_if_not_positive
+from ...image import normalize_image, rfftn
 from ...image.operators import Constant, FourierOperatorLike
 from ...simulator import AbstractImagingPipeline
 from ._base_distribution import AbstractDistribution
@@ -26,11 +28,14 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
     variance_function: FourierOperatorLike
     signal_scale_factor: Float[Array, ""]
 
+    is_signal_normalized: bool = field(static=True)
+
     def __init__(
         self,
         imaging_pipeline: AbstractImagingPipeline,
         variance_function: Optional[FourierOperatorLike] = None,
         signal_scale_factor: Optional[float | Float[Array, ""]] = None,
+        is_signal_normalized: bool = False,
     ):
         """**Arguments:**
 
@@ -38,6 +43,10 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         - `variance_function`: The variance of each fourier mode. By default,
                                `cryojax.image.operators.Constant(1.0)`.
         - `signal_scale_factor`: A scale factor for the underlying signal simulated from `imaging_pipeline`.
+        - `is_signal_normalized`:
+            Whether or not the signal is normalized before applying the `signal_scale_factor`.
+            If an `AbstractMask` is given to `imaging_pipeline.mask`, the signal is normalized
+            within the region where the mask is equal to `1`.
         """  # noqa: E501
         self.imaging_pipeline = imaging_pipeline
         self.variance_function = variance_function or Constant(1.0)
@@ -46,6 +55,7 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
                 jnp.asarray(imaging_pipeline.instrument_config.n_pixels, dtype=float)
             )
         self.signal_scale_factor = error_if_not_positive(jnp.asarray(signal_scale_factor))
+        self.is_signal_normalized = is_signal_normalized
 
     @override
     def compute_signal(
@@ -63,8 +73,24 @@ class IndependentGaussianFourierModes(AbstractDistribution, strict=True):
         ]
     ):
         """Render the image formation model."""
-        simulated_image = self.imaging_pipeline.render(get_real=get_real)
-        return self.signal_scale_factor * simulated_image
+        if self.is_signal_normalized:
+            simulated_image = self.imaging_pipeline.render(get_real=True)
+            where = (
+                None
+                if self.imaging_pipeline.mask is None
+                else self.imaging_pipeline.mask.array == 1.0
+            )
+            normalized_simulated_image = normalize_image(simulated_image, where=where)
+            return (
+                self.signal_scale_factor * normalized_simulated_image
+                if get_real
+                else self.signal_scale_factor * rfftn(normalized_simulated_image)
+            )
+        else:
+            real_or_fourier_simulated_image = self.imaging_pipeline.render(
+                get_real=get_real
+            )
+            return self.signal_scale_factor * real_or_fourier_simulated_image
 
     def compute_noise(
         self, rng_key: PRNGKeyArray, *, get_real: bool = True

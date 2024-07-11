@@ -237,10 +237,7 @@ def _compute_circular_or_spherical_mask(
                 radial_coordinate > radius + rolloff_width,
                 0.0,
                 0.5
-                * (
-                    1
-                    + jnp.cos(jnp.pi * (radial_coordinate_grid - radius) / rolloff_width)
-                ),
+                * (1 + jnp.cos(jnp.pi * (radial_coordinate - radius) / rolloff_width)),
             ),
         )
 
