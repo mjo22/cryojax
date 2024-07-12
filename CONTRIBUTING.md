@@ -38,7 +38,7 @@ This uses `ruff` to format and lint the code.
 After making changes, make sure that the tests pass. In the `cryojax` base directory, run
 
 ```
-python -m pip install pytest pycistem
+python -m pip install -r tests/requirements.txt
 python -m pytest
 ```
 
@@ -50,8 +50,7 @@ Again in the `cryojax` base directory, prepare to build the documentation by ins
 
 ```
 python -m pip install -r docs/requirements.txt
-git lfs install
-git lfs pull
+git lfs install; git lfs pull
 ```
 
 Now, build the documentation with
