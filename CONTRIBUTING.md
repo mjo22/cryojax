@@ -11,7 +11,7 @@ Equinox also provides a recommended pattern for writing `Module`s: https://docs.
 
 ## What contributions fit into `cryojax`?
 
-`cryojax` does not try to be a one-stop shop for cryo-EM analysis. The current scope of the package is outlined in the README.md. However, we would like to know what you would find helpful for your research, so please feel free to get in touch on the [Issue
+`cryojax` does not try to be a one-stop shop for cryo-EM analysis. The current scope of the package is outlined in the README.md. However, we would like to know what you would find helpful for your research, so if you have a contribution in mind please feel free to get in touch on the [Issue
 Tracker](https://github.com/mjo22/cryojax/issues) and ask.
 
 ## Getting started
@@ -42,7 +42,7 @@ python -m pip install -r tests/requirements.txt
 python -m pytest
 ```
 
-**If you are using a non-linux OS, the [`pycistem`](https://github.com/jojoelfe/pycistem) testing dependency cannot be installed**. In this case, you will need to open a PR in order for the tests against [`cisTEM`](https://github.com/timothygrant80/cisTEM) to run.
+**If you are using a non-linux OS, the [`pycistem`](https://github.com/jojoelfe/pycistem) testing dependency cannot be installed**. In this case, in order to run the tests against [`cisTEM`](https://github.com/timothygrant80/cisTEM), run the testing [workflow](https://github.com/mjo22/cryojax/actions/workflows/testing.yml). This can be done manually or will happen automatically when a PR is opened.
 
 ## Building documentation
 
