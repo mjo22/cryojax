@@ -22,16 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install mkdocs
-          pip install mkdocs-gen-files
-          pip install mkdocs-same-dir
-          pip install pymdown-extensions
-          pip install mkdocs-pymdownx-material-extras
-          pip install mkdocs-autorefs
-          pip install mkdocs-simple-plugin
-          pip install mkdocstrings-python
-          pip install mknotebooks
-          pip install mkdocs-material
+          pip install -r docs/requirements.txt
 
       - name: Build
         run: |
