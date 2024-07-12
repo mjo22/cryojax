@@ -31,9 +31,6 @@ dependencies = [
     "gemmi",
 ]
 
-[project.optional-dependencies]
-test = ["pytest", "pycistem"]
-
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
