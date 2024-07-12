@@ -59,6 +59,8 @@ Now, build the documentation with
 mkdocs serve
 ```
 
+and navigate to the local webpage by following the instructions in your terminal.
+
 ## How to submit changes
 
 Now, if the tests and documentation look okay, push your changes and open a [Pull Request](https://github.com/mjo22/cryojax/pulls)!
