@@ -50,6 +50,7 @@ Again in the `cryojax` base directory, prepare to build the documentation by ins
 
 ```
 python -m pip install -r docs/requirements.txt
+sudo apt-get install git-lfs  # If using macOS, `brew install git-lfs`
 git lfs install; git lfs pull
 ```
 
