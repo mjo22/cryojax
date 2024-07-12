@@ -16,9 +16,9 @@ jax.config.update("jax_enable_x64", True)
 
 
 try:
-    import pycistem  # pyright: ignore
+    from pycistem.core import AnglesAndShifts, CTF, Image  # pyright: ignore
 except ModuleNotFoundError:
-    pycistem = None
+    CTF, AnglesAndShifts, Image = None, None, None
 
 PYCISTEM_WARNING_MESAGE = (
     "Testing against cisTEM is not running because `pycistem` was not "
@@ -44,7 +44,7 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
     """Test CTF model against cisTEM.
 
     Modified from https://github.com/jojoelfe/contrasttransferfunction"""
-    if pycistem is not None:
+    if CTF is not None:
         shape = (512, 512)
         freqs = make_frequency_grid(shape, pixel_size)
         k_sqr, theta = cartesian_to_polar(freqs, square=True)
@@ -59,7 +59,7 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
         )
         ctf = jnp.array(optics(freqs))
         # Compute cisTEM CTF
-        cisTEM_optics = pycistem.core.cisCTF(
+        cisTEM_optics = CTF(
             kV=kV,
             cs=cs,
             ac=ac,
@@ -128,7 +128,7 @@ def test_compute_projection_with_cistem(
     sample_mrc_path,
     pixel_size,
 ):
-    if pycistem is not None:
+    if AnglesAndShifts is not None:
         # cryojax
         real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
         potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(
@@ -152,7 +152,7 @@ def test_compute_projection_with_cistem(
         )
         # pycistem
         pycistem_volume = _load_pycistem_template(sample_mrc_path, box_size)
-        pycistem_angles = pycistem.core.AnglesAndShifts()
+        pycistem_angles = AnglesAndShifts()
         pycistem_angles.Init(phi, theta, psi, 0.0, 0.0)
         pycistem_model = _compute_projection(pycistem_volume, pycistem_angles, box_size)
         pycistem_projection = np.asarray(pycistem_model.real_values)
@@ -164,7 +164,7 @@ def test_compute_projection_with_cistem(
 
 def _load_pycistem_template(filename, box_size):
     """Load pycistem template in fourier space."""
-    volume = pycistem.core.Image()
+    volume = Image()
     volume.QuickAndDirtyReadSlices(filename, 1, box_size)
     volume.ForwardFFT(True)
     volume.ZeroCentralPixel()
@@ -175,7 +175,7 @@ def _load_pycistem_template(filename, box_size):
 
 def _compute_projection(volume, angles, box_size):
     """Compute scattering projection of pycistem volume."""
-    projection = pycistem.core.Image()
+    projection = Image()
     projection.Allocate(box_size, box_size, False)
 
     volume.ExtractSlice(projection, angles, 1.0, False)
