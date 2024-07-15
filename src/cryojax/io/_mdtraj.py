@@ -27,7 +27,7 @@ def get_atom_info_from_mdtraj(
 
     """
     atom_element_names = [a.element.atomic_number for a in traj.top.atoms]
-    atom_positions = traj.xyz
+    atom_positions = traj.xyz * 10.0  # Mdtraj uses nanometers, not Angstroms.
     return np.array(atom_positions), np.array(atom_element_names)
 
 
