@@ -31,6 +31,25 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
     transfer_theory: WaveTransferTheory
     solvent: Optional[AbstractIce]
 
+    def __init__(
+        self,
+        structural_ensemble: AbstractStructuralEnsemble,
+        potential_integrator: AbstractPotentialIntegrator,
+        transfer_theory: WaveTransferTheory,
+        solvent: Optional[AbstractIce],
+    ):
+        """**Arguments:**
+
+        - `structural_ensemble`: The structural ensemble of scattering potentials.
+        - `potential_integrator`: The method for integrating the scattering potential.
+        - `transfer_theory`: The wave transfer theory.
+        - `solvent`: The model for the solvent.
+        """
+        self.structural_ensemble = structural_ensemble
+        self.potential_integrator = potential_integrator
+        self.transfer_theory = transfer_theory
+        self.solvent = solvent
+
     @override
     def compute_fourier_wavefunction_at_exit_plane(
         self,

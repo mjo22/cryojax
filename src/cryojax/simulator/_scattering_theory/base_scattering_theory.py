@@ -39,8 +39,8 @@ class AbstractScatteringTheory(eqx.Module, strict=True):
 class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
     """Base class for a wave-based scattering theory."""
 
-    transfer_theory: eqx.AbstractVar[WaveTransferTheory]
     structural_ensemble: eqx.AbstractVar[AbstractStructuralEnsemble]
+    transfer_theory: eqx.AbstractVar[WaveTransferTheory]
 
     @abstractmethod
     def compute_fourier_wavefunction_at_exit_plane(

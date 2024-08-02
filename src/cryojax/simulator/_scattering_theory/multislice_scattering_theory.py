@@ -18,6 +18,22 @@ class MultisliceScatteringTheory(AbstractWaveScatteringTheory, strict=True):
     multislice_integrator: AbstractMultisliceIntegrator
     transfer_theory: WaveTransferTheory
 
+    def __init__(
+        self,
+        structural_ensemble: AbstractStructuralEnsemble,
+        multislice_integrator: AbstractMultisliceIntegrator,
+        transfer_theory: WaveTransferTheory,
+    ):
+        """**Arguments:**
+
+        - `structural_ensemble`: The structural ensemble of scattering potentials.
+        - `multislice_integrator`: The multislice method.
+        - `transfer_theory`: The wave transfer theory.
+        """
+        self.structural_ensemble = structural_ensemble
+        self.multislice_integrator = multislice_integrator
+        self.transfer_theory = transfer_theory
+
     @override
     def compute_fourier_wavefunction_at_exit_plane(
         self,
@@ -26,28 +42,15 @@ class MultisliceScatteringTheory(AbstractWaveScatteringTheory, strict=True):
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
+        # Get potential in the lab frame
+        potential = self.structural_ensemble.get_potential_in_lab_frame()
         # Compute the wavefunction in the exit plane
-        fourier_wavefunction_at_exit_plane = (
-            _compute_fourier_wavefunction_from_scattering_potential(
-                self.structural_ensemble, self.multislice_integrator, instrument_config
+        wavefunction_in_exit_plane = (
+            self.multislice_integrator.compute_wavefunction_at_exit_plane(
+                potential, instrument_config
             )
         )
+        # Compute the wavefunction in the exit plane
+        fourier_wavefunction_at_exit_plane = fftn(wavefunction_in_exit_plane)
 
         return fourier_wavefunction_at_exit_plane
-
-
-def _compute_fourier_wavefunction_from_scattering_potential(
-    structural_ensemble, multislice_integrator, instrument_config
-):
-    # Get potential in the lab frame
-    potential = structural_ensemble.get_potential_in_lab_frame()
-    # Compute the wavefunction in the exit plane
-    wavefunction_in_exit_plane = multislice_integrator.compute_wavefunction_at_exit_plane(
-        potential, instrument_config
-    )
-    # TODO: How to add translation?
-    # Compute in-plane translation through fourier phase shifts
-    # translational_phase_shifts = structural_ensemble.pose.compute_shifts(
-    #    instrument_config.padded_frequency_grid_in_angstroms
-    # )
-    return fftn(wavefunction_in_exit_plane)
