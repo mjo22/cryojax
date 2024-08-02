@@ -18,7 +18,7 @@ from .._structural_ensemble import (
 )
 from .._transfer_theory import ContrastTransferTheory
 from .base_scattering_theory import AbstractScatteringTheory
-from .common_functions import compute_phase_shifts_from_integrated_potential
+from .common_functions import compute_fourier_phase_shifts_from_scattering_potential
 
 
 class AbstractWeakPhaseScatteringTheory(AbstractScatteringTheory, strict=True):
@@ -77,7 +77,7 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
     ]:
         # Compute the phase shifts in the exit plane
         fourier_phase_shifts_at_exit_plane = (
-            _compute_phase_shifts_from_integrated_potential(
+            compute_fourier_phase_shifts_from_scattering_potential(
                 self.structural_ensemble, self.potential_integrator, instrument_config
             )
         )
@@ -144,7 +144,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         def compute_image(ensemble_mapped, ensemble_no_mapped, instrument_config):
             ensemble = eqx.combine(ensemble_mapped, ensemble_no_mapped)
             fourier_phase_shifts_at_exit_plane = (
-                _compute_phase_shifts_from_integrated_potential(
+                compute_fourier_phase_shifts_from_scattering_potential(
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
@@ -199,7 +199,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         def compute_image(ensemble_mapped, ensemble_no_mapped, instrument_config):
             ensemble = eqx.combine(ensemble_mapped, ensemble_no_mapped)
             fourier_phase_shifts_at_exit_plane = (
-                _compute_phase_shifts_from_integrated_potential(
+                compute_fourier_phase_shifts_from_scattering_potential(
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
@@ -261,25 +261,3 @@ LinearSuperpositionScatteringTheory.__init__.__doc__ = """**Arguments:**
 - `transfer_theory`: The contrast transfer theory.
 - `solvent`: The model for the solvent.
 """
-
-
-def _compute_phase_shifts_from_integrated_potential(
-    structural_ensemble, potential_integrator, instrument_config
-):
-    # Get potential in the lab frame
-    potential = structural_ensemble.get_potential_in_lab_frame()
-    # Compute the phase shifts in the exit plane
-    fourier_integrated_potential = (
-        potential_integrator.compute_fourier_integrated_potential(
-            potential, instrument_config
-        )
-    )
-    # Compute in-plane translation through fourier phase shifts
-    translational_phase_shifts = structural_ensemble.pose.compute_shifts(
-        instrument_config.padded_frequency_grid_in_angstroms
-    )
-    # Compute the phase shifts in exit plane and multiply by the translation.
-    phase_shifts_in_exit_plane = compute_phase_shifts_from_integrated_potential(
-        fourier_integrated_potential, instrument_config.wavelength_in_angstroms
-    )
-    return phase_shifts_in_exit_plane * translational_phase_shifts

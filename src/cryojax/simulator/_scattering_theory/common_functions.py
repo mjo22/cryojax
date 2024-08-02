@@ -40,3 +40,26 @@ def compute_phase_shifts_from_integrated_potential(
     See the documentation on atom-based scattering potentials for more information.
     """  # noqa: E501
     return integrated_potential * jnp.asarray(wavelength_in_angstroms) / (4 * jnp.pi)
+
+
+# Not public API
+def compute_fourier_phase_shifts_from_scattering_potential(
+    structural_ensemble, potential_integrator, instrument_config
+):
+    # Get potential in the lab frame
+    potential = structural_ensemble.get_potential_in_lab_frame()
+    # Compute the phase shifts in the exit plane
+    fourier_integrated_potential = (
+        potential_integrator.compute_fourier_integrated_potential(
+            potential, instrument_config
+        )
+    )
+    # Compute in-plane translation through fourier phase shifts
+    translational_phase_shifts = structural_ensemble.pose.compute_shifts(
+        instrument_config.padded_frequency_grid_in_angstroms
+    )
+    # Compute the phase shifts in exit plane and multiply by the translation.
+    phase_shifts_in_exit_plane = compute_phase_shifts_from_integrated_potential(
+        fourier_integrated_potential, instrument_config.wavelength_in_angstroms
+    )
+    return phase_shifts_in_exit_plane * translational_phase_shifts
