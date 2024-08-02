@@ -75,8 +75,12 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         fourier_squared_wavefunction_at_detector_plane = rfftn(
             wavefunction_at_detector_plane * jnp.conj(wavefunction_at_detector_plane)
         )
+        # ... apply translation
+        translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
+            instrument_config.padded_frequency_grid_in_angstroms
+        )
 
-        return fourier_squared_wavefunction_at_detector_plane
+        return translational_phase_shifts * fourier_squared_wavefunction_at_detector_plane
 
     @override
     def compute_fourier_contrast_at_detector_plane(
@@ -108,5 +112,9 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             (1 + squared_wavefunction_at_detector_plane)
             / (1 - squared_wavefunction_at_detector_plane)
         )
+        # ... apply translation
+        translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
+            instrument_config.padded_frequency_grid_in_angstroms
+        )
 
-        return fourier_contrast_at_detector_plane
+        return translational_phase_shifts * fourier_contrast_at_detector_plane

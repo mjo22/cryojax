@@ -11,7 +11,7 @@ from .._solvent import AbstractIce
 from .._structural_ensemble import AbstractStructuralEnsemble
 from .._transfer_theory import WaveTransferTheory
 from .base_scattering_theory import AbstractWaveScatteringTheory
-from .common_functions import compute_fourier_phase_shifts_from_scattering_potential
+from .common_functions import compute_phase_shifts_from_integrated_potential
 
 
 class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
@@ -40,9 +40,13 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
         # Compute the phase shifts in the exit plane
+        potential = self.structural_ensemble.get_potential_in_lab_frame()
         fourier_phase_shifts_at_exit_plane = (
-            compute_fourier_phase_shifts_from_scattering_potential(
-                self.structural_ensemble, self.potential_integrator, instrument_config
+            compute_phase_shifts_from_integrated_potential(
+                self.potential_integrator.compute_fourier_integrated_potential(
+                    potential, instrument_config
+                ),
+                instrument_config.wavelength_in_angstroms,
             )
         )
 
