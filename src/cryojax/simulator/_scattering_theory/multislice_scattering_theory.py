@@ -1,7 +1,6 @@
 from typing import Optional
 from typing_extensions import override
 
-import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
 from ...image import fftn
@@ -46,8 +45,9 @@ def _compute_fourier_wavefunction_from_scattering_potential(
     wavefunction_in_exit_plane = multislice_integrator.compute_wavefunction_at_exit_plane(
         potential, instrument_config
     )
+    # TODO: How to add translation?
     # Compute in-plane translation through fourier phase shifts
-    translational_phase_shifts = structural_ensemble.pose.compute_shifts(
-        instrument_config.padded_frequency_grid_in_angstroms
-    )
-    return fftn(wavefunction_in_exit_plane) * jnp.exp(1.0j * translational_phase_shifts)
+    # translational_phase_shifts = structural_ensemble.pose.compute_shifts(
+    #    instrument_config.padded_frequency_grid_in_angstroms
+    # )
+    return fftn(wavefunction_in_exit_plane)
