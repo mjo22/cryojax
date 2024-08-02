@@ -73,7 +73,9 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         wavefunction_at_detector_plane = ifftn(fourier_wavefunction_at_detector_plane)
         # ... get the squared wavefunction and return to fourier space
         fourier_squared_wavefunction_at_detector_plane = rfftn(
-            wavefunction_at_detector_plane * jnp.conj(wavefunction_at_detector_plane)
+            (
+                wavefunction_at_detector_plane * jnp.conj(wavefunction_at_detector_plane)
+            ).real
         )
         # ... apply translation
         translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
@@ -105,12 +107,12 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         # ... get the squared wavefunction
         squared_wavefunction_at_detector_plane = (
             wavefunction_at_detector_plane * jnp.conj(wavefunction_at_detector_plane)
-        )
+        ).real
         # ... compute the contrast directly from the squared wavefunction
-        # as C = 1 + psi^2 / 1 - psi^2
+        # as C = -1 + psi^2 / 1 + psi^2
         fourier_contrast_at_detector_plane = rfftn(
-            (1 + squared_wavefunction_at_detector_plane)
-            / (1 - squared_wavefunction_at_detector_plane)
+            (-1 + squared_wavefunction_at_detector_plane)
+            / (1 + squared_wavefunction_at_detector_plane)
         )
         # ... apply translation
         translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(

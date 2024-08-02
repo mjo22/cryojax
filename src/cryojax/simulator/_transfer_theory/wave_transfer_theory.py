@@ -5,11 +5,11 @@ import jax.numpy as jnp
 from equinox import field
 from jaxtyping import Array, Complex, Float
 
-from ..._errors import error_if_negative, error_if_not_positive
+from ..._errors import error_if_negative, error_if_not_fractional, error_if_not_positive
 from ...constants import convert_keV_to_angstroms
 from .._instrument_config import InstrumentConfig
 from .base_transfer_theory import AbstractTransferFunction, AbstractTransferTheory
-from .common_functions import compute_phase_shifts
+from .common_functions import compute_phase_shifts_with_amplitude_contrast_ratio
 
 
 class WaveTransferFunction(AbstractTransferFunction, strict=True):
@@ -28,6 +28,8 @@ class WaveTransferFunction(AbstractTransferFunction, strict=True):
     astigmatism_angle: Float[Array, ""]
     voltage_in_kilovolts: Float[Array, ""] | float = field(static=True)
     spherical_aberration_in_mm: Float[Array, ""]
+    amplitude_contrast_ratio: Float[Array, ""]
+    phase_shift: Float[Array, ""]
 
     def __init__(
         self,
@@ -36,6 +38,8 @@ class WaveTransferFunction(AbstractTransferFunction, strict=True):
         astigmatism_angle: float | Float[Array, ""] = 0.0,
         voltage_in_kilovolts: float | Float[Array, ""] = 300.0,
         spherical_aberration_in_mm: float | Float[Array, ""] = 2.7,
+        amplitude_contrast_ratio: float | Float[Array, ""] = 0.1,
+        phase_shift: float | Float[Array, ""] = 0.0,
     ):
         """**Arguments:**
 
@@ -48,12 +52,16 @@ class WaveTransferFunction(AbstractTransferFunction, strict=True):
             as a traced value in the `InstrumentConfig`, since many modeling components
             are interested in the accelerating voltage.
         - `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
+        - `amplitude_contrast_ratio`: The amplitude contrast ratio.
+        - `phase_shift`: The additional phase shift.
         """
         self.defocus_in_angstroms = error_if_not_positive(defocus_in_angstroms)
         self.astigmatism_in_angstroms = jnp.asarray(astigmatism_in_angstroms)
         self.astigmatism_angle = jnp.asarray(astigmatism_angle)
         self.voltage_in_kilovolts = voltage_in_kilovolts
         self.spherical_aberration_in_mm = error_if_negative(spherical_aberration_in_mm)
+        self.amplitude_contrast_ratio = error_if_not_fractional(amplitude_contrast_ratio)
+        self.phase_shift = jnp.asarray(phase_shift)
 
     def __call__(
         self,
@@ -63,6 +71,7 @@ class WaveTransferFunction(AbstractTransferFunction, strict=True):
         defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> Complex[Array, "y_dim x_dim"]:
         # Convert degrees to radians
+        phase_shift = jnp.deg2rad(self.phase_shift)
         astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
         # Convert spherical abberation coefficient to angstroms
         spherical_aberration_in_angstroms = self.spherical_aberration_in_mm * 1e7
@@ -83,17 +92,18 @@ class WaveTransferFunction(AbstractTransferFunction, strict=True):
             + jnp.asarray(defocus_offset)
         )
         # Compute phase shifts for CTF
-        phase_shifts = compute_phase_shifts(
+        phase_shifts = compute_phase_shifts_with_amplitude_contrast_ratio(
             frequency_grid_in_angstroms,
             defocus_axis_1_in_angstroms,
             defocus_axis_2_in_angstroms,
             astigmatism_angle,
             wavelength_in_angstroms,
             spherical_aberration_in_angstroms,
-            phase_shift=jnp.asarray(0.0),
+            phase_shift,
+            self.amplitude_contrast_ratio,
         )
         # Compute the CTF
-        return jnp.exp(1.0j * phase_shifts)
+        return jnp.exp(-1.0j * phase_shifts)
 
 
 class WaveTransferTheory(AbstractTransferTheory, strict=True):
