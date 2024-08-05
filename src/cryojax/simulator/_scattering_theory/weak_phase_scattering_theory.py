@@ -72,7 +72,7 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         structural_ensemble: AbstractStructuralEnsemble,
         potential_integrator: AbstractPotentialIntegrator,
         transfer_theory: ContrastTransferTheory,
-        solvent: Optional[AbstractIce],
+        solvent: Optional[AbstractIce] = None,
     ):
         """**Arguments:**
 
@@ -148,7 +148,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         structural_ensemble_batcher: AbstractStructuralEnsembleBatcher,
         potential_integrator: AbstractPotentialIntegrator,
         transfer_theory: ContrastTransferTheory,
-        solvent: Optional[AbstractIce],
+        solvent: Optional[AbstractIce] = None,
     ):
         """**Arguments:**
 

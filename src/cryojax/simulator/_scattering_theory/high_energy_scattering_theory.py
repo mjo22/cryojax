@@ -36,7 +36,7 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         structural_ensemble: AbstractStructuralEnsemble,
         potential_integrator: AbstractPotentialIntegrator,
         transfer_theory: WaveTransferTheory,
-        solvent: Optional[AbstractIce],
+        solvent: Optional[AbstractIce] = None,
     ):
         """**Arguments:**
 
