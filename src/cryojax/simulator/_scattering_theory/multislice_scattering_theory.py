@@ -3,7 +3,6 @@ from typing_extensions import override
 
 from jaxtyping import Array, Complex, PRNGKeyArray
 
-from ...image import fftn
 from .._instrument_config import InstrumentConfig
 from .._multislice_integrator import AbstractMultisliceIntegrator
 from .._structural_ensemble import AbstractStructuralEnsemble
@@ -35,7 +34,7 @@ class MultisliceScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         self.transfer_theory = transfer_theory
 
     @override
-    def compute_fourier_wavefunction_at_exit_plane(
+    def compute_wavefunction_at_exit_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -45,12 +44,10 @@ class MultisliceScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         # Get potential in the lab frame
         potential = self.structural_ensemble.get_potential_in_lab_frame()
         # Compute the wavefunction in the exit plane
-        wavefunction_in_exit_plane = (
+        wavefunction_at_exit_plane = (
             self.multislice_integrator.compute_wavefunction_at_exit_plane(
                 potential, instrument_config
             )
         )
-        # Compute the wavefunction in the exit plane
-        fourier_wavefunction_at_exit_plane = fftn(wavefunction_in_exit_plane)
 
-        return fourier_wavefunction_at_exit_plane
+        return wavefunction_at_exit_plane

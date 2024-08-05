@@ -4,7 +4,7 @@ from typing_extensions import override
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
-from ...image import fftn, irfftn
+from ...image import irfftn
 from .._instrument_config import InstrumentConfig
 from .._potential_integrator import AbstractPotentialIntegrator
 from .._solvent import AbstractIce
@@ -51,7 +51,7 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         self.solvent = solvent
 
     @override
-    def compute_fourier_wavefunction_at_exit_plane(
+    def compute_wavefunction_at_exit_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -78,11 +78,7 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
                     )
                 )
 
-        return fftn(
-            jnp.exp(
-                1.0j
-                * irfftn(
-                    fourier_phase_shifts_at_exit_plane, s=instrument_config.padded_shape
-                )
-            )
+        return jnp.exp(
+            1.0j
+            * irfftn(fourier_phase_shifts_at_exit_plane, s=instrument_config.padded_shape)
         )

@@ -6,7 +6,7 @@ import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
-from ...image import ifftn, rfftn
+from ...image import fftn, ifftn, rfftn
 from .._instrument_config import InstrumentConfig
 from .._structural_ensemble import AbstractStructuralEnsemble
 from .._transfer_theory import WaveTransferTheory
@@ -43,7 +43,7 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
     transfer_theory: eqx.AbstractVar[WaveTransferTheory]
 
     @abstractmethod
-    def compute_fourier_wavefunction_at_exit_plane(
+    def compute_wavefunction_at_exit_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -61,8 +61,8 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
         # ... compute the exit wave
-        fourier_wavefunction_at_exit_plane = (
-            self.compute_fourier_wavefunction_at_exit_plane(instrument_config, rng_key)
+        fourier_wavefunction_at_exit_plane = fftn(
+            self.compute_wavefunction_at_exit_plane(instrument_config, rng_key)
         )
         # ... propagate to the detector plane
         fourier_wavefunction_at_detector_plane = self.transfer_theory(
@@ -94,8 +94,8 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
     ]:
         """Compute the contrast at the detector plane, given the squared wavefunction."""
         # ... compute the exit wave
-        fourier_wavefunction_at_exit_plane = (
-            self.compute_fourier_wavefunction_at_exit_plane(instrument_config, rng_key)
+        fourier_wavefunction_at_exit_plane = fftn(
+            self.compute_wavefunction_at_exit_plane(instrument_config, rng_key)
         )
         # ... propagate to the detector plane
         fourier_wavefunction_at_detector_plane = self.transfer_theory(

@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Generic, TypeVar
 
 from equinox import Module
-from jaxtyping import Array, Float
+from jaxtyping import Array, Complex
 
 from .._instrument_config import InstrumentConfig
 
@@ -18,7 +18,7 @@ class AbstractMultisliceIntegrator(Module, Generic[PotentialT], strict=True):
         self,
         potential: PotentialT,
         instrument_config: InstrumentConfig,
-    ) -> Float[
+    ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
         raise NotImplementedError
