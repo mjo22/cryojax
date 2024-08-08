@@ -136,6 +136,7 @@ class AbstractGridSearchMethod(
 class MinimumState(eqx.Module, strict=True):
     current_minimum_eval: Array
     current_best_raveled_index: Array
+    current_eval: Optional[Array] = None
 
 
 class MinimumSolution(eqx.Module, strict=True):
@@ -155,10 +156,15 @@ class MinimumSearchMethod(
     """
 
     get_solution_value: bool
+    store_current_eval: bool
     batch_size: Optional[int]
 
     def __init__(
-        self, *, get_solution_value: bool = True, batch_size: Optional[int] = None
+        self,
+        *,
+        get_solution_value: bool = True,
+        store_current_eval: bool = False,
+        batch_size: Optional[int] = None,
     ):
         """**Arguments:**
 
@@ -168,9 +174,13 @@ class MinimumSearchMethod(
                                 and [`tree_grid_take`][] must be used to extract the
                                 actual grid points. Setting this to `False` may be
                                 necessary if the grid contains large arrays.
+        - `store_current_eval`: If `True`, carry over the last function evaluation in
+                                the `MinimumState`. This is useful when wrapping this
+                                class into new `AbstractGridSearchMethod`s.
         - `batch_size`: The stride of grid points over which to evaluate in parallel.
         """
         self.get_solution_value = get_solution_value
+        self.store_current_eval = store_current_eval
         self.batch_size = batch_size
 
     def init(
@@ -182,11 +192,19 @@ class MinimumSearchMethod(
     ) -> MinimumState:
         # Initialize the state, just keeping track of the best function values
         # and their respective grid index
-        state = MinimumState(
+        return MinimumState(
             current_minimum_eval=jnp.full(f_struct.shape, jnp.inf, dtype=float),
             current_best_raveled_index=jnp.full(f_struct.shape, 0, dtype=int),
+            current_eval=(
+                (
+                    jnp.full(f_struct.shape, 0.0, dtype=float)
+                    if self.batch_size is None
+                    else jnp.full((self.batch_size, *f_struct.shape), 0.0, dtype=float)
+                )
+                if self.store_current_eval
+                else None
+            ),
         )
-        return state
 
     def update(
         self,
@@ -209,7 +227,11 @@ class MinimumSearchMethod(
         current_best_raveled_index = jnp.where(
             is_less_than_last_minimum, raveled_grid_index, last_best_raveled_index
         )
-        return MinimumState(current_minimum_eval, current_best_raveled_index)
+        return MinimumState(
+            current_minimum_eval,
+            current_best_raveled_index,
+            current_eval=value if self.store_current_eval else None,
+        )
 
     def batch_update(
         self,
@@ -235,7 +257,11 @@ class MinimumSearchMethod(
         current_best_raveled_index = jnp.where(
             is_less_than_last_minimum, raveled_grid_index, last_best_raveled_index
         )
-        return MinimumState(current_minimum_eval, current_best_raveled_index)
+        return MinimumState(
+            current_minimum_eval,
+            current_best_raveled_index,
+            current_eval=value_batch if self.store_current_eval else None,
+        )
 
     def postprocess(
         self,
@@ -278,6 +304,6 @@ class MinimumSearchMethod(
         # ... build and return the solution
         return MinimumSolution(
             value,
-            {"n_iterations": math.prod(tree_grid_shape(tree_grid, is_leaf=is_leaf))},
+            {"grid_size": math.prod(tree_grid_shape(tree_grid, is_leaf=is_leaf))},
             final_state,
         )
