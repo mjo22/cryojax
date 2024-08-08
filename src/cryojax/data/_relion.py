@@ -134,7 +134,7 @@ class RelionDataset(AbstractDataset):
         object.__setattr__(self, "is_image_stack_read", is_image_stack_read)
 
     @final
-    def __get_starfile_params__(
+    def _get_starfile_params(
         self, particle_blocks: pd.DataFrame, optics_group: pd.DataFrame
     ) -> tuple[InstrumentConfig, ContrastTransferFunction, EulerAnglePose]:
         defocus_in_angstroms = jnp.asarray(particle_blocks["rlnDefocusU"])
@@ -233,7 +233,7 @@ class RelionDataset(AbstractDataset):
         return instrument_config, ctf, pose
 
     @final
-    def __get_image_stack__(
+    def _get_image_stack(
         self,
         index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"],
         particle_blocks: pd.DataFrame,
@@ -340,12 +340,12 @@ class RelionDataset(AbstractDataset):
         optics_group = self.data_blocks["optics"].iloc[0]
 
         if self.is_image_stack_read:
-            image_stack = self.__get_image_stack__(index, particle_blocks)
+            image_stack = self._get_image_stack(index, particle_blocks)
 
         else:
             image_stack = None
 
-        instrument_config, ctf, pose = self.__get_starfile_params__(
+        instrument_config, ctf, pose = self._get_starfile_params(
             particle_blocks, optics_group
         )
 
