@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import mrcfile
 import numpy as np
 import pandas as pd
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Float, Int, Union
 
 from ..io import read_and_validate_starfile
 from ..simulator import ContrastTransferFunction, EulerAnglePose, InstrumentConfig
@@ -38,20 +38,23 @@ class RelionParticleStack(AbstractParticleStack):
     [RELION](https://relion.readthedocs.io/en/release-5.0/).
     """
 
-    image_stack: Float[Array, "... y_dim x_dim"]
+    image_stack: Union[Float[Array, "... y_dim x_dim"], None]
     instrument_config: InstrumentConfig
     pose: EulerAnglePose
     ctf: ContrastTransferFunction
 
     def __init__(
         self,
-        image_stack: Float[Array, "... y_dim x_dim"],
+        image_stack: Union[Float[Array, "... y_dim x_dim"], None],
         instrument_config: InstrumentConfig,
         pose: EulerAnglePose,
         ctf: ContrastTransferFunction,
     ):
         # Set image stack and config as is
-        self.image_stack = jnp.asarray(image_stack)
+        if image_stack is not None:
+            self.image_stack = jnp.asarray(image_stack)
+        else:
+            self.image_stack = None
         self.instrument_config = instrument_config
         # Set CTF using the defocus offset in the EulerAnglePose
         self.ctf = eqx.tree_at(
@@ -103,6 +106,7 @@ class RelionDataset(AbstractDataset):
     make_instrument_config_fn: Callable[
         [tuple[int, int], Float[Array, "..."], Float[Array, "..."]], InstrumentConfig
     ]
+    is_image_stack_read: bool
 
     @final
     def __init__(
@@ -113,6 +117,7 @@ class RelionDataset(AbstractDataset):
             [tuple[int, int], Float[Array, "..."], Float[Array, "..."]],
             InstrumentConfig,
         ] = _default_make_instrument_config_fn,
+        is_image_stack_read: bool = True,
     ):
         """**Arguments:**
 
@@ -126,102 +131,12 @@ class RelionDataset(AbstractDataset):
             self, "path_to_relion_project", pathlib.Path(path_to_relion_project)
         )
         object.__setattr__(self, "make_instrument_config_fn", make_instrument_config_fn)
+        object.__setattr__(self, "is_image_stack_read", is_image_stack_read)
 
     @final
-    def __getitem__(
-        self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
-    ) -> RelionParticleStack:
-        # Load particle data and optics group
-        n_rows = self.data_blocks["particles"].shape[0]
-        index_error_msg = lambda idx: (
-            "The index at which the `RelionDataset` was accessed was out of bounds! "
-            f"The number of rows in the dataset is {n_rows}, but you tried to "
-            f"access the index {idx}."
-        )
-        # pandas has bad error messages for its indexing
-        if isinstance(index, (int, Int[np.ndarray, ""])):
-            if index > n_rows - 1:
-                raise IndexError(index_error_msg(index))
-        elif isinstance(index, slice):
-            if index.start is not None and index.start > n_rows - 1:
-                raise IndexError(index_error_msg(index.start))
-        elif isinstance(index, np.ndarray):
-            pass  # catch exceptions later
-        else:
-            raise IndexError(
-                f"Indexing with the type {type(index)} is not supported by "
-                "`RelionDataset`. Indexing by integers is supported, one-dimensional "
-                "fancy indexing is supported, and numpy-array indexing is supported. "
-                "For example, like `particle = dataset[0]`, "
-                "`particle_stack = dataset[0:5]`, "
-                "or `particle_stack = dataset[np.array([1, 4, 3, 2])]`."
-            )
-        try:
-            particle_blocks = self.data_blocks["particles"].iloc[index]
-        except Exception:
-            raise IndexError(
-                "Error when indexing the `pandas.Dataframe` for the particle stack "
-                "from the `starfile.read` output."
-            )
-        optics_group = self.data_blocks["optics"].iloc[0]
-        # Load particle image stack rlnImageName
-        image_stack_index_and_name_series_or_str = particle_blocks["rlnImageName"]
-        if isinstance(image_stack_index_and_name_series_or_str, str):
-            # In this block, the user most likely used standard indexing, like
-            # `dataset = RelionDataset(...); particle_stack = dataset[1]`
-            image_stack_index_and_name_str = image_stack_index_and_name_series_or_str
-            # ... split the whole string into its image index and filename
-            relion_particle_index, image_stack_filename = (
-                image_stack_index_and_name_str.split("@")
-            )
-            # ... create full path to the image stack
-            path_to_image_stack = pathlib.Path(
-                self.path_to_relion_project, image_stack_filename
-            )
-            # ... relion convention starts indexing at 1, not 0
-            particle_index = np.asarray(relion_particle_index, dtype=int) - 1
-        elif isinstance(image_stack_index_and_name_series_or_str, pd.Series):
-            # In this block, the user most likely used fancy indexing, like
-            # `dataset = RelionDataset(...); particle_stack = dataset[1:10]`
-            image_stack_index_and_name_series = image_stack_index_and_name_series_or_str
-            # ... split the pandas.Series into a pandas.DataFrame with two columns:
-            # one for the image index and another for the filename
-            image_stack_index_and_name_dataframe = (
-                image_stack_index_and_name_series.str.split("@", expand=True)
-            )
-            # ... get a pandas.Series for each the index and the filename
-            relion_particle_index, image_stack_filename = [
-                image_stack_index_and_name_dataframe[column]
-                for column in image_stack_index_and_name_dataframe.columns
-            ]
-            # ... multiple filenames in the same STAR file is not supported with
-            # fancy indexing
-            if image_stack_filename.nunique() != 1:
-                raise ValueError(
-                    "Found multiple image stack filenames when reading "
-                    "STAR file rows. This is most likely because you tried to "
-                    "use fancy indexing with multiple image stack filenames "
-                    "in the same STAR file. If a STAR file refers to multiple image "
-                    "stack filenames, fancy indexing is not supported. For example, "
-                    "this will raise an error: `dataset = RelionDataset(...); "
-                    "particle_stack = dataset[1:10]`."
-                )
-            # ... create full path to the image stack
-            path_to_image_stack = pathlib.Path(
-                self.path_to_relion_project,
-                np.asarray(image_stack_filename, dtype=object)[0],
-            )
-            # ... relion convention starts indexing at 1, not 0
-            particle_index = np.asarray(relion_particle_index.astype(int), dtype=int) - 1
-        else:
-            raise IOError(
-                "Could not read `rlnImageName` in STAR file for `RelionDataset` "
-                f"index equal to {index}."
-            )
-        with mrcfile.mmap(path_to_image_stack, mode="r", permissive=True) as mrc:
-            image_stack = np.asarray(mrc.data[particle_index])  # type: ignore
-        # Read metadata into a RelionParticleStack
-        # ... particle data
+    def __get_starfile_params__(
+        self, particle_blocks: pd.DataFrame, optics_group: pd.DataFrame
+    ) -> tuple[InstrumentConfig, ContrastTransferFunction, EulerAnglePose]:
         defocus_in_angstroms = jnp.asarray(particle_blocks["rlnDefocusU"])
         astigmatism_in_angstroms = jnp.asarray(
             particle_blocks["rlnDefocusV"]
@@ -315,7 +230,126 @@ class RelionDataset(AbstractDataset):
             tuple([jnp.asarray(value) for value in pose_parameter_values]),
         )
 
-        return RelionParticleStack(jnp.asarray(image_stack), instrument_config, pose, ctf)
+        return instrument_config, ctf, pose
+
+    @final
+    def __get_image_stack__(
+        self,
+        index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"],
+        particle_blocks: pd.DataFrame,
+    ) -> Float[Array, "... y_dim x_dim"]:
+        # Load particle image stack rlnImageName
+        image_stack_index_and_name_series_or_str = particle_blocks["rlnImageName"]
+        if isinstance(image_stack_index_and_name_series_or_str, str):
+            # In this block, the user most likely used standard indexing, like
+            # `dataset = RelionDataset(...); particle_stack = dataset[1]`
+            image_stack_index_and_name_str = image_stack_index_and_name_series_or_str
+            # ... split the whole string into its image index and filename
+            relion_particle_index, image_stack_filename = (
+                image_stack_index_and_name_str.split("@")
+            )
+            # ... create full path to the image stack
+            path_to_image_stack = pathlib.Path(
+                self.path_to_relion_project, image_stack_filename
+            )
+            # ... relion convention starts indexing at 1, not 0
+            particle_index = np.asarray(relion_particle_index, dtype=int) - 1
+        elif isinstance(image_stack_index_and_name_series_or_str, pd.Series):
+            # In this block, the user most likely used fancy indexing, like
+            # `dataset = RelionDataset(...); particle_stack = dataset[1:10]`
+            image_stack_index_and_name_series = image_stack_index_and_name_series_or_str
+            # ... split the pandas.Series into a pandas.DataFrame with two columns:
+            # one for the image index and another for the filename
+            image_stack_index_and_name_dataframe = (
+                image_stack_index_and_name_series.str.split("@", expand=True)
+            )
+            # ... get a pandas.Series for each the index and the filename
+            relion_particle_index, image_stack_filename = [
+                image_stack_index_and_name_dataframe[column]
+                for column in image_stack_index_and_name_dataframe.columns
+            ]
+            # ... multiple filenames in the same STAR file is not supported with
+            # fancy indexing
+            if image_stack_filename.nunique() != 1:
+                raise ValueError(
+                    "Found multiple image stack filenames when reading "
+                    "STAR file rows. This is most likely because you tried to "
+                    "use fancy indexing with multiple image stack filenames "
+                    "in the same STAR file. If a STAR file refers to multiple image "
+                    "stack filenames, fancy indexing is not supported. For example, "
+                    "this will raise an error: `dataset = RelionDataset(...); "
+                    "particle_stack = dataset[1:10]`."
+                )
+            # ... create full path to the image stack
+            path_to_image_stack = pathlib.Path(
+                self.path_to_relion_project,
+                np.asarray(image_stack_filename, dtype=object)[0],
+            )
+            # ... relion convention starts indexing at 1, not 0
+            particle_index = np.asarray(relion_particle_index.astype(int), dtype=int) - 1
+        else:
+            raise IOError(
+                "Could not read `rlnImageName` in STAR file for `RelionDataset` "
+                f"index equal to {index}."
+            )
+
+        with mrcfile.mmap(path_to_image_stack, mode="r", permissive=True) as mrc:
+            image_stack = np.asarray(mrc.data[particle_index])  # type: ignore
+
+        return jnp.asarray(image_stack)
+
+    @final
+    def __getitem__(
+        self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
+    ) -> RelionParticleStack:
+        # Load particle data and optics group
+        n_rows = self.data_blocks["particles"].shape[0]
+        index_error_msg = lambda idx: (
+            "The index at which the `RelionDataset` was accessed was out of bounds! "
+            f"The number of rows in the dataset is {n_rows}, but you tried to "
+            f"access the index {idx}."
+        )
+        # pandas has bad error messages for its indexing
+        if isinstance(index, (int, Int[np.ndarray, ""])):
+            if index > n_rows - 1:
+                raise IndexError(index_error_msg(index))
+        elif isinstance(index, slice):
+            if index.start is not None and index.start > n_rows - 1:
+                raise IndexError(index_error_msg(index.start))
+        elif isinstance(index, np.ndarray):
+            pass  # catch exceptions later
+        else:
+            if (
+                self.is_image_stack_read
+            ):  # this is only an issue if the image stack is read
+                raise IndexError(
+                    f"Indexing with the type {type(index)} is not supported by "
+                    "`RelionDataset`. Indexing by integers is supported, one-dimensional "
+                    "fancy indexing is supported, and numpy-array indexing is supported. "
+                    "For example, like `particle = dataset[0]`, "
+                    "`particle_stack = dataset[0:5]`, "
+                    "or `particle_stack = dataset[np.array([1, 4, 3, 2])]`."
+                )
+        try:
+            particle_blocks = self.data_blocks["particles"].iloc[index]
+        except Exception:
+            raise IndexError(
+                "Error when indexing the `pandas.Dataframe` for the particle stack "
+                "from the `starfile.read` output."
+            )
+        optics_group = self.data_blocks["optics"].iloc[0]
+
+        if self.is_image_stack_read:
+            image_stack = self.__get_image_stack__(index, particle_blocks)
+
+        else:
+            image_stack = None
+
+        instrument_config, ctf, pose = self.__get_starfile_params__(
+            particle_blocks, optics_group
+        )
+
+        return RelionParticleStack(image_stack, instrument_config, pose, ctf)
 
     @final
     def __len__(self) -> int:
