@@ -22,3 +22,16 @@ class AbstractMultisliceIntegrator(Module, Generic[PotentialT], strict=True):
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
         raise NotImplementedError
+
+    def _postprocess_exit_wave(
+        self,
+        exit_wave: Complex[Array, "_ _"],
+        instrument_config: InstrumentConfig,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+    ]:
+        # Resize the image to match the InstrumentConfig.padded_shape
+        if instrument_config.padded_shape != exit_wave.shape:
+            exit_wave = instrument_config.crop_or_pad_to_padded_shape(exit_wave)
+
+        return exit_wave

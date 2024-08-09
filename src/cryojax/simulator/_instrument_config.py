@@ -8,7 +8,7 @@ from typing import Any, Callable, Optional, Union
 
 import jax.numpy as jnp
 from equinox import Module
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Inexact
 
 from .._errors import error_if_not_positive
 from ..constants import convert_keV_to_angstroms
@@ -202,20 +202,20 @@ class InstrumentConfig(Module, strict=True):
         )
 
     def crop_to_shape(
-        self, image: Float[Array, "y_dim x_dim"]
-    ) -> Float[Array, "{self.y_dim} {self.x_dim}"]:
+        self, image: Inexact[Array, "y_dim x_dim"]
+    ) -> Inexact[Array, "{self.y_dim} {self.x_dim}"]:
         """Crop an image to `shape`."""
         return crop_to_shape(image, self.shape)
 
     def pad_to_padded_shape(
-        self, image: Float[Array, "y_dim x_dim"], **kwargs: Any
-    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim}"]:
+        self, image: Inexact[Array, "y_dim x_dim"], **kwargs: Any
+    ) -> Inexact[Array, "{self.padded_y_dim} {self.padded_x_dim}"]:
         """Pad an image to `padded_shape`."""
         return pad_to_shape(image, self.padded_shape, mode=self.pad_mode, **kwargs)
 
     def crop_or_pad_to_padded_shape(
-        self, image: Float[Array, "y_dim x_dim"], **kwargs: Any
-    ) -> Float[Array, "{self.padded_y_dim} {self.padded_x_dim}"]:
+        self, image: Inexact[Array, "y_dim x_dim"], **kwargs: Any
+    ) -> Inexact[Array, "{self.padded_y_dim} {self.padded_x_dim}"]:
         """Reshape an image to `padded_shape` using cropping or padding."""
         return resize_with_crop_or_pad(
             image, self.padded_shape, mode=self.pad_mode, **kwargs
