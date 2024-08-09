@@ -53,6 +53,18 @@ class FFTMultisliceIntegrator(
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
+        """Compute the exit wave from an atomic potential using the multislice
+        method.
+
+        **Arguments:**
+
+        - `potential`: The atomic potential to project.
+        - `instrument_config`: The configuration of the imaging instrument.
+
+        **Returns:**
+
+        The wavefunction in the exit plane of the specimen.
+        """  # noqa: E501
         # Rasterize 3D potential
         dim = min(instrument_config.padded_shape)
         pixel_size = instrument_config.pixel_size
