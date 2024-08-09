@@ -9,7 +9,7 @@ from ..._errors import error_if_negative, error_if_not_fractional, error_if_not_
 from ...constants import convert_keV_to_angstroms
 from .._instrument_config import InstrumentConfig
 from .base_transfer_theory import AbstractTransferFunction, AbstractTransferTheory
-from .common_functions import compute_phase_shifts_with_amplitude_contrast_ratio
+from .common_functions import compute_phase_shifts
 
 
 class WaveTransferFunction(AbstractTransferFunction, strict=True):
@@ -92,18 +92,25 @@ class WaveTransferFunction(AbstractTransferFunction, strict=True):
             + jnp.asarray(defocus_offset)
         )
         # Compute phase shifts for CTF
-        phase_shifts = compute_phase_shifts_with_amplitude_contrast_ratio(
+        phase_shifts = compute_phase_shifts(
             frequency_grid_in_angstroms,
             defocus_axis_1_in_angstroms,
             defocus_axis_2_in_angstroms,
             astigmatism_angle,
             wavelength_in_angstroms,
             spherical_aberration_in_angstroms,
-            phase_shift,
-            self.amplitude_contrast_ratio,
+            jnp.asarray(0.0),
         )
-        # Compute the CTF
-        return jnp.exp(-1.0j * phase_shifts)
+        amplitude_contrast_phase_shifts = jnp.arctan(
+            self.amplitude_contrast_ratio
+            / jnp.sqrt(1.0 - self.amplitude_contrast_ratio**2)
+        )
+        # Compute the WTF, correcting for the amplitude contrast and additional phase
+        # shift in the zero mode
+        return jnp.exp(
+            -1.0j
+            * phase_shifts.at[0, 0].add(amplitude_contrast_phase_shifts + phase_shift)
+        )
 
 
 class WaveTransferTheory(AbstractTransferTheory, strict=True):
