@@ -1,17 +1,12 @@
 from abc import abstractmethod
-from typing import Generic, TypeVar
-from typing_extensions import override
+from typing import Generic, Optional, TypeVar
 
 import jax.numpy as jnp
-from equinox import Module
+from equinox import AbstractVar, error_if, Module
 from jaxtyping import Array, Complex
 
-from cryojax.image import fftn, ifftn
-
+from ...image import maybe_rescale_pixel_size
 from .._instrument_config import InstrumentConfig
-from .._potential_representation import (
-    RealVoxelGridPotential,
-)
 
 
 PotentialT = TypeVar("PotentialT")
@@ -19,6 +14,8 @@ PotentialT = TypeVar("PotentialT")
 
 class AbstractMultisliceIntegrator(Module, Generic[PotentialT], strict=True):
     """Base class for a multi-slice integration scheme."""
+
+    pixel_rescaling_method: AbstractVar[Optional[str]]
 
     @abstractmethod
     def compute_wavefunction_at_exit_plane(
@@ -30,49 +27,34 @@ class AbstractMultisliceIntegrator(Module, Generic[PotentialT], strict=True):
     ]:
         raise NotImplementedError
 
-
-class MultisliceIntegrator(
-    AbstractMultisliceIntegrator[RealVoxelGridPotential],
-    strict=True,
-):
-    @override
-    def compute_wavefunction_at_exit_plane(
+    def _postprocess_exit_wave(
         self,
-        potential: RealVoxelGridPotential,
+        exit_wave: Complex[Array, "_ _"],
+        potential,
         instrument_config: InstrumentConfig,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
-        delta_z = 1.0
-        real_slices = potential.real_voxel_grid
-        shape = potential.shape[1:]
-        # TODO: interpolate for different slice thicknesses
-        plane_wave_n = jnp.ones(shape, dtype=complex)
-        sigma = (
-            instrument_config.wavelength_in_angstroms / (4 * jnp.pi)
-        )  # see https://github.com/mjo22/cryojax/blob/multislice-updated/src/cryojax/simulator/_scattering_theory/common_functions.py
-        transmission = jnp.exp(1j * sigma * real_slices)
-        kx, ky = instrument_config.padded_full_frequency_grid_in_angstroms.T
-        k2_origin_corner = jnp.hypot(kx, ky) ** 2  # TODO: shift to origin at centre
-        k2_origin_center = jnp.fft.fftshift(k2_origin_corner)
-        fresnel_propagator = jnp.exp(
-            -1j
-            * jnp.pi
-            * instrument_config.wavelength_in_angstroms
-            * k2_origin_center
-            * delta_z
-            * potential.voxel_size
-        )
-        plane_wave_ns = jnp.zeros((len(real_slices), *shape), dtype=complex)
-        for n in range(len(transmission)):
-            tn = transmission[n]
-            t_psi_f = fftn(tn * plane_wave_n)
-            # t_psi_f_shift = jnp.fft.fftshift(t_psi_f)
-            plane_wave_ns = plane_wave_ns.at[n].set(
-                ifftn(
-                    t_psi_f * fresnel_propagator
-                )  # TODO: skip last one (move to top of loop)
+        # Rescale the pixel size of the exit wave, if necessary
+        if self.pixel_rescaling_method is None:
+            exit_wave = error_if(
+                exit_wave,
+                ~jnp.isclose(potential.voxel_size, instrument_config.pixel_size),
+                f"Tried to use {type(self).__name__} with `{type(potential).__name__}."
+                "voxel_size != InstrumentConfig.pixel_size`. If this is true, then "
+                f"`{type(self).__name__}.pixel_rescaling_method` must not be set to "
+                f"`None`. Try setting `{type(self).__name__}.pixel_rescaling_method = "
+                "'bicubic'`.",
             )
-        exit_wave = plane_wave_ns[-1]  # TODO: return fourier space
+        else:
+            exit_wave = maybe_rescale_pixel_size(
+                exit_wave,
+                potential.voxel_size,
+                instrument_config.pixel_size,
+                is_real=True,
+            )
+        # Resize the image to match the InstrumentConfig.padded_shape
+        if instrument_config.padded_shape != exit_wave.shape:
+            exit_wave = instrument_config.crop_or_pad_to_padded_shape(exit_wave)
 
         return exit_wave

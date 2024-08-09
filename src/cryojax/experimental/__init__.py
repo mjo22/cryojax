@@ -1,6 +1,6 @@
 from ..simulator._multislice_integrator import (
     AbstractMultisliceIntegrator as AbstractMultisliceIntegrator,
-    MultisliceIntegrator as MultisliceIntegrator,
+    FFTMultisliceIntegrator as FFTMultisliceIntegrator,
 )
 from ..simulator._potential_integrator import (
     EwaldSphereExtraction as EwaldSphereExtraction,
