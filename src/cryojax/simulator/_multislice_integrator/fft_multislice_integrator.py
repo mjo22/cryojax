@@ -1,5 +1,3 @@
-"""Multislice integrator that steps in successive convolutions."""
-
 from typing import Any
 from typing_extensions import override
 
@@ -19,6 +17,8 @@ class FFTMultisliceIntegrator(
     AbstractMultisliceIntegrator[AbstractAtomicPotential],
     strict=True,
 ):
+    """Multislice integrator that steps using successive FFT-based convolutions."""
+
     slice_thickness_in_voxels: int
     options_for_rasterization: dict[str, Any]
 
