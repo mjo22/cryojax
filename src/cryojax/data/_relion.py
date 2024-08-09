@@ -2,14 +2,14 @@
 
 import dataclasses
 import pathlib
-from typing import Any, Callable, final
+from typing import Any, Callable, final, Optional
 
 import equinox as eqx
 import jax.numpy as jnp
 import mrcfile
 import numpy as np
 import pandas as pd
-from jaxtyping import Array, Float, Int, Union
+from jaxtyping import Array, Float, Int
 
 from ..io import read_and_validate_starfile
 from ..simulator import ContrastTransferFunction, EulerAnglePose, InstrumentConfig
@@ -38,18 +38,37 @@ class RelionParticleStack(AbstractParticleStack):
     [RELION](https://relion.readthedocs.io/en/release-5.0/).
     """
 
-    image_stack: Union[Float[Array, "... y_dim x_dim"], None]
     instrument_config: InstrumentConfig
     pose: EulerAnglePose
     ctf: ContrastTransferFunction
+    image_stack: Optional[Float[Array, "... y_dim x_dim"]]
 
     def __init__(
         self,
-        image_stack: Union[Float[Array, "... y_dim x_dim"], None],
         instrument_config: InstrumentConfig,
         pose: EulerAnglePose,
         ctf: ContrastTransferFunction,
+        image_stack: Optional[Float[Array, "... y_dim x_dim"]] = None,
     ):
+        """**Arguments:**
+
+        - `instrument_config`:
+            The instrument configuration. Any subset of pytree leaves may
+            have a batch dimension.
+        - `pose`:
+            The pose, represented by euler angles. Any subset of pytree leaves may
+            have a batch dimension. Upon instantiation, `pose.offset_z_in_angstroms`
+            is set to zero.
+        - `ctf`:
+            The contrast transfer function. Any subset of pytree leaves may
+            have a batch dimension. Upon instantiation,
+            `ctf.defocus_in_angstroms` is set to
+            `ctf.defocus_in_angstroms + pose.offset_z_in_angstroms`.
+        - `image_stack`:
+            The stack of images. The shape of this array
+            is a leading batch dimension followed by the shape
+            of an image in the stack.
+        """
         # Set image stack and config as is
         if image_stack is not None:
             self.image_stack = jnp.asarray(image_stack)
@@ -63,26 +82,7 @@ class RelionParticleStack(AbstractParticleStack):
             ctf.defocus_in_angstroms + pose.offset_z_in_angstroms,
         )
         # Set defocus offset to zero
-        self.pose = eqx.tree_at(
-            lambda pose: pose.offset_z_in_angstroms, pose, jnp.asarray(0.0)
-        )
-
-
-RelionParticleStack.__init__.__doc__ = """**Arguments:**
-
-- `image_stack`: The stack of images. The shape of this array
-                 is a leading batch dimension followed by the shape
-                 of an image in the stack.
-- `instrument_config`: The instrument configuration. Any subset of pytree leaves may
-            have a batch dimension.
-- `pose`: The pose, represented by euler angles. Any subset of pytree leaves may
-          have a batch dimension. Upon instantiation, `pose.offset_z_in_angstroms`
-          is set to zero.
-- `ctf`: The contrast transfer function. Any subset of pytree leaves may
-                       have a batch dimension. Upon instantiation,
-                       `ctf.defocus_in_angstroms` is set to
-                       `ctf.defocus_in_angstroms + pose.offset_z_in_angstroms`.
-"""  # noqa: E501
+        self.pose = eqx.tree_at(lambda pose: pose.offset_z_in_angstroms, pose, 0.0)
 
 
 def _default_make_instrument_config_fn(
@@ -102,27 +102,33 @@ class RelionDataset(AbstractDataset):
 
     path_to_relion_project: pathlib.Path
     data_blocks: dict[str, pd.DataFrame]
-
     make_instrument_config_fn: Callable[
         [tuple[int, int], Float[Array, "..."], Float[Array, "..."]], InstrumentConfig
     ]
-    is_image_stack_read: bool
+    get_image_stack: bool
 
     @final
     def __init__(
         self,
         path_to_starfile: str | pathlib.Path,
         path_to_relion_project: str | pathlib.Path,
+        get_image_stack: bool = True,
         make_instrument_config_fn: Callable[
             [tuple[int, int], Float[Array, "..."], Float[Array, "..."]],
             InstrumentConfig,
         ] = _default_make_instrument_config_fn,
-        is_image_stack_read: bool = True,
     ):
         """**Arguments:**
 
         - `path_to_starfile`: The path to the Relion STAR file.
         - `path_to_relion_project`: The path to the Relion project directory.
+        - `get_image_stack`:
+            If `True`, read the stack of images from the STAR file. Otherwise,
+            just read parameters.
+        - `make_instrument_config_fn`:
+            A function used for `InstrumentConfig` initialization that returns
+            an `InstrumentConfig`. This is used to customize the metadata of the
+            read object.
         """
         data_blocks = read_and_validate_starfile(path_to_starfile)
         _validate_relion_data_blocks(data_blocks)
@@ -131,9 +137,63 @@ class RelionDataset(AbstractDataset):
             self, "path_to_relion_project", pathlib.Path(path_to_relion_project)
         )
         object.__setattr__(self, "make_instrument_config_fn", make_instrument_config_fn)
-        object.__setattr__(self, "is_image_stack_read", is_image_stack_read)
+        object.__setattr__(self, "get_image_stack", get_image_stack)
 
     @final
+    def __getitem__(
+        self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
+    ) -> RelionParticleStack:
+        # Load particle data and optics group
+        n_rows = self.data_blocks["particles"].shape[0]
+        index_error_msg = lambda idx: (
+            "The index at which the `RelionDataset` was accessed was out of bounds! "
+            f"The number of rows in the dataset is {n_rows}, but you tried to "
+            f"access the index {idx}."
+        )
+        # pandas has bad error messages for its indexing
+        if isinstance(index, (int, Int[np.ndarray, ""])):  # type: ignore
+            if index > n_rows - 1:
+                raise IndexError(index_error_msg(index))
+        elif isinstance(index, slice):
+            if index.start is not None and index.start > n_rows - 1:
+                raise IndexError(index_error_msg(index.start))
+        elif isinstance(index, np.ndarray):
+            pass  # catch exceptions later
+        else:
+            raise IndexError(
+                f"Indexing with the type {type(index)} is not supported by "
+                "`RelionDataset`. Indexing by integers is supported, one-dimensional "
+                "fancy indexing is supported, and numpy-array indexing is supported. "
+                "For example, like `particle = dataset[0]`, "
+                "`particle_stack = dataset[0:5]`, "
+                "or `particle_stack = dataset[np.array([1, 4, 3, 2])]`."
+            )
+        try:
+            particle_blocks = self.data_blocks["particles"].iloc[index]
+        except Exception:
+            raise IndexError(
+                "Error when indexing the `pandas.Dataframe` for the particle stack "
+                "from the `starfile.read` output."
+            )
+        optics_group = self.data_blocks["optics"].iloc[0]
+        # Load the image stack, unless otherwise specified
+        image_stack = (
+            self._get_image_stack(index, particle_blocks)  # type: ignore
+            if self.get_image_stack
+            else None
+        )
+        # Load image parameters into cryoJAX objects
+        instrument_config, ctf, pose = self._get_starfile_params(
+            particle_blocks,
+            optics_group,  # type: ignore
+        )
+
+        return RelionParticleStack(instrument_config, pose, ctf, image_stack)
+
+    @final
+    def __len__(self) -> int:
+        return len(self.data_blocks["particles"])
+
     def _get_starfile_params(
         self, particle_blocks: pd.DataFrame, optics_group: pd.DataFrame
     ) -> tuple[InstrumentConfig, ContrastTransferFunction, EulerAnglePose]:
@@ -146,7 +206,7 @@ class RelionDataset(AbstractDataset):
         # ... optics group data
         image_size = jnp.asarray(optics_group["rlnImageSize"])
         pixel_size = jnp.asarray(optics_group["rlnImagePixelSize"])
-        voltage_in_kilovolts = float(optics_group["rlnVoltage"])
+        voltage_in_kilovolts = float(optics_group["rlnVoltage"])  # type: ignore
         spherical_aberration_in_mm = jnp.asarray(optics_group["rlnSphericalAberration"])
         amplitude_contrast_ratio = jnp.asarray(optics_group["rlnAmplitudeContrast"])
         # ... create cryojax objects
@@ -232,7 +292,6 @@ class RelionDataset(AbstractDataset):
 
         return instrument_config, ctf, pose
 
-    @final
     def _get_image_stack(
         self,
         index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"],
@@ -297,63 +356,6 @@ class RelionDataset(AbstractDataset):
             image_stack = np.asarray(mrc.data[particle_index])  # type: ignore
 
         return jnp.asarray(image_stack)
-
-    @final
-    def __getitem__(
-        self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
-    ) -> RelionParticleStack:
-        # Load particle data and optics group
-        n_rows = self.data_blocks["particles"].shape[0]
-        index_error_msg = lambda idx: (
-            "The index at which the `RelionDataset` was accessed was out of bounds! "
-            f"The number of rows in the dataset is {n_rows}, but you tried to "
-            f"access the index {idx}."
-        )
-        # pandas has bad error messages for its indexing
-        if isinstance(index, (int, Int[np.ndarray, ""])):
-            if index > n_rows - 1:
-                raise IndexError(index_error_msg(index))
-        elif isinstance(index, slice):
-            if index.start is not None and index.start > n_rows - 1:
-                raise IndexError(index_error_msg(index.start))
-        elif isinstance(index, np.ndarray):
-            pass  # catch exceptions later
-        else:
-            if (
-                self.is_image_stack_read
-            ):  # this is only an issue if the image stack is read
-                raise IndexError(
-                    f"Indexing with the type {type(index)} is not supported by "
-                    "`RelionDataset`. Indexing by integers is supported, one-dimensional "
-                    "fancy indexing is supported, and numpy-array indexing is supported. "
-                    "For example, like `particle = dataset[0]`, "
-                    "`particle_stack = dataset[0:5]`, "
-                    "or `particle_stack = dataset[np.array([1, 4, 3, 2])]`."
-                )
-        try:
-            particle_blocks = self.data_blocks["particles"].iloc[index]
-        except Exception:
-            raise IndexError(
-                "Error when indexing the `pandas.Dataframe` for the particle stack "
-                "from the `starfile.read` output."
-            )
-        optics_group = self.data_blocks["optics"].iloc[0]
-
-        if self.is_image_stack_read:
-            image_stack = self._get_image_stack(index, particle_blocks)
-
-        else:
-            image_stack = None
-
-        instrument_config, ctf, pose = self._get_starfile_params(
-            particle_blocks, optics_group
-        )
-
-        return RelionParticleStack(image_stack, instrument_config, pose, ctf)
-
-    @final
-    def __len__(self) -> int:
-        return len(self.data_blocks["particles"])
 
 
 @dataclasses.dataclass(frozen=True)
@@ -440,7 +442,7 @@ class HelicalRelionDataset(AbstractDataset):
     def __getitem__(
         self, filament_index: int | Int[np.ndarray, ""]
     ) -> RelionParticleStack:
-        if not isinstance(filament_index, (int, Int[np.ndarray, ""])):
+        if not isinstance(filament_index, (int, Int[np.ndarray, ""])):  # type: ignore
             raise IndexError(
                 "When indexing a `HelicalRelionDataset`, only "
                 f"python or numpy-like integer indices are supported, such as "
