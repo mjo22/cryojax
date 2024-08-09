@@ -184,7 +184,7 @@ class RelionDataset(AbstractDataset):
         )
         # Load image parameters into cryoJAX objects
         instrument_config, ctf, pose = self._get_starfile_params(
-            particle_blocks,
+            particle_blocks,  # type: ignore
             optics_group,  # type: ignore
         )
 
