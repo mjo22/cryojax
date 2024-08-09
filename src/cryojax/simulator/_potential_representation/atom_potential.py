@@ -83,9 +83,6 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
         self,
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
-        *,
-        z_planes_in_parallel: int = 1,
-        atom_groups_in_series: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         raise NotImplementedError
 

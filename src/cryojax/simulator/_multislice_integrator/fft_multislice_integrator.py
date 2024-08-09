@@ -1,5 +1,6 @@
 """Multislice integrator that steps in successive convolutions."""
 
+from typing import Any
 from typing_extensions import override
 
 import jax
@@ -19,25 +20,22 @@ class FFTMultisliceIntegrator(
     strict=True,
 ):
     slice_thickness_in_voxels: int
-    z_planes_in_parallel: int  # control parameter for computing 3D grid
-    atom_groups_in_series: int  # control parameter for computing 3D grid
+    options_for_rasterization: dict[str, Any]
 
     def __init__(
         self,
         slice_thickness_in_voxels: int = 1,
         *,
-        z_planes_in_parallel: int = 1,
-        atom_groups_in_series: int = 1,
+        options_for_rasterization: dict[str, Any],
     ):
         """**Arguments:**
 
         - `slice_thickness_in_voxels`:
             The number of slices to step through per iteration of the
             rasterized voxel grid.
-        - `z_planes_in_parallel`:
-            See `cryojax.simulator.PengAtomicPotential` for documentation.
-        - `atom_groups_in_series`:
-            See `cryojax.simulator.PengAtomicPotential` for documentation.
+        - `options_for_rasterization`:
+            See `cryojax.simulator.AbstractAtomicPotential.as_real_voxel_grid`
+            for documentation.
         """
         if slice_thickness_in_voxels < 1:
             raise AttributeError(
@@ -45,8 +43,7 @@ class FFTMultisliceIntegrator(
                 "integer greater than or equal to 1."
             )
         self.slice_thickness_in_voxels = slice_thickness_in_voxels
-        self.z_planes_in_parallel = z_planes_in_parallel
-        self.atom_groups_in_series = atom_groups_in_series
+        self.options_for_rasterization = options_for_rasterization
 
     @override
     def compute_wavefunction_at_exit_plane(
@@ -60,10 +57,7 @@ class FFTMultisliceIntegrator(
         dim = min(instrument_config.padded_shape)
         pixel_size = instrument_config.pixel_size
         potential_voxel_grid = potential.as_real_voxel_grid(
-            (dim, dim, dim),
-            pixel_size,
-            z_planes_in_parallel=self.z_planes_in_parallel,
-            atom_groups_in_series=self.atom_groups_in_series,
+            (dim, dim, dim), pixel_size, **self.options_for_rasterization
         )
         # Initialize multislice geometry
         shape_xy = (dim, dim)
