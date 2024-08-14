@@ -17,7 +17,7 @@ def rescale_pixel_size(
     current_pixel_size: Float[Array, ""],
     new_pixel_size: Float[Array, ""],
     method: str = "bicubic",
-    antialias: bool = False,
+    antialias: bool = True,
 ) -> Float[Array, "y_dim x_dim"]:
     """
     Measure an image at a given pixel size using interpolation.
