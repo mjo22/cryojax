@@ -127,10 +127,16 @@ class FFTMultisliceIntegrator(
         # Compute the transmission function
         transmission = jnp.exp(1.0j * phase_shifts_per_slice)
         # Compute the fresnel propagator (TODO: check numerical factors)
-        radial_frequency_grid = jnp.sum(
-            make_frequency_grid((y_dim, x_dim), voxel_size, half_space=False) ** 2,
-            axis=-1,
-        )
+        if isinstance(potential, AbstractAtomicPotential):
+            radial_frequency_grid = jnp.sum(
+                instrument_config.padded_full_frequency_grid_in_angstroms**2,
+                axis=-1,
+            )
+        else:
+            radial_frequency_grid = jnp.sum(
+                make_frequency_grid((y_dim, x_dim), voxel_size, half_space=False) ** 2,
+                axis=-1,
+            )
         fresnel_propagator = jnp.exp(
             1.0j
             * jnp.pi
