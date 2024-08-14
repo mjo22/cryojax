@@ -2,8 +2,10 @@ from collections.abc import Callable
 from typing import Optional
 
 import jax
-from jax.experimental import host_callback
-from tqdm.auto import tqdm
+import tqdm.auto
+import tqdm.notebook
+import tqdm.std
+from jax.debug import callback
 
 
 def fori_loop_tqdm_decorator(
@@ -12,7 +14,8 @@ def fori_loop_tqdm_decorator(
     **kwargs,
 ) -> Callable:
     """Add a tqdm progress bar to `body_fun` used in `jax.lax.fori_loop`.
-    This function is based on the implementation in [`jax_tqdm`](https://github.com/jeremiecoullon/jax-tqdm)
+    This function is closely based on the implementation in
+    [`jax_tqdm`](https://github.com/jeremiecoullon/jax-tqdm).
     """
 
     _update_progress_bar, close_tqdm = _build_tqdm(n_iterations, print_every, **kwargs)
@@ -29,67 +32,70 @@ def fori_loop_tqdm_decorator(
 
 
 def _build_tqdm(
-    n_iterations: int,
-    print_every: Optional[int] = None,
+    n: int,
+    print_rate: Optional[int] = None,
+    tqdm_type: str = "auto",
     **kwargs,
 ) -> tuple[Callable, Callable]:
-    """Build the tqdm progress bar on the host."""
+    if tqdm_type not in ("auto", "std", "notebook"):
+        raise ValueError(
+            'tqdm_type should be one of "auto", "std", or "notebook" '
+            f'but got "{tqdm_type}"'
+        )
+    pbar = getattr(tqdm, tqdm_type).tqdm
 
-    desc = kwargs.pop("desc", f"Running for {n_iterations:,} iterations")
+    desc = kwargs.pop("desc", f"Running for {n:,} iterations")
     message = kwargs.pop("message", desc)
     for kwarg in ("total", "mininterval", "maxinterval", "miniters"):
         kwargs.pop(kwarg, None)
 
     tqdm_bars = {}
 
-    if print_every is None:
-        if n_iterations > 20:
-            print_every = int(n_iterations / 20)
+    if print_rate is None:
+        if n > 20:
+            print_rate = int(n / 20)
         else:
-            print_every = 1
+            print_rate = 1
     else:
-        if print_every < 1:
+        if print_rate < 1:
+            raise ValueError(f"Print rate should be > 0 got {print_rate}")
+        elif print_rate > n:
             raise ValueError(
-                "The number of iterations per progress bar update should "
-                f"be greater than 0. Got {print_every}."
-            )
-        elif print_every > n_iterations:
-            raise ValueError(
-                "The number of iterations per progress bar update should be less "
-                f"than the number of iterations, equal to {n_iterations}. "
-                f"Got {print_every}."
+                "Print rate should be less than the "
+                f"number of steps {n}, got {print_rate}"
             )
 
-    remainder = n_iterations % print_every
+    remainder = n % print_rate
 
     def _define_tqdm(arg, transform):
-        tqdm_bars[0] = tqdm(range(n_iterations), **kwargs)
+        tqdm_bars[0] = pbar(range(n), **kwargs)
         tqdm_bars[0].set_description(message, refresh=False)
 
     def _update_tqdm(arg, transform):
-        tqdm_bars[0].update(arg)
+        tqdm_bars[0].update(int(arg))
 
     def _update_progress_bar(iter_num):
+        "Updates tqdm from a JAX scan or loop"
         _ = jax.lax.cond(
             iter_num == 0,
-            lambda _: host_callback.id_tap(_define_tqdm, None, result=iter_num),
-            lambda _: iter_num,
+            lambda _: callback(_define_tqdm, None, None, ordered=True),
+            lambda _: None,
             operand=None,
         )
 
         _ = jax.lax.cond(
             # update tqdm every multiple of `print_rate` except at the end
-            (iter_num % print_every == 0) & (iter_num != n_iterations - remainder),
-            lambda _: host_callback.id_tap(_update_tqdm, print_every, result=iter_num),
-            lambda _: iter_num,
+            (iter_num % print_rate == 0) & (iter_num != n - remainder),
+            lambda _: callback(_update_tqdm, print_rate, None, ordered=True),
+            lambda _: None,
             operand=None,
         )
 
         _ = jax.lax.cond(
             # update tqdm by `remainder`
-            iter_num == n_iterations - remainder,
-            lambda _: host_callback.id_tap(_update_tqdm, remainder, result=iter_num),
-            lambda _: iter_num,
+            iter_num == n - remainder,
+            lambda _: callback(_update_tqdm, remainder, None, ordered=True),
+            lambda _: None,
             operand=None,
         )
 
@@ -97,11 +103,12 @@ def _build_tqdm(
         tqdm_bars[0].close()
 
     def close_tqdm(result, iter_num):
-        return jax.lax.cond(
-            iter_num == n_iterations - 1,
-            lambda _: host_callback.id_tap(_close_tqdm, None, result=result),
-            lambda _: result,
+        _ = jax.lax.cond(
+            iter_num == n - 1,
+            lambda _: callback(_close_tqdm, None, None, ordered=True),
+            lambda _: None,
             operand=None,
         )
+        return result
 
     return _update_progress_bar, close_tqdm
