@@ -55,6 +55,7 @@ class MultisliceIntegrator(
         kx, ky = instrument_config.padded_full_frequency_grid_in_angstroms.T
         k2_origin_corner = jnp.hypot(kx, ky) ** 2  # TODO: shift to origin at centre
         k2_origin_center = jnp.fft.fftshift(k2_origin_corner)
+
         fresnel_propagator = jnp.exp(
             -1j
             * jnp.pi
@@ -63,6 +64,7 @@ class MultisliceIntegrator(
             * delta_z
             * potential.voxel_size
         )
+
         plane_wave_ns = jnp.zeros((len(real_slices), *shape), dtype=complex)
         for n in range(len(transmission)):
             tn = transmission[n]
