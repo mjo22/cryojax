@@ -76,7 +76,7 @@ def run_grid_search(
     Any pytree, as specified by the method `AbstractGridSearchMethod.postprocess`.
     """
     # Evaluate the shape and dtype of the output of `fn` using
-    # eqx.filter_closure_convert
+    # eqx.filter_closure_convert.
     test_tree_grid_point = tree_grid_take(
         tree_grid,
         tree_grid_unravel_index(0, tree_grid, is_leaf=is_leaf),
@@ -136,6 +136,12 @@ def run_grid_search(
     # Run and unpack results
     if progress_bar:
         print_every = n_iterations // total_progress_bar_updates
+        if print_every == 0:
+            raise ValueError(
+                "The number of progress bar updates is greater than the "
+                "number of iterations. Try decreasing `total_progress_bar_updates` "
+                "or setting it to `None`."
+            )
         body_fun = fori_loop_tqdm_decorator(n_iterations, print_every)(body_fun)
     final_carry = jax.lax.fori_loop(0, n_iterations, body_fun, init_carry)
     if method.batch_size is not None and grid_size % method.batch_size != 0:

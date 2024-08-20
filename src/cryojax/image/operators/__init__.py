@@ -1,6 +1,7 @@
 from ._filters import (
     AbstractFilter as AbstractFilter,
     CustomFilter as CustomFilter,
+    HighpassFilter as HighpassFilter,
     InverseSincFilter as InverseSincFilter,
     LowpassFilter as LowpassFilter,
     WhiteningFilter as WhiteningFilter,

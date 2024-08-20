@@ -22,9 +22,6 @@ from ._operator import AbstractImageMultiplier
 class AbstractFilter(AbstractImageMultiplier, strict=True):
     """Base class for computing and applying an image filter."""
 
-    def get(self) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
-        return self.array
-
     @overload
     def __call__(
         self, image: Complex[Array, "y_dim x_dim"]
@@ -112,6 +109,48 @@ class LowpassFilter(AbstractFilter, strict=True):
         self.frequency_cutoff_fraction = jnp.asarray(frequency_cutoff_fraction)
         self.rolloff_width_fraction = jnp.asarray(rolloff_width_fraction)
         self.array = _compute_lowpass_filter(
+            frequency_grid_in_angstroms_or_pixels,
+            jnp.asarray(grid_spacing),
+            self.frequency_cutoff_fraction,
+            self.rolloff_width_fraction,
+        )
+
+
+class HighpassFilter(AbstractFilter, strict=True):
+    """Apply a low-pass filter to an image or volume, with
+    a cosine soft-edge.
+    """
+
+    array: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+
+    frequency_cutoff_fraction: Float[Array, ""]
+    rolloff_width_fraction: Float[Array, ""]
+
+    def __init__(
+        self,
+        frequency_grid_in_angstroms_or_pixels: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
+        grid_spacing: float | Float[Array, ""] = 1.0,
+        frequency_cutoff_fraction: float | Float[Array, ""] = 0.95,
+        rolloff_width_fraction: float | Float[Array, ""] = 0.05,
+    ):
+        """**Arguments:**
+
+        - `frequency_grid_in_angstroms_or_pixels`:
+            The frequency grid of the image or volume.
+        - `grid_spacing`:
+            The pixel or voxel size of `frequency_grid_in_angstroms_or_pixels`.
+        - `frequency_cutoff_fraction`:
+            The cutoff frequency as a fraction of the Nyquist frequency.
+            By default, `0.95`.
+        - `rolloff_width_fraction`:
+            The rolloff width as a fraction of the Nyquist frequency.
+            By default, ``0.05``.
+        """
+        self.frequency_cutoff_fraction = jnp.asarray(frequency_cutoff_fraction)
+        self.rolloff_width_fraction = jnp.asarray(rolloff_width_fraction)
+        self.array = 1.0 - _compute_lowpass_filter(
             frequency_grid_in_angstroms_or_pixels,
             jnp.asarray(grid_spacing),
             self.frequency_cutoff_fraction,
@@ -240,7 +279,7 @@ def _compute_whitening_filter(
     # Make coordinates
     frequency_grid = make_frequency_grid(image_stack.shape[1:])
     # Transform to fourier space
-    n_pixels = math.prod(image_stack.shape[1:]) if shape is None else math.prod(shape)
+    n_pixels = math.prod(image_stack.shape[1:])
     fourier_image_stack = rfftn(image_stack, axes=(1, 2)) / jnp.sqrt(n_pixels)
     # Compute norms
     radial_frequency_grid = jnp.linalg.norm(frequency_grid, axis=-1)
@@ -277,12 +316,20 @@ def _compute_whitening_filter(
                 pad_mode="edge",
             )
         ).real
-    # Compute inverse square root
-    if get_squared:
-        whitening_filter = jax.lax.reciprocal(radially_averaged_powerspectrum_on_grid)
-    else:
-        whitening_filter = jax.lax.rsqrt(radially_averaged_powerspectrum_on_grid)
-    # Set zero mode manually to 1, defining the filter to not affect this mode
-    whitening_filter = whitening_filter.at[0, 0].set(1.0)
+        # ... resizing and going back to fourier space can introduce negative values
+        radially_averaged_powerspectrum_on_grid = jnp.where(
+            radially_averaged_powerspectrum_on_grid < 0,
+            0.0,
+            radially_averaged_powerspectrum_on_grid,
+        )
+    # Compute inverse square root (or inverse square)
+    inverse_fun = jax.lax.reciprocal if get_squared else jax.lax.rsqrt
+    whitening_filter = jnp.where(
+        jnp.isclose(radially_averaged_powerspectrum_on_grid, 0.0),
+        0.0,
+        inverse_fun(radially_averaged_powerspectrum_on_grid),
+    )
+    # Set zero mode manually to 0, defining the filter to zero out this mode
+    whitening_filter = whitening_filter.at[0, 0].set(0.0)
 
     return whitening_filter

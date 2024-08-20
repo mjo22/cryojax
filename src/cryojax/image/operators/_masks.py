@@ -14,9 +14,6 @@ from ._operator import AbstractImageMultiplier
 class AbstractMask(AbstractImageMultiplier, strict=True):
     """Base class for computing and applying an image mask."""
 
-    def get(self) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
-        return self.array
-
     @overload
     def __call__(
         self, image: Float[Array, "y_dim x_dim"]
