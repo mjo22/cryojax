@@ -30,6 +30,9 @@ class AbstractMask(AbstractImageMultiplier, strict=True):
         return image * jax.lax.stop_gradient(self.array)
 
 
+MaskLike = AbstractMask | AbstractImageMultiplier
+
+
 class CustomMask(AbstractMask, strict=True):
     """Pass a custom mask as an array."""
 

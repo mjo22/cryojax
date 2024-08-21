@@ -38,6 +38,9 @@ class AbstractFilter(AbstractImageMultiplier, strict=True):
         return image * jax.lax.stop_gradient(self.array)
 
 
+FilterLike = AbstractFilter | AbstractImageMultiplier
+
+
 class CustomFilter(AbstractFilter, strict=True):
     """Pass a custom filter as an array."""
 

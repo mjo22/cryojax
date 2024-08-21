@@ -1,6 +1,7 @@
 from ._filters import (
     AbstractFilter as AbstractFilter,
     CustomFilter as CustomFilter,
+    FilterLike as FilterLike,
     HighpassFilter as HighpassFilter,
     InverseSincFilter as InverseSincFilter,
     LowpassFilter as LowpassFilter,
@@ -19,6 +20,7 @@ from ._masks import (
     CircularCosineMask as CircularCosineMask,
     CustomMask as CustomMask,
     Cylindrical2DCosineMask as Cylindrical2DCosineMask,
+    MaskLike as MaskLike,
     SphericalCosineMask as SphericalCosineMask,
     SquareCosineMask as SquareCosineMask,
 )
