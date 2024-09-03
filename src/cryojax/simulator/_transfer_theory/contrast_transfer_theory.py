@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from equinox import field
 from jaxtyping import Array, Complex, Float
 
-from ..._errors import error_if_negative, error_if_not_fractional, error_if_not_positive
+from ..._errors import error_if_negative, error_if_not_fractional
 from ...constants import convert_keV_to_angstroms
 from ...image.operators import (
     Constant,
