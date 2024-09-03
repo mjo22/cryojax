@@ -53,7 +53,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         - `amplitude_contrast_ratio`: The amplitude contrast ratio.
         - `phase_shift`: The additional phase shift.
         """
-        self.defocus_in_angstroms = error_if_not_positive(defocus_in_angstroms)
+        self.defocus_in_angstroms = error_if_negative(defocus_in_angstroms)
         self.astigmatism_in_angstroms = jnp.asarray(astigmatism_in_angstroms)
         self.astigmatism_angle = jnp.asarray(astigmatism_angle)
         self.voltage_in_kilovolts = voltage_in_kilovolts
