@@ -41,8 +41,8 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
     ):
         """**Arguments:**
 
-        - `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
-        - `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
+        - `defocus_in_angstroms`: The mean defocus in Angstroms.
+        - `astigmatism_in_angstroms`: The amount of astigmatism in Angstroms.
         - `astigmatism_angle`: The defocus angle.
         - `voltage_in_kilovolts`:
             The accelerating voltage in kV. This field is treated as *static*, i.e.
@@ -81,13 +81,15 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
             )
         else:
             wavelength_in_angstroms = jnp.asarray(wavelength_in_angstroms)
-        defocus_axis_1_in_angstroms = self.defocus_in_angstroms + jnp.asarray(
-            defocus_offset
+        defocus_axis_1_in_angstroms = (
+            self.defocus_in_angstroms
+            + jnp.asarray(defocus_offset)
+            + self.astigmatism_in_angstroms / 2
         )
         defocus_axis_2_in_angstroms = (
             self.defocus_in_angstroms
-            + self.astigmatism_in_angstroms
             + jnp.asarray(defocus_offset)
+            - self.astigmatism_in_angstroms / 2
         )
         # Compute phase shifts for CTF
         phase_shifts = compute_phase_shifts_with_amplitude_contrast_ratio(
