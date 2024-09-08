@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from equinox import field
 from jaxtyping import Array, Complex, Float
 
-from ..._errors import error_if_negative, error_if_not_fractional, error_if_not_positive
+from ..._errors import error_if_negative, error_if_not_fractional
 from ...constants import convert_keV_to_angstroms
 from ...image.operators import (
     Constant,
@@ -19,6 +19,21 @@ from .common_functions import compute_phase_shifts_with_amplitude_contrast_ratio
 class ContrastTransferFunction(AbstractTransferFunction, strict=True):
     """Compute an astigmatic Contrast Transfer Function (CTF) with a
     spherical aberration correction and amplitude contrast ratio.
+
+    !!! info
+        `cryojax` uses a convention different from CTFFIND for
+        astigmatism parameters. It returns defocus major and minor
+        axes, called "defocus1" and "defocus2". In order to convert
+        from CTFFIND to `cryojax`,
+
+        ```python
+        defocus1, defocus2 = ... # Read from CTFFIND
+        ctf = ContrastTransferFunction(
+            defocus_in_angstroms=(defocus1+defocus2)/2,
+            astigmatism_in_angstroms=defocus1-defocus2,
+            ...
+        )
+        ```
     """
 
     defocus_in_angstroms: Float[Array, ""]
@@ -41,8 +56,8 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
     ):
         """**Arguments:**
 
-        - `defocus_u_in_angstroms`: The major axis defocus in Angstroms.
-        - `defocus_v_in_angstroms`: The minor axis defocus in Angstroms.
+        - `defocus_in_angstroms`: The mean defocus in Angstroms.
+        - `astigmatism_in_angstroms`: The amount of astigmatism in Angstroms.
         - `astigmatism_angle`: The defocus angle.
         - `voltage_in_kilovolts`:
             The accelerating voltage in kV. This field is treated as *static*, i.e.
@@ -53,7 +68,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         - `amplitude_contrast_ratio`: The amplitude contrast ratio.
         - `phase_shift`: The additional phase shift.
         """
-        self.defocus_in_angstroms = error_if_not_positive(defocus_in_angstroms)
+        self.defocus_in_angstroms = error_if_negative(defocus_in_angstroms)
         self.astigmatism_in_angstroms = jnp.asarray(astigmatism_in_angstroms)
         self.astigmatism_angle = jnp.asarray(astigmatism_angle)
         self.voltage_in_kilovolts = voltage_in_kilovolts
@@ -81,13 +96,15 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
             )
         else:
             wavelength_in_angstroms = jnp.asarray(wavelength_in_angstroms)
-        defocus_axis_1_in_angstroms = self.defocus_in_angstroms + jnp.asarray(
-            defocus_offset
+        defocus_axis_1_in_angstroms = (
+            self.defocus_in_angstroms
+            + jnp.asarray(defocus_offset)
+            + self.astigmatism_in_angstroms / 2
         )
         defocus_axis_2_in_angstroms = (
             self.defocus_in_angstroms
-            + self.astigmatism_in_angstroms
             + jnp.asarray(defocus_offset)
+            - self.astigmatism_in_angstroms / 2
         )
         # Compute phase shifts for CTF
         phase_shifts = compute_phase_shifts_with_amplitude_contrast_ratio(
