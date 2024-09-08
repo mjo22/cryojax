@@ -51,7 +51,7 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
         # Compute cryojax CTF
         optics = ContrastTransferFunction(
             defocus_in_angstroms=(defocus1 + defocus2) / 2,
-            astigmatism_in_angstroms=defocus2 - defocus1,
+            astigmatism_in_angstroms=defocus1 - defocus2,
             astigmatism_angle=asti_angle,
             voltage_in_kilovolts=kV,
             spherical_aberration_in_mm=cs,

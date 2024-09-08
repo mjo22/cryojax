@@ -19,6 +19,21 @@ from .common_functions import compute_phase_shifts_with_amplitude_contrast_ratio
 class ContrastTransferFunction(AbstractTransferFunction, strict=True):
     """Compute an astigmatic Contrast Transfer Function (CTF) with a
     spherical aberration correction and amplitude contrast ratio.
+
+    !!! info
+        `cryojax` uses a convention different from CTFFIND for
+        astigmatism parameters. It returns defocus major and minor
+        axes, called "defocus1" and "defocus2". In order to convert
+        from CTFFIND to `cryojax`,
+
+        ```python
+        defocus1, defocus2 = ... # Read from CTFFIND
+        ctf = ContrastTransferFunction(
+            defocus_in_angstroms=(defocus1+defocus2)/2,
+            astigmatism_in_angstroms=defocus1-defocus2,
+            ...
+        )
+        ```
     """
 
     defocus_in_angstroms: Float[Array, ""]
