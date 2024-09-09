@@ -13,9 +13,12 @@ import pandas as pd
 from jaxtyping import Array, Float, Int
 
 from ..io import read_and_validate_starfile
-from ..simulator import ContrastTransferFunction, EulerAnglePose, InstrumentConfig
+from ..simulator import (
+    ContrastTransferFunction, EulerAnglePose, InstrumentConfig
+)
 from ._dataset import AbstractDataset
 from ._particle_stack import AbstractParticleStack
+from cryojax.image.operators import FourierGaussian, Constant, FourierOperatorLike
 
 
 RELION_REQUIRED_OPTICS_KEYS = [
@@ -42,6 +45,7 @@ class RelionParticleStack(AbstractParticleStack):
     instrument_config: InstrumentConfig
     pose: EulerAnglePose
     ctf: ContrastTransferFunction
+    envelope: Optional[FourierOperatorLike] = None
     image_stack: Optional[Float[Array, "... y_dim x_dim"]]
 
     def __init__(
@@ -49,6 +53,7 @@ class RelionParticleStack(AbstractParticleStack):
         instrument_config: InstrumentConfig,
         pose: EulerAnglePose,
         ctf: ContrastTransferFunction,
+        envelope: Optional[FourierOperatorLike] = None,
         image_stack: Optional[Float[Array, "... y_dim x_dim"]] = None,
     ):
         """**Arguments:**
@@ -78,6 +83,8 @@ class RelionParticleStack(AbstractParticleStack):
             ctf,
             ctf.defocus_in_angstroms + pose.offset_z_in_angstroms,
         )
+        # Set envelope as is
+        self.envelope = envelope or Constant(jnp.asarray(1.0))
         # Set defocus offset to zero
         self.pose = eqx.tree_at(lambda pose: pose.offset_z_in_angstroms, pose, 0.0)
         # Optionally set image stack
@@ -191,13 +198,13 @@ class RelionDataset(AbstractDataset):
             else None
         )
         # ... load image parameters into cryoJAX objects
-        instrument_config, ctf, pose = self._get_starfile_params(
+        instrument_config, ctf, envelope, pose = self._get_starfile_params(
             particle_blocks,
             optics_group,
             device,
         )
 
-        return RelionParticleStack(instrument_config, pose, ctf, image_stack)
+        return RelionParticleStack(instrument_config, pose, ctf, envelope, image_stack)
 
     @final
     def __len__(self) -> int:
@@ -205,8 +212,9 @@ class RelionDataset(AbstractDataset):
 
     def _get_starfile_params(
         self, particle_blocks, optics_group, device
-    ) -> tuple[InstrumentConfig, ContrastTransferFunction, EulerAnglePose]:
+    ) -> tuple[InstrumentConfig, ContrastTransferFunction, FourierOperatorLike, EulerAnglePose]:
         defocus_in_angstroms = jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
+
         astigmatism_in_angstroms = jnp.asarray(
             particle_blocks["rlnDefocusV"], device=device
         ) - jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
@@ -222,6 +230,8 @@ class RelionDataset(AbstractDataset):
         amplitude_contrast_ratio = jnp.asarray(
             optics_group["rlnAmplitudeContrast"], device=device
         )
+
+        
         # ... create cryojax objects
         instrument_config = self.make_instrument_config_fn(
             (int(image_size), int(image_size)),
@@ -237,6 +247,14 @@ class RelionDataset(AbstractDataset):
             amplitude_contrast_ratio=amplitude_contrast_ratio,
             phase_shift=phase_shift,
         )
+
+        if "rlnCtfBfactor" in particle_blocks.keys():
+            bfactor = jnp.asarray(particle_blocks["rlnCtfBfactor"], device=device)
+            envelope = FourierGaussian(b_factor=bfactor)
+        
+        else:
+            envelope = Constant(jnp.asarray(1.0))
+
         pose = EulerAnglePose()
         # ... values for the pose are optional, so look to see if
         # each key is present
@@ -303,7 +321,7 @@ class RelionDataset(AbstractDataset):
             tuple([jnp.asarray(value, device=device) for value in pose_parameter_values]),
         )
 
-        return instrument_config, ctf, pose
+        return instrument_config, ctf, envelope, pose
 
     def _get_image_stack(
         self,
