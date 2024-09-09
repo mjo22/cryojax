@@ -12,13 +12,12 @@ import numpy as np
 import pandas as pd
 from jaxtyping import Array, Float, Int
 
+from cryojax.image.operators import Constant, FourierGaussian, FourierOperatorLike
+
 from ..io import read_and_validate_starfile
-from ..simulator import (
-    ContrastTransferFunction, EulerAnglePose, InstrumentConfig
-)
+from ..simulator import ContrastTransferFunction, EulerAnglePose, InstrumentConfig
 from ._dataset import AbstractDataset
 from ._particle_stack import AbstractParticleStack
-from cryojax.image.operators import FourierGaussian, Constant, FourierOperatorLike
 
 
 RELION_REQUIRED_OPTICS_KEYS = [
@@ -215,7 +214,9 @@ class RelionDataset(AbstractDataset):
 
     def _get_starfile_params(
         self, particle_blocks, optics_group, device
-    ) -> tuple[InstrumentConfig, ContrastTransferFunction, FourierOperatorLike, EulerAnglePose]:
+    ) -> tuple[
+        InstrumentConfig, ContrastTransferFunction, FourierOperatorLike, EulerAnglePose
+    ]:
         defocus_in_angstroms = jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
 
         astigmatism_in_angstroms = jnp.asarray(
@@ -234,7 +235,6 @@ class RelionDataset(AbstractDataset):
             optics_group["rlnAmplitudeContrast"], device=device
         )
 
-        
         # ... create cryojax objects
         instrument_config = self.make_instrument_config_fn(
             (int(image_size), int(image_size)),
@@ -254,7 +254,7 @@ class RelionDataset(AbstractDataset):
         if "rlnCtfBfactor" in particle_blocks.keys():
             bfactor = jnp.asarray(particle_blocks["rlnCtfBfactor"], device=device)
             envelope = FourierGaussian(b_factor=bfactor)
-        
+
         else:
             envelope = Constant(jnp.asarray(1.0))
 
