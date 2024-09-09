@@ -70,6 +70,9 @@ class RelionParticleStack(AbstractParticleStack):
             have a batch dimension. Upon instantiation,
             `ctf.defocus_in_angstroms` is set to
             `ctf.defocus_in_angstroms + pose.offset_z_in_angstroms`.
+        - `envelope`:
+            The envelope function of the optics model. If `None`, a constant
+            envelope function is used.
         - `image_stack`:
             The stack of images. The shape of this array
             is a leading batch dimension followed by the shape
