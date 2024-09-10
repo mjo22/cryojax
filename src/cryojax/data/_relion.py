@@ -12,10 +12,15 @@ import numpy as np
 import pandas as pd
 from jaxtyping import Array, Float, Int
 
-from cryojax.image.operators import Constant, FourierGaussian, FourierOperatorLike
+from cryojax.image.operators import FourierGaussian
 
 from ..io import read_and_validate_starfile
-from ..simulator import ContrastTransferFunction, EulerAnglePose, InstrumentConfig
+from ..simulator import (
+    ContrastTransferFunction,
+    ContrastTransferTheory,
+    EulerAnglePose,
+    InstrumentConfig,
+)
 from ._dataset import AbstractDataset
 from ._particle_stack import AbstractParticleStack
 
@@ -43,16 +48,14 @@ class RelionParticleStack(AbstractParticleStack):
 
     instrument_config: InstrumentConfig
     pose: EulerAnglePose
-    ctf: ContrastTransferFunction
-    envelope: Optional[FourierOperatorLike] = None
+    transfer_theory: ContrastTransferTheory
     image_stack: Optional[Float[Array, "... y_dim x_dim"]]
 
     def __init__(
         self,
         instrument_config: InstrumentConfig,
         pose: EulerAnglePose,
-        ctf: ContrastTransferFunction,
-        envelope: Optional[FourierOperatorLike] = None,
+        transfer_theory: ContrastTransferTheory,
         image_stack: Optional[Float[Array, "... y_dim x_dim"]] = None,
     ):
         """**Arguments:**
@@ -64,14 +67,11 @@ class RelionParticleStack(AbstractParticleStack):
             The pose, represented by euler angles. Any subset of pytree leaves may
             have a batch dimension. Upon instantiation, `pose.offset_z_in_angstroms`
             is set to zero.
-        - `ctf`:
-            The contrast transfer function. Any subset of pytree leaves may
+        - `transfer_theory`:
+            The contrast transfer theory. Any subset of pytree leaves may
             have a batch dimension. Upon instantiation,
             `ctf.defocus_in_angstroms` is set to
             `ctf.defocus_in_angstroms + pose.offset_z_in_angstroms`.
-        - `envelope`:
-            The envelope function of the optics model. If `None`, a constant
-            envelope function is used.
         - `image_stack`:
             The stack of images. The shape of this array
             is a leading batch dimension followed by the shape
@@ -80,13 +80,11 @@ class RelionParticleStack(AbstractParticleStack):
         # Set instrument config as is
         self.instrument_config = instrument_config
         # Set CTF using the defocus offset in the EulerAnglePose
-        self.ctf = eqx.tree_at(
-            lambda tf: tf.defocus_in_angstroms,
-            ctf,
-            ctf.defocus_in_angstroms + pose.offset_z_in_angstroms,
+        self.transfer_theory = eqx.tree_at(
+            lambda tf: tf.ctf.defocus_in_angstroms,
+            transfer_theory,
+            transfer_theory.ctf.defocus_in_angstroms + pose.offset_z_in_angstroms,
         )
-        # Set envelope as is
-        self.envelope = envelope or Constant(jnp.asarray(1.0))
         # Set defocus offset to zero
         self.pose = eqx.tree_at(lambda pose: pose.offset_z_in_angstroms, pose, 0.0)
         # Optionally set image stack
@@ -200,13 +198,13 @@ class RelionDataset(AbstractDataset):
             else None
         )
         # ... load image parameters into cryoJAX objects
-        instrument_config, ctf, envelope, pose = self._get_starfile_params(
+        instrument_config, transfer_theory, pose = self._get_starfile_params(
             particle_blocks,
             optics_group,
             device,
         )
 
-        return RelionParticleStack(instrument_config, pose, ctf, envelope, image_stack)
+        return RelionParticleStack(instrument_config, pose, transfer_theory, image_stack)
 
     @final
     def __len__(self) -> int:
@@ -214,9 +212,7 @@ class RelionDataset(AbstractDataset):
 
     def _get_starfile_params(
         self, particle_blocks, optics_group, device
-    ) -> tuple[
-        InstrumentConfig, ContrastTransferFunction, FourierOperatorLike, EulerAnglePose
-    ]:
+    ) -> tuple[InstrumentConfig, ContrastTransferTheory, EulerAnglePose]:
         defocus_in_angstroms = jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
 
         astigmatism_in_angstroms = jnp.asarray(
@@ -253,10 +249,20 @@ class RelionDataset(AbstractDataset):
 
         if "rlnCtfBfactor" in particle_blocks.keys():
             bfactor = jnp.asarray(particle_blocks["rlnCtfBfactor"], device=device)
-            envelope = FourierGaussian(b_factor=bfactor)
 
         else:
-            envelope = Constant(jnp.asarray(1.0))
+            bfactor = 0.0
+
+        if "rlnCtfScalefactor" in particle_blocks.keys():
+            env_amplitude = jnp.asarray(
+                particle_blocks["rlnCtfScalefactor"], device=device
+            )
+        else:
+            env_amplitude = 1.0
+
+        envelope = FourierGaussian(b_factor=bfactor, amplitude=env_amplitude)
+
+        transfer_theory = ContrastTransferTheory(ctf, envelope)
 
         pose = EulerAnglePose()
         # ... values for the pose are optional, so look to see if
@@ -324,7 +330,7 @@ class RelionDataset(AbstractDataset):
             tuple([jnp.asarray(value, device=device) for value in pose_parameter_values]),
         )
 
-        return instrument_config, ctf, envelope, pose
+        return instrument_config, transfer_theory, pose
 
     def _get_image_stack(
         self,
