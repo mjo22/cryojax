@@ -7,3 +7,6 @@ from ._relion import (
     RelionDataset as RelionDataset,
     RelionParticleStack as RelionParticleStack,
 )
+from ._starfile_generator import (
+    generate_starfile as generate_starfile,
+)
