@@ -1,0 +1,10 @@
+mkdocs
+mkdocs-material
+pymdown-extensions
+mkdocstrings-python
+mknotebooks
+mkdocs-gen-files
+mkdocs-same-dir
+mkdocs-pymdownx-material-extras
+mkdocs-autorefs
+mkdocs-simple-plugin
