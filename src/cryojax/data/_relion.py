@@ -112,6 +112,7 @@ class RelionDataset(AbstractDataset):
         [tuple[int, int], Float[Array, "..."], Float[Array, "..."]], InstrumentConfig
     ]
     get_image_stack: bool
+    get_envelope_function: bool
     get_cpu_arrays: bool
 
     @final
@@ -120,6 +121,7 @@ class RelionDataset(AbstractDataset):
         path_to_starfile: str | pathlib.Path,
         path_to_relion_project: str | pathlib.Path,
         get_image_stack: bool = True,
+        get_envelope_function: bool = False,
         get_cpu_arrays: bool = False,
         make_instrument_config_fn: Callable[
             [tuple[int, int], Float[Array, "..."], Float[Array, "..."]],
@@ -133,6 +135,9 @@ class RelionDataset(AbstractDataset):
         - `get_image_stack`:
             If `True`, read the stack of images from the STAR file. Otherwise,
             just read parameters.
+        - `get_envelope_function`:
+            If `True`, read in the parameters of the CTF envelope function, i.e.
+            "rlnCtfScalefactor" and "rlnCtfBfactor".
         - `get_cpu_arrays`:
             If `True`, force that JAX arrays are loaded on the CPU. If `False`,
             load on the default device.
@@ -149,6 +154,7 @@ class RelionDataset(AbstractDataset):
         )
         object.__setattr__(self, "make_instrument_config_fn", make_instrument_config_fn)
         object.__setattr__(self, "get_image_stack", get_image_stack)
+        object.__setattr__(self, "get_envelope_function", get_envelope_function)
         object.__setattr__(self, "get_cpu_arrays", get_cpu_arrays)
 
     @final
@@ -213,8 +219,10 @@ class RelionDataset(AbstractDataset):
     def _get_starfile_params(
         self, particle_blocks, optics_group, device
     ) -> tuple[InstrumentConfig, ContrastTransferTheory, EulerAnglePose]:
-        defocus_in_angstroms = jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
-
+        defocus_in_angstroms = (
+            jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
+            + jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
+        ) / 2
         astigmatism_in_angstroms = jnp.asarray(
             particle_blocks["rlnDefocusV"], device=device
         ) - jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
@@ -231,39 +239,62 @@ class RelionDataset(AbstractDataset):
             optics_group["rlnAmplitudeContrast"], device=device
         )
 
-        # ... create cryojax objects
+        # ... create cryojax objects. First, the InstrumentConfig
         instrument_config = self.make_instrument_config_fn(
             (int(image_size), int(image_size)),
             pixel_size,
             jnp.asarray(voltage_in_kilovolts, device=device),
         )
-        ctf = ContrastTransferFunction(
-            defocus_in_angstroms=defocus_in_angstroms,
-            astigmatism_in_angstroms=astigmatism_in_angstroms,
-            astigmatism_angle=astigmatism_angle,
-            voltage_in_kilovolts=voltage_in_kilovolts,
-            spherical_aberration_in_mm=spherical_aberration_in_mm,
-            amplitude_contrast_ratio=amplitude_contrast_ratio,
-            phase_shift=phase_shift,
+        # ... now the ContrastTransferTheory
+        make_ctf = (
+            lambda defocus, astig, angle, voltage, sph, ac, ps: ContrastTransferFunction(
+                defocus_in_angstroms=defocus,
+                astigmatism_in_angstroms=astig,
+                astigmatism_angle=angle,
+                voltage_in_kilovolts=voltage,
+                spherical_aberration_in_mm=sph,
+                amplitude_contrast_ratio=ac,
+                phase_shift=ps,
+            )
         )
-
-        if "rlnCtfBfactor" in particle_blocks.keys():
-            bfactor = jnp.asarray(particle_blocks["rlnCtfBfactor"], device=device)
-
-        else:
-            bfactor = 0.0
-
-        if "rlnCtfScalefactor" in particle_blocks.keys():
-            env_amplitude = jnp.asarray(
-                particle_blocks["rlnCtfScalefactor"], device=device
+        ctf_params = (
+            defocus_in_angstroms,
+            astigmatism_in_angstroms,
+            astigmatism_angle,
+            voltage_in_kilovolts,
+            spherical_aberration_in_mm,
+            amplitude_contrast_ratio,
+            phase_shift,
+        )
+        ctf = (
+            eqx.filter_vmap(make_ctf, in_axes=(0, 0, 0, None, None, None, 0))(*ctf_params)
+            if defocus_in_angstroms.ndim == 1
+            else make_ctf(*ctf_params)
+        )
+        if self.get_envelope_function:
+            b_factor, scale_factor = (
+                (
+                    jnp.asarray(particle_blocks["rlnCtfBfactor"], device=device)
+                    if "rlnCtfBfactor" in particle_blocks.keys()
+                    else jnp.asarray(0.0)
+                ),
+                (
+                    jnp.asarray(particle_blocks["rlnCtfScalefactor"], device=device)
+                    if "rlnCtfScalefactor" in particle_blocks.keys()
+                    else jnp.asarray(1.0)
+                ),
+            )
+            make_envelope = lambda b, amp: FourierGaussian(b_factor=b, amplitude=amp)
+            envelope_params = (b_factor, scale_factor)
+            envelope = (
+                eqx.filter_vmap(make_envelope, in_axes=(0, 0))(*envelope_params)
+                if b_factor.ndim == 1
+                else make_envelope(*envelope_params)
             )
         else:
-            env_amplitude = 1.0
-
-        envelope = FourierGaussian(b_factor=bfactor, amplitude=env_amplitude)
-
+            envelope = None
         transfer_theory = ContrastTransferTheory(ctf, envelope)
-
+        # ... and finally, the EulerAnglePose
         pose = EulerAnglePose()
         # ... values for the pose are optional, so look to see if
         # each key is present
