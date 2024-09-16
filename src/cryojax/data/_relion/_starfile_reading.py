@@ -5,6 +5,7 @@ import pathlib
 from typing import Any, Callable, final, Optional
 
 import equinox as eqx
+import equinox.internal as eqxi
 import jax
 import jax.numpy as jnp
 import mrcfile
@@ -266,7 +267,11 @@ class RelionDataset(AbstractDataset):
             phase_shift,
         )
         ctf = (
-            eqx.filter_vmap(make_ctf, in_axes=(0, 0, 0, None, None, None, 0))(*ctf_params)
+            eqx.filter_vmap(
+                make_ctf,
+                in_axes=(0, 0, 0, None, None, None, 0),
+                out_axes=eqxi.if_mapped(0),
+            )(*ctf_params)
             if defocus_in_angstroms.ndim == 1
             else make_ctf(*ctf_params)
         )
