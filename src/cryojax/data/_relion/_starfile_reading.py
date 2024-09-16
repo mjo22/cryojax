@@ -12,17 +12,16 @@ import numpy as np
 import pandas as pd
 from jaxtyping import Array, Float, Int
 
-from cryojax.image.operators import FourierGaussian
-
-from ..io import read_and_validate_starfile
-from ..simulator import (
+from ...image.operators import FourierGaussian
+from ...io import read_and_validate_starfile
+from ...simulator import (
     ContrastTransferFunction,
     ContrastTransferTheory,
     EulerAnglePose,
     InstrumentConfig,
 )
-from ._dataset import AbstractDataset
-from ._particle_stack import AbstractParticleStack
+from .._dataset import AbstractDataset
+from .._particle_stack import AbstractParticleStack
 
 
 RELION_REQUIRED_OPTICS_KEYS = [
