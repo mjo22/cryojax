@@ -8,7 +8,7 @@ import pandas as pd
 import starfile
 from jaxtyping import Array, Float, PRNGKeyArray
 
-from ....cryojax import filter_vmap_with_spec, get_filter_spec
+from ... import filter_vmap_with_spec, get_filter_spec
 from ...image.operators import Constant, FourierGaussian
 from ...io import write_image_stack_to_mrc
 from ._starfile_reading import RelionDataset, RelionParticleStack
