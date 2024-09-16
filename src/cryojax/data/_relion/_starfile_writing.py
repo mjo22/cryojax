@@ -2,17 +2,15 @@ import os
 import pathlib
 from typing import Any, Callable, cast, Optional
 
-import equinox as eqx
 import jax
-import jax.tree_util as jtu
 import numpy as np
 import pandas as pd
 import starfile
-from jaxtyping import Array, Float, PRNGKeyArray, PyTree, Shaped
+from jaxtyping import Array, Float, PRNGKeyArray
 
+from ....cryojax import filter_vmap_with_spec, get_filter_spec
 from ...image.operators import Constant, FourierGaussian
 from ...io import write_image_stack_to_mrc
-from ...simulator import AbstractPose, ContrastTransferTheory, InstrumentConfig
 from ._starfile_reading import RelionDataset, RelionParticleStack
 
 
@@ -25,7 +23,7 @@ def _get_filename(step, n_char=6):
     return fname
 
 
-def generate_starfile(
+def write_starfile_with_particle_parameters(
     relion_particle_stack: RelionParticleStack,
     filename: str | pathlib.Path,
     mrc_batch_size: Optional[int] = None,
@@ -147,14 +145,14 @@ def generate_starfile(
 
 def write_simulated_image_stack_from_starfile(
     dataset: RelionDataset,
-    compute_image_stack: (
-        Callable[[PyTree, Any], Float[Array, "batch_dim y_dim x_dim"]]
+    compute_image: (
+        Callable[[RelionParticleStack, Any], Float[Array, "y_dim x_dim"]]
         | Callable[
-            [Shaped[PRNGKeyArray, " batch_dim"], PyTree, Any],
-            Float[Array, "batch_dim y_dim x_dim"],
+            [PRNGKeyArray, RelionParticleStack, Any],
+            Float[Array, "y_dim x_dim"],
         ]
     ),
-    pytree: PyTree,
+    args: Any,
     seed: Optional[int] = None,  # seed for the noise
     overwrite: bool = False,
     compression: Optional[str] = None,
@@ -270,12 +268,12 @@ def write_simulated_image_stack_from_starfile(
     else:
         subkey = cast(PRNGKeyArray, None)
 
-    # Function to check if given leaf is an object contained in a
-    # `RelionParticleStack`
-    is_leaf = lambda x: isinstance(
-        x, (ContrastTransferTheory, InstrumentConfig, AbstractPose)
+    # Create vmapped `compute_image` kernel
+    test_particle_stack = dataset[0]
+    filter_spec_for_vmap = _get_particle_stack_filter_spec(test_particle_stack)
+    compute_image_stack = filter_vmap_with_spec(
+        compute_image, filter_spec=filter_spec_for_vmap
     )
-    is_leaf_vmap = lambda x: isinstance(x, (ContrastTransferTheory, AbstractPose))
 
     # First let's check how many unique MRC files we have in the starfile
     particles_fnames = dataset.data_blocks["particles"]["rlnImageName"].str.split(
@@ -292,26 +290,20 @@ def write_simulated_image_stack_from_starfile(
         )  # particles_fnames[particles_fnames[1] == mrc_fname].index.to_numpy()
         relion_particle_stack = dataset[indices]
 
-        # ... update the new pytree
-        replace_leaf = lambda leaf: _replace_leaf(leaf, relion_particle_stack)
-        new_pytree = jax.tree.map(replace_leaf, pytree, is_leaf=is_leaf)
-
         # Generate keys for each image in the mrcfile, and a subkey for the next iteration
         if seed is not None:
             keys = jax.random.split(subkey, len(indices) + 1)
             subkey = keys[-1]
 
-        new_pytree, args = eqx.partition(new_pytree, _is_vmappable, is_leaf=is_leaf_vmap)
-
         # Generate the noisy image stack
         image_stack = (
-            compute_image_stack(new_pytree, args)
-            if seed is None
-            else compute_image_stack(
-                keys[:-1],
-                new_pytree,
-                args,
-            )
+            compute_image_stack(relion_particle_stack, args)
+            #            if seed is None
+            #            else compute_image_stack(
+            #                keys[:-1],
+            #                relion_particle_stack,
+            #                args,
+            #            )
         )
 
         # Write the image stack to an MRC file
@@ -327,58 +319,36 @@ def write_simulated_image_stack_from_starfile(
     return
 
 
-def _filter_ctf(pytree):
-    if isinstance(pytree.envelope, FourierGaussian):
+_get_particle_stack_filter_spec = lambda particle_stack: get_filter_spec(
+    particle_stack, _pointer_to_vmapped_parameters
+)
+
+
+def _pointer_to_vmapped_parameters(particle_stack):
+    if isinstance(particle_stack.envelope, FourierGaussian):
         output = (
-            pytree.ctf.defocus_in_angstroms,
-            pytree.ctf.astigmatism_in_angstroms,
-            pytree.ctf.astigmatism_angle,
-            pytree.ctf.phase_shift,
-            pytree.ctf.spherical_aberration_in_mm,
-            pytree.ctf.amplitude_contrast_ratio,
-            pytree.envelope.b_factor,
-            pytree.envelope.amplitude,
+            particle_stack.ctf.defocus_in_angstroms,
+            particle_stack.ctf.astigmatism_in_angstroms,
+            particle_stack.ctf.astigmatism_angle,
+            particle_stack.ctf.phase_shift,
+            particle_stack.envelope.b_factor,
+            particle_stack.envelope.amplitude,
+            particle_stack.offset_x_in_angstroms,
+            particle_stack.offset_y_in_angstroms,
+            particle_stack.view_phi,
+            particle_stack.view_theta,
+            particle_stack.view_psi,
         )
     else:
         output = (
-            pytree.ctf.defocus_in_angstroms,
-            pytree.ctf.astigmatism_in_angstroms,
-            pytree.ctf.astigmatism_angle,
-            pytree.ctf.phase_shift,
-            pytree.ctf.spherical_aberration_in_mm,
-            pytree.ctf.amplitude_contrast_ratio,
+            particle_stack.ctf.defocus_in_angstroms,
+            particle_stack.ctf.astigmatism_in_angstroms,
+            particle_stack.ctf.astigmatism_angle,
+            particle_stack.ctf.phase_shift,
+            particle_stack.offset_x_in_angstroms,
+            particle_stack.offset_y_in_angstroms,
+            particle_stack.view_phi,
+            particle_stack.view_theta,
+            particle_stack.view_psi,
         )
     return output
-
-
-def _filter_pose(pytree):
-    output = (
-        pytree.offset_x_in_angstroms,
-        pytree.offset_y_in_angstroms,
-        pytree.view_phi,
-        pytree.view_theta,
-        pytree.view_psi,
-    )
-    return output
-
-
-def _is_vmappable(pytree):
-    if isinstance(pytree, AbstractPose):
-        false_pytree = jtu.tree_map(lambda _: False, pytree)
-        return eqx.tree_at(_filter_pose, false_pytree, replace_fn=lambda _: True)
-    elif isinstance(pytree, ContrastTransferTheory):
-        false_pytree = jtu.tree_map(lambda _: False, pytree)
-        return eqx.tree_at(_filter_ctf, false_pytree, replace_fn=lambda _: True)
-    else:
-        return jtu.tree_map(lambda _: False, pytree)
-
-
-def _replace_leaf(leaf, relion_particle_stack):
-    if isinstance(leaf, ContrastTransferTheory):
-        return relion_particle_stack.transfer_theory
-    elif isinstance(leaf, InstrumentConfig):
-        return relion_particle_stack.instrument_config
-    elif isinstance(leaf, AbstractPose):
-        return relion_particle_stack.pose
-    else:
-        return leaf
