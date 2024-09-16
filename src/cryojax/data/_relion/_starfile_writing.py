@@ -265,9 +265,8 @@ def write_simulated_image_stack_from_starfile(
     # Create RNG key, along with a subkey for subsequent use
     if seed is not None:
         key = jax.random.PRNGKey(seed=seed)
-        key, subkey = jax.random.split(key)
     else:
-        subkey = cast(PRNGKeyArray, None)
+        key = cast(PRNGKeyArray, None)
     # Create vmapped `compute_image` kernel
     test_particle_stack = dataset[0]
     filter_spec_for_vmap = _get_particle_stack_filter_spec(test_particle_stack)
@@ -284,6 +283,13 @@ def write_simulated_image_stack_from_starfile(
             in_axes=(0, 0, None, None),
         )
     )
+
+    # Try to jit the function
+    try:
+        compute_image_stack = eqx.filter_jit(compute_image_stack)
+    except Any:
+        pass
+
     # Now, let's preparing the simulation loop. First check how many unique MRC
     # files we have in the starfile
     particles_fnames = dataset.data_blocks["particles"]["rlnImageName"].str.split(
@@ -304,14 +310,17 @@ def write_simulated_image_stack_from_starfile(
         else:
             # ... generate keys for each image in the mrcfile,
             # and a subkey for the next iteration
-            keys = jax.random.split(subkey, len(indices) + 1)
+
+            key, *subkeys = jax.random.split(key, len(indices) + 1)
+            subkeys = jax.numpy.array(subkeys)
+
             image_stack = compute_image_stack(
-                keys[:-1],
+                subkeys,
                 vmap,
                 novmap,
                 args,  # type: ignore
             )
-            subkey = keys[-1]
+
         # ... write the image stack to an MRC file
         filename = os.path.join(dataset.path_to_relion_project, mrc_fname)
         write_image_stack_to_mrc(
