@@ -4,6 +4,7 @@ from typing import Any, Callable, cast, Optional
 
 import equinox as eqx
 import jax
+import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 import starfile
@@ -154,6 +155,8 @@ def write_simulated_image_stack_from_starfile(
         ]
     ),
     args: Any,
+    is_jittable: bool = True,
+    batch_size_per_mrc: Optional[int] = None,
     seed: Optional[int] = None,  # seed for the noise
     overwrite: bool = False,
     compression: Optional[str] = None,
@@ -252,16 +255,112 @@ def write_simulated_image_stack_from_starfile(
     - `pytree` :
         The pytree that is given to `compute_image_stack`
         to compute the image stack (before filtering for vmapping).
+    - `args`:
+        The arguments to pass to the `compute_image_stack` function.
+    - `is_jittable`:
+        Whether the `compute_image_stack` function is jittable with `equinox.filter_jit`.
+    - `batch_size_per_mrc`:
+        The maximum number of images that will be computed in each vmap operation.
+        If `None`, all images for a single mrc file will be computed in a single vmap operation.
+        Only relevant if `is_jittable` is True.
     - `seed`:
         The seed for the random number generator.
     - `overwrite`:
         Whether to overwrite the MRC files if they already exist.
     - `compression`:
         The compression to use when writing the MRC files.
-    """
+    """  # noqa
     # Create the directory for the MRC files if it doesn't exist
     if not os.path.exists(dataset.path_to_relion_project):
         os.makedirs(dataset.path_to_relion_project)
+
+    else:
+        mrc_fnames = (
+            dataset.data_blocks["particles"]["rlnImageName"]
+            .str.split("@", expand=True)[1]
+            .unique()
+        )
+
+        if not overwrite:
+            for mrc_fname in mrc_fnames:
+                filename = os.path.join(dataset.path_to_relion_project, mrc_fname)
+                if os.path.exists(filename):
+                    raise FileExistsError(
+                        f"Overwrite was set to False,\
+                            but MRC file {filename} in starfile already exists."
+                    )
+        else:
+            # remove existing MRC files if they match with the ones in the starfile
+            for mrc_fname in mrc_fnames:
+                filename = os.path.join(dataset.path_to_relion_project, mrc_fname)
+                if os.path.exists(filename):
+                    os.remove(filename)
+
+    if is_jittable:
+        _write_simulated_image_stack_from_starfile_vmap(
+            dataset=dataset,
+            compute_image=compute_image,
+            args=args,
+            batch_size_per_mrc=batch_size_per_mrc,
+            seed=seed,
+            overwrite=overwrite,
+            compression=compression,
+        )
+
+    else:
+        _write_simulated_image_stack_from_starfile_serial(
+            dataset=dataset,
+            compute_image=compute_image,
+            args=args,
+            seed=seed,
+            overwrite=overwrite,
+            compression=compression,
+        )
+
+    return
+
+
+def _compute_images_batch(
+    indices, dataset, compute_image_stack, args, filter_spec_for_vmap, key=None
+):
+    relion_particle_stack = dataset[indices]
+    # ... split the particle stack based on parameters to vmap over
+    vmap, novmap = eqx.partition(relion_particle_stack, filter_spec_for_vmap)
+    # ... simulate images in the image stack
+    if key is None:
+        image_stack = compute_image_stack(vmap, novmap, args)
+
+    else:
+        # ... generate keys for each image in the mrcfile,
+        # and a subkey for the next iteration
+
+        key, *subkeys = jax.random.split(key, len(indices) + 1)
+        subkeys = jax.numpy.array(subkeys)
+
+        image_stack = compute_image_stack(
+            subkeys,
+            vmap,
+            novmap,
+            args,  # type: ignore
+        )
+    return image_stack, key
+
+
+def _write_simulated_image_stack_from_starfile_vmap(
+    dataset: RelionDataset,
+    compute_image: (
+        Callable[[RelionParticleStack, Any], Float[Array, "y_dim x_dim"]]
+        | Callable[
+            [PRNGKeyArray, RelionParticleStack, Any],
+            Float[Array, "y_dim x_dim"],
+        ]
+    ),
+    args: Any,
+    batch_size_per_mrc: Optional[int] = None,
+    seed: Optional[int] = None,  # seed for the noise
+    overwrite: bool = False,
+    compression: Optional[str] = None,
+):
     # Create RNG key, along with a subkey for subsequent use
     if seed is not None:
         key = jax.random.PRNGKey(seed=seed)
@@ -283,12 +382,29 @@ def write_simulated_image_stack_from_starfile(
             in_axes=(0, 0, None, None),
         )
     )
+    compute_image_stack = eqx.filter_jit(compute_image_stack)
 
-    # Try to jit the function
-    try:
-        compute_image_stack = eqx.filter_jit(compute_image_stack)
-    except Any:
-        pass
+    # check if function runs
+    vmap, novmap = eqx.partition(dataset[0:2], filter_spec_for_vmap)
+    if seed is None:
+        try:
+            compute_image_stack(vmap, novmap, args)
+        except Exception as e:
+            raise RuntimeError(
+                "The `compute_image` function failed to run.\
+                    Please check the function signature and arguments.\
+                        Confirm that your function is jittable if necessary."
+            ) from e
+    else:
+        key, *subkeys = jax.random.split(key, 3)
+        try:
+            compute_image_stack(jnp.array(subkeys), vmap, novmap, args)
+        except Exception as e:
+            raise RuntimeError(
+                "The `compute_image` function failed to run.\
+                    Please check the function signature and arguments.\
+                        Confirm that your function is jittable if necessary."
+            ) from e
 
     # Now, let's preparing the simulation loop. First check how many unique MRC
     # files we have in the starfile
@@ -296,40 +412,128 @@ def write_simulated_image_stack_from_starfile(
         "@", expand=True
     )
     mrc_fnames = particles_fnames[1].unique()
+
+    box_size = int(dataset.data_blocks["optics"]["rlnImageSize"][0])
+    pixel_size = float(dataset.data_blocks["optics"]["rlnImagePixelSize"][0])
+
     # ... now, generate images for each mrcfile
     for mrc_fname in mrc_fnames:
         # ... check which indices in the starfile correspond to this mrc file
         # and load the particle stack parameters
         indices = particles_fnames[particles_fnames[1] == mrc_fname].index.to_numpy()
-        relion_particle_stack = dataset[indices]
-        # ... split the particle stack based on parameters to vmap over
-        vmap, novmap = eqx.partition(relion_particle_stack, filter_spec_for_vmap)
-        # ... simulate images in the image stack
-        if seed is None:
-            image_stack = compute_image_stack(vmap, novmap, args)
+
+        if batch_size_per_mrc is not None:
+            n_batches = max(len(indices) // batch_size_per_mrc, 1)
+            residual = len(indices) % batch_size_per_mrc if n_batches > 1 else 0
+
         else:
-            # ... generate keys for each image in the mrcfile,
-            # and a subkey for the next iteration
+            n_batches = 1
+            residual = 0
 
-            key, *subkeys = jax.random.split(key, len(indices) + 1)
-            subkeys = jax.numpy.array(subkeys)
+        if n_batches > 1:
+            image_stack = np.empty((len(indices), box_size, box_size), dtype=np.float32)
 
-            image_stack = compute_image_stack(
-                subkeys,
-                vmap,
-                novmap,
-                args,  # type: ignore
+            for i in range(n_batches):
+                idx_0 = i * batch_size_per_mrc
+                idx_1 = (i + 1) * batch_size_per_mrc
+                image_stack[idx_0:idx_1], key = _compute_images_batch(
+                    indices[idx_0:idx_1],
+                    dataset,
+                    compute_image_stack,
+                    args,
+                    filter_spec_for_vmap,
+                    key=key,
+                )
+
+            if residual > 0:
+                image_stack[-residual:], key = _compute_images_batch(
+                    indices[-residual:],
+                    dataset,
+                    compute_image_stack,
+                    args,
+                    filter_spec_for_vmap,
+                    key=key,
+                )
+
+            image_stack = jnp.array(image_stack)
+
+        else:
+            image_stack, key = _compute_images_batch(
+                indices,
+                dataset,
+                compute_image_stack,
+                args,
+                filter_spec_for_vmap,
+                key=key,
             )
 
         # ... write the image stack to an MRC file
         filename = os.path.join(dataset.path_to_relion_project, mrc_fname)
         write_image_stack_to_mrc(
             image_stack,
-            pixel_size=relion_particle_stack.instrument_config.pixel_size,
+            pixel_size=pixel_size,
             filename=filename,
             overwrite=overwrite,
             compression=compression,
         )
+
+    return
+
+
+def _write_simulated_image_stack_from_starfile_serial(
+    dataset: RelionDataset,
+    compute_image: (
+        Callable[[RelionParticleStack, Any], Float[Array, "y_dim x_dim"]]
+        | Callable[
+            [PRNGKeyArray, RelionParticleStack, Any],
+            Float[Array, "y_dim x_dim"],
+        ]
+    ),
+    args: Any,
+    seed: Optional[int] = None,  # seed for the noise
+    overwrite: bool = False,
+    compression: Optional[str] = None,
+):
+    # Create RNG key, along with a subkey for subsequent use
+    if seed is not None:
+        key = jax.random.PRNGKey(seed=seed)
+    else:
+        key = cast(PRNGKeyArray, None)
+
+    # Now, let's preparing the simulation loop. First check how many unique MRC
+    # files we have in the starfile
+    particles_fnames = dataset.data_blocks["particles"]["rlnImageName"].str.split(
+        "@", expand=True
+    )
+    mrc_fnames = particles_fnames[1].unique()
+
+    box_size = int(dataset.data_blocks["optics"]["rlnImageSize"][0])
+    pixel_size = float(dataset.data_blocks["optics"]["rlnImagePixelSize"][0])
+
+    # ... now, generate images for each mrcfile
+    for mrc_fname in mrc_fnames:
+        # ... check which indices in the starfile correspond to this mrc file
+        # and load the particle stack parameters
+        indices = particles_fnames[particles_fnames[1] == mrc_fname].index.to_numpy()
+        image_stack = np.empty((len(indices), box_size, box_size), dtype=np.float32)
+
+        for i in range(len(indices)):
+            if seed is not None:
+                key, subkey = jax.random.split(key)
+                image_stack[i] = compute_image(subkey, dataset[indices[i]], args)
+
+            else:
+                image_stack[i] = compute_image(dataset[indices[i]], args)
+
+            # ... write the image stack to an MRC file
+            filename = os.path.join(dataset.path_to_relion_project, mrc_fname)
+            write_image_stack_to_mrc(
+                image_stack,
+                pixel_size=pixel_size,
+                filename=filename,
+                overwrite=overwrite,
+                compression=compression,
+            )
 
     return
 
