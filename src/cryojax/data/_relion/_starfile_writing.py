@@ -29,6 +29,7 @@ def write_starfile_with_particle_parameters(
     relion_particle_stack: RelionParticleStack,
     filename: str | pathlib.Path,
     mrc_batch_size: Optional[int] = None,
+    overwrite: bool = False,
 ) -> None:
     """Generate a STAR file from a RelionParticleStack object.
 
@@ -45,7 +46,18 @@ def write_starfile_with_particle_parameters(
     - `mrc_batch_size`:
         The number of images to write to each MRC file. If `None`, the number of
         images in the `RelionParticleStack` is used.
+    - `overwrite`:
+        Whether to overwrite the STAR file if it already exists.
     """
+
+    path_to_starfile = os.path.dirname(filename)
+    if not os.path.exists(path_to_starfile):
+        os.makedirs(path_to_starfile)
+
+    if not overwrite and os.path.exists(filename):
+        raise FileExistsError(
+            f"Overwrite was set to False, but STAR file {filename} already exists."
+        )
 
     n_images = relion_particle_stack.pose.offset_x_in_angstroms.shape[0]
 
