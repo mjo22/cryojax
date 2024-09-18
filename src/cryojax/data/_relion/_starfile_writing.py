@@ -99,9 +99,11 @@ def write_starfile_with_particle_parameters(
     particles_df["rlnAnglePsi"] = relion_particle_stack.pose.view_psi
     particles_df["rlnDefocusU"] = (
         relion_particle_stack.transfer_theory.ctf.defocus_in_angstroms
+        + relion_particle_stack.transfer_theory.ctf.astigmatism_in_angstroms / 2
     )
     particles_df["rlnDefocusV"] = (
-        relion_particle_stack.transfer_theory.ctf.astigmatism_in_angstroms
+        relion_particle_stack.transfer_theory.ctf.defocus_in_angstroms
+        - relion_particle_stack.transfer_theory.ctf.astigmatism_in_angstroms / 2
     )
     particles_df["rlnDefocusAngle"] = (
         relion_particle_stack.transfer_theory.ctf.astigmatism_angle
