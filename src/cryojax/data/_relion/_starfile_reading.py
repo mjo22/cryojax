@@ -221,7 +221,7 @@ class RelionDataset(AbstractDataset):
     ) -> tuple[InstrumentConfig, ContrastTransferTheory, EulerAnglePose]:
         defocus_in_angstroms = (
             jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
-            + jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
+            + jnp.asarray(particle_blocks["rlnDefocusV"], device=device)
         ) / 2
         astigmatism_in_angstroms = jnp.asarray(
             particle_blocks["rlnDefocusV"], device=device
