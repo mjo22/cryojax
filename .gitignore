@@ -1,3 +1,8 @@
+# generate-starfile-and-mrcs tutorial generated data
+docs/examples/relion_dataset.star
+docs/examples/relion_dataset.star~
+docs/examples/relion_dataset_particles/
+
 .vscode/settings.json
 *.swp
 *_version.py

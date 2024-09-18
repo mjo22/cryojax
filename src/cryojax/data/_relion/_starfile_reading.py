@@ -5,6 +5,7 @@ import pathlib
 from typing import Any, Callable, final, Optional
 
 import equinox as eqx
+import equinox.internal as eqxi
 import jax
 import jax.numpy as jnp
 import mrcfile
@@ -12,17 +13,16 @@ import numpy as np
 import pandas as pd
 from jaxtyping import Array, Float, Int
 
-from cryojax.image.operators import FourierGaussian
-
-from ..io import read_and_validate_starfile
-from ..simulator import (
+from ...image.operators import FourierGaussian
+from ...io import read_and_validate_starfile
+from ...simulator import (
     ContrastTransferFunction,
     ContrastTransferTheory,
     EulerAnglePose,
     InstrumentConfig,
 )
-from ._dataset import AbstractDataset
-from ._particle_stack import AbstractParticleStack
+from .._dataset import AbstractDataset
+from .._particle_stack import AbstractParticleStack
 
 
 RELION_REQUIRED_OPTICS_KEYS = [
@@ -221,7 +221,7 @@ class RelionDataset(AbstractDataset):
     ) -> tuple[InstrumentConfig, ContrastTransferTheory, EulerAnglePose]:
         defocus_in_angstroms = (
             jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
-            + jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
+            + jnp.asarray(particle_blocks["rlnDefocusV"], device=device)
         ) / 2
         astigmatism_in_angstroms = jnp.asarray(
             particle_blocks["rlnDefocusV"], device=device
@@ -267,7 +267,11 @@ class RelionDataset(AbstractDataset):
             phase_shift,
         )
         ctf = (
-            eqx.filter_vmap(make_ctf, in_axes=(0, 0, 0, None, None, None, 0))(*ctf_params)
+            eqx.filter_vmap(
+                make_ctf,
+                in_axes=(0, 0, 0, None, None, None, 0),
+                out_axes=eqxi.if_mapped(0),
+            )(*ctf_params)
             if defocus_in_angstroms.ndim == 1
             else make_ctf(*ctf_params)
         )
