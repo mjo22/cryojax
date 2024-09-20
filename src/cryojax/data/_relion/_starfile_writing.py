@@ -131,12 +131,11 @@ def write_starfile_with_particle_parameters(
     n_batches = n_images // mrc_batch_size
     n_remainder = n_images % mrc_batch_size
 
-    relative_mrcs_path_prefix = str(filename).split(".")[0]
     image_names = []
 
     for step in range(n_batches):
         mrc_filename = _get_filename(step, n_char=6)
-        mrc_relative_path = relative_mrcs_path_prefix + mrc_filename + ".mrcs"
+        mrc_relative_path = mrc_filename + ".mrcs"
         image_names += [
             _get_filename(i + 1, n_char=6) + "@" + mrc_relative_path
             for i in range(mrc_batch_size)
@@ -144,7 +143,7 @@ def write_starfile_with_particle_parameters(
 
     if n_remainder > 0:
         mrc_filename = _get_filename(n_batches, n_char=6)
-        mrc_relative_path = relative_mrcs_path_prefix + mrc_filename + ".mrcs"
+        mrc_relative_path = mrc_filename + ".mrcs"
         image_names += [
             _get_filename(i + 1, n_char=6) + "@" + mrc_relative_path
             for i in range(n_remainder)
