@@ -224,8 +224,8 @@ class RelionDataset(AbstractDataset):
             + jnp.asarray(particle_blocks["rlnDefocusV"], device=device)
         ) / 2
         astigmatism_in_angstroms = jnp.asarray(
-            particle_blocks["rlnDefocusV"], device=device
-        ) - jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
+            particle_blocks["rlnDefocusU"], device=device
+        ) - jnp.asarray(particle_blocks["rlnDefocusV"], device=device)
         astigmatism_angle = jnp.asarray(particle_blocks["rlnDefocusAngle"], device=device)
         phase_shift = jnp.asarray(particle_blocks["rlnPhaseShift"])
         # ... optics group data
