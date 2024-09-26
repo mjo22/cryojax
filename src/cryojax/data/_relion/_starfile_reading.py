@@ -401,7 +401,7 @@ class RelionDataset(AbstractDataset):
             # one for the image index and another for the filename
             image_stack_index_and_name_dataframe = (
                 image_stack_index_and_name_series.str.split("@", expand=True)
-            )
+            ).reset_index()
 
             # ... check dtype and shape of images
             path_to_image_stack = pathlib.Path(
@@ -423,17 +423,15 @@ class RelionDataset(AbstractDataset):
             unique_mrc_files = image_stack_index_and_name_dataframe[1].unique()
 
             # ... load images to image_stack
-            counter = 0  # need to keep count of how many particles have been loaded
             for unique_mrc in unique_mrc_files:
                 # ... get the indices for this particular mrc file
                 indices_in_mrc = image_stack_index_and_name_dataframe[1] == unique_mrc
 
                 # ... relion convention starts indexing at 1, not 0
+                filtered_df = image_stack_index_and_name_dataframe[indices_in_mrc]
+
                 particle_index = (
-                    image_stack_index_and_name_dataframe[indices_in_mrc][0].values.astype(
-                        int
-                    )
-                    - 1
+                    filtered_df[0].values.astype(int) - 1
                 )
 
                 with mrcfile.mmap(
@@ -441,10 +439,9 @@ class RelionDataset(AbstractDataset):
                     mode="r",
                     permissive=True,
                 ) as mrc:
-                    image_stack[counter : counter + len(particle_index)] = np.asarray(
+                    image_stack[filtered_df.index] = np.asarray(
                         mrc.data[particle_index]
                     )
-                counter += len(particle_index)
 
         else:
             raise IOError(
