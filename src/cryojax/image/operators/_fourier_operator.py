@@ -16,7 +16,7 @@ import jax.numpy as jnp
 from equinox import field
 from jaxtyping import Array, Float, Inexact
 
-from ..._errors import error_if_not_positive
+from ..._errors import error_if_negative, error_if_not_positive
 from ._operator import AbstractImageOperator
 
 
@@ -172,7 +172,7 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
     """
 
     amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
-    b_factor: Float[Array, ""] = field(default=1.0, converter=error_if_not_positive)
+    b_factor: Float[Array, ""] = field(default=1.0, converter=error_if_negative)
 
     @overload
     def __call__(
