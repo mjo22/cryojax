@@ -430,18 +430,14 @@ class RelionDataset(AbstractDataset):
                 # ... relion convention starts indexing at 1, not 0
                 filtered_df = image_stack_index_and_name_dataframe[indices_in_mrc]
 
-                particle_index = (
-                    filtered_df[0].values.astype(int) - 1
-                )
+                particle_index = filtered_df[0].values.astype(int) - 1
 
                 with mrcfile.mmap(
                     pathlib.Path(self.path_to_relion_project, unique_mrc),
                     mode="r",
                     permissive=True,
                 ) as mrc:
-                    image_stack[filtered_df.index] = np.asarray(
-                        mrc.data[particle_index]
-                    )
+                    image_stack[filtered_df.index] = np.asarray(mrc.data[particle_index])
 
         else:
             raise IOError(
@@ -536,7 +532,7 @@ class HelicalRelionDataset(AbstractDataset):
     def __getitem__(
         self, filament_index: int | Int[np.ndarray, ""]
     ) -> RelionParticleStack:
-        if not isinstance(filament_index, (int, Int[np.ndarray, ""])):  # type: ignore
+        if not isinstance(filament_index, (int, np.integer)):  # type: ignore
             raise IndexError(
                 "When indexing a `HelicalRelionDataset`, only "
                 f"python or numpy-like integer particle_index are supported, such as "

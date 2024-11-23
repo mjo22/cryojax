@@ -2,7 +2,7 @@
 Masks to apply to images in real space.
 """
 
-from typing import overload
+from typing import Optional, overload
 
 import jax
 import jax.numpy as jnp
@@ -131,6 +131,7 @@ class Cylindrical2DCosineMask(AbstractMask, strict=True):
     array: Float[Array, "y_dim x_dim"]
 
     radius_in_angstroms_or_pixels: Float[Array, ""]
+    length_in_angstroms_or_pixels: Optional[Float[Array, ""]]
     in_plane_rotation_angle: Float[Array, ""]
     rolloff_width_in_angstroms_or_pixels: Float[Array, ""]
 
@@ -140,6 +141,7 @@ class Cylindrical2DCosineMask(AbstractMask, strict=True):
         radius_in_angstroms_or_pixels: float | Float[Array, ""],
         rolloff_width_in_angstroms_or_pixels: float | Float[Array, ""],
         in_plane_rotation_angle: float | Float[Array, ""] = 0.0,
+        length_in_angstroms_or_pixels: Optional[float | Float[Array, ""]] = None,
     ):
         """**Arguments:**
 
@@ -154,18 +156,34 @@ class Cylindrical2DCosineMask(AbstractMask, strict=True):
         - `in_plane_rotation_angle`:
             The in-plane rotation angle of the cylinder in degrees. By default,
             `0.0`.
+        - `length_in_angstroms_or_pixels`:
+            The length of the cylinder. If `None`, do not mask the cylinder length-wise.
         """
         self.radius_in_angstroms_or_pixels = jnp.asarray(radius_in_angstroms_or_pixels)
+        self.length_in_angstroms_or_pixels = (
+            None
+            if length_in_angstroms_or_pixels is None
+            else jnp.asarray(length_in_angstroms_or_pixels)
+        )
         self.rolloff_width_in_angstroms_or_pixels = jnp.asarray(
             rolloff_width_in_angstroms_or_pixels
         )
         self.in_plane_rotation_angle = jnp.asarray(in_plane_rotation_angle)
-        self.array = _compute_cylindrical_mask_2d(
-            coordinate_grid_in_angstroms_or_pixels,
-            self.radius_in_angstroms_or_pixels,
-            self.in_plane_rotation_angle,
-            self.rolloff_width_in_angstroms_or_pixels,
-        )
+        if self.length_in_angstroms_or_pixels is None:
+            self.array = _compute_cylindrical_mask_2d_without_length(
+                coordinate_grid_in_angstroms_or_pixels,
+                self.radius_in_angstroms_or_pixels,
+                self.in_plane_rotation_angle,
+                self.rolloff_width_in_angstroms_or_pixels,
+            )
+        else:
+            self.array = _compute_cylindrical_mask_2d_with_length(
+                coordinate_grid_in_angstroms_or_pixels,
+                self.radius_in_angstroms_or_pixels,
+                self.length_in_angstroms_or_pixels,
+                self.in_plane_rotation_angle,
+                self.rolloff_width_in_angstroms_or_pixels,
+            )
 
 
 class SphericalCosineMask(AbstractMask, strict=True):
@@ -304,7 +322,7 @@ def _compute_square_mask(
     return compute_mask(coordinate_grid)
 
 
-def _compute_cylindrical_mask_2d(
+def _compute_cylindrical_mask_2d_without_length(
     coordinate_grid: Float[Array, "y_dim x_dim 2"],
     radius: Float[Array, ""],
     angle: Float[Array, ""],
@@ -333,3 +351,70 @@ def _compute_cylindrical_mask_2d(
     compute_mask = jax.vmap(jax.vmap(compute_mask_at_coordinate))
 
     return compute_mask(cylinder_radial_coordinate_grid)
+
+
+def _compute_cylindrical_mask_2d_with_length(
+    coordinate_grid: Float[Array, "y_dim x_dim 2"],
+    radius: Float[Array, ""],
+    length: Float[Array, ""],
+    angle: Float[Array, ""],
+    rolloff_width: Float[Array, ""],
+) -> Float[Array, "y_dim x_dim"]:
+    # Compute rotated radial coordinate grid
+    diameter = 2 * radius
+    angle_in_radians = jnp.deg2rad(angle)
+    cos_angle = jnp.cos(angle_in_radians)
+    sin_angle = jnp.sin(angle_in_radians)
+    cylinder_r_coordinate_grid = (
+        coordinate_grid[..., 0] * sin_angle + coordinate_grid[..., 1] * cos_angle
+    )
+    cylinder_z_coordinate_grid = (
+        coordinate_grid[..., 0] * cos_angle - coordinate_grid[..., 1] * sin_angle
+    )
+
+    is_in_rect_fn = lambda abs_x, abs_y, s_x, s_y: jnp.logical_and(
+        abs_x <= s_x / 2, abs_y <= s_y / 2
+    )
+    is_in_edge_fn = lambda abs_x_or_y, s, w: jnp.logical_and(
+        abs_x_or_y > s / 2, abs_x_or_y < s / 2 + w
+    )
+    compute_edge_fn = lambda abs_x_or_y, s, w: 0.5 * (
+        1 + jnp.cos(jnp.pi * (abs_x_or_y - s / 2) / w)
+    )
+
+    def compute_mask_at_coordinate(r, z):
+        abs_r, abs_z = jnp.abs(r), jnp.abs(z)
+        # Check coordinate is in either the rectangle of the unmasked region
+        is_in_unmasked_rect = is_in_rect_fn(abs_r, abs_z, diameter, length)
+        # ... or the square of the unmasked region, plus the rolloff width
+        # of the soft edge
+        is_in_unmasked_plus_soft_edge_rect = is_in_rect_fn(
+            abs_r, abs_z, diameter + 2 * rolloff_width, length + 2 * rolloff_width
+        )
+        # Next, compute where (if anywhere) the coordinate is in the soft edge
+        # region
+        is_in_edge_r = is_in_edge_fn(abs_r, diameter, rolloff_width)
+        is_in_edge_z = is_in_edge_fn(abs_z, length, rolloff_width)
+        # Compute the soft edges
+        edge_r, edge_z = (
+            compute_edge_fn(abs_r, diameter, rolloff_width),
+            compute_edge_fn(abs_z, length, rolloff_width),
+        )
+
+        return jnp.where(
+            is_in_unmasked_rect,
+            1.0,
+            jnp.where(
+                is_in_unmasked_plus_soft_edge_rect,
+                jnp.where(
+                    jnp.logical_and(is_in_edge_r, is_in_edge_z),
+                    edge_r * edge_z,
+                    jnp.where(is_in_edge_r, edge_r, edge_z),
+                ),
+                0.0,
+            ),
+        )
+
+    compute_mask = jax.vmap(jax.vmap(compute_mask_at_coordinate))
+
+    return compute_mask(cylinder_r_coordinate_grid, cylinder_z_coordinate_grid)
