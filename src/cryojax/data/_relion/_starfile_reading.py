@@ -169,7 +169,7 @@ class RelionDataset(AbstractDataset):
             f"access the index {idx}."
         )
         # ... pandas has bad error messages for its indexing
-        if isinstance(index, (int, Int[np.ndarray, ""])):  # type: ignore
+        if isinstance(index, (int, np.integer)):  # type: ignore
             if index > n_rows - 1:
                 raise IndexError(index_error_msg(index))
         elif isinstance(index, slice):
