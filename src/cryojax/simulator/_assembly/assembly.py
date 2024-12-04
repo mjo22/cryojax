@@ -6,7 +6,6 @@ by computing a batch of subunits, parameterized by some geometry.
 from abc import abstractmethod
 from functools import cached_property
 from typing import Optional
-from typing_extensions import override
 
 import equinox as eqx
 import jax
@@ -18,11 +17,10 @@ from .._pose import AbstractPose
 from .._structural_ensemble import (
     AbstractConformationalVariable,
     AbstractStructuralEnsemble,
-    AbstractStructuralEnsembleBatcher,
 )
 
 
-class AbstractAssembly(AbstractStructuralEnsembleBatcher, strict=True):
+class AbstractAssembly(eqx.Module, strict=True):
     """Abstraction of a biological assembly.
 
     To subclass an `AbstractAssembly`,
@@ -103,7 +101,3 @@ class AbstractAssembly(AbstractStructuralEnsembleBatcher, strict=True):
         else:
             where = lambda s: s.pose
             return eqx.tree_at(where, self.subunit, self.poses)
-
-    @override
-    def get_batched_structural_ensemble(self) -> AbstractStructuralEnsemble:
-        return self.subunits
