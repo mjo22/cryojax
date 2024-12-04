@@ -7,6 +7,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
+from .._assembly import AbstractAssembly
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
 from .._potential_integrator import AbstractPotentialIntegrator
@@ -14,7 +15,6 @@ from .._solvent import AbstractIce
 from .._structural_ensemble import (
     AbstractConformationalVariable,
     AbstractStructuralEnsemble,
-    AbstractStructuralEnsembleBatcher,
 )
 from .._transfer_theory import ContrastTransferTheory
 from .base_scattering_theory import AbstractScatteringTheory
@@ -123,12 +123,12 @@ WeakPhaseScatteringTheory.__init__.__doc__ = """**Arguments:**
 
 
 class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
-    """Compute the superposition of images of the structural ensemble batch returned by
-    the `AbstractStructuralEnsembleBatcher`. This must operate in the weak phase
+    """Compute the superposition of images over a batch of poses and potentials
+    parameterized by an `AbstractAssembly`. This must operate in the weak phase
     approximation.
     """
 
-    structural_ensemble_batcher: AbstractStructuralEnsembleBatcher
+    assembly: AbstractAssembly
     potential_integrator: AbstractPotentialIntegrator
     transfer_theory: ContrastTransferTheory
     solvent: Optional[AbstractIce] = None
@@ -163,9 +163,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             )
 
         # Get the batch
-        ensemble_batch = (
-            self.structural_ensemble_batcher.get_batched_structural_ensemble()
-        )
+        ensemble_batch = self.assembly.subunits
         # Setup vmap over the pose and conformation
         is_mapped = lambda x: isinstance(
             x, (AbstractPose, AbstractConformationalVariable)
@@ -222,9 +220,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             )
 
         # Get the batch
-        ensemble_batch = (
-            self.structural_ensemble_batcher.get_batched_structural_ensemble()
-        )
+        ensemble_batch = self.assembly.subunits
         # Setup vmap over the pose and conformation
         is_mapped = lambda x: isinstance(
             x, (AbstractPose, AbstractConformationalVariable)
@@ -254,9 +250,9 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
 
 LinearSuperpositionScatteringTheory.__init__.__doc__ = """**Arguments:**
 
-- `structural_ensemble_batcher`: The batcher that computes the states that over which to
-                                 compute a superposition of images. Most commonly, this
-                                 would be an `AbstractAssembly` concrete class.
+- `assembly`: An concrete class of an `AbstractAssembly`. This is used to
+              output a batch of states over which to
+              compute a superposition of images.
 - `potential_integrator`: The method for integrating the specimen potential.
 - `transfer_theory`: The contrast transfer theory.
 - `solvent`: The model for the solvent.
