@@ -279,7 +279,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         return fourier_contrast_at_detector_plane
 
 
-def _compute_phase_shifts_from_integrated_potential(
+def _compute_fourier_phase_shifts_from_scattering_potential(
     structural_ensemble, potential_integrator, instrument_config
 ):
     # Get potential in the lab frame
