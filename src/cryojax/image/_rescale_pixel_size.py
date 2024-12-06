@@ -7,7 +7,7 @@ from typing import Optional
 import jax
 import jax.numpy as jnp
 from jax.image import scale_and_translate
-from jaxtyping import Array, Complex, Float
+from jaxtyping import Array, Complex, Float, Inexact
 
 from ._fft import irfftn, rfftn
 
@@ -17,7 +17,7 @@ def rescale_pixel_size(
     current_pixel_size: Float[Array, ""],
     new_pixel_size: Float[Array, ""],
     method: str = "bicubic",
-    antialias: bool = False,
+    antialias: bool = True,
 ) -> Float[Array, "y_dim x_dim"]:
     """
     Measure an image at a given pixel size using interpolation.
@@ -71,7 +71,7 @@ def rescale_pixel_size(
 
 def maybe_rescale_pixel_size(
     real_or_fourier_image: (
-        Float[Array, "padded_y_dim padded_x_dim"]
+        Inexact[Array, "padded_y_dim padded_x_dim"]
         | Complex[Array, "padded_y_dim padded_x_dim//2+1"]
     ),
     current_pixel_size: Float[Array, ""],
@@ -80,7 +80,7 @@ def maybe_rescale_pixel_size(
     shape_in_real_space: Optional[tuple[int, int]] = None,
     method: str = "bicubic",
 ) -> (
-    Float[Array, "padded_y_dim padded_x_dim"]
+    Inexact[Array, "padded_y_dim padded_x_dim"]
     | Complex[Array, "padded_y_dim padded_x_dim//2+1"]
 ):
     """Rescale the image pixel size using real-space interpolation. Only

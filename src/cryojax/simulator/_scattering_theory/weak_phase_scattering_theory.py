@@ -67,6 +67,25 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
     transfer_theory: ContrastTransferTheory
     solvent: Optional[AbstractIce] = None
 
+    def __init__(
+        self,
+        structural_ensemble: AbstractStructuralEnsemble,
+        potential_integrator: AbstractPotentialIntegrator,
+        transfer_theory: ContrastTransferTheory,
+        solvent: Optional[AbstractIce] = None,
+    ):
+        """**Arguments:**
+
+        - `structural_ensemble`: The structural ensemble of scattering potentials.
+        - `potential_integrator`: The method for integrating the scattering potential.
+        - `transfer_theory`: The contrast transfer theory.
+        - `solvent`: The model for the solvent.
+        """
+        self.structural_ensemble = structural_ensemble
+        self.potential_integrator = potential_integrator
+        self.transfer_theory = transfer_theory
+        self.solvent = solvent
+
     @override
     def compute_fourier_phase_shifts_at_exit_plane(
         self,
@@ -77,7 +96,7 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
     ]:
         # Compute the phase shifts in the exit plane
         fourier_phase_shifts_at_exit_plane = (
-            _compute_phase_shifts_from_integrated_potential(
+            _compute_fourier_phase_shifts_from_scattering_potential(
                 self.structural_ensemble, self.potential_integrator, instrument_config
             )
         )
@@ -113,15 +132,6 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         return fourier_contrast_at_detector_plane
 
 
-WeakPhaseScatteringTheory.__init__.__doc__ = """**Arguments:**
-
-- `structural_ensemble`: The structural ensemble of scattering potentials.
-- `potential_integrator`: The method for integrating the scattering potential.
-- `transfer_theory`: The contrast transfer theory.
-- `solvent`: The model for the solvent.
-"""
-
-
 class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
     """Compute the superposition of images over a batch of poses and potentials
     parameterized by an `AbstractAssembly`. This must operate in the weak phase
@@ -132,6 +142,27 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
     potential_integrator: AbstractPotentialIntegrator
     transfer_theory: ContrastTransferTheory
     solvent: Optional[AbstractIce] = None
+
+    def __init__(
+        self,
+        assembly: AbstractAssembly,
+        potential_integrator: AbstractPotentialIntegrator,
+        transfer_theory: ContrastTransferTheory,
+        solvent: Optional[AbstractIce] = None,
+    ):
+        """**Arguments:**
+
+        - `assembly`: An concrete class of an `AbstractAssembly`. This is used to
+              output a batch of states over which to
+              compute a superposition of images.
+        - `potential_integrator`: The method for integrating the specimen potential.
+        - `transfer_theory`: The contrast transfer theory.
+        - `solvent`: The model for the solvent.
+        """
+        self.assembly = assembly
+        self.potential_integrator = potential_integrator
+        self.transfer_theory = transfer_theory
+        self.solvent = solvent
 
     @override
     def compute_fourier_phase_shifts_at_exit_plane(
@@ -144,7 +175,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         def compute_image(ensemble_mapped, ensemble_no_mapped, instrument_config):
             ensemble = eqx.combine(ensemble_mapped, ensemble_no_mapped)
             fourier_phase_shifts_at_exit_plane = (
-                _compute_phase_shifts_from_integrated_potential(
+                _compute_fourier_phase_shifts_from_scattering_potential(
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
@@ -197,7 +228,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         def compute_image(ensemble_mapped, ensemble_no_mapped, instrument_config):
             ensemble = eqx.combine(ensemble_mapped, ensemble_no_mapped)
             fourier_phase_shifts_at_exit_plane = (
-                _compute_phase_shifts_from_integrated_potential(
+                _compute_fourier_phase_shifts_from_scattering_potential(
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
@@ -248,18 +279,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         return fourier_contrast_at_detector_plane
 
 
-LinearSuperpositionScatteringTheory.__init__.__doc__ = """**Arguments:**
-
-- `assembly`: An concrete class of an `AbstractAssembly`. This is used to
-              output a batch of states over which to
-              compute a superposition of images.
-- `potential_integrator`: The method for integrating the specimen potential.
-- `transfer_theory`: The contrast transfer theory.
-- `solvent`: The model for the solvent.
-"""
-
-
-def _compute_phase_shifts_from_integrated_potential(
+def _compute_fourier_phase_shifts_from_scattering_potential(
     structural_ensemble, potential_integrator, instrument_config
 ):
     # Get potential in the lab frame
