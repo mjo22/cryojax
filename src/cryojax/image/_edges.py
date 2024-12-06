@@ -87,8 +87,8 @@ def crop_to_shape_with_center(
         h, w = shape
         x0, y0 = max(xc - w // 2, 0), max(yc - h // 2, 0)
         xn, yn = (
-            min(yc + h // 2 + h % 2, image.shape[1] - 1),
-            min(xc + w // 2 + w % 2, image.shape[0] - 1),
+            min(xc + w // 2 + w % 2, image.shape[1] - 1),
+            min(yc + h // 2 + h % 2, image.shape[0] - 1),
         )
         cropped = image[y0:yn, x0:xn]
     else:

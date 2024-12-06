@@ -59,7 +59,6 @@ from ._solvent import (
 from ._structural_ensemble import (
     AbstractConformationalVariable as AbstractConformationalVariable,
     AbstractStructuralEnsemble as AbstractStructuralEnsemble,
-    AbstractStructuralEnsembleBatcher as AbstractStructuralEnsembleBatcher,
     DiscreteConformationalVariable as DiscreteConformationalVariable,
     DiscreteStructuralEnsemble as DiscreteStructuralEnsemble,
     SingleStructureEnsemble as SingleStructureEnsemble,

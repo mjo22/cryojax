@@ -68,6 +68,9 @@ class AbstractImageMultiplier(Module, strict=True):
         Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
     ]
 
+    def get(self) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
+        return self.array
+
     def __call__(
         self, image: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
     ) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:

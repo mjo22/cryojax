@@ -11,7 +11,7 @@ from equinox import AbstractVar, Module
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..image import irfftn, rfftn
-from ..image.operators import AbstractFilter, AbstractMask
+from ..image.operators import FilterLike, MaskLike
 from ._detector import AbstractDetector
 from ._instrument_config import InstrumentConfig
 from ._scattering_theory import AbstractScatteringTheory
@@ -24,8 +24,8 @@ class AbstractImagingPipeline(Module, strict=True):
     """
 
     instrument_config: AbstractVar[InstrumentConfig]
-    filter: AbstractVar[Optional[AbstractFilter]]
-    mask: AbstractVar[Optional[AbstractMask]]
+    filter: AbstractVar[Optional[FilterLike]]
+    mask: AbstractVar[Optional[MaskLike]]
 
     @abstractmethod
     def render(
@@ -169,16 +169,16 @@ class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
     instrument_config: InstrumentConfig
     scattering_theory: AbstractScatteringTheory
 
-    filter: Optional[AbstractFilter]
-    mask: Optional[AbstractMask]
+    filter: Optional[FilterLike]
+    mask: Optional[MaskLike]
 
     def __init__(
         self,
         instrument_config: InstrumentConfig,
         scattering_theory: AbstractScatteringTheory,
         *,
-        filter: Optional[AbstractFilter] = None,
-        mask: Optional[AbstractMask] = None,
+        filter: Optional[FilterLike] = None,
+        mask: Optional[MaskLike] = None,
     ):
         self.instrument_config = instrument_config
         self.scattering_theory = scattering_theory
@@ -236,16 +236,16 @@ class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
     instrument_config: InstrumentConfig
     scattering_theory: AbstractScatteringTheory
 
-    filter: Optional[AbstractFilter]
-    mask: Optional[AbstractMask]
+    filter: Optional[FilterLike]
+    mask: Optional[MaskLike]
 
     def __init__(
         self,
         instrument_config: InstrumentConfig,
         scattering_theory: AbstractScatteringTheory,
         *,
-        filter: Optional[AbstractFilter] = None,
-        mask: Optional[AbstractMask] = None,
+        filter: Optional[FilterLike] = None,
+        mask: Optional[MaskLike] = None,
     ):
         self.instrument_config = instrument_config
         self.scattering_theory = scattering_theory
@@ -308,8 +308,8 @@ class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
     scattering_theory: AbstractScatteringTheory
     detector: AbstractDetector
 
-    filter: Optional[AbstractFilter]
-    mask: Optional[AbstractMask]
+    filter: Optional[FilterLike]
+    mask: Optional[MaskLike]
 
     def __init__(
         self,
@@ -317,8 +317,8 @@ class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
         scattering_theory: AbstractScatteringTheory,
         detector: AbstractDetector,
         *,
-        filter: Optional[AbstractFilter] = None,
-        mask: Optional[AbstractMask] = None,
+        filter: Optional[FilterLike] = None,
+        mask: Optional[MaskLike] = None,
     ):
         self.instrument_config = instrument_config
         self.scattering_theory = scattering_theory
