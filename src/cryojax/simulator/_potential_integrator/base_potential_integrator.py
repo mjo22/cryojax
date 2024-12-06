@@ -46,6 +46,7 @@ class AbstractVoxelPotentialIntegrator(
         fourier_integrated_potential_without_postprocess,
         potential,
         instrument_config,
+        is_hermitian_symmetric,
     ):
         """Return the integrated potential in fourier space at the
         `instrument_config.pixel_size` and the `instrument_config.padded_shape.`
@@ -67,6 +68,7 @@ class AbstractVoxelPotentialIntegrator(
                 potential.voxel_size,
                 instrument_config.pixel_size,
                 is_real=False,
+                is_hermitian_symmetric=is_hermitian_symmetric,
                 shape_in_real_space=instrument_config.padded_shape,
             )
             return fourier_integrated_potential

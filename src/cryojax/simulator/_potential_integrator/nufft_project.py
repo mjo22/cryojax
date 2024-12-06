@@ -102,7 +102,7 @@ class NufftProjection(
                 "`RealVoxelCloudPotential`."
             )
         return self._convert_raw_image_to_integrated_potential(
-            fourier_projection, potential, instrument_config
+            fourier_projection, potential, instrument_config, is_hermitian_symmetric=True
         )
 
 

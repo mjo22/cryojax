@@ -26,7 +26,6 @@ from ._pose import (
     QuaternionPose as QuaternionPose,
 )
 from ._potential_integrator import (
-    AbstractFourierVoxelExtraction as AbstractFourierVoxelExtraction,
     AbstractPotentialIntegrator as AbstractPotentialIntegrator,
     AbstractVoxelPotentialIntegrator as AbstractVoxelPotentialIntegrator,
     FourierSliceExtraction as FourierSliceExtraction,
