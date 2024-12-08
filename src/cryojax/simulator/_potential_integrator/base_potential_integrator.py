@@ -6,7 +6,7 @@ from abc import abstractmethod
 from typing import Generic, Optional, TypeVar
 
 import jax.numpy as jnp
-from equinox import AbstractVar, error_if, Module
+from equinox import AbstractClassVar, AbstractVar, error_if, Module
 from jaxtyping import Array, Complex
 
 from ...image import maybe_rescale_pixel_size
@@ -22,6 +22,8 @@ class AbstractPotentialIntegrator(Module, Generic[PotentialT], strict=True):
     """Base class for a method of integrating a potential onto
     the exit plane.
     """
+
+    is_integration_complex: AbstractClassVar[bool]
 
     @abstractmethod
     def compute_fourier_integrated_potential(

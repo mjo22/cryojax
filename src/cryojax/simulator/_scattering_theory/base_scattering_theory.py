@@ -16,7 +16,7 @@ class AbstractScatteringTheory(eqx.Module, strict=True):
     """Base class for a scattering theory."""
 
     @abstractmethod
-    def compute_fourier_contrast_at_detector_plane(
+    def compute_contrast_spectrum_at_detector_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -26,7 +26,7 @@ class AbstractScatteringTheory(eqx.Module, strict=True):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_fourier_squared_wavefunction_at_detector_plane(
+    def compute_intensity_spectrum_at_detector_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -53,7 +53,7 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         raise NotImplementedError
 
     @override
-    def compute_fourier_squared_wavefunction_at_detector_plane(
+    def compute_intensity_spectrum_at_detector_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -72,7 +72,7 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         )
         wavefunction_at_detector_plane = ifftn(fourier_wavefunction_at_detector_plane)
         # ... get the squared wavefunction and return to fourier space
-        fourier_squared_wavefunction_at_detector_plane = rfftn(
+        intensity_spectrum_at_detector_plane = rfftn(
             (
                 wavefunction_at_detector_plane * jnp.conj(wavefunction_at_detector_plane)
             ).real
@@ -82,10 +82,10 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             instrument_config.padded_frequency_grid_in_angstroms
         )
 
-        return translational_phase_shifts * fourier_squared_wavefunction_at_detector_plane
+        return translational_phase_shifts * intensity_spectrum_at_detector_plane
 
     @override
-    def compute_fourier_contrast_at_detector_plane(
+    def compute_contrast_spectrum_at_detector_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -110,7 +110,7 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         ).real
         # ... compute the contrast directly from the squared wavefunction
         # as C = -1 + psi^2 / 1 + psi^2
-        fourier_contrast_at_detector_plane = rfftn(
+        contrast_spectrum_at_detector_plane = rfftn(
             (-1 + squared_wavefunction_at_detector_plane)
             / (1 + squared_wavefunction_at_detector_plane)
         )
@@ -119,4 +119,4 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             instrument_config.padded_frequency_grid_in_angstroms
         )
 
-        return translational_phase_shifts * fourier_contrast_at_detector_plane
+        return translational_phase_shifts * contrast_spectrum_at_detector_plane

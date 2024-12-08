@@ -4,11 +4,13 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float, Inexact
 
 
-def compute_phase_shifts_from_integrated_potential(
+def convert_units_of_integrated_potential(
     integrated_potential: Inexact[Array, "y_dim x_dim"],
     wavelength_in_angstroms: Float[Array, ""] | float,
 ) -> Inexact[Array, "y_dim x_dim"]:
-    """Given an integrated potential, compute a phase shift distribution.
+    """Given an integrated potential, convert units using the interaction
+    constant. For example, the case of the projection approximation,
+    compute the phase shift distribution.
 
     !!! info
         In the projection approximation in cryo-EM, the phase shifts in the

@@ -2,7 +2,7 @@
 Using the fourier slice theorem for computing volume projections.
 """
 
-from typing import Optional
+from typing import ClassVar, Optional
 from typing_extensions import override
 
 import jax.numpy as jnp
@@ -35,6 +35,8 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
     interpolation_order: int
     interpolation_mode: str
     interpolation_cval: complex
+
+    is_integration_complex: ClassVar[bool] = False
 
     def __init__(
         self,
@@ -206,6 +208,8 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
     interpolation_order: int
     interpolation_mode: str
     interpolation_cval: complex
+
+    is_integration_complex: ClassVar[bool] = True
 
     def __init__(
         self,

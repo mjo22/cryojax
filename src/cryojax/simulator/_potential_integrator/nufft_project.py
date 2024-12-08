@@ -3,7 +3,7 @@ Using non-uniform FFTs for computing volume projections.
 """
 
 import math
-from typing import Optional
+from typing import ClassVar, Optional
 from typing_extensions import override
 
 import jax.numpy as jnp
@@ -22,6 +22,8 @@ class NufftProjection(
 
     pixel_rescaling_method: Optional[str]
     eps: float
+
+    is_integration_complex: ClassVar[bool] = False
 
     def __init__(
         self, *, pixel_rescaling_method: Optional[str] = None, eps: float = 1e-6

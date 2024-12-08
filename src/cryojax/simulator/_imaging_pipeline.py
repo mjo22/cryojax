@@ -210,7 +210,7 @@ class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
     ):
         # Compute the squared wavefunction
         fourier_contrast_at_detector_plane = (
-            self.scattering_theory.compute_fourier_contrast_at_detector_plane(
+            self.scattering_theory.compute_contrast_spectrum_at_detector_plane(
                 self.instrument_config, rng_key
             )
         )
@@ -278,7 +278,7 @@ class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
     ):
         theory = self.scattering_theory
         fourier_squared_wavefunction_at_detector_plane = (
-            theory.compute_fourier_squared_wavefunction_at_detector_plane(
+            theory.compute_intensity_spectrum_at_detector_plane(
                 self.instrument_config, rng_key
             )
         )
@@ -353,7 +353,7 @@ class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
             # Compute the squared wavefunction
             theory = self.scattering_theory
             fourier_squared_wavefunction_at_detector_plane = (
-                theory.compute_fourier_squared_wavefunction_at_detector_plane(
+                theory.compute_intensity_spectrum_at_detector_plane(
                     self.instrument_config
                 )
             )
@@ -374,7 +374,7 @@ class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
             # Compute the squared wavefunction
             theory = self.scattering_theory
             fourier_squared_wavefunction_at_detector_plane = (
-                theory.compute_fourier_squared_wavefunction_at_detector_plane(
+                theory.compute_intensity_spectrum_at_detector_plane(
                     self.instrument_config, keys[0]
                 )
             )

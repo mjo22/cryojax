@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import ClassVar, Optional
 from typing_extensions import override
 
 import jax
@@ -20,6 +20,8 @@ class GaussianMixtureProjection(
     strict=True,
 ):
     upsampling_factor: Optional[int]
+
+    is_integration_complex: ClassVar[bool] = False
 
     def __init__(self, *, upsampling_factor: Optional[int] = None):
         """**Arguments:**

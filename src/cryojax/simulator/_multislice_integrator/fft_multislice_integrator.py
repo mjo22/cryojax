@@ -6,16 +6,13 @@ import jax.numpy as jnp
 from equinox import error_if
 from jaxtyping import Array, Complex
 
-# from cryojax.coordinates import make_frequency_grid
 from cryojax.image import fftn, ifftn
 
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import (
     AbstractAtomicPotential,
 )
-
-# , RealVoxelGridPotential
-from .._scattering_theory import compute_phase_shifts_from_integrated_potential
+from .._scattering_theory import convert_units_of_integrated_potential
 from .base_multislice_integrator import AbstractMultisliceIntegrator
 
 
@@ -134,7 +131,7 @@ class FFTMultisliceIntegrator(
         # the slice thickness (TODO: interpolate for different slice thicknesses?)
         integrated_potential_per_slice = potential_per_slice * voxel_size
         phase_shifts_per_slice = jax.vmap(
-            compute_phase_shifts_from_integrated_potential, in_axes=[0, None]
+            convert_units_of_integrated_potential, in_axes=[0, None]
         )(integrated_potential_per_slice, instrument_config.wavelength_in_angstroms)
         # Compute the transmission function
         transmission = jnp.exp(1.0j * phase_shifts_per_slice)
