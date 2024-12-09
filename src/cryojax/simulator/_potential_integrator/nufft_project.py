@@ -23,7 +23,7 @@ class NufftProjection(
     pixel_rescaling_method: Optional[str]
     eps: float
 
-    is_integration_complex: ClassVar[bool] = False
+    is_integral_complex: ClassVar[bool] = False
 
     def __init__(
         self, *, pixel_rescaling_method: Optional[str] = None, eps: float = 1e-6

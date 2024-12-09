@@ -23,7 +23,7 @@ class AbstractPotentialIntegrator(Module, Generic[PotentialT], strict=True):
     the exit plane.
     """
 
-    is_integration_complex: AbstractClassVar[bool]
+    is_integral_complex: AbstractClassVar[bool]
 
     @abstractmethod
     def compute_fourier_integrated_potential(

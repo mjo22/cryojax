@@ -20,7 +20,7 @@ class AbstractIce(Module, strict=True):
     """Base class for an ice model."""
 
     @abstractmethod
-    def sample_ice_phase_shift_spectrum(
+    def sample_ice_spectrum(
         self,
         key: PRNGKeyArray,
         instrument_config: InstrumentConfig,
@@ -66,11 +66,11 @@ class AbstractIce(Module, strict=True):
     ):
         """Compute the combined spectrum of the ice and the specimen."""
         # Sample the realization of the phase due to the ice.
-        ice_phase_shift_spectrum_at_exit_plane = self.sample_ice_phase_shift_spectrum(
+        ice_spectrum_at_exit_plane = self.sample_ice_spectrum(
             key, instrument_config, apply_hermitian_symmetry=is_hermitian_symmetric
         )
 
-        return object_spectrum_at_exit_plane + ice_phase_shift_spectrum_at_exit_plane
+        return object_spectrum_at_exit_plane + ice_spectrum_at_exit_plane
 
 
 class GaussianIce(AbstractIce, strict=True):
@@ -91,7 +91,7 @@ class GaussianIce(AbstractIce, strict=True):
         self.variance_function = variance_function
 
     @override
-    def sample_ice_phase_shift_spectrum(
+    def sample_ice_spectrum(
         self,
         key: PRNGKeyArray,
         instrument_config: InstrumentConfig,
@@ -110,14 +110,14 @@ class GaussianIce(AbstractIce, strict=True):
             shape=frequency_grid_in_angstroms.shape[0:-1],
             dtype=complex,
         ).at[0, 0].set(0.0)
-        ice_phase_shifts_at_exit_plane = convert_units_of_integrated_potential(
+        ice_spectrum_at_exit_plane = convert_units_of_integrated_potential(
             ice_integrated_potential_at_exit_plane,
             instrument_config.wavelength_in_angstroms,
         )
 
         if apply_hermitian_symmetry:
-            return ice_phase_shifts_at_exit_plane
+            return ice_spectrum_at_exit_plane
         else:
             return fftn(
-                irfftn(ice_phase_shifts_at_exit_plane, s=instrument_config.padded_shape)
+                irfftn(ice_spectrum_at_exit_plane, s=instrument_config.padded_shape)
             )

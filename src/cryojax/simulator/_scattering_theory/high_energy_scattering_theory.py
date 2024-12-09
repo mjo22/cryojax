@@ -60,8 +60,8 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
     ]:
         # Compute the object spectrum in the exit plane
         potential = self.structural_ensemble.get_potential_in_lab_frame()
-        if not self.potential_integrator.is_integration_complex:
-            phase_shift_spectrum_at_exit_plane = convert_units_of_integrated_potential(
+        if not self.potential_integrator.is_integral_complex:
+            object_spectrum_at_exit_plane = convert_units_of_integrated_potential(
                 self.potential_integrator.compute_fourier_integrated_potential(
                     potential, instrument_config
                 ),
@@ -71,10 +71,10 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
             if rng_key is not None:
                 # Get the potential of the specimen plus the ice
                 if self.solvent is not None:
-                    phase_shift_spectrum_at_exit_plane = (
+                    object_spectrum_at_exit_plane = (
                         self.solvent.compute_object_spectrum_with_ice(
                             rng_key,
-                            phase_shift_spectrum_at_exit_plane,
+                            object_spectrum_at_exit_plane,
                             instrument_config,
                             is_hermitian_symmetric=True,
                         )
@@ -82,9 +82,7 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
 
             return jnp.exp(
                 1.0j
-                * irfftn(
-                    phase_shift_spectrum_at_exit_plane, s=instrument_config.padded_shape
-                )
+                * irfftn(object_spectrum_at_exit_plane, s=instrument_config.padded_shape)
             )
         else:
             object_spectrum_at_exit_plane = convert_units_of_integrated_potential(
