@@ -4,4 +4,5 @@ from ._base_distribution import (
 )
 from ._gaussian_distributions import (
     IndependentGaussianFourierModes as IndependentGaussianFourierModes,
+    IndependentGaussianPixels as IndependentGaussianPixels,
 )
