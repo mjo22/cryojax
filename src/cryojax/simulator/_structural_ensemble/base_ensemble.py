@@ -3,7 +3,7 @@ Abstractions of ensembles of biological specimen.
 """
 
 from abc import abstractmethod
-from typing import Any, Optional
+from typing import Optional
 from typing_extensions import override
 
 from equinox import AbstractVar, Module
@@ -14,9 +14,10 @@ from .base_conformation import AbstractConformationalVariable
 
 
 class AbstractStructuralEnsemble(Module, strict=True):
-    """A map from a pose and conformational variable to an `AbstractPotential`."""
+    """A map from a pose and conformational variable to an
+    `AbstractPotentialRepresentation`.
+    """
 
-    conformational_space: AbstractVar[Any]
     pose: AbstractVar[AbstractPose]
     conformation: AbstractVar[Optional[AbstractConformationalVariable]]
 
@@ -35,13 +36,13 @@ class AbstractStructuralEnsemble(Module, strict=True):
 class SingleStructureEnsemble(AbstractStructuralEnsemble, strict=True):
     """An "ensemble" with one conformation."""
 
-    conformational_space: AbstractPotentialRepresentation
+    potential: AbstractPotentialRepresentation
     pose: AbstractPose
     conformation: None
 
     def __init__(
         self,
-        conformational_space: AbstractPotentialRepresentation,
+        potential: AbstractPotentialRepresentation,
         pose: Optional[AbstractPose] = None,
     ):
         """**Arguments:**
@@ -50,7 +51,7 @@ class SingleStructureEnsemble(AbstractStructuralEnsemble, strict=True):
                          specimen as a single scattering potential object.
         - `pose`: The pose of the specimen.
         """
-        self.conformational_space = conformational_space
+        self.potential = potential
         self.pose = pose or EulerAnglePose()
         self.conformation = None
 
@@ -59,4 +60,4 @@ class SingleStructureEnsemble(AbstractStructuralEnsemble, strict=True):
         """Get the scattering potential in the center of mass
         frame.
         """
-        return self.conformational_space
+        return self.potential
