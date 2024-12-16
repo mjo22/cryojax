@@ -534,7 +534,7 @@ class HelicalRelionParticleReader(AbstractDataset):
     @final
     def __init__(
         self,
-        reader: RelionParticleStackReader | RelionParticleStackReader,
+        reader: RelionParticleMetadataReader | RelionParticleStackReader,
     ):
         """**Arguments:**
 
