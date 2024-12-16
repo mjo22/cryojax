@@ -507,7 +507,7 @@ class RelionParticleStackReader(AbstractDataset):
 class HelicalRelionParticleReader(AbstractDataset):
     """A wrapped `RelionDataset` to read helical tubes.
 
-    In particular, a `HelicalRelionDataset` indexes one
+    In particular, a `HelicalRelionParticleReader` indexes one
     helical filament at a time. For example, after manual
     particle picking in RELION, we can index a particular filament
     with
@@ -515,7 +515,7 @@ class HelicalRelionParticleReader(AbstractDataset):
     ```python
     # Read in a STAR file particle stack
     reader = RelionParticleStackReader(...)
-    helical_reader = HelicalRelionDataset(reader)
+    helical_reader = HelicalRelionParticleReader(reader)
     # ... get a particle stack for a filament
     particle_stack_for_a_filament = helical_reader[0]
     # ... get a particle stack for another filament
@@ -587,7 +587,7 @@ class HelicalRelionParticleReader(AbstractDataset):
     @final
     def __getitem__(
         self, filament_index: int | Int[np.ndarray, ""]
-    ) -> RelionParticleStack:
+    ) -> RelionParticleStack | RelionParticleMetadata:
         if not isinstance(filament_index, (int, np.integer)):  # type: ignore
             raise IndexError(
                 "When indexing a `HelicalRelionDataset`, only "
@@ -608,8 +608,7 @@ class HelicalRelionParticleReader(AbstractDataset):
         )
         particle_indices = np.asarray(particle_data_blocks_at_filament.index, dtype=int)
         # Access the particle stack at these particle_index
-        dataset = self.dataset[particle_indices]
-        return dataset
+        return self.reader[particle_indices]
 
     @final
     def __len__(self) -> int:
