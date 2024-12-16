@@ -277,7 +277,7 @@ class RelionParticleStackReader(AbstractDataset):
 
 @dataclasses.dataclass(frozen=True)
 class HelicalRelionParticleReader(AbstractDataset):
-    """A wrapped `RelionDataset` to read helical tubes.
+    """A wrapped `RelionParticleStackReader` to read helical tubes.
 
     In particular, a `HelicalRelionParticleReader` indexes one
     helical filament at a time. For example, after manual
@@ -315,7 +315,7 @@ class HelicalRelionParticleReader(AbstractDataset):
                     modified to read one helix at a time, rather than one
                     image crop at a time.
         """
-        # Validate the STAR file and store the RelionDataset
+        # Validate the STAR file and store the reader
         _validate_helical_relion_data_blocks(reader.data_blocks)
         object.__setattr__(self, "reader", reader)
         # Compute and store the number of filaments, number of filaments per micrograph
@@ -362,7 +362,7 @@ class HelicalRelionParticleReader(AbstractDataset):
     ) -> RelionParticleStack | RelionParticleMetadata:
         if not isinstance(filament_index, (int, np.integer)):  # type: ignore
             raise IndexError(
-                "When indexing a `HelicalRelionDataset`, only "
+                "When indexing a `HelicalRelionParticleReader`, only "
                 f"python or numpy-like integer particle_index are supported, such as "
                 "`helical_particle_stack = helical_dataset[3]`. "
                 f"Got index {filament_index} of type {type(filament_index)}."
@@ -370,9 +370,10 @@ class HelicalRelionParticleReader(AbstractDataset):
         # Make sure the filament index is in-bounds
         if filament_index + 1 > self.n_filaments:
             raise IndexError(
-                "The index at which the `HelicalRelionDataset` was accessed was out of "
-                f"bounds! The number of filaments in the dataset is {self.n_filaments}, "
-                f"but you tried to access the index {filament_index}."
+                "The index at which the `HelicalRelionParticleReader` was "
+                f"accessed was out of bounds! The number of filaments in "
+                f"the dataset is {self.n_filaments}, but you tried to "
+                f"access the index {filament_index}."
             )
         # Get the particle stack particle_index corresponding to this filament
         particle_data_blocks_at_filament = self.get_data_blocks_at_filament_index(
@@ -553,7 +554,7 @@ def _get_image_stack(
     image_stack_index_and_name_series_or_str = particle_blocks["rlnImageName"]
     if isinstance(image_stack_index_and_name_series_or_str, str):
         # In this block, the user most likely used standard indexing, like
-        # `dataset = RelionDataset(...); particle_stack = dataset[1]`
+        # `reader = RelionParticleStackReader(...); particle_stack = reader[1]`
         image_stack_index_and_name_str = image_stack_index_and_name_series_or_str
         # ... split the whole string into its image index and filename
         relion_particle_index, image_stack_filename = (
@@ -569,7 +570,7 @@ def _get_image_stack(
 
     elif isinstance(image_stack_index_and_name_series_or_str, pd.Series):
         # In this block, the user most likely used fancy indexing, like
-        # `dataset = RelionDataset(...); particle_stack = dataset[1:10]`
+        # `reader = RelionParticleStackReader(...); particle_stack = reader[1:10]`
         image_stack_index_and_name_series = image_stack_index_and_name_series_or_str
         # ... split the pandas.Series into a pandas.DataFrame with two columns:
         # one for the image index and another for the filename
@@ -615,8 +616,8 @@ def _get_image_stack(
 
     else:
         raise IOError(
-            "Could not read `rlnImageName` in STAR file for `RelionDataset` "
-            f"index equal to {index}."
+            "Could not read `rlnImageName` in STAR file for "
+            f"`RelionParticleStackReader` index equal to {index}."
         )
 
     return jnp.asarray(image_stack, device=device)
@@ -676,7 +677,8 @@ def _validate_helical_relion_data_blocks(data_blocks: dict[str, pd.DataFrame]):
     if "rlnHelicalTubeID" not in particle_data_blocks.columns:
         raise ValueError(
             "Missing column 'rlnHelicalTubeID' in `starfile.read` output. "
-            "This column must be present when using a `HelicalRelionDataset`."
+            "This column must be present when using a "
+            "`HelicalRelionParticleReader`."
         )
 
 
