@@ -231,7 +231,7 @@ class RelionDataset(AbstractDataset):
         # ... optics group data
         image_size = jnp.asarray(optics_group["rlnImageSize"], device=device)
         pixel_size = jnp.asarray(optics_group["rlnImagePixelSize"], device=device)
-        voltage_in_kilovolts = float(optics_group["rlnVoltage"])  # type: ignore
+        voltage_in_kilovolts = jnp.asarray(optics_group["rlnVoltage"])  # type: ignore
         spherical_aberration_in_mm = jnp.asarray(
             optics_group["rlnSphericalAberration"], device=device
         )
@@ -246,22 +246,18 @@ class RelionDataset(AbstractDataset):
             jnp.asarray(voltage_in_kilovolts, device=device),
         )
         # ... now the ContrastTransferTheory
-        make_ctf = (
-            lambda defocus, astig, angle, voltage, sph, ac, ps: ContrastTransferFunction(
-                defocus_in_angstroms=defocus,
-                astigmatism_in_angstroms=astig,
-                astigmatism_angle=angle,
-                voltage_in_kilovolts=voltage,
-                spherical_aberration_in_mm=sph,
-                amplitude_contrast_ratio=ac,
-                phase_shift=ps,
-            )
+        make_ctf = lambda defocus, astig, angle, sph, ac, ps: ContrastTransferFunction(
+            defocus_in_angstroms=defocus,
+            astigmatism_in_angstroms=astig,
+            astigmatism_angle=angle,
+            spherical_aberration_in_mm=sph,
+            amplitude_contrast_ratio=ac,
+            phase_shift=ps,
         )
         ctf_params = (
             defocus_in_angstroms,
             astigmatism_in_angstroms,
             astigmatism_angle,
-            voltage_in_kilovolts,
             spherical_aberration_in_mm,
             amplitude_contrast_ratio,
             phase_shift,
@@ -269,7 +265,7 @@ class RelionDataset(AbstractDataset):
         ctf = (
             eqx.filter_vmap(
                 make_ctf,
-                in_axes=(0, 0, 0, None, None, None, 0),
+                in_axes=(0, 0, 0, None, None, 0),
                 out_axes=eqxi.if_mapped(0),
             )(*ctf_params)
             if defocus_in_angstroms.ndim == 1
