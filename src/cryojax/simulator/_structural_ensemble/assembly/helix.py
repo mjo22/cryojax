@@ -4,6 +4,7 @@ Abstraction of a helical polymer.
 
 from functools import cached_property
 from typing import Optional
+from typing_extensions import override
 
 import jax
 import jax.numpy as jnp
@@ -34,7 +35,7 @@ class HelicalAssembly(AbstractAssemblyWithSubunit, strict=True):
     pose: AbstractPose
     conformation: Optional[AbstractConformationalVariable]
 
-    n_subunits: int
+    n_subcomponents: int
     n_start: int
 
     def __init__(
@@ -66,9 +67,9 @@ class HelicalAssembly(AbstractAssemblyWithSubunit, strict=True):
             `(n_start*n_subunits_per_start,)`.
         - `n_start`:
             The start number of the helix. By default, ``1``.
-        - `n_subunits_per_start`:
-            The number of subunits each helical strand.
-            By default, ``1``.
+        - `n_subunits`:
+            The number of subunits in the helix. Must be a multiple
+            of the start number.
         """
         self.subunit = subunit
         self.pose = pose or EulerAnglePose()
@@ -76,7 +77,7 @@ class HelicalAssembly(AbstractAssemblyWithSubunit, strict=True):
         self.twist = jnp.asarray(twist)
         self.conformation = conformation
         self.n_start = n_start
-        self.n_subunits = n_subunits
+        self.n_subcomponents = n_subunits
 
     def __check_init__(self):
         if self.n_subunits % self.n_start != 0:
@@ -85,18 +86,22 @@ class HelicalAssembly(AbstractAssemblyWithSubunit, strict=True):
             )
 
     @cached_property
-    def offsets_in_angstroms(self) -> Float[Array, "{self.n_subunits} 3"]:
+    @override
+    def positions_in_body_frame(self) -> Float[Array, "{self.n_subcomponents} 3"]:
         """Get the helical lattice positions in the center of mass frame."""
         return compute_helical_lattice_positions(
             self.rise,
             self.twist,
             n_subunits_per_start=self.n_subunits // self.n_start,
-            initial_displacement=self.subunit.pose.offset_in_angstroms,
+            initial_displacement=jnp.concatenate(
+                (self.subunit.pose.offset_in_angstroms, jnp.zeros(1))
+            ),
             n_start=self.n_start,
         )
 
     @cached_property
-    def rotations(self) -> SO3:
+    @override
+    def rotations_in_body_frame(self) -> SO3:
         """Get the helical lattice rotations in the center of mass frame.
 
         These are rotations of the initial subunit.

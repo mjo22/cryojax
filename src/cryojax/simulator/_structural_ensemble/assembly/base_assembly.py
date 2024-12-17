@@ -9,6 +9,7 @@ from typing_extensions import override
 
 import equinox as eqx
 import jax
+import jax.numpy as jnp
 from equinox import AbstractVar
 from jaxtyping import Array, Float
 
@@ -28,6 +29,8 @@ class AbstractAssembly(AbstractStructuralEnsemble, strict=True):
            and `AbstractAssembly.rotations` properties.
     """
 
+    n_subcomponents: AbstractVar[int]
+
     @override
     def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
         raise NotImplementedError(
@@ -43,6 +46,55 @@ class AbstractAssembly(AbstractStructuralEnsemble, strict=True):
         """
         raise NotImplementedError
 
+    def get_poses(self) -> AbstractPose:
+        """Draw the poses of the subunits in the lab frame."""
+        # Construct the batch of `AbstractPose`s
+        cls = type(self.pose)
+        make_assembly_poses = jax.vmap(
+            lambda rot, pos: cls.from_rotation_and_translation(rot, pos)
+        )
+        return make_assembly_poses(
+            self.rotations_in_lab_frame, self.positions_in_lab_frame[:, :2]
+        )
+
+    @cached_property
+    @abstractmethod
+    def positions_in_body_frame(self) -> Float[Array, "{self.n_subcomponents} 3"]:
+        """The 3D positions of each subcomponent, measured
+        in angstroms and relative to the center of the volume."""
+        raise NotImplementedError
+
+    @cached_property
+    @abstractmethod
+    def rotations_in_body_frame(self) -> SO3:
+        """The relative rotations between subcomponents."""
+        raise NotImplementedError
+
+    @cached_property
+    def positions_in_lab_frame(
+        self,
+    ) -> Float[Array, "{self.n_subcomponents} 3"]:
+        """The 3D positions of each subcomponent in the lab frame,
+        measured in angstroms and relative to the center of the volume."""
+        return (
+            self.pose.rotate_coordinates(self.positions_in_body_frame, inverse=False)
+            + jnp.concatenate((self.pose.offset_in_angstroms, jnp.zeros(1)))[None, :]
+        )
+
+    @cached_property
+    def rotations_in_lab_frame(self) -> SO3:
+        """The relative rotations between subcomponents in the lab frame.
+
+        This operation left multiplies by the pose rotation matrix, taking care that
+        first subcomponents are rotated to the center of mass frame, then the lab frame.
+        """
+        rotate_into_lab_frame = jax.vmap(
+            lambda lab_frame_rotation, subcomponent_rotation: lab_frame_rotation
+            @ subcomponent_rotation,
+            in_axes=[None, 0],
+        )
+        return rotate_into_lab_frame(self.pose.rotation, self.rotations_in_body_frame)
+
 
 class AbstractAssemblyWithSubunit(AbstractAssembly, strict=True):
     """Abstraction of a biological assembly with a single
@@ -50,7 +102,6 @@ class AbstractAssemblyWithSubunit(AbstractAssembly, strict=True):
     """
 
     subunit: AbstractVar[AbstractStructuralEnsemble]
-    n_subunits: AbstractVar[int]
 
     def __check_init__(self):
         if self.conformation is not None and self.subunit.conformation is None:
@@ -73,43 +124,9 @@ class AbstractAssemblyWithSubunit(AbstractAssembly, strict=True):
     def get_subcomponents(self) -> AbstractStructuralEnsemble:
         return self.subunits
 
-    @cached_property
-    @abstractmethod
-    def offsets_in_angstroms(self) -> Float[Array, "{n_subunits} 3"]:
-        """The 3D positions of each subunit."""
-        raise NotImplementedError
-
-    @cached_property
-    @abstractmethod
-    def rotations(self) -> SO3:
-        """The relative rotations between subunits."""
-        raise NotImplementedError
-
-    @cached_property
-    def poses(self) -> AbstractPose:
-        """
-        Draw the poses of the subunits in the lab frame, measured
-        from the rotation relative to the first subunit.
-        """
-        # Transform the subunit positions by the center of mass pose of the assembly.
-        transformed_positions = (
-            self.pose.rotate_coordinates(self.offsets_in_angstroms, inverse=False)
-            + self.pose.offset_in_angstroms
-        )
-        # Transform the subunit rotations by the center of mass pose of the assembly.
-        # This operation left multiplies by the pose rotation matrix, taking care that
-        # first subunits are rotated to the center of mass frame, then the lab frame.
-        transformed_rotations = jax.vmap(
-            lambda com_rotation, subunit_rotation: com_rotation @ subunit_rotation,
-            in_axes=[None, 0],
-        )(self.pose.rotation, self.rotations)
-        # Construct the batch of `AbstractPose`s
-        cls = type(self.pose)
-        make_assembly_poses = jax.vmap(
-            lambda rot, pos: cls.from_rotation_and_translation(rot, pos)
-        )
-
-        return make_assembly_poses(transformed_rotations, transformed_positions)
+    @property
+    def n_subunits(self) -> int:
+        return self.n_subcomponents
 
     @cached_property
     def subunits(self) -> AbstractStructuralEnsemble:
@@ -117,7 +134,7 @@ class AbstractAssemblyWithSubunit(AbstractAssembly, strict=True):
         # Compute a list of subunits, configured at the correct conformations
         if self.subunit.conformation is not None:
             where = lambda s: (s.conformation, s.pose)
-            return eqx.tree_at(where, self.subunit, (self.conformation, self.poses))
+            return eqx.tree_at(where, self.subunit, (self.conformation, self.get_poses()))
         else:
             where = lambda s: s.pose
-            return eqx.tree_at(where, self.subunit, self.poses)
+            return eqx.tree_at(where, self.subunit, self.get_poses())
