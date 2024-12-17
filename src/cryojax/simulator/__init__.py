@@ -1,9 +1,3 @@
-from ._assembly import (
-    AbstractAssembly as AbstractAssembly,
-    compute_helical_lattice_positions as compute_helical_lattice_positions,
-    compute_helical_lattice_rotations as compute_helical_lattice_rotations,
-    HelicalAssembly as HelicalAssembly,
-)
 from ._detector import (
     AbstractDetector as AbstractDetector,
     AbstractDQE as AbstractDQE,
@@ -57,10 +51,14 @@ from ._solvent import (
     GaussianIce as GaussianIce,
 )
 from ._structural_ensemble import (
+    AbstractAssembly as AbstractAssembly,
     AbstractConformationalVariable as AbstractConformationalVariable,
     AbstractStructuralEnsemble as AbstractStructuralEnsemble,
+    compute_helical_lattice_positions as compute_helical_lattice_positions,
+    compute_helical_lattice_rotations as compute_helical_lattice_rotations,
     DiscreteConformationalVariable as DiscreteConformationalVariable,
     DiscreteStructuralEnsemble as DiscreteStructuralEnsemble,
+    HelicalAssembly as HelicalAssembly,
     SingleStructureEnsemble as SingleStructureEnsemble,
 )
 from ._transfer_theory import (

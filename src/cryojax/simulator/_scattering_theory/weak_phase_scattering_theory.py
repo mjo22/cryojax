@@ -7,15 +7,16 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
-from .._assembly import AbstractAssembly
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
 from .._potential_integrator import AbstractPotentialIntegrator
 from .._solvent import AbstractIce
 from .._structural_ensemble import (
+    # AbstractAssembly,
     AbstractConformationalVariable,
     AbstractStructuralEnsemble,
 )
+from .._structural_ensemble.assembly import AbstractAssembly
 from .._transfer_theory import ContrastTransferTheory
 from .base_scattering_theory import AbstractScatteringTheory
 from .common_functions import compute_phase_shifts_from_integrated_potential
