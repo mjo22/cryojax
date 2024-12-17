@@ -12,11 +12,10 @@ from .._pose import AbstractPose
 from .._potential_integrator import AbstractPotentialIntegrator
 from .._solvent import AbstractIce
 from .._structural_ensemble import (
-    # AbstractAssembly,
+    AbstractAssembly,
     AbstractConformationalVariable,
     AbstractStructuralEnsemble,
 )
-from .._structural_ensemble.assembly import AbstractAssembly
 from .._transfer_theory import ContrastTransferTheory
 from .base_scattering_theory import AbstractScatteringTheory
 from .common_functions import compute_phase_shifts_from_integrated_potential
@@ -195,7 +194,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             )
 
         # Get the batch
-        ensemble_batch = self.assembly.subunits
+        ensemble_batch = self.assembly.get_subcomponents()
         # Setup vmap over the pose and conformation
         is_mapped = lambda x: isinstance(
             x, (AbstractPose, AbstractConformationalVariable)
@@ -252,7 +251,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             )
 
         # Get the batch
-        ensemble_batch = self.assembly.subunits
+        ensemble_batch = self.assembly.get_subcomponents()
         # Setup vmap over the pose and conformation
         is_mapped = lambda x: isinstance(
             x, (AbstractPose, AbstractConformationalVariable)

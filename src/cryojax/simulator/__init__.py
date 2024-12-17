@@ -52,6 +52,7 @@ from ._solvent import (
 )
 from ._structural_ensemble import (
     AbstractAssembly as AbstractAssembly,
+    AbstractAssemblyWithSubunit as AbstractAssemblyWithSubunit,
     AbstractConformationalVariable as AbstractConformationalVariable,
     AbstractStructuralEnsemble as AbstractStructuralEnsemble,
     compute_helical_lattice_positions as compute_helical_lattice_positions,

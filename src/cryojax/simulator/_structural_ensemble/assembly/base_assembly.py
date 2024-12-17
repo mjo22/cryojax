@@ -28,6 +28,27 @@ class AbstractAssembly(AbstractStructuralEnsemble, strict=True):
            and `AbstractAssembly.rotations` properties.
     """
 
+    @override
+    def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
+        raise NotImplementedError(
+            "Method to construct a potential from an "
+            "`AbstractAssembly` concrete class not yet supported."
+        )
+
+    @abstractmethod
+    def get_subcomponents(self) -> AbstractStructuralEnsemble:
+        """Get the subcomponents of the assembly, represented
+        as an `AbstractStructuralEnsemble` where each entry has
+        a batch dimension.
+        """
+        raise NotImplementedError
+
+
+class AbstractAssemblyWithSubunit(AbstractAssembly, strict=True):
+    """Abstraction of a biological assembly with a single
+    assymmetric subunit (ASU).
+    """
+
     subunit: AbstractVar[AbstractStructuralEnsemble]
     n_subunits: AbstractVar[int]
 
@@ -49,11 +70,8 @@ class AbstractAssembly(AbstractStructuralEnsemble, strict=True):
                 )
 
     @override
-    def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
-        raise NotImplementedError(
-            "Method to construct a potential from an "
-            "`AbstractAssembly` concrete class not yet supported."
-        )
+    def get_subcomponents(self) -> AbstractStructuralEnsemble:
+        return self.subunits
 
     @cached_property
     @abstractmethod
