@@ -63,24 +63,17 @@ class RelionParticleMetadata(eqx.Module):
             have a batch dimension.
         - `pose`:
             The pose, represented by euler angles. Any subset of pytree leaves may
-            have a batch dimension. Upon instantiation, `pose.offset_z_in_angstroms`
-            is set to zero.
+            have a batch dimension.
         - `transfer_theory`:
             The contrast transfer theory. Any subset of pytree leaves may
-            have a batch dimension. Upon instantiation,
-            `ctf.defocus_in_angstroms` is set to
-            `ctf.defocus_in_angstroms + pose.offset_z_in_angstroms`.
+            have a batch dimension.
         """
         # Set instrument config as is
         self.instrument_config = instrument_config
         # Set CTF using the defocus offset in the EulerAnglePose
-        self.transfer_theory = eqx.tree_at(
-            lambda tf: tf.ctf.defocus_in_angstroms,
-            transfer_theory,
-            transfer_theory.ctf.defocus_in_angstroms + pose.offset_z_in_angstroms,
-        )
+        self.transfer_theory = transfer_theory
         # Set defocus offset to zero
-        self.pose = eqx.tree_at(lambda pose: pose.offset_z_in_angstroms, pose, 0.0)
+        self.pose = pose
 
 
 class RelionParticleStack(AbstractParticleStack):
