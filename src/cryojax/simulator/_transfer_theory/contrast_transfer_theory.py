@@ -72,7 +72,6 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         *,
         voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
-        defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> Float[Array, "y_dim x_dim"]:
         # Convert degrees to radians
         phase_shift = jnp.deg2rad(self.phase_shift)
@@ -84,14 +83,10 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
             jnp.asarray(voltage_in_kilovolts)
         )
         defocus_axis_1_in_angstroms = (
-            self.defocus_in_angstroms
-            + jnp.asarray(defocus_offset)
-            + self.astigmatism_in_angstroms / 2
+            self.defocus_in_angstroms + self.astigmatism_in_angstroms / 2
         )
         defocus_axis_2_in_angstroms = (
-            self.defocus_in_angstroms
-            + jnp.asarray(defocus_offset)
-            - self.astigmatism_in_angstroms / 2
+            self.defocus_in_angstroms - self.astigmatism_in_angstroms / 2
         )
         # Compute phase shifts for CTF
         phase_shifts = compute_phase_shifts_with_amplitude_contrast_ratio(
@@ -138,7 +133,6 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
             "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
         ],
         instrument_config: InstrumentConfig,
-        defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
@@ -148,7 +142,6 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         ctf_array = self.envelope(frequency_grid) * self.ctf(
             frequency_grid,
             voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
-            defocus_offset=defocus_offset,
         )
         # ... compute the contrast as the CTF multiplied by the exit plane
         # phase shifts

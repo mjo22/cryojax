@@ -126,7 +126,6 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         fourier_contrast_at_detector_plane = self.transfer_theory(
             fourier_phase_shifts_at_exit_plane,
             instrument_config,
-            defocus_offset=self.structural_ensemble.pose.offset_z_in_angstroms,
         )
 
         return fourier_contrast_at_detector_plane
