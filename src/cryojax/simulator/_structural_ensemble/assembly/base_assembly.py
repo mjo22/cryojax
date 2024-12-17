@@ -5,35 +5,51 @@ by computing a batch of subunits, parameterized by some geometry.
 
 from abc import abstractmethod
 from functools import cached_property
-from typing import Optional
+from typing_extensions import override
 
 import equinox as eqx
 import jax
 from equinox import AbstractVar
 from jaxtyping import Array, Float
 
-from ...rotations import SO3
-from .._pose import AbstractPose
-from .._structural_ensemble import (
-    AbstractConformationalVariable,
-    AbstractStructuralEnsemble,
-)
+from ....rotations import SO3
+from ..._pose import AbstractPose
+from ..._potential_representation import AbstractPotentialRepresentation
+from ..base_ensemble import AbstractStructuralEnsemble
 
 
-class AbstractAssembly(eqx.Module, strict=True):
+class AbstractAssembly(AbstractStructuralEnsemble, strict=True):
     """Abstraction of a biological assembly.
 
     To subclass an `AbstractAssembly`,
         1) Overwrite the `AbstractAssembly.n_subunits`
            property
-        2) Overwrite the `AbstractAssembly.positions`
+        2) Overwrite the `AbstractAssembly.offsets_in_angstroms`
            and `AbstractAssembly.rotations` properties.
     """
 
-    subunit: AbstractVar[AbstractStructuralEnsemble]
-    pose: AbstractVar[AbstractPose]
-    conformation: AbstractVar[Optional[AbstractConformationalVariable]]
+    @override
+    def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
+        raise NotImplementedError(
+            "Method to construct a potential from an "
+            "`AbstractAssembly` concrete class not yet supported."
+        )
 
+    @abstractmethod
+    def get_subcomponents(self) -> AbstractStructuralEnsemble:
+        """Get the subcomponents of the assembly, represented
+        as an `AbstractStructuralEnsemble` where each entry has
+        a batch dimension.
+        """
+        raise NotImplementedError
+
+
+class AbstractAssemblyWithSubunit(AbstractAssembly, strict=True):
+    """Abstraction of a biological assembly with a single
+    assymmetric subunit (ASU).
+    """
+
+    subunit: AbstractVar[AbstractStructuralEnsemble]
     n_subunits: AbstractVar[int]
 
     def __check_init__(self):
@@ -53,10 +69,14 @@ class AbstractAssembly(eqx.Module, strict=True):
                     f"type {type(self.subunit)}."
                 )
 
+    @override
+    def get_subcomponents(self) -> AbstractStructuralEnsemble:
+        return self.subunits
+
     @cached_property
     @abstractmethod
     def offsets_in_angstroms(self) -> Float[Array, "{n_subunits} 3"]:
-        """The positions of each subunit."""
+        """The 3D positions of each subunit."""
         raise NotImplementedError
 
     @cached_property

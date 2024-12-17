@@ -7,12 +7,12 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
-from .._assembly import AbstractAssembly
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
 from .._potential_integrator import AbstractPotentialIntegrator
 from .._solvent import AbstractIce
 from .._structural_ensemble import (
+    AbstractAssembly,
     AbstractConformationalVariable,
     AbstractStructuralEnsemble,
 )
@@ -126,7 +126,6 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         fourier_contrast_at_detector_plane = self.transfer_theory(
             fourier_phase_shifts_at_exit_plane,
             instrument_config,
-            defocus_offset=self.structural_ensemble.pose.offset_z_in_angstroms,
         )
 
         return fourier_contrast_at_detector_plane
@@ -194,7 +193,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             )
 
         # Get the batch
-        ensemble_batch = self.assembly.subunits
+        ensemble_batch = self.assembly.get_subcomponents()
         # Setup vmap over the pose and conformation
         is_mapped = lambda x: isinstance(
             x, (AbstractPose, AbstractConformationalVariable)
@@ -251,7 +250,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             )
 
         # Get the batch
-        ensemble_batch = self.assembly.subunits
+        ensemble_batch = self.assembly.get_subcomponents()
         # Setup vmap over the pose and conformation
         is_mapped = lambda x: isinstance(
             x, (AbstractPose, AbstractConformationalVariable)

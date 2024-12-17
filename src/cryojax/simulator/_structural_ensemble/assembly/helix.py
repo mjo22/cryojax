@@ -9,16 +9,14 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
-from ...rotations import SO3
-from .._pose import AbstractPose, EulerAnglePose
-from .._structural_ensemble import (
-    AbstractConformationalVariable,
-    AbstractStructuralEnsemble,
-)
-from .assembly import AbstractAssembly
+from ....rotations import SO3
+from ..._pose import AbstractPose, EulerAnglePose
+from ..base_conformation import AbstractConformationalVariable
+from ..base_ensemble import AbstractStructuralEnsemble
+from .base_assembly import AbstractAssemblyWithSubunit
 
 
-class HelicalAssembly(AbstractAssembly, strict=True):
+class HelicalAssembly(AbstractAssemblyWithSubunit, strict=True):
     """
     Abstraction of a helical polymer.
 

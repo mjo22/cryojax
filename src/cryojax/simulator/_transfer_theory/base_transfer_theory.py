@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from typing import Optional
 
 from equinox import Module
 from jaxtyping import Array, Complex, Float
@@ -18,7 +17,7 @@ class AbstractTransferFunction(AbstractFourierOperator, strict=True):
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         *,
-        wavelength_in_angstroms: Optional[Float[Array, ""] | float] = None,
+        voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
         defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
         raise NotImplementedError
