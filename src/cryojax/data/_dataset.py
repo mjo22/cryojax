@@ -4,8 +4,6 @@ import abc
 import dataclasses
 from typing import Any
 
-from ._particle_stack import AbstractParticleStack
-
 
 @dataclasses.dataclass(frozen=True)
 class AbstractDataset(metaclass=abc.ABCMeta):
@@ -83,7 +81,7 @@ class AbstractDataset(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __getitem__(self, index) -> AbstractParticleStack:
+    def __getitem__(self, index) -> Any:
         raise NotImplementedError
 
     @abc.abstractmethod
