@@ -36,7 +36,7 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
     interpolation_mode: str
     interpolation_cval: complex
 
-    is_integral_complex: ClassVar[bool] = False
+    is_projection_approximation: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -209,7 +209,7 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
     interpolation_mode: str
     interpolation_cval: complex
 
-    is_integral_complex: ClassVar[bool] = True
+    is_projection_approximation: ClassVar[bool] = False
 
     def __init__(
         self,

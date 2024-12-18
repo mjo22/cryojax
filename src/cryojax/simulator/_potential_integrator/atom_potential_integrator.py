@@ -21,7 +21,7 @@ class GaussianMixtureProjection(
 ):
     upsampling_factor: Optional[int]
 
-    is_integral_complex: ClassVar[bool] = False
+    is_projection_approximation: ClassVar[bool] = True
 
     def __init__(self, *, upsampling_factor: Optional[int] = None):
         """**Arguments:**

@@ -23,16 +23,22 @@ class AbstractPotentialIntegrator(Module, Generic[PotentialT], strict=True):
     the exit plane.
     """
 
-    is_integral_complex: AbstractClassVar[bool]
+    is_projection_approximation: AbstractClassVar[bool]
 
     @abstractmethod
     def compute_fourier_integrated_potential(
         self,
         potential: PotentialT,
         instrument_config: InstrumentConfig,
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]:
+    ) -> (
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Complex[
+            Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+        ]
+    ):
         raise NotImplementedError
 
 

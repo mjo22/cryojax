@@ -88,13 +88,14 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         self.solvent = solvent
 
     def __check_init__(self):
-        if self.potential_integrator.is_integral_complex:
+        if not self.potential_integrator.is_projection_approximation:
             cls = type(self.potential_integrator).__name__
             raise NotImplementedError(
                 "`WeakPhaseScatteringTheory` does not currently support "
-                f"`potential_integrator = {cls}(...)` as this returns "
-                "a complex-valued array in real space. In order to use "
-                "this integrator, try using the `HighEnergyScatteringTheory`."
+                f"`potential_integrator = {cls}(...)` as this is not a projection "
+                "approximation, i.e. it returns a complex-valued array in real space. "
+                "In order to use this integrator, try using the "
+                "`HighEnergyScatteringTheory`."
             )
 
     @override
@@ -111,6 +112,11 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
                 self.structural_ensemble, self.potential_integrator, instrument_config
             )
         )
+        # ... apply in-plane translation
+        translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
+            instrument_config.padded_frequency_grid_in_angstroms
+        )
+        object_spectrum_at_exit_plane *= translational_phase_shifts
 
         if rng_key is not None:
             # Get the potential of the specimen plus the ice
@@ -189,7 +195,10 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
-            return object_spectrum_at_exit_plane
+            translational_phase_shifts = ensemble.pose.compute_shifts(
+                instrument_config.padded_frequency_grid_in_angstroms
+            )
+            return translational_phase_shifts * object_spectrum_at_exit_plane
 
         @eqx.filter_jit
         def compute_image_superposition(
@@ -245,11 +254,14 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
+            translational_phase_shifts = ensemble.pose.compute_shifts(
+                instrument_config.padded_frequency_grid_in_angstroms
+            )
             contrast_spectrum_at_detector_plane = transfer_theory(
                 object_spectrum_at_exit_plane, instrument_config
             )
 
-            return contrast_spectrum_at_detector_plane
+            return translational_phase_shifts * contrast_spectrum_at_detector_plane
 
         @eqx.filter_jit
         def compute_image_superposition(pytree_vmap, pytree_novmap, instrument_config):
@@ -318,12 +330,8 @@ def _compute_object_spectrum_from_scattering_potential(
             potential, instrument_config
         )
     )
-    # Compute in-plane translation through fourier phase shifts
-    translational_phase_shifts = structural_ensemble.pose.compute_shifts(
-        instrument_config.padded_frequency_grid_in_angstroms
-    )
     # Compute the phase shifts in exit plane and multiply by the translation.
     phase_shifts_in_exit_plane = convert_units_of_integrated_potential(
         fourier_integrated_potential, instrument_config.wavelength_in_angstroms
     )
-    return phase_shifts_in_exit_plane * translational_phase_shifts
+    return phase_shifts_in_exit_plane
