@@ -22,14 +22,14 @@ class AbstractStructuralEnsemble(Module, strict=True):
     conformation: AbstractVar[Optional[AbstractConformationalVariable]]
 
     @abstractmethod
-    def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
+    def get_potential_in_body_frame(self) -> AbstractPotentialRepresentation:
         """Get the scattering potential in the center of mass
         frame."""
         raise NotImplementedError
 
     def get_potential_in_lab_frame(self) -> AbstractPotentialRepresentation:
         """Get the scattering potential in the lab frame."""
-        potential = self.get_potential_at_conformation()
+        potential = self.get_potential_in_body_frame()
         return potential.rotate_to_pose(self.pose)
 
 
@@ -56,7 +56,7 @@ class SingleStructureEnsemble(AbstractStructuralEnsemble, strict=True):
         self.conformation = None
 
     @override
-    def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
+    def get_potential_in_body_frame(self) -> AbstractPotentialRepresentation:
         """Get the scattering potential in the center of mass
         frame.
         """

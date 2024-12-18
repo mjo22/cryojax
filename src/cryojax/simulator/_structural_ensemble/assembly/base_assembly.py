@@ -32,30 +32,33 @@ class AbstractAssembly(AbstractStructuralEnsemble, strict=True):
     n_subcomponents: AbstractVar[int]
 
     @override
-    def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
+    def get_potential_in_body_frame(self) -> AbstractPotentialRepresentation:
         raise NotImplementedError(
             "Method to construct a potential from an "
             "`AbstractAssembly` concrete class not yet supported."
         )
 
     @abstractmethod
-    def get_subcomponents(self) -> AbstractStructuralEnsemble:
+    def get_subcomponents_and_z_positions_in_body_frame(
+        self,
+    ) -> tuple[AbstractStructuralEnsemble, Float[Array, " {self.n_subcomponents}"]]:
         """Get the subcomponents of the assembly, represented
         as an `AbstractStructuralEnsemble` where each entry has
-        a batch dimension.
+        a batch dimension. Also, return the z-position of each
+        subcomponent.
         """
         raise NotImplementedError
 
-    def get_poses(self) -> AbstractPose:
-        """Draw the poses of the subunits in the lab frame."""
-        # Construct the batch of `AbstractPose`s
-        cls = type(self.pose)
-        make_assembly_poses = jax.vmap(
-            lambda rot, pos: cls.from_rotation_and_translation(rot, pos)
-        )
-        return make_assembly_poses(
-            self.rotations_in_lab_frame, self.positions_in_lab_frame[:, :2]
-        )
+    @abstractmethod
+    def get_subcomponents_and_z_positions_in_lab_frame(
+        self,
+    ) -> tuple[AbstractStructuralEnsemble, Float[Array, " {self.n_subcomponents}"]]:
+        """Get the subcomponents of the assembly in the lab frame,
+        represented as an `AbstractStructuralEnsemble` where each
+        entry has a batch dimension. Also, return the z-position of
+        each subcomponent.
+        """
+        raise NotImplementedError
 
     @cached_property
     @abstractmethod
@@ -95,6 +98,36 @@ class AbstractAssembly(AbstractStructuralEnsemble, strict=True):
         )
         return rotate_into_lab_frame(self.pose.rotation, self.rotations_in_body_frame)
 
+    def get_poses_and_z_positions_in_body_frame(
+        self,
+    ) -> tuple[AbstractPose, Float[Array, " {self.n_subcomponents}"]]:
+        """Draw the poses of the subcomponents in the lab frame,
+        as well as their z-positions."""
+        # Construct the batch of `AbstractPose`s
+        cls = type(self.pose)
+        make_poses = jax.vmap(
+            lambda rot, pos: cls.from_rotation_and_translation(rot, pos)
+        )
+        positions_in_body_frame = self.positions_in_body_frame
+        poses = make_poses(self.rotations_in_body_frame, positions_in_body_frame[:, :2])
+        z_positions = positions_in_body_frame[:, 2]
+        return poses, z_positions
+
+    def get_poses_and_z_positions_in_lab_frame(
+        self,
+    ) -> tuple[AbstractPose, Float[Array, " {self.n_subcomponents}"]]:
+        """Draw the poses of the subcomponents in the lab frame,
+        as well as their z-positions."""
+        # Construct the batch of `AbstractPose`s
+        cls = type(self.pose)
+        make_poses = jax.vmap(
+            lambda rot, pos: cls.from_rotation_and_translation(rot, pos)
+        )
+        positions_in_lab_frame = self.positions_in_lab_frame
+        poses = make_poses(self.rotations_in_lab_frame, positions_in_lab_frame[:, :2])
+        z_positions = positions_in_lab_frame[:, 2]
+        return poses, z_positions
+
 
 class AbstractAssemblyWithSubunit(AbstractAssembly, strict=True):
     """Abstraction of a biological assembly with a single
@@ -121,20 +154,46 @@ class AbstractAssemblyWithSubunit(AbstractAssembly, strict=True):
                 )
 
     @override
-    def get_subcomponents(self) -> AbstractStructuralEnsemble:
-        return self.subunits
+    def get_subcomponents_and_z_positions_in_body_frame(
+        self,
+    ) -> tuple[AbstractStructuralEnsemble, Float[Array, " {self.n_subcomponents}"]]:
+        """Draw a realization of all of the subunits in the body frame."""
+        poses, z_postions = self.get_poses_and_z_positions_in_body_frame()
+        subunits = _make_subunits(self.subunit, self.conformation, poses)
+        return subunits, z_postions
+
+    @override
+    def get_subcomponents_and_z_positions_in_lab_frame(
+        self,
+    ) -> tuple[AbstractStructuralEnsemble, Float[Array, " {self.n_subcomponents}"]]:
+        """Draw a realization of all of the subunits in the lab frame."""
+        poses, z_postions = self.get_poses_and_z_positions_in_lab_frame()
+        subunits = _make_subunits(self.subunit, self.conformation, poses)
+        return subunits, z_postions
 
     @property
     def n_subunits(self) -> int:
         return self.n_subcomponents
 
     @cached_property
-    def subunits(self) -> AbstractStructuralEnsemble:
-        """Draw a realization of all of the subunits in the lab frame."""
-        # Compute a list of subunits, configured at the correct conformations
-        if self.subunit.conformation is not None:
-            where = lambda s: (s.conformation, s.pose)
-            return eqx.tree_at(where, self.subunit, (self.conformation, self.get_poses()))
-        else:
-            where = lambda s: s.pose
-            return eqx.tree_at(where, self.subunit, self.get_poses())
+    def subunits_in_body_frame(self) -> AbstractStructuralEnsemble:
+        """Convenience method for grabbing the subunits from the method
+        `AbstractAssemblyWithSubunit.get_subcomponents_and_z_positions_in_body_frame`.
+        """
+        return self.get_subcomponents_and_z_positions_in_body_frame()[0]
+
+    @cached_property
+    def subunits_in_lab_frame(self) -> AbstractStructuralEnsemble:
+        """Convenience method for grabbing the subunits from the method
+        `AbstractAssemblyWithSubunit.get_subcomponents_and_z_positions_in_lab_frame`.
+        """
+        return self.get_subcomponents_and_z_positions_in_lab_frame()[0]
+
+
+def _make_subunits(subunit, conformation, poses):
+    if subunit.conformation is not None:
+        where = lambda s: (s.conformation, s.pose)
+        return eqx.tree_at(where, subunit, (conformation, poses))
+    else:
+        where = lambda s: s.pose
+        return eqx.tree_at(where, subunit, poses)

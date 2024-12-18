@@ -7,6 +7,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
+from ..._filter_specs import get_filter_spec
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
 from .._potential_integrator import AbstractPotentialIntegrator
@@ -193,7 +194,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             )
 
         # Get the batch
-        ensemble_batch = self.assembly.get_subcomponents()
+        ensemble_batch, _ = self.assembly.get_subcomponents_and_z_positions_in_lab_frame()
         # Setup vmap over the pose and conformation
         is_mapped = lambda x: isinstance(
             x, (AbstractPose, AbstractConformationalVariable)
@@ -224,42 +225,62 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        def compute_image(ensemble_mapped, ensemble_no_mapped, instrument_config):
-            ensemble = eqx.combine(ensemble_mapped, ensemble_no_mapped)
+        def compute_image(pytree_vmap, pytree_novmap, instrument_config):
+            ensemble_vmap, transfer_vmap = pytree_vmap
+            ensemble_novmap, transfer_novmap = pytree_novmap
+            ensemble = eqx.combine(ensemble_vmap, ensemble_novmap)
+            transfer_theory = eqx.combine(transfer_vmap, transfer_novmap)
             fourier_phase_shifts_at_exit_plane = (
                 _compute_fourier_phase_shifts_from_scattering_potential(
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
-            fourier_contrast_at_detector_plane = self.transfer_theory(
+            fourier_contrast_at_detector_plane = transfer_theory(
                 fourier_phase_shifts_at_exit_plane, instrument_config
             )
 
             return fourier_contrast_at_detector_plane
 
         @eqx.filter_jit
-        def compute_image_superposition(
-            ensemble_mapped, ensemble_no_mapped, instrument_config
-        ):
+        def compute_image_superposition(pytree_vmap, pytree_novmap, instrument_config):
             return jnp.sum(
                 jax.lax.map(
-                    lambda x: compute_image(x, ensemble_no_mapped, instrument_config),
-                    ensemble_mapped,
+                    lambda x: compute_image(x, pytree_novmap, instrument_config),
+                    pytree_vmap,
                 ),
                 axis=0,
             )
 
-        # Get the batch
-        ensemble_batch = self.assembly.get_subcomponents()
+        # Get the batches
+        ensemble_batch, z_positions = (
+            self.assembly.get_subcomponents_and_z_positions_in_lab_frame()
+        )
+        transfer_theory_batch = eqx.tree_at(
+            lambda x: x.ctf.defocus_in_angstroms,
+            self.transfer_theory,
+            self.transfer_theory.ctf.defocus_in_angstroms + z_positions,
+        )
         # Setup vmap over the pose and conformation
-        is_mapped = lambda x: isinstance(
+        is_vmapped = lambda x: isinstance(
             x, (AbstractPose, AbstractConformationalVariable)
         )
-        to_mapped = jax.tree_util.tree_map(is_mapped, ensemble_batch, is_leaf=is_mapped)
-        mapped, no_mapped = eqx.partition(ensemble_batch, to_mapped)
-
+        filter_spec_for_ensemble = jax.tree_util.tree_map(
+            is_vmapped, ensemble_batch, is_leaf=is_vmapped
+        )
+        ensemble_vmap, ensemble_novmap = eqx.partition(
+            ensemble_batch, filter_spec_for_ensemble
+        )
+        # ... setup vmap over the CTF
+        filter_spec_for_transfer_theory = get_filter_spec(
+            self.transfer_theory, lambda x: x.ctf.defocus_in_angstroms
+        )
+        transfer_vmap, transfer_novmap = eqx.partition(
+            transfer_theory_batch, filter_spec_for_transfer_theory
+        )
         fourier_contrast_at_detector_plane = compute_image_superposition(
-            mapped, no_mapped, instrument_config
+            (ensemble_vmap, transfer_vmap),
+            (ensemble_novmap, transfer_novmap),
+            instrument_config,
         )
 
         if rng_key is not None:
