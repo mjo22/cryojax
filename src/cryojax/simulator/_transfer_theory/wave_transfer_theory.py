@@ -115,7 +115,7 @@ class WaveTransferTheory(AbstractTransferTheory, strict=True):
     @override
     def __call__(
         self,
-        fourier_wavefunction_at_exit_plane: Complex[
+        wavefunction_spectrum_at_exit_plane: Complex[
             Array,
             "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
         ],
@@ -132,8 +132,8 @@ class WaveTransferTheory(AbstractTransferTheory, strict=True):
         )
         # ... compute the contrast as the CTF multiplied by the exit plane
         # phase shifts
-        fourier_wavefunction_at_detector_plane = (
-            wtf_array * fourier_wavefunction_at_exit_plane
+        wavefunction_spectrum_at_detector_plane = (
+            wtf_array * wavefunction_spectrum_at_exit_plane
         )
 
-        return fourier_wavefunction_at_detector_plane
+        return wavefunction_spectrum_at_detector_plane
