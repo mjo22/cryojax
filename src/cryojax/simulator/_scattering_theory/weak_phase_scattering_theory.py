@@ -240,13 +240,13 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             ensemble_novmap, transfer_novmap = pytree_novmap
             ensemble = eqx.combine(ensemble_vmap, ensemble_novmap)
             transfer_theory = eqx.combine(transfer_vmap, transfer_novmap)
-            fourier_phase_shifts_at_exit_plane = (
-                _compute_fourier_phase_shifts_from_scattering_potential(
+            object_spectrum_at_exit_plane = (
+                _compute_object_spectrum_from_scattering_potential(
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
-            fourier_contrast_at_detector_plane = transfer_theory(
-                fourier_phase_shifts_at_exit_plane, instrument_config
+            contrast_spectrum_at_detector_plane = transfer_theory(
+                object_spectrum_at_exit_plane, instrument_config
             )
 
             return contrast_spectrum_at_detector_plane
@@ -287,7 +287,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         transfer_vmap, transfer_novmap = eqx.partition(
             transfer_theory_batch, filter_spec_for_transfer_theory
         )
-        fourier_contrast_at_detector_plane = compute_image_superposition(
+        contrast_spectrum_at_detector_plane = compute_image_superposition(
             (ensemble_vmap, transfer_vmap),
             (ensemble_novmap, transfer_novmap),
             instrument_config,
