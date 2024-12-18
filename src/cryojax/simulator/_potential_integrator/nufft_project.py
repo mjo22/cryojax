@@ -3,7 +3,7 @@ Using non-uniform FFTs for computing volume projections.
 """
 
 import math
-from typing import Optional
+from typing import ClassVar, Optional
 from typing_extensions import override
 
 import jax.numpy as jnp
@@ -22,6 +22,8 @@ class NufftProjection(
 
     pixel_rescaling_method: Optional[str]
     eps: float
+
+    is_projection_approximation: ClassVar[bool] = True
 
     def __init__(
         self, *, pixel_rescaling_method: Optional[str] = None, eps: float = 1e-6
@@ -102,7 +104,7 @@ class NufftProjection(
                 "`RealVoxelCloudPotential`."
             )
         return self._convert_raw_image_to_integrated_potential(
-            fourier_projection, potential, instrument_config
+            fourier_projection, potential, instrument_config, is_hermitian_symmetric=True
         )
 
 

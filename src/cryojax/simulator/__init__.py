@@ -20,7 +20,6 @@ from ._pose import (
     QuaternionPose as QuaternionPose,
 )
 from ._potential_integrator import (
-    AbstractFourierVoxelExtraction as AbstractFourierVoxelExtraction,
     AbstractPotentialIntegrator as AbstractPotentialIntegrator,
     AbstractVoxelPotentialIntegrator as AbstractVoxelPotentialIntegrator,
     FourierSliceExtraction as FourierSliceExtraction,
@@ -42,7 +41,7 @@ from ._potential_representation import (
 from ._scattering_theory import (
     AbstractScatteringTheory as AbstractScatteringTheory,
     AbstractWeakPhaseScatteringTheory as AbstractWeakPhaseScatteringTheory,
-    compute_phase_shifts_from_integrated_potential as compute_phase_shifts_from_integrated_potential,  # noqa: E501
+    convert_units_of_integrated_potential as convert_units_of_integrated_potential,  # noqa: E501
     LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
     WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
 )

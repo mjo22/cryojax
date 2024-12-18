@@ -21,8 +21,8 @@
             members:
                 - __init__
                 - compute_fourier_integrated_potential
-                - extract_voxels_from_spline_coefficients
-                - extract_voxels_from_grid_points
+                - extract_fourier_slice_from_spline_coefficients
+                - extract_fourier_slice_from_grid_points
 
 ---
 

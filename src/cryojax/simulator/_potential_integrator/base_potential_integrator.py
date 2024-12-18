@@ -6,7 +6,7 @@ from abc import abstractmethod
 from typing import Generic, Optional, TypeVar
 
 import jax.numpy as jnp
-from equinox import AbstractVar, error_if, Module
+from equinox import AbstractClassVar, AbstractVar, error_if, Module
 from jaxtyping import Array, Complex
 
 from ...image import maybe_rescale_pixel_size
@@ -23,14 +23,22 @@ class AbstractPotentialIntegrator(Module, Generic[PotentialT], strict=True):
     the exit plane.
     """
 
+    is_projection_approximation: AbstractClassVar[bool]
+
     @abstractmethod
     def compute_fourier_integrated_potential(
         self,
         potential: PotentialT,
         instrument_config: InstrumentConfig,
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]:
+    ) -> (
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Complex[
+            Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+        ]
+    ):
         raise NotImplementedError
 
 
@@ -46,6 +54,7 @@ class AbstractVoxelPotentialIntegrator(
         fourier_integrated_potential_without_postprocess,
         potential,
         instrument_config,
+        is_hermitian_symmetric,
     ):
         """Return the integrated potential in fourier space at the
         `instrument_config.pixel_size` and the `instrument_config.padded_shape.`
@@ -67,6 +76,7 @@ class AbstractVoxelPotentialIntegrator(
                 potential.voxel_size,
                 instrument_config.pixel_size,
                 is_real=False,
+                is_hermitian_symmetric=is_hermitian_symmetric,
                 shape_in_real_space=instrument_config.padded_shape,
             )
             return fourier_integrated_potential

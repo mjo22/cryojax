@@ -18,7 +18,6 @@ class AbstractTransferFunction(AbstractFourierOperator, strict=True):
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         *,
         voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
-        defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
         raise NotImplementedError
 
@@ -29,7 +28,7 @@ class AbstractTransferTheory(Module, strict=True):
     @abstractmethod
     def __call__(
         self,
-        fourier_phase_or_wavefunction_at_exit_plane: (
+        array: (
             Complex[
                 Array,
                 "{instrument_config.padded_y_dim} "
@@ -41,7 +40,6 @@ class AbstractTransferTheory(Module, strict=True):
             ]
         ),
         instrument_config: InstrumentConfig,
-        defocus_offset: Float[Array, ""] | float = 0.0,
     ) -> (
         Complex[
             Array,
@@ -51,5 +49,5 @@ class AbstractTransferTheory(Module, strict=True):
             Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
         ]
     ):
-        """Pass an image through the transfer theory."""
+        """Pass a quantity through the transfer theory."""
         raise NotImplementedError

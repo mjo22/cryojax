@@ -2,15 +2,15 @@
 Using the fourier slice theorem for computing volume projections.
 """
 
-from abc import abstractmethod
-from typing import Optional
+from typing import ClassVar, Optional
 from typing_extensions import override
 
-import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
 from ...image import (
+    fftn,
+    ifftn,
     irfftn,
     map_coordinates,
     map_coordinates_with_cubic_spline,
@@ -24,101 +24,7 @@ from .._potential_representation import (
 from .base_potential_integrator import AbstractVoxelPotentialIntegrator
 
 
-class AbstractFourierVoxelExtraction(
-    AbstractVoxelPotentialIntegrator[
-        FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator
-    ],
-    strict=True,
-):
-    """Integrate points to the exit plane by extracting a voxel surface
-    from a 3D voxel grid.
-    """
-
-    interpolation_order: eqx.AbstractVar[int]
-    interpolation_mode: eqx.AbstractVar[str]
-    interpolation_cval: eqx.AbstractVar[complex]
-
-    @abstractmethod
-    def extract_voxels_from_spline_coefficients(
-        self,
-        spline_coefficients: Complex[Array, "dim+2 dim+2 dim+2"],
-        frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
-        voxel_size: Float[Array, ""],
-        wavelength_in_angstroms: Float[Array, ""],
-    ) -> Complex[Array, "dim dim//2+1"]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def extract_voxels_from_grid_points(
-        self,
-        fourier_voxel_grid: Complex[Array, "dim dim dim"],
-        frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
-        voxel_size: Float[Array, ""],
-        wavelength_in_angstroms: Float[Array, ""],
-    ) -> Complex[Array, "dim dim//2+1"]:
-        raise NotImplementedError
-
-    @override
-    def compute_fourier_integrated_potential(
-        self,
-        potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
-        instrument_config: InstrumentConfig,
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]:
-        """Compute the integrated scattering potential at the `InstrumentConfig` settings
-        of a voxel-based representation in fourier-space, using fourier slice extraction.
-
-        **Arguments:**
-
-        - `potential`: The scattering potential representation.
-        - `instrument_config`: The configuration of the resulting image.
-
-        **Returns:**
-
-        The extracted fourier voxels of the `potential`, at the
-        `instrument_config.padded_shape` and the `instrument_config.pixel_size`.
-        """
-        frequency_slice = potential.frequency_slice_in_pixels
-        N = frequency_slice.shape[1]
-        if potential.shape != (N, N, N):
-            raise AttributeError(
-                "Only cubic boxes are supported for fourier slice extraction."
-            )
-        # Compute the fourier projection
-        if isinstance(potential, FourierVoxelGridPotentialInterpolator):
-            fourier_projection = self.extract_voxels_from_spline_coefficients(
-                potential.coefficients,
-                frequency_slice,
-                potential.voxel_size,
-                instrument_config.wavelength_in_angstroms,
-            )
-        elif isinstance(potential, FourierVoxelGridPotential):
-            fourier_projection = self.extract_voxels_from_grid_points(
-                potential.fourier_voxel_grid,
-                frequency_slice,
-                potential.voxel_size,
-                instrument_config.wavelength_in_angstroms,
-            )
-        else:
-            raise ValueError(
-                "Supported types for `potential` are `FourierVoxelGridPotential` and "
-                "`FourierVoxelGridPotentialInterpolator`."
-            )
-
-        # Resize the image to match the InstrumentConfig.padded_shape
-        if instrument_config.padded_shape != (N, N):
-            fourier_projection = rfftn(
-                instrument_config.crop_or_pad_to_padded_shape(
-                    irfftn(fourier_projection, s=(N, N))
-                )
-            )
-        return self._convert_raw_image_to_integrated_potential(
-            fourier_projection, potential, instrument_config
-        )
-
-
-class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
+class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
     """Integrate points to the exit plane using the Fourier projection-slice theorem.
 
     This extracts slices using interpolation methods housed in
@@ -129,6 +35,8 @@ class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
     interpolation_order: int
     interpolation_mode: str
     interpolation_cval: complex
+
+    is_projection_approximation: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -161,12 +69,64 @@ class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
         self.interpolation_cval = interpolation_cval
 
     @override
-    def extract_voxels_from_spline_coefficients(
+    def compute_fourier_integrated_potential(
+        self,
+        potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
+        instrument_config: InstrumentConfig,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
+        """Compute the integrated scattering potential at the `InstrumentConfig` settings
+        of a voxel-based representation in fourier-space, using fourier slice extraction.
+
+        **Arguments:**
+
+        - `potential`: The scattering potential representation.
+        - `instrument_config`: The configuration of the resulting image.
+
+        **Returns:**
+
+        The extracted fourier voxels of the `potential`, at the
+        `instrument_config.padded_shape` and the `instrument_config.pixel_size`.
+        """
+        frequency_slice = potential.frequency_slice_in_pixels
+        N = frequency_slice.shape[1]
+        if potential.shape != (N, N, N):
+            raise AttributeError(
+                "Only cubic boxes are supported for fourier slice extraction."
+            )
+        # Compute the fourier projection
+        if isinstance(potential, FourierVoxelGridPotentialInterpolator):
+            fourier_projection = self.extract_fourier_slice_from_spline_coefficients(
+                potential.coefficients,
+                frequency_slice,
+            )
+        elif isinstance(potential, FourierVoxelGridPotential):
+            fourier_projection = self.extract_fourier_slice_from_grid_points(
+                potential.fourier_voxel_grid,
+                frequency_slice,
+            )
+        else:
+            raise ValueError(
+                "Supported types for `potential` are `FourierVoxelGridPotential` and "
+                "`FourierVoxelGridPotentialInterpolator`."
+            )
+
+        # Resize the image to match the InstrumentConfig.padded_shape
+        if instrument_config.padded_shape != (N, N):
+            fourier_projection = rfftn(
+                instrument_config.crop_or_pad_to_padded_shape(
+                    irfftn(fourier_projection, s=(N, N))
+                )
+            )
+        return self._convert_raw_image_to_integrated_potential(
+            fourier_projection, potential, instrument_config, is_hermitian_symmetric=True
+        )
+
+    def extract_fourier_slice_from_spline_coefficients(
         self,
         spline_coefficients: Complex[Array, "dim+2 dim+2 dim+2"],
         frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
-        voxel_size: Float[Array, ""],
-        wavelength_in_angstroms: Float[Array, ""],
     ) -> Complex[Array, "dim dim//2+1"]:
         """Extract a fourier slice using the interpolation defined by
         `spline_coefficients` at coordinates `frequency_slice_in_pixels`.
@@ -200,13 +160,10 @@ class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
             cval=self.interpolation_cval,
         )
 
-    @override
-    def extract_voxels_from_grid_points(
+    def extract_fourier_slice_from_grid_points(
         self,
         fourier_voxel_grid: Complex[Array, "dim dim dim"],
         frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
-        voxel_size: Float[Array, ""],
-        wavelength_in_angstroms: Float[Array, ""],
     ) -> Complex[Array, "dim dim//2+1"]:
         """Extract a fourier slice of the `fourier_voxel_grid` at coordinates
         `frequency_slice_in_pixels`.
@@ -239,7 +196,7 @@ class FourierSliceExtraction(AbstractFourierVoxelExtraction, strict=True):
         )
 
 
-class EwaldSphereExtraction(AbstractFourierVoxelExtraction, strict=True):
+class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
     """Integrate points to the exit plane by extracting a surface of the ewald
     sphere in fourier space.
 
@@ -251,6 +208,8 @@ class EwaldSphereExtraction(AbstractFourierVoxelExtraction, strict=True):
     interpolation_order: int
     interpolation_mode: str
     interpolation_cval: complex
+
+    is_projection_approximation: ClassVar[bool] = False
 
     def __init__(
         self,
@@ -283,13 +242,74 @@ class EwaldSphereExtraction(AbstractFourierVoxelExtraction, strict=True):
         self.interpolation_cval = interpolation_cval
 
     @override
-    def extract_voxels_from_spline_coefficients(
+    def compute_fourier_integrated_potential(
+        self,
+        potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
+        instrument_config: InstrumentConfig,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+    ]:
+        """Compute the integrated scattering potential at the `InstrumentConfig` settings
+        of a voxel-based representation in fourier-space, using fourier slice extraction.
+
+        **Arguments:**
+
+        - `potential`: The scattering potential representation.
+        - `instrument_config`: The configuration of the resulting image.
+
+        **Returns:**
+
+        The extracted fourier voxels of the `potential`, at the
+        `instrument_config.padded_shape` and the `instrument_config.pixel_size`.
+        """
+        frequency_slice = potential.frequency_slice_in_pixels
+        N = frequency_slice.shape[1]
+        if potential.shape != (N, N, N):
+            raise AttributeError(
+                "Only cubic boxes are supported for fourier slice extraction."
+            )
+        # Compute the fourier projection
+        if isinstance(potential, FourierVoxelGridPotentialInterpolator):
+            ewald_sphere_surface = self.extract_ewald_sphere_from_spline_coefficients(
+                potential.coefficients,
+                frequency_slice,
+                potential.voxel_size,
+                instrument_config.wavelength_in_angstroms,
+            )
+        elif isinstance(potential, FourierVoxelGridPotential):
+            ewald_sphere_surface = self.extract_ewald_sphere_from_grid_points(
+                potential.fourier_voxel_grid,
+                frequency_slice,
+                potential.voxel_size,
+                instrument_config.wavelength_in_angstroms,
+            )
+        else:
+            raise ValueError(
+                "Supported types for `potential` are `FourierVoxelGridPotential` and "
+                "`FourierVoxelGridPotentialInterpolator`."
+            )
+
+        # Resize the image to match the InstrumentConfig.padded_shape
+        if instrument_config.padded_shape != (N, N):
+            ewald_sphere_surface = fftn(
+                instrument_config.crop_or_pad_to_padded_shape(
+                    ifftn(ewald_sphere_surface, s=(N, N))
+                )
+            )
+        return self._convert_raw_image_to_integrated_potential(
+            ewald_sphere_surface,
+            potential,
+            instrument_config,
+            is_hermitian_symmetric=False,
+        )
+
+    def extract_ewald_sphere_from_spline_coefficients(
         self,
         spline_coefficients: Complex[Array, "dim+2 dim+2 dim+2"],
         frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
         voxel_size: Float[Array, ""],
         wavelength_in_angstroms: Float[Array, ""],
-    ) -> Complex[Array, "dim dim//2+1"]:
+    ) -> Complex[Array, "dim dim"]:
         """Extract an ewald sphere surface of the `fourier_voxel_grid` at
         coordinates normal to `frequency_slice_in_pixels` at wavelength
         `wavelength_in_angstroms`.
@@ -324,14 +344,13 @@ class EwaldSphereExtraction(AbstractFourierVoxelExtraction, strict=True):
             cval=self.interpolation_cval,
         )
 
-    @override
-    def extract_voxels_from_grid_points(
+    def extract_ewald_sphere_from_grid_points(
         self,
         fourier_voxel_grid: Complex[Array, "dim dim dim"],
         frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
         voxel_size: Float[Array, ""],
         wavelength_in_angstroms: Float[Array, ""],
-    ) -> Complex[Array, "dim dim//2+1"]:
+    ) -> Complex[Array, "dim dim"]:
         """Extract an ewald sphere surface of the `fourier_voxel_grid` at
         coordinates normal to `frequency_slice_in_pixels` at wavelength
         `wavelength_in_angstroms`.
@@ -371,20 +390,24 @@ def _extract_slice(
     interpolation_order,
     **kwargs,
 ) -> Complex[Array, "dim dim//2+1"]:
-    return _extract_surface_from_voxel_grid(
-        fourier_voxel_grid,
-        frequency_slice,
-        is_spline_coefficients=False,
-        interpolation_order=interpolation_order,
-        **kwargs,
+    return _apply_hermitian_symmetry_to_fourier_slice(
+        _extract_surface_from_voxel_grid(
+            fourier_voxel_grid,
+            frequency_slice,
+            is_spline_coefficients=False,
+            interpolation_order=interpolation_order,
+            **kwargs,
+        )
     )
 
 
 def _extract_slice_with_cubic_spline(
     spline_coefficients, frequency_slice, **kwargs
 ) -> Complex[Array, "dim dim//2+1"]:
-    return _extract_surface_from_voxel_grid(
-        spline_coefficients, frequency_slice, is_spline_coefficients=True, **kwargs
+    return _apply_hermitian_symmetry_to_fourier_slice(
+        _extract_surface_from_voxel_grid(
+            spline_coefficients, frequency_slice, is_spline_coefficients=True, **kwargs
+        )
     )
 
 
@@ -395,7 +418,7 @@ def _extract_ewald_sphere_surface(
     wavelength,
     interpolation_order,
     **kwargs,
-) -> Complex[Array, "dim dim//2+1"]:
+) -> Complex[Array, "dim dim"]:
     ewald_sphere_frequencies = _get_ewald_sphere_surface_from_slice(
         frequency_slice, voxel_size, wavelength
     )
@@ -410,7 +433,7 @@ def _extract_ewald_sphere_surface(
 
 def _extract_ewald_sphere_surface_with_cubic_spline(
     spline_coefficients, frequency_slice, voxel_size, wavelength, **kwargs
-) -> Complex[Array, "dim dim//2+1"]:
+) -> Complex[Array, "dim dim"]:
     ewald_sphere_frequencies = _get_ewald_sphere_surface_from_slice(
         frequency_slice, voxel_size, wavelength
     )
@@ -459,22 +482,32 @@ def _extract_surface_from_voxel_grid(
 ):
     # Convert to logical coordinates
     N = frequency_coordinates.shape[1]
-    logical_frequency_slice = (frequency_coordinates * N) + N // 2
+    logical_frequency_coordinates = (frequency_coordinates * N) + N // 2
     # Convert arguments to map_coordinates convention and compute
-    k_z, k_y, k_x = jnp.transpose(logical_frequency_slice, axes=[3, 0, 1, 2])
+    k_z, k_y, k_x = jnp.transpose(logical_frequency_coordinates, axes=[3, 0, 1, 2])
     if is_spline_coefficients:
         spline_coefficients = voxel_grid
-        projection = map_coordinates_with_cubic_spline(
+        surface = map_coordinates_with_cubic_spline(
             spline_coefficients, (k_x, k_y, k_z), **kwargs
         )[0, :, :]
     else:
         fourier_voxel_grid = voxel_grid
-        projection = map_coordinates(
+        surface = map_coordinates(
             fourier_voxel_grid, (k_x, k_y, k_z), interpolation_order, **kwargs
         )[0, :, :]
-    # Shift zero frequency component to corner and take upper half plane
-    projection = jnp.fft.ifftshift(projection)[:, : N // 2 + 1]
+    # Shift zero frequency component to corner
+    surface = jnp.fft.ifftshift(surface)
+
+    return surface
+
+
+def _apply_hermitian_symmetry_to_fourier_slice(fourier_slice):
+    dim = fourier_slice.shape[0]
+    # Take upper half plane
+    fourier_slice = fourier_slice[:, : dim // 2 + 1]
     # Set last line of frequencies to zero if image dimension is even
-    if N % 2 == 0:
-        projection = projection.at[:, -1].set(0.0 + 0.0j).at[N // 2, :].set(0.0 + 0.0j)
-    return projection
+    if dim % 2 == 0:
+        fourier_slice = (
+            fourier_slice.at[:, -1].set(0.0 + 0.0j).at[dim // 2, :].set(0.0 + 0.0j)
+        )
+    return fourier_slice

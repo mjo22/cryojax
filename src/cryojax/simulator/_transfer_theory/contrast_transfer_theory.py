@@ -128,7 +128,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
     @override
     def __call__(
         self,
-        fourier_phase_at_exit_plane: Complex[
+        object_spectrum_at_exit_plane: Complex[
             Array,
             "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
         ],
@@ -145,6 +145,6 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         )
         # ... compute the contrast as the CTF multiplied by the exit plane
         # phase shifts
-        fourier_contrast_at_detector_plane = ctf_array * fourier_phase_at_exit_plane
+        contrast_spectrum_at_detector_plane = ctf_array * object_spectrum_at_exit_plane
 
-        return fourier_contrast_at_detector_plane
+        return contrast_spectrum_at_detector_plane

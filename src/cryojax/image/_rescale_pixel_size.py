@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jax.image import scale_and_translate
 from jaxtyping import Array, Complex, Float, Inexact
 
-from ._fft import irfftn, rfftn
+from ._fft import fftn, ifftn, irfftn, rfftn
 
 
 def rescale_pixel_size(
@@ -77,6 +77,7 @@ def maybe_rescale_pixel_size(
     current_pixel_size: Float[Array, ""],
     new_pixel_size: Float[Array, ""],
     is_real: bool = True,
+    is_hermitian_symmetric: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
     method: str = "bicubic",
 ) -> (
@@ -90,24 +91,44 @@ def maybe_rescale_pixel_size(
             im, current_pixel_size, new_pixel_size, method=method
         )
     else:
-        if shape_in_real_space is None:
-            rescale_fn = lambda im: rfftn(
-                rescale_pixel_size(
-                    irfftn(im),
-                    current_pixel_size,
-                    new_pixel_size,
-                    method=method,
+        if is_hermitian_symmetric:
+            if shape_in_real_space is None:
+                rescale_fn = lambda im: rfftn(
+                    rescale_pixel_size(
+                        irfftn(im),
+                        current_pixel_size,
+                        new_pixel_size,
+                        method=method,
+                    )
                 )
-            )
+            else:
+                rescale_fn = lambda im: rfftn(
+                    rescale_pixel_size(
+                        irfftn(im, s=shape_in_real_space),
+                        current_pixel_size,
+                        new_pixel_size,
+                        method=method,
+                    )
+                )
         else:
-            rescale_fn = lambda im: rfftn(
-                rescale_pixel_size(
-                    irfftn(im, s=shape_in_real_space),
-                    current_pixel_size,
-                    new_pixel_size,
-                    method=method,
+            if shape_in_real_space is None:
+                rescale_fn = lambda im: fftn(
+                    rescale_pixel_size(
+                        ifftn(im),
+                        current_pixel_size,
+                        new_pixel_size,
+                        method=method,
+                    )
                 )
-            )
+            else:
+                rescale_fn = lambda im: fftn(
+                    rescale_pixel_size(
+                        ifftn(im, s=shape_in_real_space),
+                        current_pixel_size,
+                        new_pixel_size,
+                        method=method,
+                    )
+                )
     null_fn = lambda im: im
     return jax.lax.cond(
         jnp.isclose(current_pixel_size, new_pixel_size),

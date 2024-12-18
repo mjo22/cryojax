@@ -10,42 +10,67 @@ import jax.random as jr
 from equinox import Module
 from jaxtyping import Array, Complex, PRNGKeyArray
 
+from ..image import fftn, irfftn
 from ..image.operators import FourierOperatorLike
 from ._instrument_config import InstrumentConfig
-from ._scattering_theory import compute_phase_shifts_from_integrated_potential
+from ._scattering_theory import convert_units_of_integrated_potential
 
 
 class AbstractIce(Module, strict=True):
     """Base class for an ice model."""
 
     @abstractmethod
-    def sample_fourier_phase_shifts_from_ice(
-        self, key: PRNGKeyArray, instrument_config: InstrumentConfig
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]:
+    def sample_ice_spectrum(
+        self,
+        key: PRNGKeyArray,
+        instrument_config: InstrumentConfig,
+        apply_hermitian_symmetry: bool = True,
+    ) -> (
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+    ):
         """Sample a stochastic realization of the phase shifts due to the ice
         at the exit plane."""
         raise NotImplementedError
 
-    def compute_fourier_phase_shifts_with_ice(
+    def compute_object_spectrum_with_ice(
         self,
         key: PRNGKeyArray,
-        fourier_phase_at_exit_plane: Complex[
+        object_spectrum_at_exit_plane: (
+            Complex[
+                Array,
+                "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+            ]
+            | Complex[
+                Array,
+                "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+            ]
+        ),
+        instrument_config: InstrumentConfig,
+        is_hermitian_symmetric: bool = True,
+    ) -> (
+        Complex[
             Array,
             "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
-        ],
-        instrument_config: InstrumentConfig,
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]:
-        """Compute the combined phase of the ice and the specimen."""
+        ]
+        | Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+    ):
+        """Compute the combined spectrum of the ice and the specimen."""
         # Sample the realization of the phase due to the ice.
-        fourier_ice_phase_at_exit_plane = self.sample_fourier_phase_shifts_from_ice(
-            key, instrument_config
+        ice_spectrum_at_exit_plane = self.sample_ice_spectrum(
+            key, instrument_config, apply_hermitian_symmetry=is_hermitian_symmetric
         )
 
-        return fourier_phase_at_exit_plane + fourier_ice_phase_at_exit_plane
+        return object_spectrum_at_exit_plane + ice_spectrum_at_exit_plane
 
 
 class GaussianIce(AbstractIce, strict=True):
@@ -66,8 +91,11 @@ class GaussianIce(AbstractIce, strict=True):
         self.variance_function = variance_function
 
     @override
-    def sample_fourier_phase_shifts_from_ice(
-        self, key: PRNGKeyArray, instrument_config: InstrumentConfig
+    def sample_ice_spectrum(
+        self,
+        key: PRNGKeyArray,
+        instrument_config: InstrumentConfig,
+        apply_hermitian_symmetry: bool = True,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
@@ -82,9 +110,14 @@ class GaussianIce(AbstractIce, strict=True):
             shape=frequency_grid_in_angstroms.shape[0:-1],
             dtype=complex,
         ).at[0, 0].set(0.0)
-        ice_phase_shifts_at_exit_plane = compute_phase_shifts_from_integrated_potential(
+        ice_spectrum_at_exit_plane = convert_units_of_integrated_potential(
             ice_integrated_potential_at_exit_plane,
             instrument_config.wavelength_in_angstroms,
         )
 
-        return ice_phase_shifts_at_exit_plane
+        if apply_hermitian_symmetry:
+            return ice_spectrum_at_exit_plane
+        else:
+            return fftn(
+                irfftn(ice_spectrum_at_exit_plane, s=instrument_config.padded_shape)
+            )
