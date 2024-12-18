@@ -68,7 +68,6 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         fourier_wavefunction_at_detector_plane = self.transfer_theory(
             fourier_wavefunction_at_exit_plane,
             instrument_config,
-            defocus_offset=self.structural_ensemble.pose.offset_z_in_angstroms,
         )
         wavefunction_at_detector_plane = ifftn(fourier_wavefunction_at_detector_plane)
         # ... get the squared wavefunction and return to fourier space
@@ -101,7 +100,6 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         fourier_wavefunction_at_detector_plane = self.transfer_theory(
             fourier_wavefunction_at_exit_plane,
             instrument_config,
-            defocus_offset=self.structural_ensemble.pose.offset_z_in_angstroms,
         )
         wavefunction_at_detector_plane = ifftn(fourier_wavefunction_at_detector_plane)
         # ... get the squared wavefunction

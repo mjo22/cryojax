@@ -8,7 +8,6 @@ from jaxtyping import install_import_hook
 
 
 with install_import_hook("cryojax", "typeguard.typechecked"):
-    import cryojax as cryojax
     import cryojax.simulator as cs
     from cryojax.image import operators as op, rfftn
     from cryojax.io import read_array_with_spacing_from_mrc
