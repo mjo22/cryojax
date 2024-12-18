@@ -269,10 +269,10 @@ class RelionParticleStackReader(AbstractDataset):
 
 
 @dataclasses.dataclass(frozen=True)
-class HelicalRelionParticleReader(AbstractDataset):
+class RelionHelicalParticleReader(AbstractDataset):
     """A wrapped `RelionParticleStackReader` to read helical tubes.
 
-    In particular, a `HelicalRelionParticleReader` indexes one
+    In particular, a `RelionHelicalParticleReader` indexes one
     helical filament at a time. For example, after manual
     particle picking in RELION, we can index a particular filament
     with
@@ -280,14 +280,14 @@ class HelicalRelionParticleReader(AbstractDataset):
     ```python
     # Read in a STAR file particle stack
     reader = RelionParticleStackReader(...)
-    helical_reader = HelicalRelionParticleReader(reader)
+    helical_reader = RelionHelicalParticleReader(reader)
     # ... get a particle stack for a filament
     particle_stack_for_a_filament = helical_reader[0]
     # ... get a particle stack for another filament
     particle_stack_for_another_filament = helical_reader[1]
     ```
 
-    Unlike a `RelionParticleStackReader`, a `HelicalRelionParticleReader`
+    Unlike a `RelionParticleStackReader`, a `RelionHelicalParticleReader`
     does not support fancy indexing.
     """
 
@@ -355,7 +355,7 @@ class HelicalRelionParticleReader(AbstractDataset):
     ) -> RelionParticleStack | RelionParticleMetadata:
         if not isinstance(filament_index, (int, np.integer)):  # type: ignore
             raise IndexError(
-                "When indexing a `HelicalRelionParticleReader`, only "
+                "When indexing a `RelionHelicalParticleReader`, only "
                 f"python or numpy-like integer particle_index are supported, such as "
                 "`helical_particle_stack = helical_dataset[3]`. "
                 f"Got index {filament_index} of type {type(filament_index)}."
@@ -363,7 +363,7 @@ class HelicalRelionParticleReader(AbstractDataset):
         # Make sure the filament index is in-bounds
         if filament_index + 1 > self.n_filaments:
             raise IndexError(
-                "The index at which the `HelicalRelionParticleReader` was "
+                "The index at which the `RelionHelicalParticleReader` was "
                 f"accessed was out of bounds! The number of filaments in "
                 f"the dataset is {self.n_filaments}, but you tried to "
                 f"access the index {filament_index}."
@@ -671,7 +671,7 @@ def _validate_helical_relion_data_blocks(data_blocks: dict[str, pd.DataFrame]):
         raise ValueError(
             "Missing column 'rlnHelicalTubeID' in `starfile.read` output. "
             "This column must be present when using a "
-            "`HelicalRelionParticleReader`."
+            "`RelionHelicalParticleReader`."
         )
 
 
