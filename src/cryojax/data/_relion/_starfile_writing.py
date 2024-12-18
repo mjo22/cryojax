@@ -384,8 +384,8 @@ def _write_simulated_image_stack_from_starfile_vmap(
     else:
         key = cast(PRNGKeyArray, None)
     # Create vmapped `compute_image` kernel
-    test_particle_stack = metadata_reader[0]
-    filter_spec_for_vmap = _get_particle_stack_filter_spec(test_particle_stack)
+    test_particle_metadata = metadata_reader[0]
+    filter_spec_for_vmap = _get_particle_metadata_filter_spec(test_particle_metadata)
     compute_image_stack = (
         eqx.filter_vmap(
             lambda vmap, novmap, args: compute_image(eqx.combine(vmap, novmap), args),  # type: ignore
@@ -555,36 +555,28 @@ def _write_simulated_image_stack_from_starfile_serial(
     return
 
 
-_get_particle_stack_filter_spec = lambda particle_stack: get_filter_spec(
-    particle_stack, _pointer_to_vmapped_parameters
+_get_particle_metadata_filter_spec = lambda particle_metadata: get_filter_spec(
+    particle_metadata, _pointer_to_vmapped_parameters
 )
 
 
-def _pointer_to_vmapped_parameters(particle_stack):
-    if isinstance(particle_stack.transfer_theory.envelope, FourierGaussian):
+def _pointer_to_vmapped_parameters(particle_metadata):
+    if isinstance(particle_metadata.transfer_theory.envelope, FourierGaussian):
         output = (
-            particle_stack.transfer_theory.ctf.defocus_in_angstroms,
-            particle_stack.transfer_theory.ctf.astigmatism_in_angstroms,
-            particle_stack.transfer_theory.ctf.astigmatism_angle,
-            particle_stack.transfer_theory.ctf.phase_shift,
-            particle_stack.transfer_theory.envelope.b_factor,
-            particle_stack.transfer_theory.envelope.amplitude,
-            particle_stack.pose.offset_x_in_angstroms,
-            particle_stack.pose.offset_y_in_angstroms,
-            particle_stack.pose.view_phi,
-            particle_stack.pose.view_theta,
-            particle_stack.pose.view_psi,
+            particle_metadata.transfer_theory.ctf.defocus_in_angstroms,
+            particle_metadata.transfer_theory.ctf.astigmatism_in_angstroms,
+            particle_metadata.transfer_theory.ctf.astigmatism_angle,
+            particle_metadata.transfer_theory.ctf.phase_shift,
+            particle_metadata.transfer_theory.envelope.b_factor,
+            particle_metadata.transfer_theory.envelope.amplitude,
+            particle_metadata.pose,
         )
     else:
         output = (
-            particle_stack.transfer_theory.ctf.defocus_in_angstroms,
-            particle_stack.transfer_theory.ctf.astigmatism_in_angstroms,
-            particle_stack.transfer_theory.ctf.astigmatism_angle,
-            particle_stack.transfer_theory.ctf.phase_shift,
-            particle_stack.pose.offset_x_in_angstroms,
-            particle_stack.pose.offset_y_in_angstroms,
-            particle_stack.pose.view_phi,
-            particle_stack.pose.view_theta,
-            particle_stack.pose.view_psi,
+            particle_metadata.transfer_theory.ctf.defocus_in_angstroms,
+            particle_metadata.transfer_theory.ctf.astigmatism_in_angstroms,
+            particle_metadata.transfer_theory.ctf.astigmatism_angle,
+            particle_metadata.transfer_theory.ctf.phase_shift,
+            particle_metadata.pose,
         )
     return output
