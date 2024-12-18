@@ -1,4 +1,6 @@
 from ._starfile_reading import (
+    AbstractRelionDataset as AbstractRelionDataset,
+    RelionHelicalMetadataReader as RelionHelicalMetadataReader,
     RelionHelicalParticleReader as RelionHelicalParticleReader,
     RelionParticleMetadata as RelionParticleMetadata,
     RelionParticleMetadataReader as RelionParticleMetadataReader,

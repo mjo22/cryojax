@@ -1,8 +1,10 @@
 """Cryojax compatibility with [RELION](https://relion.readthedocs.io/en/release-5.0/)."""
 
+import abc
 import dataclasses
 import pathlib
 from typing import Any, Callable, final
+from typing_extensions import override
 
 import equinox as eqx
 import equinox.internal as eqxi
@@ -114,13 +116,20 @@ def _default_make_instrument_config_fn(
 
 
 @dataclasses.dataclass(frozen=True)
-class RelionParticleMetadataReader(AbstractDataset):
+class AbstractRelionDataset(metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def data_blocks(self) -> dict[str, pd.DataFrame]:
+        raise NotImplementedError
+
+
+@dataclasses.dataclass(frozen=True)
+class RelionParticleMetadataReader(AbstractRelionDataset):
     """A dataset that wraps a Relion particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
 
     path_to_relion_project: pathlib.Path
-    data_blocks: dict[str, pd.DataFrame]
     make_instrument_config_fn: Callable[
         [tuple[int, int], Float[Array, "..."], Float[Array, "..."]], InstrumentConfig
     ]
@@ -156,13 +165,18 @@ class RelionParticleMetadataReader(AbstractDataset):
         """
         data_blocks = read_and_validate_starfile(path_to_starfile)
         _validate_relion_data_blocks(data_blocks)
-        object.__setattr__(self, "data_blocks", data_blocks)
+        object.__setattr__(self, "_data_blocks", data_blocks)
         object.__setattr__(
             self, "path_to_relion_project", pathlib.Path(path_to_relion_project)
         )
         object.__setattr__(self, "make_instrument_config_fn", make_instrument_config_fn)
         object.__setattr__(self, "get_envelope_function", get_envelope_function)
         object.__setattr__(self, "get_cpu_arrays", get_cpu_arrays)
+
+    @property
+    @override
+    def data_blocks(self) -> dict[str, pd.DataFrame]:
+        return self._data_blocks
 
     @final
     def __getitem__(
@@ -184,7 +198,7 @@ class RelionParticleMetadataReader(AbstractDataset):
         # on which to load arrays
         device = jax.devices("cpu")[0] if self.get_cpu_arrays else None
         # ... load image parameters into cryoJAX objects
-        instrument_config, transfer_theory, pose = _get_starfile_params(
+        instrument_config, transfer_theory, pose = _make_pytrees_from_starfile_metadata(
             particle_blocks,
             optics_group,
             device,
@@ -224,8 +238,9 @@ class RelionParticleStackReader(AbstractDataset):
         object.__setattr__(self, "get_cpu_arrays", get_cpu_arrays)
 
     @property
+    @override
     def data_blocks(self) -> dict[str, pd.DataFrame]:
-        return self.metadata_reader.data_blocks
+        return self.metadata_reader._data_blocks
 
     @final
     def __getitem__(
@@ -244,7 +259,7 @@ class RelionParticleStackReader(AbstractDataset):
             )
         optics_group = self.data_blocks["optics"].iloc[0]
         # First, load image parameters into cryoJAX objects
-        instrument_config, transfer_theory, pose = _get_starfile_params(
+        instrument_config, transfer_theory, pose = _make_pytrees_from_starfile_metadata(
             particle_blocks,
             optics_group,
             jax.devices("cpu")[0] if self.metadata_reader.get_cpu_arrays else None,
@@ -252,7 +267,7 @@ class RelionParticleStackReader(AbstractDataset):
             self.metadata_reader.make_instrument_config_fn,
         )
         # Then, load stack of images
-        image_stack = _get_image_stack(
+        image_stack = _get_image_stack_from_mrc(
             index,
             particle_blocks,
             jax.devices("cpu")[0] if self.get_cpu_arrays else None,
@@ -269,7 +284,45 @@ class RelionParticleStackReader(AbstractDataset):
 
 
 @dataclasses.dataclass(frozen=True)
-class RelionHelicalParticleReader(AbstractDataset):
+class AbstractRelionHelicalDataset(AbstractRelionDataset):
+    n_filaments: eqx.AbstractVar[int]
+    n_filaments_per_micrograph: eqx.AbstractVar[Int[np.ndarray, " n_micrographs"]]
+    micrograph_names: eqx.AbstractVar[list[str]]
+
+    def get_data_blocks_at_filament_index(
+        self, filament_index: int | Int[np.ndarray, ""]
+    ) -> pd.DataFrame:
+        # Map the filament index to a micrograph index
+        last_index_of_filament_per_micrograph = (
+            np.cumsum(self.n_filaments_per_micrograph) - 1
+        )
+        micrograph_index = np.where(
+            last_index_of_filament_per_micrograph >= filament_index
+        )[0].min()
+        # Get the filament index in this particular micrograph
+        filament_index_in_micrograph = (
+            self.n_filaments_per_micrograph[micrograph_index] - 1
+        ) - (last_index_of_filament_per_micrograph[micrograph_index] - filament_index)
+        # .. get the data blocks only at the filament corresponding to the filament index
+        particle_data_blocks = self.data_blocks["particles"]
+        particle_data_blocks_at_micrograph = particle_data_blocks[
+            particle_data_blocks["rlnMicrographName"]
+            == self.micrograph_names[micrograph_index]
+        ]
+        particle_data_blocks_at_filament = particle_data_blocks_at_micrograph[
+            particle_data_blocks_at_micrograph["rlnHelicalTubeID"]
+            == filament_index_in_micrograph + 1
+        ]
+
+        return particle_data_blocks_at_filament
+
+    @final
+    def __len__(self) -> int:
+        return self.n_filaments
+
+
+@dataclasses.dataclass(frozen=True)
+class RelionHelicalParticleReader(AbstractRelionHelicalDataset):
     """A wrapped `RelionParticleStackReader` to read helical tubes.
 
     In particular, a `RelionHelicalParticleReader` indexes one
@@ -291,7 +344,7 @@ class RelionHelicalParticleReader(AbstractDataset):
     does not support fancy indexing.
     """
 
-    reader: RelionParticleMetadataReader | RelionParticleStackReader
+    particle_reader: RelionParticleStackReader
     n_filaments: int
     n_filaments_per_micrograph: Int[np.ndarray, " n_micrographs"]
     micrograph_names: list[str]
@@ -299,89 +352,103 @@ class RelionHelicalParticleReader(AbstractDataset):
     @final
     def __init__(
         self,
-        reader: RelionParticleMetadataReader | RelionParticleStackReader,
+        particle_reader: RelionParticleStackReader,
     ):
         """**Arguments:**
 
-        - `reader`: The wrappped `RelionParticleStackReader` or
-                    `RelionParticleStackReader`. This will be slightly
-                    modified to read one helix at a time, rather than one
-                    image crop at a time.
+        - `reader`: The wrappped `RelionParticleStackReader`.
+                    This will be slightly modified to read one helix
+                    at a time, rather than one image crop at a time.
         """
         # Validate the STAR file and store the reader
-        _validate_helical_relion_data_blocks(reader.data_blocks)
-        object.__setattr__(self, "reader", reader)
+        _validate_helical_relion_data_blocks(particle_reader.data_blocks)
+        object.__setattr__(self, "particle_reader", particle_reader)
         # Compute and store the number of filaments, number of filaments per micrograph
         # and micrograph names
         n_filaments_per_micrograph, micrograph_names = (
             _get_number_of_filaments_per_micrograph_in_helical_data_blocks(
-                reader.data_blocks
+                particle_reader.data_blocks
             )
         )
         object.__setattr__(self, "n_filaments", int(np.sum(n_filaments_per_micrograph)))
         object.__setattr__(self, "n_filaments_per_micrograph", n_filaments_per_micrograph)
         object.__setattr__(self, "micrograph_names", micrograph_names)
 
-    def get_data_blocks_at_filament_index(
-        self, filament_index: int | Int[np.ndarray, ""]
-    ) -> pd.DataFrame:
-        # Map the filament index to a micrograph index
-        last_index_of_filament_per_micrograph = (
-            np.cumsum(self.n_filaments_per_micrograph) - 1
-        )
-        micrograph_index = np.where(
-            last_index_of_filament_per_micrograph >= filament_index
-        )[0].min()
-        # Get the filament index in this particular micrograph
-        filament_index_in_micrograph = (
-            self.n_filaments_per_micrograph[micrograph_index] - 1
-        ) - (last_index_of_filament_per_micrograph[micrograph_index] - filament_index)
-        # .. get the data blocks only at the filament corresponding to the filament index
-        particle_data_blocks = self.reader.data_blocks["particles"]
-        particle_data_blocks_at_micrograph = particle_data_blocks[
-            particle_data_blocks["rlnMicrographName"]
-            == self.micrograph_names[micrograph_index]
-        ]
-        particle_data_blocks_at_filament = particle_data_blocks_at_micrograph[
-            particle_data_blocks_at_micrograph["rlnHelicalTubeID"]
-            == filament_index_in_micrograph + 1
-        ]
-
-        return particle_data_blocks_at_filament
+    @property
+    @override
+    def data_blocks(self) -> dict[str, pd.DataFrame]:
+        return self.particle_reader.metadata_reader._data_blocks
 
     @final
     def __getitem__(
         self, filament_index: int | Int[np.ndarray, ""]
-    ) -> RelionParticleStack | RelionParticleMetadata:
-        if not isinstance(filament_index, (int, np.integer)):  # type: ignore
-            raise IndexError(
-                "When indexing a `RelionHelicalParticleReader`, only "
-                f"python or numpy-like integer particle_index are supported, such as "
-                "`helical_particle_stack = helical_dataset[3]`. "
-                f"Got index {filament_index} of type {type(filament_index)}."
-            )
-        # Make sure the filament index is in-bounds
-        if filament_index + 1 > self.n_filaments:
-            raise IndexError(
-                "The index at which the `RelionHelicalParticleReader` was "
-                f"accessed was out of bounds! The number of filaments in "
-                f"the dataset is {self.n_filaments}, but you tried to "
-                f"access the index {filament_index}."
-            )
+    ) -> RelionParticleStack:
+        _validate_helical_reader_index(type(self), filament_index, self.n_filaments)
         # Get the particle stack particle_index corresponding to this filament
         particle_data_blocks_at_filament = self.get_data_blocks_at_filament_index(
             filament_index
         )
         particle_indices = np.asarray(particle_data_blocks_at_filament.index, dtype=int)
         # Access the particle stack at these particle_index
-        return self.reader[particle_indices]
+        return self.particle_reader[particle_indices]
+
+
+@dataclasses.dataclass(frozen=True)
+class RelionHelicalMetadataReader(AbstractRelionHelicalDataset):
+    """Like a `RelionHelicalParticleReader`, except for STAR file
+    metadata.
+    """
+
+    metadata_reader: RelionParticleMetadataReader
+    n_filaments: int
+    n_filaments_per_micrograph: Int[np.ndarray, " n_micrographs"]
+    micrograph_names: list[str]
 
     @final
-    def __len__(self) -> int:
-        return self.n_filaments
+    def __init__(
+        self,
+        metadata_reader: RelionParticleMetadataReader,
+    ):
+        """**Arguments:**
+
+        - `metadata_reader`: The wrappped `RelionParticleMetadataReader`.
+                             This will be slightly modified to read one helix
+                             at a time, rather than one image crop at a time.
+        """
+        # Validate the STAR file and store the reader
+        _validate_helical_relion_data_blocks(metadata_reader.data_blocks)
+        object.__setattr__(self, "metadata_reader", metadata_reader)
+        # Compute and store the number of filaments, number of filaments per micrograph
+        # and micrograph names
+        n_filaments_per_micrograph, micrograph_names = (
+            _get_number_of_filaments_per_micrograph_in_helical_data_blocks(
+                metadata_reader.data_blocks
+            )
+        )
+        object.__setattr__(self, "n_filaments", int(np.sum(n_filaments_per_micrograph)))
+        object.__setattr__(self, "n_filaments_per_micrograph", n_filaments_per_micrograph)
+        object.__setattr__(self, "micrograph_names", micrograph_names)
+
+    @property
+    @override
+    def data_blocks(self) -> dict[str, pd.DataFrame]:
+        return self.metadata_reader._data_blocks
+
+    @final
+    def __getitem__(
+        self, filament_index: int | Int[np.ndarray, ""]
+    ) -> RelionParticleStack:
+        _validate_helical_reader_index(type(self), filament_index, self.n_filaments)
+        # Get the particle stack particle_index corresponding to this filament
+        particle_data_blocks_at_filament = self.get_data_blocks_at_filament_index(
+            filament_index
+        )
+        particle_indices = np.asarray(particle_data_blocks_at_filament.index, dtype=int)
+        # Access the particle stack at these particle_index
+        return self.metadata_reader[particle_indices]
 
 
-def _get_starfile_params(
+def _make_pytrees_from_starfile_metadata(
     particle_blocks,
     optics_group,
     device,
@@ -415,22 +482,18 @@ def _get_starfile_params(
         jnp.asarray(voltage_in_kilovolts, device=device),
     )
     # ... now the ContrastTransferTheory
-    make_ctf = (
-        lambda defocus, astig, angle, voltage, sph, ac, ps: ContrastTransferFunction(
-            defocus_in_angstroms=defocus,
-            astigmatism_in_angstroms=astig,
-            astigmatism_angle=angle,
-            voltage_in_kilovolts=voltage,
-            spherical_aberration_in_mm=sph,
-            amplitude_contrast_ratio=ac,
-            phase_shift=ps,
-        )
+    make_ctf = lambda defocus, astig, angle, sph, ac, ps: ContrastTransferFunction(
+        defocus_in_angstroms=defocus,
+        astigmatism_in_angstroms=astig,
+        astigmatism_angle=angle,
+        spherical_aberration_in_mm=sph,
+        amplitude_contrast_ratio=ac,
+        phase_shift=ps,
     )
     ctf_params = (
         defocus_in_angstroms,
         astigmatism_in_angstroms,
         astigmatism_angle,
-        voltage_in_kilovolts,
         spherical_aberration_in_mm,
         amplitude_contrast_ratio,
         phase_shift,
@@ -438,7 +501,7 @@ def _get_starfile_params(
     ctf = (
         eqx.filter_vmap(
             make_ctf,
-            in_axes=(0, 0, 0, None, None, None, 0),
+            in_axes=(0, 0, 0, None, None, 0),
             out_axes=eqxi.if_mapped(0),
         )(*ctf_params)
         if defocus_in_angstroms.ndim == 1
@@ -537,7 +600,7 @@ def _get_starfile_params(
     return instrument_config, transfer_theory, pose
 
 
-def _get_image_stack(
+def _get_image_stack_from_mrc(
     index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"],
     particle_blocks,
     device,
@@ -639,6 +702,24 @@ def _validate_reader_index(cls, index, n_rows):
             "For example, like `particle = particle_reader[0]`, "
             "`particle = particle_reader[0:5]`, "
             "or `particle_stack = dataset[np.array([1, 4, 3, 2])]`."
+        )
+
+
+def _validate_helical_reader_index(cls, filament_index, n_filaments):
+    if not isinstance(filament_index, (int, np.integer)):  # type: ignore
+        raise IndexError(
+            f"When indexing a `{cls.__name__}`, only "
+            f"python or numpy-like integer particle_index are supported, such as "
+            "`helical_particle_stack = helical_dataset[3]`. "
+            f"Got index {filament_index} of type {type(filament_index)}."
+        )
+    # Make sure the filament index is in-bounds
+    if filament_index + 1 > n_filaments:
+        raise IndexError(
+            f"The index at which the `{cls.__name__}` was "
+            f"accessed was out of bounds! The number of filaments in "
+            f"the dataset is {n_filaments}, but you tried to "
+            f"access the index {filament_index}."
         )
 
 

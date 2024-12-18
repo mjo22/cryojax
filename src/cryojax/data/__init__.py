@@ -3,6 +3,8 @@ from ._particle_stack import (
     AbstractParticleStack as AbstractParticleStack,
 )
 from ._relion import (
+    AbstractRelionDataset as AbstractRelionDataset,
+    RelionHelicalMetadataReader as RelionHelicalMetadataReader,
     RelionHelicalParticleReader as RelionHelicalParticleReader,
     RelionParticleMetadata as RelionParticleMetadata,
     RelionParticleMetadataReader as RelionParticleMetadataReader,
