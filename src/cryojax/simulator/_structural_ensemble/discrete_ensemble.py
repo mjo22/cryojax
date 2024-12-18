@@ -49,7 +49,7 @@ class DiscreteStructuralEnsemble(AbstractStructuralEnsemble, strict=True):
         self.conformation = conformation or DiscreteConformationalVariable(0)
 
     @override
-    def get_potential_at_conformation(self) -> AbstractPotentialRepresentation:
+    def get_potential_in_body_frame(self) -> AbstractPotentialRepresentation:
         """Get the scattering potential at configured conformation."""
         funcs = [
             lambda i=i: self.conformational_space[i]

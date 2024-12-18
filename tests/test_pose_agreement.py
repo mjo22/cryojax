@@ -18,7 +18,7 @@ def test_default_pose_arguments():
 
 def test_translation_agreement():
     rotation = SO3(jnp.asarray((1.0, 0.0, 0.0, 0.0)))
-    offset = jnp.asarray((0.0, -1.4, 4.5))
+    offset = jnp.asarray((0.0, -1.4))
     quat = cs.QuaternionPose.from_rotation_and_translation(rotation, offset)
     axis_angle = cs.AxisAnglePose.from_rotation_and_translation(rotation, offset)
     np.testing.assert_allclose(quat.rotation.as_matrix(), axis_angle.rotation.as_matrix())

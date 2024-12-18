@@ -16,7 +16,7 @@ def build_helix(sample_subunit_mrc_path, n_subunits_per_start) -> cs.HelicalAsse
     subunit_density = cs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size, pad_scale=2
     )
-    r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
+    r_0 = jnp.asarray([-88.70895129, 9.75357114], dtype=float)
     subunit_pose = cs.EulerAnglePose(*r_0)
     subunit = cs.SingleStructureEnsemble(subunit_density, subunit_pose)
     return cs.HelicalAssembly(
@@ -40,7 +40,7 @@ def build_helix_with_conformation(
         ]
     )
     n_start = 6
-    r_0 = jnp.asarray([-88.70895129, 9.75357114, 0.0], dtype=float)
+    r_0 = jnp.asarray([-88.70895129, 9.75357114], dtype=float)
     subunit_pose = cs.EulerAnglePose(*r_0)
     subunit = cs.DiscreteStructuralEnsemble(
         subunit_density,
@@ -169,7 +169,7 @@ def test_agree_with_3j9g_assembly(
         )
         return normalize_image(pipeline.render())
 
-    pose = cs.EulerAnglePose(*translation, 0.0, *euler_angles)
+    pose = cs.EulerAnglePose(*translation, *euler_angles)
     reference_image = compute_rotated_image_with_3j9g(
         pipeline_for_3j9g, cs.EulerAnglePose()
     )
