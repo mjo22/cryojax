@@ -1,11 +1,11 @@
 from ._starfile_reading import (
     AbstractRelionDataset as AbstractRelionDataset,
-    RelionHelicalMetadataReader as RelionHelicalMetadataReader,
-    RelionHelicalParticleReader as RelionHelicalParticleReader,
+    RelionHelicalDataset as RelionHelicalDataset,
+    RelionHelicalMetadata as RelionHelicalMetadata,
+    RelionParticleDataset as RelionParticleDataset,
     RelionParticleMetadata as RelionParticleMetadata,
-    RelionParticleMetadataReader as RelionParticleMetadataReader,
+    RelionParticleParameters as RelionParticleParameters,
     RelionParticleStack as RelionParticleStack,
-    RelionParticleStackReader as RelionParticleStackReader,
 )
 from ._starfile_writing import (
     write_simulated_image_stack_from_starfile as write_simulated_image_stack_from_starfile,  # noqa: E501
