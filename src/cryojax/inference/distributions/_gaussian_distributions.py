@@ -12,7 +12,7 @@ from equinox import AbstractVar, field
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..._errors import error_if_not_positive
-from ...image import normalize_image, rfftn
+from ...image import rfftn
 from ...image.operators import Constant, FourierOperatorLike
 from ...simulator import AbstractImagingPipeline
 from ._base_distribution import AbstractDistribution
@@ -68,23 +68,26 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
     ):
         """Render the image formation model."""
         if self.is_signal_normalized:
-            simulated_image = self.imaging_pipeline.render(get_real=True)
-            where = (
-                None
-                if self.imaging_pipeline.mask is None
-                else self.imaging_pipeline.mask.array == 1.0
+            simulated_image = self.imaging_pipeline.render(
+                get_real=True, get_masked=False
             )
-            normalized_simulated_image = normalize_image(simulated_image, where=where)
-            return (
-                self.signal_scale_factor * normalized_simulated_image
-                if get_real
-                else self.signal_scale_factor * rfftn(normalized_simulated_image)
-            )
+            if self.imaging_pipeline.mask is None:
+                mean, std = jnp.mean(simulated_image), jnp.std(simulated_image)
+                simulated_image = (simulated_image - mean) / std
+            else:
+                is_signal = self.imaging_pipeline.mask.array == 1.0
+                mean, std = (
+                    jnp.mean(simulated_image, where=is_signal),
+                    jnp.std(simulated_image, where=is_signal),
+                )
+                simulated_image = self.imaging_pipeline.mask(
+                    self.signal_scale_factor * (simulated_image - mean) / std
+                )
+            return simulated_image if get_real else rfftn(simulated_image)
         else:
-            real_or_fourier_simulated_image = self.imaging_pipeline.render(
+            return self.signal_scale_factor * self.imaging_pipeline.render(
                 get_real=get_real
             )
-            return self.signal_scale_factor * real_or_fourier_simulated_image
 
     @abstractmethod
     def compute_noise(

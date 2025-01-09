@@ -15,7 +15,7 @@ def test_real_shape(model, request):
     """Make sure shapes are as expected in real space."""
     model = request.getfixturevalue(model)
     image = model.render()
-    padded_image = model.render(postprocess=False)
+    padded_image = model.render(get_cropped=False)
     assert image.shape == model.instrument_config.shape
     assert padded_image.shape == model.instrument_config.padded_shape
 
@@ -25,7 +25,7 @@ def test_fourier_shape(model, request):
     """Make sure shapes are as expected in fourier space."""
     model = request.getfixturevalue(model)
     image = model.render(get_real=False)
-    padded_image = model.render(postprocess=False, get_real=False)
+    padded_image = model.render(get_cropped=False, get_real=False)
     assert image.shape == model.instrument_config.frequency_grid_in_pixels.shape[0:2]
     assert (
         padded_image.shape
