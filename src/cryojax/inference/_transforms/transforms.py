@@ -101,19 +101,23 @@ class RescalingTransform(AbstractParameterTransform, strict=True):
     ):
         """**Arguments:**
 
-        - `parameter`: The parameter to be rescaled.
-        - `scaling`: The scale factor.
-        - `shift`: The shift.
+        - `parameter`:
+            The parameter to be rescaled.
+        - `scaling`:
+            The scale factor. This should have the same units of `parameter`.
+        - `shift`:
+            The shift. This should have the same units of the
+            `transformed_parameter`.
         """
         self.scaling = jnp.asarray(scaling)
         self.shift = jnp.asarray(shift)
-        self.transformed_parameter = self.scaling * jnp.asarray(parameter) + self.shift
+        self.transformed_parameter = jnp.asarray(parameter) / self.scaling + self.shift
 
     def get(self) -> Array:
         """The rescaled parameter transformed back to the original scale."""
         return (
             self.transformed_parameter - jax.lax.stop_gradient(self.shift)
-        ) / jax.lax.stop_gradient(self.scaling)
+        ) * jax.lax.stop_gradient(self.scaling)
 
 
 class ComposedTransform(AbstractParameterTransform, strict=True):
