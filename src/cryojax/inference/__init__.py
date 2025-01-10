@@ -17,7 +17,7 @@ from ._transforms import (
     AbstractParameterTransform as AbstractParameterTransform,
     apply_updates_with_lie_transform as apply_updates_with_lie_transform,
     ComposedTransform as ComposedTransform,
-    ExpTransform as ExpTransform,
+    LogTransform as LogTransform,
     RescalingTransform as RescalingTransform,
     resolve_transforms as resolve_transforms,
     SE3Transform as SE3Transform,

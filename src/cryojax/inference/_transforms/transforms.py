@@ -58,7 +58,7 @@ class AbstractParameterTransform(Module, strict=True):
         raise NotImplementedError
 
 
-class ExpTransform(AbstractParameterTransform, strict=True):
+class LogTransform(AbstractParameterTransform, strict=True):
     """This class transforms a parameter to its logarithm.
 
     **Attributes:**

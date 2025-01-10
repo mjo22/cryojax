@@ -7,7 +7,7 @@ from .lie_group_transforms import (
 from .transforms import (
     AbstractParameterTransform as AbstractParameterTransform,
     ComposedTransform as ComposedTransform,
-    ExpTransform as ExpTransform,
+    LogTransform as LogTransform,
     RescalingTransform as RescalingTransform,
     resolve_transforms as resolve_transforms,
 )
