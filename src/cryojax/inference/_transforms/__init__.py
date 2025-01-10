@@ -5,8 +5,9 @@ from .lie_group_transforms import (
     SO3Transform as SO3Transform,
 )
 from .transforms import (
-    AbstractParameterTransform as AbstractParameterTransform,
+    AbstractPyTreeTransform as AbstractPyTreeTransform,
     ComposedTransform as ComposedTransform,
+    CustomTransform as CustomTransform,
     LogTransform as LogTransform,
     RescalingTransform as RescalingTransform,
     resolve_transforms as resolve_transforms,

@@ -14,9 +14,10 @@ from ._grid_search import (
 )
 from ._transforms import (
     AbstractLieGroupTransform as AbstractLieGroupTransform,
-    AbstractParameterTransform as AbstractParameterTransform,
+    AbstractPyTreeTransform as AbstractPyTreeTransform,
     apply_updates_with_lie_transform as apply_updates_with_lie_transform,
     ComposedTransform as ComposedTransform,
+    CustomTransform as CustomTransform,
     LogTransform as LogTransform,
     RescalingTransform as RescalingTransform,
     resolve_transforms as resolve_transforms,
