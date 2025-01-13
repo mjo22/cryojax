@@ -6,9 +6,7 @@ from .lie_group_transforms import (
 )
 from .transforms import (
     AbstractPyTreeTransform as AbstractPyTreeTransform,
-    ComposedTransform as ComposedTransform,
     CustomTransform as CustomTransform,
-    LogTransform as LogTransform,
-    RescalingTransform as RescalingTransform,
     resolve_transforms as resolve_transforms,
+    StopGradientTransform as StopGradientTransform,
 )

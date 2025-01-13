@@ -3,7 +3,6 @@ Transformations used for reparameterizing cryojax models.
 """
 
 from abc import abstractmethod
-from types import FunctionType
 from typing import Any, Callable, Generic, TypeVar
 from typing_extensions import override
 
@@ -69,8 +68,8 @@ class AbstractPyTreeTransform(Module, Generic[T], strict=True):
 class CustomTransform(AbstractPyTreeTransform[T], strict=True):
     """This class transforms a pytree of arrays using a custom callable."""
 
-    func_dynamic: Callable[..., T]
-    func_static: Callable[..., T] = field(static=True)
+    func_dynamic: PyTree
+    func_static: PyTree = field(static=True)
     args: tuple[Any, ...]
     kwargs: dict[str, Any]
 
@@ -91,22 +90,13 @@ class CustomTransform(AbstractPyTreeTransform[T], strict=True):
         - `kwargs`:
             Keyword arguments to be passed to `fn` at runtime.
         """
-        if isinstance(func, FunctionType):
-            func = _Func(func)
-        elif not isinstance(func, Callable):
+        if not isinstance(func, Callable):
             raise ValueError(
                 "Argument `func` must be type `Callable`. If `func` "
-                "is an `equinox.Module`, it must have a `__call__` method."
+                "is an `equinox.Module` or another pytree, it must have "
+                "a `__call__` method."
             )
-        elif not isinstance(func, PyTree):
-            raise ValueError(
-                "If argument `func` is not a function, it must be a pytree "
-                "with a `__call__` method. For example, this can be achieved"
-                " with an `equinox.Module`"
-            )
-        func_dynamic, func_static = eqx.partition(func, eqx.is_array)
-        self.func_dynamic = func_dynamic
-        self.func_static = func_static
+        self.func_dynamic, self.func_static = eqx.partition(func, eqx.is_array)
         self.args = tuple(args)
         self.kwargs = kwargs
 
@@ -128,9 +118,9 @@ class StopGradientTransform(AbstractPyTreeTransform[T]):
     pytree_static: T = field(static=True)
 
     def __init__(self, pytree: T):
-        differentiable, static = eqx.partition(pytree, eqx.is_array)
-        self.pytree_differentiable = differentiable
-        self.pytree_static = static
+        self.pytree_differentiable, self.pytree_static = eqx.partition(
+            pytree, eqx.is_array
+        )
 
     @property
     @override
@@ -138,10 +128,3 @@ class StopGradientTransform(AbstractPyTreeTransform[T]):
         return eqx.combine(
             jax.lax.stop_gradient(self.pytree_differentiable), self.pytree_static
         )
-
-
-class _Func(eqx.Module):
-    _func: FunctionType = field(static=True)
-
-    def __call__(self, *args, **kwargs):
-        return self._func(*args, **kwargs)
