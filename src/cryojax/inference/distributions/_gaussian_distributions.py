@@ -11,9 +11,9 @@ import jax.random as jr
 from equinox import AbstractVar, field
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
-from ..._errors import error_if_not_positive
 from ...image import rfftn
 from ...image.operators import Constant, FourierOperatorLike
+from ...internal import error_if_not_positive
 from ...simulator import AbstractImagingPipeline
 from ._base_distribution import AbstractDistribution
 

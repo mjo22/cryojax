@@ -10,9 +10,9 @@ import pandas as pd
 import starfile
 from jaxtyping import Array, Float, PRNGKeyArray
 
-from ..._filter_specs import get_filter_spec
 from ...image.operators import Constant, FourierGaussian
 from ...io import write_image_stack_to_mrc
+from ...utils import get_filter_spec
 from ._starfile_reading import RelionParticleMetadata, RelionParticleParameters
 
 

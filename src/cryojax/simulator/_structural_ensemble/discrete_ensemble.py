@@ -9,7 +9,7 @@ import jax
 from equinox import field
 from jaxtyping import Array, Int
 
-from ..._errors import error_if_negative
+from ...internal import error_if_negative
 from .._pose import AbstractPose, EulerAnglePose
 from .._potential_representation import AbstractPotentialRepresentation
 from .base_conformation import AbstractConformationalVariable

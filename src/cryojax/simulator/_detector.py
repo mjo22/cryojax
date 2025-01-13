@@ -12,9 +12,9 @@ import numpy as np
 from equinox import AbstractVar, field, Module
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
-from .._errors import error_if_not_fractional
 from ..image import irfftn, rfftn
 from ..image.operators import AbstractFourierOperator
+from ..internal import error_if_not_fractional
 from ._instrument_config import InstrumentConfig
 
 

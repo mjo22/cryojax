@@ -13,7 +13,6 @@ import numpy as np
 from equinox import AbstractClassVar, AbstractVar, field
 from jaxtyping import Array, Complex, Float
 
-from ..._errors import error_if_not_positive
 from ...coordinates import make_coordinate_grid, make_frequency_slice
 from ...image import (
     compute_spline_coefficients,
@@ -22,6 +21,7 @@ from ...image import (
     pad_to_shape,
 )
 from ...image.operators import AbstractFilter
+from ...internal import error_if_not_positive
 from .._pose import AbstractPose
 from .base_potential import AbstractPotentialRepresentation
 
