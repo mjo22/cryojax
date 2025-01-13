@@ -10,7 +10,6 @@ import jax.numpy as jnp
 from equinox import Module
 from jaxtyping import Array, Float, Inexact
 
-from .._errors import error_if_not_positive
 from ..constants import convert_keV_to_angstroms
 from ..coordinates import make_coordinate_grid, make_frequency_grid
 from ..image import (
@@ -18,6 +17,7 @@ from ..image import (
     pad_to_shape,
     resize_with_crop_or_pad,
 )
+from ..internal import error_if_not_positive
 
 
 class InstrumentConfig(Module, strict=True):

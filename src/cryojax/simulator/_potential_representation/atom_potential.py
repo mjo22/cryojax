@@ -14,12 +14,12 @@ import jax.tree_util as jtu
 import numpy as np
 from jaxtyping import Array, Float, Int, PyTree
 
-from ..._errors import error_if_negative, error_if_not_positive
 from ...constants import (
     get_tabulated_scattering_factor_parameters,
     peng_element_scattering_factor_parameter_table,
 )
 from ...coordinates import make_1d_coordinate_grid
+from ...internal import error_if_negative, error_if_not_positive
 from .._pose import AbstractPose
 from .base_potential import AbstractPotentialRepresentation
 

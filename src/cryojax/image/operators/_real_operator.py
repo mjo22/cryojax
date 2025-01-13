@@ -10,7 +10,7 @@ import jax.numpy as jnp
 from equinox import field
 from jaxtyping import Array, Float
 
-from ..._errors import error_if_not_positive
+from ...internal import error_if_not_positive
 from ._operator import AbstractImageOperator
 
 

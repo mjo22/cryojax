@@ -8,6 +8,9 @@ transformations, using `equinox`. The `jaxlie.manifold.grad` and
 wrappers for gradient transformations.
 """
 
+from typing import Generic, TypeVar
+from typing_extensions import override
+
 import equinox as eqx
 import jax
 import jax.numpy as jnp
@@ -15,9 +18,12 @@ import jax.tree_util as jtu
 from equinox import AbstractVar
 from jaxtyping import Array, Float, PyTree
 
-from ...rotations import AbstractMatrixLieGroup, SE3, SO3
-from ...simulator import QuaternionPose
-from .transforms import AbstractPyTreeTransform
+from ..rotations import AbstractMatrixLieGroup, SE3, SO3
+from ..simulator import QuaternionPose
+from ..utils import AbstractPyTreeTransform
+
+
+T = TypeVar("T")
 
 
 def _apply_update_with_lie_transform(u, p):
@@ -25,7 +31,7 @@ def _apply_update_with_lie_transform(u, p):
         return p
     elif isinstance(u, AbstractLieGroupTransform):
         lie_group = type(u.group_element)
-        local_tangent = u.transformed_pytree
+        local_tangent = u.local_tangent
         return eqx.tree_at(
             lambda p: p.group_element,
             p,
@@ -53,13 +59,14 @@ def apply_updates_with_lie_transform(model: PyTree, updates: PyTree) -> PyTree:
     )
 
 
-class AbstractLieGroupTransform(AbstractPyTreeTransform, strict=True):
+class AbstractLieGroupTransform(AbstractPyTreeTransform[T], Generic[T], strict=True):
     """An abstract base class for lie group transforms."""
 
+    local_tangent: AbstractVar[Array]
     group_element: AbstractVar[AbstractMatrixLieGroup]
 
 
-class SO3Transform(AbstractLieGroupTransform, strict=True):
+class SO3Transform(AbstractLieGroupTransform[Float[Array, "4"]], strict=True):
     """This class transforms a quaternion to the local
     tangent space of the corresponding SO3 element.
 
@@ -67,11 +74,11 @@ class SO3Transform(AbstractLieGroupTransform, strict=True):
 
     **Attributes:**
 
-    - `transformed_pytree`: The local tangent vector.
+    - `local_tangent`: The local tangent vector.
     - `group_element`: The element of SO3.
     """
 
-    transformed_pytree: Float[Array, "3"]
+    local_tangent: Float[Array, "3"]
     group_element: SO3
 
     def __init__(self, wxyz: Float[Array, "4"]):
@@ -80,17 +87,19 @@ class SO3Transform(AbstractLieGroupTransform, strict=True):
         - `wxyz`: A quaternion that parameterizes the SO3
                   group element.
         """
-        local_tangent = jnp.zeros(3, dtype=float)
-        self.transformed_pytree = local_tangent
+        self.local_tangent = jnp.zeros(3, dtype=float)
         self.group_element = SO3(wxyz).normalize()
 
-    def get(self) -> Float[Array, "4"]:
+    @property
+    @override
+    def value(self) -> Float[Array, "4"]:
         """An implementation of the `jaxlie.manifold.rplus`."""
-        local_tangent = self.transformed_pytree
-        return (jax.lax.stop_gradient(self.group_element) @ SO3.exp(local_tangent)).wxyz
+        return (
+            jax.lax.stop_gradient(self.group_element) @ SO3.exp(self.local_tangent)
+        ).wxyz
 
 
-class SE3Transform(AbstractLieGroupTransform, strict=True):
+class SE3Transform(AbstractLieGroupTransform[QuaternionPose], strict=True):
     """This class transforms a `QuaternionPose` to the local
     tangent space of the corresponding SE3 element.
 
@@ -98,11 +107,11 @@ class SE3Transform(AbstractLieGroupTransform, strict=True):
 
     **Attributes:**
 
-    - `transformed_pytree`: The local tangent vector.
+    - `local_tangent`: The local tangent vector.
     - `group_element`: The element of SE3.
     """
 
-    transformed_pytree: Float[Array, "6"]
+    local_tangent: Float[Array, "6"]
     group_element: SE3
 
     def __init__(self, quaternion_pose: QuaternionPose):
@@ -111,17 +120,19 @@ class SE3Transform(AbstractLieGroupTransform, strict=True):
         - `quaternion_pose`: A quaternion pose representation that parameterizes
                              the SE3 group element.
         """
-        local_tangent = jnp.zeros(6, dtype=float)
-        self.transformed_pytree = local_tangent
+        self.local_tangent = jnp.zeros(6, dtype=float)
         self.group_element = SE3(
             rotation=quaternion_pose.rotation,
             xyz=quaternion_pose.offset_in_angstroms,
         )
 
-    def get(self) -> Float[Array, "6"]:
+    @property
+    @override
+    def value(self) -> QuaternionPose:
         """An implementation of the `jaxlie.manifold.rplus`."""
-        local_tangent = self.transformed_pytree
-        group_element = jax.lax.stop_gradient(self.group_element) @ SE3.exp(local_tangent)
+        group_element = jax.lax.stop_gradient(self.group_element) @ SE3.exp(
+            self.local_tangent
+        )
         return QuaternionPose.from_rotation_and_translation(
             group_element.rotation, group_element.xyz
         )

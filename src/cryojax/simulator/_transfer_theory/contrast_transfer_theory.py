@@ -4,12 +4,12 @@ from typing_extensions import override
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
-from ..._errors import error_if_negative, error_if_not_fractional
 from ...constants import convert_keV_to_angstroms
 from ...image.operators import (
     Constant,
     FourierOperatorLike,
 )
+from ...internal import error_if_negative, error_if_not_fractional
 from .._instrument_config import InstrumentConfig
 from .base_transfer_theory import AbstractTransferFunction, AbstractTransferTheory
 from .common_functions import compute_phase_shifts_with_amplitude_contrast_ratio
