@@ -3,38 +3,47 @@ Transformations used for reparameterizing cryojax models.
 """
 
 from abc import abstractmethod
-from typing import Any, Callable, Sequence
+from types import FunctionType
+from typing import Any, Callable, Generic, TypeVar
+from typing_extensions import override
 
 import equinox as eqx
 import jax
-import jax.numpy as jnp
-import jax.tree_util as jtu
-from equinox import AbstractVar, field, Module
-from jaxtyping import Array, PyTree
-
-from ..._errors import error_if_not_positive
+from equinox import field, Module
+from jaxtyping import PyTree
 
 
-def _is_transformed(x: Any) -> bool:
-    return isinstance(x, AbstractPyTreeTransform)
+T = TypeVar("T")
 
 
-def _resolve_transform(x: Any) -> Any:
-    if isinstance(x, AbstractPyTreeTransform):
-        return x.get()
-    else:
-        return x
+def _resolve_transforms(pytree, resolve_self: bool):
+    def f(leaf):
+        if isinstance(leaf, AbstractPyTreeTransform):
+            return _resolve_transforms(leaf, resolve_self=False).value
+        else:
+            return leaf
+
+    def is_leaf(x):
+        is_transform = isinstance(x, AbstractPyTreeTransform)
+        return is_transform and (resolve_self or x is not pytree)
+
+    return jax.tree.map(f, pytree, is_leaf=is_leaf)
 
 
-def resolve_transforms(pytree: PyTree) -> PyTree:
+def resolve_transforms(pytree: T) -> T:
     """Transforms a pytree whose parameters have entries
     that are `AbstractParameterTransform`s back to its
     original parameter space.
+
+    If `AbstractParameterTransform`s are nested, the innermost
+    nodes are unwrapped first. This function is based on the implementation
+    in the package `paramax`.
     """
-    return jtu.tree_map(_resolve_transform, pytree, is_leaf=_is_transformed)
+
+    return _resolve_transforms(pytree, resolve_self=True)
 
 
-class AbstractPyTreeTransform(Module, strict=True):
+class AbstractPyTreeTransform(Module, Generic[T], strict=True):
     """Base class for a parameter transformation.
 
     This interface tries to implement a user-friendly way to get custom
@@ -45,162 +54,94 @@ class AbstractPyTreeTransform(Module, strict=True):
     parameter constraints, however it can be used generally.
 
     This is a very simple class. When the class is initialized,
-    a parameter is taken to a transformed parameter space. When
-    `transform.get()` is called, the parameter is taken back to
+    class fields are stored a transformed parameter space. When
+    `transform.value` is called, the fields are taken back to
     the original parameter space.
     """
 
-    transformed_pytree: AbstractVar[PyTree[Array]]
-
+    @property
     @abstractmethod
-    def get(self) -> Any:
-        """Get the parameter in the original parameter space."""
+    def value(self) -> T:
+        """Get the value of the transform."""
         raise NotImplementedError
 
 
-class CustomTransform(AbstractPyTreeTransform, strict=True):
-    """This class transforms a pytree of arrays using a custom callable.
+class CustomTransform(AbstractPyTreeTransform[T], strict=True):
+    """This class transforms a pytree of arrays using a custom callable."""
 
-    **Attributes:**
-
-    - `transformed_pytree`: The transformed pytree of arrays.
-    """
-
-    transformed_pytree: PyTree[Array]
-    fn: Callable[..., Array] = field(static=True)
-    args: tuple[Any, ...] = field(static=True)
-    kwargs: dict[str, Any] = field(static=True)
+    func_dynamic: Callable[..., T]
+    func_static: Callable[..., T] = field(static=True)
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
 
     def __init__(
         self,
-        fn: Callable[..., Array],
-        transformed_pytree: PyTree[Array],
+        func: Callable[..., T],
         *args: Any,
         **kwargs: Any,
     ):
         """**Arguments:**
 
-        - `fn`:
-            The function to apply to each pytree leaf of `transformed_pytree`.
-            This should be of format `fn(leaf, *args, **kwargs)`.
-        - `transformed_pytree`:
-            The pytree of arrays, already in the transformed space.
+        - `func`:
+            A callable of format `func(*args, **kwargs)`. This may be a
+            regular function or an pytree with a `__call__` method, such
+            as an `equinox.Module`.
+        - `args`:
+            Arguments to be passed to `fn` at runtime.
+        - `kwargs`:
+            Keyword arguments to be passed to `fn` at runtime.
         """
-        self.fn = fn
-        self.args = args
+        if isinstance(func, FunctionType):
+            func = _Func(func)
+        elif not isinstance(func, Callable):
+            raise ValueError(
+                "Argument `func` must be type `Callable`. If `func` "
+                "is an `equinox.Module`, it must have a `__call__` method."
+            )
+        elif not isinstance(func, PyTree):
+            raise ValueError(
+                "If argument `func` is not a function, it must be a pytree "
+                "with a `__call__` method. For example, this can be achieved"
+                " with an `equinox.Module`"
+            )
+        func_dynamic, func_static = eqx.partition(func, eqx.is_array)
+        self.func_dynamic = func_dynamic
+        self.func_static = func_static
+        self.args = tuple(args)
         self.kwargs = kwargs
-        self.transformed_pytree = transformed_pytree
 
-    def get(self) -> PyTree[Array]:
-        """The pytree transformed with the custom function `fn`."""
-        return jax.tree.map(
-            lambda leaf: self.fn(leaf, *self.args, **self.kwargs), self.transformed_pytree
-        )
+    @property
+    @override
+    def value(self) -> T:
+        """The pytree transformed with the custom function `func`."""
+        func = eqx.combine(self.func_dynamic, self.func_static)
+        return func(*self.args, **self.kwargs)
 
 
-class LogTransform(AbstractPyTreeTransform, strict=True):
-    """This class transforms a pytree of arrays to their logarithm.
+class StopGradientTransform(AbstractPyTreeTransform[T]):
+    """Applies stop gradient to all JAX arrays.
 
-    **Attributes:**
-
-    - `transformed_pytree`: The pytree of parameters on a logarithmic scale.
+    Based on `NonTrainable` from the package `paramax`.
     """
 
-    transformed_pytree: PyTree[Array]
+    pytree_differentiable: T
+    pytree_static: T = field(static=True)
 
-    def __init__(self, pytree: PyTree[Array]):
-        """**Arguments:**
+    def __init__(self, pytree: T):
+        differentiable, static = eqx.partition(pytree, eqx.is_array)
+        self.pytree_differentiable = differentiable
+        self.pytree_static = static
 
-        - `pytree`: The pytree of arrays to be transformed to a logarithmic
-                    scale.
-        """
-        self.transformed_pytree = jax.tree.map(
-            lambda array: jnp.log(error_if_not_positive(array)), pytree
-        )
-
-    def get(self) -> PyTree[Array]:
-        """The logarithmic-valued pytree of arrays transformed with an exponential."""
-        return jax.tree.map(lambda array: jnp.exp(array), self.transformed_pytree)
-
-
-class RescalingTransform(AbstractPyTreeTransform, strict=True):
-    """This class transforms a pytree of arrays by a scale factor and a shift.
-
-    **Attributes:**
-
-    - `transformed_pytree`: The rescaled pytree of arrays.
-    """
-
-    transformed_pytree: PyTree[Array]
-    scaling: float = field(static=True)
-    shift: float = field(static=True)
-
-    def __init__(
-        self,
-        pytree: PyTree[Array],
-        scaling: float,
-        shift: float = 0.0,
-    ):
-        """**Arguments:**
-
-        - `pytree`:
-            The pytree of arrays to be rescaled.
-        - `scaling`:
-            The scale factor. This should have the same units of the arrays in `pytree`.
-        - `shift`:
-            The shift. This should have the same units of the
-            arrays in `transformed_pytree`.
-        """
-        self.scaling = scaling
-        self.shift = shift
-        self.transformed_pytree = jax.tree.map(
-            lambda array: jnp.asarray(array) / self.scaling + self.shift, pytree
-        )
-
-    def get(self) -> PyTree[Array]:
-        """The pytree of arrays transformed back to the original scale."""
-        return jax.tree.map(
-            lambda array: (array - self.shift) * self.scaling, self.transformed_pytree
+    @property
+    @override
+    def value(self) -> T:
+        return eqx.combine(
+            jax.lax.stop_gradient(self.pytree_differentiable), self.pytree_static
         )
 
 
-class ComposedTransform(AbstractPyTreeTransform, strict=True):
-    """This class composes multiple `AbstractPyTreeTransforms`.
+class _Func(eqx.Module):
+    _func: FunctionType = field(static=True)
 
-    **Attributes:**
-
-    - `transformed_pytree`: The transformed pytree of arrays.
-    - `transforms`: The sequence of `AbstractPyTreeTransform`s.
-    """
-
-    transformed_pytree: Any
-    transforms: tuple[AbstractPyTreeTransform, ...]
-
-    def __init__(
-        self,
-        pytree: Any,
-        transform_fns: Sequence[Callable[[Any], "AbstractPyTreeTransform"]],
-    ):
-        """**Arguments:**
-
-        - `pytrees`: The pytree of arrays to be transformed.
-        - `transform_fns`: A sequence of functions that take in
-                           a pytree and return an `AbstractPyTreeTransform`.
-        """
-        p = jnp.asarray(pytree)
-        transforms = []
-        for transform_fn in transform_fns:
-            transform = transform_fn(p)
-            p = transform.transformed_pytree
-            transforms.append(transform)
-        self.transformed_pytree = p
-        self.transforms = tuple(transforms)
-
-    def get(self) -> Any:
-        """Transform the `transformed_pytree` back to the original space."""
-        p = self.transformed_pytree
-        transforms = jax.lax.stop_gradient(self.transforms)
-        for transform in transforms[::-1]:
-            transform = eqx.tree_at(lambda t: t.transformed_pytree, transform, p)
-            p = transform.get()
-        return p
+    def __call__(self, *args, **kwargs):
+        return self._func(*args, **kwargs)
