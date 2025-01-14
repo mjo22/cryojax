@@ -588,12 +588,16 @@ def _make_relion_ctf(defocus, astig, angle, sph, ac, ps):
             amplitude_contrast_ratio=ac,
             phase_shift=ps,
         )
-        relion_filter_spec = get_filter_spec(
-            lambda x: (x.spherical_aberration_in_mm, x.amplitude_contrast_ratio),
+        ctf_filter_spec = get_filter_spec(
             ctf,
-            inverse=True,
+            lambda x: (
+                x.defocus_in_angstroms,
+                x.astigmatism_in_angstroms,
+                x.astigmatism_angle,
+                x.phase_shift,
+            ),
         )
-        return eqx.partition(ctf, relion_filter_spec)
+        return eqx.partition(ctf, ctf_filter_spec)
 
     return (
         ContrastTransferFunction(defocus, astig, angle, sph, ac, ps)
