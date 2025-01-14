@@ -100,6 +100,9 @@ nav:
         - cryojax.rotations:
             - 'api/rotations/lie_groups.md'
             - 'api/rotations/conversions.md'
+        - cryojax.constants:
+            - 'api/constants/units.md'
+            - 'api/constants/scattering_factor_parameters.md'
         - cryojax.utils:
             - 'api/utils/filter_specs.md'
             - 'api/utils/transforms.md'
