@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.47">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
     
     
       
@@ -405,7 +405,7 @@
         
   
   <span class="md-ellipsis">
-    Simulate a superposition of images
+    Simulate a superposition of images with vmap
   </span>
   
 
@@ -998,12 +998,12 @@ the <code>gaussian_amplitudes</code> and <span class="arithmatex">\(b_i\)</span>
 <p class="admonition-title">Info</p>
 <p>In order to load a <code>GaussianMixtureAtomicPotential</code> from tabulated
 scattering factors, use the <code>cryojax.constants</code> submodule.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">cryojax.constants</span> <span class="kn">import</span> <span class="p">(</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">peng_element_scattering_factor_parameter_table</span><span class="p">,</span>
     <span class="n">get_tabulated_scattering_factor_parameters</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span> <span class="nn">cryojax.io</span> <span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
-<span class="kn">from</span> <span class="nn">cryojax.simulator</span> <span class="kn">import</span> <span class="n">GaussianMixtureAtomicPotential</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMixtureAtomicPotential</span>
 
 <span class="c1"># Load positions of atoms and one-hot encoded atom names</span>
 <span class="n">atom_positions</span><span class="p">,</span> <span class="n">atom_identities</span> <span class="o">=</span> <span class="n">read_atoms_from_pdb</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
@@ -1147,8 +1147,8 @@ and voxel size <code>voxel_size</code>.</p>
         <p>The scattering potential parameterized as a mixture of five gaussians
 per atom, through work by Lian-Mao Peng.</p>
 <p>To load this object, the following pattern can be used:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">cryojax.io</span> <span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
-<span class="kn">from</span> <span class="nn">cryojax.simulator</span> <span class="kn">import</span> <span class="n">PengAtomicPotential</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">PengAtomicPotential</span>
 
 <span class="c1"># Load positions of atoms and one-hot encoded atom names</span>
 <span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;example.pdb&quot;</span>
@@ -1156,8 +1156,8 @@ per atom, through work by Lian-Mao Peng.</p>
 <span class="n">potential</span> <span class="o">=</span> <span class="n">PengAtomicPotential</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">,</span> <span class="n">atom_identities</span><span class="p">)</span>
 </code></pre></div>
 <p>Alternatively, use the following to load with B-factors:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">cryojax.io</span> <span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
-<span class="kn">from</span> <span class="nn">cryojax.simulator</span> <span class="kn">import</span> <span class="n">PengAtomicPotential</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">PengAtomicPotential</span>
 
 <span class="c1"># Load positions of atoms, encoded atom names, and B-factors</span>
 <span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;example.pdb&quot;</span>
@@ -2239,7 +2239,7 @@ scattering potential voxel grid.</p>
     <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.83f73b43.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       

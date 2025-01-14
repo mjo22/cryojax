@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.47">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
     
     
       
@@ -403,7 +403,7 @@
         
   
   <span class="md-ellipsis">
-    Simulate a superposition of images
+    Simulate a superposition of images with vmap
   </span>
   
 
@@ -755,7 +755,7 @@ the exit plane.</p>
 
 
 <h5 id="cryojax.simulator.AbstractPotentialIntegrator.compute_fourier_integrated_potential" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractPotentialIntegrator</span><span class="o">.</span><span class="n">compute_fourier_integrated_potential</span><span class="p">(</span><span class="n">potential</span><span class="p">:</span> <span class="n">PotentialT</span><span class="p">,</span> <span class="n">instrument_config</span><span class="p">:</span> <span class="n">InstrumentConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> {instrument_config.padded_x_dim//2+1}&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractPotentialIntegrator</span><span class="o">.</span><span class="n">compute_fourier_integrated_potential</span><span class="p">(</span><span class="n">potential</span><span class="p">:</span> <span class="n">PotentialT</span><span class="p">,</span> <span class="n">instrument_config</span><span class="p">:</span> <span class="n">InstrumentConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> {instrument_config.padded_x_dim//2+1}&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> </span><span class="si">{instrument_config.padded_x_dim}</span><span class="s1">&#39;</span><span class="p">]</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -950,10 +950,10 @@ of a voxel-based representation in fourier-space, using fourier slice extraction
 <div class="doc doc-object doc-function">
 
 
-<h5 id="cryojax.simulator.FourierSliceExtraction.extract_voxels_from_spline_coefficients" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="n">extract_voxels_from_spline_coefficients</span><span class="p">(</span><span class="n">spline_coefficients</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim+2 dim+2 dim+2&#39;</span><span class="p">],</span> <span class="n">frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">],</span> <span class="n">wavelength_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim//2+1&#39;</span><span class="p">]</span></code>
+<h5 id="cryojax.simulator.FourierSliceExtraction.extract_fourier_slice_from_spline_coefficients" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="n">extract_fourier_slice_from_spline_coefficients</span><span class="p">(</span><span class="n">spline_coefficients</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim+2 dim+2 dim+2&#39;</span><span class="p">],</span> <span class="n">frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim//2+1&#39;</span><span class="p">]</span></code>
 
-<a href="#cryojax.simulator.FourierSliceExtraction.extract_voxels_from_spline_coefficients" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.FourierSliceExtraction.extract_fourier_slice_from_spline_coefficients" class="headerlink" title="Permanent link">¤</a></h5>
 
 
     <div class="doc doc-contents ">
@@ -993,10 +993,10 @@ of a voxel-based representation in fourier-space, using fourier slice extraction
 <div class="doc doc-object doc-function">
 
 
-<h5 id="cryojax.simulator.FourierSliceExtraction.extract_voxels_from_grid_points" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="n">extract_voxels_from_grid_points</span><span class="p">(</span><span class="n">fourier_voxel_grid</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">],</span> <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">],</span> <span class="n">wavelength_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim//2+1&#39;</span><span class="p">]</span></code>
+<h5 id="cryojax.simulator.FourierSliceExtraction.extract_fourier_slice_from_grid_points" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="n">extract_fourier_slice_from_grid_points</span><span class="p">(</span><span class="n">fourier_voxel_grid</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim dim&#39;</span><span class="p">],</span> <span class="n">frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim//2+1&#39;</span><span class="p">]</span></code>
 
-<a href="#cryojax.simulator.FourierSliceExtraction.extract_voxels_from_grid_points" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.FourierSliceExtraction.extract_fourier_slice_from_grid_points" class="headerlink" title="Permanent link">¤</a></h5>
 
 
     <div class="doc doc-contents ">
@@ -1308,7 +1308,7 @@ space.</p>
     <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.83f73b43.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       

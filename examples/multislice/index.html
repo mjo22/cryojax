@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.47">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
     
     
       
@@ -401,7 +401,7 @@
         
   
   <span class="md-ellipsis">
-    Simulate a superposition of images
+    Simulate a superposition of images with vmap
   </span>
   
 
@@ -633,11 +633,11 @@
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
-<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
 
-<span class="kn">import</span> <span class="nn">cryojax.simulator</span> <span class="k">as</span> <span class="nn">cxs</span>
-<span class="kn">from</span> <span class="nn">cryojax.io</span> <span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cryojax.simulator</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cxs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
 
 
 <span class="n">atom_positions</span><span class="p">,</span> <span class="n">atom_identities</span><span class="p">,</span> <span class="n">b_factors</span> <span class="o">=</span> <span class="n">read_atoms_from_pdb</span><span class="p">(</span>
@@ -708,7 +708,7 @@
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">cryojax.experimental</span> <span class="kn">import</span> <span class="n">FFTMultisliceIntegrator</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.experimental</span><span class="w"> </span><span class="kn">import</span> <span class="n">FFTMultisliceIntegrator</span>
 </code></pre></div>
 
 </div>
@@ -736,7 +736,7 @@
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">cryojax.experimental</span> <span class="k">as</span> <span class="nn">cxe</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">cryojax.experimental</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cxe</span>
 
 
 <span class="n">pose</span> <span class="o">=</span> <span class="n">cxs</span><span class="o">.</span><span class="n">EulerAnglePose</span><span class="p">(</span>
@@ -893,7 +893,7 @@
     <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.83f73b43.min.js"></script>
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
       
         <script src="../../javascripts/mathjax.js"></script>
       
