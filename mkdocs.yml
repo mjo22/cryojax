@@ -68,7 +68,15 @@ nav:
             - Simulate a superposition of images with vmap: 'examples/simulate-micrograph.ipynb'
             - Write a STAR file of simulated data: 'examples/simulate-relion-dataset.ipynb'
             - Run a cross-correlation search: 'examples/cross-correlation-search.ipynb'
-    - Simulator API:
-        - 'api/simulator/scattering_potential.md'
-        - 'api/simulator/instrument_config.md'
-        - 'api/simulator/potential_integrators.md'
+    - API:
+        - cryojax.simulator:
+            - 'api/simulator/scattering_potential.md'
+            - 'api/simulator/instrument_config.md'
+            - 'api/simulator/potential_integrators.md'
+        - cryojax.inference:
+            - 'api/inference/distributions.md'
+        - cryojax.data:
+            - 'api/data/relion.md'
+        - cryojax.coordinates:
+            - 'api/coordinates/making_coordinates.md'
+            - 'api/coordinates/transforming_coordinates.md'
