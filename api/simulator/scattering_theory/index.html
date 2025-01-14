@@ -12,13 +12,13 @@
         <meta name="author" content="Michael O'Brien">
       
       
-        <link rel="canonical" href="https://mjo22.github.io/cryojax/api/simulator/instrument_config/">
+        <link rel="canonical" href="https://mjo22.github.io/cryojax/api/simulator/scattering_theory/">
       
       
-        <link rel="prev" href="../scattering_theory/">
+        <link rel="prev" href="../transfer_theory/">
       
       
-        <link rel="next" href="../imaging_pipeline/">
+        <link rel="next" href="../instrument_config/">
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Configuring an image - cryoJAX</title>
+        <title>Scattering approximations - cryoJAX</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#configuring-an-image" class="md-skip">
+        <a href="#scattering-approximations" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Configuring an image
+              Scattering approximations
             
           </span>
         </div>
@@ -665,6 +665,8 @@
                 
   
   
+    
+  
   
   
     
@@ -673,11 +675,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_2" checked>
         
           
           <label class="md-nav__link" for="__nav_3_1_2" id="__nav_3_1_2_label" tabindex="0">
@@ -691,7 +693,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1_2">
             <span class="md-nav__icon md-icon"></span>
             Image formation
@@ -744,10 +746,19 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../scattering_theory/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -756,6 +767,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -773,8 +785,6 @@
                 
   
   
-    
-  
   
   
     
@@ -783,11 +793,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_3" >
         
           
           <label class="md-nav__link" for="__nav_3_1_3" id="__nav_3_1_3_label" tabindex="0">
@@ -801,7 +811,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1_3">
             <span class="md-nav__icon md-icon"></span>
             Putting it all together
@@ -812,30 +822,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Configuring an image
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../instrument_config/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -844,35 +834,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#cryojax.simulator.InstrumentConfig" class="md-nav__link">
-    <span class="md-ellipsis">
-      InstrumentConfig
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1615,691 +1576,7 @@
                   
 
 
-<h1 id="configuring-an-image">Configuring an image<a class="headerlink" href="#configuring-an-image" title="Permanent link">¤</a></h1>
-<p>The <code>InstrumentConfig</code> is an object at the core of simulating images in <code>cryojax</code>. It stores a configuration for the simulated image and the electron microscope, such as the shape of the desired image and the wavelength of the incident electron beam.</p>
-
-
-<div class="doc doc-object doc-class">
-
-
-
-<h4 id="cryojax.simulator.InstrumentConfig" class="doc doc-heading">
-            <code>cryojax.simulator.InstrumentConfig</code>
-
-
-<a href="#cryojax.simulator.InstrumentConfig" class="headerlink" title="Permanent link">¤</a></h4>
-
-
-    <div class="doc doc-contents first">
-
-
-        <p>Configuration and utilities for an electron microscopy image.</p>
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">pixel_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">],</span> <span class="n">electrons_per_angstrom_squared</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span> <span class="n">padded_shape</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pad_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">pad_mode</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;constant&#39;</span><span class="p">)</span></code>
-
-<a href="#cryojax.simulator.InstrumentConfig.__init__" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p><strong>Arguments:</strong></p>
-<ul>
-<li><code>shape</code>:
-    Shape of the imaging plane in pixels.</li>
-<li><code>pixel_size</code>:
-    The pixel size of the image in angstroms.</li>
-<li><code>voltage_in_kilovolts</code>:
-    The incident energy of the electron beam.</li>
-<li><code>electrons_per_angstrom_squared</code>:
-    The integrated dose rate of the electron beam.</li>
-<li><code>padded_shape</code>:
-    The shape of the image after padding. If this argument is
-    not given, it can be set by the <code>pad_scale</code> argument.</li>
-<li><code>pad_scale</code>: A scale factor at which to pad the image. This is
-               optionally used to set <code>padded_shape</code> and must be
-               greater than <code>1</code>. If <code>padded_shape</code> is set, this
-               argument is ignored.</li>
-<li><code>pad_mode</code>:
-    The method of image padding. By default, <code>"constant"</code>.
-    For all options, see <code>jax.numpy.pad</code>.</li>
-</ul>
-
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.wavelength_in_angstroms" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">wavelength_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.wavelength_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>The incident electron wavelength corresponding to the beam
-energy <code>voltage_in_kilovolts</code>.</p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.wavenumber_in_inverse_angstroms" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">wavenumber_in_inverse_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.wavenumber_in_inverse_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>The incident electron wavenumber corresponding to the beam
-energy <code>voltage_in_kilovolts</code>.</p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.n_pixels" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">n_pixels</span><span class="p">:</span> <span class="nb">int</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.n_pixels" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>math.prod(shape)</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.y_dim" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">y_dim</span><span class="p">:</span> <span class="nb">int</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.y_dim" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>shape[0]</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.x_dim" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">x_dim</span><span class="p">:</span> <span class="nb">int</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.x_dim" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>shape[1]</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.coordinate_grid_in_pixels" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">coordinate_grid_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.y_dim}</span><span class="s1"> </span><span class="si">{self.x_dim}</span><span class="s1"> 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.coordinate_grid_in_pixels" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>A spatial coordinate system for the <code>shape</code>.</p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.coordinate_grid_in_angstroms" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.y_dim}</span><span class="s1"> </span><span class="si">{self.x_dim}</span><span class="s1"> 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.coordinate_grid_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>pixel_size * coordinate_grid_in_pixels</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.frequency_grid_in_pixels" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">frequency_grid_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.y_dim}</span><span class="s1"> {self.x_dim//2+1} 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.frequency_grid_in_pixels" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>A spatial frequency coordinate system for the <code>shape</code>,
-with hermitian symmetry.</p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.frequency_grid_in_angstroms" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.y_dim}</span><span class="s1"> {self.x_dim//2+1} 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.frequency_grid_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>frequency_grid_in_pixels / pixel_size</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.full_frequency_grid_in_pixels" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">full_frequency_grid_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.y_dim}</span><span class="s1"> </span><span class="si">{self.x_dim}</span><span class="s1"> 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.full_frequency_grid_in_pixels" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>A spatial frequency coordinate system for the <code>shape</code>,
-without hermitian symmetry.</p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.full_frequency_grid_in_angstroms" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">full_frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.y_dim}</span><span class="s1"> </span><span class="si">{self.x_dim}</span><span class="s1"> 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.full_frequency_grid_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>full_frequency_grid_in_pixels / pixel_size</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.padded_n_pixels" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">padded_n_pixels</span><span class="p">:</span> <span class="nb">int</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.padded_n_pixels" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>math.prod(padded_shape)</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.padded_y_dim" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">padded_y_dim</span><span class="p">:</span> <span class="nb">int</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.padded_y_dim" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>padded_shape[0]</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.padded_x_dim" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">padded_x_dim</span><span class="p">:</span> <span class="nb">int</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.padded_x_dim" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>padded_shape[1]</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.padded_coordinate_grid_in_pixels" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">padded_coordinate_grid_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.padded_y_dim}</span><span class="s1"> </span><span class="si">{self.padded_x_dim}</span><span class="s1"> 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.padded_coordinate_grid_in_pixels" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>A spatial coordinate system for the <code>padded_shape</code>.</p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.padded_coordinate_grid_in_angstroms" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">padded_coordinate_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.padded_y_dim}</span><span class="s1"> </span><span class="si">{self.padded_x_dim}</span><span class="s1"> 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.padded_coordinate_grid_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>pixel_size * padded_coordinate_grid_in_pixels</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.padded_frequency_grid_in_pixels" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">padded_frequency_grid_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.padded_y_dim}</span><span class="s1"> {self.padded_x_dim//2+1} 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.padded_frequency_grid_in_pixels" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>A spatial frequency coordinate system for the <code>padded_shape</code>,
-with hermitian symmetry.</p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.padded_frequency_grid_in_angstroms" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">padded_frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.padded_y_dim}</span><span class="s1"> {self.padded_x_dim//2+1} 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.padded_frequency_grid_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>padded_frequency_grid_in_pixels / pixel_size</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.padded_full_frequency_grid_in_pixels" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">padded_full_frequency_grid_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.padded_y_dim}</span><span class="s1"> </span><span class="si">{self.padded_x_dim}</span><span class="s1"> 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.padded_full_frequency_grid_in_pixels" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>A spatial frequency coordinate system for the <code>padded_shape</code>,
-without hermitian symmetry.</p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.padded_full_frequency_grid_in_angstroms" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">padded_full_frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.padded_y_dim}</span><span class="s1"> </span><span class="si">{self.padded_x_dim}</span><span class="s1"> 2&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#cryojax.simulator.InstrumentConfig.padded_full_frequency_grid_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Convenience property for <code>padded_full_frequency_grid_in_pixels / pixel_size</code></p>
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.crop_to_shape" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">crop_to_shape</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">Inexact</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Inexact</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.y_dim}</span><span class="s1"> </span><span class="si">{self.x_dim}</span><span class="s1">&#39;</span><span class="p">]</span></code>
-
-<a href="#cryojax.simulator.InstrumentConfig.crop_to_shape" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Crop an image to <code>shape</code>.</p>
-
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.pad_to_padded_shape" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">pad_to_padded_shape</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">Inexact</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Inexact</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.padded_y_dim}</span><span class="s1"> </span><span class="si">{self.padded_x_dim}</span><span class="s1">&#39;</span><span class="p">]</span></code>
-
-<a href="#cryojax.simulator.InstrumentConfig.pad_to_padded_shape" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Pad an image to <code>padded_shape</code>.</p>
-
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h5 id="cryojax.simulator.InstrumentConfig.crop_or_pad_to_padded_shape" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">InstrumentConfig</span><span class="o">.</span><span class="n">crop_or_pad_to_padded_shape</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">Inexact</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Inexact</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{self.padded_y_dim}</span><span class="s1"> </span><span class="si">{self.padded_x_dim}</span><span class="s1">&#39;</span><span class="p">]</span></code>
-
-<a href="#cryojax.simulator.InstrumentConfig.crop_or_pad_to_padded_shape" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Reshape an image to <code>padded_shape</code> using cropping or padding.</p>
-
-    </div>
-
-</div>
-
-
-
-
-  </div>
-
-    </div>
-
-</div>
+<h1 id="scattering-approximations">Scattering approximations<a class="headerlink" href="#scattering-approximations" title="Permanent link">¤</a></h1>
 
 
 

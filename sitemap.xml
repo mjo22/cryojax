@@ -5,7 +5,59 @@
          <lastmod>2025-01-14</lastmod>
     </url>
     <url>
+         <loc>https://mjo22.github.io/cryojax/api/coordinates/making_coordinates/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/coordinates/transforming_coordinates/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/data/relion/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/image/functions/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/image/operators/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/inference/distributions/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/inference/grid_search/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/io/atom_loading/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/io/mrc/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/rotations/conversions/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/rotations/lie_groups/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/simulator/imaging_pipeline/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
          <loc>https://mjo22.github.io/cryojax/api/simulator/instrument_config/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/simulator/pose/</loc>
          <lastmod>2025-01-14</lastmod>
     </url>
     <url>
@@ -14,6 +66,26 @@
     </url>
     <url>
          <loc>https://mjo22.github.io/cryojax/api/simulator/scattering_potential/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/simulator/scattering_theory/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/simulator/structural_ensemble/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/simulator/transfer_theory/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/utils/filter_specs/</loc>
+         <lastmod>2025-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://mjo22.github.io/cryojax/api/utils/transforms/</loc>
          <lastmod>2025-01-14</lastmod>
     </url>
     <url>
