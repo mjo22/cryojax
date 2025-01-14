@@ -12,13 +12,13 @@
         <meta name="author" content="Michael O'Brien">
       
       
-        <link rel="canonical" href="https://mjo22.github.io/cryojax/api/rotations/lie_groups/">
+        <link rel="canonical" href="https://mjo22.github.io/cryojax/api/constants/scattering_factor_parameters/">
       
       
-        <link rel="prev" href="../../coordinates/transforming_coordinates/">
+        <link rel="prev" href="../units/">
       
       
-        <link rel="next" href="../conversions/">
+        <link rel="next" href="../../utils/filter_specs/">
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Representing rotations - cryoJAX</title>
+        <title>Scattering factor parameters - cryoJAX</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#representing-rotations" class="md-skip">
+        <a href="#scattering-factor-parameters" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Representing rotations
+              Scattering factor parameters
             
           </span>
         </div>
@@ -1370,8 +1370,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1380,11 +1378,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
         
           
           <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
@@ -1398,7 +1396,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_7">
             <span class="md-nav__icon md-icon"></span>
             cryojax.rotations
@@ -1409,19 +1407,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../rotations/lie_groups/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1430,7 +1419,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -1443,7 +1431,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../conversions/" class="md-nav__link">
+      <a href="../../rotations/conversions/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1469,6 +1457,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1477,11 +1467,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" checked>
         
           
           <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
@@ -1495,7 +1485,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_8">
             <span class="md-nav__icon md-icon"></span>
             cryojax.constants
@@ -1509,7 +1499,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../constants/units/" class="md-nav__link">
+      <a href="../units/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1527,10 +1517,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../constants/scattering_factor_parameters/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Scattering factor parameters
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1539,6 +1549,74 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#extracting-parameters-from-a-lookup-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extracting parameters from a lookup table
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extracting parameters from a lookup table">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cryojax.constants.get_tabulated_scattering_factor_parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_tabulated_scattering_factor_parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lookup-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lookup tables
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lookup tables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cryojax.constants.read_peng_element_scattering_factor_parameter_table" class="md-nav__link">
+    <span class="md-ellipsis">
+      read_peng_element_scattering_factor_parameter_table
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1661,7 +1739,65 @@
                   
 
 
-<h1 id="representing-rotations">Representing rotations<a class="headerlink" href="#representing-rotations" title="Permanent link">¤</a></h1>
+<h1 id="scattering-factor-parameters">Scattering factor parameters<a class="headerlink" href="#scattering-factor-parameters" title="Permanent link">¤</a></h1>
+<p>Modeling the electron scattering amplitudes of individual atoms is an important component of modeling cryo-EM images, as these are typically used to approximate the electrostatic potential. Typically, the scattering factor for each individual atom is numerically approximated with a fixed functional form but varying parameters for different atoms. These parameters are stored in lookup tables in the literature. This documentation provides these lookup tables so that they may be used to compute electrostatic potentials in cryoJAX.</p>
+<h2 id="extracting-parameters-from-a-lookup-table">Extracting parameters from a lookup table<a class="headerlink" href="#extracting-parameters-from-a-lookup-table" title="Permanent link">¤</a></h2>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="cryojax.constants.get_tabulated_scattering_factor_parameters" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">constants</span><span class="o">.</span><span class="n">get_tabulated_scattering_factor_parameters</span><span class="p">(</span><span class="n">atom_identities</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Int</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">],</span> <span class="n">scattering_factor_parameter_table</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_params n_elements n_scattering_factors&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_params n_elements n_scattering_factors&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_params n_atoms n_scattering_factors&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.constants.get_tabulated_scattering_factor_parameters" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Gets the parameters for the scattering factor for each atom in
+<code>atom_identities</code>.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>atom_identitites</code>:
+    Array containing the index of the one-hot encoded atom names.
+    By default, Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.</li>
+<li><code>scattering_factor_parameter_table</code>:
+    Array containing the table of scattering factors. By default, this
+    is the tabulation from "Robust Parameterization of Elastic and
+    Absorptive Electron Atomic Scattering Factors" by Peng et al. (1996),
+    given by <code>load_peng_element_scattering_factor_parameter_table</code>.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The particular scattering factor parameters stored in
+<code>scattering_factor_parameter_table</code> for <code>atom_identities</code>.</p>
+
+    </div>
+
+</div><h2 id="lookup-tables">Lookup tables<a class="headerlink" href="#lookup-tables" title="Permanent link">¤</a></h2>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="cryojax.constants.read_peng_element_scattering_factor_parameter_table" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">constants</span><span class="o">.</span><span class="n">read_peng_element_scattering_factor_parameter_table</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;2 n_elements 5&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.constants.read_peng_element_scattering_factor_parameter_table" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Function to load the atomic scattering factor parameter
+table from <em>"Robust Parameterization of Elastic and Absorptive
+Electron Atomic Scattering Factors" by Peng et al. (1996).</em>.</p>
+<p><strong>Returns:</strong></p>
+<p>The parameter table for parameters <span class="arithmatex">\(\{a_i\}_{i = 1}^5\)</span> and <span class="arithmatex">\(\{b_i\}_{i = 1}^5\)</span>
+for each atom, described in the above reference.</p>
+
+    </div>
+
+</div>
 
 
 

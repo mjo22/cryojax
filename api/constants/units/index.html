@@ -12,13 +12,13 @@
         <meta name="author" content="Michael O'Brien">
       
       
-        <link rel="canonical" href="https://mjo22.github.io/cryojax/api/rotations/lie_groups/">
+        <link rel="canonical" href="https://mjo22.github.io/cryojax/api/constants/units/">
       
       
-        <link rel="prev" href="../../coordinates/transforming_coordinates/">
+        <link rel="prev" href="../../rotations/conversions/">
       
       
-        <link rel="next" href="../conversions/">
+        <link rel="next" href="../scattering_factor_parameters/">
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Representing rotations - cryoJAX</title>
+        <title>Working with physical units - cryoJAX</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#representing-rotations" class="md-skip">
+        <a href="#working-with-physical-units" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Representing rotations
+              Working with physical units
             
           </span>
         </div>
@@ -1370,8 +1370,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1380,11 +1378,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
         
           
           <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
@@ -1398,7 +1396,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_7">
             <span class="md-nav__icon md-icon"></span>
             cryojax.rotations
@@ -1409,19 +1407,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../rotations/lie_groups/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1430,7 +1419,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -1443,7 +1431,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../conversions/" class="md-nav__link">
+      <a href="../../rotations/conversions/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1469,6 +1457,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1477,11 +1467,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" checked>
         
           
           <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
@@ -1495,7 +1485,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_8">
             <span class="md-nav__icon md-icon"></span>
             cryojax.constants
@@ -1506,10 +1496,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../constants/units/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Working with physical units
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1518,6 +1528,35 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cryojax.constants.convert_keV_to_angstroms" class="md-nav__link">
+    <span class="md-ellipsis">
+      convert_keV_to_angstroms
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1530,7 +1569,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../constants/scattering_factor_parameters/" class="md-nav__link">
+      <a href="../scattering_factor_parameters/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1661,7 +1700,36 @@
                   
 
 
-<h1 id="representing-rotations">Representing rotations<a class="headerlink" href="#representing-rotations" title="Permanent link">¤</a></h1>
+<h1 id="working-with-physical-units">Working with physical units<a class="headerlink" href="#working-with-physical-units" title="Permanent link">¤</a></h1>
+<p>Here, convenience methods for working with physical units are described.</p>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="cryojax.constants.convert_keV_to_angstroms" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">constants</span><span class="o">.</span><span class="n">convert_keV_to_angstroms</span><span class="p">(</span><span class="n">energy_in_keV</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.constants.convert_keV_to_angstroms" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Get the relativistic electron wavelength at a given accelerating voltage. For
+reference, see Equation 2.5 in Section 2.1 from <em>Spence, John CH. High-resolution
+electron microscopy. OUP Oxford, 2013.</em>.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>energy_in_keV</code>:
+    The energy in kiloelectron volts.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The relativistically corrected electron wavelength in Angstroms corresponding to the
+energy <code>energy_in_keV</code>.</p>
+
+    </div>
+
+</div>
 
 
 

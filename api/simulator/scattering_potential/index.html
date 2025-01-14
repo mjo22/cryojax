@@ -1661,7 +1661,7 @@
             
   
   <span class="md-ellipsis">
-    cryojax.utils
+    cryojax.constants
   </span>
   
 
@@ -1670,6 +1670,93 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            cryojax.constants
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../constants/units/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Working with physical units
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../constants/scattering_factor_parameters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Scattering factor parameters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    cryojax.utils
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
             <span class="md-nav__icon md-icon"></span>
             cryojax.utils
           </label>
@@ -2162,7 +2249,7 @@ per atom, through work by Lian-Mao Peng.</p>
 
 
 <h5 id="cryojax.simulator.PengAtomicPotential.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">atom_identities</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Int</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">],</span> <span class="n">b_factors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;n_atoms 3&#39;</span><span class="p">],</span> <span class="n">atom_identities</span><span class="p">:</span> <span class="n">Int</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Int</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">],</span> <span class="n">b_factors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39; n_atoms&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">scattering_factor_parameter_table</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;2 n_elements 5&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="s1">&#39;2 n_elements 5&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#cryojax.simulator.PengAtomicPotential.__init__" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -2171,10 +2258,16 @@ per atom, through work by Lian-Mao Peng.</p>
 
         <p><strong>Arguments:</strong></p>
 <ul>
-<li><code>atom_positions</code>: The coordinates of the atoms in units of angstroms.</li>
-<li><code>atom_identities</code>: Array containing the index of the one-hot encoded atom names.
-                     Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.</li>
-<li><code>b_factors</code>: The B-factors applied to each atom.</li>
+<li><code>atom_positions</code>:
+    The coordinates of the atoms in units of angstroms.</li>
+<li><code>atom_identities</code>:
+    Array containing the index of the one-hot encoded atom names.
+    Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.</li>
+<li><code>b_factors</code>:
+    The B-factors applied to each atom.</li>
+<li><code>scattering_factor_parameter_table</code>:
+    The scattering factor parameter table from Peng et al. (1996). If
+    not provided, load from <code>cryojax.constants</code>.</li>
 </ul>
 
     </div>
