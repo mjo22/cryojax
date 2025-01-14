@@ -17,6 +17,7 @@ class AbstractDataset(metaclass=abc.ABCMeta):
     following pattern:
 
     ```python
+    import numpy as np
     from torch.utils.data import Dataset
 
     class CustomTorchDataset(Dataset):
@@ -24,12 +25,17 @@ class AbstractDataset(metaclass=abc.ABCMeta):
         def __init__(cryojax_dataset: AbstractDataset):
             self.cryojax_dataset = cryojax_dataset
 
-        def __getitem___(self, index) -> AbstractParticleStack:
-            return self.cryojax_dataset[index]
+        def __getitem___(self, index) -> dict[str, Array]:
+            particle_stack = self.cryojax_dataset[index]
+            return dict(index=index, image_stack=np.asarray(particle_stack.image_stack))
 
         def __len__(self) -> int:
             return len(self.cryojax_dataset)
     ```
+
+    JAX also includes packages for dataloaders, such as
+    [`jax-dataloaders`](https://github.com/BirkhoffG/jax-dataloader/tree/main) and
+    [`grain`](https://github.com/google/grain).
 
     !!! question "How do I implement an `AbstractDataset`?"
 
