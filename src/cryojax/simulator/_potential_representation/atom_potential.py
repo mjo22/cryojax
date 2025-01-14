@@ -16,7 +16,7 @@ from jaxtyping import Array, Float, Int, PyTree
 
 from ...constants import (
     get_tabulated_scattering_factor_parameters,
-    peng_element_scattering_factor_parameter_table,
+    read_peng_element_scattering_factor_parameter_table,
 )
 from ...coordinates import make_1d_coordinate_grid
 from ...internal import error_if_negative, error_if_not_positive
@@ -248,18 +248,33 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         b_factors: Optional[
             Float[Array, " n_atoms"] | Float[np.ndarray, " n_atoms"]
         ] = None,
+        *,
+        scattering_factor_parameter_table: Optional[
+            Float[Array, "2 n_elements 5"] | Float[np.ndarray, "2 n_elements 5"]
+        ] = None,
     ):
         """**Arguments:**
 
-        - `atom_positions`: The coordinates of the atoms in units of angstroms.
-        - `atom_identities`: Array containing the index of the one-hot encoded atom names.
-                             Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.
-        - `b_factors`: The B-factors applied to each atom.
+        - `atom_positions`:
+            The coordinates of the atoms in units of angstroms.
+        - `atom_identities`:
+            Array containing the index of the one-hot encoded atom names.
+            Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.
+        - `b_factors`:
+            The B-factors applied to each atom.
+        - `scattering_factor_parameter_table`:
+            The scattering factor parameter table from Peng et al. (1996). If
+            not provided, load from `cryojax.constants`.
+
         """
+        if scattering_factor_parameter_table is None:
+            scattering_factor_parameter_table = (
+                read_peng_element_scattering_factor_parameter_table()
+            )
         self.atom_positions = jnp.asarray(atom_positions)
         scattering_factor_a, scattering_factor_b = (
             get_tabulated_scattering_factor_parameters(
-                atom_identities, peng_element_scattering_factor_parameter_table
+                atom_identities, scattering_factor_parameter_table
             )
         )
         self.scattering_factor_a = jnp.asarray(scattering_factor_a)
