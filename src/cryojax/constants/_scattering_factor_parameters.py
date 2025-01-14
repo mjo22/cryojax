@@ -49,8 +49,8 @@ def read_peng_element_scattering_factor_parameter_table() -> (
     Float[np.ndarray, "2 n_elements 5"]
 ):
     r"""Function to load the atomic scattering factor parameter
-    table from *"Robust Parameterization of Elastic and Absorptive
-    Electron Atomic Scattering Factors" by Peng et al. (1996).*.
+    table from "Robust Parameterization of Elastic and Absorptive
+    Electron Atomic Scattering Factors" by Peng et al. (1996).
 
     **Returns:**
 
