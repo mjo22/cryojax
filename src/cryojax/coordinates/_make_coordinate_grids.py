@@ -18,8 +18,11 @@ def make_coordinate_grid(
 
     **Arguments:**
 
-    - `shape`: Shape of the voxel grid, with `ndim = len(shape)`.
-    - `grid_spacing`: The grid spacing, in units of length.
+    - `shape`:
+        Shape of the grid, with `ndim = len(shape)`.
+    - `grid_spacing`:
+        The grid spacing (i.e. pixel/voxel size),
+        in units of length.
 
     **Returns:**
 
@@ -39,10 +42,13 @@ def make_frequency_grid(
     """Create a fourier-space cartesian coordinate system on a grid.
     The zero-frequency component is in the corner.
 
-    Arguments
-    ---------
-    - `shape`: Shape of the voxel grid, with `ndim = len(shape)`.
-    - `grid_spacing`: The grid spacing, in units of length.
+    **Arguments:**
+
+    - `shape`:
+        Shape of the grid, with `ndim = len(shape)`.
+    - `grid_spacing`:
+        The grid spacing (i.e. pixel/voxel size),
+        in units of length.
     - `half_space`:
         Return a frequency grid on the half space.
         `shape[-1]` is the axis on which the negative
@@ -66,14 +72,44 @@ def make_frequency_slice(
     grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
     half_space: bool = True,
 ) -> Float[Array, "1 {shape[0]} {shape[1]} 3"]:
-    """Create a fourier-space cartesian coordinate system on a grid. The
-    zero-frequency component is in the *center*. This is different
-    than in [`make_frequency_grid`][].
+    """Create a fourier-space cartesian coordinate system on a grid, where
+    zero-frequency component is in the *center* of the grid.
+
+    !!! warning
+        In the function `make_frequency_grid`, the convention is that
+        the grid is returned with the zero frequency component is in the
+        corner. In this function, as mentioned above, frequency slices are
+        returned with the zero frequency component in the center. To convert
+        between the two conventions, run
+
+        ```python
+        import jax.numpy as jnp
+        from cryojax.coordinates import make_frequency_slice
+
+        frequency_slice_with_zero_in_center = make_frequency_slice((100, 100)) # Shape (1, 100, 100, 3)
+        frequency_slice_with_zero_in_corner = jnp.fft.ifftshift(frequency_slice_with_zero_in_center, axes=(1, 2))
+        ```
+
+        The reason for the difference is so that this function can be used to
+        directly pass a `frequency_slice` to the `cryojax.simulator.FourierVoxelGridPotential`,
+        which requires that the zero is in the center of the grid.
+
+    **Arguments:**
+
+    - `shape`:
+        Shape of the frequency slice, e.g. `shape = (100, 100)`.
+    - `grid_spacing`:
+        The grid spacing (i.e. voxel size), in units of length.
+    - `half_space`:
+        Return a frequency slice on the half space.
+        `shape[-1]` is the axis on which the negative
+        frequencies are omitted.
 
     **Returns:**
 
-    The central, $q_z = 0$ slice of a 3D frequency grid `$(q_x, q_y, q_z)$`.
-    """
+    The central, $q_z = 0$ slice of a 3D frequency grid $(q_x, q_y, q_z)$, where
+    zero-frequency component is in the *center* of the grid.
+    """  # noqa: E501
     frequency_slice = make_frequency_grid(shape, grid_spacing, half_space=half_space)
     if half_space:
         frequency_slice = jnp.fft.fftshift(frequency_slice, axes=(0,))
@@ -100,8 +136,11 @@ def make_1d_coordinate_grid(
 
     **Arguments:**
 
-    - `size`: Size of the coordinate array.
-    - `grid_spacing`: The grid spacing, in units of length.
+    - `size`:
+        Size of the coordinate array.
+    - `grid_spacing`:
+        The grid spacing (i.e. pixel/voxel size),
+        in units of length.
 
     **Returns:**
 
@@ -123,8 +162,11 @@ def make_1d_frequency_grid(
 
     Arguments
     ---------
-    - `size`: Size of the coordinate array.
-    - `grid_spacing`: The grid spacing, in units of length.
+    - `size`:
+        Size of the coordinate array.
+    - `grid_spacing`:
+        The grid spacing (i.e. pixel/voxel size),
+        in units of length.
     - `half_space`:
         Return a frequency grid on the half space.
         `shape[-1]` is the axis on which the negative

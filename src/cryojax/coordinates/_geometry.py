@@ -9,9 +9,11 @@ def cartesian_to_polar(
 
     **Arguments:**
 
-    -`coordinate_or_frequency_grid`: The cartesian coordinate system.
-    -`square`: If ``True``, return the square of the radial coordinate
-               $|r|^2$. Otherwise, return $|r|$.
+    - `coordinate_or_frequency_grid`:
+        The cartesian coordinate system in real or fourier space.
+    - `square`:
+        If `True`, return the square of the radial coordinate
+        $|r|^2$. Otherwise, return $|r|$.
     """
     theta = jnp.arctan2(
         coordinate_or_frequency_grid[..., 0], coordinate_or_frequency_grid[..., 1]
