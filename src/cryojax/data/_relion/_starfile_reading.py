@@ -7,7 +7,6 @@ from typing import Any, Callable, final
 from typing_extensions import override
 
 import equinox as eqx
-import equinox.internal as eqxi
 import jax
 import jax.numpy as jnp
 import mrcfile
@@ -23,6 +22,7 @@ from ...simulator import (
     EulerAnglePose,
     InstrumentConfig,
 )
+from ...utils import get_filter_spec
 from .._particle_stack import AbstractParticleStack
 
 
@@ -482,30 +482,13 @@ def _make_pytrees_from_starfile_metadata(
         jnp.asarray(voltage_in_kilovolts, device=device),
     )
     # ... now the ContrastTransferTheory
-    make_ctf = lambda defocus, astig, angle, sph, ac, ps: ContrastTransferFunction(
-        defocus_in_angstroms=defocus,
-        astigmatism_in_angstroms=astig,
-        astigmatism_angle=angle,
-        spherical_aberration_in_mm=sph,
-        amplitude_contrast_ratio=ac,
-        phase_shift=ps,
-    )
-    ctf_params = (
+    ctf = _make_relion_ctf(
         defocus_in_angstroms,
         astigmatism_in_angstroms,
         astigmatism_angle,
         spherical_aberration_in_mm,
         amplitude_contrast_ratio,
         phase_shift,
-    )
-    ctf = (
-        eqx.filter_vmap(
-            make_ctf,
-            in_axes=(0, 0, 0, None, None, 0),
-            out_axes=eqxi.if_mapped(0),
-        )(*ctf_params)
-        if defocus_in_angstroms.ndim == 1
-        else make_ctf(*ctf_params)
     )
     if get_envelope_function:
         b_factor, scale_factor = (
@@ -520,13 +503,7 @@ def _make_pytrees_from_starfile_metadata(
                 else jnp.asarray(1.0)
             ),
         )
-        make_envelope = lambda b, amp: FourierGaussian(b_factor=b, amplitude=amp)
-        envelope_params = (b_factor, scale_factor)
-        envelope = (
-            eqx.filter_vmap(make_envelope, in_axes=(0, 0))(*envelope_params)
-            if b_factor.ndim == 1
-            else make_envelope(*envelope_params)
-        )
+        envelope = _make_relion_envelope(scale_factor, b_factor)
     else:
         envelope = None
     transfer_theory = ContrastTransferTheory(ctf, envelope)
@@ -598,6 +575,39 @@ def _make_pytrees_from_starfile_metadata(
     )
 
     return instrument_config, transfer_theory, pose
+
+
+def _make_relion_ctf(defocus, astig, angle, sph, ac, ps):
+    @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0), out_axes=(0, None))
+    def _make_with_vmap(defocus, astig, angle, sph, ac, ps):
+        ctf = ContrastTransferFunction(
+            defocus_in_angstroms=defocus,
+            astigmatism_in_angstroms=astig,
+            astigmatism_angle=angle,
+            spherical_aberration_in_mm=sph,
+            amplitude_contrast_ratio=ac,
+            phase_shift=ps,
+        )
+        relion_filter_spec = get_filter_spec(
+            lambda x: (x.spherical_aberration_in_mm, x.amplitude_contrast_ratio),
+            ctf,
+            inverse=True,
+        )
+        return eqx.partition(ctf, relion_filter_spec)
+
+    return (
+        ContrastTransferFunction(defocus, astig, angle, sph, ac, ps)
+        if defocus.ndim == 0
+        else eqx.combine(*_make_with_vmap(defocus, astig, angle, sph, ac, ps))
+    )
+
+
+def _make_relion_envelope(amp, b):
+    @eqx.filter_vmap
+    def _make_with_vmap(amp, b):
+        return FourierGaussian(b_factor=b, amplitude=amp)
+
+    return FourierGaussian(amp, b) if b.ndim == 0 else _make_with_vmap(amp, b)
 
 
 def _get_image_stack_from_mrc(
