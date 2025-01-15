@@ -5,7 +5,7 @@ Representations of rigid body rotations and translations of 3D coordinate system
 from abc import abstractmethod
 from functools import cached_property
 from typing import overload
-from typing_extensions import override
+from typing_extensions import override, Self
 
 import equinox as eqx
 import jax
@@ -18,16 +18,9 @@ from ..rotations import convert_quaternion_to_euler_angles, SO3
 
 
 class AbstractPose(Module, strict=True):
-    """Base class for the image pose.
-
-    Subclasses should choose a viewing convention,
-    such as with Euler angles or Quaternions. In particular,
-
-        1. Define angular coordinates as dataclass fields and
-           write `__init__`.
-
-        2. Overwrite the `AbstractPose.rotation` property and
-           `AbstractPose.from_rotation` class method.
+    """Base class for the image pose. Subclasses will choose a
+    particular convention for parameterizing the rotation by
+    overwriting the `AbstractPose.rotation` property.
     """
 
     offset_x_in_angstroms: AbstractVar[Float[Array, ""]]
@@ -36,41 +29,69 @@ class AbstractPose(Module, strict=True):
     @overload
     def rotate_coordinates(
         self,
-        volume_coordinates: Float[Array, "z_dim y_dim x_dim 3"],
+        coordinate_grid_or_list: Float[Array, "z_dim y_dim x_dim 3"],
         inverse: bool = False,
     ) -> Float[Array, "z_dim y_dim x_dim 3"]: ...
 
     @overload
     def rotate_coordinates(
-        self, volume_coordinates: Float[Array, "size 3"], inverse: bool = False
+        self, coordinate_grid_or_list: Float[Array, "size 3"], inverse: bool = False
     ) -> Float[Array, "size 3"]: ...
 
     def rotate_coordinates(
         self,
-        volume_coordinates: Float[Array, "z_dim y_dim x_dim 3"] | Float[Array, "size 3"],
+        coordinate_grid_or_list: (
+            Float[Array, "z_dim y_dim x_dim 3"] | Float[Array, "size 3"]
+        ),
         inverse: bool = False,
     ) -> Float[Array, "z_dim y_dim x_dim 3"] | Float[Array, "size 3"]:
-        """Rotate coordinates from a particular convention."""
+        """Rotate a 3D coordinate system.
+
+        **Arguments:**
+
+        - `coordinate_grid_or_list`:
+            The 3D coordinate system to rotate. This can either be a list of coordinates
+            of shape `(N, 3)` or a grid of coordinates `(N1, N2, N3, 3)`.
+        - `inverse`:
+            If `True`, compute the inverse rotation (i.e. rotation by the matrix $R^T$,
+            where $R$ is the rotation matrix).
+
+        **Returns:**
+
+        The rotated version of `coordinate_grid_or_list`.
+        """
         rotation = self.rotation.inverse() if inverse else self.rotation
-        if isinstance(volume_coordinates, Float[Array, "size 3"]):  # type: ignore
-            rotated_volume_coordinates = jax.vmap(rotation.apply)(volume_coordinates)
-        elif isinstance(volume_coordinates, Float[Array, "z_dim y_dim x_dim 3"]):  # type: ignore
-            rotated_volume_coordinates = jax.vmap(jax.vmap(jax.vmap(rotation.apply)))(
-                volume_coordinates
+        if isinstance(coordinate_grid_or_list, Float[Array, "size 3"]):  # type: ignore
+            rotated_coordinate_grid_or_list = jax.vmap(rotation.apply)(
+                coordinate_grid_or_list
             )
+        elif isinstance(coordinate_grid_or_list, Float[Array, "z_dim y_dim x_dim 3"]):  # type: ignore
+            rotated_coordinate_grid_or_list = jax.vmap(
+                jax.vmap(jax.vmap(rotation.apply))
+            )(coordinate_grid_or_list)
         else:
             raise ValueError(
                 "Coordinates must be a JAX array either of shape (N, 3) or "
-                f"(N1, N2, N3, 3). Instead, got {volume_coordinates.shape} and type "
-                f"{type(volume_coordinates)}."
+                f"(N1, N2, N3, 3). Instead, got {coordinate_grid_or_list.shape} and type "
+                f"{type(coordinate_grid_or_list)}."
             )
-        return rotated_volume_coordinates
+        return rotated_coordinate_grid_or_list
 
     def compute_shifts(
         self, frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"]
     ) -> Complex[Array, "y_dim x_dim"]:
         """Compute the phase shifts from the in-plane translation,
         given a frequency grid coordinate system.
+
+        **Arguments:**
+
+        - `frequency_grid_in_angstroms`:
+            A grid of in-plane frequency coordinates $(q_x, q_y)$
+
+        **Returns:**
+
+        From the vector $(t_x, t_y)$ (given by `self.offset_in_angstroms`), returns the
+        grid of in-plane phase shifts $\\exp{(- 2 \\pi i (t_x q_x + t_y q_y))}$.
         """
         xy = self.offset_in_angstroms[0:2]
         return jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(frequency_grid_in_angstroms, xy)))
@@ -90,12 +111,14 @@ class AbstractPose(Module, strict=True):
     @cached_property
     @abstractmethod
     def rotation(self) -> SO3:
-        """Generate an `SO3` object."""
+        """Generate an `SO3` object from a particular angular
+        parameterization.
+        """
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def from_rotation(cls, rotation: SO3):
+    def from_rotation(cls, rotation: SO3) -> Self:
         """Construct an `AbstractPose` from an `SO3` object."""
         raise NotImplementedError
 
@@ -104,9 +127,9 @@ class AbstractPose(Module, strict=True):
         cls,
         rotation: SO3,
         offset_in_angstroms: Float[Array, "2"],
-    ):
-        """Construct an `AbstractPose` from an `SO3` object and a
-        translation vector.
+    ) -> Self:
+        """Construct an `AbstractPose` from an `SO3` object and an
+        in-plane translation vector.
         """
         return eqx.tree_at(
             lambda self: (
@@ -175,7 +198,7 @@ class EulerAnglePose(AbstractPose, strict=True):
 
     @override
     @classmethod
-    def from_rotation(cls, rotation: SO3):
+    def from_rotation(cls, rotation: SO3) -> Self:
         view_phi, view_theta, view_psi = convert_quaternion_to_euler_angles(
             rotation.wxyz,
             convention="zyz",
@@ -213,14 +236,16 @@ class QuaternionPose(AbstractPose, strict=True):
     @cached_property
     @override
     def rotation(self) -> SO3:
-        """Generate rotation from the unit quaternion."""
+        """Generate rotation from the unit quaternion
+        $\\mathbf{q} / |\\mathbf{q}|$.
+        """
         # Generate SO3 object from unit quaternion
         R = SO3(wxyz=self.wxyz).normalize()
         return R
 
     @override
     @classmethod
-    def from_rotation(cls, rotation: SO3):
+    def from_rotation(cls, rotation: SO3) -> Self:
         return cls(wxyz=rotation.wxyz)
 
 
@@ -228,8 +253,9 @@ class AxisAnglePose(AbstractPose, strict=True):
     """An `AbstractPose` parameterized in the axis-angle representation.
 
     The axis-angle representation parameterizes elements of the so3 algebra,
-    which are skew-symmetric matrices, with the euler vector. The magnitude
-    of this vector is the angle, and the unit vector is the axis.
+    which are skew-symmetric matrices, with the euler vector
+    $\\boldsymbol{\\omega} = (\\omega_x, \\omega_y, \\omega_z)$.
+    The magnitude of this vector is the angle, and the unit vector is the axis.
 
     In a `SO3` object, the euler vector is mapped to SO3 group elements using
     the matrix exponential.
@@ -253,8 +279,8 @@ class AxisAnglePose(AbstractPose, strict=True):
         - `offset_x_in_angstroms`: In-plane translation in x direction.
         - `offset_y_in_angstroms`: In-plane translation in y direction.
         - `euler_vector`:
-            The axis-angle parameterization, represented as a
-            vector $\\boldsymbol{\\omega} = (\\omega_x, \\omega_y, \\omega_z)$.
+            The axis-angle parameterization, represented with the euler
+            vector $\\boldsymbol{\\omega}$.
         """
         self.offset_x_in_angstroms = jnp.asarray(offset_x_in_angstroms)
         self.offset_y_in_angstroms = jnp.asarray(offset_y_in_angstroms)
@@ -273,7 +299,7 @@ class AxisAnglePose(AbstractPose, strict=True):
 
     @override
     @classmethod
-    def from_rotation(cls, rotation: SO3):
+    def from_rotation(cls, rotation: SO3) -> Self:
         # Compute the euler vector from the logarithmic map
         euler_vector = jnp.rad2deg(rotation.log())
         return cls(euler_vector=euler_vector)
