@@ -20,10 +20,10 @@ def get_filter_spec(
 
     A filter specification, or `filter_spec`, is a pytree whose
     leaves are either `True` or `False`. These are commonly used with
-    `equinox` [filtered transformations](https://docs.kidger.site/equinox/all-of-equinox/#2-filtering).
+    `equinox` [filtering](https://docs.kidger.site/equinox/all-of-equinox/#2-filtering).
 
-    In `cryojax`, it is a very common pattern to need to finely specify which leaves
-    we would like to take JAX transformations with respect to. This is done with a
+    In `cryojax`, it is a common pattern to need to finely specify which
+    leaves we would like to take JAX transformations with respect to. This is done with a
     pointer to individual leaves, which is referred to as a `where` function. See
     [`here`](https://docs.kidger.site/equinox/examples/frozen_layer/#freezing-parameters)
     in the `equinox` documentation for an example.
