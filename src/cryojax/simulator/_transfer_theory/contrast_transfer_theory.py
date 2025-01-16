@@ -21,7 +21,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
 
     !!! info
         `cryojax` uses a convention different from CTFFIND for
-        astigmatism parameters. It returns defocus major and minor
+        astigmatism parameters. CTFFIND returns defocus major and minor
         axes, called "defocus1" and "defocus2". In order to convert
         from CTFFIND to `cryojax`,
 
@@ -73,6 +73,18 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         *,
         voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
     ) -> Float[Array, "y_dim x_dim"]:
+        """Compute the CTF as a JAX array.
+
+        **Arguments:**
+
+        - `frequency_grid_in_angstroms`:
+            The grid of frequencies in units of angstroms. This can
+            be computed with [`cryojax.coordinates.make_frequency_grid`](https://mjo22.github.io/cryojax/api/coordinates/making_coordinates/#cryojax.coordinates.make_frequency_grid)
+        - `voltage_in_kilovolts`:
+            The accelerating voltage of the microscope in kilovolts. This
+            is converted to the wavelength of incident electrons using
+            the function [`cryojax.constants.convert_keV_to_angstroms`](https://mjo22.github.io/cryojax/api/constants/units/#cryojax.constants.convert_keV_to_angstroms)
+        """  # noqa: E501
         # Convert degrees to radians
         phase_shift = jnp.deg2rad(self.phase_shift)
         astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
@@ -104,8 +116,10 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
 
 
 class ContrastTransferTheory(AbstractTransferTheory, strict=True):
-    """An optics model in the weak-phase approximation. Here, compute the image
-    contrast by applying the CTF directly to the exit plane phase shifts.
+    """A transfer theory for the weak-phase approximation. This class
+    propagates the fourier spectrum of the object from a plane directly below it to
+    the plane of the detector. In other terms, it computes a noiseless cryo-EM
+    image from a 2D projection.
     """
 
     ctf: ContrastTransferFunction
@@ -136,7 +150,15 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        """Apply the CTF directly to the phase shifts in the exit plane."""
+        """Apply the CTF directly to the phase shifts in the exit plane.
+
+        **Arguments:**
+
+        - `object_spectrum_at_exit_plane`:
+            The fourier spectrum of the object in a plane directly below it.
+        - `instrument_config`:
+            The configuration of the resulting image.
+        """
         frequency_grid = instrument_config.padded_frequency_grid_in_angstroms
         # Compute the CTF
         ctf_array = self.envelope(frequency_grid) * self.ctf(
