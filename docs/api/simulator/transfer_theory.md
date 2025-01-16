@@ -40,14 +40,14 @@ This documentation describes the elements of . More features are included than d
     ::: cryojax.simulator.AbstractTransferFunction
         options:
             members:
-                - compute_phase_shifts
+                - compute_phase_shifts_from_instrument
                 - __call__
 
 ::: cryojax.simulator.ContrastTransferFunction
         options:
             members:
                 - __init__
-                - compute_phase_shifts
+                - compute_phase_shifts_from_instrument
                 - __call__
 
 ## Transfer Theories
