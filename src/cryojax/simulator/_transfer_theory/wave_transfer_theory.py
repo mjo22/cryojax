@@ -1,13 +1,17 @@
 from typing_extensions import override
 
+import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
 from ...constants import convert_keV_to_angstroms
-from ...internal import error_if_negative, error_if_not_fractional, error_if_not_positive
+from ...internal import error_if_negative, error_if_not_fractional
 from .._instrument_config import InstrumentConfig
-from .base_transfer_theory import AbstractTransferFunction, AbstractTransferTheory
-from .common_functions import compute_phase_shifts
+from .base_transfer_theory import AbstractTransferFunction
+from .common_functions import (
+    compute_phase_shift_from_amplitude_contrast_ratio,
+    compute_phase_shifts_with_astigmatism_and_spherical_aberration,
+)
 
 
 class WaveTransferFunction(AbstractTransferFunction, strict=True):
@@ -46,19 +50,20 @@ class WaveTransferFunction(AbstractTransferFunction, strict=True):
         - `amplitude_contrast_ratio`: The amplitude contrast ratio.
         - `phase_shift`: The additional phase shift.
         """
-        self.defocus_in_angstroms = error_if_not_positive(defocus_in_angstroms)
+        self.defocus_in_angstroms = jnp.asarray(defocus_in_angstroms)
         self.astigmatism_in_angstroms = jnp.asarray(astigmatism_in_angstroms)
         self.astigmatism_angle = jnp.asarray(astigmatism_angle)
         self.spherical_aberration_in_mm = error_if_negative(spherical_aberration_in_mm)
         self.amplitude_contrast_ratio = error_if_not_fractional(amplitude_contrast_ratio)
         self.phase_shift = jnp.asarray(phase_shift)
 
-    def __call__(
+    @override
+    def compute_phase_shifts_from_instrument(
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         *,
         voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
-    ) -> Complex[Array, "y_dim x_dim"]:
+    ) -> Float[Array, "y_dim x_dim"]:
         # Convert degrees to radians
         phase_shift = jnp.deg2rad(self.phase_shift)
         astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
@@ -68,35 +73,39 @@ class WaveTransferFunction(AbstractTransferFunction, strict=True):
         wavelength_in_angstroms = convert_keV_to_angstroms(
             jnp.asarray(voltage_in_kilovolts)
         )
-        defocus_axis_1_in_angstroms = (
-            self.defocus_in_angstroms + self.astigmatism_in_angstroms / 2
-        )
-        defocus_axis_2_in_angstroms = (
-            self.defocus_in_angstroms - self.astigmatism_in_angstroms / 2
-        )
         # Compute phase shifts for CTF
-        phase_shifts = compute_phase_shifts(
+        phase_shifts = compute_phase_shifts_with_astigmatism_and_spherical_aberration(
             frequency_grid_in_angstroms,
-            defocus_axis_1_in_angstroms,
-            defocus_axis_2_in_angstroms,
+            self.defocus_in_angstroms,
+            self.astigmatism_in_angstroms,
             astigmatism_angle,
             wavelength_in_angstroms,
             spherical_aberration_in_angstroms,
-            jnp.asarray(0.0),
         )
-        amplitude_contrast_phase_shifts = jnp.arctan(
-            self.amplitude_contrast_ratio
-            / jnp.sqrt(1.0 - self.amplitude_contrast_ratio**2)
+        return phase_shifts.at[0, 0].add(phase_shift)
+
+    def __call__(
+        self,
+        frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
+        *,
+        voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
+    ) -> Complex[Array, "y_dim x_dim"]:
+        # Compute phase shifts due to the instrument
+        phase_shifts = self.compute_phase_shifts_from_instrument(
+            frequency_grid_in_angstroms, voltage_in_kilovolts=voltage_in_kilovolts
+        )
+        # Additional phase shifts only impact zero mode
+        amplitude_contrast_phase_shift = (
+            compute_phase_shift_from_amplitude_contrast_ratio(
+                self.amplitude_contrast_ratio
+            )
         )
         # Compute the WTF, correcting for the amplitude contrast and additional phase
         # shift in the zero mode
-        return jnp.exp(
-            -1.0j
-            * phase_shifts.at[0, 0].add(amplitude_contrast_phase_shifts + phase_shift)
-        )
+        return jnp.exp(-1.0j * phase_shifts.at[0, 0].add(amplitude_contrast_phase_shift))
 
 
-class WaveTransferTheory(AbstractTransferTheory, strict=True):
+class WaveTransferTheory(eqx.Module, strict=True):
     """An optics model that propagates the exit wave to the detector plane."""
 
     wtf: WaveTransferFunction
@@ -112,8 +121,7 @@ class WaveTransferTheory(AbstractTransferTheory, strict=True):
 
         self.wtf = wtf
 
-    @override
-    def __call__(
+    def propagate_wavefunction_to_detector_plane(
         self,
         wavefunction_spectrum_at_exit_plane: Complex[
             Array,
