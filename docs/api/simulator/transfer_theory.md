@@ -25,7 +25,7 @@ Further, the `ContrastTransferTheory` is a class that takes in a projection imag
 projection_image_in_fourier_domain = ...
 ctf = ContrastTransferFunction(...)
 transfer_theory = cxs.ContrastTransferTheory(ctf)
-contrast_in_fourier_domain = transfer_theory.propagate_object_to_detector_plan(projection_image_in_fourier_domain)
+contrast_in_fourier_domain = transfer_theory.propagate_object_to_detector_plane(projection_image_in_fourier_domain)
 ```
 
 This documentation describes the elements of . More features are included than described above, such as the ability to include a user-specified envelope function to the `ContrastTransferTheory`. Much of the code and theory have been adapted from the Grigorieff Lab's CTFFIND4 program.
@@ -36,7 +36,7 @@ This documentation describes the elements of . More features are included than d
 
 ## Transfer Functions
 
-??? abstract "`cryojax.simulator.AbstractTransferFunction`"
+???+ abstract "`cryojax.simulator.AbstractTransferFunction`"
     ::: cryojax.simulator.AbstractTransferFunction
         options:
             members:
@@ -47,7 +47,6 @@ This documentation describes the elements of . More features are included than d
         options:
             members:
                 - __init__
-                - compute_aberration_phase_shifts
                 - __call__
 
 ## Transfer Theories
