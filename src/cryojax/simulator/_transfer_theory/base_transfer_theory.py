@@ -8,7 +8,7 @@ class AbstractTransferFunction(Module, strict=True):
     """An abstract base class for a transfer function."""
 
     @abstractmethod
-    def compute_phase_shifts_from_instrument(
+    def compute_aberration_phase_shifts(
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         *,

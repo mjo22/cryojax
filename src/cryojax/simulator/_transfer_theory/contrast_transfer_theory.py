@@ -12,7 +12,7 @@ from .._instrument_config import InstrumentConfig
 from .base_transfer_theory import AbstractTransferFunction
 from .common_functions import (
     compute_phase_shift_from_amplitude_contrast_ratio,
-    compute_phase_shifts_with_astigmatism_and_spherical_aberration,
+    compute_phase_shifts_with_spherical_aberration,
 )
 
 
@@ -69,13 +69,13 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         self.phase_shift = jnp.asarray(phase_shift)
 
     @override
-    def compute_phase_shifts_from_instrument(
+    def compute_aberration_phase_shifts(
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         *,
         voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
     ) -> Float[Array, "y_dim x_dim"]:
-        """Compute the frequency-dependent phase shifts due to the instrument.
+        """Compute the frequency-dependent phase shifts due to wave aberration.
 
         This is often denoted as $\\chi(\\boldsymbol{q})$ for the in-plane
         spatial frequency $\\boldsymbol{q}$.
@@ -90,8 +90,6 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
             is converted to the wavelength of incident electrons using
             the function [`cryojax.constants.convert_keV_to_angstroms`](https://mjo22.github.io/cryojax/api/constants/units/#cryojax.constants.convert_keV_to_angstroms)
         """
-        # Convert degrees to radians
-        phase_shift = jnp.deg2rad(self.phase_shift)
         astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
         # Convert spherical abberation coefficient to angstroms
         spherical_aberration_in_angstroms = self.spherical_aberration_in_mm * 1e7
@@ -100,7 +98,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
             jnp.asarray(voltage_in_kilovolts)
         )
         # Compute phase shifts for CTF
-        phase_shifts = compute_phase_shifts_with_astigmatism_and_spherical_aberration(
+        phase_shifts = compute_phase_shifts_with_spherical_aberration(
             frequency_grid_in_angstroms,
             self.defocus_in_angstroms,
             self.astigmatism_in_angstroms,
@@ -108,7 +106,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
             wavelength_in_angstroms,
             spherical_aberration_in_angstroms,
         )
-        return phase_shifts - phase_shift
+        return phase_shifts
 
     @override
     def __call__(
@@ -129,14 +127,21 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
             is converted to the wavelength of incident electrons using
             the function [`cryojax.constants.convert_keV_to_angstroms`](https://mjo22.github.io/cryojax/api/constants/units/#cryojax.constants.convert_keV_to_angstroms)
         """  # noqa: E501
-        phase_shifts = self.compute_phase_shifts_from_instrument(
+        # Convert degrees to radians
+        aberration_phase_shifts = self.compute_aberration_phase_shifts(
             frequency_grid_in_angstroms, voltage_in_kilovolts=voltage_in_kilovolts
         )
-        phase_shifts -= compute_phase_shift_from_amplitude_contrast_ratio(
-            self.amplitude_contrast_ratio
+        # Additional phase shifts
+        phase_shift = jnp.deg2rad(self.phase_shift)
+        amplitude_contrast_phase_shift = (
+            compute_phase_shift_from_amplitude_contrast_ratio(
+                self.amplitude_contrast_ratio
+            )
         )
         # Compute the CTF
-        return jnp.sin(phase_shifts).at[0, 0].set(0.0)
+        return jnp.sin(
+            aberration_phase_shifts - (phase_shift + amplitude_contrast_phase_shift)
+        )
 
 
 class ContrastTransferTheory(eqx.Module, strict=True):

@@ -5,7 +5,7 @@ from ...coordinates import cartesian_to_polar
 
 
 # Not currently public API
-def compute_phase_shifts_with_astigmatism_and_spherical_aberration(
+def compute_phase_shifts_with_spherical_aberration(
     frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
     defocus_in_angstroms: Float[Array, ""],
     astigmatism_in_angstroms: Float[Array, ""],
