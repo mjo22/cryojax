@@ -140,11 +140,10 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         object_spectrum_at_exit_plane = self.compute_object_spectrum_at_exit_plane(
             instrument_config, rng_key
         )
-        contrast_spectrum_at_detector_plane = (
-            self.transfer_theory.propagate_object_to_detector_plane(
-                object_spectrum_at_exit_plane,
-                instrument_config,
-            )
+        contrast_spectrum_at_detector_plane = self.transfer_theory.propagate_object_to_detector_plane(  # noqa: E501
+            object_spectrum_at_exit_plane,
+            instrument_config,
+            is_projection_approximation=self.potential_integrator.is_projection_approximation,
         )
 
         return contrast_spectrum_at_detector_plane
@@ -259,10 +258,10 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             translational_phase_shifts = ensemble.pose.compute_shifts(
                 instrument_config.padded_frequency_grid_in_angstroms
             )
-            contrast_spectrum_at_detector_plane = (
-                transfer_theory.propagate_object_to_detector_plane(
-                    object_spectrum_at_exit_plane, instrument_config
-                )
+            contrast_spectrum_at_detector_plane = transfer_theory.propagate_object_to_detector_plane(  # noqa: E501
+                object_spectrum_at_exit_plane,
+                instrument_config,
+                is_projection_approximation=self.potential_integrator.is_projection_approximation,
             )
 
             return translational_phase_shifts * contrast_spectrum_at_detector_plane
@@ -316,6 +315,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
                     self.transfer_theory.propagate_object_to_detector_plane(
                         self.solvent.sample_ice_spectrum(rng_key, instrument_config),
                         instrument_config,
+                        is_projection_approximation=True,
                     )
                 )
                 contrast_spectrum_at_detector_plane += (

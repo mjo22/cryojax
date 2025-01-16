@@ -6,16 +6,13 @@ import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
 from ...constants import convert_keV_to_angstroms
-from ...image.operators import (
-    Constant,
-    FourierOperatorLike,
-)
+from ...image.operators import FourierOperatorLike
 from ...internal import error_if_negative, error_if_not_fractional
 from .._instrument_config import InstrumentConfig
 from .base_transfer_theory import AbstractTransferFunction
 from .common_functions import (
     compute_phase_shift_from_amplitude_contrast_ratio,
-    compute_phase_shifts,
+    compute_phase_shifts_with_astigmatism_and_spherical_aberration,
 )
 
 
@@ -72,7 +69,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         self.phase_shift = jnp.asarray(phase_shift)
 
     @override
-    def compute_phase_shifts(
+    def compute_phase_shifts_from_instrument(
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         *,
@@ -103,16 +100,15 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
             jnp.asarray(voltage_in_kilovolts)
         )
         # Compute phase shifts for CTF
-        phase_shifts = compute_phase_shifts(
+        phase_shifts = compute_phase_shifts_with_astigmatism_and_spherical_aberration(
             frequency_grid_in_angstroms,
             self.defocus_in_angstroms,
             self.astigmatism_in_angstroms,
             astigmatism_angle,
             wavelength_in_angstroms,
             spherical_aberration_in_angstroms,
-            phase_shift,
         )
-        return phase_shifts
+        return phase_shifts - phase_shift
 
     @override
     def __call__(
@@ -133,7 +129,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
             is converted to the wavelength of incident electrons using
             the function [`cryojax.constants.convert_keV_to_angstroms`](https://mjo22.github.io/cryojax/api/constants/units/#cryojax.constants.convert_keV_to_angstroms)
         """  # noqa: E501
-        phase_shifts = self.compute_phase_shifts(
+        phase_shifts = self.compute_phase_shifts_from_instrument(
             frequency_grid_in_angstroms, voltage_in_kilovolts=voltage_in_kilovolts
         )
         phase_shifts -= compute_phase_shift_from_amplitude_contrast_ratio(
@@ -151,7 +147,7 @@ class ContrastTransferTheory(eqx.Module, strict=True):
     """
 
     ctf: ContrastTransferFunction
-    envelope: FourierOperatorLike
+    envelope: Optional[FourierOperatorLike]
 
     def __init__(
         self,
@@ -165,15 +161,23 @@ class ContrastTransferTheory(eqx.Module, strict=True):
         """
 
         self.ctf = ctf
-        self.envelope = envelope or Constant(jnp.asarray(1.0))
+        self.envelope = envelope
 
     def propagate_object_to_detector_plane(
         self,
-        object_spectrum_at_exit_plane: Complex[
-            Array,
-            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
-        ],
+        object_spectrum_at_exit_plane: (
+            Complex[
+                Array,
+                "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+            ]
+            | Complex[
+                Array,
+                "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+            ]
+        ),
         instrument_config: InstrumentConfig,
+        *,
+        is_projection_approximation: bool = True,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
@@ -185,15 +189,33 @@ class ContrastTransferTheory(eqx.Module, strict=True):
             The fourier spectrum of the object in a plane directly below it.
         - `instrument_config`:
             The configuration of the resulting image.
+        - `is_projection_approximation`:
+            If `True`, the `object_spectrum_in_exit_plane` is a projection
+            approximation and is therefore the fourier transform of a real-valued
+            array. If `False`, `object_spectrum_in_exit_plane` is extracted from
+            the ewald sphere and is therefore the fourier transform of a complex-valued
+            array.
         """
         frequency_grid = instrument_config.padded_frequency_grid_in_angstroms
-        # Compute the CTF
-        ctf_array = self.envelope(frequency_grid) * self.ctf(
-            frequency_grid,
-            voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
-        )
-        # ... compute the contrast as the CTF multiplied by the exit plane
-        # phase shifts
-        contrast_spectrum_at_detector_plane = ctf_array * object_spectrum_at_exit_plane
+        if is_projection_approximation:
+            # Compute the CTF
+            ctf_array = self.ctf(
+                frequency_grid,
+                voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
+            )
+            # ... compute the contrast as the CTF multiplied by the exit plane
+            # phase shifts
+            contrast_spectrum_at_detector_plane = (
+                ctf_array * object_spectrum_at_exit_plane
+            )
+        else:
+            # chi = self.ctf.compute_phase_shifts_from_instrument(
+            #     frequency_grid,
+            #     voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
+            # )
+            # cos_chi, sin_chi = jnp.cos(chi), jnp.sin(chi)
+            raise NotImplementedError
+        if self.envelope is not None:
+            contrast_spectrum_at_detector_plane *= self.envelope(frequency_grid)
 
         return contrast_spectrum_at_detector_plane

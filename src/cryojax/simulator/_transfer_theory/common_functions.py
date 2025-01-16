@@ -5,14 +5,13 @@ from ...coordinates import cartesian_to_polar
 
 
 # Not currently public API
-def compute_phase_shifts(
+def compute_phase_shifts_with_astigmatism_and_spherical_aberration(
     frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
     defocus_in_angstroms: Float[Array, ""],
     astigmatism_in_angstroms: Float[Array, ""],
     astigmatism_angle: Float[Array, ""],
     wavelength_in_angstroms: Float[Array, ""],
     spherical_aberration_in_angstroms: Float[Array, ""],
-    phase_shift: Float[Array, ""],
 ) -> Float[Array, "y_dim x_dim"]:
     k_sqr, azimuth = cartesian_to_polar(frequency_grid_in_angstroms, square=True)
     defocus = defocus_in_angstroms + 0.5 * astigmatism_in_angstroms * jnp.cos(
@@ -25,9 +24,7 @@ def compute_phase_shifts(
         * (wavelength_in_angstroms**3)
         * (k_sqr**2)
     )
-    phase_shifts = (2 * jnp.pi) * (
-        defocus_phase_shifts + aberration_phase_shifts
-    ) - phase_shift
+    phase_shifts = (2 * jnp.pi) * (defocus_phase_shifts + aberration_phase_shifts)
 
     return phase_shifts
 
