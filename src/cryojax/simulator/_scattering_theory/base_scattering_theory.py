@@ -65,9 +65,11 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             self.compute_wavefunction_at_exit_plane(instrument_config, rng_key)
         )
         # ... propagate to the detector plane
-        fourier_wavefunction_at_detector_plane = self.transfer_theory(
-            fourier_wavefunction_at_exit_plane,
-            instrument_config,
+        fourier_wavefunction_at_detector_plane = (
+            self.transfer_theory.propagate_wavefunction_to_detector_plane(
+                fourier_wavefunction_at_exit_plane,
+                instrument_config,
+            )
         )
         wavefunction_at_detector_plane = ifftn(fourier_wavefunction_at_detector_plane)
         # ... get the squared wavefunction and return to fourier space
@@ -97,9 +99,11 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             self.compute_wavefunction_at_exit_plane(instrument_config, rng_key)
         )
         # ... propagate to the detector plane
-        fourier_wavefunction_at_detector_plane = self.transfer_theory(
-            fourier_wavefunction_at_exit_plane,
-            instrument_config,
+        fourier_wavefunction_at_detector_plane = (
+            self.transfer_theory.propagate_wavefunction_to_detector_plane(
+                fourier_wavefunction_at_exit_plane,
+                instrument_config,
+            )
         )
         wavefunction_at_detector_plane = ifftn(fourier_wavefunction_at_detector_plane)
         # ... get the squared wavefunction

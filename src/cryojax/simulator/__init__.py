@@ -63,7 +63,6 @@ from ._structural_ensemble import (
 )
 from ._transfer_theory import (
     AbstractTransferFunction as AbstractTransferFunction,
-    AbstractTransferTheory as AbstractTransferTheory,
     ContrastTransferFunction as ContrastTransferFunction,
     ContrastTransferTheory as ContrastTransferTheory,
 )
