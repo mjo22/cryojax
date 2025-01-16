@@ -214,7 +214,10 @@ class ContrastTransferTheory(eqx.Module, strict=True):
             #     voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
             # )
             # cos_chi, sin_chi = jnp.cos(chi), jnp.sin(chi)
-            raise NotImplementedError
+            raise NotImplementedError(
+                "`ContrastTransferTheory` does not currently support "
+                "`is_projection_approximation=False`"
+            )
         if self.envelope is not None:
             contrast_spectrum_at_detector_plane *= self.envelope(frequency_grid)
 
