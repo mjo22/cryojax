@@ -26,7 +26,7 @@
     
     
       
-        <title>Helpers for equinox filtered transformations - cryoJAX</title>
+        <title>Helper functions for Equinox filtering - cryoJAX</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#helpers-for-equinox-filtered-transformations" class="md-skip">
+        <a href="#helper-functions-for-equinox-filtering" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Helpers for equinox filtered transformations
+              Helper functions for Equinox filtering
             
           </span>
         </div>
@@ -1595,15 +1595,54 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Helper functions for Equinox filtering
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
-    Helpers for equinox filtered transformations
+    Helper functions for Equinox filtering
   </span>
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cryojax.utils.get_filter_spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_filter_spec
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1661,7 +1700,38 @@
                   
 
 
-<h1 id="helpers-for-equinox-filtered-transformations">Helpers for <code>equinox</code> filtered transformations<a class="headerlink" href="#helpers-for-equinox-filtered-transformations" title="Permanent link">¤</a></h1>
+<h1 id="helper-functions-for-equinox-filtering">Helper functions for Equinox filtering<a class="headerlink" href="#helper-functions-for-equinox-filtering" title="Permanent link">¤</a></h1>
+<p>To make use of the full power of JAX, it is highly recommended to learn about <a href="https://docs.kidger.site/equinox/all-of-equinox/">equinox</a>. Using <code>equinox</code>, cryoJAX implements its <a href="https://docs.kidger.site/equinox/all-of-equinox/#1-models-as-pytrees">models as pytrees</a> using <code>equinox.Module</code>s. These pytrees can be operated on similarly to any pytree with JAX (e.g. with <code>jax.tree.map</code>). Complementary to the <code>equinox.Module</code> interface, <code>equinox</code> introduces the idea of <a href="https://docs.kidger.site/equinox/all-of-equinox/#2-filtering"><em>filtering</em></a> in order to separate pytree leaves into different groups, a core task in using JAX (e.g. separating traced and static arguments to <code>jax.jit</code>). In particular, this grouping is achieved with the functions <a href="https://docs.kidger.site/equinox/api/manipulation/#equinox.partition">eqx.partition and eqx.combine</a>. This documentation describes utilities in <code>cryojax</code> for working with <code>equinox.partition</code> and <code>equinox.combine</code>.</p>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="cryojax.utils.get_filter_spec" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">get_filter_spec</span><span class="p">(</span><span class="n">pytree</span><span class="p">:</span> <span class="n">PyTree</span><span class="p">,</span> <span class="n">where</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">PyTree</span><span class="p">],</span> <span class="n">Union</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]]],</span> <span class="o">*</span><span class="p">,</span> <span class="n">inverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">is_leaf</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PyTree</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span></code>
+
+<a href="#cryojax.utils.get_filter_spec" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+        <p>A lightweight wrapper around <code>equinox</code> for creating a "filter specification".</p>
+<p>A filter specification, or <code>filter_spec</code>, is a pytree whose
+leaves are either <code>True</code> or <code>False</code>. These are commonly used with
+<code>equinox</code> <a href="https://docs.kidger.site/equinox/all-of-equinox/#2-filtering">filtering</a>.</p>
+<p>In <code>cryojax</code>, it is a common pattern to need to finely specify which
+leaves we would like to take JAX transformations with respect to. This is done with a
+pointer to individual leaves, which is referred to as a <code>where</code> function. See
+<a href="https://docs.kidger.site/equinox/examples/frozen_layer/#freezing-parameters"><code>here</code></a>
+in the <code>equinox</code> documentation for an example.</p>
+<p><strong>Returns:</strong></p>
+<p>The filter specification. This is a pytree of the same structure as <code>pytree</code> with
+<code>True</code> where the <code>where</code> function points to, and <code>False</code> where it does not
+(or the opposite, if <code>inverse = True</code>).</p>
+
+    </div>
+
+</div>
 
 
 

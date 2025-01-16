@@ -629,6 +629,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Representing poses
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -638,6 +649,61 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cryojax.simulator.AbstractPose" class="md-nav__link">
+    <span class="md-ellipsis">
+      AbstractPose
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cryojax.simulator.EulerAnglePose" class="md-nav__link">
+    <span class="md-ellipsis">
+      EulerAnglePose
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cryojax.simulator.QuaternionPose" class="md-nav__link">
+    <span class="md-ellipsis">
+      QuaternionPose
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cryojax.simulator.AxisAnglePose" class="md-nav__link">
+    <span class="md-ellipsis">
+      AxisAnglePose
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1602,7 +1668,7 @@
         
   
   <span class="md-ellipsis">
-    Helpers for equinox filtered transformations
+    Helper functions for Equinox filtering
   </span>
   
 
@@ -1664,6 +1730,432 @@
 
 
 <h1 id="representing-poses">Representing poses<a class="headerlink" href="#representing-poses" title="Permanent link">¤</a></h1>
+<p><code>cryojax</code> provides different parameterizations for the pose of a structure. These are captured through the abstract base class called <code>AbstractPose</code>.</p>
+<details class="abstract" open="open">
+<summary><code>cryojax.simulator.AbstractPose</code></summary>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.AbstractPose" class="doc doc-heading">
+            <code>cryojax.simulator.AbstractPose</code>
+
+
+<a href="#cryojax.simulator.AbstractPose" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Base class for the image pose. Subclasses will choose a
+particular convention for parameterizing the rotation by
+overwriting the <code>AbstractPose.rotation</code> property.</p>
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.AbstractPose.compute_shifts" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractPose</span><span class="o">.</span><span class="n">compute_shifts</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.simulator.AbstractPose.compute_shifts" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Compute the phase shifts from the in-plane translation,
+given a frequency grid coordinate system.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>frequency_grid_in_angstroms</code>:
+    A grid of in-plane frequency coordinates <span class="arithmatex">\((q_x, q_y)\)</span></li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>From the vector <span class="arithmatex">\((t_x, t_y)\)</span> (given by <code>self.offset_in_angstroms</code>), returns the
+grid of in-plane phase shifts <span class="arithmatex">\(\exp{(- 2 \pi i (t_x q_x + t_y q_y))}\)</span>.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.AbstractPose.rotate_coordinates" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractPose</span><span class="o">.</span><span class="n">rotate_coordinates</span><span class="p">(</span><span class="n">coordinate_grid_or_list</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;size 3&#39;</span><span class="p">],</span> <span class="n">inverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;size 3&#39;</span><span class="p">]</span></code>
+
+<a href="#cryojax.simulator.AbstractPose.rotate_coordinates" class="headerlink" title="Permanent link">¤</a></h5>
+          <div class="doc-overloads">
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">rotate_coordinates</span><span class="p">(</span><span class="n">coordinate_grid_or_list</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">],</span> <span class="n">inverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;z_dim y_dim x_dim 3&#39;</span><span class="p">]</span>
+</code></pre></div><div class="doc-signature highlight"><pre><span></span><code><span class="nf">rotate_coordinates</span><span class="p">(</span><span class="n">coordinate_grid_or_list</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;size 3&#39;</span><span class="p">],</span> <span class="n">inverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;size 3&#39;</span><span class="p">]</span>
+</code></pre></div>          </div>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Rotate a 3D coordinate system.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>coordinate_grid_or_list</code>:
+    The 3D coordinate system to rotate. This can either be a list of coordinates
+    of shape <code>(N, 3)</code> or a grid of coordinates <code>(N1, N2, N3, 3)</code>.</li>
+<li><code>inverse</code>:
+    If <code>True</code>, compute the inverse rotation (i.e. rotation by the matrix <span class="arithmatex">\(R^T\)</span>,
+    where <span class="arithmatex">\(R\)</span> is the rotation matrix).</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>The rotated version of <code>coordinate_grid_or_list</code>.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="cryojax.simulator.AbstractPose.offset_in_angstroms" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractPose</span><span class="o">.</span><span class="n">offset_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#cryojax.simulator.AbstractPose.offset_in_angstroms" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+        <p>The in-plane translation vector, where the origin in taken to
+be in the center of the imaging plane.</p>
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="cryojax.simulator.AbstractPose.rotation" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractPose</span><span class="o">.</span><span class="n">rotation</span><span class="p">:</span> <span class="n">SO3</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
+      <small class="doc doc-label doc-label-cached"><code>cached</code></small>
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#cryojax.simulator.AbstractPose.rotation" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Generate an <code>SO3</code> object from a particular angular
+parameterization.</p>
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.AbstractPose.from_rotation" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractPose</span><span class="o">.</span><span class="n">from_rotation</span><span class="p">(</span><span class="n">rotation</span><span class="p">:</span> <span class="n">SO3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#cryojax.simulator.AbstractPose.from_rotation" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Construct an <code>AbstractPose</code> from an <code>SO3</code> object.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.AbstractPose.from_rotation_and_translation" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractPose</span><span class="o">.</span><span class="n">from_rotation_and_translation</span><span class="p">(</span><span class="n">rotation</span><span class="p">:</span> <span class="n">SO3</span><span class="p">,</span> <span class="n">offset_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Self</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#cryojax.simulator.AbstractPose.from_rotation_and_translation" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Construct an <code>AbstractPose</code> from an <code>SO3</code> object and an
+in-plane translation vector.</p>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div></details>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.EulerAnglePose" class="doc doc-heading">
+            <code>cryojax.simulator.EulerAnglePose</code>
+
+
+<a href="#cryojax.simulator.EulerAnglePose" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>An <code>AbstractPose</code> represented by Euler angles.
+Angles are given in degrees, and the sequence of rotations is
+given by a zyz extrinsic rotations.</p>
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.EulerAnglePose.__init__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">EulerAnglePose</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">offset_x_in_angstroms</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">offset_y_in_angstroms</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">view_phi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">view_theta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">view_psi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>
+
+<a href="#cryojax.simulator.EulerAnglePose.__init__" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+        <p><strong>Arguments:</strong></p>
+<ul>
+<li><code>offset_x_in_angstroms</code>: In-plane translation in x direction.</li>
+<li><code>offset_y_in_angstroms</code>: In-plane translation in y direction.</li>
+<li><code>view_phi</code>: Angle to rotate about first rotation axis, which is the z axis.</li>
+<li><code>view_theta</code>: Angle to rotate about second rotation axis, which is the y axis.</li>
+<li><code>view_psi</code>: Angle to rotate about third rotation axis, which is the z axis.</li>
+</ul>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div><hr />
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.QuaternionPose" class="doc doc-heading">
+            <code>cryojax.simulator.QuaternionPose</code>
+
+
+<a href="#cryojax.simulator.QuaternionPose" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>An <code>AbstractPose</code> represented by unit quaternions.</p>
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.QuaternionPose.__init__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">QuaternionPose</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">offset_x_in_angstroms</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">offset_y_in_angstroms</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">wxyz</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span></code>
+
+<a href="#cryojax.simulator.QuaternionPose.__init__" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+        <p><strong>Arguments:</strong></p>
+<ul>
+<li><code>offset_x_in_angstroms</code>: In-plane translation in x direction.</li>
+<li><code>offset_y_in_angstroms</code>: In-plane translation in y direction.</li>
+<li><code>wxyz</code>:
+    The quaternion, represented as a vector <span class="arithmatex">\(\mathbf{q} = (q_w, q_x, q_y, q_z)\)</span>.</li>
+</ul>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div><hr />
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="cryojax.simulator.AxisAnglePose" class="doc doc-heading">
+            <code>cryojax.simulator.AxisAnglePose</code>
+
+
+<a href="#cryojax.simulator.AxisAnglePose" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>An <code>AbstractPose</code> parameterized in the axis-angle representation.</p>
+<p>The axis-angle representation parameterizes elements of the so3 algebra,
+which are skew-symmetric matrices, with the euler vector
+<span class="arithmatex">\(\boldsymbol{\omega} = (\omega_x, \omega_y, \omega_z)\)</span>.
+The magnitude of this vector is the angle, and the unit vector is the axis.</p>
+<p>In a <code>SO3</code> object, the euler vector is mapped to SO3 group elements using
+the matrix exponential.</p>
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="cryojax.simulator.AxisAnglePose.__init__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AxisAnglePose</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">offset_x_in_angstroms</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">offset_y_in_angstroms</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">euler_vector</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">|</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span></code>
+
+<a href="#cryojax.simulator.AxisAnglePose.__init__" class="headerlink" title="Permanent link">¤</a></h5>
+
+
+    <div class="doc doc-contents ">
+
+        <p><strong>Arguments:</strong></p>
+<ul>
+<li><code>offset_x_in_angstroms</code>: In-plane translation in x direction.</li>
+<li><code>offset_y_in_angstroms</code>: In-plane translation in y direction.</li>
+<li><code>euler_vector</code>:
+    The axis-angle parameterization, represented with the euler
+    vector <span class="arithmatex">\(\boldsymbol{\omega}\)</span>.</li>
+</ul>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
