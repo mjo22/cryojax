@@ -106,3 +106,4 @@ nav:
         - cryojax.utils:
             - 'api/utils/filter_specs.md'
             - 'api/utils/transforms.md'
+            - 'api/utils/useful_functions.md'
