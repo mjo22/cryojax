@@ -240,14 +240,14 @@ def _compute_contrast_from_ewald_sphere(
         axis=0,
     )
     # ... concatenate the results
-    contrast_spectrum_at_detector_plane = jnp.concatenate(
+    contrast_spectrum_at_detector_plane = 0.5 * jnp.concatenate(
         (contrast_y0[:, None], contrast_yx), axis=1
     )
 
     return contrast_spectrum_at_detector_plane
 
 
-def _ewald_propagate_kernel(pos, neg, ac, sin, cos):
+def _ewald_propagate_kernel(neg, pos, ac, sin, cos):
     return (
         (neg.real + pos.real + ac * (neg.imag + pos.imag)) * sin
         + (neg.imag + pos.imag - ac * (neg.real + pos.real)) * cos
