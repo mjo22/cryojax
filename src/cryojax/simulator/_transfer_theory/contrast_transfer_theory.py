@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional, overload
 from typing_extensions import override
 
 import equinox as eqx
@@ -122,6 +122,34 @@ class ContrastTransferTheory(eqx.Module, strict=True):
 
         self.ctf = ctf
         self.envelope = envelope
+
+    @overload
+    def propagate_object_to_detector_plane(
+        self,
+        object_spectrum_at_exit_plane: Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+        ],
+        instrument_config: InstrumentConfig,
+        *,
+        is_projection_approximation: Literal[False],
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]: ...
+
+    @overload
+    def propagate_object_to_detector_plane(
+        self,
+        object_spectrum_at_exit_plane: Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ],
+        instrument_config: InstrumentConfig,
+        *,
+        is_projection_approximation: Literal[True],
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]: ...
 
     def propagate_object_to_detector_plane(
         self,

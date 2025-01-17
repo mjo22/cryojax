@@ -4,7 +4,6 @@ Representations of rigid body rotations and translations of 3D coordinate system
 
 from abc import abstractmethod
 from functools import cached_property
-from typing import overload
 from typing_extensions import override, Self
 
 import equinox as eqx
@@ -25,18 +24,6 @@ class AbstractPose(Module, strict=True):
 
     offset_x_in_angstroms: AbstractVar[Float[Array, ""]]
     offset_y_in_angstroms: AbstractVar[Float[Array, ""]]
-
-    @overload
-    def rotate_coordinates(
-        self,
-        coordinate_grid_or_list: Float[Array, "z_dim y_dim x_dim 3"],
-        inverse: bool = False,
-    ) -> Float[Array, "z_dim y_dim x_dim 3"]: ...
-
-    @overload
-    def rotate_coordinates(
-        self, coordinate_grid_or_list: Float[Array, "size 3"], inverse: bool = False
-    ) -> Float[Array, "size 3"]: ...
 
     def rotate_coordinates(
         self,
