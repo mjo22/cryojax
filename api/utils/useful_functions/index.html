@@ -12,13 +12,11 @@
         <meta name="author" content="Michael O'Brien">
       
       
-        <link rel="canonical" href="https://mjo22.github.io/cryojax/api/simulator/structural_ensemble/">
+        <link rel="canonical" href="https://mjo22.github.io/cryojax/api/utils/useful_functions/">
       
       
-        <link rel="prev" href="../pose/">
+        <link rel="prev" href="../transforms/">
       
-      
-        <link rel="next" href="../potential_integrators/">
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
@@ -26,7 +24,7 @@
     
     
       
-        <title>Structural ensembles - cryoJAX</title>
+        <title>Useful JAX functions - cryoJAX</title>
       
     
     
@@ -78,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#structural-ensembles" class="md-skip">
+        <a href="#useful-jax-functions" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Structural ensembles
+              Useful JAX functions
             
           </span>
         </div>
@@ -518,8 +516,6 @@
                 
   
   
-    
-  
   
   
     
@@ -528,11 +524,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
         
           
           <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
@@ -546,7 +542,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
             cryojax.simulator
@@ -557,8 +553,6 @@
                 
   
   
-    
-  
   
   
     
@@ -567,11 +561,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_1" >
         
           
           <label class="md-nav__link" for="__nav_3_1_1" id="__nav_3_1_1_label" tabindex="0">
@@ -585,7 +579,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1_1">
             <span class="md-nav__icon md-icon"></span>
             Representing volumes
@@ -599,7 +593,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../scattering_potential/" class="md-nav__link">
+      <a href="../../simulator/scattering_potential/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -620,7 +614,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../pose/" class="md-nav__link">
+      <a href="../../simulator/pose/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -638,19 +632,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../simulator/structural_ensemble/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -659,7 +644,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -717,7 +701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../potential_integrators/" class="md-nav__link">
+      <a href="../../simulator/potential_integrators/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -738,7 +722,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../transfer_theory/" class="md-nav__link">
+      <a href="../../simulator/transfer_theory/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -759,7 +743,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../scattering_theory/" class="md-nav__link">
+      <a href="../../simulator/scattering_theory/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -825,7 +809,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../instrument_config/" class="md-nav__link">
+      <a href="../../simulator/instrument_config/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -846,7 +830,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../imaging_pipeline/" class="md-nav__link">
+      <a href="../../simulator/imaging_pipeline/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1558,6 +1542,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1566,11 +1552,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" checked>
         
           
           <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
@@ -1584,7 +1570,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_9">
             <span class="md-nav__icon md-icon"></span>
             cryojax.utils
@@ -1598,7 +1584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../utils/filter_specs/" class="md-nav__link">
+      <a href="../filter_specs/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1619,7 +1605,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../utils/transforms/" class="md-nav__link">
+      <a href="../transforms/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1637,10 +1623,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../utils/useful_functions/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Useful JAX functions
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1649,6 +1655,44 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cryojax.utils.batched_map" class="md-nav__link">
+    <span class="md-ellipsis">
+      batched_map
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cryojax.utils.batched_scan" class="md-nav__link">
+    <span class="md-ellipsis">
+      batched_scan
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1684,7 +1728,78 @@
                   
 
 
-<h1 id="structural-ensembles">Structural ensembles<a class="headerlink" href="#structural-ensembles" title="Permanent link">¤</a></h1>
+<h1 id="useful-jax-functions">Useful JAX functions<a class="headerlink" href="#useful-jax-functions" title="Permanent link">¤</a></h1>
+<p><code>cryojax</code> provides a collection of useful functions not found in JAX that tend to be important for tasks in cryo-EM. Depending on developments with core JAX/Equinox and other factors, these functions could be removed in future releases of <code>cryojax</code>. Use with caution!</p>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="cryojax.utils.batched_map" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">batched_map</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">PyTree</span><span class="p">[</span><span class="n">Shaped</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;_ ...&#39;</span><span class="p">],</span> <span class="n">X</span><span class="p">]],</span> <span class="n">PyTree</span><span class="p">[</span><span class="n">Shaped</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;_ ...&#39;</span><span class="p">],</span> <span class="n">Y</span><span class="p">]],</span> <span class="n">xs</span><span class="p">:</span> <span class="n">PyTree</span><span class="p">[</span><span class="n">Shaped</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;_ ...&#39;</span><span class="p">],</span> <span class="n">X</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PyTree</span><span class="p">[</span><span class="n">Shaped</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;_ ...&#39;</span><span class="p">],</span> <span class="n">Y</span><span class="p">]</span></code>
+
+<a href="#cryojax.utils.batched_map" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Like <code>jax.lax.map(..., batch_size=...)</code>, except
+<code>f(x)</code> is already vmapped by the user. In particular,
+it must be vmapped over the first axis of the arrays of <code>x</code>.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>f</code>:
+    As <code>jax.lax.map</code> with format <code>f(x)</code>, except
+    vmapped over the first axis of the arrays of <code>x</code>.</li>
+<li><code>xs</code>:
+    As <code>jax.lax.map</code>.</li>
+<li><code>batch_size</code>:
+    Compute a loop of vmaps over <code>xs</code> in chunks of <code>batch_size</code>.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>As <code>jax.lax.map</code>.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="cryojax.utils.batched_scan" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">batched_scan</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Carry</span><span class="p">,</span> <span class="n">PyTree</span><span class="p">[</span><span class="n">Shaped</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;_ ...&#39;</span><span class="p">],</span> <span class="n">X</span><span class="p">]],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Carry</span><span class="p">,</span> <span class="n">PyTree</span><span class="p">[</span><span class="n">Shaped</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;_ ...&#39;</span><span class="p">],</span> <span class="n">Y</span><span class="p">]]],</span> <span class="n">init</span><span class="p">:</span> <span class="n">Carry</span><span class="p">,</span> <span class="n">xs</span><span class="p">:</span> <span class="n">PyTree</span><span class="p">[</span><span class="n">Shaped</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;_ ...&#39;</span><span class="p">],</span> <span class="n">X</span><span class="p">],</span> <span class="n">length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">unroll</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">bool</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Carry</span><span class="p">,</span> <span class="n">PyTree</span><span class="p">[</span><span class="n">Shaped</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;_ ...&#39;</span><span class="p">],</span> <span class="n">Y</span><span class="p">]]</span></code>
+
+<a href="#cryojax.utils.batched_scan" class="headerlink" title="Permanent link">¤</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Like <code>jax.lax.map(..., batch_size=...)</code>, except adding
+a <code>batch_size</code> to <code>jax.lax.scan</code>. Additionally, unlike
+<code>jax.lax.map</code>, it is assumed that <code>f(carry, x)</code> is already
+vmapped over the first axis of the arrays of <code>x</code>.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>f</code>:
+    As <code>jax.lax.scan</code> with format <code>f(carry, x)</code>, except
+    vmapped over the first axis of the arrays of <code>x</code>.</li>
+<li><code>init</code>:
+    As <code>jax.lax.scan</code>.</li>
+<li><code>xs</code>:
+    As <code>jax.lax.scan</code>.</li>
+<li><code>length</code>:
+    As <code>jax.lax.scan</code>.</li>
+<li><code>unroll</code>:
+    As <code>jax.lax.scan</code>.</li>
+<li><code>batch_size</code>:
+    Compute a loop of vmaps over <code>xs</code> in chunks of <code>batch_size</code>.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<p>As <code>jax.lax.scan</code>.</p>
+
+    </div>
+
+</div>
 
 
 

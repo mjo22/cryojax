@@ -1720,6 +1720,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../utils/useful_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Useful JAX functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1771,7 +1792,7 @@
 <div class="highlight"><pre><span></span><code><span class="n">projection_image_in_fourier_domain</span> <span class="o">=</span> <span class="o">...</span>
 <span class="n">ctf</span> <span class="o">=</span> <span class="n">ContrastTransferFunction</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
 <span class="n">transfer_theory</span> <span class="o">=</span> <span class="n">cxs</span><span class="o">.</span><span class="n">ContrastTransferTheory</span><span class="p">(</span><span class="n">ctf</span><span class="p">)</span>
-<span class="n">contrast_in_fourier_domain</span> <span class="o">=</span> <span class="n">transfer_theory</span><span class="o">.</span><span class="n">propagate_object_to_detector_plan</span><span class="p">(</span><span class="n">projection_image_in_fourier_domain</span><span class="p">)</span>
+<span class="n">contrast_in_fourier_domain</span> <span class="o">=</span> <span class="n">transfer_theory</span><span class="o">.</span><span class="n">propagate_object_to_detector_plane</span><span class="p">(</span><span class="n">projection_image_in_fourier_domain</span><span class="p">)</span>
 </code></pre></div>
 <p>This documentation describes the elements of . More features are included than described above, such as the ability to include a user-specified envelope function to the <code>ContrastTransferTheory</code>. Much of the code and theory have been adapted from the Grigorieff Lab's CTFFIND4 program.</p>
 <p><em>References</em></p>
@@ -1779,7 +1800,7 @@
 <li>Rohou, Alexis, and Nikolaus Grigorieff. "CTFFIND4: Fast and accurate defocus estimation from electron micrographs." Journal of structural biology 192.2 (2015): 216-221.</li>
 </ul>
 <h2 id="transfer-functions">Transfer Functions<a class="headerlink" href="#transfer-functions" title="Permanent link">¤</a></h2>
-<details class="abstract">
+<details class="abstract" open="open">
 <summary><code>cryojax.simulator.AbstractTransferFunction</code></summary>
 
 
@@ -1797,7 +1818,7 @@
     <div class="doc doc-contents first">
 
 
-        <p>An abstract base class for a transfer function.</p>
+        <p>An abstract base class for a transfer function in cryo-EM.</p>
 
 
 
@@ -1818,17 +1839,27 @@
 <div class="doc doc-object doc-function">
 
 
-<h5 id="cryojax.simulator.AbstractTransferFunction.compute_phase_shifts_from_instrument" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractTransferFunction</span><span class="o">.</span><span class="n">compute_phase_shifts_from_instrument</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">300.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
+<h5 id="cryojax.simulator.AbstractTransferFunction.compute_aberration_phase_shifts" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractTransferFunction</span><span class="o">.</span><span class="n">compute_aberration_phase_shifts</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
 
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
-  </span>
-
-<a href="#cryojax.simulator.AbstractTransferFunction.compute_phase_shifts_from_instrument" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.AbstractTransferFunction.compute_aberration_phase_shifts" class="headerlink" title="Permanent link">¤</a></h5>
 
 
     <div class="doc doc-contents ">
+
+        <p>Compute the frequency-dependent phase shifts due to wave aberration.</p>
+<p>This is often denoted as <span class="arithmatex">\(\chi(\boldsymbol{q})\)</span> for the in-plane
+spatial frequency <span class="arithmatex">\(\boldsymbol{q}\)</span>.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>frequency_grid_in_angstroms</code>:
+    The grid of frequencies in units of inverse angstroms. This can
+    be computed with <a href="https://mjo22.github.io/cryojax/api/coordinates/making_coordinates/#cryojax.coordinates.make_frequency_grid"><code>cryojax.coordinates.make_frequency_grid</code></a></li>
+<li><code>voltage_in_kilovolts</code>:
+    The accelerating voltage of the microscope in kilovolts. This
+    is converted to the wavelength of incident electrons using
+    the function <a href="https://mjo22.github.io/cryojax/api/constants/units/#cryojax.constants.convert_keV_to_angstroms"><code>cryojax.constants.convert_keV_to_angstroms</code></a></li>
+</ul>
 
     </div>
 
@@ -1843,7 +1874,7 @@
 
 
 <h5 id="cryojax.simulator.AbstractTransferFunction.__call__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractTransferFunction</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">300.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractTransferFunction</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -1948,42 +1979,8 @@ from CTFFIND to <code>cryojax</code>,</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="cryojax.simulator.ContrastTransferFunction.compute_phase_shifts_from_instrument" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">ContrastTransferFunction</span><span class="o">.</span><span class="n">compute_phase_shifts_from_instrument</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">300.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
-
-<a href="#cryojax.simulator.ContrastTransferFunction.compute_phase_shifts_from_instrument" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Compute the frequency-dependent phase shifts due to the instrument.</p>
-<p>This is often denoted as <span class="arithmatex">\(\chi(\boldsymbol{q})\)</span> for the in-plane
-spatial frequency <span class="arithmatex">\(\boldsymbol{q}\)</span>.</p>
-<p><strong>Arguments:</strong></p>
-<ul>
-<li><code>frequency_grid_in_angstroms</code>:
-    The grid of frequencies in units of inverse angstroms. This can
-    be computed with <a href="https://mjo22.github.io/cryojax/api/coordinates/making_coordinates/#cryojax.coordinates.make_frequency_grid"><code>cryojax.coordinates.make_frequency_grid</code></a></li>
-<li><code>voltage_in_kilovolts</code>:
-    The accelerating voltage of the microscope in kilovolts. This
-    is converted to the wavelength of incident electrons using
-    the function <a href="https://mjo22.github.io/cryojax/api/constants/units/#cryojax.constants.convert_keV_to_angstroms"><code>cryojax.constants.convert_keV_to_angstroms</code></a></li>
-</ul>
-
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
 <h5 id="cryojax.simulator.ContrastTransferFunction.__call__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">ContrastTransferFunction</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">300.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">ContrastTransferFunction</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
 
 <a href="#cryojax.simulator.ContrastTransferFunction.__call__" class="headerlink" title="Permanent link">¤</a></h5>
 
