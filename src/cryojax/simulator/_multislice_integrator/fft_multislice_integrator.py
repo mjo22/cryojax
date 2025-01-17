@@ -147,7 +147,7 @@ class FFTMultisliceIntegrator(
         #    )
         # else:
         #    radial_frequency_grid = jnp.sum(
-        #        make_frequency_grid((y_dim, x_dim), voxel_size, half_space=False) ** 2,
+        #        make_frequency_grid((y_dim, x_dim), voxel_size, get_rfft=False) ** 2,
         #        axis=-1,
         #    )
         fresnel_propagator = jnp.exp(

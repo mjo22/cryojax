@@ -136,7 +136,7 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
         fourier_voxel_grid = jnp.fft.fftshift(fourier_voxel_grid_with_zero_in_corner)
         # ... create in-plane frequency slice on the half space
         frequency_slice = make_frequency_slice(
-            cast(tuple[int, int], padded_real_voxel_grid.shape[:-1]), half_space=False
+            cast(tuple[int, int], padded_real_voxel_grid.shape[:-1]), get_rfftfreqs=False
         )
 
         return cls(fourier_voxel_grid, frequency_slice, voxel_size)

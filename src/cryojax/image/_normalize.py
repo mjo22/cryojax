@@ -14,7 +14,7 @@ def normalize_image(
     *,
     is_real: bool = True,
     where: Optional[Bool[Array, "y_dim x_dim"]] = None,
-    half_space: bool = True,
+    is_rfft: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
 ) -> Inexact[Array, "y_dim x_dim"]:
     """Normalize so that the image is mean 0 and standard deviation 1 in real space."""
@@ -24,7 +24,7 @@ def normalize_image(
         0.0,
         is_real=is_real,
         where=where,
-        half_space=half_space,
+        is_rfft=is_rfft,
         shape_in_real_space=shape_in_real_space,
     )
 
@@ -36,7 +36,7 @@ def rescale_image(
     *,
     is_real: bool = True,
     where: Optional[Bool[Array, "y_dim x_dim"]] = None,
-    half_space: bool = True,
+    is_rfft: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
 ) -> Inexact[Array, "y_dim x_dim"]:
     """Normalize so that the image is mean `mean`
@@ -82,7 +82,7 @@ def rescale_image(
                 if shape_in_real_space is None
                 else math.prod(shape_in_real_space)
             )
-            if half_space
+            if is_rfft
             else N1 * N2
         )
         image_with_zero_mean = image.at[0, 0].set(0.0)
@@ -91,7 +91,7 @@ def rescale_image(
                 jnp.sum(jnp.abs(image_with_zero_mean[:, 0]) ** 2)
                 + 2 * jnp.sum(jnp.abs(image_with_zero_mean[:, 1:]) ** 2)
             )
-            if half_space
+            if is_rfft
             else jnp.linalg.norm(image_with_zero_mean)
         ) / n_pixels
         normalized_image = image_with_zero_mean / image_std
