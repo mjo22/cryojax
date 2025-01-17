@@ -31,19 +31,21 @@ class AbstractRealOperator(AbstractImageOperator, strict=True):
     @overload
     @abstractmethod
     def __call__(
-        self, coords: Float[Array, "y_dim x_dim 2"]
+        self, coordinate_grid: Float[Array, "y_dim x_dim 2"]
     ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
     @abstractmethod
     def __call__(
-        self, coords: Float[Array, "z_dim y_dim x_dim 3"]
+        self, coordinate_grid: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
     @abstractmethod
     def __call__(  # pyright: ignore
         self,
-        coords: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"],
+        coordinate_grid: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
     ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
         raise NotImplementedError
 
@@ -66,9 +68,9 @@ class Gaussian2D(AbstractRealOperator, strict=True):
 
     @override
     def __call__(
-        self, coords: Float[Array, "y_dim x_dim 2"]
+        self, coordinate_grid: Float[Array, "y_dim x_dim 2"]
     ) -> Float[Array, "y_dim x_dim"]:
-        r_sqr = jnp.sum((coords - self.offset) ** 2, axis=-1)
+        r_sqr = jnp.sum((coordinate_grid - self.offset) ** 2, axis=-1)
         scaling = (self.amplitude / jnp.sqrt(2 * jnp.pi * self.variance)) * jnp.exp(
             -0.5 * r_sqr / self.variance
         )

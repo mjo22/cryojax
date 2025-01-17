@@ -21,8 +21,7 @@ class AbstractTransferFunction(Module, strict=True):
     def compute_aberration_phase_shifts(
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-        *,
-        voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
+        voltage_in_kilovolts: Float[Array, ""] | float,
     ) -> Float[Array, "y_dim x_dim"]:
         """Compute the frequency-dependent phase shifts due to wave aberration.
 
@@ -61,7 +60,6 @@ class AbstractTransferFunction(Module, strict=True):
     def __call__(
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-        *,
-        voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
+        voltage_in_kilovolts: Float[Array, ""] | float,
     ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
         raise NotImplementedError
