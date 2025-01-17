@@ -6,54 +6,51 @@ from abc import abstractmethod
 from typing import Any, Callable
 from typing_extensions import override
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
-from equinox import AbstractVar, field, Module, Partial
-from jaxtyping import Array, Float, Inexact
+from jaxtyping import Array, Float, Inexact, PyTree
 
 
-class AbstractImageOperator(Module, strict=True):
-    """
-    The base class for image operators that contain
-    model parameters and compute an ``Array`` at runtime.
-    """
+class AbstractImageOperator(eqx.Module, strict=True):
+    """Abstract base class for image operators in `cryojax`."""
 
     @abstractmethod
     def __call__(self, *args: Any, **kwargs: Any) -> Array:
         raise NotImplementedError
 
     def __add__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, (AbstractImageOperator, Partial)):
+        if isinstance(other, (AbstractImageOperator, eqx.Partial)):
             return SumImageOperator(self, other)
         return SumImageOperator(self, Constant(other))
 
     def __radd__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, (AbstractImageOperator, Partial)):
+        if isinstance(other, (AbstractImageOperator, eqx.Partial)):
             return SumImageOperator(other, self)
         return SumImageOperator(Constant(other), self)
 
     def __sub__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, (AbstractImageOperator, Partial)):
+        if isinstance(other, (AbstractImageOperator, eqx.Partial)):
             return DiffImageOperator(self, other)
         return DiffImageOperator(self, Constant(other))
 
     def __rsub__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, (AbstractImageOperator, Partial)):
+        if isinstance(other, (AbstractImageOperator, eqx.Partial)):
             return DiffImageOperator(other, self)
         return DiffImageOperator(Constant(other), self)
 
     def __mul__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, (AbstractImageOperator, Partial)):
+        if isinstance(other, (AbstractImageOperator, eqx.Partial)):
             return ProductImageOperator(self, other)
         return ProductImageOperator(self, Constant(other))
 
     def __rmul__(self, other) -> "AbstractImageOperator":
-        if isinstance(other, (AbstractImageOperator, Partial)):
+        if isinstance(other, (AbstractImageOperator, eqx.Partial)):
             return ProductImageOperator(other, self)
         return ProductImageOperator(Constant(other), self)
 
 
-class AbstractImageMultiplier(Module, strict=True):
+class AbstractImageMultiplier(eqx.Module, strict=True):
     """
     Base class for computing and applying an ``Array`` to an image.
 
@@ -64,7 +61,7 @@ class AbstractImageMultiplier(Module, strict=True):
         computed upon instantiation.
     """
 
-    array: AbstractVar[
+    array: eqx.AbstractVar[
         Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
     ]
 
@@ -86,7 +83,7 @@ class AbstractImageMultiplier(Module, strict=True):
 class Constant(AbstractImageOperator, strict=True):
     """An operator that is a constant."""
 
-    value: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
+    value: Float[Array, "..."] = eqx.field(default=1.0, converter=jnp.asarray)
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Float[Array, ""]:
@@ -99,21 +96,29 @@ Constant.__init__.__doc__ = """**Arguments:**
 """
 
 
-class Lambda(AbstractImageOperator, strict=True):
+class CustomOperator(AbstractImageOperator, strict=True):
     """An operator that calls a custom function."""
 
-    fn: Callable[
-        [Array], Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
-    ] = field(static=True)
+    fn_dynamic: PyTree
+    fn_static: PyTree = eqx.field(static=True)
+
+    def __init__(
+        self,
+        fn: Callable[
+            ..., Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
+        ],
+    ):
+        self.fn_dynamic, self.fn_static = eqx.partition(fn, eqx.is_array)
 
     @override
     def __call__(
         self, *args: Any, **kwargs: Any
     ) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
-        return self.fn(*args, **kwargs)
+        fn = eqx.combine(self.fn_dynamic, self.fn_static)
+        return fn(*args, **kwargs)
 
 
-Lambda.__init__.__doc__ = """**Arguments:**
+CustomOperator.__init__.__doc__ = """**Arguments:**
 
 - `fn`: The `Callable` wrapped into a `AbstractImageOperator`.
 """
@@ -129,7 +134,7 @@ class Empirical(AbstractImageOperator, strict=True):
         | Inexact[Array, "... z_dim y_dim x_dim"]
         | Float[Array, "..."]
     )
-    amplitude: Float[Array, "..."] = field(default=1.0, converter=jnp.asarray)
+    amplitude: Float[Array, "..."] = eqx.field(default=1.0, converter=jnp.asarray)
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Inexact[Array, "y_dim x_dim"]:
@@ -168,8 +173,8 @@ class ProductImageMultiplier(AbstractImageMultiplier, strict=True):
 class SumImageOperator(AbstractImageOperator, strict=True):
     """A helper to represent the sum of two operators."""
 
-    operator1: AbstractImageOperator | Partial
-    operator2: AbstractImageOperator | Partial
+    operator1: AbstractImageOperator | eqx.Partial
+    operator2: AbstractImageOperator | eqx.Partial
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Array:
@@ -182,8 +187,8 @@ class SumImageOperator(AbstractImageOperator, strict=True):
 class DiffImageOperator(AbstractImageOperator, strict=True):
     """A helper to represent the difference of two operators."""
 
-    operator1: AbstractImageOperator | Partial
-    operator2: AbstractImageOperator | Partial
+    operator1: AbstractImageOperator | eqx.Partial
+    operator2: AbstractImageOperator | eqx.Partial
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Array:
@@ -196,8 +201,8 @@ class DiffImageOperator(AbstractImageOperator, strict=True):
 class ProductImageOperator(AbstractImageOperator, strict=True):
     """A helper to represent the product of two operators."""
 
-    operator1: AbstractImageOperator | Partial
-    operator2: AbstractImageOperator | Partial
+    operator1: AbstractImageOperator | eqx.Partial
+    operator2: AbstractImageOperator | eqx.Partial
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Array:

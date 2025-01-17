@@ -37,18 +37,21 @@ class AbstractFourierOperator(AbstractImageOperator, strict=True):
     @overload
     @abstractmethod
     def __call__(
-        self, freqs: Float[Array, "y_dim x_dim 2"]
+        self, frequency_grid: Float[Array, "y_dim x_dim 2"]
     ) -> Inexact[Array, "y_dim x_dim"]: ...
 
     @overload
     @abstractmethod
     def __call__(
-        self, freqs: Float[Array, "z_dim y_dim x_dim 3"]
+        self, frequency_grid: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Inexact[Array, "z_dim y_dim x_dim"]: ...
 
     @abstractmethod
-    def __call__(  # pyright: ignore
-        self, freqs: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+    def __call__(
+        self,
+        frequency_grid: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
     ) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
         raise NotImplementedError
 
@@ -63,9 +66,9 @@ class ZeroMode(AbstractFourierOperator, strict=True):
 
     @override
     def __call__(
-        self, freqs: Float[Array, "y_dim x_dim 2"]
+        self, frequency_grid: Float[Array, "y_dim x_dim 2"]
     ) -> Float[Array, "y_dim x_dim"]:
-        N1, N2 = freqs.shape[0:-1]
+        N1, N2 = frequency_grid.shape[0:-1]
         return jnp.zeros((N1, N2)).at[0, 0].set(self.value)
 
 
@@ -100,9 +103,9 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
 
     @override
     def __call__(
-        self, freqs: Float[Array, "y_dim x_dim 2"]
+        self, frequency_grid: Float[Array, "y_dim x_dim 2"]
     ) -> Float[Array, "y_dim x_dim"]:
-        k_sqr = jnp.sum(freqs**2, axis=-1)
+        k_sqr = jnp.sum(frequency_grid**2, axis=-1)
         scaling = 1.0 / (k_sqr + jnp.divide(1, (self.length_scale) ** 2)) ** 1.5
         scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.length_scale**3)
         return scaling
@@ -132,19 +135,22 @@ class Lorenzian(AbstractFourierOperator, strict=True):
 
     @overload
     def __call__(
-        self, freqs: Float[Array, "y_dim x_dim 2"]
+        self, frequency_grid: Float[Array, "y_dim x_dim 2"]
     ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
     def __call__(
-        self, freqs: Float[Array, "z_dim y_dim x_dim 3"]
+        self, frequency_grid: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
     @override
     def __call__(
-        self, freqs: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        self,
+        frequency_grid: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
     ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
-        k_sqr = jnp.sum(freqs**2, axis=-1)
+        k_sqr = jnp.sum(frequency_grid**2, axis=-1)
         scaling = 1.0 / (k_sqr + jnp.divide(1, self.length_scale**2))
         scaling *= jnp.divide(self.amplitude, self.length_scale**2)
         return scaling
@@ -176,19 +182,22 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
 
     @overload
     def __call__(
-        self, freqs: Float[Array, "y_dim x_dim 2"]
+        self, frequency_grid: Float[Array, "y_dim x_dim 2"]
     ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
     def __call__(
-        self, freqs: Float[Array, "z_dim y_dim x_dim 3"]
+        self, frequency_grid: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
     @override
     def __call__(
-        self, freqs: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        self,
+        frequency_grid: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
     ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
-        k_sqr = jnp.sum(freqs**2, axis=-1)
+        k_sqr = jnp.sum(frequency_grid**2, axis=-1)
         scaling = self.amplitude * jnp.exp(-0.25 * self.b_factor * k_sqr)
         return scaling
 

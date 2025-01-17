@@ -219,24 +219,6 @@ class WhiteningFilter(AbstractFilter, strict=True):
         )
 
 
-@overload
-def _compute_lowpass_filter(
-    frequency_grid: Float[Array, "y_dim x_dim 2"],
-    grid_spacing: Float[Array, ""],
-    cutoff_fraction: Float[Array, ""],
-    rolloff_width_fraction: Float[Array, ""],
-) -> Float[Array, "y_dim x_dim"]: ...
-
-
-@overload
-def _compute_lowpass_filter(
-    frequency_grid: Float[Array, "z_dim y_dim x_dim 3"],
-    grid_spacing: Float[Array, ""],
-    cutoff_fraction: Float[Array, ""],
-    rolloff_width_fraction: Float[Array, ""],
-) -> Float[Array, "z_dim y_dim x_dim"]: ...
-
-
 def _compute_lowpass_filter(
     frequency_grid: Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"],
     grid_spacing: Float[Array, ""],
