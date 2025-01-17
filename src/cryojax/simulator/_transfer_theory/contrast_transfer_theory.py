@@ -169,27 +169,91 @@ class ContrastTransferTheory(eqx.Module, strict=True):
                 ctf_array * object_spectrum_at_exit_plane
             )
         else:
-            # Compute terms for CTF
-            ac = self.ctf.amplitude_contrast_ratio
+            # Propagate to the exit plane when the object spectrum is
+            # the surface of the ewald sphere
             phase_shifts = self.ctf.compute_aberration_phase_shifts(
                 frequency_grid,
                 voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
             ) - jnp.deg2rad(self.ctf.phase_shift)
-            cos, sin = jnp.cos(phase_shifts), jnp.sin(phase_shifts)
-            # Get positive and negative frequencies
-            x_dim = instrument_config.padded_x_dim
-            pos = object_spectrum_at_exit_plane[:, : x_dim // 2 + 1]
-            neg = jnp.flip(object_spectrum_at_exit_plane[:, x_dim // 2 + 1 :], axis=-1)
-            contrast_spectrum_at_detector_plane = (
-                (neg.real + pos.real + ac * (neg.imag + pos.imag)) * sin
-                + (neg.imag + pos.imag - ac * (neg.real + pos.real)) * cos
-                + 1.0j
-                * (
-                    (pos.imag - neg.imag + ac * (neg.real - pos.real)) * sin
-                    + (neg.real - pos.real + ac * (neg.imag - pos.imag)) * cos
-                )
+            contrast_spectrum_at_detector_plane = _compute_contrast_from_ewald_sphere(
+                object_spectrum_at_exit_plane,
+                phase_shifts,
+                self.ctf.amplitude_contrast_ratio,
+                instrument_config,
             )
         if self.envelope is not None:
             contrast_spectrum_at_detector_plane *= self.envelope(frequency_grid)
 
         return contrast_spectrum_at_detector_plane
+
+
+def _compute_contrast_from_ewald_sphere(
+    object_spectrum_at_exit_plane,
+    aberration_phase_shifts,
+    amplitude_contrast_ratio,
+    instrument_config,
+):
+    cos, sin = jnp.cos(aberration_phase_shifts), jnp.sin(aberration_phase_shifts)
+    ac = amplitude_contrast_ratio
+    # Compute the contrast, breaking the computation into positive and
+    # negative frequencies
+    y_dim, x_dim = instrument_config.padded_y_dim, instrument_config.padded_x_dim
+    # ... first handle the grid of frequencies
+    pos_object_yx = object_spectrum_at_exit_plane[:, 1 : x_dim // 2 + x_dim % 2]
+    neg_object_yx = jnp.flip(
+        object_spectrum_at_exit_plane[:, x_dim // 2 + x_dim % 2 :], axis=-1
+    )
+    contrast_yx = _ewald_propagate_kernel(
+        (pos_object_yx if x_dim % 2 == 1 else jnp.pad(pos_object_yx, ((0, 0), (0, 1)))),
+        neg_object_yx,
+        ac,
+        sin[:, 1:],
+        cos[:, 1:],
+    )
+    # ... next handle the line of frequencies at x = 0
+    pos_object_y0 = object_spectrum_at_exit_plane[1 : y_dim // 2 + y_dim % 2, 0]
+    neg_object_y0 = jnp.flip(
+        object_spectrum_at_exit_plane[y_dim // 2 + y_dim % 2 :, 0], axis=-1
+    )
+    contrast_y0 = _ewald_propagate_kernel(
+        (pos_object_y0 if y_dim % 2 == 1 else jnp.pad(pos_object_y0, ((0, 1),))),
+        neg_object_y0,
+        ac,
+        sin[1 : y_dim // 2 + 1, 0],
+        cos[1 : y_dim // 2 + 1, 0],
+    )
+    # ... concatenate the zero mode to the line of frequencies at x = 0
+    object_00 = object_spectrum_at_exit_plane[0, 0]
+    contrast_00 = _ewald_propagate_kernel(
+        object_00,
+        object_00,
+        ac,
+        sin[0, 0],
+        cos[0, 0],
+    )
+    contrast_y0 = jnp.concatenate(
+        (
+            contrast_00[None],
+            (contrast_y0 if y_dim % 2 == 1 else contrast_y0[:-1]),
+            jnp.flip(contrast_y0.conjugate()),
+        ),
+        axis=0,
+    )
+    # ... concatenate the results
+    contrast_spectrum_at_detector_plane = jnp.concatenate(
+        (contrast_y0[:, None], contrast_yx), axis=1
+    )
+
+    return contrast_spectrum_at_detector_plane
+
+
+def _ewald_propagate_kernel(pos, neg, ac, sin, cos):
+    return (
+        (neg.real + pos.real + ac * (neg.imag + pos.imag)) * sin
+        + (neg.imag + pos.imag - ac * (neg.real + pos.real)) * cos
+        + 1.0j
+        * (
+            (pos.imag - neg.imag + ac * (neg.real - pos.real)) * sin
+            + (neg.real - pos.real + ac * (neg.imag - pos.imag)) * cos
+        )
+    )

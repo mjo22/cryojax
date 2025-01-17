@@ -87,16 +87,16 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         self.transfer_theory = transfer_theory
         self.solvent = solvent
 
-    def __check_init__(self):
-        if not self.potential_integrator.is_projection_approximation:
-            cls = type(self.potential_integrator).__name__
-            raise NotImplementedError(
-                "`WeakPhaseScatteringTheory` does not currently support "
-                f"`potential_integrator = {cls}(...)` as this is not a projection "
-                "approximation, i.e. it returns a complex-valued array in real space. "
-                "In order to use this integrator, try using the "
-                "`HighEnergyScatteringTheory`."
-            )
+    # def __check_init__(self):
+    #     if not self.potential_integrator.is_projection_approximation:
+    #         cls = type(self.potential_integrator).__name__
+    #         raise NotImplementedError(
+    #             "`WeakPhaseScatteringTheory` does not currently support "
+    #             f"`potential_integrator = {cls}(...)` as this is not a projection "
+    #             "approximation, i.e. it returns a complex-valued array in real space. "
+    #             "In order to use this integrator, try using the "
+    #             "`HighEnergyScatteringTheory`."
+    #         )
 
     @override
     def compute_object_spectrum_at_exit_plane(
@@ -145,7 +145,7 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
             instrument_config.padded_frequency_grid_in_angstroms
         )
-        object_spectrum_at_exit_plane *= translational_phase_shifts
+        contrast_spectrum_at_detector_plane *= translational_phase_shifts
 
         return contrast_spectrum_at_detector_plane
 
