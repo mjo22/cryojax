@@ -87,17 +87,6 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         self.transfer_theory = transfer_theory
         self.solvent = solvent
 
-    # def __check_init__(self):
-    #     if not self.potential_integrator.is_projection_approximation:
-    #         cls = type(self.potential_integrator).__name__
-    #         raise NotImplementedError(
-    #             "`WeakPhaseScatteringTheory` does not currently support "
-    #             f"`potential_integrator = {cls}(...)` as this is not a projection "
-    #             "approximation, i.e. it returns a complex-valued array in real space. "
-    #             "In order to use this integrator, try using the "
-    #             "`HighEnergyScatteringTheory`."
-    #         )
-
     @override
     def compute_object_spectrum_at_exit_plane(
         self,
@@ -116,11 +105,13 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         if rng_key is not None:
             # Get the potential of the specimen plus the ice
             if self.solvent is not None:
-                object_spectrum_at_exit_plane = self.solvent.compute_object_spectrum_with_ice(  # noqa: E501
-                    rng_key,
-                    object_spectrum_at_exit_plane,
-                    instrument_config,
-                    is_hermitian_symmetric=self.potential_integrator.is_projection_approximation,
+                object_spectrum_at_exit_plane = (
+                    self.solvent.compute_object_spectrum_with_ice(  # noqa: E501
+                        rng_key,
+                        object_spectrum_at_exit_plane,
+                        instrument_config,
+                        is_rfft=self.potential_integrator.is_projection_approximation,
+                    )
                 )
 
         return object_spectrum_at_exit_plane
@@ -227,11 +218,13 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         if rng_key is not None:
             # Get the potential of the specimen plus the ice
             if self.solvent is not None:
-                object_spectrum_at_exit_plane = self.solvent.compute_object_spectrum_with_ice(  # noqa: E501
-                    rng_key,
-                    object_spectrum_at_exit_plane,
-                    instrument_config,
-                    is_hermitian_symmetric=self.potential_integrator.is_projection_approximation,
+                object_spectrum_at_exit_plane = (
+                    self.solvent.compute_object_spectrum_with_ice(  # noqa: E501
+                        rng_key,
+                        object_spectrum_at_exit_plane,
+                        instrument_config,
+                        is_rfft=self.potential_integrator.is_projection_approximation,
+                    )
                 )
 
         return object_spectrum_at_exit_plane

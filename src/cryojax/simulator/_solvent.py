@@ -24,7 +24,7 @@ class AbstractIce(Module, strict=True):
         self,
         key: PRNGKeyArray,
         instrument_config: InstrumentConfig,
-        apply_hermitian_symmetry: bool = True,
+        get_rfft: bool = True,
     ) -> (
         Complex[
             Array,
@@ -53,7 +53,7 @@ class AbstractIce(Module, strict=True):
             ]
         ),
         instrument_config: InstrumentConfig,
-        is_hermitian_symmetric: bool = True,
+        is_rfft: bool = True,
     ) -> (
         Complex[
             Array,
@@ -67,7 +67,7 @@ class AbstractIce(Module, strict=True):
         """Compute the combined spectrum of the ice and the specimen."""
         # Sample the realization of the phase due to the ice.
         ice_spectrum_at_exit_plane = self.sample_ice_spectrum(
-            key, instrument_config, apply_hermitian_symmetry=is_hermitian_symmetric
+            key, instrument_config, get_rfft=is_rfft
         )
 
         return object_spectrum_at_exit_plane + ice_spectrum_at_exit_plane
@@ -95,7 +95,7 @@ class GaussianIce(AbstractIce, strict=True):
         self,
         key: PRNGKeyArray,
         instrument_config: InstrumentConfig,
-        apply_hermitian_symmetry: bool = True,
+        get_rfft: bool = True,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
@@ -115,7 +115,7 @@ class GaussianIce(AbstractIce, strict=True):
             instrument_config.wavelength_in_angstroms,
         )
 
-        if apply_hermitian_symmetry:
+        if get_rfft:
             return ice_spectrum_at_exit_plane
         else:
             return fftn(
