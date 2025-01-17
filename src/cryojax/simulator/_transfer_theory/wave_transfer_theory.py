@@ -56,8 +56,7 @@ class WaveTransferFunction(AbstractTransferFunction, strict=True):
     def __call__(
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-        *,
-        voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
+        voltage_in_kilovolts: Float[Array, ""] | float,
     ) -> Complex[Array, "y_dim x_dim"]:
         # Compute aberration phase shifts
         aberration_phase_shifts = self.compute_aberration_phase_shifts(

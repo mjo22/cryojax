@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing import Optional
 from typing_extensions import override
 
+import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
@@ -13,12 +14,11 @@ from equinox import AbstractVar, field, Module
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..image import irfftn, rfftn
-from ..image.operators import AbstractFourierOperator
 from ..internal import error_if_not_fractional
 from ._instrument_config import InstrumentConfig
 
 
-class AbstractDQE(AbstractFourierOperator, strict=True):
+class AbstractDQE(eqx.Module, strict=True):
     r"""Base class for a detector DQE."""
 
     fraction_detected_electrons: AbstractVar[Float[Array, ""]]

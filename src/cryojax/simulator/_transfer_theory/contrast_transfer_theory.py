@@ -68,8 +68,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
     def __call__(
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
-        *,
-        voltage_in_kilovolts: Float[Array, ""] | float = 300.0,
+        voltage_in_kilovolts: Float[Array, ""] | float,
     ) -> Float[Array, "y_dim x_dim"]:
         """Compute the CTF as a JAX array.
 
