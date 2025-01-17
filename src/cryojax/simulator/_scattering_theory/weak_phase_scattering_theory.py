@@ -112,19 +112,15 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
                 self.structural_ensemble, self.potential_integrator, instrument_config
             )
         )
-        # ... apply in-plane translation
-        translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
-            instrument_config.padded_frequency_grid_in_angstroms
-        )
-        object_spectrum_at_exit_plane *= translational_phase_shifts
 
         if rng_key is not None:
             # Get the potential of the specimen plus the ice
             if self.solvent is not None:
-                object_spectrum_at_exit_plane = (
-                    self.solvent.compute_object_spectrum_with_ice(
-                        rng_key, object_spectrum_at_exit_plane, instrument_config
-                    )
+                object_spectrum_at_exit_plane = self.solvent.compute_object_spectrum_with_ice(  # noqa: E501
+                    rng_key,
+                    object_spectrum_at_exit_plane,
+                    instrument_config,
+                    is_hermitian_symmetric=self.potential_integrator.is_projection_approximation,
                 )
 
         return object_spectrum_at_exit_plane
@@ -145,6 +141,11 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
             instrument_config,
             is_projection_approximation=self.potential_integrator.is_projection_approximation,
         )
+        # ... apply in-plane translation
+        translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
+            instrument_config.padded_frequency_grid_in_angstroms
+        )
+        object_spectrum_at_exit_plane *= translational_phase_shifts
 
         return contrast_spectrum_at_detector_plane
 
@@ -196,10 +197,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
-            translational_phase_shifts = ensemble.pose.compute_shifts(
-                instrument_config.padded_frequency_grid_in_angstroms
-            )
-            return translational_phase_shifts * object_spectrum_at_exit_plane
+            return object_spectrum_at_exit_plane
 
         @eqx.filter_jit
         def compute_image_superposition(

@@ -1,4 +1,4 @@
-from typing import Literal, Optional, overload
+from typing import Optional
 from typing_extensions import override
 
 import equinox as eqx
@@ -123,34 +123,6 @@ class ContrastTransferTheory(eqx.Module, strict=True):
         self.ctf = ctf
         self.envelope = envelope
 
-    @overload
-    def propagate_object_to_detector_plane(
-        self,
-        object_spectrum_at_exit_plane: Complex[
-            Array,
-            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
-        ],
-        instrument_config: InstrumentConfig,
-        *,
-        is_projection_approximation: Literal[False],
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]: ...
-
-    @overload
-    def propagate_object_to_detector_plane(
-        self,
-        object_spectrum_at_exit_plane: Complex[
-            Array,
-            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
-        ],
-        instrument_config: InstrumentConfig,
-        *,
-        is_projection_approximation: Literal[True],
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]: ...
-
     def propagate_object_to_detector_plane(
         self,
         object_spectrum_at_exit_plane: (
@@ -197,14 +169,25 @@ class ContrastTransferTheory(eqx.Module, strict=True):
                 ctf_array * object_spectrum_at_exit_plane
             )
         else:
-            # chi = self.ctf.compute_phase_shifts_from_instrument(
-            #     frequency_grid,
-            #     voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
-            # )
-            # cos_chi, sin_chi = jnp.cos(chi), jnp.sin(chi)
-            raise NotImplementedError(
-                "`ContrastTransferTheory` does not currently support "
-                "`is_projection_approximation=False`"
+            # Compute terms for CTF
+            ac = self.ctf.amplitude_contrast_ratio
+            phase_shifts = self.ctf.compute_aberration_phase_shifts(
+                frequency_grid,
+                voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
+            ) - jnp.deg2rad(self.ctf.phase_shift)
+            cos, sin = jnp.cos(phase_shifts), jnp.sin(phase_shifts)
+            # Get positive and negative frequencies
+            x_dim = instrument_config.padded_x_dim
+            pos = object_spectrum_at_exit_plane[:, : x_dim // 2 + 1]
+            neg = jnp.flip(object_spectrum_at_exit_plane[:, x_dim // 2 + 1 :], axis=-1)
+            contrast_spectrum_at_detector_plane = (
+                (neg.real + pos.real + ac * (neg.imag + pos.imag)) * sin
+                + (neg.imag + pos.imag - ac * (neg.real + pos.real)) * cos
+                + 1.0j
+                * (
+                    (pos.imag - neg.imag + ac * (neg.real - pos.real)) * sin
+                    + (neg.real - pos.real + ac * (neg.imag - pos.imag)) * cos
+                )
             )
         if self.envelope is not None:
             contrast_spectrum_at_detector_plane *= self.envelope(frequency_grid)
