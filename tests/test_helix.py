@@ -108,7 +108,7 @@ def test_c6_rotation(
     @eqx.filter_jit
     def compute_rotated_image(pipeline, pose):
         pipeline = eqx.tree_at(
-            lambda m: m.scattering_theory.assembly.pose,
+            lambda m: m.scattering_theory.structural_ensemble.pose,
             pipeline,
             pose,
         )
@@ -154,7 +154,7 @@ def test_agree_with_3j9g_assembly(
         pipeline: cs.ContrastImagingPipeline, pose: cs.AbstractPose
     ):
         pipeline = eqx.tree_at(
-            lambda m: m.scattering_theory.assembly.pose,
+            lambda m: m.scattering_theory.structural_ensemble.pose,
             pipeline,
             pose,
         )

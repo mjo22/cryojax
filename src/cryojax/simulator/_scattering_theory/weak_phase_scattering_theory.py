@@ -147,28 +147,29 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
     approximation.
     """
 
-    assembly: AbstractAssembly
+    structural_ensemble: AbstractAssembly
     potential_integrator: AbstractPotentialIntegrator
     transfer_theory: ContrastTransferTheory
     solvent: Optional[AbstractIce] = None
 
     def __init__(
         self,
-        assembly: AbstractAssembly,
+        structural_ensemble: AbstractAssembly,
         potential_integrator: AbstractPotentialIntegrator,
         transfer_theory: ContrastTransferTheory,
         solvent: Optional[AbstractIce] = None,
     ):
         """**Arguments:**
 
-        - `assembly`: An concrete class of an `AbstractAssembly`. This is used to
-              output a batch of states over which to
-              compute a superposition of images.
+        - `structural_ensemble`:
+            An concrete class of an `AbstractAssembly`. This is used to
+            output a batch of states over which to
+            compute a superposition of images.
         - `potential_integrator`: The method for integrating the specimen potential.
         - `transfer_theory`: The contrast transfer theory.
         - `solvent`: The model for the solvent.
         """
-        self.assembly = assembly
+        self.structural_ensemble = structural_ensemble
         self.potential_integrator = potential_integrator
         self.transfer_theory = transfer_theory
         self.solvent = solvent
@@ -203,7 +204,9 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             )
 
         # Get the batch
-        ensemble_batch, _ = self.assembly.get_subcomponents_and_z_positions_in_lab_frame()
+        ensemble_batch, _ = (
+            self.structural_ensemble.get_subcomponents_and_z_positions_in_lab_frame()
+        )
         # Setup vmap over the pose and conformation
         is_mapped = lambda x: isinstance(
             x, (AbstractPose, AbstractConformationalVariable)
@@ -270,7 +273,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
 
         # Get the batches
         ensemble_batch, z_positions = (
-            self.assembly.get_subcomponents_and_z_positions_in_lab_frame()
+            self.structural_ensemble.get_subcomponents_and_z_positions_in_lab_frame()
         )
         transfer_theory_batch = eqx.tree_at(
             lambda x: x.ctf.defocus_in_angstroms,

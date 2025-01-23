@@ -15,6 +15,9 @@ from .._transfer_theory import WaveTransferTheory
 class AbstractScatteringTheory(eqx.Module, strict=True):
     """Base class for a scattering theory."""
 
+    structural_ensemble: eqx.AbstractVar[AbstractStructuralEnsemble]
+    transfer_theory: eqx.AbstractVar[WaveTransferTheory]
+
     @abstractmethod
     def compute_contrast_spectrum_at_detector_plane(
         self,
@@ -38,9 +41,6 @@ class AbstractScatteringTheory(eqx.Module, strict=True):
 
 class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
     """Base class for a wave-based scattering theory."""
-
-    structural_ensemble: eqx.AbstractVar[AbstractStructuralEnsemble]
-    transfer_theory: eqx.AbstractVar[WaveTransferTheory]
 
     @abstractmethod
     def compute_wavefunction_at_exit_plane(

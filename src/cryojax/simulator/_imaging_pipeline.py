@@ -24,6 +24,7 @@ class AbstractImagingPipeline(Module, strict=True):
     """
 
     instrument_config: AbstractVar[InstrumentConfig]
+    scattering_theory: AbstractVar[AbstractScatteringTheory]
     filter: AbstractVar[Optional[FilterLike]]
     mask: AbstractVar[Optional[MaskLike]]
 
