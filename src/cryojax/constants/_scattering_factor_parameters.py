@@ -31,13 +31,13 @@ def get_tabulated_scattering_factor_parameters(
         Array containing the table of scattering factors. By default, this
         is the tabulation from "Robust Parameterization of Elastic and
         Absorptive Electron Atomic Scattering Factors" by Peng et al. (1996),
-        given by `load_peng_element_scattering_factor_parameter_table`.
+        given by [`read_peng_element_scattering_factor_parameter_table`](https://mjo22.github.io/cryojax/api/constants/scattering_factor_parameters/#cryojax.constants.read_peng_element_scattering_factor_parameter_table).
 
     **Returns:**
 
     The particular scattering factor parameters stored in
     `scattering_factor_parameter_table` for `atom_identities`.
-    """
+    """  # noqa: #E501
     if scattering_factor_parameter_table is None:
         scattering_factor_parameter_table = (
             read_peng_element_scattering_factor_parameter_table()
