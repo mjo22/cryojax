@@ -5,8 +5,9 @@ Routines for dealing with image cropping and padding.
 import warnings
 from typing import Any, overload
 
+import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Inexact
+from jaxtyping import Array, Inexact, Int
 
 
 @overload
@@ -74,7 +75,8 @@ def crop_to_shape(
 def crop_to_shape_with_center(
     image: Inexact[Array, "y_dim x_dim"],
     shape: tuple[int, int],
-    center: tuple[int, int],
+    center: tuple[int, int] | tuple[Int[Array, ""], Int[Array, ""]],
+    safe_crop: bool = True,
 ) -> Inexact[Array, "{shape[0]} {shape[1]}"]:
     """Crop an image to a new shape, given a center."""
     if image.ndim != 2:
@@ -85,15 +87,25 @@ def crop_to_shape_with_center(
     if len(shape) == 2:
         xc, yc = center
         h, w = shape
-        x0, y0 = max(xc - w // 2, 0), max(yc - h // 2, 0)
-        xn, yn = (
-            min(xc + w // 2 + w % 2, image.shape[1] - 1),
-            min(yc + h // 2 + h % 2, image.shape[0] - 1),
-        )
-        cropped = image[y0:yn, x0:xn]
+        if safe_crop:
+            if not isinstance(xc, int) or not isinstance(yc, int):
+                raise ValueError(
+                    "If `safe_crop = True`, then `center` must be passed as "
+                    "a tuple of python integers. Found instead a tuple with "
+                    f"type {type(xc).__name__}."
+                )
+            x0, y0 = max(xc - w // 2, 0), max(yc - h // 2, 0)
+            xn, yn = (
+                min(xc + w // 2 + w % 2, image.shape[1] - 1),
+                min(yc + h // 2 + h % 2, image.shape[0] - 1),
+            )
+            cropped = image[y0:yn, x0:xn]
+        else:
+            x0, y0 = jnp.asarray(xc - w // 2), jnp.asarray(yc - h // 2)
+            cropped = jax.lax.dynamic_slice(image, (y0, x0), shape)
     else:
         raise ValueError(
-            "crop_to_shape_with_center can only crop images. Got desired crop shape of "
+            "`crop_to_shape_with_center` can only crop images. Got desired crop shape of "
             f"{shape}."
         )
     if cropped.shape != shape:
