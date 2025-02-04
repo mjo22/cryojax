@@ -96,9 +96,16 @@ class GaussianIce(AbstractIce, strict=True):
         key: PRNGKeyArray,
         instrument_config: InstrumentConfig,
         get_rfft: bool = True,
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]:
+    ) -> (
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+        ]
+    ):
         """Sample a realization of the ice phase shifts as colored gaussian noise."""
         n_pixels = instrument_config.padded_n_pixels
         frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
