@@ -395,7 +395,8 @@ def _build_real_space_voxel_potential_from_atoms(
         raise ValueError(
             "The `atom_groups_in_series` when building a voxel grid must "
             "be an integer less than or equal to the number of atoms, "
-            f"which is equal to {atom_positions.shape[0]}."
+            f"which is equal to {atom_positions.shape[0]}. Got "
+            f"`atom_groups_in_series = {atom_groups_in_series}`."
         )
     elif atom_groups_in_series == 1:
         potential_as_voxel_grid = compute_potential_for_atom_group((atom_positions, a, b))
