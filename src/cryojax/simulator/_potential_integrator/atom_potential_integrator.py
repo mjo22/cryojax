@@ -1,3 +1,4 @@
+import math
 from typing import ClassVar, Optional
 from typing_extensions import override
 
@@ -111,10 +112,12 @@ class GaussianMixtureProjection(
             self.use_error_functions,
             self.atom_groups_in_series,
         )
-        # Downsample back to the original pixel size
         if self.upsampling_factor is not None:
+            # Downsample back to the original pixel size, rescaling so that the
+            # downsampling produces an average in a given region, not a sum
+            n_pixels, upsampled_n_pixels = instrument_config.n_pixels, math.prod(shape)
             fourier_projection = downsample_to_shape_with_fourier_cropping(
-                projection,
+                projection * (n_pixels / upsampled_n_pixels),
                 downsampled_shape=instrument_config.padded_shape,
                 get_real=False,
             )
@@ -193,9 +196,7 @@ def _compute_projected_potential_from_atom_group(
             grid_x, grid_y, atom_positions, a, b, pixel_size
         )
     else:
-        result = _compute_gaussians_for_all_atoms(
-            grid_x, grid_y, atom_positions, a, b, pixel_size
-        )
+        result = _compute_gaussians_for_all_atoms(grid_x, grid_y, atom_positions, a, b)
     gaussians_times_prefactor_x, gaussians_y = result
     projection = _compute_projected_potential_from_gaussians(
         gaussians_times_prefactor_x, gaussians_y
@@ -251,7 +252,7 @@ def _compute_gaussian_integrals_for_all_atoms(
     gauss_x, gauss_y = (integration_kernel(delta_x), integration_kernel(delta_y))
     # Compute the prefactors for each atom and each gaussian per atom
     # for the potential
-    prefactor = (4 * jnp.pi * a) / (2 * pixel_size) ** 3
+    prefactor = (4 * jnp.pi * a) / (2 * pixel_size) ** 2
     # Multiply the prefactor onto one of the gaussians for efficiency
     return prefactor * gauss_x, gauss_y
 
