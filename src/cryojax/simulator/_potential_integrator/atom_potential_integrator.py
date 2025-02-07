@@ -48,9 +48,10 @@ class GaussianMixtureProjection(
             integrals. If `False`, the potential at a pixel will simply be evaluated
             as a gaussian.
         - `atom_groups_in_series`:
-            The number of iterations used to evaluate the volume,
-            where the iteration is taken over groups of atoms.
-            This is useful if GPU memory is exhausted. By default, `1`.
+            The number of iterations over groups of atoms
+            used to evaluate the projection.
+            This is useful if GPU memory is exhausted. By default,
+            `1`, which computes a projection for all atoms at once.
         """  # noqa: E501
         self.upsampling_factor = upsampling_factor
         self.use_error_functions = use_error_functions
@@ -217,7 +218,7 @@ def _compute_projected_potential_from_gaussians(
     return jnp.sum(jnp.matmul(gauss_y, gauss_x), axis=0)
 
 
-@eqx.filter_jit
+@jax.jit
 def _compute_gaussian_integrals_for_all_atoms(
     grid_x: Float[Array, " dim_x"],
     grid_y: Float[Array, " dim_y"],
@@ -269,7 +270,6 @@ def _compute_gaussians_for_all_atoms(
     Float[Array, "dim_y n_atoms n_gaussians_per_atom"],
 ]:
     b_inverse = 4.0 * jnp.pi / b
-
     gauss_x = jnp.exp(
         -jnp.pi
         * b_inverse[None, :, :]
@@ -280,7 +280,6 @@ def _compute_gaussians_for_all_atoms(
         * b_inverse[None, :, :]
         * ((grid_y[:, None] - atom_positions.T[1, :]) ** 2)[:, :, None]
     )
-
     prefactor = 4 * jnp.pi * a[None, :, :] * b_inverse[None, :, :]
 
     return prefactor * gauss_x, gauss_y
