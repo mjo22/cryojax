@@ -405,7 +405,7 @@ def _build_real_space_voxel_potential_from_atoms(
             _batched_map(
                 compute_potential_for_atom_group,
                 (atom_positions, a, b),
-                batch_size=atom_positions.shape[0] // atom_groups_in_series,
+                n_batches=atom_groups_in_series,
                 is_batch_axis_contracted=True,
             ),
             axis=0,
@@ -549,6 +549,36 @@ def _evaluate_gaussian_potential_at_z_plane(
 def _batched_map(
     fun: Callable,
     xs: PyTree[Array],
+    batch_size: Optional[int] = None,
+    n_batches: Optional[int] = None,
+    is_batch_axis_contracted: bool = False,
+):
+    """Like `jax.lax.map`, but map over leading axis of `xs` in
+    chunks of size `batch_size`. Assumes `fun` can be evaluated in
+    parallel over this leading axis.
+    """
+
+    if batch_size is None and n_batches is None:
+        raise ValueError("One of `batch_size` or `n_batches` must be provided.")
+
+    elif batch_size is not None and n_batches is not None:
+        raise ValueError("Only one of `batch_size` or `n_batches` can be provided.")
+
+    elif batch_size is not None:
+        result = _batched_map_with_batch_size(
+            fun, xs, batch_size, is_batch_axis_contracted
+        )
+
+    elif n_batches is not None:
+        result = _batched_map_with_n_batches(fun, xs, n_batches, is_batch_axis_contracted)
+
+    return result
+
+
+@eqx.filter_jit
+def _batched_map_with_batch_size(
+    fun: Callable,
+    xs: PyTree[Array],
     batch_size: int,
     is_batch_axis_contracted: bool = False,
 ):
@@ -556,9 +586,53 @@ def _batched_map(
     chunks of size `batch_size`. Assumes `fun` can be evaluated in
     parallel over this leading axis.
     """
-    # ... reshape into an iterative dimension and a batching dimension
     batch_dim = jtu.tree_leaves(xs)[0].shape[0]
     n_batches = batch_dim // batch_size
+
+    # ... reshape into an iterative dimension and a batching dimension
+
+    xs_per_batch = jtu.tree_map(
+        lambda x: x[: batch_dim - batch_dim % batch_size, ...].reshape(
+            (n_batches, batch_size, *x.shape[1:])
+        ),
+        xs,
+    )
+    # .. compute the result and reshape back into one leading dimension
+    result_per_batch = jax.lax.map(fun, xs_per_batch)
+    if is_batch_axis_contracted:
+        result = result_per_batch
+    else:
+        result = result_per_batch.reshape(
+            (n_batches * batch_size, *result_per_batch.shape[2:])
+        )
+    # ... if the batch dimension is not divisible by the batch size, need
+    # to take care of the remainder
+    if batch_dim % batch_size != 0:
+        remainder = fun(
+            jtu.tree_map(lambda x: x[batch_dim - batch_dim % batch_size :, ...], xs)
+        )
+        if is_batch_axis_contracted:
+            remainder = remainder[None, ...]
+        result = jnp.concatenate([result, remainder], axis=0)
+    return result
+
+
+@eqx.filter_jit
+def _batched_map_with_n_batches(
+    fun: Callable,
+    xs: PyTree[Array],
+    n_batches: int,
+    is_batch_axis_contracted: bool = False,
+):
+    """Like `jax.lax.map`, but map over leading axis of `xs` in
+    chunks of size `batch_size`. Assumes `fun` can be evaluated in
+    parallel over this leading axis.
+    """
+    batch_dim = jtu.tree_leaves(xs)[0].shape[0]
+    batch_size = batch_dim // n_batches
+
+    # ... reshape into an iterative dimension and a batching dimension
+
     xs_per_batch = jtu.tree_map(
         lambda x: x[: batch_dim - batch_dim % batch_size, ...].reshape(
             (n_batches, batch_size, *x.shape[1:])

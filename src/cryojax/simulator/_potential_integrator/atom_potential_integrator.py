@@ -165,10 +165,9 @@ def _compute_projected_potential_from_atoms(
     elif atom_groups_in_series == 1:
         projection = compute_potential_for_atom_group(xs)
     elif atom_groups_in_series > 1:
-        batch_size = atom_positions.shape[0] // atom_groups_in_series
         projection = jnp.sum(
             _batched_map_with_contraction(
-                compute_potential_for_atom_group, xs, batch_size
+                compute_potential_for_atom_group, xs, atom_groups_in_series
             ),
             axis=0,
         )
@@ -286,10 +285,10 @@ def _compute_gaussians_for_all_atoms(
 
 
 @eqx.filter_jit
-def _batched_map_with_contraction(fun, xs, batch_size):
+def _batched_map_with_contraction(fun, xs, n_batches):
     # ... reshape into an iterative dimension and a batching dimension
     batch_dim = jax.tree.leaves(xs)[0].shape[0]
-    n_batches = batch_dim // batch_size
+    batch_size = batch_dim // n_batches
     xs_per_batch = jax.tree.map(
         lambda x: x[: batch_dim - batch_dim % batch_size, ...].reshape(
             (n_batches, batch_size, *x.shape[1:])
