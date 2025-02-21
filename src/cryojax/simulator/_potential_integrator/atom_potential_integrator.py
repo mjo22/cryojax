@@ -23,7 +23,7 @@ class GaussianMixtureProjection(
 ):
     upsampling_factor: Optional[int]
     use_error_functions: bool
-    atom_groups_in_series: int
+    n_batches: int
 
     is_projection_approximation: ClassVar[bool] = True
 
@@ -32,7 +32,7 @@ class GaussianMixtureProjection(
         *,
         upsampling_factor: Optional[int] = None,
         use_error_functions: bool = False,
-        atom_groups_in_series: int = 1,
+        n_batches: int = 1,
     ):
         """**Arguments:**
 
@@ -46,15 +46,15 @@ class GaussianMixtureProjection(
             a pixel to be the average value within the pixel using gaussian
             integrals. If `False`, the potential at a pixel will simply be evaluated
             as a gaussian.
-        - `atom_groups_in_series`:
-            The number of iterations over groups of atoms
+        - `n_batches`:
+            The number of batches over groups of atoms
             used to evaluate the projection.
             This is useful if GPU memory is exhausted. By default,
             `1`, which computes a projection for all atoms at once.
         """  # noqa: E501
         self.upsampling_factor = upsampling_factor
         self.use_error_functions = use_error_functions
-        self.atom_groups_in_series = atom_groups_in_series
+        self.n_batches = n_batches
 
     def __check_init__(self):
         if self.upsampling_factor is not None and self.upsampling_factor < 1:
@@ -110,7 +110,7 @@ class GaussianMixtureProjection(
             gaussian_amplitudes,
             gaussian_widths,
             self.use_error_functions,
-            self.atom_groups_in_series,
+            self.n_batches,
         )
         if self.upsampling_factor is not None:
             # Downsample back to the original pixel size, rescaling so that the
@@ -134,7 +134,7 @@ def _compute_projected_potential_from_atoms(
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
     use_error_functions: bool,
-    atom_groups_in_series: int,
+    n_batches: int,
 ) -> Float[Array, "dim_y dim_x"]:
     # Make the grid on which to evaluate the result
     grid_x = make_1d_coordinate_grid(shape[1], pixel_size)
@@ -153,26 +153,25 @@ def _compute_projected_potential_from_atoms(
         )
     )
     # Compute projection with a call to `jax.lax.map` in batches
-    if atom_groups_in_series > atom_positions.shape[0]:
+    if n_batches > atom_positions.shape[0]:
         raise ValueError(
-            "The `atom_groups_in_series` when computing a projection must "
+            "The `n_batches` when computing a projection must "
             "be an integer less than or equal to the number of atoms, "
             f"which is equal to {atom_positions.shape[0]}. Got "
-            f"`atom_groups_in_series = {atom_groups_in_series}`."
+            f"`n_batches = {n_batches}`."
         )
-    elif atom_groups_in_series == 1:
+    elif n_batches == 1:
         projection = compute_potential_for_atom_group(xs)
-    elif atom_groups_in_series > 1:
-        batch_size = atom_positions.shape[0] // atom_groups_in_series
+    elif n_batches > 1:
         projection = jnp.sum(
             _batched_map_with_contraction(
-                compute_potential_for_atom_group, xs, batch_size
+                compute_potential_for_atom_group, xs, n_batches
             ),
             axis=0,
         )
     else:
         raise ValueError(
-            "The `atom_groups_in_series` when building a voxel grid must be an "
+            "The `n_batches` when building a voxel grid must be an "
             "integer greater than or equal to 1."
         )
     return projection
@@ -280,10 +279,10 @@ def _compute_gaussians_for_all_atoms(
     return prefactor * gauss_x, gauss_y
 
 
-def _batched_map_with_contraction(fun, xs, batch_size):
+def _batched_map_with_contraction(fun, xs, n_batches):
     # ... reshape into an iterative dimension and a batching dimension
     batch_dim = jax.tree.leaves(xs)[0].shape[0]
-    n_batches = batch_dim // batch_size
+    batch_size = batch_dim // n_batches
     xs_per_batch = jax.tree.map(
         lambda x: x[: batch_dim - batch_dim % batch_size, ...].reshape(
             (n_batches, batch_size, *x.shape[1:])
