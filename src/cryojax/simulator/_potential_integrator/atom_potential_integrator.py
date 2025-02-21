@@ -279,8 +279,7 @@ def _compute_gaussians_for_all_atoms(
     return prefactor * gauss_x, gauss_y
 
 
-@eqx.filter_jit
-def _batched_map_with_contraction(fun, xs, batch_size):
+def _batched_map_with_contraction(fun, xs, n_batches):
     # ... reshape into an iterative dimension and a batching dimension
     batch_dim = jax.tree.leaves(xs)[0].shape[0]
     batch_size = batch_dim // n_batches
