@@ -2,7 +2,6 @@ import math
 from typing import ClassVar, Optional
 from typing_extensions import override
 
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
@@ -128,7 +127,6 @@ class GaussianMixtureProjection(
         return fourier_projection
 
 
-@eqx.filter_jit
 def _compute_projected_potential_from_atoms(
     shape: tuple[int, int],
     pixel_size: Float[Array, ""],
@@ -179,7 +177,6 @@ def _compute_projected_potential_from_atoms(
     return projection
 
 
-@eqx.filter_jit
 def _compute_projected_potential_from_atom_group(
     grid_x: Float[Array, " dim_x"],
     grid_y: Float[Array, " dim_y"],
@@ -217,7 +214,6 @@ def _compute_projected_potential_from_gaussians(
     return jnp.sum(jnp.matmul(gauss_y, gauss_x), axis=0)
 
 
-@jax.jit
 def _compute_gaussian_integrals_for_all_atoms(
     grid_x: Float[Array, " dim_x"],
     grid_y: Float[Array, " dim_y"],
@@ -257,7 +253,6 @@ def _compute_gaussian_integrals_for_all_atoms(
     return prefactor * gauss_x, gauss_y
 
 
-@jax.jit
 def _compute_gaussians_for_all_atoms(
     grid_x: Float[Array, " x_dim"],
     grid_y: Float[Array, " y_dim"],
@@ -285,7 +280,7 @@ def _compute_gaussians_for_all_atoms(
 
 
 @eqx.filter_jit
-def _batched_map_with_contraction(fun, xs, n_batches):
+def _batched_map_with_contraction(fun, xs, batch_size):
     # ... reshape into an iterative dimension and a batching dimension
     batch_dim = jax.tree.leaves(xs)[0].shape[0]
     batch_size = batch_dim // n_batches

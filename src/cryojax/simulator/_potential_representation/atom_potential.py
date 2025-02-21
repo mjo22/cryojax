@@ -363,7 +363,6 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         )
 
 
-@eqx.filter_jit
 def _build_real_space_voxel_potential_from_atoms(
     shape: tuple[int, int, int],
     voxel_size: Float[Array, ""],
@@ -419,7 +418,6 @@ def _build_real_space_voxel_potential_from_atoms(
     return potential_as_voxel_grid
 
 
-@eqx.filter_jit
 def _build_real_space_voxel_potential_from_atom_group(
     grid_x: Float[Array, " dim_x"],
     grid_y: Float[Array, " dim_y"],
@@ -439,7 +437,7 @@ def _build_real_space_voxel_potential_from_atom_group(
         grid_x, grid_y, grid_z, atom_positions, a, b, voxel_size
     )
     # Get function to compute voxel grid at a single z-plane
-    compute_potential_at_z_plane = jax.jit(
+    compute_potential_at_z_plane = (
         lambda gaussian_integrals_per_atom_z: _evaluate_gaussian_potential_at_z_plane(
             gaussian_integrals_times_prefactor_per_interval_per_atom_x,
             gaussian_integrals_per_interval_per_atom_y,
@@ -476,7 +474,6 @@ def _build_real_space_voxel_potential_from_atom_group(
     return potential_as_voxel_grid
 
 
-@eqx.filter_jit
 def _evaluate_gaussian_integrals_for_all_atoms_and_intervals(
     grid_x: Float[Array, " dim_x"],
     grid_y: Float[Array, " dim_y"],
@@ -545,7 +542,6 @@ def _evaluate_gaussian_potential_at_z_plane(
     return jnp.sum(jnp.matmul(gauss_yz, gauss_x), axis=0)
 
 
-@eqx.filter_jit
 def _batched_map_with_n_batches(
     fun: Callable,
     xs: PyTree[Array],
@@ -559,7 +555,6 @@ def _batched_map_with_n_batches(
     )
 
 
-@eqx.filter_jit
 def _batched_map_with_batch_size(
     fun: Callable,
     xs: PyTree[Array],
@@ -573,7 +568,6 @@ def _batched_map_with_batch_size(
     )
 
 
-@eqx.filter_jit
 def _batched_map(
     fun: Callable,
     xs: PyTree[Array],
