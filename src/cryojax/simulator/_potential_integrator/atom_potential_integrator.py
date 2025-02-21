@@ -24,7 +24,7 @@ class GaussianMixtureProjection(
 ):
     upsampling_factor: Optional[int]
     use_error_functions: bool
-    n_batches_of_atoms: int
+    n_batches: int
 
     is_projection_approximation: ClassVar[bool] = True
 
