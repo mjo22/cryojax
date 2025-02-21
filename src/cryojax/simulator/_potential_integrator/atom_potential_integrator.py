@@ -2,7 +2,6 @@ import math
 from typing import ClassVar, Optional
 from typing_extensions import override
 
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
