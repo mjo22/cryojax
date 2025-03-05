@@ -9,9 +9,11 @@ https://github.com/mdtraj/mdtraj
 
 import gzip
 import importlib.resources
+import pathlib
 import xml.etree.ElementTree as etree
 from copy import copy
 from io import StringIO
+from typing import Optional
 from urllib.parse import urlparse, uses_netloc, uses_params, uses_relative
 from urllib.request import urlopen
 
@@ -62,11 +64,11 @@ class PDBReader:
 
     def __init__(
         self,
-        filename,
-        is_assembly=False,
-        i_model=None,
-        standard_names=True,
-        top=None,
+        filename: str | pathlib.Path,
+        is_assembly: bool = False,
+        i_model: Optional[int] = None,
+        standard_names: bool = True,
+        top: Optional[Topology] = None,
     ):
         """Open a PDB file for reading.
 
