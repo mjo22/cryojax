@@ -36,6 +36,11 @@ def sample_pdb_path():
 
 
 @pytest.fixture
+def sample_pdb_path_assembly():
+    return os.path.join(os.path.dirname(__file__), "data", "1uao_assembly.pdb")
+
+
+@pytest.fixture
 def toy_gaussian_cloud():
     atom_positions = jnp.array(
         [

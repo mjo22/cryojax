@@ -1,0 +1,15 @@
+# generate-starfile-and-mrcs tutorial generated data
+docs/examples/relion_dataset.star
+docs/examples/relion_dataset.star~
+docs/examples/relion_dataset_particles/
+
+.vscode/settings.json
+*.swp
+*_version.py
+**/__pycache__
+**/.ipynb_checkpoints
+*.egg-info/
+build/
+dist/
+site/
+__pycache__
