@@ -242,7 +242,6 @@ class PDBReader:
             This saves time if you have to parse a big number of files.
         """
         # Check for errors
-        filename = pathlib.Path(filename)
         if i_model is not None and not is_assembly:
             raise ValueError(
                 "Argument `i_model` should only be used if `is_assembly = True`."
@@ -250,12 +249,14 @@ class PDBReader:
 
         # Setup I/O
         if _is_url(filename):
-            self._file = urlopen(str(filename))
-            if str(filename).lower().endswith(".gz"):
+            filename = str(filename)
+            self._file = urlopen(filename)
+            if filename.lower().endswith(".gz"):
                 self._file = gzip.GzipFile(fileobj=self._file)
             self._file = StringIO(self._file.read().decode("utf-8"))
 
         else:
+            filename = pathlib.Path(filename)
             _validate_pdb_file(filename)
             self._file = open_maybe_zipped(filename, "r")
         # Load properties into the object
