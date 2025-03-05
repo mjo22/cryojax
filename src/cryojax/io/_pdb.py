@@ -243,7 +243,6 @@ class PDBReader:
         """
         # Check for errors
         filename = pathlib.Path(filename)
-        _validate_pdb_file(filename)
         if i_model is not None and not is_assembly:
             raise ValueError(
                 "Argument `i_model` should only be used if `is_assembly = True`."
@@ -257,6 +256,7 @@ class PDBReader:
             self._file = StringIO(self._file.read().decode("utf-8"))
 
         else:
+            _validate_pdb_file(filename)
             self._file = open_maybe_zipped(filename, "r")
         # Load properties into the object
         properties_dict = _load_pdb_reader_properties_dict(
@@ -394,7 +394,9 @@ def _make_topology(pdb, atom_positions, i_model, standard_names):
 
     # Add bonds based on CONECT records.
     connectBonds = []
-    for model in pdb.models:
+    for l, model in enumerate(pdb.iter_models(use_all_models=True)):
+        if i_model is not None and l != i_model:
+            continue
         for connect in model.connects:
             i = connect[0]
             for j in connect[1:]:
