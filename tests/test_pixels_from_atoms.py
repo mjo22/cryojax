@@ -8,7 +8,7 @@ from jaxtyping import install_import_hook
 with install_import_hook("cryojax", "typeguard.typechecked"):
     from cryojax.coordinates import make_coordinate_grid
     from cryojax.image import irfftn
-    from cryojax.io import read_atoms_from_pdb
+    from cryojax.io import read_atoms_from_pdb_or_cif
     from cryojax.simulator import (
         GaussianMixtureAtomicPotential,
         GaussianMixtureProjection,
@@ -22,7 +22,7 @@ config.update("jax_enable_x64", True)
 
 @pytest.mark.parametrize("shape", ((64, 64), (63, 63), (63, 64), (64, 63)))
 def test_atom_potential_integrator_shape(sample_pdb_path, shape):
-    atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
+    atom_positions, atom_identities, b_factors = read_atoms_from_pdb_or_cif(
         sample_pdb_path, center=True, atom_filter="not element H", get_b_factors=True
     )
     atom_potential = PengAtomicPotential(atom_positions, atom_identities, b_factors)
@@ -49,7 +49,7 @@ def test_downsampled_gmm_potential_agreement(sample_pdb_path):
     """Integration test ensuring that rasterized voxel grids roughly
     agree with downsampled versions.
     """
-    atom_positions, atom_identities = read_atoms_from_pdb(
+    atom_positions, atom_identities = read_atoms_from_pdb_or_cif(
         sample_pdb_path,
         center=True,
         atom_filter="not element H",
@@ -94,7 +94,7 @@ def test_peng_vs_gmm_agreement(sample_pdb_path):
     gaussians are identical"""
 
     # Load atoms and build potentials
-    atom_positions, atom_identities = read_atoms_from_pdb(
+    atom_positions, atom_identities = read_atoms_from_pdb_or_cif(
         sample_pdb_path,
         center=True,
         atom_filter="not element H",

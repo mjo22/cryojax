@@ -5,5 +5,8 @@ from ._mrc import (
     write_image_to_mrc as write_image_to_mrc,
     write_volume_to_mrc as write_volume_to_mrc,
 )
-from ._pdb import PDBReader as PDBReader, read_atoms_from_pdb as read_atoms_from_pdb
+from ._pdb import (
+    AtomicModelReader as AtomicModelReader,
+    read_atoms_from_pdb_or_cif as read_atoms_from_pdb_or_cif,
+)
 from ._starfile import read_and_validate_starfile as read_and_validate_starfile

@@ -11,7 +11,7 @@ from cryojax.image import downsample_with_fourier_cropping
 with install_import_hook("cryojax", "typeguard.typechecked"):
     from cryojax.coordinates import make_coordinate_grid
     from cryojax.image import ifftn
-    from cryojax.io import read_atoms_from_pdb
+    from cryojax.io import read_atoms_from_pdb_or_cif
     from cryojax.simulator import (
         FourierVoxelGridPotential,
         GaussianMixtureAtomicPotential,
@@ -32,7 +32,7 @@ def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
     voxel_size = 0.5
 
     # Load the PDB file
-    atom_positions, atom_elements = read_atoms_from_pdb(
+    atom_positions, atom_elements = read_atoms_from_pdb_or_cif(
         sample_pdb_path,
         center=True,
         atom_filter="not element H",
@@ -73,7 +73,7 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     )
     downsampled_voxel_size = voxel_size * downsampling_factor
     # Load the PDB file
-    atom_positions, atom_elements = read_atoms_from_pdb(
+    atom_positions, atom_elements = read_atoms_from_pdb_or_cif(
         sample_pdb_path,
         center=True,
         atom_filter="not element H",
@@ -105,7 +105,7 @@ def test_z_plane_batched_vs_non_batched_loop_agreement(
     voxel_size = 0.5
 
     # Load the PDB file
-    atom_positions, atom_elements = read_atoms_from_pdb(
+    atom_positions, atom_elements = read_atoms_from_pdb_or_cif(
         sample_pdb_path,
         center=True,
         atom_filter="not element H",
@@ -128,7 +128,7 @@ def test_compute_rectangular_voxel_grid(sample_pdb_path, shape):
     voxel_size = 0.5
 
     # Load the PDB file
-    atom_positions, atom_elements = read_atoms_from_pdb(
+    atom_positions, atom_elements = read_atoms_from_pdb_or_cif(
         sample_pdb_path,
         center=True,
         atom_filter="not element H",
