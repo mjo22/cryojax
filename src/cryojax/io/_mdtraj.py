@@ -3,7 +3,7 @@ Objects for reading PDB files based on MDTraj's PDBTrajectoryFile class.
 
 This module is based on the MDTraj library, which is distributed under the
 LPGL-2.1 license. The original source code can be found at
-https://github.com/mdtraj/mdtraj
+https://github.com/mdtraj/mdtraj/tree/500d31ed280457d3fc7649cc2189adf34c73a6f5
 
 """
 
