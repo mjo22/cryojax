@@ -52,7 +52,7 @@ def read_atoms_from_pdb(
     atom_filter: str = "all",
     is_assembly: bool = False,
     i_model: Optional[int] = None,
-    get_b_factors: Literal[False] = False,
+    get_b_factors: bool = False,
     *,
     standard_names: bool = True,
     top: Optional[mdtraj.core.topology.Topology] = None,
