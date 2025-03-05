@@ -256,7 +256,9 @@ class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
         # SCALE a1, a2, s1, s2 based on pixel size in 
         
         k_sqr = jnp.sum(frequency_grid**2, axis=-1)
-        scaling = self.a1 * jnp.exp(- (k_sqr - self.m1)**2 / (2*self.s1**2)) + self.a2 * jnp.exp(- (k_sqr - self.m2)**2 / (2*self.s2**2))
+        k = jnp.sqrt(k_sqr)
+        scaling = (self.a1 * jnp.exp(-0.5 * ((k - self.m1) / self.s1)**2) + 
+              self.a2 * jnp.exp(-0.5 * ((k - self.m2) / self.s2)**2))
         return scaling
 
 
