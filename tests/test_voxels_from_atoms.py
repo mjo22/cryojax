@@ -32,7 +32,11 @@ def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
     voxel_size = 0.5
 
     # Load the PDB file
-    atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
+    atom_positions, atom_elements = read_atoms_from_pdb(
+        sample_pdb_path,
+        center=True,
+        atom_filter="not element H",
+    )
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
     # Build the grid
@@ -69,7 +73,11 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     )
     downsampled_voxel_size = voxel_size * downsampling_factor
     # Load the PDB file
-    atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
+    atom_positions, atom_elements = read_atoms_from_pdb(
+        sample_pdb_path,
+        center=True,
+        atom_filter="not element H",
+    )
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
     # Build the grids
@@ -97,7 +105,11 @@ def test_z_plane_batched_vs_non_batched_loop_agreement(
     voxel_size = 0.5
 
     # Load the PDB file
-    atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
+    atom_positions, atom_elements = read_atoms_from_pdb(
+        sample_pdb_path,
+        center=True,
+        atom_filter="not element H",
+    )
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
     # Build the grid
@@ -116,7 +128,11 @@ def test_compute_rectangular_voxel_grid(sample_pdb_path, shape):
     voxel_size = 0.5
 
     # Load the PDB file
-    atom_positions, atom_elements = read_atoms_from_pdb(sample_pdb_path)
+    atom_positions, atom_elements = read_atoms_from_pdb(
+        sample_pdb_path,
+        center=True,
+        atom_filter="not element H",
+    )
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
     # Build the grid
