@@ -6,13 +6,14 @@ import dataclasses
 import gzip
 import pathlib
 from io import StringIO
-from typing import Literal, Optional, overload
+from typing import cast, Literal, Optional, overload
 from urllib.parse import urlparse, uses_netloc, uses_params, uses_relative
 from urllib.request import urlopen
 
 import mdtraj
 import numpy as np
-from Bio.PDB import MMCIFParser, PDBParser
+from Bio.PDB import MMCIFParser, PDBParser  # type: ignore
+from Bio.PDB.Structure import Structure
 from jaxtyping import Float, Int
 from mdtraj.core import element
 from mdtraj.core.topology import Topology
@@ -248,6 +249,7 @@ class AtomicModelReader:
             raise ValueError(
                 "Argument `i_model` should only be used if `is_assembly = True`."
             )
+        filename_or_url = str(filename_or_url)
         if ".pdb" in filename_or_url or ".pdb.gz" in filename_or_url:
             self.parser = PDBParser(QUIET=True)
         elif ".cif" in filename_or_url:
@@ -306,7 +308,7 @@ def _load_pdb_reader_properties_dict(
     i_model: Optional[int],
     standard_names,
 ):
-    struct = parser.get_structure("", file)
+    struct = cast(Structure, parser.get_structure("", file))
 
     if len(struct) > 1 and not is_assembly:
         raise ValueError(
