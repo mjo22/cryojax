@@ -156,8 +156,8 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
         *,
-        z_planes_in_parallel: int = 1,
-        atom_groups_in_series: int = 1,
+        batch_size_for_z_planes: int = 1,
+        n_batches_of_atoms: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         """Return a voxel grid of the potential in real space.
 
@@ -168,13 +168,13 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
-        - `z_planes_in_parallel`:
+        - `batch_size_for_z_planes`:
             The number of z-planes to evaluate in parallel with
             `jax.vmap`. By default, `1`.
-        - `atom_groups_in_series`:
+        - `n_batches_of_atoms`:
             The number of iterations used to evaluate the volume,
             where the iteration is taken over groups of atoms.
-            This is useful if `z_planes_in_parallel = 1`
+            This is useful if `batch_size_for_z_planes = 1`
             and GPU memory is exhausted. By default, `1`.
 
         **Returns:**
@@ -188,8 +188,8 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             self.atom_positions,
             self.gaussian_amplitudes,
             self.gaussian_widths,
-            z_planes_in_parallel=z_planes_in_parallel,
-            atom_groups_in_series=atom_groups_in_series,
+            batch_size_for_z_planes=batch_size_for_z_planes,
+            n_batches_of_atoms=n_batches_of_atoms,
         )
 
 
@@ -290,8 +290,8 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
         shape: tuple[int, int, int],
         voxel_size: Float[Array, ""] | float,
         *,
-        z_planes_in_parallel: int = 1,
-        atom_groups_in_series: int = 1,
+        batch_size_for_z_planes: int = 1,
+        n_batches_of_atoms: int = 1,
     ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
         """Return a voxel grid of the potential in real space.
 
@@ -333,13 +333,13 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
 
         - `shape`: The shape of the resulting voxel grid.
         - `voxel_size`: The voxel size of the resulting voxel grid.
-        - `z_planes_in_parallel`:
+        - `batch_size_for_z_planes`:
             The number of z-planes to evaluate in parallel with
             `jax.vmap`. By default, `1`.
-        - `atom_groups_in_series`:
+        - `n_batches_of_atoms`:
             The number of iterations used to evaluate the volume,
             where the iteration is taken over groups of atoms.
-            This is useful if `z_planes_in_parallel = 1`
+            This is useful if `batch_size_for_z_planes = 1`
             and GPU memory is exhausted. By default, `1`.
 
         **Returns:**
@@ -358,8 +358,8 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
             self.atom_positions,
             gaussian_amplitudes,
             gaussian_widths,
-            z_planes_in_parallel=z_planes_in_parallel,
-            atom_groups_in_series=atom_groups_in_series,
+            batch_size_for_z_planes=batch_size_for_z_planes,
+            n_batches_of_atoms=n_batches_of_atoms,
         )
 
 
@@ -369,8 +369,8 @@ def _build_real_space_voxel_potential_from_atoms(
     atom_positions: Float[Array, "n_atoms 3"],
     a: Float[Array, "n_atoms n_gaussians_per_atom"],
     b: Float[Array, "n_atoms n_gaussians_per_atom"],
-    z_planes_in_parallel: int,
-    atom_groups_in_series: int,
+    batch_size_for_z_planes: int,
+    n_batches_of_atoms: int,
 ) -> Float[Array, "{shape[0]} {shape[1]} {shape[2]}"]:
     # Make coordinate systems for each of x, y, and z dimensions
     z_dim, y_dim, x_dim = shape
@@ -387,31 +387,31 @@ def _build_real_space_voxel_potential_from_atoms(
             xs[0],
             xs[1],
             xs[2],
-            z_planes_in_parallel,
+            batch_size_for_z_planes,
         )
     )
-    if atom_groups_in_series > atom_positions.shape[0]:
+    if n_batches_of_atoms > atom_positions.shape[0]:
         raise ValueError(
-            "The `atom_groups_in_series` when building a voxel grid must "
+            "The `n_batches_of_atoms` when building a voxel grid must "
             "be an integer less than or equal to the number of atoms, "
             f"which is equal to {atom_positions.shape[0]}. Got "
-            f"`atom_groups_in_series = {atom_groups_in_series}`."
+            f"`n_batches_of_atoms = {n_batches_of_atoms}`."
         )
-    elif atom_groups_in_series == 1:
+    elif n_batches_of_atoms == 1:
         potential_as_voxel_grid = compute_potential_for_atom_group((atom_positions, a, b))
-    elif atom_groups_in_series > 1:
+    elif n_batches_of_atoms > 1:
         potential_as_voxel_grid = jnp.sum(
-            _batched_map(
+            _batched_map_with_n_batches(
                 compute_potential_for_atom_group,
                 (atom_positions, a, b),
-                batch_size=atom_positions.shape[0] // atom_groups_in_series,
+                n_batches=n_batches_of_atoms,
                 is_batch_axis_contracted=True,
             ),
             axis=0,
         )
     else:
         raise ValueError(
-            "The `atom_groups_in_series` when building a voxel grid must be an "
+            "The `n_batches_of_atoms` when building a voxel grid must be an "
             "integer greater than or equal to 1."
         )
 
@@ -426,7 +426,7 @@ def _build_real_space_voxel_potential_from_atom_group(
     atom_positions: Float[Array, "n_atoms_in_batch 3"],
     a: Float[Array, "n_atoms_in_batch n_gaussians_per_atom"],
     b: Float[Array, "n_atoms_in_batch n_gaussians_per_atom"],
-    z_planes_in_parallel: int,
+    batch_size_for_z_planes: int,
 ) -> Float[Array, "dim_z dim_y dim_x"]:
     # Evaluate 1D gaussian integrals for each of x, y, and z dimensions
     (
@@ -445,29 +445,29 @@ def _build_real_space_voxel_potential_from_atom_group(
         )
     )
     # Map over z-planes
-    if z_planes_in_parallel > grid_z.size:
+    if batch_size_for_z_planes > grid_z.size:
         raise ValueError(
-            "The `z_planes_in_parallel` when building a voxel grid must be an "
+            "The `batch_size_for_z_planes` when building a voxel grid must be an "
             "integer less than or equal to the z-dimension of the grid, "
             f"which is equal to {grid_z.size}."
         )
-    elif z_planes_in_parallel == 1:
+    elif batch_size_for_z_planes == 1:
         # ... compute the volume iteratively
         potential_as_voxel_grid = jax.lax.map(
             compute_potential_at_z_plane, gaussian_integrals_per_interval_per_atom_z
         )
-    elif z_planes_in_parallel > 1:
+    elif batch_size_for_z_planes > 1:
         # ... compute the volume by tuning how many z-planes to batch over
         compute_potential_at_z_planes = jax.vmap(compute_potential_at_z_plane, in_axes=0)
-        potential_as_voxel_grid = _batched_map(
+        potential_as_voxel_grid = _batched_map_with_batch_size(
             compute_potential_at_z_planes,
             gaussian_integrals_per_interval_per_atom_z,
-            batch_size=z_planes_in_parallel,
+            batch_size=batch_size_for_z_planes,
             is_batch_axis_contracted=False,
         )
     else:
         raise ValueError(
-            "The `z_planes_in_parallel` when building a voxel grid must be an "
+            "The `batch_size_for_z_planes` when building a voxel grid must be an "
             "integer greater than or equal to 1."
         )
 
@@ -542,9 +542,37 @@ def _evaluate_gaussian_potential_at_z_plane(
     return jnp.sum(jnp.matmul(gauss_yz, gauss_x), axis=0)
 
 
+def _batched_map_with_n_batches(
+    fun: Callable,
+    xs: PyTree[Array],
+    n_batches: int,
+    is_batch_axis_contracted: bool = False,
+):
+    batch_dim = jtu.tree_leaves(xs)[0].shape[0]
+    batch_size = batch_dim // n_batches
+    return _batched_map(
+        fun, xs, batch_dim, n_batches, batch_size, is_batch_axis_contracted
+    )
+
+
+def _batched_map_with_batch_size(
+    fun: Callable,
+    xs: PyTree[Array],
+    batch_size: int,
+    is_batch_axis_contracted: bool = False,
+):
+    batch_dim = jtu.tree_leaves(xs)[0].shape[0]
+    n_batches = batch_dim // batch_size
+    return _batched_map(
+        fun, xs, batch_dim, n_batches, batch_size, is_batch_axis_contracted
+    )
+
+
 def _batched_map(
     fun: Callable,
     xs: PyTree[Array],
+    batch_dim: int,
+    n_batches: int,
     batch_size: int,
     is_batch_axis_contracted: bool = False,
 ):
@@ -553,8 +581,6 @@ def _batched_map(
     parallel over this leading axis.
     """
     # ... reshape into an iterative dimension and a batching dimension
-    batch_dim = jtu.tree_leaves(xs)[0].shape[0]
-    n_batches = batch_dim // batch_size
     xs_per_batch = jtu.tree_map(
         lambda x: x[: batch_dim - batch_dim % batch_size, ...].reshape(
             (n_batches, batch_size, *x.shape[1:])
