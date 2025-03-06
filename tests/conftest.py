@@ -51,6 +51,11 @@ def sample_pdb_url():
 
 
 @pytest.fixture
+def sample_waterbox_pdb():
+    return os.path.join(os.path.dirname(__file__), "data", "relaxed_small_box_tip3p.pdb")
+
+
+@pytest.fixture
 def toy_gaussian_cloud():
     atom_positions = jnp.array(
         [
