@@ -210,12 +210,13 @@ FourierGaussian.__init__.__doc__ = """**Arguments:**
               in the above equation.
 """
 
+
 class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
     r"""
-    This operator represents the sum of two gaussians. 
+    This operator represents the sum of two gaussians.
     Specifically, this is
 
-    .. math:: 
+    .. math::
         P(k) = a_1 \exp(-(k-m_1)^2/(2 s_1^2)) + a_2 \exp(-(k-m_2)^2/(2 s_2^2)),
 
     Where default values given by Parkhurst et al. (2024) are:
@@ -233,7 +234,7 @@ class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
 
     a2: Float[Array, ""] = field(default=0.801, converter=jnp.asarray)
     s2: Float[Array, ""] = field(default=0.081, converter=error_if_negative)
-    m2: Float[Array, ""] = field(default=1/2.88, converter=error_if_negative)
+    m2: Float[Array, ""] = field(default=1 / 2.88, converter=error_if_negative)
 
     @overload
     def __call__(
@@ -252,13 +253,13 @@ class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
             Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
         ),
     ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
+        # SCALE a1, a2, s1, s2 based on pixel size in
 
-        # SCALE a1, a2, s1, s2 based on pixel size in 
-        
         k_sqr = jnp.sum(frequency_grid**2, axis=-1)
         k = jnp.sqrt(k_sqr)
-        scaling = (self.a1 * jnp.exp(-0.5 * ((k - self.m1) / self.s1)**2) + 
-              self.a2 * jnp.exp(-0.5 * ((k - self.m2) / self.s2)**2))
+        scaling = self.a1 * jnp.exp(
+            -0.5 * ((k - self.m1) / self.s1) ** 2
+        ) + self.a2 * jnp.exp(-0.5 * ((k - self.m2) / self.s2) ** 2)
         return scaling
 
 
