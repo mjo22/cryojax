@@ -28,7 +28,8 @@ dependencies = [
     "pandas",
     "typing_extensions>=4.5.0",
     "tqdm",
-    "gemmi",
+    "mdtraj",
+    "biopython"
 ]
 
 [build-system]
