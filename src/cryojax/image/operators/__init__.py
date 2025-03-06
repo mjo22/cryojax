@@ -14,7 +14,6 @@ from ._fourier_operator import (
     FourierOperatorLike as FourierOperatorLike,
     Lorenzian as Lorenzian,
     ZeroMode as ZeroMode,
-    Parkhurst2024_Gaussian as Parkhurst2024_Gaussian,
 )
 from ._masks import (
     AbstractMask as AbstractMask,
