@@ -182,7 +182,7 @@ class UniformPhaseIce(AbstractIce, strict=True):
             jr.uniform(
                 key,
                 shape=frequency_grid_in_angstroms.shape[0:-1],
-                dtype=complex,
+                # dtype=complex,
             )
             .at[0, 0]
             .set(0.0)
