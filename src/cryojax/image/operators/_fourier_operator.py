@@ -209,3 +209,65 @@ FourierGaussian.__init__.__doc__ = """**Arguments:**
 - `b_factor`: The variance of the real-space gaussian, equal to $\\beta$
               in the above equation.
 """
+
+
+class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
+    r"""
+    This operator represents the sum of two gaussians.
+    Specifically, this is
+
+    .. math::
+        P(k) = a_1 \exp(-(k-m_1)^2/(2 s_1^2)) + a_2 \exp(-(k-m_2)^2/(2 s_2^2)),
+
+    Where default values given by Parkhurst et al. (2024) are:
+    a_1 = 0.199
+    s_1 = 0.731
+    m_1 = 0
+    a_2 = 0.801
+    s_2 = 0.081
+    m_2 = 1/2.88 (Å^(-1))
+    """
+
+    a1: Float[Array, ""] = field(default=0.199, converter=jnp.asarray)
+    s1: Float[Array, ""] = field(default=0.731, converter=error_if_negative)
+    m1: Float[Array, ""] = field(default=0, converter=error_if_negative)
+
+    a2: Float[Array, ""] = field(default=0.801, converter=jnp.asarray)
+    s2: Float[Array, ""] = field(default=0.081, converter=error_if_negative)
+    m2: Float[Array, ""] = field(default=1 / 2.88, converter=error_if_negative)
+
+    @overload
+    def __call__(
+        self, frequency_grid: Float[Array, "y_dim x_dim 2"]
+    ) -> Float[Array, "y_dim x_dim"]: ...
+
+    @overload
+    def __call__(
+        self, frequency_grid: Float[Array, "z_dim y_dim x_dim 3"]
+    ) -> Float[Array, "z_dim y_dim x_dim"]: ...
+
+    @override
+    def __call__(
+        self,
+        frequency_grid: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
+    ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
+        # SCALE a1, a2, s1, s2 based on pixel size in
+
+        k_sqr = jnp.sum(frequency_grid**2, axis=-1)
+        k = jnp.sqrt(k_sqr)
+        scaling = self.a1 * jnp.exp(
+            -0.5 * ((k - self.m1) / self.s1) ** 2
+        ) + self.a2 * jnp.exp(-0.5 * ((k - self.m2) / self.s2) ** 2)
+        return scaling
+
+
+Parkhurst2024_Gaussian.__init__.__doc__ = """**Arguments:**
+- `a1`: The amplitude of the first gaussian
+- `s1`: The variance of the first gaussian
+- `m1`: The center of the first gaussian
+- `a2`: The amplitude of the second gaussian
+- `s2`: The variance of the second gaussian
+- `m2`: The center of the second gaussian
+"""
