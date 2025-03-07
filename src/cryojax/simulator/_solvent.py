@@ -133,6 +133,78 @@ class GaussianIce(AbstractIce, strict=True):
             )
 
 
+class UniformPhaseIce(AbstractIce, strict=True):
+    r"""Ice modeled as uniform phase noise.
+
+    **Attributes:**
+
+    - `variance_function` :
+        Power envelope -- ParkhurstGaussian
+        Phase -- uniform from 0 to 2pi
+
+        A function that computes the variance
+        of the ice, modeled as colored gaussian noise.
+        The dimensions of this function are the square
+        of the dimensions of an integrated potential.
+    """
+
+    power_envelope_function: FourierOperatorLike
+
+    def __init__(self, power_envelope_function: FourierOperatorLike):
+        self.power_envelope_function = power_envelope_function
+
+    @override
+    def sample_ice_spectrum(
+        self,
+        key: PRNGKeyArray,
+        instrument_config: InstrumentConfig,
+        get_rfft: bool = True,
+    ) -> (
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+        ]
+    ):
+        """Sample a realization of the ice phase shifts as colored gaussian noise."""
+        n_pixels = instrument_config.padded_n_pixels
+        frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
+        # Compute standard deviation, scaling up by the variance by the number
+        # of pixels to make the realization independent pixel-independent in real-space.
+        power_envelope = n_pixels * self.power_envelope_function(
+            frequency_grid_in_angstroms
+        )
+
+        phase = (
+            jr.uniform(
+                key,
+                shape=frequency_grid_in_angstroms.shape[0:-1],
+                dtype=complex,
+            )
+            .at[0, 0]
+            .set(0.0)
+        )
+
+        ice_integrated_potential_at_exit_plane = jnp.sqrt(power_envelope) * jnp.exp(
+            1j * phase
+        )
+
+        ice_spectrum_at_exit_plane = convert_units_of_integrated_potential(
+            ice_integrated_potential_at_exit_plane,
+            instrument_config.wavelength_in_angstroms,
+        )
+
+        if get_rfft:
+            return ice_spectrum_at_exit_plane
+        else:
+            return fftn(
+                irfftn(ice_spectrum_at_exit_plane, s=instrument_config.padded_shape)
+            )
+
+
 class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
     r"""
     This operator represents the sum of two gaussians.
