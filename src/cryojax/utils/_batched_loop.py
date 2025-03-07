@@ -10,7 +10,6 @@ Y = TypeVar("Y")
 Carry = TypeVar("Carry")
 
 
-@eqx.filter_jit
 def batched_map(
     f: Callable[
         [PyTree[Shaped[Array, "_ ..."], "X"]], PyTree[Shaped[Array, "_ ..."], "Y"]
@@ -47,7 +46,6 @@ def batched_map(
     return ys
 
 
-@eqx.filter_jit
 def batched_scan(
     f: Callable[
         [Carry, PyTree[Shaped[Array, "_ ..."], "X"]],

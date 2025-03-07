@@ -36,6 +36,26 @@ def sample_pdb_path():
 
 
 @pytest.fixture
+def sample_pdb_path_assembly():
+    return os.path.join(os.path.dirname(__file__), "data", "1uao_assembly.pdb")
+
+
+@pytest.fixture
+def sample_cif_path():
+    return os.path.join(os.path.dirname(__file__), "data", "8zpm.cif")
+
+
+@pytest.fixture
+def sample_pdb_url():
+    return "https://files.rcsb.org/download/2XJX.pdb"
+
+
+@pytest.fixture
+def sample_waterbox_pdb():
+    return os.path.join(os.path.dirname(__file__), "data", "relaxed_small_box_tip3p.pdb")
+
+
+@pytest.fixture
 def toy_gaussian_cloud():
     atom_positions = jnp.array(
         [

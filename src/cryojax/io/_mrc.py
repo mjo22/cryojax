@@ -84,8 +84,7 @@ def write_image_to_mrc(
     suffix = _validate_filename_and_return_suffix(filename)
     if suffix != ".mrc":
         raise IOError(
-            "The suffix for an image in MRC format must be .mrc. "
-            f"Instead, got {suffix}."
+            f"The suffix for an image in MRC format must be .mrc. Instead, got {suffix}."
         )
     if image.ndim != 2:
         raise ValueError("image.ndim must be equal to 2.")
@@ -157,8 +156,7 @@ def write_volume_to_mrc(
     suffix = _validate_filename_and_return_suffix(filename)
     if suffix != ".mrc":
         raise IOError(
-            "The suffix for a volume in MRC format must be .mrc. "
-            f"Instead, got {suffix}."
+            f"The suffix for a volume in MRC format must be .mrc. Instead, got {suffix}."
         )
     if voxel_grid.ndim != 3:
         raise ValueError("voxel_grid.ndim must be equal to 3.")
