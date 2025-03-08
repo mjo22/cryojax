@@ -178,15 +178,11 @@ class UniformPhaseIce(AbstractIce, strict=True):
             frequency_grid_in_angstroms
         )
 
-        phase = (
-            jr.uniform(
-                key,
-                shape=frequency_grid_in_angstroms.shape[0:-1],
-                # dtype=complex,
-            )
-            .at[0, 0]
-            .set(0.0)
-        )
+        phase = jnp.pi * jr.uniform(
+            key,
+            shape=frequency_grid_in_angstroms.shape[0:-1],
+            # dtype=complex,
+        ).at[0, 0].set(0.0)
 
         ice_integrated_potential_at_exit_plane = jnp.sqrt(power_envelope) * jnp.exp(
             1j * phase
