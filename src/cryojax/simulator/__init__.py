@@ -48,6 +48,8 @@ from ._scattering_theory import (
 from ._solvent import (
     AbstractIce as AbstractIce,
     GaussianIce as GaussianIce,
+    Parkhurst2024_Gaussian as Parkhurst2024_Gaussian,
+    UniformPhaseIce as UniformPhaseIce,
 )
 from ._structural_ensemble import (
     AbstractAssembly as AbstractAssembly,
