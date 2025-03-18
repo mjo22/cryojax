@@ -207,7 +207,7 @@ class UniformPhaseIce(AbstractIce, strict=True):
             )
 
 
-class Parkhurst2024_ExperimentalIce(AbstractIce, strict=True):
+class Parkhurst2024_ExperimentalIce2(AbstractIce, strict=True):
     r"""Continuum model for ice from Parkhurst et al. (2024).
 
     **Attributes:**
@@ -284,7 +284,15 @@ class Parkhurst2024_ExperimentalIce(AbstractIce, strict=True):
         )
 
         # Add dc component (the expected/mean potential)
-        ice_integrated_potential_at_exit_plane.at[0, 0].add(self.mean_potential)
+        # TODO: Should I be adding or setting the mean potential?
+        # TODO: Should I be multiplying by n_pixels?
+        # TODO: Do the units of the mean potential need to be converted?
+        # I believe, so since they are in inverse length squared.
+        ice_integrated_potential_at_exit_plane = (
+            ice_integrated_potential_at_exit_plane.at[0, 0].set(
+                n_pixels * self.mean_potential
+            )
+        )
 
         # Convert units of integrated potential to phase shifts
         ice_spectrum_at_exit_plane = convert_units_of_integrated_potential(
