@@ -172,7 +172,7 @@ class UniformPhaseIce(AbstractIce, strict=True):
         """Sample a realization of the ice phase shifts as colored gaussian noise."""
         n_pixels = instrument_config.padded_n_pixels
         frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
-        # Compute standard deviation, scaling up by the variance by the number
+        # Compute variance, scaling up by the variance by the number
         # of pixels to make the realization independent pixel-independent in real-space.
         power_envelope = n_pixels * self.power_envelope_function(
             frequency_grid_in_angstroms
@@ -207,30 +207,132 @@ class UniformPhaseIce(AbstractIce, strict=True):
             )
 
 
+class Parkhurst2024_ExperimentalIce(AbstractIce, strict=True):
+    r"""Continuum model for ice from Parkhurst et al. (2024).
+
+    **Attributes:**
+
+    - 'N' :
+        Number of water molecules per unit area in units of inverse length squared.
+        Default value is 1.0 Å⁻²
+
+    - `power_envelope_function` :
+        A function that computes the variance
+        of the ice, modeled as colored gaussian noise.
+        The dimensions of this function are the square
+        of the dimensions of an integrated potential.
+        Defaults to Parkhurst2024_Gaussian.
+
+    - 'mean_potential' :
+        Mean potential of the ice in units of inverse length squared.
+        Computed as U = 4*pi*N*(f_e^8(0) + 2*f_e^1(0)) where
+        f_e^8 = 0.0974 + 0.2921 + 0.691  + 0.699  + 0.2039 = 1.9834
+        f_e^1 = 0.0349 + 0.1201 + 0.197  + 0.0573 + 0.1195 = 0.5288
+        are the sum of the Peng scattering factor a-values
+
+    """
+
+    N: Float[Array, ""] = field(default=1.0, converter=error_if_negative)
+    mean_potential: Float[Array, ""] = field(init=False)
+    power_envelope_function: FourierOperatorLike = field(init=False)
+
+    def __post_init__(self):
+        self.power_envelope_function = Parkhurst2024_Gaussian(N=self.N)
+        self.mean_potential = 4 * jnp.pi * self.N * (1.9834 + 2 * 0.5288)
+
+    @override
+    def sample_ice_spectrum(
+        self,
+        key: PRNGKeyArray,
+        instrument_config: InstrumentConfig,
+        get_rfft: bool = True,
+    ) -> (
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+        ]
+    ):
+        """Sample a realization of the ice phase shifts as colored gaussian noise."""
+
+        n_pixels = instrument_config.padded_n_pixels
+
+        frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
+
+        # Compute variance, scaling up by the number of pixels to make
+        # the realization independent pixel-independent in real-space.
+        power_envelope = n_pixels * self.power_envelope_function(
+            frequency_grid_in_angstroms
+        )
+
+        # Compute phase from a uniform random distribution of [0, 2pi]
+        phase = (
+            2
+            * jnp.pi
+            * jr.uniform(key, shape=frequency_grid_in_angstroms.shape[0:-1])
+            .at[0, 0]
+            .set(0.0)
+        )
+
+        # Multiply standard deviation and phase shifts together as a complex number
+        # C = A*exp(i*phi)
+        ice_integrated_potential_at_exit_plane = jnp.sqrt(power_envelope) * jnp.exp(
+            1j * phase
+        )
+
+        # Add dc component (the expected/mean potential)
+        ice_integrated_potential_at_exit_plane.at[0, 0].add(self.mean_potential)
+
+        # Convert units of integrated potential to phase shifts
+        ice_spectrum_at_exit_plane = convert_units_of_integrated_potential(
+            ice_integrated_potential_at_exit_plane,
+            instrument_config.wavelength_in_angstroms,
+        )
+
+        if get_rfft:
+            return ice_spectrum_at_exit_plane
+        else:
+            return fftn(
+                irfftn(ice_spectrum_at_exit_plane, s=instrument_config.padded_shape)
+            )
+
+
 class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
     r"""
-    This operator represents the sum of two gaussians.
-    Specifically, this is
+    This operator represents the sum of two Gaussians.
 
     .. math::
         P(k) = a_1 \exp(-(k-m_1)^2/(2 s_1^2)) + a_2 \exp(-(k-m_2)^2/(2 s_2^2)),
 
-    Where default values given by Parkhurst et al. (2024) are:
+    where:
+    - :math:`a_1` and :math:`a_2` are the amplitudes
+    - :math:`s_1` and :math:`s_2` are the Gaussian widths in Å⁻¹,
+    - :math:`m_1` and :math:`m_2` are the centers in Å⁻¹.
+
+    Default values given by Parkhurst et al. (2024) are:
     a_1 = 0.199
     s_1 = 0.731
     m_1 = 0
     a_2 = 0.801
     s_2 = 0.081
     m_2 = 1/2.88 (Å^(-1))
+
+    The number of water molecules per unit area, `N` (in Å⁻²) is used to
+    scale `a_1` and `a_2`so that the total variance squared is 10195.82 N.
+    a_1 = 0.199 * N
+    a_2 = 0.801 * N
     """
 
-    a1: Float[Array, ""] = field(default=0.199, converter=jnp.asarray)
-    s1: Float[Array, ""] = field(default=0.731, converter=error_if_negative)
-    m1: Float[Array, ""] = field(default=0, converter=error_if_negative)
-
-    a2: Float[Array, ""] = field(default=0.801, converter=jnp.asarray)
-    s2: Float[Array, ""] = field(default=0.081, converter=error_if_negative)
-    m2: Float[Array, ""] = field(default=1 / 2.88, converter=error_if_negative)
+    N: float = field(default=1.0, converter=error_if_negative)
+    a1: float = field(default=0.199, converter=jnp.asarray)
+    s1: float = field(default=0.731, converter=error_if_negative)
+    m1: float = field(default=0.0, converter=error_if_negative)
+    a2: float = field(default=0.801, converter=jnp.asarray)
+    s2: float = field(default=0.081, converter=error_if_negative)
+    m2: float = field(default=1 / 2.88, converter=error_if_negative)
 
     @overload
     def __call__(
@@ -248,14 +350,27 @@ class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
         frequency_grid: (
             Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
         ),
-    ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
-        # SCALE a1, a2, s1, s2 based on pixel size in
+    ) -> Float[Array, "..."]:
+        """
+        Evaluate the 2-Gaussian function at each pixel in `frequency_grid`, scaling
+        amplitudes by `N`. If no arguments are passed, the default values from
+        Parkhurst et al. (2024) are used.
+        """
 
+        # Compute the magnitude of the radial frequency vector
+        # k = sqrt(kx^2 + ky^2 [+ kz^2]).
         k_sqr = jnp.sum(frequency_grid**2, axis=-1)
         k = jnp.sqrt(k_sqr)
-        scaling = self.a1 * jnp.exp(
+
+        # Rescale the base amplitudes by N
+        a1_scaled = self.a1 * self.N  # Amplitude of the first Gaussian
+        a2_scaled = self.a2 * self.N  # Amplitude of the second Gaussian
+
+        # Power spectrum formula
+        scaling = a1_scaled * jnp.exp(
             -0.5 * ((k - self.m1) / self.s1) ** 2
-        ) + self.a2 * jnp.exp(-0.5 * ((k - self.m2) / self.s2) ** 2)
+        ) + a2_scaled * jnp.exp(-0.5 * ((k - self.m2) / self.s2) ** 2)
+
         return scaling
 
 
