@@ -30,8 +30,6 @@ def read_atoms_from_pdb(
     get_b_factors: Literal[False] = False,
     *,
     atom_filter: str = "all",
-    is_assembly: bool = False,
-    i_model: Optional[int] = None,
     standard_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> tuple[Float[np.ndarray, "n_atoms 3"], Int[np.ndarray, " n_atoms"]]: ...
@@ -44,8 +42,6 @@ def read_atoms_from_pdb(
     get_b_factors: Literal[True] = True,
     *,
     atom_filter: str = "all",
-    is_assembly: bool = False,
-    i_model: Optional[int] = None,
     standard_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> tuple[
@@ -62,8 +58,6 @@ def read_atoms_from_pdb(
     get_b_factors: bool = False,
     *,
     atom_filter: str,
-    is_assembly: bool,
-    i_model: Optional[int],
     standard_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> (
@@ -82,8 +76,6 @@ def read_atoms_from_pdb(
     get_b_factors: bool = False,
     *,
     atom_filter: str = "all",
-    is_assembly: bool = False,
-    i_model: Optional[int] = None,
     standard_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> (
@@ -109,11 +101,6 @@ def read_atoms_from_pdb(
         If `True`, return the B-factors of the atoms.
     - `atom_filter`:
         A selection string in `mdtraj`'s format. See `mdtraj` for documentation.
-    - `is_assembly`:
-        If the pdb file contains multiple models, set this to `True`.
-    - `i_model`:
-        Index of the returned model. Should only be used if `is_assembly`
-        is `True`.
     - `standard_names`:
         If `True`, non-standard atomnames and residuenames are standardized to conform
         with the current PDB format version. If set to `False`, this step is skipped.
@@ -139,9 +126,7 @@ def read_atoms_from_pdb(
         trajectories.
     """
 
-    with AtomicModelReader(
-        filename_or_url, is_assembly, i_model, standard_names, topology
-    ) as pdb_reader:
+    with AtomicModelReader(filename_or_url, standard_names, topology) as pdb_reader:
         topology = pdb_reader.topology
         atom_indices = topology.select(atom_filter)
         topology = topology.subset(atom_indices)
@@ -222,18 +207,12 @@ class AtomicModelReader:
     def __init__(
         self,
         filename_or_url: str | pathlib.Path,
-        is_assembly: bool = False,
-        i_model: Optional[int] = None,
         standard_names: bool = True,
         topology: Optional[Topology] = None,
     ):
         """**Arguments:**
 
         - `filename_or_url`: The name of the PDB/mmCIF file to open. Can be a URL.
-        - `is_assembly`: If the pdb file contains multiple models, set this to `True`.
-                Warning: if your pdb is a trajectory, all frames will be loaded.
-        - `i_model`: Index of the returned mode.
-            Should only be used if `is_assembly` is `True`.
         - `standard_names` : bool, default=True
             If `True`, non-standard atomnames and residuenames are standardized to conform
             with the current PDB format version. If set to false, this step is skipped.
@@ -244,10 +223,6 @@ class AtomicModelReader:
         # Set state of the loader
         self._is_open = True
         # Check for errors
-        if i_model is not None and not is_assembly:
-            raise ValueError(
-                "Argument `i_model` should only be used if `is_assembly = True`."
-            )
         filename_or_url = str(filename_or_url)
         if not (".pdb" in filename_or_url or ".pdb.gz" in filename_or_url):
             raise ValueError(
@@ -270,7 +245,7 @@ class AtomicModelReader:
 
         # Load properties into the object
         properties_dict = _load_pdb_reader_properties_dict(
-            self._file, topology, is_assembly, i_model, standard_names
+            self._file, topology, standard_names
         )
         for k, v in properties_dict.items():
             setattr(self, k, v)
@@ -300,18 +275,9 @@ class AtomicModelReader:
 def _load_pdb_reader_properties_dict(
     file,
     topology: Optional[Topology],
-    is_assembly: bool,
-    i_model: Optional[int],
     standard_names,
 ):
     pdb = PdbStructure(file, load_all_models=True)
-
-    if len(pdb) > 1 and not is_assembly:
-        raise ValueError(
-            "PDB Error: The PDB file contains multiple models. "
-            "Use 'is_assembly=True' to build a biological assembly."
-            "Loading trajectories is currently not supported."
-        )
 
     positions = []
     bfactors = []
@@ -319,8 +285,6 @@ def _load_pdb_reader_properties_dict(
 
     # load all of the positions (from every model)
     for i, model in enumerate(pdb.iter_models(use_all_models=True)):
-        if i_model is not None and i != i_model:
-            continue
         for chain in model.iter_chains():
             for residue in chain.iter_residues():
                 for atom in residue.atoms:
@@ -338,7 +302,7 @@ def _load_pdb_reader_properties_dict(
 
     # Load the topology if None is given
     if topology is None:
-        topology = _make_topology(pdb, positions, i_model, standard_names)
+        topology = _make_topology(pdb, positions, standard_names)
 
     return dict(
         atom_positions=atom_positions,
@@ -350,13 +314,11 @@ def _load_pdb_reader_properties_dict(
     )
 
 
-def _make_topology(pdb, atom_positions, i_model, standard_names):
+def _make_topology(pdb, atom_positions, standard_names):
     topology = Topology()
 
     atomByNumber = {}
     for i, model in enumerate(pdb.iter_models(use_all_models=True)):
-        if i_model is not None and i != i_model:
-            continue
         for chain in model.iter_chains():
             c = topology.add_chain(chain.chain_id)
             for residue in chain.iter_residues():
