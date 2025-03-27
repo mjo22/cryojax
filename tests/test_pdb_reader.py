@@ -4,13 +4,13 @@ from jaxtyping import install_import_hook
 
 
 with install_import_hook("cryojax", "typeguard.typechecked"):
-    from cryojax.io import read_atoms_from_pdb_or_cif
+    from cryojax.io import read_atoms_from_pdb
 
 config.update("jax_enable_x64", True)
 
 
 def test_read_single_pdb(sample_pdb_path):
-    atom_positions, atom_identities, b_factors = read_atoms_from_pdb_or_cif(
+    atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
         atom_filter="protein and not element H",
@@ -28,7 +28,7 @@ def test_read_single_pdb(sample_pdb_path):
 
 
 def test_read_single_pdb_no_b_factors(sample_pdb_path):
-    atom_positions, atom_identities = read_atoms_from_pdb_or_cif(
+    atom_positions, atom_identities = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
         atom_filter="protein and not element H",
@@ -45,7 +45,7 @@ def test_read_single_pdb_no_b_factors(sample_pdb_path):
 
 
 def test_read_full_assembly_pdb(sample_pdb_path_assembly):
-    atom_positions, atom_identities, b_factors = read_atoms_from_pdb_or_cif(
+    atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path_assembly,
         center=True,
         atom_filter="all",
@@ -63,7 +63,7 @@ def test_read_full_assembly_pdb(sample_pdb_path_assembly):
 
 
 def test_read_first_model_assembly_pdb(sample_pdb_path_assembly):
-    atom_positions, atom_identities, b_factors = read_atoms_from_pdb_or_cif(
+    atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path_assembly,
         center=True,
         atom_filter="all",
@@ -80,26 +80,26 @@ def test_read_first_model_assembly_pdb(sample_pdb_path_assembly):
     assert atom_positions.shape[0] == 138
 
 
-def test_read_cif(sample_cif_path):
-    atom_positions, atom_identities, b_factors = read_atoms_from_pdb_or_cif(
-        sample_cif_path,
-        center=True,
-        atom_filter="all",
-        is_assembly=False,
-        i_model=None,
-        get_b_factors=True,
-    )
+# def test_read_cif(sample_cif_path):
+#     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
+#         sample_cif_path,
+#         center=True,
+#         atom_filter="all",
+#         is_assembly=False,
+#         i_model=None,
+#         get_b_factors=True,
+#     )
 
-    assert atom_positions.ndim == 2
-    assert atom_identities.shape == b_factors.shape
-    assert atom_positions.shape[0] == atom_identities.shape[0]
+#     assert atom_positions.ndim == 2
+#     assert atom_identities.shape == b_factors.shape
+#     assert atom_positions.shape[0] == atom_identities.shape[0]
 
-    assert atom_positions.shape[1] == 3
-    assert atom_positions.shape[0] == 3222
+#     assert atom_positions.shape[1] == 3
+#     assert atom_positions.shape[0] == 3222
 
 
 def test_read_from_url(sample_pdb_url):
-    atom_positions, atom_identities, b_factors = read_atoms_from_pdb_or_cif(
+    atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_url,
         center=True,
         atom_filter="all",
@@ -117,7 +117,7 @@ def test_read_from_url(sample_pdb_url):
 
 
 def test_center_waterbox(sample_waterbox_pdb):
-    atom_positions, atom_identities, b_factors = read_atoms_from_pdb_or_cif(
+    atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_waterbox_pdb,
         center=True,
         atom_filter="all",
