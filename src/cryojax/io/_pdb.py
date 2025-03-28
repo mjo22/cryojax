@@ -6,18 +6,16 @@ import dataclasses
 import gzip
 import pathlib
 from io import StringIO
-from typing import cast, Literal, Optional, overload
+from typing import Literal, Optional, overload
 from urllib.parse import urlparse, uses_netloc, uses_params, uses_relative
 from urllib.request import urlopen
 
 import mdtraj
 import numpy as np
-from Bio.PDB import MMCIFParser, PDBParser  # type: ignore
-from Bio.PDB.Structure import Structure
 from jaxtyping import Float, Int
-from mdtraj.core import element
 from mdtraj.core.topology import Topology
 from mdtraj.formats.pdb.pdbfile import PDBTrajectoryFile
+from mdtraj.formats.pdb.pdbstructure import PdbStructure
 from mdtraj.utils import in_units_of, open_maybe_zipped
 
 
@@ -26,28 +24,24 @@ _VALID_URLS.discard("")
 
 
 @overload
-def read_atoms_from_pdb_or_cif(
+def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
     center: bool = False,
     get_b_factors: Literal[False] = False,
     *,
     atom_filter: str = "all",
-    is_assembly: bool = False,
-    i_model: Optional[int] = None,
     standard_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> tuple[Float[np.ndarray, "n_atoms 3"], Int[np.ndarray, " n_atoms"]]: ...
 
 
 @overload
-def read_atoms_from_pdb_or_cif(
+def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
     center: bool = False,
     get_b_factors: Literal[True] = True,
     *,
     atom_filter: str = "all",
-    is_assembly: bool = False,
-    i_model: Optional[int] = None,
     standard_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> tuple[
@@ -58,14 +52,12 @@ def read_atoms_from_pdb_or_cif(
 
 
 @overload
-def read_atoms_from_pdb_or_cif(
+def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
     center: bool = False,
     get_b_factors: bool = False,
     *,
     atom_filter: str,
-    is_assembly: bool,
-    i_model: Optional[int],
     standard_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> (
@@ -78,14 +70,12 @@ def read_atoms_from_pdb_or_cif(
 ): ...
 
 
-def read_atoms_from_pdb_or_cif(
+def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
     center: bool = False,
     get_b_factors: bool = False,
     *,
     atom_filter: str = "all",
-    is_assembly: bool = False,
-    i_model: Optional[int] = None,
     standard_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> (
@@ -97,7 +87,7 @@ def read_atoms_from_pdb_or_cif(
     ]
 ):
     """Read atomic information from a PDB file. This object
-    wraps the `cryojax.io.PDBReader` class into a function
+    wraps the `cryojax.io.AtomicModelReader` class into a function
     interface to accomodate most use cases in cryo-EM.
 
     **Arguments:**
@@ -111,16 +101,11 @@ def read_atoms_from_pdb_or_cif(
         If `True`, return the B-factors of the atoms.
     - `atom_filter`:
         A selection string in `mdtraj`'s format. See `mdtraj` for documentation.
-    - `is_assembly`:
-        If the pdb file contains multiple models, set this to `True`.
-    - `i_model`:
-        Index of the returned model. Should only be used if `is_assembly`
-        is `True`.
     - `standard_names`:
         If `True`, non-standard atomnames and residuenames are standardized to conform
         with the current PDB format version. If set to `False`, this step is skipped.
     - `topology`:
-        If you give a topology as input the topology won't be parsed from the pdb file
+        If you give a topology as input, the topology won't be parsed from the pdb file
         it saves time if you have to parse a big number of files
 
     **Returns:**
@@ -141,9 +126,7 @@ def read_atoms_from_pdb_or_cif(
         trajectories.
     """
 
-    with AtomicModelReader(
-        filename_or_url, is_assembly, i_model, standard_names, topology
-    ) as pdb_reader:
+    with AtomicModelReader(filename_or_url, standard_names, topology) as pdb_reader:
         topology = pdb_reader.topology
         atom_indices = topology.select(atom_filter)
         topology = topology.subset(atom_indices)
@@ -220,23 +203,16 @@ class AtomicModelReader:
     topology: Topology
     unitcell_lengths: tuple[float, float, float] | None
     unitcell_angles: tuple[float, float, float] | None
-    parser: PDBParser | MMCIFParser
 
     def __init__(
         self,
         filename_or_url: str | pathlib.Path,
-        is_assembly: bool = False,
-        i_model: Optional[int] = None,
         standard_names: bool = True,
         topology: Optional[Topology] = None,
     ):
         """**Arguments:**
 
         - `filename_or_url`: The name of the PDB/mmCIF file to open. Can be a URL.
-        - `is_assembly`: If the pdb file contains multiple models, set this to `True`.
-                Warning: if your pdb is a trajectory, all frames will be loaded.
-        - `i_model`: Index of the returned mode.
-            Should only be used if `is_assembly` is `True`.
         - `standard_names` : bool, default=True
             If `True`, non-standard atomnames and residuenames are standardized to conform
             with the current PDB format version. If set to false, this step is skipped.
@@ -244,19 +220,10 @@ class AtomicModelReader:
             If the `topology` is passed as input, it won't be parsed from the PDB file.
             This saves time if you have to parse a big number of files.
         """
-        # Check for errors
-        if i_model is not None and not is_assembly:
-            raise ValueError(
-                "Argument `i_model` should only be used if `is_assembly = True`."
-            )
-        filename_or_url = str(filename_or_url)
-        if ".pdb" in filename_or_url or ".pdb.gz" in filename_or_url:
-            self.parser = PDBParser(QUIET=True)
-        elif ".cif" in filename_or_url:
-            self.parser = MMCIFParser(QUIET=True)
-        else:
-            raise ValueError("File format not recognized")
+        # Set state of the loader
+        self._is_open = True
 
+        filename_or_url = str(filename_or_url)
         # Setup I/O
         if _is_url(filename_or_url):
             filename_or_url = str(filename_or_url)
@@ -272,12 +239,10 @@ class AtomicModelReader:
 
         # Load properties into the object
         properties_dict = _load_pdb_reader_properties_dict(
-            self._file, self.parser, topology, is_assembly, i_model, standard_names
+            self._file, topology, standard_names
         )
         for k, v in properties_dict.items():
             setattr(self, k, v)
-        # Set state of the loader
-        self._is_open = True
 
     @property
     def is_closed(self):
@@ -286,7 +251,8 @@ class AtomicModelReader:
     def close(self):
         """Close the PDB file"""
         if self._is_open:
-            self._file.close()
+            if hasattr(self, "_file"):
+                self._file.close()
         self._is_open = False
 
     def __del__(self):
@@ -302,53 +268,35 @@ class AtomicModelReader:
 
 def _load_pdb_reader_properties_dict(
     file,
-    parser: PDBParser | MMCIFParser,
     topology: Optional[Topology],
-    is_assembly: bool,
-    i_model: Optional[int],
     standard_names,
 ):
-    struct = cast(Structure, parser.get_structure("", file))
-
-    if len(struct) > 1 and not is_assembly:
-        raise ValueError(
-            "PDB Error: The PDB file contains multiple models. "
-            "Use 'is_assembly=True' to build a biological assembly."
-            "Loading trajectories is currently not supported."
-        )
+    pdb = PdbStructure(file, load_all_models=True)
 
     positions = []
-    b_factors = []
+    bfactors = []
     atomic_numbers = []
 
     # load all of the positions (from every model)
-    for i, model in enumerate(struct.get_models()):
-        if i_model is not None and i != i_model:
-            continue
-        for chain in model.get_chains():
-            for residue in chain.get_residues():
-                for atom in residue.get_atoms():
-                    positions.append(atom.coord)
-                    b_factors.append(atom.bfactor)
-
-                    elem = element.get_by_symbol(atom.element)
-                    atomic_numbers.append(elem.atomic_number)
+    for i, model in enumerate(pdb.iter_models(use_all_models=True)):
+        for chain in model.iter_chains():
+            for residue in chain.iter_residues():
+                for atom in residue.atoms:
+                    positions.append(atom.get_position())
+                    bfactors.append(atom.get_temperature_factor())
+                    atomic_numbers.append(atom.element.atomic_number)
 
     atom_positions = np.array(positions)
-    b_factors = np.array(b_factors)
+    b_factors = np.array(bfactors)
     atomic_numbers = np.array(atomic_numbers)
 
     ## The atom positions read from the PDB file
-    """
-    These are no longer obtainable, seems like we don't need them
-    will leave this here for now, just in case
-    """
-    unitcell_lengths = None  # struct.get_unit_cell_lengths()
-    unitcell_angles = None  # struct.get_unit_cell_angles()
+    unitcell_lengths = pdb.get_unit_cell_lengths()
+    unitcell_angles = pdb.get_unit_cell_angles()
 
     # Load the topology if None is given
     if topology is None:
-        topology = _make_topology(struct, positions, i_model, standard_names)
+        topology = _make_topology(pdb, positions, standard_names)
 
     return dict(
         atom_positions=atom_positions,
@@ -360,48 +308,44 @@ def _load_pdb_reader_properties_dict(
     )
 
 
-def _make_topology(biopython_struct, atom_positions, i_model, standard_names):
+def _make_topology(pdb, atom_positions, standard_names):
     topology = Topology()
 
     atomByNumber = {}
-    for i, model in enumerate(biopython_struct.get_models()):
-        if i_model is not None and i != i_model:
-            continue
-        for chain in model.get_chains():
-            c = topology.add_chain(chain.id)
-            for residue in chain.get_residues():
-                resName = residue.get_resname()
+    for i, model in enumerate(pdb.iter_models(use_all_models=True)):
+        for chain in model.iter_chains():
+            c = topology.add_chain(chain.chain_id)
+            for residue in chain.iter_residues():
+                resName = residue.get_name()
                 if (
                     resName in PDBTrajectoryFile._residueNameReplacements
                     and standard_names
                 ):
                     resName = PDBTrajectoryFile._residueNameReplacements[resName]
-                r = topology.add_residue(
-                    resName, c, residue.get_id()[1], residue.get_id()[2]
-                )
+                r = topology.add_residue(resName, c, residue.number, residue.segment_id)
                 if resName in PDBTrajectoryFile._atomNameReplacements and standard_names:
                     atomReplacements = PDBTrajectoryFile._atomNameReplacements[resName]
                 else:
                     atomReplacements = {}
-                for atom in residue.get_atoms():
+                for atom in residue.atoms:
                     atomName = atom.get_name()
                     if atomName in atomReplacements:
                         atomName = atomReplacements[atomName]
                     atomName = atomName.strip()
-                    elem = element.get_by_symbol(atom.element)
+                    elem = atom.element
                     if elem is None:
                         elem = PDBTrajectoryFile._guess_element(
-                            atomName, residue.get_resname(), len(residue)
+                            atomName, residue.name, len(residue)
                         )
 
                     newAtom = topology.add_atom(
                         atomName,
                         elem,
                         r,
-                        serial=atom.get_serial_number(),
-                        formal_charge=atom.get_charge(),
+                        serial=atom.serial_number,
+                        formal_charge=atom.formal_charge,
                     )
-                    atomByNumber[atom.get_serial_number()] = newAtom
+                    atomByNumber[atom.serial_number] = newAtom
 
     topology.create_standard_bonds()
     topology.create_disulfide_bonds(atom_positions)
@@ -432,9 +376,9 @@ def _make_topology(biopython_struct, atom_positions, i_model, standard_names):
 
 
 def _validate_pdb_file(filename):
-    if filename.suffixes not in [[".pdb"], [".pdb", ".gz"], [".cif"]]:
+    if filename.suffixes not in [[".pdb"], [".pdb", ".gz"]]:  # , [".cif"]]:
         raise ValueError(
-            "PDB filename must have suffix `.pdb`, `.pdb.gz`, or 'cif'. "
+            "PDB filename must have suffix `.pdb` or `.pdb.gz`"  # , or 'cif'. "
             f"Got filename {filename}."
         )
 
