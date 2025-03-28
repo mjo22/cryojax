@@ -87,7 +87,7 @@ def read_atoms_from_pdb(
     ]
 ):
     """Read atomic information from a PDB file. This object
-    wraps the `cryojax.io.PDBReader` class into a function
+    wraps the `cryojax.io.AtomicModelReader` class into a function
     interface to accomodate most use cases in cryo-EM.
 
     **Arguments:**
@@ -222,14 +222,8 @@ class AtomicModelReader:
         """
         # Set state of the loader
         self._is_open = True
-        # Check for errors
-        filename_or_url = str(filename_or_url)
-        if not (".pdb" in filename_or_url or ".pdb.gz" in filename_or_url):
-            raise ValueError(
-                "File format not recognized. Currently, supported file "
-                "formats are '.pdb' and '.pdb.gz'."
-            )
 
+        filename_or_url = str(filename_or_url)
         # Setup I/O
         if _is_url(filename_or_url):
             filename_or_url = str(filename_or_url)
@@ -382,9 +376,9 @@ def _make_topology(pdb, atom_positions, standard_names):
 
 
 def _validate_pdb_file(filename):
-    if filename.suffixes not in [[".pdb"], [".pdb", ".gz"], [".cif"]]:
+    if filename.suffixes not in [[".pdb"], [".pdb", ".gz"]]:  # , [".cif"]]:
         raise ValueError(
-            "PDB filename must have suffix `.pdb`, `.pdb.gz`, or 'cif'. "
+            "PDB filename must have suffix `.pdb` or `.pdb.gz`"  # , or 'cif'. "
             f"Got filename {filename}."
         )
 
