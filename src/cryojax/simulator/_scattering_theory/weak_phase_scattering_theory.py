@@ -7,7 +7,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, PRNGKeyArray
 
-from ...utils import get_filter_spec
+from ...utils import batched_scan, get_filter_spec
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
 from .._potential_integrator import AbstractPotentialIntegrator
@@ -150,7 +150,9 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
     structural_ensemble: AbstractAssembly
     potential_integrator: AbstractPotentialIntegrator
     transfer_theory: ContrastTransferTheory
-    solvent: Optional[AbstractIce] = None
+    solvent: Optional[AbstractIce]
+
+    batch_size: int
 
     def __init__(
         self,
@@ -158,6 +160,8 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         potential_integrator: AbstractPotentialIntegrator,
         transfer_theory: ContrastTransferTheory,
         solvent: Optional[AbstractIce] = None,
+        *,
+        batch_size: int = 1,
     ):
         """**Arguments:**
 
@@ -168,11 +172,13 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         - `potential_integrator`: The method for integrating the specimen potential.
         - `transfer_theory`: The contrast transfer theory.
         - `solvent`: The model for the solvent.
+        - `batch_size`: The number of images to compute in parallel with vmap.
         """
         self.structural_ensemble = structural_ensemble
         self.potential_integrator = potential_integrator
         self.transfer_theory = transfer_theory
         self.solvent = solvent
+        self.batch_size = batch_size
 
     @override
     def compute_object_spectrum_at_exit_plane(
@@ -182,8 +188,9 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        def compute_image(ensemble_mapped, ensemble_no_mapped, instrument_config):
-            ensemble = eqx.combine(ensemble_mapped, ensemble_no_mapped)
+        @eqx.filter_vmap(in_axes=(0, None, None))
+        def compute_image_stack(ensemble_vmap, ensemble_novmap, instrument_config):
+            ensemble = eqx.combine(ensemble_vmap, ensemble_novmap)
             object_spectrum_at_exit_plane = (
                 _compute_object_spectrum_from_scattering_potential(
                     ensemble, self.potential_integrator, instrument_config
@@ -191,31 +198,17 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             )
             return object_spectrum_at_exit_plane
 
-        @eqx.filter_jit
-        def compute_image_superposition(
-            ensemble_mapped, ensemble_no_mapped, instrument_config
-        ):
-            return jnp.sum(
-                jax.lax.map(
-                    lambda x: compute_image(x, ensemble_no_mapped, instrument_config),
-                    ensemble_mapped,
-                ),
-                axis=0,
-            )
-
         # Get the batch
         ensemble_batch, _ = (
             self.structural_ensemble.get_subcomponents_and_z_positions_in_lab_frame()
         )
         # Setup vmap over the pose and conformation
-        is_mapped = lambda x: isinstance(
-            x, (AbstractPose, AbstractConformationalVariable)
-        )
-        to_mapped = jax.tree_util.tree_map(is_mapped, ensemble_batch, is_leaf=is_mapped)
-        mapped, no_mapped = eqx.partition(ensemble_batch, to_mapped)
+        is_vmap = lambda x: isinstance(x, (AbstractPose, AbstractConformationalVariable))
+        to_vmap = jax.tree_util.tree_map(is_vmap, ensemble_batch, is_leaf=is_vmap)
+        vmap, novmap = eqx.partition(ensemble_batch, to_vmap)
 
-        object_spectrum_at_exit_plane = compute_image_superposition(
-            mapped, no_mapped, instrument_config
+        object_spectrum_at_exit_plane = _compute_image_superposition(
+            vmap, novmap, instrument_config, compute_image_stack
         )
 
         if rng_key is not None:
@@ -240,7 +233,8 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        def compute_image(pytree_vmap, pytree_novmap, instrument_config):
+        @eqx.filter_vmap(in_axes=(0, None, None))
+        def compute_image_stack(pytree_vmap, pytree_novmap, instrument_config):
             ensemble_vmap, transfer_vmap = pytree_vmap
             ensemble_novmap, transfer_novmap = pytree_novmap
             ensemble = eqx.combine(ensemble_vmap, ensemble_novmap)
@@ -260,16 +254,6 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             )
 
             return translational_phase_shifts * contrast_spectrum_at_detector_plane
-
-        @eqx.filter_jit
-        def compute_image_superposition(pytree_vmap, pytree_novmap, instrument_config):
-            return jnp.sum(
-                jax.lax.map(
-                    lambda x: compute_image(x, pytree_novmap, instrument_config),
-                    pytree_vmap,
-                ),
-                axis=0,
-            )
 
         # Get the batches
         ensemble_batch, z_positions = (
@@ -297,10 +281,11 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         transfer_vmap, transfer_novmap = eqx.partition(
             transfer_theory_batch, filter_spec_for_transfer_theory
         )
-        contrast_spectrum_at_detector_plane = compute_image_superposition(
+        contrast_spectrum_at_detector_plane = _compute_image_superposition(
             (ensemble_vmap, transfer_vmap),
             (ensemble_novmap, transfer_novmap),
             instrument_config,
+            compute_image_stack,
         )
 
         if rng_key is not None:
@@ -336,3 +321,22 @@ def _compute_object_spectrum_from_scattering_potential(
         fourier_integrated_potential, instrument_config.wavelength_in_angstroms
     )
     return phase_shifts_in_exit_plane
+
+
+@eqx.filter_jit
+def _compute_image_superposition(
+    pytree_vmap, pytree_novmap, instrument_config, compute_fn
+):
+    output_shape = (
+        instrument_config.padded_y_dim,
+        instrument_config.padded_x_dim // 2 + 1,
+    )
+    init = jnp.zeros(output_shape, dtype=complex)
+
+    def f_scan(carry, xs):
+        image_stack = compute_fn(xs, pytree_novmap, instrument_config)
+        return carry.at[:, :].add(jnp.sum(image_stack, axis=0)), None
+
+    image, _ = batched_scan(f_scan, init, pytree_vmap, batch_size=1)
+
+    return image
