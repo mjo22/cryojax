@@ -13,7 +13,7 @@ def test_read_single_pdb(sample_pdb_path):
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
-        atom_filter="protein and not element H",
+        select="protein and not element H",
         get_b_factors=True,
     )
 
@@ -29,7 +29,7 @@ def test_read_single_pdb_no_b_factors(sample_pdb_path):
     atom_positions, atom_identities = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
-        atom_filter="protein and not element H",
+        select="protein and not element H",
         get_b_factors=False,
     )
 
@@ -44,7 +44,7 @@ def test_read_single_pdb_no_b_factors(sample_pdb_path):
 #     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
 #         sample_pdb_path_assembly,
 #         center=True,
-#         atom_filter="all",
+#         select="all",
 #         is_assembly=True,
 #         i_model=None,
 #         get_b_factors=True,
@@ -62,7 +62,7 @@ def test_read_single_pdb_no_b_factors(sample_pdb_path):
 #     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
 #         sample_pdb_path_assembly,
 #         center=True,
-#         atom_filter="all",
+#         select="all",
 #         is_assembly=True,
 #         i_model=0,
 #         get_b_factors=True,
@@ -80,7 +80,7 @@ def test_read_single_pdb_no_b_factors(sample_pdb_path):
 #     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
 #         sample_cif_path,
 #         center=True,
-#         atom_filter="all",
+#         select="all",
 #         is_assembly=False,
 #         i_model=None,
 #         get_b_factors=True,
@@ -98,7 +98,7 @@ def test_read_from_url(sample_pdb_url):
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_url,
         center=True,
-        atom_filter="all",
+        select="all",
         get_b_factors=True,
     )
 
@@ -114,7 +114,7 @@ def test_center_waterbox(sample_waterbox_pdb):
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_waterbox_pdb,
         center=True,
-        atom_filter="all",
+        select="all",
         get_b_factors=True,
     )
 
