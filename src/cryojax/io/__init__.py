@@ -7,6 +7,6 @@ from ._mrc import (
 )
 from ._pdb import (
     AtomicModelReader as AtomicModelReader,
-    read_atoms_from_pdb_or_cif as read_atoms_from_pdb_or_cif,
+    read_atoms_from_pdb as read_atoms_from_pdb,
 )
 from ._starfile import read_and_validate_starfile as read_and_validate_starfile
