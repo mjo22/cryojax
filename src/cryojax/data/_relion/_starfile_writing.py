@@ -126,6 +126,9 @@ def write_starfile_with_particle_parameters(
             particle_parameters.transfer_theory.envelope.value
         )
 
+    elif particle_parameters.transfer_theory.envelope is None:
+        particles_df["rlnCtfBfactor"] = 0.0
+
     else:
         raise NotImplementedError(
             "Only FourierGaussian and Constant envelopes are supported"
