@@ -636,7 +636,11 @@ def _get_image_stack_from_mrc(
         particle_index = np.asarray(relion_particle_index, dtype=int) - 1
 
         with mrcfile.mmap(path_to_image_stack, mode="r", permissive=True) as mrc:
-            image_stack = np.asarray(mrc.data[particle_index])  # type: ignore
+            #check if the mrcfile only contains one image.
+            if len(np.shape(mrc.data)) == 2:
+                image_stack = np.asarray(mrc.data)
+            else:
+                image_stack = np.asarray(mrc.data[particle_index])  # type: ignore
 
     elif isinstance(image_stack_index_and_name_series_or_str, pd.Series):
         # In this block, the user most likely used fancy indexing, like
@@ -682,7 +686,10 @@ def _get_image_stack_from_mrc(
                 mode="r",
                 permissive=True,
             ) as mrc:
-                image_stack[filtered_df.index] = np.asarray(mrc.data[particle_index])
+                if len(np.shape(mrc.data)) == 2:
+                    image_stack[filtered_df.index] = np.asarray(mrc.data)
+                else:
+                    image_stack[filtered_df.index] = np.asarray(mrc.data[particle_index])
 
     else:
         raise IOError(
