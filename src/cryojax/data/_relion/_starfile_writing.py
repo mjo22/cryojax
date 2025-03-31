@@ -168,7 +168,7 @@ def write_simulated_image_stack_from_starfile(
         ]
     ),
     args: Any,
-    is_jittable: bool = True,
+    is_jittable: bool = False,
     batch_size_per_mrc: Optional[int] = None,
     seed: Optional[int] = None,  # seed for the noise
     overwrite: bool = False,
