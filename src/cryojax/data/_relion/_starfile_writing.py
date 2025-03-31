@@ -31,7 +31,7 @@ def write_starfile_with_particle_parameters(
     mrc_batch_size: Optional[int] = None,
     overwrite: bool = False,
 ) -> None:
-    """Generate a STAR file from a RelionParticleStack object.
+    """Generate a STAR file from a RelionParticleParameters object.
 
     This function does not generate particles, it merely populates the starfile.
 
@@ -45,7 +45,7 @@ def write_starfile_with_particle_parameters(
         The filename of the STAR file to write.
     - `mrc_batch_size`:
         The number of images to write to each MRC file. If `None`, the number of
-        images in the `RelionParticleStack` is used.
+        images in the `RelionParticleParameters` is used.
     - `overwrite`:
         Whether to overwrite the STAR file if it already exists.
     """
@@ -59,8 +59,11 @@ def write_starfile_with_particle_parameters(
             f"Overwrite was set to False, but STAR file {filename} already exists."
         )
 
-    n_images = particle_parameters.pose.offset_x_in_angstroms.shape[0]
-
+    if particle_parameters.pose.offset_x_in_angstroms.shape == ():
+        n_images = 1
+    else:
+        n_images = particle_parameters.pose.offset_x_in_angstroms.shape[0]
+    
     if mrc_batch_size is None:
         mrc_batch_size = n_images
 
