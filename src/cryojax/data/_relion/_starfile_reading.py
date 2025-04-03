@@ -638,7 +638,7 @@ def _get_image_stack_from_mrc(
         with mrcfile.mmap(path_to_image_stack, mode="r", permissive=True) as mrc:
             mrc_data = np.asarray(mrc.data)
             if mrc_data.ndim == 2:
-                image_stack = mrc_data[None, ...]
+                image_stack = mrc_data
             else:
                 image_stack = mrc_data[particle_index]
 
