@@ -636,11 +636,11 @@ def _get_image_stack_from_mrc(
         particle_index = np.asarray(relion_particle_index, dtype=int) - 1
 
         with mrcfile.mmap(path_to_image_stack, mode="r", permissive=True) as mrc:
-            #check if the mrcfile only contains one image.
-            if len(np.shape(mrc.data)) == 2:
-                image_stack = np.asarray(mrc.data)
+            mrc_data = np.asarray(mrc.data)
+            if mrc_data.ndim == 2:
+                image_stack = mrc_data[None, ...]
             else:
-                image_stack = np.asarray(mrc.data[particle_index])  # type: ignore
+                image_stack = mrc_data[particle_index]
 
     elif isinstance(image_stack_index_and_name_series_or_str, pd.Series):
         # In this block, the user most likely used fancy indexing, like
@@ -651,45 +651,37 @@ def _get_image_stack_from_mrc(
         image_stack_index_and_name_dataframe = (
             image_stack_index_and_name_series.str.split("@", expand=True)
         ).reset_index()
-
         # ... check dtype and shape of images
-        path_to_image_stack = pathlib.Path(
+        path_to_test_image_stack = pathlib.Path(
             path_to_relion_project,
             np.asarray(image_stack_index_and_name_dataframe[1], dtype=object)[0],
         )
-
-        with mrcfile.mmap(path_to_image_stack, mode="r", permissive=True) as mrc:
-            tmp_image = np.asarray(mrc.data[0])
-            dtype = tmp_image.dtype
-            image_shape = tmp_image.shape
-
+        with mrcfile.mmap(path_to_test_image_stack, mode="r", permissive=True) as mrc:
+            mrc_data = np.asarray(mrc.data)
+            test_image = mrc_data if mrc_data.ndim == 2 else mrc_data[0]
+            image_dtype, image_shape = test_image.dtype, test_image.shape
         # ... allocate memory for stack
-        image_stack = np.empty(
-            (len(image_stack_index_and_name_dataframe), *image_shape), dtype=dtype
-        )
-
+        n_images = len(image_stack_index_and_name_dataframe)
+        image_stack = np.empty((n_images, *image_shape), dtype=image_dtype)
         # ... get unique mrc files
         unique_mrc_files = image_stack_index_and_name_dataframe[1].unique()
-
         # ... load images to image_stack
         for unique_mrc in unique_mrc_files:
             # ... get the indices for this particular mrc file
             indices_in_mrc = image_stack_index_and_name_dataframe[1] == unique_mrc
-
             # ... relion convention starts indexing at 1, not 0
             filtered_df = image_stack_index_and_name_dataframe[indices_in_mrc]
-
             particle_index = filtered_df[0].values.astype(int) - 1
-
             with mrcfile.mmap(
                 pathlib.Path(path_to_relion_project, unique_mrc),
                 mode="r",
                 permissive=True,
             ) as mrc:
-                if len(np.shape(mrc.data)) == 2:
-                    image_stack[filtered_df.index] = np.asarray(mrc.data)
+                mrc_data = np.asarray(mrc.data)
+                if mrc_data.ndim == 2:
+                    image_stack[filtered_df.index] = mrc_data
                 else:
-                    image_stack[filtered_df.index] = np.asarray(mrc.data[particle_index])
+                    image_stack[filtered_df.index] = mrc_data[particle_index]
 
     else:
         raise IOError(

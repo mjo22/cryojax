@@ -31,11 +31,10 @@ def write_starfile_with_particle_parameters(
     mrc_batch_size: Optional[int] = None,
     overwrite: bool = False,
 ) -> None:
-    """Generate a STAR file from a RelionParticleParameters object.
+    """Generate a STAR file from a `RelionParticleParameters` object.
 
-    This function does not generate particles, it merely populates the starfile.
-
-    The starfile is written to disc at the location specified by filename.
+    This function does not generate particles, it merely populates a starfile
+    and writes it to disc at the location specified by filename.
 
     **Arguments:**
 
@@ -63,7 +62,7 @@ def write_starfile_with_particle_parameters(
         n_images = 1
     else:
         n_images = particle_parameters.pose.offset_x_in_angstroms.shape[0]
-    
+
     if mrc_batch_size is None:
         mrc_batch_size = n_images
 
@@ -119,19 +118,20 @@ def write_starfile_with_particle_parameters(
         particles_df["rlnCtfScalefactor"] = (
             particle_parameters.transfer_theory.envelope.amplitude
         )
-
     elif isinstance(particle_parameters.transfer_theory.envelope, Constant):
         particles_df["rlnCtfBfactor"] = 0.0
         particles_df["rlnCtfScalefactor"] = (
             particle_parameters.transfer_theory.envelope.value
         )
-
     elif particle_parameters.transfer_theory.envelope is None:
         particles_df["rlnCtfBfactor"] = 0.0
-
+        particles_df["rlnCtfScalefactor"] = 0.0
     else:
         raise NotImplementedError(
-            "Only FourierGaussian and Constant envelopes are supported"
+            "The envelope function in `RelionParticleParameters` must either be "
+            "`cryojax.image.operators.FourierGaussian` or "
+            "`cryojax.image.operators.Constant`. Got "
+            f"{type(particle_parameters.transfer_theory.envelope).__name__}."
         )
 
     particles_df["rlnPhaseShift"] = particle_parameters.transfer_theory.ctf.phase_shift
