@@ -22,7 +22,6 @@ from ...simulator import (
     EulerAnglePose,
     InstrumentConfig,
 )
-from ...utils import get_filter_spec
 
 
 RELION_REQUIRED_OPTICS_KEYS = [
@@ -580,8 +579,7 @@ def _make_pytrees_from_starfile_metadata(
 
 
 def _make_relion_ctf(defocus, astig, angle, sph, ac, ps):
-    @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0), out_axes=(0, None))
-    def _make_with_vmap(defocus, astig, angle, sph, ac, ps):
+    def _make(defocus, astig, angle, sph, ac, ps):
         ctf = ContrastTransferFunction(
             defocus_in_angstroms=defocus,
             astigmatism_in_angstroms=astig,
@@ -590,21 +588,16 @@ def _make_relion_ctf(defocus, astig, angle, sph, ac, ps):
             amplitude_contrast_ratio=ac,
             phase_shift=ps,
         )
-        ctf_filter_spec = get_filter_spec(
-            ctf,
-            lambda x: (
-                x.defocus_in_angstroms,
-                x.astigmatism_in_angstroms,
-                x.astigmatism_angle,
-                x.phase_shift,
-            ),
-        )
-        return eqx.partition(ctf, ctf_filter_spec)
+        return ctf
+
+    @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0), out_axes=0)
+    def _make_with_vmap(defocus, astig, angle, sph, ac, ps):
+        return _make(defocus, astig, angle, sph, ac, ps)
 
     return (
-        ContrastTransferFunction(defocus, astig, angle, sph, ac, ps)
+        _make(defocus, astig, angle, sph, ac, ps)
         if defocus.ndim == 0
-        else eqx.combine(*_make_with_vmap(defocus, astig, angle, sph, ac, ps))
+        else _make_with_vmap(defocus, astig, angle, sph, ac, ps)
     )
 
 
