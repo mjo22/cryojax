@@ -13,7 +13,7 @@ from jaxtyping import Array, Float, PRNGKeyArray
 from ...image.operators import Constant, FourierGaussian
 from ...io import write_image_stack_to_mrc
 from ...utils import get_filter_spec
-from ._starfile_reading import RelionParticleMetadata, RelionParticleParameters
+from ._starfile_reading import RelionParticleParameterReader, RelionParticleParameters
 
 
 def _get_filename(step, n_char=6):
@@ -165,7 +165,7 @@ def write_starfile_with_particle_parameters(
 
 
 def write_simulated_image_stack_from_starfile(
-    metadata: RelionParticleMetadata,
+    parameter_reader: RelionParticleParameterReader,
     compute_image: (
         Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
         | Callable[
@@ -200,8 +200,8 @@ def write_simulated_image_stack_from_starfile(
     # (see our Tutorials for details on how to do this)
     imaging_pipeline = ContrastImagingPipeline(...)
 
-    # and a `RelionParticleMetadata` object
-    metadata = RelionParticleMetadata(...)
+    # and a `RelionParticleParameterReader` object
+    parameter_reader = RelionParticleParameterReader(...)
 
     # Write your `compute_image_stack` function.
 
@@ -218,7 +218,7 @@ def write_simulated_image_stack_from_starfile(
         return img_pipeline.render()
 
     write_simulated_image_stack_from_starfile(
-        metadata,
+        parameter_reader,
         compute_image_stack,
         imaging_pipeline,
         seed=None, # our image pipeline does not require a seed
@@ -236,8 +236,8 @@ def write_simulated_image_stack_from_starfile(
 
     distribution = cryojax.inference.IndependentGaussianFourierModes(...)
 
-    # and a `RelionParticleMetadata` object
-    metadata = RelionParticleMetadata(...)
+    # and a `RelionParticleParameterReader` object
+    parameter_reader = RelionParticleParameterReader(...)
 
     # Write your `compute_image_stack` function
 
@@ -256,7 +256,7 @@ def write_simulated_image_stack_from_starfile(
         return distribution.sample(key)
 
     write_simulated_image_stack_from_starfile(
-        metadata,
+        parameter_reader,
         compute_image_stack,
         imaging_pipeline,
         seed=0,
@@ -266,8 +266,8 @@ def write_simulated_image_stack_from_starfile(
 
     **Arguments:**
 
-    - `metadata`:
-        The `RelionParticleMetadata` dataset.
+    - `parameter_reader`:
+        The `RelionParticleParameterReader` dataset.
     - `compute_image_stack`:
         A callable that computes the image stack from the parameters contained
         in the STAR file.
@@ -290,19 +290,21 @@ def write_simulated_image_stack_from_starfile(
         The compression to use when writing the MRC files.
     """  # noqa
     # Create the directory for the MRC files if it doesn't exist
-    if not os.path.exists(metadata.path_to_relion_project):
-        os.makedirs(metadata.path_to_relion_project)
+    if not os.path.exists(parameter_reader.path_to_relion_project):
+        os.makedirs(parameter_reader.path_to_relion_project)
 
     else:
         mrc_fnames = (
-            metadata.data_blocks["particles"]["rlnImageName"]
+            parameter_reader.data_blocks["particles"]["rlnImageName"]
             .str.split("@", expand=True)[1]
             .unique()
         )
 
         if not overwrite:
             for mrc_fname in mrc_fnames:
-                filename = os.path.join(metadata.path_to_relion_project, mrc_fname)
+                filename = os.path.join(
+                    parameter_reader.path_to_relion_project, mrc_fname
+                )
                 if os.path.exists(filename):
                     raise FileExistsError(
                         f"Overwrite was set to False,\
@@ -311,13 +313,15 @@ def write_simulated_image_stack_from_starfile(
         else:
             # remove existing MRC files if they match with the ones in the starfile
             for mrc_fname in mrc_fnames:
-                filename = os.path.join(metadata.path_to_relion_project, mrc_fname)
+                filename = os.path.join(
+                    parameter_reader.path_to_relion_project, mrc_fname
+                )
                 if os.path.exists(filename):
                     os.remove(filename)
 
     if is_jittable:
         _write_simulated_image_stack_from_starfile_vmap(
-            metadata=metadata,
+            parameter_reader=parameter_reader,
             compute_image=compute_image,
             args=args,
             batch_size_per_mrc=batch_size_per_mrc,
@@ -328,7 +332,7 @@ def write_simulated_image_stack_from_starfile(
 
     else:
         _write_simulated_image_stack_from_starfile_serial(
-            metadata=metadata,
+            parameter_reader=parameter_reader,
             compute_image=compute_image,
             args=args,
             seed=seed,
@@ -340,9 +344,9 @@ def write_simulated_image_stack_from_starfile(
 
 
 def _compute_images_batch(
-    indices, metadata, compute_image_stack, args, filter_spec_for_vmap, key=None
+    indices, parameter_reader, compute_image_stack, args, filter_spec_for_vmap, key=None
 ):
-    relion_particle_metadata = metadata[indices]
+    relion_particle_metadata = parameter_reader[indices]
     # ... split the particle stack based on parameters to vmap over
     vmap, novmap = eqx.partition(relion_particle_metadata, filter_spec_for_vmap)
     # ... simulate images in the image stack
@@ -366,7 +370,7 @@ def _compute_images_batch(
 
 
 def _write_simulated_image_stack_from_starfile_vmap(
-    metadata: RelionParticleMetadata,
+    parameter_reader: RelionParticleParameterReader,
     compute_image: (
         Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
         | Callable[
@@ -386,7 +390,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
     else:
         key = cast(PRNGKeyArray, None)
     # Create vmapped `compute_image` kernel
-    test_particle_metadata = metadata[0]
+    test_particle_metadata = parameter_reader[0]
     filter_spec_for_vmap = _get_particle_metadata_filter_spec(test_particle_metadata)
     compute_image_stack = (
         eqx.filter_vmap(
@@ -404,7 +408,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
     compute_image_stack = eqx.filter_jit(compute_image_stack)
 
     # check if function runs
-    vmap, novmap = eqx.partition(metadata[0:2], filter_spec_for_vmap)
+    vmap, novmap = eqx.partition(parameter_reader[0:2], filter_spec_for_vmap)
     if seed is None:
         try:
             compute_image_stack(vmap, novmap, args)
@@ -427,13 +431,13 @@ def _write_simulated_image_stack_from_starfile_vmap(
 
     # Now, let's preparing the simulation loop. First check how many unique MRC
     # files we have in the starfile
-    particles_fnames = metadata.data_blocks["particles"]["rlnImageName"].str.split(
-        "@", expand=True
-    )
+    particles_fnames = parameter_reader.data_blocks["particles"][
+        "rlnImageName"
+    ].str.split("@", expand=True)
     mrc_fnames = particles_fnames[1].unique()
 
-    box_size = int(metadata.data_blocks["optics"]["rlnImageSize"][0])
-    pixel_size = float(metadata.data_blocks["optics"]["rlnImagePixelSize"][0])
+    box_size = int(parameter_reader.data_blocks["optics"]["rlnImageSize"][0])
+    pixel_size = float(parameter_reader.data_blocks["optics"]["rlnImagePixelSize"][0])
 
     # ... now, generate images for each mrcfile
     for mrc_fname in mrc_fnames:
@@ -457,7 +461,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
                 idx_1 = (i + 1) * batch_size_per_mrc
                 image_stack[idx_0:idx_1], key = _compute_images_batch(
                     indices[idx_0:idx_1],
-                    metadata,
+                    parameter_reader,
                     compute_image_stack,
                     args,
                     filter_spec_for_vmap,
@@ -467,7 +471,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
             if residual > 0:
                 image_stack[-residual:], key = _compute_images_batch(
                     indices[-residual:],
-                    metadata,
+                    parameter_reader,
                     compute_image_stack,
                     args,
                     filter_spec_for_vmap,
@@ -479,7 +483,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
         else:
             image_stack, key = _compute_images_batch(
                 indices,
-                metadata,
+                parameter_reader,
                 compute_image_stack,
                 args,
                 filter_spec_for_vmap,
@@ -487,7 +491,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
             )
 
         # ... write the image stack to an MRC file
-        filename = os.path.join(metadata.path_to_relion_project, mrc_fname)
+        filename = os.path.join(parameter_reader.path_to_relion_project, mrc_fname)
         write_image_stack_to_mrc(
             image_stack,
             pixel_size=pixel_size,
@@ -500,7 +504,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
 
 
 def _write_simulated_image_stack_from_starfile_serial(
-    metadata: RelionParticleMetadata,
+    parameter_reader: RelionParticleParameterReader,
     compute_image: (
         Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
         | Callable[
@@ -521,13 +525,13 @@ def _write_simulated_image_stack_from_starfile_serial(
 
     # Now, let's preparing the simulation loop. First check how many unique MRC
     # files we have in the starfile
-    particles_fnames = metadata.data_blocks["particles"]["rlnImageName"].str.split(
-        "@", expand=True
-    )
+    particles_fnames = parameter_reader.data_blocks["particles"][
+        "rlnImageName"
+    ].str.split("@", expand=True)
     mrc_fnames = particles_fnames[1].unique()
 
-    box_size = int(metadata.data_blocks["optics"]["rlnImageSize"][0])
-    pixel_size = float(metadata.data_blocks["optics"]["rlnImagePixelSize"][0])
+    box_size = int(parameter_reader.data_blocks["optics"]["rlnImageSize"][0])
+    pixel_size = float(parameter_reader.data_blocks["optics"]["rlnImagePixelSize"][0])
 
     # ... now, generate images for each mrcfile
     for mrc_fname in mrc_fnames:
@@ -539,13 +543,13 @@ def _write_simulated_image_stack_from_starfile_serial(
         for i in range(len(indices)):
             if seed is not None:
                 key, subkey = jax.random.split(key)
-                image_stack[i] = compute_image(subkey, metadata[indices[i]], args)
+                image_stack[i] = compute_image(subkey, parameter_reader[indices[i]], args)
 
             else:
-                image_stack[i] = compute_image(metadata[indices[i]], args)
+                image_stack[i] = compute_image(parameter_reader[indices[i]], args)
 
             # ... write the image stack to an MRC file
-            filename = os.path.join(metadata.path_to_relion_project, mrc_fname)
+            filename = os.path.join(parameter_reader.path_to_relion_project, mrc_fname)
             write_image_stack_to_mrc(
                 image_stack,
                 pixel_size=pixel_size,

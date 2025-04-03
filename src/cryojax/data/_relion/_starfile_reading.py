@@ -23,7 +23,6 @@ from ...simulator import (
     InstrumentConfig,
 )
 from ...utils import get_filter_spec
-from .._particle_stack import AbstractParticleStack
 
 
 RELION_REQUIRED_OPTICS_KEYS = [
@@ -77,7 +76,7 @@ class RelionParticleParameters(eqx.Module):
         self.pose = pose
 
 
-class RelionParticleStack(AbstractParticleStack):
+class RelionParticleImages(eqx.Module):
     """A particle stack with information imported from
     [RELION](https://relion.readthedocs.io/en/release-5.0/).
     """
@@ -123,7 +122,7 @@ class AbstractRelionDataset(metaclass=abc.ABCMeta):
 
 
 @dataclasses.dataclass(frozen=True)
-class RelionParticleMetadata(AbstractRelionDataset):
+class RelionParticleParameterReader(AbstractRelionDataset):
     """A dataset that wraps a Relion particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
@@ -215,20 +214,22 @@ class RelionParticleMetadata(AbstractRelionDataset):
 
 
 @dataclasses.dataclass(frozen=True)
-class RelionParticleDataset(AbstractRelionDataset):
+class RelionParticleImageReader(AbstractRelionDataset):
     """A dataset that wraps a Relion particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
 
-    metadata: RelionParticleMetadata
+    metadata: RelionParticleParameterReader
     get_cpu_arrays: bool
 
     @final
-    def __init__(self, metadata: RelionParticleMetadata, get_cpu_arrays: bool = False):
+    def __init__(
+        self, metadata: RelionParticleParameterReader, get_cpu_arrays: bool = False
+    ):
         """**Arguments:**
 
         - `metadata`:
-            The `RelionParticleMetadata`.
+            The `RelionParticleParameterReader`.
         - `get_cpu_arrays`:
             If `True`, force that JAX arrays for images are loaded on the CPU.
             If `False`, load on the default device.
@@ -244,7 +245,7 @@ class RelionParticleDataset(AbstractRelionDataset):
     @final
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
-    ) -> RelionParticleStack:
+    ) -> RelionParticleImages:
         # Validate index passed to dataset
         n_rows = self.data_blocks["particles"].shape[0]
         _validate_dataset_index(type(self), index, n_rows)
@@ -273,7 +274,7 @@ class RelionParticleDataset(AbstractRelionDataset):
             self.metadata.path_to_relion_project,
         )
 
-        return RelionParticleStack(
+        return RelionParticleImages(
             RelionParticleParameters(instrument_config, pose, transfer_theory),
             image_stack,
         )
@@ -283,8 +284,9 @@ class RelionParticleDataset(AbstractRelionDataset):
         return len(self.metadata.data_blocks["particles"])
 
 
+# Not public API
 @dataclasses.dataclass(frozen=True)
-class AbstractRelionHelicalDataset(AbstractRelionDataset):
+class AbstractRelionHelicalReader(AbstractRelionDataset):
     n_filaments: eqx.AbstractVar[int]
     n_filaments_per_micrograph: eqx.AbstractVar[Int[np.ndarray, " n_micrographs"]]
     micrograph_names: eqx.AbstractVar[list[str]]
@@ -322,29 +324,29 @@ class AbstractRelionHelicalDataset(AbstractRelionDataset):
 
 
 @dataclasses.dataclass(frozen=True)
-class RelionHelicalDataset(AbstractRelionHelicalDataset):
-    """A wrapped `RelionParticleDataset` to read helical tubes.
+class RelionHelicalImageReader(AbstractRelionHelicalReader):
+    """A wrapped `RelionParticleImageReader` to read helical tubes.
 
-    In particular, a `RelionHelicalDataset` indexes one
+    In particular, a `RelionHelicalImageReader` indexes one
     helical filament at a time. For example, after manual
     particle picking in RELION, we can index a particular filament
     with
 
     ```python
     # Read in a STAR file particle stack
-    particle_dataset = RelionParticleDataset(...)
-    helical_dataset = RelionHelicalDataset(particle_dataset)
+    particle_dataset = RelionParticleImageReader(...)
+    helical_dataset = RelionHelicalImageReader(particle_dataset)
     # ... get a particle stack for a filament
     particle_stack_for_a_filament = helical_dataset[0]
     # ... get a particle stack for another filament
     particle_stack_for_another_filament = helical_dataset[1]
     ```
 
-    Unlike a `RelionParticleDataset`, a `RelionHelicalDataset`
+    Unlike a `RelionParticleImageReader`, a `RelionHelicalImageReader`
     does not support fancy indexing.
     """
 
-    particle_dataset: RelionParticleDataset
+    particle_dataset: RelionParticleImageReader
     n_filaments: int
     n_filaments_per_micrograph: Int[np.ndarray, " n_micrographs"]
     micrograph_names: list[str]
@@ -352,11 +354,11 @@ class RelionHelicalDataset(AbstractRelionHelicalDataset):
     @final
     def __init__(
         self,
-        particle_dataset: RelionParticleDataset,
+        particle_dataset: RelionParticleImageReader,
     ):
         """**Arguments:**
 
-        - `dataset`: The wrappped `RelionParticleDataset`.
+        - `dataset`: The wrappped `RelionParticleImageReader`.
                     This will be slightly modified to read one helix
                     at a time, rather than one image crop at a time.
         """
@@ -382,7 +384,7 @@ class RelionHelicalDataset(AbstractRelionHelicalDataset):
     @final
     def __getitem__(
         self, filament_index: int | Int[np.ndarray, ""]
-    ) -> RelionParticleStack:
+    ) -> RelionParticleImages:
         _validate_helical_dataset_index(type(self), filament_index, self.n_filaments)
         # Get the particle stack particle_index corresponding to this filament
         particle_data_blocks_at_filament = self.get_data_blocks_at_filament_index(
@@ -394,12 +396,12 @@ class RelionHelicalDataset(AbstractRelionHelicalDataset):
 
 
 @dataclasses.dataclass(frozen=True)
-class RelionHelicalMetadata(AbstractRelionHelicalDataset):
-    """Like a `RelionHelicalDataset`, except for STAR file
+class RelionHelicalParameterReader(AbstractRelionHelicalReader):
+    """Like a `RelionHelicalImageReader`, except for STAR file
     metadata.
     """
 
-    particle_metadata: RelionParticleMetadata
+    particle_metadata: RelionParticleParameterReader
     n_filaments: int
     n_filaments_per_micrograph: Int[np.ndarray, " n_micrographs"]
     micrograph_names: list[str]
@@ -407,11 +409,11 @@ class RelionHelicalMetadata(AbstractRelionHelicalDataset):
     @final
     def __init__(
         self,
-        particle_metadata: RelionParticleMetadata,
+        particle_metadata: RelionParticleParameterReader,
     ):
         """**Arguments:**
 
-        - `particle_metadata`: The wrappped `RelionParticleMetadata`.
+        - `particle_metadata`: The wrappped `RelionParticleParameterReader`.
                                This will be slightly modified to read one helix
                                at a time, rather than one image crop at a time.
         """
@@ -624,7 +626,7 @@ def _get_image_stack_from_mrc(
     image_stack_index_and_name_series_or_str = particle_blocks["rlnImageName"]
     if isinstance(image_stack_index_and_name_series_or_str, str):
         # In this block, the user most likely used standard indexing, like
-        # `dataset = RelionParticleDataset(...); particle_stack = dataset[1]`
+        # `dataset = RelionParticleImageReader(...); particle_stack = dataset[1]`
         image_stack_index_and_name_str = image_stack_index_and_name_series_or_str
         # ... split the whole string into its image index and filename
         relion_particle_index, image_stack_filename = (
@@ -644,7 +646,7 @@ def _get_image_stack_from_mrc(
 
     elif isinstance(image_stack_index_and_name_series_or_str, pd.Series):
         # In this block, the user most likely used fancy indexing, like
-        # `dataset = RelionParticleDataset(...); particle_stack = dataset[1:10]`
+        # `dataset = RelionParticleImageReader(...); particle_stack = dataset[1:10]`
         image_stack_index_and_name_series = image_stack_index_and_name_series_or_str
         # ... split the pandas.Series into a pandas.DataFrame with two columns:
         # one for the image index and another for the filename
@@ -686,7 +688,7 @@ def _get_image_stack_from_mrc(
     else:
         raise IOError(
             "Could not read `rlnImageName` in STAR file for "
-            f"`RelionParticleDataset` index equal to {index}."
+            f"`RelionParticleImageReader` index equal to {index}."
         )
 
     return jnp.asarray(image_stack, device=device)
@@ -765,7 +767,7 @@ def _validate_helical_relion_data_blocks(data_blocks: dict[str, pd.DataFrame]):
         raise ValueError(
             "Missing column 'rlnHelicalTubeID' in `starfile.read` output. "
             "This column must be present when using a "
-            "`RelionHelicalDataset`."
+            "`RelionHelicalImageReader`."
         )
 
 
