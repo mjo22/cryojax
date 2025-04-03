@@ -475,12 +475,17 @@ def _make_pytrees_from_starfile_metadata(
     amplitude_contrast_ratio = jnp.asarray(
         optics_group["rlnAmplitudeContrast"], device=device
     )
+    voltage_in_kilovolts = jnp.asarray(voltage_in_kilovolts, device=device)
 
     # ... create cryojax objects. First, the InstrumentConfig
-    instrument_config = make_instrument_config_fn(
-        (int(image_size), int(image_size)),
+    image_shape = (int(image_size), int(image_size))
+    batch_dim = 0 if defocus_in_angstroms.ndim == 0 else defocus_in_angstroms.shape[0]
+    instrument_config = _make_config(
+        image_shape,
         pixel_size,
-        jnp.asarray(voltage_in_kilovolts, device=device),
+        voltage_in_kilovolts,
+        batch_dim,
+        make_instrument_config_fn,
     )
     # ... now the ContrastTransferTheory
     ctf = _make_relion_ctf(
@@ -518,14 +523,20 @@ def _make_pytrees_from_starfile_metadata(
         pose_parameter_names_and_values.append(
             ("offset_x_in_angstroms", particle_blocks["rlnOriginXAngst"])
         )
+    else:
+        pose_parameter_names_and_values.append(("offset_x_in_angstroms", 0.0))
     if "rlnOriginYAngst" in particle_keys:
         pose_parameter_names_and_values.append(
             ("offset_y_in_angstroms", particle_blocks["rlnOriginYAngst"])
         )
+    else:
+        pose_parameter_names_and_values.append(("offset_y_in_angstroms", 0.0))
     if "rlnAngleRot" in particle_keys:
         pose_parameter_names_and_values.append(
             ("view_phi", particle_blocks["rlnAngleRot"])
         )
+    else:
+        pose_parameter_names_and_values.append(("view_phi", 0.0))
     if "rlnAngleTilt" in particle_keys:
         pose_parameter_names_and_values.append(
             ("view_theta", particle_blocks["rlnAngleTilt"])
@@ -534,6 +545,8 @@ def _make_pytrees_from_starfile_metadata(
         pose_parameter_names_and_values.append(
             ("view_theta", particle_blocks["rlnAngleTiltPrior"])
         )
+    else:
+        pose_parameter_names_and_values.append(("view_theta", 0.0))
     if "rlnAnglePsi" in particle_keys:
         # Relion uses -999.0 as a placeholder for an un-estimated in-plane
         # rotation
@@ -563,19 +576,46 @@ def _make_pytrees_from_starfile_metadata(
         pose_parameter_names_and_values.append(
             ("view_psi", particle_blocks["rlnAnglePsiPrior"])
         )
+    else:
+        pose_parameter_names_and_values.append(("view_psi", 0.0))
     pose_parameter_names, pose_parameter_values = tuple(
         zip(*pose_parameter_names_and_values)
     )
     # ... fill the EulerAnglePose will keys that are present. if they are not
     # present, keep the default values in the `pose = EulerAnglePose()`
     # instantiation
+    maybe_make_full = lambda param: (
+        np.full((batch_dim,), param)
+        if batch_dim > 0 and np.asarray(param).shape == ()
+        else param
+    )
     pose = eqx.tree_at(
         lambda p: tuple([getattr(p, name) for name in pose_parameter_names]),
         pose,
-        tuple([jnp.asarray(value, device=device) for value in pose_parameter_values]),
+        tuple(
+            [
+                jnp.asarray(maybe_make_full(value), device=device)
+                for value in pose_parameter_values
+            ]
+        ),
     )
 
     return instrument_config, transfer_theory, pose
+
+
+def _make_config(
+    image_shape, pixel_size, voltage_in_kilovolts, batch_dim, make_instrument_config_fn
+):
+    make_fn = lambda ps, volt: make_instrument_config_fn(image_shape, ps, volt)
+    make_fn_vmap = eqx.filter_vmap(make_fn)
+    return (
+        make_fn(pixel_size, voltage_in_kilovolts)
+        if batch_dim == 0
+        else make_fn_vmap(
+            jnp.full((batch_dim,), pixel_size),
+            jnp.full((batch_dim,), voltage_in_kilovolts),
+        )
+    )
 
 
 def _make_relion_ctf(defocus, astig, angle, sph, ac, ps):
