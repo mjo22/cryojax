@@ -32,3 +32,7 @@ from ._rescale_pixel_size import (
 from ._spectrum import (
     compute_radially_averaged_powerspectrum as compute_radially_averaged_powerspectrum,
 )
+
+from ._fourier_correlation import (
+    compute_radial_fourier_correlation  as compute_radial_fourier_correlation ,
+)
