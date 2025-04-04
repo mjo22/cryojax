@@ -74,14 +74,16 @@ def write_starfile_with_particle_parameters(
     # Generate optics group
     optics_df = pd.DataFrame()
     optics_df["rlnOpticsGroup"] = [1]
-    optics_df["rlnVoltage"] = particle_parameters.instrument_config.voltage_in_kilovolts
+    optics_df["rlnVoltage"] = particle_parameters.instrument_config.voltage_in_kilovolts[
+        0
+    ]
     optics_df["rlnSphericalAberration"] = (
-        particle_parameters.transfer_theory.ctf.spherical_aberration_in_mm
+        particle_parameters.transfer_theory.ctf.spherical_aberration_in_mm[0]
     )
-    optics_df["rlnImagePixelSize"] = particle_parameters.instrument_config.pixel_size
+    optics_df["rlnImagePixelSize"] = particle_parameters.instrument_config.pixel_size[0]
     optics_df["rlnImageSize"] = particle_parameters.instrument_config.shape[0]
     optics_df["rlnAmplitudeContrast"] = (
-        particle_parameters.transfer_theory.ctf.amplitude_contrast_ratio
+        particle_parameters.transfer_theory.ctf.amplitude_contrast_ratio[0]
     )
     starfile_dict["optics"] = optics_df
 
@@ -343,15 +345,12 @@ def write_simulated_image_stack_from_starfile(
     return
 
 
-def _compute_images_batch(
-    indices, parameter_reader, compute_image_stack, args, filter_spec_for_vmap, key=None
-):
-    relion_particle_metadata = parameter_reader[indices]
-    # ... split the particle stack based on parameters to vmap over
-    vmap, novmap = eqx.partition(relion_particle_metadata, filter_spec_for_vmap)
+def _compute_images_batch(indices, parameter_reader, compute_image_stack, args, key=None):
+    relion_particle_parameters = parameter_reader[indices]
+
     # ... simulate images in the image stack
     if key is None:
-        image_stack = compute_image_stack(vmap, novmap, args)
+        image_stack = compute_image_stack(relion_particle_parameters, args)
 
     else:
         # ... generate keys for each image in the mrcfile,
@@ -362,8 +361,7 @@ def _compute_images_batch(
 
         image_stack = compute_image_stack(
             subkeys,
-            vmap,
-            novmap,
+            relion_particle_parameters,
             args,  # type: ignore
         )
     return image_stack, key
@@ -390,28 +388,27 @@ def _write_simulated_image_stack_from_starfile_vmap(
     else:
         key = cast(PRNGKeyArray, None)
     # Create vmapped `compute_image` kernel
-    test_particle_metadata = parameter_reader[0]
-    filter_spec_for_vmap = _get_particle_metadata_filter_spec(test_particle_metadata)
+    # test_particle_metadata = parameter_reader[0]
+    # filter = _get_particle_metadata_filter_spec(test_particle_metadata)
     compute_image_stack = (
         eqx.filter_vmap(
-            lambda vmap, novmap, args: compute_image(eqx.combine(vmap, novmap), args),  # type: ignore
-            in_axes=(0, None, None),
+            lambda param_reader, args: compute_image(param_reader, args),  # type: ignore
+            in_axes=(eqx.if_array(0), None),
         )
         if seed is None
         else eqx.filter_vmap(
-            lambda key, vmap, novmap, args: compute_image(
-                key, eqx.combine(vmap, novmap), args
-            ),  # type: ignore
-            in_axes=(0, 0, None, None),
+            lambda key, param_reader, args: compute_image(key, param_reader, args),  # type: ignore
+            in_axes=(0, eqx.if_array(0), None),
         )
     )
     compute_image_stack = eqx.filter_jit(compute_image_stack)
 
     # check if function runs
-    vmap, novmap = eqx.partition(parameter_reader[0:2], filter_spec_for_vmap)
+    test_param_reader = parameter_reader[0:1]
+
     if seed is None:
         try:
-            compute_image_stack(vmap, novmap, args)
+            compute_image_stack(test_param_reader, args)
         except Exception as e:
             raise RuntimeError(
                 "The `compute_image` function failed to run.\
@@ -419,9 +416,10 @@ def _write_simulated_image_stack_from_starfile_vmap(
                         Confirm that your function is jittable if necessary."
             ) from e
     else:
-        key, *subkeys = jax.random.split(key, 3)
+        key, subkeys = jax.random.split(key, 2)
+        subkeys = subkeys[None, ...]
         try:
-            compute_image_stack(jnp.array(subkeys), vmap, novmap, args)
+            compute_image_stack(jnp.array(subkeys), test_param_reader, args)
         except Exception as e:
             raise RuntimeError(
                 "The `compute_image` function failed to run.\
@@ -464,7 +462,6 @@ def _write_simulated_image_stack_from_starfile_vmap(
                     parameter_reader,
                     compute_image_stack,
                     args,
-                    filter_spec_for_vmap,
                     key=key,
                 )
 
@@ -474,7 +471,6 @@ def _write_simulated_image_stack_from_starfile_vmap(
                     parameter_reader,
                     compute_image_stack,
                     args,
-                    filter_spec_for_vmap,
                     key=key,
                 )
 
@@ -486,7 +482,6 @@ def _write_simulated_image_stack_from_starfile_vmap(
                 parameter_reader,
                 compute_image_stack,
                 args,
-                filter_spec_for_vmap,
                 key=key,
             )
 
