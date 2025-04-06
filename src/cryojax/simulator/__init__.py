@@ -48,7 +48,7 @@ from ._scattering_theory import (
 from ._solvent import (
     AbstractIce as AbstractIce,
     GaussianIce as GaussianIce,
-    Parkhurst2024_ExperimentalIce2 as Parkhurst2024_ExperimentalIce2,
+    Parkhurst2024_ExperimentalIce as Parkhurst2024_ExperimentalIce,
     Parkhurst2024_Gaussian as Parkhurst2024_Gaussian,
     UniformPhaseIce as UniformPhaseIce,
 )

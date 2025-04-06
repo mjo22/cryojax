@@ -172,6 +172,7 @@ class UniformPhaseIce(AbstractIce, strict=True):
         """Sample a realization of the ice phase shifts as colored gaussian noise."""
         n_pixels = instrument_config.padded_n_pixels
         frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
+
         # Compute variance, scaling up by the variance by the number
         # of pixels to make the realization independent pixel-independent in real-space.
         power_envelope = n_pixels * self.power_envelope_function(
@@ -207,14 +208,16 @@ class UniformPhaseIce(AbstractIce, strict=True):
             )
 
 
-class Parkhurst2024_ExperimentalIce2(AbstractIce, strict=True):
-    r"""Continuum model for ice from Parkhurst et al. (2024).
+class Parkhurst2024_ExperimentalIce(AbstractIce, strict=True):
+    r"""Continuum model of ice.
+
+    The ice is modelled as colored Gaussian noise in Fourier space
+    with a variance profile matching the Parkhurst et al. (2024) model.
+    The mean and variance of the real-space potential are scaled to match
+    experimental values for a given voxel size and number of water
+    molecules per unit area.
 
     **Attributes:**
-
-    - 'N' :
-        Number of water molecules per unit area in units of inverse length squared.
-        Default value is 1.0 Å⁻²
 
     - `power_envelope_function` :
         A function that computes the variance
@@ -223,22 +226,36 @@ class Parkhurst2024_ExperimentalIce2(AbstractIce, strict=True):
         of the dimensions of an integrated potential.
         Defaults to Parkhurst2024_Gaussian.
 
-    - 'mean_potential' :
-        Mean potential of the ice in units of inverse length squared.
-        Computed as U = 4*pi*N*(f_e^8(0) + 2*f_e^1(0)) where
-        f_e^8 = 0.0974 + 0.2921 + 0.691  + 0.699  + 0.2039 = 1.9834
-        f_e^1 = 0.0349 + 0.1201 + 0.197  + 0.0573 + 0.1195 = 0.5288
-        are the sum of the Peng scattering factor a-values
+    - 'image_mv' :
+        Table of the real-space mean potential and variance
+        as a function of voxel size.
+        These represent the average value and spread of
+        pixel intensity in the real-space image of the
+        integrated potential.
+        Defaults to 'image_mv__relaxed_small_box_tip3p.npy'
 
+    - 'N_scalar' :
+        This value is used to linearly scale the mean potential
+        and variance of the ice.
+        It is expressed as N/1468, where N is the number of
+        water molecules per unit area, and 1468 is the number of
+        water molecules in the relaxed_small_box_tip3p.pdb file,
+        which is where the current image_mv values are precomputed
+        from.
+        The default value is 1.
     """
 
-    N: Float[Array, ""] = field(default=1.0, converter=error_if_negative)
-    mean_potential: Float[Array, ""] = field(init=False)
-    power_envelope_function: FourierOperatorLike = field(init=False)
+    image_mv: jnp.ndarray = field(init=False)
+    power_envelope_function: FourierOperatorLike = field(
+        init=False
+    )  # TODO: make defualt parkhurst
+    N_scalar: float = field(default=1.0, converter=jnp.asarray)
 
     def __post_init__(self):
-        self.power_envelope_function = Parkhurst2024_Gaussian(N=self.N)
-        self.mean_potential = 4 * jnp.pi * self.N * (1.9834 + 2 * 0.5288)
+        self.image_mv = jnp.load(
+            "cryojax/simulator/data/image_mv__relaxed_small_box_tip3p.npy"
+        )
+        self.power_envelope_function = Parkhurst2024_Gaussian()
 
     @override
     def sample_ice_spectrum(
@@ -258,12 +275,10 @@ class Parkhurst2024_ExperimentalIce2(AbstractIce, strict=True):
     ):
         """Sample a realization of the ice phase shifts as colored gaussian noise."""
 
-        n_pixels = instrument_config.padded_n_pixels
-
-        frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
-
         # Compute variance, scaling up by the number of pixels to make
-        # the realization independent pixel-independent in real-space.
+        # the realization pixel-independent in real-space.
+        n_pixels = instrument_config.padded_n_pixels
+        frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
         power_envelope = n_pixels * self.power_envelope_function(
             frequency_grid_in_angstroms
         )
@@ -283,29 +298,31 @@ class Parkhurst2024_ExperimentalIce2(AbstractIce, strict=True):
             1j * phase
         )
 
-        # Add dc component (the expected/mean potential)
-        # TODO: Should I be adding or setting the mean potential?
-        # TODO: Should I be multiplying by n_pixels?
-        # TODO: Do the units of the mean potential need to be converted?
-        # I believe, so since they are in inverse length squared.
-        ice_integrated_potential_at_exit_plane = (
-            ice_integrated_potential_at_exit_plane.at[0, 0].set(
-                n_pixels * self.mean_potential
-            )
-        )
-
         # Convert units of integrated potential to phase shifts
         ice_spectrum_at_exit_plane = convert_units_of_integrated_potential(
             ice_integrated_potential_at_exit_plane,
             instrument_config.wavelength_in_angstroms,
         )
 
+        # Lookup precomputed real-space mean and variance for
+        # nearest voxel size, scale by N_scalar
+        pixel_size = instrument_config.pixel_size
+        if (pixel_size < self.image_mv[0, 0]) or (pixel_size > self.image_mv[-1, 0]):
+            # TODO: warn "Pixel size outside calibration range."
+            pass
+        _, m, v = self.image_mv[jnp.abs(self.image_mv[:, 0] - pixel_size).argmin()]
+        image_mean_potential = m * self.N_scalar
+        image_variance = v * self.N_scalar
+
+        # Adjust image to match target mean and variance in real space
+        image = irfftn(ice_spectrum_at_exit_plane, s=instrument_config.padded_shape)
+        image = image + (image_mean_potential - jnp.mean(image))
+        image = image * jnp.sqrt(image_variance / jnp.var(image))
+
         if get_rfft:
-            return ice_spectrum_at_exit_plane
+            return jnp.real(fftn(image))
         else:
-            return fftn(
-                irfftn(ice_spectrum_at_exit_plane, s=instrument_config.padded_shape)
-            )
+            return fftn(image)
 
 
 class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
@@ -327,14 +344,8 @@ class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
     a_2 = 0.801
     s_2 = 0.081
     m_2 = 1/2.88 (Å^(-1))
-
-    The number of water molecules per unit area, `N` (in Å⁻²) is used to
-    scale `a_1` and `a_2`so that the total variance squared is 10195.82 N.
-    a_1 = 0.199 * N
-    a_2 = 0.801 * N
     """
 
-    N: float = field(default=1.0, converter=error_if_negative)
     a1: float = field(default=0.199, converter=jnp.asarray)
     s1: float = field(default=0.731, converter=error_if_negative)
     m1: float = field(default=0.0, converter=error_if_negative)
@@ -370,14 +381,10 @@ class Parkhurst2024_Gaussian(AbstractFourierOperator, strict=True):
         k_sqr = jnp.sum(frequency_grid**2, axis=-1)
         k = jnp.sqrt(k_sqr)
 
-        # Rescale the base amplitudes by N
-        a1_scaled = self.a1 * self.N  # Amplitude of the first Gaussian
-        a2_scaled = self.a2 * self.N  # Amplitude of the second Gaussian
-
         # Power spectrum formula
-        scaling = a1_scaled * jnp.exp(
+        scaling = self.a1 * jnp.exp(
             -0.5 * ((k - self.m1) / self.s1) ** 2
-        ) + a2_scaled * jnp.exp(-0.5 * ((k - self.m2) / self.s2) ** 2)
+        ) + self.a2 * jnp.exp(-0.5 * ((k - self.m2) / self.s2) ** 2)
 
         return scaling
 
