@@ -204,7 +204,7 @@ class RelionHelicalParameterReader(AbstractParticleParameterReader, strict=True)
     get_cpu_arrays: bool = eqx.field(static=True)
 
     _n_filaments: int = eqx.field(static=True)
-    _n_filaments_per_micrograph: np.ndarray = eqx.field(static=True)
+    _n_filaments_per_micrograph: list[int] = eqx.field(static=True)
     _micrograph_names: list[str] = eqx.field(static=True)
 
     def __init__(
@@ -237,8 +237,9 @@ class RelionHelicalParameterReader(AbstractParticleParameterReader, strict=True)
     def __getitem__(self, index: int | Int[np.ndarray, ""]) -> ParticleParameters:
         _validate_helical_dataset_index(type(self), index, len(self))
         # Get the particle stack indices corresponding to this filament
+        particle_dataframe = self.particle_metadata.starfile_data["particles"]
         particle_indices_at_filament_index = _get_particle_indices_at_filament_index(
-            self.particle_metadata.starfile_data,
+            particle_dataframe,
             index,
             self._n_filaments_per_micrograph,
             self._micrograph_names,
@@ -600,8 +601,8 @@ def _get_particle_indices_at_filament_index(
     n_filaments_per_micrograph,
     micrograph_names,
 ):
-    # Get the particle stack particle_index corresponding to this filament
     # ... map the filament index to a micrograph index
+    n_filaments_per_micrograph = np.asarray(n_filaments_per_micrograph, dtype=int)
     last_index_of_filament_per_micrograph = np.cumsum(n_filaments_per_micrograph) - 1
     micrograph_index = np.where(last_index_of_filament_per_micrograph >= filament_index)[
         0
@@ -619,6 +620,23 @@ def _get_particle_indices_at_filament_index(
         == filament_index_in_micrograph + 1
     ]
     return np.asarray(particle_dataframe_at_filament.index, dtype=int)
+
+
+def _get_number_of_filaments_per_micrograph_in_helical_starfile_data(
+    starfile_data: dict[str, pd.DataFrame],
+) -> tuple[list[int], list[str]]:
+    particle_dataframe = starfile_data["particles"]
+    micrograph_names = particle_dataframe["rlnMicrographName"].unique().tolist()
+    n_filaments_per_micrograph = list(
+        int(
+            particle_dataframe[
+                particle_dataframe["rlnMicrographName"] == micrograph_name
+            ]["rlnHelicalTubeID"].max()
+        )
+        for micrograph_name in micrograph_names
+    )
+
+    return n_filaments_per_micrograph, micrograph_names
 
 
 def _validate_dataset_index(cls, index, n_rows):
@@ -696,21 +714,3 @@ def _validate_helical_starfile_data(starfile_data: dict[str, pd.DataFrame]):
             "This column must be present when using a "
             "`RelionHelicalImageReader`."
         )
-
-
-def _get_number_of_filaments_per_micrograph_in_helical_starfile_data(
-    starfile_data: dict[str, pd.DataFrame],
-) -> tuple[Int[np.ndarray, " n_micrographs"], list[str]]:
-    particle_dataframe = starfile_data["particles"]
-    micrograph_names = particle_dataframe["rlnMicrographName"].unique().tolist()
-    n_filaments_per_micrograph = np.asarray(
-        tuple(
-            particle_dataframe[
-                particle_dataframe["rlnMicrographName"] == micrograph_name
-            ]["rlnHelicalTubeID"].max()
-            for micrograph_name in micrograph_names
-        ),
-        dtype=int,
-    )
-
-    return n_filaments_per_micrograph, micrograph_names
