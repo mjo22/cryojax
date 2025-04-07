@@ -238,7 +238,7 @@ class RelionHelicalParameterReader(AbstractParticleParameterReader, strict=True)
         _validate_helical_dataset_index(type(self), index, len(self))
         # Get the particle stack indices corresponding to this filament
         particle_indices_at_filament_index = _get_particle_indices_at_filament_index(
-            self,
+            self.particle_metadata.starfile_data,
             index,
             self._n_filaments_per_micrograph,
             self._micrograph_names,
