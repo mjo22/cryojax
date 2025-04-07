@@ -41,7 +41,7 @@ class AbstractDataset(eqx.Module, Generic[T], strict=True):
     [`grain`](https://github.com/google/grain).
     """
 
-    get_cpu_arrays: eqx.AbstractVar[bool]
+    is_data_on_cpu: eqx.AbstractVar[bool]
 
     @abc.abstractmethod
     def __getitem__(self, index) -> T:

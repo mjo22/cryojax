@@ -61,8 +61,9 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
     path_to_relion_project: pathlib.Path = eqx.field(static=True)
     starfile_data: dict[str, pd.DataFrame] = eqx.field(static=True)
 
-    get_cpu_arrays: bool = eqx.field(static=True)
-    get_envelope_function: bool = eqx.field(static=True)
+    is_optics_group_broadcasted: bool = eqx.field(static=True)
+    is_data_on_cpu: bool = eqx.field(static=True)
+    is_envelope_function_loaded: bool = eqx.field(static=True)
     make_config_fn: Callable[
         [tuple[int, int], Float[Array, "..."], Float[Array, "..."]], InstrumentConfig
     ] = eqx.field(static=True)
@@ -72,8 +73,9 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
         path_to_starfile: str | pathlib.Path,
         path_to_relion_project: str | pathlib.Path,
         *,
-        get_cpu_arrays: bool = False,
-        get_envelope_function: bool = False,
+        is_optics_group_broadcasted: bool = True,
+        is_data_on_cpu: bool = False,
+        is_envelope_function_loaded: bool = False,
         make_config_fn: Callable[
             [tuple[int, int], Float[Array, "..."], Float[Array, "..."]],
             InstrumentConfig,
@@ -83,10 +85,14 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
 
         - `path_to_starfile`: The path to the Relion STAR file.
         - `path_to_relion_project`: The path to the Relion project directory.
-        - `get_envelope_function`:
+        - `is_optics_group_broadcasted`:
+            If `True`, select optics group parameters are broadcasted. If
+            there are multiple optics groups in the STAR file, parameters
+            are always broadcasted and this option is null.
+        - `is_envelope_function_loaded`:
             If `True`, read in the parameters of the CTF envelope function, i.e.
             "rlnCtfScalefactor" and "rlnCtfBfactor".
-        - `get_cpu_arrays`:
+        - `is_data_on_cpu`:
             If `True`, force that JAX arrays for particle parameters are loaded
             on the CPU. If `False`, load on the default device.
         - `make_config_fn`:
@@ -99,8 +105,9 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
         self.starfile_data = starfile_data
         self.path_to_relion_project = pathlib.Path(path_to_relion_project)
         self.make_config_fn = make_config_fn
-        self.get_envelope_function = get_envelope_function
-        self.get_cpu_arrays = get_cpu_arrays
+        self.is_optics_group_broadcasted = is_optics_group_broadcasted
+        self.is_envelope_function_loaded = is_envelope_function_loaded
+        self.is_data_on_cpu = is_data_on_cpu
 
     @override
     def __getitem__(
@@ -116,13 +123,14 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
         optics_group = self.starfile_data["optics"].iloc[0]
         # Load the image stack and STAR file parameters. First, get the device
         # on which to load arrays
-        device = jax.devices("cpu")[0] if self.get_cpu_arrays else None
+        device = jax.devices("cpu")[0] if self.is_data_on_cpu else None
         # ... load image parameters into cryoJAX objects
         instrument_config, transfer_theory, pose = _make_pytrees_from_starfile_metadata(
             particle_dataframe_at_index,
             optics_group,
             device,
-            self.get_envelope_function,
+            self.is_optics_group_broadcasted,
+            self.is_envelope_function_loaded,
             self.make_config_fn,
         )
         # ... convert to dataframe for serialization
@@ -150,24 +158,24 @@ class RelionParticleImageReader(AbstractParticleImageReader, strict=True):
     """
 
     metadata: RelionParticleParameterReader = eqx.field(static=True)
-    get_cpu_arrays: bool = eqx.field(static=True)
+    is_data_on_cpu: bool = eqx.field(static=True)
 
     def __init__(
         self,
         metadata: RelionParticleParameterReader,
         *,
-        get_cpu_arrays: bool = False,
+        is_data_on_cpu: bool = False,
     ):
         """**Arguments:**
 
         - `metadata`:
             The `RelionParticleParameterReader`.
-        - `get_cpu_arrays`:
+        - `is_data_on_cpu`:
             If `True`, force that JAX arrays for particle images are loaded
             on the CPU. If `False`, load on the default device.
         """
         self.metadata = metadata
-        self.get_cpu_arrays = get_cpu_arrays
+        self.is_data_on_cpu = is_data_on_cpu
 
     @property
     def starfile_data(self) -> dict[str, pd.DataFrame]:
@@ -182,7 +190,7 @@ class RelionParticleImageReader(AbstractParticleImageReader, strict=True):
             cast(dict, parameters.particle_data)
         )
         # Then, load stack of images
-        device = jax.devices("cpu")[0] if self.get_cpu_arrays else None
+        device = jax.devices("cpu")[0] if self.is_data_on_cpu else None
         images = _get_image_stack_from_mrc(
             index,
             particle_dataframe_at_index,
@@ -205,7 +213,7 @@ class RelionHelicalParameterReader(AbstractParticleParameterReader, strict=True)
     """
 
     particle_metadata: RelionParticleParameterReader = eqx.field(static=True)
-    get_cpu_arrays: bool = eqx.field(static=True)
+    is_data_on_cpu: bool = eqx.field(static=True)
 
     _n_filaments: int = eqx.field(static=True)
     _n_filaments_per_micrograph: list[int] = eqx.field(static=True)
@@ -226,7 +234,7 @@ class RelionHelicalParameterReader(AbstractParticleParameterReader, strict=True)
         _validate_helical_starfile_data(particle_metadata.starfile_data)
         self.particle_metadata = particle_metadata
         # Forward attributes
-        self.get_cpu_arrays = self.particle_metadata.get_cpu_arrays
+        self.is_data_on_cpu = self.particle_metadata.is_data_on_cpu
         # Compute and store the number of filaments, number of filaments per micrograph
         # and micrograph names
         n_filaments_per_micrograph, micrograph_names = (
@@ -282,24 +290,24 @@ class RelionHelicalImageReader(AbstractParticleImageReader, strict=True):
     """
 
     metadata: RelionHelicalParameterReader = eqx.field(static=True)
-    get_cpu_arrays: bool = eqx.field(static=True)
+    is_data_on_cpu: bool = eqx.field(static=True)
 
     def __init__(
         self,
         metadata: RelionHelicalParameterReader,
         *,
-        get_cpu_arrays: bool = False,
+        is_data_on_cpu: bool = False,
     ):
         """**Arguments:**
 
         - `helical_metadata`:
             The `RelionHelicalParameterReader`.
-        - `get_cpu_arrays`:
+        - `is_data_on_cpu`:
             If `True`, force that JAX arrays for particle images are loaded
             on the CPU. If `False`, load on the default device.
         """
         self.metadata = metadata
-        self.get_cpu_arrays = get_cpu_arrays
+        self.is_data_on_cpu = is_data_on_cpu
 
     @property
     def starfile_data(self) -> dict[str, pd.DataFrame]:
@@ -315,7 +323,7 @@ class RelionHelicalImageReader(AbstractParticleImageReader, strict=True):
             particle_dataframe_at_filament.index, dtype=int
         )
         # Then, load stack of images
-        device = jax.devices("cpu")[0] if self.get_cpu_arrays else None
+        device = jax.devices("cpu")[0] if self.is_data_on_cpu else None
         images = _get_image_stack_from_mrc(
             particle_indices_at_filament_index,
             particle_dataframe_at_filament,
@@ -333,7 +341,8 @@ def _make_pytrees_from_starfile_metadata(
     particle_blocks,
     optics_group,
     device,
-    get_envelope_function,
+    is_optics_group_broadcasted,
+    is_envelope_function_loaded,
     make_config_fn,
 ) -> tuple[InstrumentConfig, ContrastTransferTheory, EulerAnglePose]:
     defocus_in_angstroms = (
@@ -366,6 +375,7 @@ def _make_pytrees_from_starfile_metadata(
         voltage_in_kilovolts,
         batch_dim,
         make_config_fn,
+        is_optics_group_broadcasted,
     )
     # ... now the ContrastTransferTheory
     ctf = _make_relion_ctf(
@@ -376,7 +386,7 @@ def _make_pytrees_from_starfile_metadata(
         amplitude_contrast_ratio,
         phase_shift,
     )
-    if get_envelope_function:
+    if is_envelope_function_loaded:
         b_factor, scale_factor = (
             (
                 jnp.asarray(particle_blocks["rlnCtfBfactor"], device=device)
@@ -484,18 +494,26 @@ def _make_pytrees_from_starfile_metadata(
 
 
 def _make_config(
-    image_shape, pixel_size, voltage_in_kilovolts, batch_dim, make_config_fn
+    image_shape,
+    pixel_size,
+    voltage_in_kilovolts,
+    batch_dim,
+    make_config_fn,
+    is_optics_group_broadcasted,
 ):
     make_fn = lambda ps, volt: make_config_fn(image_shape, ps, volt)
-    make_fn_vmap = eqx.filter_vmap(make_fn)
-    return (
-        make_fn(pixel_size, voltage_in_kilovolts)
-        if batch_dim == 0
-        else make_fn_vmap(
-            jnp.full((batch_dim,), pixel_size),
-            jnp.full((batch_dim,), voltage_in_kilovolts),
+    if is_optics_group_broadcasted:
+        make_fn_vmap = eqx.filter_vmap(make_fn)
+        return (
+            make_fn(pixel_size, voltage_in_kilovolts)
+            if batch_dim == 0
+            else make_fn_vmap(
+                jnp.full((batch_dim,), pixel_size),
+                jnp.full((batch_dim,), voltage_in_kilovolts),
+            )
         )
-    )
+    else:
+        return make_fn(pixel_size, voltage_in_kilovolts)
 
 
 def _make_relion_ctf(defocus, astig, angle, sph, ac, ps):
