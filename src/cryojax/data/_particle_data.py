@@ -22,7 +22,7 @@ class ParticleParameters(eqx.Module):
     pose: AbstractPose
     transfer_theory: ContrastTransferTheory
 
-    particle_data: dict = eqx.field(static=True)
+    particle_data: dict
 
     def __init__(
         self,

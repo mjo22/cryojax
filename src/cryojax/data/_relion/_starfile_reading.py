@@ -61,6 +61,7 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
     path_to_relion_project: pathlib.Path = eqx.field(static=True)
     starfile_data: dict[str, pd.DataFrame] = eqx.field(static=True)
 
+    is_particle_data_loaded: bool
     is_optics_group_broadcasted: bool = eqx.field(static=True)
     is_data_on_cpu: bool = eqx.field(static=True)
     is_envelope_function_loaded: bool = eqx.field(static=True)
@@ -73,6 +74,7 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
         path_to_starfile: str | pathlib.Path,
         path_to_relion_project: str | pathlib.Path,
         *,
+        is_particle_data_loaded: bool = False,
         is_optics_group_broadcasted: bool = True,
         is_data_on_cpu: bool = False,
         is_envelope_function_loaded: bool = False,
@@ -85,6 +87,13 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
 
         - `path_to_starfile`: The path to the Relion STAR file.
         - `path_to_relion_project`: The path to the Relion project directory.
+        -  `is_particle_data_loaded`:
+            If `True`, the resulting `ParticleParameters` object loads
+            the raw metadata from the STAR file. Setting this option to
+            `False` is not supported when passing to a `RelionParticleImageReader`.
+            If this is set to `True`, extra care must be taken to make sure that
+            `ParticleParameters` objects can pass through JIT boundaries without
+            recompilation.
         - `is_optics_group_broadcasted`:
             If `True`, select optics group parameters are broadcasted. If
             there are multiple optics groups in the STAR file, parameters
@@ -105,6 +114,7 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
         self.starfile_data = starfile_data
         self.path_to_relion_project = pathlib.Path(path_to_relion_project)
         self.make_config_fn = make_config_fn
+        self.is_particle_data_loaded = is_particle_data_loaded
         self.is_optics_group_broadcasted = is_optics_group_broadcasted
         self.is_envelope_function_loaded = is_envelope_function_loaded
         self.is_data_on_cpu = is_data_on_cpu
@@ -144,7 +154,11 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
             instrument_config,
             pose,
             transfer_theory,
-            particle_data=particle_dataframe_at_index.to_dict(),
+            particle_data=(
+                particle_dataframe_at_index.to_dict()
+                if self.is_particle_data_loaded
+                else {}
+            ),
         )
 
     @override
@@ -185,7 +199,12 @@ class RelionParticleImageReader(AbstractParticleImageReader, strict=True):
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
     ) -> ParticleImages:
-        parameters = self.metadata[index]
+        if not self.metadata.is_particle_data_loaded:
+            parameters = eqx.tree_at(
+                lambda x: x.is_particle_data_loaded, self.metadata, True
+            )[index]
+        else:
+            parameters = self.metadata[index]
         particle_dataframe_at_index = pd.DataFrame.from_dict(
             cast(dict, parameters.particle_data)
         )
@@ -200,7 +219,13 @@ class RelionParticleImageReader(AbstractParticleImageReader, strict=True):
         if parameters.pose.offset_x_in_angstroms.ndim == 0:
             images = jnp.squeeze(images)
 
-        return ParticleImages(parameters=parameters, images=images)
+        if self.metadata.is_particle_data_loaded:
+            return ParticleImages(parameters, images)
+        else:
+            return ParticleImages(
+                eqx.tree_at(lambda p: p.particle_data, parameters, {}),
+                images,
+            )
 
     @override
     def __len__(self) -> int:
@@ -315,6 +340,12 @@ class RelionHelicalImageReader(AbstractParticleImageReader, strict=True):
 
     @override
     def __getitem__(self, index: int | Int[np.ndarray, ""]) -> ParticleImages:
+        if not self.metadata.particle_metadata.is_particle_data_loaded:
+            parameters = eqx.tree_at(
+                lambda x: x.particle_metadata.is_particle_data_loaded, self.metadata, True
+            )[index]
+        else:
+            parameters = self.metadata[index]
         parameters = self.metadata[index]
         particle_dataframe_at_filament = pd.DataFrame.from_dict(
             cast(dict, parameters.particle_data)
@@ -331,7 +362,13 @@ class RelionHelicalImageReader(AbstractParticleImageReader, strict=True):
             self.metadata.particle_metadata.path_to_relion_project,
         )
 
-        return ParticleImages(parameters=parameters, images=images)
+        if self.metadata.particle_metadata.is_particle_data_loaded:
+            return ParticleImages(parameters, images)
+        else:
+            return ParticleImages(
+                eqx.tree_at(lambda p: p.particle_data, parameters, {}),
+                images,
+            )
 
     def __len__(self) -> int:
         return len(self.metadata)
