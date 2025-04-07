@@ -195,13 +195,17 @@ class RelionParticleImageReader(AbstractParticleImageReader, strict=True):
         return len(self.metadata.starfile_data["particles"])
 
 
-class RelionHelicalParameterReader(AbstractParticleParameterReader):
+class RelionHelicalParameterReader(AbstractParticleParameterReader, strict=True):
     """Like a `RelionHelicalImageReader`, except for STAR file
     metadata.
     """
 
     particle_metadata: RelionParticleParameterReader = eqx.field(static=True)
     get_cpu_arrays: bool = eqx.field(static=True)
+
+    _n_filaments: int = eqx.field(static=True)
+    _n_filaments_per_micrograph: np.ndarray = eqx.field(static=True)
+    _micrograph_names: list[str] = eqx.field(static=True)
 
     def __init__(
         self,
@@ -310,71 +314,6 @@ class RelionHelicalImageReader(AbstractParticleImageReader, strict=True):
 
     def __len__(self) -> int:
         return len(self.metadata)
-
-
-# class RelionHelicalImageReader(AbstractParticleImageReader, strict=True):
-#     """A wrapped `RelionParticleImageReader` to read helical tubes.
-
-#     In particular, a `RelionHelicalImageReader` indexes one
-#     helical filament at a time. For example, after manual
-#     particle picking in RELION, we can index a particular filament
-#     with
-
-#     ```python
-#     # Read in a STAR file particle stack
-#     particle_dataset = RelionParticleImageReader(...)
-#     helical_dataset = RelionHelicalImageReader(particle_dataset)
-#     # ... get a particle stack for a filament
-#     particle_stack_for_a_filament = helical_dataset[0]
-#     # ... get a particle stack for another filament
-#     particle_stack_for_another_filament = helical_dataset[1]
-#     ```
-
-#     Unlike a `RelionParticleImageReader`, a `RelionHelicalImageReader`
-#     does not support fancy indexing.
-#     """
-
-#     dataset: RelionParticleImageReader = eqx.field(static=True)
-
-#     def __init__(
-#         self,
-#         dataset: RelionParticleImageReader,
-#     ):
-#         """**Arguments:**
-
-#         - `dataset`:
-#             The wrappped `RelionParticleImageReader`. This will be slightly
-#             modified to read one helix at a time, rather than one image crop at a time.
-#         """
-#         # Validate the STAR file and store the dataset
-#         _validate_helical_starfile_data(dataset.metadata.starfile_data)
-#         self.dataset = dataset
-#         # Compute and store the number of filaments, number of filaments per micrograph
-#         # and micrograph names
-#         n_filaments_per_micrograph, micrograph_names = (
-#             _get_number_of_filaments_per_micrograph_in_helical_starfile_data(
-#                 dataset.metadata.starfile_data
-#             )
-#         )
-#         self._n_filaments = int(np.sum(n_filaments_per_micrograph))
-#         self._n_filaments_per_micrograph = n_filaments_per_micrograph
-#         self._micrograph_names = micrograph_names
-
-#     @override
-#     def __getitem__(self, index: int | Int[np.ndarray, ""]) -> ParticleImages:
-#         _validate_helical_dataset_index(type(self), index, len(self))
-#         # Get the particle stack indices corresponding to this filament
-#         particle_indices = _get_helical_particle_indices(
-#             self,
-#             index,
-#             self._n_filaments_per_micrograph,
-#             self._micrograph_names,
-#         )
-#         # Access the particle stack at these particle indices
-#         return self.dataset[particle_indices]
-
-#     def __len__(self) -> int:
-#         return self._n_filaments
 
 
 def _make_pytrees_from_starfile_metadata(

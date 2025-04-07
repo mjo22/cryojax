@@ -1,4 +1,4 @@
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -22,7 +22,7 @@ class ParticleParameters(eqx.Module):
     pose: AbstractPose
     transfer_theory: ContrastTransferTheory
 
-    particle_data: Optional[dict] = eqx.field(static=True)
+    particle_data: dict = eqx.field(static=True)
 
     def __init__(
         self,
@@ -30,7 +30,7 @@ class ParticleParameters(eqx.Module):
         pose: AbstractPose,
         transfer_theory: ContrastTransferTheory,
         *,
-        particle_data: Optional[dict] = None,
+        particle_data: dict = {},
     ):
         """**Arguments:**
 
