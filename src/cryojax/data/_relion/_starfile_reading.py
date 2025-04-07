@@ -169,6 +169,10 @@ class RelionParticleImageReader(AbstractParticleImageReader, strict=True):
         self.metadata = metadata
         self.get_cpu_arrays = get_cpu_arrays
 
+    @property
+    def starfile_data(self) -> dict[str, pd.DataFrame]:
+        return self.metadata.starfile_data
+
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
@@ -234,6 +238,10 @@ class RelionHelicalParameterReader(AbstractParticleParameterReader, strict=True)
         self._n_filaments_per_micrograph = n_filaments_per_micrograph
         self._micrograph_names = micrograph_names
 
+    @property
+    def starfile_data(self) -> dict[str, pd.DataFrame]:
+        return self.particle_metadata.starfile_data
+
     def __getitem__(self, index: int | Int[np.ndarray, ""]) -> ParticleParameters:
         _validate_helical_dataset_index(type(self), index, len(self))
         # Get the particle stack indices corresponding to this filament
@@ -292,6 +300,10 @@ class RelionHelicalImageReader(AbstractParticleImageReader, strict=True):
         """
         self.metadata = metadata
         self.get_cpu_arrays = get_cpu_arrays
+
+    @property
+    def starfile_data(self) -> dict[str, pd.DataFrame]:
+        return self.metadata.starfile_data
 
     @override
     def __getitem__(self, index: int | Int[np.ndarray, ""]) -> ParticleImages:
