@@ -37,6 +37,16 @@ class AbstractDataset(abc.ABC, Generic[T]):
     JAX also includes packages for dataloaders, such as
     [`jax-dataloaders`](https://github.com/BirkhoffG/jax-dataloader/tree/main) and
     [`grain`](https://github.com/google/grain).
+
+    !!! question "How do I implement an `AbstractDataset`?"
+
+        Implementing an `AbstractDataset` is not like implementing
+        most other classes in `cryojax`, which are `equinox.Module`s.
+        An `equinox.Module` is just a pytree, so it can be safely
+        passed to `jax` transformations. However, an `AbstractDataset`
+        can *not* be passed to `jax` transformations. Therefore, it is
+        not a pytree. Rather, it is a normal python class.
+
     """
 
     @abc.abstractmethod
