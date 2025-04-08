@@ -430,8 +430,8 @@ def _make_pytrees_from_starfile(
     particle_blocks,
     optics_group,
     device,
-    is_optics_group_broadcasted,
-    is_envelope_function_loaded,
+    is_broadcasting_optics_group,
+    is_loading_envelope_function,
     make_config_fn,
 ) -> tuple[InstrumentConfig, ContrastTransferTheory, EulerAnglePose]:
     defocus_in_angstroms = (
@@ -464,7 +464,7 @@ def _make_pytrees_from_starfile(
         voltage_in_kilovolts,
         batch_dim,
         make_config_fn,
-        is_optics_group_broadcasted,
+        is_broadcasting_optics_group,
     )
     # ... now the ContrastTransferTheory
     ctf = _make_relion_ctf(
@@ -475,7 +475,7 @@ def _make_pytrees_from_starfile(
         amplitude_contrast_ratio,
         phase_shift,
     )
-    if is_envelope_function_loaded:
+    if is_loading_envelope_function:
         b_factor, scale_factor = (
             (
                 jnp.asarray(particle_blocks["rlnCtfBfactor"], device=device)
@@ -588,10 +588,10 @@ def _make_config(
     voltage_in_kilovolts,
     batch_dim,
     make_config_fn,
-    is_optics_group_broadcasted,
+    is_broadcasting_optics_group,
 ):
     make_fn = lambda ps, volt: make_config_fn(image_shape, ps, volt)
-    if is_optics_group_broadcasted:
+    if is_broadcasting_optics_group:
         make_fn_vmap = eqx.filter_vmap(make_fn)
         return (
             make_fn(pixel_size, voltage_in_kilovolts)
