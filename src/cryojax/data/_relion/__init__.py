@@ -1,5 +1,4 @@
 from ._starfile_reading import (
-    RelionHelicalImageReader as RelionHelicalImageReader,
     RelionHelicalParameterReader as RelionHelicalParameterReader,
     RelionParticleImageReader as RelionParticleImageReader,
     RelionParticleParameterReader as RelionParticleParameterReader,

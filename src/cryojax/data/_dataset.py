@@ -3,13 +3,11 @@
 import abc
 from typing import Generic, TypeVar
 
-import equinox as eqx
-
 
 T = TypeVar("T")
 
 
-class AbstractDataset(eqx.Module, Generic[T], strict=True):
+class AbstractDataset(abc.ABC, Generic[T]):
     """An abstraction of a dataset in `cryojax`. To create an
     `AbstractDataset`, implement its `__init__`, `__getitem__`, and
     `__len__` methods.
@@ -41,12 +39,20 @@ class AbstractDataset(eqx.Module, Generic[T], strict=True):
     [`grain`](https://github.com/google/grain).
     """
 
-    is_data_on_cpu: eqx.AbstractVar[bool]
-
     @abc.abstractmethod
     def __getitem__(self, index) -> T:
         raise NotImplementedError
 
     @abc.abstractmethod
     def __len__(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def is_loading_on_cpu(self) -> bool:
+        raise NotImplementedError
+
+    @is_loading_on_cpu.setter
+    @abc.abstractmethod
+    def is_loading_on_cpu(self, value: bool):
         raise NotImplementedError

@@ -1,4 +1,5 @@
-from typing import TypeVar
+import abc
+from typing import Optional, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -22,7 +23,7 @@ class ParticleParameters(eqx.Module):
     pose: AbstractPose
     transfer_theory: ContrastTransferTheory
 
-    particle_data: dict
+    metadata: Optional[dict]
 
     def __init__(
         self,
@@ -30,21 +31,18 @@ class ParticleParameters(eqx.Module):
         pose: AbstractPose,
         transfer_theory: ContrastTransferTheory,
         *,
-        particle_data: dict = {},
+        metadata: Optional[dict] = None,
     ):
         """**Arguments:**
 
         - `instrument_config`:
-            The instrument configuration. Any subset of pytree leaves may
-            have a batch dimension.
+            The instrument configuration.
         - `pose`:
-            The pose, represented by euler angles. Any subset of pytree leaves may
-            have a batch dimension.
+            The pose, represented by euler angles.
         - `transfer_theory`:
-            The contrast transfer theory. Any subset of pytree leaves may
-            have a batch dimension.
-        - `particle_dataframe`:
-            The raw particle metadata as a `pandas` dataframe
+            The contrast transfer theory.
+        - `metadata`:
+            The raw particle metadata as a dictionary.
         """
         # Set instrument config as is
         self.instrument_config = instrument_config
@@ -53,7 +51,7 @@ class ParticleParameters(eqx.Module):
         # Set defocus offset to zero
         self.pose = pose
         # Optionally, store the raw metadata
-        self.particle_data = particle_data
+        self.metadata = metadata
 
 
 class ParticleImages(eqx.Module):
@@ -86,9 +84,21 @@ class ParticleImages(eqx.Module):
 
 
 class AbstractParticleParameterReader(
-    AbstractDataset[ParticleParameters], strict=True
-): ...
+    AbstractDataset[ParticleParameters],
+):
+    @property
+    @abc.abstractmethod
+    def is_loading_metadata(self) -> bool:
+        raise NotImplementedError
+
+    @is_loading_metadata.setter
+    @abc.abstractmethod
+    def is_loading_metadata(self, value: bool):
+        raise NotImplementedError
 
 
-class AbstractParticleImageReader(AbstractDataset[ParticleImages], strict=True):
-    metadata = eqx.AbstractVar[AbstractParticleParameterReader]
+class AbstractParticleImageReader(AbstractDataset[ParticleImages]):
+    @property
+    @abc.abstractmethod
+    def param_reader(self) -> AbstractParticleParameterReader:
+        raise NotImplementedError

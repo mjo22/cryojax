@@ -6,7 +6,6 @@ from ._particle_data import (
     ParticleParameters as ParticleParameters,
 )
 from ._relion import (
-    RelionHelicalImageReader as RelionHelicalImageReader,
     RelionHelicalParameterReader as RelionHelicalParameterReader,
     RelionParticleImageReader as RelionParticleImageReader,
     RelionParticleParameterReader as RelionParticleParameterReader,

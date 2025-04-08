@@ -1,7 +1,8 @@
 """Cryojax compatibility with [RELION](https://relion.readthedocs.io/en/release-5.0/)."""
 
+import abc
 import pathlib
-from typing import Any, Callable, cast
+from typing import Any, Callable
 from typing_extensions import override
 
 import equinox as eqx
@@ -53,31 +54,42 @@ def _default_make_config_fn(
     return InstrumentConfig(shape, pixel_size, voltage_in_kilovolts, **kwargs)
 
 
-class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True):
+class AbstractRelionParticleParameterReader(AbstractParticleParameterReader):
+    @property
+    @abc.abstractmethod
+    def starfile_data(self) -> dict[str, pd.DataFrame]:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def path_to_relion_project(self) -> pathlib.Path:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def is_broadcasting_optics_group(self) -> bool:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def is_loading_envelope_function(self) -> bool:
+        raise NotImplementedError
+
+
+class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
-
-    path_to_relion_project: pathlib.Path = eqx.field(static=True)
-    starfile_data: dict[str, pd.DataFrame] = eqx.field(static=True)
-
-    is_particle_data_loaded: bool
-    is_optics_group_broadcasted: bool = eqx.field(static=True)
-    is_data_on_cpu: bool = eqx.field(static=True)
-    is_envelope_function_loaded: bool = eqx.field(static=True)
-    make_config_fn: Callable[
-        [tuple[int, int], Float[Array, "..."], Float[Array, "..."]], InstrumentConfig
-    ] = eqx.field(static=True)
 
     def __init__(
         self,
         path_to_starfile: str | pathlib.Path,
         path_to_relion_project: str | pathlib.Path,
         *,
-        is_particle_data_loaded: bool = False,
-        is_optics_group_broadcasted: bool = True,
-        is_data_on_cpu: bool = False,
-        is_envelope_function_loaded: bool = False,
+        is_loading_metadata: bool = False,
+        is_loading_on_cpu: bool = False,
+        is_broadcasting_optics_group: bool = True,
+        is_loading_envelope_function: bool = False,
         make_config_fn: Callable[
             [tuple[int, int], Float[Array, "..."], Float[Array, "..."]],
             InstrumentConfig,
@@ -87,37 +99,41 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
 
         - `path_to_starfile`: The path to the Relion STAR file.
         - `path_to_relion_project`: The path to the Relion project directory.
-        -  `is_particle_data_loaded`:
+        - `is_loading_on_cpu`:
+            If `True`, force that JAX arrays for particle parameters are loaded
+            on the CPU. If `False`, load on the default device.
+        -  `is_loading_metadata`:
             If `True`, the resulting `ParticleParameters` object loads
             the raw metadata from the STAR file. Setting this option to
             `False` is not supported when passing to a `RelionParticleImageReader`.
             If this is set to `True`, extra care must be taken to make sure that
             `ParticleParameters` objects can pass through JIT boundaries without
             recompilation.
-        - `is_optics_group_broadcasted`:
+        - `is_broadcasting_optics_group`:
             If `True`, select optics group parameters are broadcasted. If
             there are multiple optics groups in the STAR file, parameters
             are always broadcasted and this option is null.
-        - `is_envelope_function_loaded`:
+        - `is_loading_envelope_function`:
             If `True`, read in the parameters of the CTF envelope function, i.e.
             "rlnCtfScalefactor" and "rlnCtfBfactor".
-        - `is_data_on_cpu`:
-            If `True`, force that JAX arrays for particle parameters are loaded
-            on the CPU. If `False`, load on the default device.
         - `make_config_fn`:
             A function used for `InstrumentConfig` initialization that returns
             an `InstrumentConfig`. This is used to customize the metadata of the
             read object.
         """
+        # Private attributes
+        self._make_config_fn = make_config_fn
+        # Frozen properties
+        self._is_broadcasting_optics_group = is_broadcasting_optics_group
+        self._is_loading_envelope_function = is_loading_envelope_function
+        # ... read starfile and load path
         starfile_data = read_and_validate_starfile(path_to_starfile)
         _validate_starfile_data(starfile_data)
-        self.starfile_data = starfile_data
-        self.path_to_relion_project = pathlib.Path(path_to_relion_project)
-        self.make_config_fn = make_config_fn
-        self.is_particle_data_loaded = is_particle_data_loaded
-        self.is_optics_group_broadcasted = is_optics_group_broadcasted
-        self.is_envelope_function_loaded = is_envelope_function_loaded
-        self.is_data_on_cpu = is_data_on_cpu
+        self._path_to_relion_project = pathlib.Path(path_to_relion_project)
+        self._starfile_data = starfile_data
+        # Mutable properties
+        self._is_loading_on_cpu = is_loading_on_cpu
+        self._is_loading_metadata = is_loading_metadata
 
     @override
     def __getitem__(
@@ -133,15 +149,15 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
         optics_group = self.starfile_data["optics"].iloc[0]
         # Load the image stack and STAR file parameters. First, get the device
         # on which to load arrays
-        device = jax.devices("cpu")[0] if self.is_data_on_cpu else None
+        device = jax.devices("cpu")[0] if self.is_loading_on_cpu else None
         # ... load image parameters into cryoJAX objects
-        instrument_config, transfer_theory, pose = _make_pytrees_from_starfile_metadata(
+        instrument_config, transfer_theory, pose = _make_pytrees_from_starfile(
             particle_dataframe_at_index,
             optics_group,
             device,
-            self.is_optics_group_broadcasted,
-            self.is_envelope_function_loaded,
-            self.make_config_fn,
+            self.is_broadcasting_optics_group,
+            self.is_loading_envelope_function,
+            self._make_config_fn,
         )
         # ... convert to dataframe for serialization
         if isinstance(particle_dataframe_at_index, pd.Series):
@@ -154,10 +170,8 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
             instrument_config,
             pose,
             transfer_theory,
-            particle_data=(
-                particle_dataframe_at_index.to_dict()
-                if self.is_particle_data_loaded
-                else {}
+            metadata=(
+                particle_dataframe_at_index.to_dict() if self.is_loading_metadata else {}
             ),
         )
 
@@ -165,120 +179,169 @@ class RelionParticleParameterReader(AbstractParticleParameterReader, strict=True
     def __len__(self) -> int:
         return len(self.starfile_data["particles"])
 
+    @property
+    def starfile_data(self) -> dict[str, pd.DataFrame]:
+        return self._starfile_data
 
-class RelionParticleImageReader(AbstractParticleImageReader, strict=True):
+    @property
+    def path_to_relion_project(self) -> pathlib.Path:
+        return self._path_to_relion_project
+
+    @property
+    @override
+    def is_loading_on_cpu(self) -> bool:
+        return self._is_loading_on_cpu
+
+    @is_loading_on_cpu.setter
+    @override
+    def is_loading_on_cpu(self, value: bool):
+        self._is_loading_on_cpu = value
+
+    @property
+    @override
+    def is_loading_metadata(self) -> bool:
+        return self._is_loading_metadata
+
+    @is_loading_metadata.setter
+    @override
+    def is_loading_metadata(self, value: bool):
+        self._is_loading_metadata = value
+
+    @property
+    def is_broadcasting_optics_group(self) -> bool:
+        return self._is_broadcasting_optics_group
+
+    @property
+    def is_loading_envelope_function(self) -> bool:
+        return self._is_loading_envelope_function
+
+
+class RelionParticleImageReader(AbstractParticleImageReader):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
 
-    metadata: RelionParticleParameterReader = eqx.field(static=True)
-    is_data_on_cpu: bool = eqx.field(static=True)
-
     def __init__(
         self,
-        metadata: RelionParticleParameterReader,
+        param_reader: AbstractRelionParticleParameterReader,
         *,
-        is_data_on_cpu: bool = False,
+        is_loading_on_cpu: bool = False,
     ):
         """**Arguments:**
 
-        - `metadata`:
+        - `param_reader`:
             The `RelionParticleParameterReader`.
-        - `is_data_on_cpu`:
+        - `is_loading_on_cpu`:
             If `True`, force that JAX arrays for particle images are loaded
             on the CPU. If `False`, load on the default device.
         """
-        self.metadata = metadata
-        self.is_data_on_cpu = is_data_on_cpu
-
-    @property
-    def starfile_data(self) -> dict[str, pd.DataFrame]:
-        return self.metadata.starfile_data
+        self._param_reader = param_reader
+        self._is_loading_on_cpu = is_loading_on_cpu
 
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
     ) -> ParticleImages:
-        if not self.metadata.is_particle_data_loaded:
-            parameters = eqx.tree_at(
-                lambda x: x.is_particle_data_loaded, self.metadata, True
-            )[index]
-        else:
-            parameters = self.metadata[index]
-        particle_dataframe_at_index = pd.DataFrame.from_dict(
-            cast(dict, parameters.particle_data)
-        )
-        # Then, load stack of images
-        device = jax.devices("cpu")[0] if self.is_data_on_cpu else None
+        # ... make sure particle metadata is being loaded
+        is_loading_metadata = self.param_reader.is_loading_metadata
+        self.param_reader.is_loading_metadata = True
+        # ... read parameters
+        parameters = self.param_reader[index]
+        # ... and construct dataframe
+        metadata = parameters.metadata
+        particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)  # type: ignore
+        # ... this line is necessary for the image reader to work with both the
+        # helical reader and the regular reader
+        particle_index = np.asarray(particle_dataframe_at_index.index, dtype=int)
+        # ... then, load stack of images
+        device = jax.devices("cpu")[0] if self.is_loading_on_cpu else None
         images = _get_image_stack_from_mrc(
-            index,
+            particle_index,
             particle_dataframe_at_index,
             device,
-            self.metadata.path_to_relion_project,
+            self.param_reader.path_to_relion_project,
         )
         if parameters.pose.offset_x_in_angstroms.ndim == 0:
             images = jnp.squeeze(images)
 
-        if self.metadata.is_particle_data_loaded:
-            return ParticleImages(parameters, images)
-        else:
-            return ParticleImages(
-                eqx.tree_at(lambda p: p.particle_data, parameters, {}),
-                images,
+        # ... reset boolean
+        self.param_reader.is_loading_metadata = is_loading_metadata
+        if not is_loading_metadata:
+            parameters = ParticleParameters(
+                parameters.instrument_config, parameters.pose, parameters.transfer_theory
             )
+
+        return ParticleImages(parameters, images)
 
     @override
     def __len__(self) -> int:
-        return len(self.metadata.starfile_data["particles"])
+        return len(self.param_reader.starfile_data["particles"])
+
+    @property
+    def param_reader(self) -> AbstractRelionParticleParameterReader:
+        return self._param_reader
+
+    @property
+    @override
+    def is_loading_on_cpu(self) -> bool:
+        return self._is_loading_on_cpu
+
+    @is_loading_on_cpu.setter
+    @override
+    def is_loading_on_cpu(self, value: bool):
+        self._is_loading_on_cpu = value
 
 
-class RelionHelicalParameterReader(AbstractParticleParameterReader, strict=True):
-    """Like a `RelionHelicalImageReader`, except for STAR file
-    metadata.
+class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
+    """Similar to a `RelionParticleParameterReader`, but reads helical tubes.
+
+    In particular, a `RelionHelicalParameterReader` indexes one
+    helical filament at a time. For example, after manual
+    particle picking in RELION, we can index a particular filament
+    with
+
+    ```python
+    # Read in a STAR file particle stack
+    helical_param_reader = RelionHelicalParameterReader(...)
+    # ... get a particle stack for a filament
+    params_for_a_filament = helical_image_reader[0]
+    # ... get a particle stack for another filament
+    params_for_another_filament = helical_image_reader[1]
+    ```
+
+    Unlike a `RelionParticleParameterReader`, a `RelionHelicalParameterReader`
+    does not support fancy indexing.
     """
-
-    particle_metadata: RelionParticleParameterReader = eqx.field(static=True)
-    is_data_on_cpu: bool = eqx.field(static=True)
-
-    _n_filaments: int = eqx.field(static=True)
-    _n_filaments_per_micrograph: list[int] = eqx.field(static=True)
-    _micrograph_names: list[str] = eqx.field(static=True)
 
     def __init__(
         self,
-        particle_metadata: RelionParticleParameterReader,
+        param_reader: RelionParticleParameterReader,
     ):
         """**Arguments:**
 
-        - `particle_metadata`:
+        - `param_reader`:
             The wrappped `RelionParticleParameterReader`. This will be
             slightly modified to read one helix at a time, rather than
             one image crop at a time.
         """
-        # Validate the STAR file and store the dataset
-        _validate_helical_starfile_data(particle_metadata.starfile_data)
-        self.particle_metadata = particle_metadata
-        # Forward attributes
-        self.is_data_on_cpu = self.particle_metadata.is_data_on_cpu
+        # Validate the STAR file and store the reader
+        _validate_helical_starfile_data(param_reader.starfile_data)
+        self._param_reader = param_reader
         # Compute and store the number of filaments, number of filaments per micrograph
         # and micrograph names
         n_filaments_per_micrograph, micrograph_names = (
             _get_number_of_filaments_per_micrograph_in_helical_starfile_data(
-                particle_metadata.starfile_data
+                param_reader.starfile_data
             )
         )
         self._n_filaments = int(np.sum(n_filaments_per_micrograph))
         self._n_filaments_per_micrograph = n_filaments_per_micrograph
         self._micrograph_names = micrograph_names
 
-    @property
-    def starfile_data(self) -> dict[str, pd.DataFrame]:
-        return self.particle_metadata.starfile_data
-
     def __getitem__(self, index: int | Int[np.ndarray, ""]) -> ParticleParameters:
         _validate_helical_dataset_index(type(self), index, len(self))
         # Get the particle stack indices corresponding to this filament
-        particle_dataframe = self.particle_metadata.starfile_data["particles"]
+        particle_dataframe = self._param_reader.starfile_data["particles"]
         particle_indices_at_filament_index = _get_particle_indices_at_filament_index(
             particle_dataframe,
             index,
@@ -286,95 +349,49 @@ class RelionHelicalParameterReader(AbstractParticleParameterReader, strict=True)
             self._micrograph_names,
         )
         # Access the particle stack at these particle indices
-        return self.particle_metadata[particle_indices_at_filament_index]
+        return self._param_reader[particle_indices_at_filament_index]
 
     def __len__(self) -> int:
         return self._n_filaments
 
-
-class RelionHelicalImageReader(AbstractParticleImageReader, strict=True):
-    """Similar to a `RelionParticleImageReader`, but reads helical tubes.
-
-    In particular, a `RelionHelicalImageReader` indexes one
-    helical filament at a time. For example, after manual
-    particle picking in RELION, we can index a particular filament
-    with
-
-    ```python
-    # Read in a STAR file particle stack
-    helical_metadata = RelionHelicalParameterReader(...)
-    helical_dataset = RelionHelicalImageReader(helical_metadata)
-    # ... get a particle stack for a filament
-    particle_stack_for_a_filament = helical_dataset[0]
-    # ... get a particle stack for another filament
-    particle_stack_for_another_filament = helical_dataset[1]
-    ```
-
-    Unlike a `RelionParticleImageReader`, a `RelionHelicalImageReader`
-    does not support fancy indexing.
-    """
-
-    metadata: RelionHelicalParameterReader = eqx.field(static=True)
-    is_data_on_cpu: bool = eqx.field(static=True)
-
-    def __init__(
-        self,
-        metadata: RelionHelicalParameterReader,
-        *,
-        is_data_on_cpu: bool = False,
-    ):
-        """**Arguments:**
-
-        - `helical_metadata`:
-            The `RelionHelicalParameterReader`.
-        - `is_data_on_cpu`:
-            If `True`, force that JAX arrays for particle images are loaded
-            on the CPU. If `False`, load on the default device.
-        """
-        self.metadata = metadata
-        self.is_data_on_cpu = is_data_on_cpu
-
     @property
     def starfile_data(self) -> dict[str, pd.DataFrame]:
-        return self.metadata.starfile_data
+        return self._param_reader._starfile_data
 
+    @property
+    def path_to_relion_project(self) -> pathlib.Path:
+        return self._param_reader._path_to_relion_project
+
+    @property
     @override
-    def __getitem__(self, index: int | Int[np.ndarray, ""]) -> ParticleImages:
-        if not self.metadata.particle_metadata.is_particle_data_loaded:
-            parameters = eqx.tree_at(
-                lambda x: x.particle_metadata.is_particle_data_loaded, self.metadata, True
-            )[index]
-        else:
-            parameters = self.metadata[index]
-        parameters = self.metadata[index]
-        particle_dataframe_at_filament = pd.DataFrame.from_dict(
-            cast(dict, parameters.particle_data)
-        )
-        particle_indices_at_filament_index = np.asarray(
-            particle_dataframe_at_filament.index, dtype=int
-        )
-        # Then, load stack of images
-        device = jax.devices("cpu")[0] if self.is_data_on_cpu else None
-        images = _get_image_stack_from_mrc(
-            particle_indices_at_filament_index,
-            particle_dataframe_at_filament,
-            device,
-            self.metadata.particle_metadata.path_to_relion_project,
-        )
+    def is_loading_on_cpu(self) -> bool:
+        return self._param_reader._is_loading_on_cpu
 
-        if self.metadata.particle_metadata.is_particle_data_loaded:
-            return ParticleImages(parameters, images)
-        else:
-            return ParticleImages(
-                eqx.tree_at(lambda p: p.particle_data, parameters, {}),
-                images,
-            )
+    @is_loading_on_cpu.setter
+    @override
+    def is_loading_on_cpu(self, value: bool):
+        self._param_reader._is_loading_on_cpu = value
 
-    def __len__(self) -> int:
-        return len(self.metadata)
+    @property
+    @override
+    def is_loading_metadata(self) -> bool:
+        return self._param_reader._is_loading_metadata
+
+    @is_loading_metadata.setter
+    @override
+    def is_loading_metadata(self, value: bool):
+        self._param_reader._is_loading_metadata = value
+
+    @property
+    def is_broadcasting_optics_group(self) -> bool:
+        return self._param_reader._is_broadcasting_optics_group
+
+    @property
+    def is_loading_envelope_function(self) -> bool:
+        return self._param_reader._is_loading_envelope_function
 
 
-def _make_pytrees_from_starfile_metadata(
+def _make_pytrees_from_starfile(
     particle_blocks,
     optics_group,
     device,
