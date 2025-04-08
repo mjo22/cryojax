@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float, Inexact
 
 from ._edges import crop_to_shape
-from ._fft import fftn, ifftn
+from ._fft import fftn, ifftn, rfftn
 
 
 @overload
@@ -43,8 +43,11 @@ def downsample_with_fourier_cropping(
 
     **Returns:**
 
-    The downsampled `image_or_volume`, with shape reduced by a factor of
-    `downsample_factor`.
+    The downsampled `image_or_volume`, at the new real-space shape
+    `downsampled_shape`. If `get_real = False`, return
+    the downsampled array in fourier space, with the zero frequency
+    component in the corner. For real signals, hermitian symmetry is
+    assumed.
     """
     downsampling_factor = float(downsampling_factor)
     if downsampling_factor < 1.0:
@@ -118,8 +121,10 @@ def downsample_to_shape_with_fourier_cropping(
 
     The downsampled `image_or_volume`, at the new real-space shape
     `downsampled_shape`. If `get_real = False`, return
-    the downsampled array in fourier space assuming hermitian symmetry,
-    with the zero frequency component in the corner.
+    the downsampled array in fourier space, with the zero frequency
+    component in the corner. For real signals, hermitian symmetry is
+    assumed.
+
     """
     if jnp.iscomplexobj(image_or_volume):
         return _downsample_complex_signal_to_shape_with_fourier_cropping(
@@ -167,7 +172,7 @@ def _downsample_real_signal_to_shape_with_fourier_cropping(
     if get_real:
         return ds_image_or_volume
     else:
-        return fftn(ds_image_or_volume)
+        return rfftn(ds_image_or_volume)
 
 
 @overload
