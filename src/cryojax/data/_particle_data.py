@@ -54,7 +54,7 @@ class ParticleParameters(eqx.Module):
         self.metadata = metadata
 
 
-class ParticleImages(eqx.Module):
+class ParticleStack(eqx.Module):
     """Images from a particle stack, along with information
     of their parameters.
     """
@@ -97,7 +97,7 @@ class AbstractParticleParameterReader(
         raise NotImplementedError
 
 
-class AbstractParticleImageReader(AbstractDataset[ParticleImages]):
+class AbstractParticleStackReader(AbstractDataset[ParticleStack]):
     @property
     @abc.abstractmethod
     def param_reader(self) -> AbstractParticleParameterReader:

@@ -22,10 +22,10 @@ from ...simulator import (
     InstrumentConfig,
 )
 from .._particle_data import (
-    AbstractParticleImageReader,
     AbstractParticleParameterReader,
-    ParticleImages,
+    AbstractParticleStackReader,
     ParticleParameters,
+    ParticleStack,
 )
 
 
@@ -239,7 +239,7 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         self._is_broadcasting_optics_group = value
 
 
-class RelionParticleImageReader(AbstractParticleImageReader):
+class RelionParticleStackReader(AbstractParticleStackReader):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
@@ -264,7 +264,7 @@ class RelionParticleImageReader(AbstractParticleImageReader):
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
-    ) -> ParticleImages:
+    ) -> ParticleStack:
         # ... make sure particle metadata is being loaded
         is_loading_metadata = self.param_reader.is_loading_metadata
         self.param_reader.is_loading_metadata = True
@@ -294,7 +294,7 @@ class RelionParticleImageReader(AbstractParticleImageReader):
                 parameters.instrument_config, parameters.pose, parameters.transfer_theory
             )
 
-        return ParticleImages(parameters, images)
+        return ParticleStack(parameters, images)
 
     @override
     def __len__(self) -> int:
@@ -327,9 +327,9 @@ class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
     # Read in a STAR file particle stack
     helical_param_reader = RelionHelicalParameterReader(...)
     # ... get a particle stack for a filament
-    params_for_a_filament = helical_image_reader[0]
+    params_for_a_filament = helical_particle_reader[0]
     # ... get a particle stack for another filament
-    params_for_another_filament = helical_image_reader[1]
+    params_for_another_filament = helical_particle_reader[1]
     ```
 
     Unlike a `RelionParticleParameterReader`, a `RelionHelicalParameterReader`
@@ -646,7 +646,7 @@ def _get_image_stack_from_mrc(
     image_stack_index_and_name_series_or_str = particle_dataframe["rlnImageName"]
     if isinstance(image_stack_index_and_name_series_or_str, str):
         # In this block, the user most likely used standard indexing, like
-        # `dataset = RelionParticleImageReader(...); particle_stack = dataset[1]`
+        # `dataset = RelionParticleStackReader(...); particle_stack = dataset[1]`
         image_stack_index_and_name_str = image_stack_index_and_name_series_or_str
         # ... split the whole string into its image index and filename
         relion_particle_index, image_stack_filename = (
@@ -666,7 +666,7 @@ def _get_image_stack_from_mrc(
 
     elif isinstance(image_stack_index_and_name_series_or_str, pd.Series):
         # In this block, the user most likely used fancy indexing, like
-        # `dataset = RelionParticleImageReader(...); particle_stack = dataset[1:10]`
+        # `dataset = RelionParticleStackReader(...); particle_stack = dataset[1:10]`
         image_stack_index_and_name_series = image_stack_index_and_name_series_or_str
         # ... split the pandas.Series into a pandas.DataFrame with two columns:
         # one for the image index and another for the filename
@@ -708,7 +708,7 @@ def _get_image_stack_from_mrc(
     else:
         raise IOError(
             "Could not read `rlnImageName` in STAR file for "
-            f"`RelionParticleImageReader` index equal to {index}."
+            f"`RelionParticleStackReader` index equal to {index}."
         )
 
     return jnp.asarray(image_stack, device=device)
