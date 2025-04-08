@@ -275,7 +275,7 @@ class RelionParticleImageReader(AbstractParticleImageReader):
 
     @override
     def __len__(self) -> int:
-        return len(self.param_reader.starfile_data["particles"])
+        return len(self.param_reader)
 
     @property
     def param_reader(self) -> AbstractRelionParticleParameterReader:
