@@ -132,17 +132,17 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         """
         # Private attributes
         self._make_config_fn = make_config_fn
-        # Frozen properties
-        self._is_broadcasting_optics_group = is_broadcasting_optics_group
-        self._is_loading_envelope_function = is_loading_envelope_function
+        # Properties without setters
         # ... read starfile and load path
         starfile_data = read_and_validate_starfile(path_to_starfile)
         _validate_starfile_data(starfile_data)
         self._path_to_relion_project = pathlib.Path(path_to_relion_project)
         self._starfile_data = starfile_data
-        # Mutable properties
+        # Properties with setters
         self._is_loading_on_cpu = is_loading_on_cpu
         self._is_loading_metadata = is_loading_metadata
+        self._is_broadcasting_optics_group = is_broadcasting_optics_group
+        self._is_loading_envelope_function = is_loading_envelope_function
 
     @override
     def __getitem__(
