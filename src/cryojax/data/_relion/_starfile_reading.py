@@ -67,22 +67,22 @@ class AbstractRelionParticleParameterReader(AbstractParticleParameterReader):
 
     @property
     @abc.abstractmethod
-    def is_loading_envelope_function(self) -> bool:
+    def load_envelope_function_parameters(self) -> bool:
         raise NotImplementedError
 
-    @is_loading_envelope_function.setter
+    @load_envelope_function_parameters.setter
     @abc.abstractmethod
-    def is_loading_envelope_function(self, value: bool):
+    def load_envelope_function_parameters(self, value: bool):
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def is_broadcasting_optics_group(self) -> bool:
+    def broadcast_optic_group(self) -> bool:
         raise NotImplementedError
 
-    @is_broadcasting_optics_group.setter
+    @broadcast_optic_group.setter
     @abc.abstractmethod
-    def is_broadcasting_optics_group(self, value: bool):
+    def broadcast_optic_group(self, value: bool):
         raise NotImplementedError
 
 
@@ -96,10 +96,10 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         path_to_starfile: str | pathlib.Path,
         path_to_relion_project: str | pathlib.Path,
         *,
-        is_loading_metadata: bool = False,
-        is_loading_on_cpu: bool = False,
-        is_broadcasting_optics_group: bool = True,
-        is_loading_envelope_function: bool = False,
+        load_metadata: bool = False,
+        load_arrays_on_cpu: bool = False,
+        broadcast_optic_group: bool = True,
+        load_envelope_function_parameters: bool = False,
         make_config_fn: Callable[
             [tuple[int, int], Float[Array, "..."], Float[Array, "..."]],
             InstrumentConfig,
@@ -109,20 +109,20 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
 
         - `path_to_starfile`: The path to the Relion STAR file.
         - `path_to_relion_project`: The path to the Relion project directory.
-        - `is_loading_on_cpu`:
+        - `load_arrays_on_cpu`:
             If `True`, force that JAX arrays for particle parameters are loaded
             on the CPU. If `False`, load on the default device.
-        -  `is_loading_metadata`:
+        -  `load_metadata`:
             If `True`, the resulting `ParticleParameters` object loads
             the raw metadata from the STAR file.
             If this is set to `True`, extra care must be taken to make sure that
             `ParticleParameters` objects can pass through JIT boundaries without
             recompilation.
-        - `is_broadcasting_optics_group`:
+        - `broadcast_optic_group`:
             If `True`, select optics group parameters are broadcasted. If
             there are multiple optics groups in the STAR file, parameters
             are always broadcasted and this option is null.
-        - `is_loading_envelope_function`:
+        - `load_envelope_function_parameters`:
             If `True`, read in the parameters of the CTF envelope function, i.e.
             "rlnCtfScalefactor" and "rlnCtfBfactor".
         - `make_config_fn`:
@@ -139,10 +139,10 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         self._path_to_relion_project = pathlib.Path(path_to_relion_project)
         self._starfile_data = starfile_data
         # Properties with setters
-        self._is_loading_on_cpu = is_loading_on_cpu
-        self._is_loading_metadata = is_loading_metadata
-        self._is_broadcasting_optics_group = is_broadcasting_optics_group
-        self._is_loading_envelope_function = is_loading_envelope_function
+        self._load_arrays_on_cpu = load_arrays_on_cpu
+        self._load_metadata = load_metadata
+        self._broadcast_optic_group = broadcast_optic_group
+        self._load_envelope_function_parameters = load_envelope_function_parameters
 
     @override
     def __getitem__(
@@ -164,8 +164,8 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
             particle_dataframe_at_index,
             optics_group,
             device,
-            self.is_broadcasting_optics_group,
-            self.is_loading_envelope_function,
+            self.broadcast_optic_group,
+            self.load_envelope_function_parameters,
             self._make_config_fn,
         )
         # ... convert to dataframe for serialization
@@ -180,7 +180,7 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
             pose,
             transfer_theory,
             metadata=(
-                particle_dataframe_at_index.to_dict() if self.is_loading_metadata else {}
+                particle_dataframe_at_index.to_dict() if self.load_metadata else {}
             ),
         )
 
@@ -201,42 +201,42 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
     @property
     @override
     def is_loading_on_cpu(self) -> bool:
-        return self._is_loading_on_cpu
+        return self._load_arrays_on_cpu
 
     @is_loading_on_cpu.setter
     @override
     def is_loading_on_cpu(self, value: bool):
-        self._is_loading_on_cpu = value
+        self._load_arrays_on_cpu = value
 
     @property
     @override
-    def is_loading_metadata(self) -> bool:
-        return self._is_loading_metadata
+    def load_metadata(self) -> bool:
+        return self._load_metadata
 
-    @is_loading_metadata.setter
+    @load_metadata.setter
     @override
-    def is_loading_metadata(self, value: bool):
-        self._is_loading_metadata = value
-
-    @property
-    @override
-    def is_loading_envelope_function(self) -> bool:
-        return self._is_loading_envelope_function
-
-    @is_loading_envelope_function.setter
-    @override
-    def is_loading_envelope_function(self, value: bool):
-        self._is_loading_envelope_function = value
+    def load_metadata(self, value: bool):
+        self._load_metadata = value
 
     @property
     @override
-    def is_broadcasting_optics_group(self) -> bool:
-        return self._is_broadcasting_optics_group
+    def load_envelope_function_parameters(self) -> bool:
+        return self._load_envelope_function_parameters
 
-    @is_broadcasting_optics_group.setter
+    @load_envelope_function_parameters.setter
     @override
-    def is_broadcasting_optics_group(self, value: bool):
-        self._is_broadcasting_optics_group = value
+    def load_envelope_function_parameters(self, value: bool):
+        self._load_envelope_function_parameters = value
+
+    @property
+    @override
+    def broadcast_optic_group(self) -> bool:
+        return self._broadcast_optic_group
+
+    @broadcast_optic_group.setter
+    @override
+    def broadcast_optic_group(self, value: bool):
+        self._broadcast_optic_group = value
 
 
 class RelionParticleStackReader(AbstractParticleStackReader):
@@ -259,15 +259,15 @@ class RelionParticleStackReader(AbstractParticleStackReader):
             on the CPU. If `False`, load on the default device.
         """
         self._param_reader = param_reader
-        self._is_loading_on_cpu = is_loading_on_cpu
+        self._load_arrays_on_cpu = is_loading_on_cpu
 
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
     ) -> ParticleStack:
         # ... make sure particle metadata is being loaded
-        is_loading_metadata = self.param_reader.is_loading_metadata
-        self.param_reader.is_loading_metadata = True
+        load_metadata = self.param_reader.load_metadata
+        self.param_reader.load_metadata = True
         # ... read parameters
         parameters = self.param_reader[index]
         # ... and construct dataframe
@@ -288,8 +288,8 @@ class RelionParticleStackReader(AbstractParticleStackReader):
             images = jnp.squeeze(images)
 
         # ... reset boolean
-        self.param_reader.is_loading_metadata = is_loading_metadata
-        if not is_loading_metadata:
+        self.param_reader.load_metadata = load_metadata
+        if not load_metadata:
             parameters = ParticleParameters(
                 parameters.instrument_config, parameters.pose, parameters.transfer_theory
             )
@@ -307,12 +307,12 @@ class RelionParticleStackReader(AbstractParticleStackReader):
     @property
     @override
     def is_loading_on_cpu(self) -> bool:
-        return self._is_loading_on_cpu
+        return self._load_arrays_on_cpu
 
     @is_loading_on_cpu.setter
     @override
     def is_loading_on_cpu(self, value: bool):
-        self._is_loading_on_cpu = value
+        self._load_arrays_on_cpu = value
 
 
 class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
@@ -397,41 +397,41 @@ class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
 
     @property
     @override
-    def is_loading_metadata(self) -> bool:
-        return self._param_reader._is_loading_metadata
+    def load_metadata(self) -> bool:
+        return self._param_reader._load_metadata
 
-    @is_loading_metadata.setter
+    @load_metadata.setter
     @override
-    def is_loading_metadata(self, value: bool):
-        self._param_reader._is_loading_metadata = value
-
-    @property
-    @override
-    def is_loading_envelope_function(self) -> bool:
-        return self._param_reader._is_loading_envelope_function
-
-    @is_loading_envelope_function.setter
-    @override
-    def is_loading_envelope_function(self, value: bool):
-        self._param_reader._is_loading_envelope_function = value
+    def load_metadata(self, value: bool):
+        self._param_reader._load_metadata = value
 
     @property
     @override
-    def is_broadcasting_optics_group(self) -> bool:
-        return self._param_reader._is_broadcasting_optics_group
+    def load_envelope_function_parameters(self) -> bool:
+        return self._param_reader._load_envelope_function_parameters
 
-    @is_broadcasting_optics_group.setter
+    @load_envelope_function_parameters.setter
     @override
-    def is_broadcasting_optics_group(self, value: bool):
-        self._param_reader._is_broadcasting_optics_group = value
+    def load_envelope_function_parameters(self, value: bool):
+        self._param_reader._load_envelope_function_parameters = value
+
+    @property
+    @override
+    def broadcast_optic_group(self) -> bool:
+        return self._param_reader._broadcast_optic_group
+
+    @broadcast_optic_group.setter
+    @override
+    def broadcast_optic_group(self, value: bool):
+        self._param_reader._broadcast_optic_group = value
 
 
 def _make_pytrees_from_starfile(
     particle_blocks,
     optics_group,
     device,
-    is_broadcasting_optics_group,
-    is_loading_envelope_function,
+    broadcast_optic_group,
+    load_envelope_function_parameters,
     make_config_fn,
 ) -> tuple[InstrumentConfig, ContrastTransferTheory, EulerAnglePose]:
     defocus_in_angstroms = (
@@ -464,7 +464,7 @@ def _make_pytrees_from_starfile(
         voltage_in_kilovolts,
         batch_dim,
         make_config_fn,
-        is_broadcasting_optics_group,
+        broadcast_optic_group,
     )
     # ... now the ContrastTransferTheory
     ctf = _make_relion_ctf(
@@ -475,7 +475,7 @@ def _make_pytrees_from_starfile(
         amplitude_contrast_ratio,
         phase_shift,
     )
-    if is_loading_envelope_function:
+    if load_envelope_function_parameters:
         b_factor, scale_factor = (
             (
                 jnp.asarray(particle_blocks["rlnCtfBfactor"], device=device)
@@ -588,10 +588,10 @@ def _make_config(
     voltage_in_kilovolts,
     batch_dim,
     make_config_fn,
-    is_broadcasting_optics_group,
+    broadcast_optic_group,
 ):
     make_fn = lambda ps, volt: make_config_fn(image_shape, ps, volt)
-    if is_broadcasting_optics_group:
+    if broadcast_optic_group:
         make_fn_vmap = eqx.filter_vmap(make_fn)
         return (
             make_fn(pixel_size, voltage_in_kilovolts)
