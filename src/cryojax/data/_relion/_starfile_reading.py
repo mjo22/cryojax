@@ -831,5 +831,5 @@ def _validate_helical_starfile_data(starfile_data: dict[str, pd.DataFrame]):
         raise ValueError(
             "Missing column 'rlnHelicalTubeID' in `starfile.read` output. "
             "This column must be present when using a "
-            "`RelionHelicalImageReader`."
+            "`RelionHelicalParameterReader`."
         )
