@@ -10,7 +10,7 @@ import starfile
 
 
 def read_and_validate_starfile(filename: str | pathlib.Path) -> dict[str, pd.DataFrame]:
-    """Read a particle detection from a starfile."""
+    """Read a STAR file, safely."""
     # Make sure filename is valid starfile
     _validate_filename(filename)
     # Read starfile
