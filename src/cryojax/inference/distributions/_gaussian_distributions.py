@@ -28,6 +28,7 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
 
     imaging_pipeline: AbstractVar[AbstractImagingPipeline]
     signal_scale_factor: AbstractVar[Float[Array, ""]]
+    signal_offset: AbstractVar[Float[Array, ""]]
 
     is_signal_normalized: AbstractVar[bool]
 
@@ -67,27 +68,26 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
         ]
     ):
         """Render the image formation model."""
-        if self.is_signal_normalized:
-            simulated_image = self.imaging_pipeline.render(
-                get_real=True, get_masked=False
-            )
-            if self.imaging_pipeline.mask is None:
+        simulated_image = self.imaging_pipeline.render(get_real=True, get_masked=False)
+        if self.imaging_pipeline.mask is None:
+            if self.is_signal_normalized:
                 mean, std = jnp.mean(simulated_image), jnp.std(simulated_image)
                 simulated_image = (simulated_image - mean) / std
-            else:
+            simulated_image = (
+                self.signal_scale_factor * simulated_image + self.signal_offset
+            )
+        else:
+            if self.is_signal_normalized:
                 is_signal = self.imaging_pipeline.mask.array == 1.0
                 mean, std = (
                     jnp.mean(simulated_image, where=is_signal),
                     jnp.std(simulated_image, where=is_signal),
                 )
-                simulated_image = self.imaging_pipeline.mask(
-                    self.signal_scale_factor * (simulated_image - mean) / std
-                )
-            return simulated_image if get_real else rfftn(simulated_image)
-        else:
-            return self.signal_scale_factor * self.imaging_pipeline.render(
-                get_real=get_real
+                simulated_image = (simulated_image - mean) / std
+            simulated_image = self.imaging_pipeline.mask(
+                self.signal_scale_factor * simulated_image + self.signal_offset
             )
+        return simulated_image if get_real else rfftn(simulated_image)
 
     @abstractmethod
     def compute_noise(
@@ -121,6 +121,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
     imaging_pipeline: AbstractImagingPipeline
     variance: Float[Array, ""]
     signal_scale_factor: Float[Array, ""]
+    signal_offset: Float[Array, ""]
 
     is_signal_normalized: bool = field(static=True)
 
@@ -129,21 +130,30 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
         imaging_pipeline: AbstractImagingPipeline,
         variance: float | Float[Array, ""] = 1.0,
         signal_scale_factor: float | Float[Array, ""] = 1.0,
+        signal_offset: float | Float[Array, ""] = 0.0,
         is_signal_normalized: bool = False,
     ):
         """**Arguments:**
 
-        - `imaging_pipeline`: The image formation model.
-        - `variance`: The variance of each pixel.
-        - `signal_scale_factor`: A scale factor for the underlying signal simulated from `imaging_pipeline`.
+        - `imaging_pipeline`:
+            The image formation model.
+        - `variance`:
+            The variance of each pixel.
+        - `signal_scale_factor`:
+            A scale factor for the underlying signal simulated
+            from `imaging_pipeline`.
+        - `signal_offset`:
+            An offset for the underlying signal simulated from `imaging_pipeline`.
         - `is_signal_normalized`:
-            Whether or not the signal is normalized before applying the `signal_scale_factor`.
+            Whether or not the signal is normalized before applying the `signal_scale_factor`
+            and `signal_offset`.
             If an `AbstractMask` is given to `imaging_pipeline.mask`, the signal is normalized
             within the region where the mask is equal to `1`.
         """  # noqa: E501
         self.imaging_pipeline = imaging_pipeline
         self.variance = error_if_not_positive(variance)
         self.signal_scale_factor = error_if_not_positive(signal_scale_factor)
+        self.signal_offset = jnp.asarray(signal_offset)
         self.is_signal_normalized = is_signal_normalized
 
     @override
@@ -220,6 +230,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
     imaging_pipeline: AbstractImagingPipeline
     variance_function: FourierOperatorLike
     signal_scale_factor: Float[Array, ""]
+    signal_offset: Float[Array, ""]
 
     is_signal_normalized: bool = field(static=True)
 
@@ -228,22 +239,30 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         imaging_pipeline: AbstractImagingPipeline,
         variance_function: Optional[FourierOperatorLike] = None,
         signal_scale_factor: float | Float[Array, ""] = 1.0,
+        signal_offset: float | Float[Array, ""] = 0.0,
         is_signal_normalized: bool = False,
     ):
         """**Arguments:**
 
-        - `imaging_pipeline`: The image formation model.
-        - `variance_function`: The variance of each fourier mode. By default,
-                               `cryojax.image.operators.Constant(1.0)`.
-        - `signal_scale_factor`: A scale factor for the underlying signal simulated from `imaging_pipeline`.
+        - `imaging_pipeline`:
+            The image formation model.
+        - `variance_function`:
+            The variance of each fourier mode. By default,
+            `cryojax.image.operators.Constant(1.0)`.
+        - `signal_scale_factor`:
+            A scale factor for the underlying signal simulated from `imaging_pipeline`.
+        - `signal_offset`:
+            An offset for the underlying signal simulated from `imaging_pipeline`.
         - `is_signal_normalized`:
-            Whether or not the signal is normalized before applying the `signal_scale_factor`.
+            Whether or not the signal is normalized before applying the `signal_scale_factor`
+            and `signal_offset`.
             If an `AbstractMask` is given to `imaging_pipeline.mask`, the signal is normalized
             within the region where the mask is equal to `1`.
         """  # noqa: E501
         self.imaging_pipeline = imaging_pipeline
         self.variance_function = variance_function or Constant(1.0)
         self.signal_scale_factor = error_if_not_positive(jnp.asarray(signal_scale_factor))
+        self.signal_offset = jnp.asarray(signal_offset)
         self.is_signal_normalized = is_signal_normalized
 
     def compute_noise(
