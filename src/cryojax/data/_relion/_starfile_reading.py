@@ -57,12 +57,22 @@ def _default_make_config_fn(
 class AbstractRelionParticleParameterReader(AbstractParticleParameterReader):
     @property
     @abc.abstractmethod
+    def path_to_relion_project(self) -> pathlib.Path:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
     def starfile_data(self) -> dict[str, pd.DataFrame]:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def path_to_relion_project(self) -> pathlib.Path:
+    def is_loading_envelope_function(self) -> bool:
+        raise NotImplementedError
+
+    @is_loading_envelope_function.setter
+    @abc.abstractmethod
+    def is_loading_envelope_function(self, value: bool):
         raise NotImplementedError
 
     @property
@@ -70,9 +80,9 @@ class AbstractRelionParticleParameterReader(AbstractParticleParameterReader):
     def is_broadcasting_optics_group(self) -> bool:
         raise NotImplementedError
 
-    @property
+    @is_broadcasting_optics_group.setter
     @abc.abstractmethod
-    def is_loading_envelope_function(self) -> bool:
+    def is_broadcasting_optics_group(self, value: bool):
         raise NotImplementedError
 
 
@@ -104,8 +114,7 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
             on the CPU. If `False`, load on the default device.
         -  `is_loading_metadata`:
             If `True`, the resulting `ParticleParameters` object loads
-            the raw metadata from the STAR file. Setting this option to
-            `False` is not supported when passing to a `RelionParticleImageReader`.
+            the raw metadata from the STAR file.
             If this is set to `True`, extra care must be taken to make sure that
             `ParticleParameters` objects can pass through JIT boundaries without
             recompilation.
@@ -180,10 +189,12 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         return len(self.starfile_data["particles"])
 
     @property
+    @override
     def starfile_data(self) -> dict[str, pd.DataFrame]:
         return self._starfile_data
 
     @property
+    @override
     def path_to_relion_project(self) -> pathlib.Path:
         return self._path_to_relion_project
 
@@ -208,12 +219,24 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         self._is_loading_metadata = value
 
     @property
+    @override
+    def is_loading_envelope_function(self) -> bool:
+        return self._is_loading_envelope_function
+
+    @is_loading_envelope_function.setter
+    @override
+    def is_loading_envelope_function(self, value: bool):
+        self._is_loading_envelope_function = value
+
+    @property
+    @override
     def is_broadcasting_optics_group(self) -> bool:
         return self._is_broadcasting_optics_group
 
-    @property
-    def is_loading_envelope_function(self) -> bool:
-        return self._is_loading_envelope_function
+    @is_broadcasting_optics_group.setter
+    @override
+    def is_broadcasting_optics_group(self, value: bool):
+        self._is_broadcasting_optics_group = value
 
 
 class RelionParticleImageReader(AbstractParticleImageReader):
@@ -383,12 +406,24 @@ class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
         self._param_reader._is_loading_metadata = value
 
     @property
+    @override
+    def is_loading_envelope_function(self) -> bool:
+        return self._param_reader._is_loading_envelope_function
+
+    @is_loading_envelope_function.setter
+    @override
+    def is_loading_envelope_function(self, value: bool):
+        self._param_reader._is_loading_envelope_function = value
+
+    @property
+    @override
     def is_broadcasting_optics_group(self) -> bool:
         return self._param_reader._is_broadcasting_optics_group
 
-    @property
-    def is_loading_envelope_function(self) -> bool:
-        return self._param_reader._is_loading_envelope_function
+    @is_broadcasting_optics_group.setter
+    @override
+    def is_broadcasting_optics_group(self, value: bool):
+        self._param_reader._is_broadcasting_optics_group = value
 
 
 def _make_pytrees_from_starfile(
