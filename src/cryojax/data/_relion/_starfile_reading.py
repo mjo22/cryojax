@@ -250,7 +250,7 @@ class RelionParticleImageReader(AbstractParticleImageReader):
         # ... and construct dataframe
         metadata = parameters.metadata
         particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)  # type: ignore
-        # ... this line is necessary for the image reader to work with both the
+        # ... the following line is necessary for the image reader to work with both the
         # helical reader and the regular reader
         particle_index = np.asarray(particle_dataframe_at_index.index, dtype=int)
         # ... then, load stack of images
