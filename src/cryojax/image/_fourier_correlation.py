@@ -8,19 +8,17 @@ import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
 from ._average import compute_binned_radial_average
+import cryojax.coordinates as cc
 
 def shell_correlation(
     shell1: Complex[Array, "y_dim x_dim"],
     shell2: Complex[Array, "y_dim x_dim"]
     ) -> Float:
-
+    pass
 
 def compute_radial_fourier_correlation(
     image_1: Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"],
     image_2: Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"],
-    radial_frequency_grid: (
-        Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
-    ),
     pixel_size: Float[Array, ""] | float = 1.0,
     threshold: Float[Array, ""] | float = 0.5, #default is 0.5 for two 'known' volumes, change for refinement to 0.143
                                                #todo: add van heel criterion.
@@ -36,8 +34,6 @@ def compute_radial_fourier_correlation(
         An image in real or fourier space.
     `image_2`:
         An image in real or fourier space.
-    `radial_frequency_grid`:
-        The radial frequency coordinate system of `images 1 and 2. These must match.`.
     `pixel_size`:
         The pixel size of `the images`.
     `minimum_frequency`:
@@ -64,31 +60,49 @@ def compute_radial_fourier_correlation(
         fourier_image_2 = jnp.fft.fftshift(jnp.fft.fftn(image_2))
 
 
+    grid = cc.make_frequency_grid(jnp.array(image_1.shape), pixel_size,get_rfftfreqs=False)
+
     correlation_voxel_map = (fourier_image_1 * jnp.conjugate(fourier_image_2))
-    correlation_voxel_map = correlation_voxel_map 
+    normalisation_voxel_map = jnp.sqrt(jnp.abs(fourier_image_1)**2 * jnp.abs(fourier_image_2)**2)
 
-    abs1 = jnp.abs(fourier_image_1)
-    abs2 = jnp.abs(fourier_image_2)
 
-    #if radial_frequency_grid is None:
-    #    radial_frequency_grid = jnp.fftshift(jnp.fftfreq(map_1))
+    frequency_grid = cc.make_frequency_grid(jnp.array(image_1.shape), pixel_size,get_rfftfreqs=False)
+    radial_frequency_grid = jnp.fft.ifftshift(jnp.linalg.norm(frequency_grid, axis=-1))
+
+
 
     # Compute bins
     q_min = 0.0 if minimum_frequency is None else minimum_frequency
     q_max = (
-        jnp.sqrt(2) / (pixel_size * 2.0)
+        # set maximum at nyquist
+        1 / (pixel_size * 2.0)
         if maximum_frequency is None
         else maximum_frequency
     )
-    q_step = 1.0 / (pixel_size * max(*normalisation.shape))
+    
+    q_step = 1.0 / (pixel_size * max(*fourier_image_1.shape))
     frequency_bins = jnp.linspace(q_min, q_max, 1 + int((q_max - q_min) / q_step))
 
      
-
     # Compute radially averaged FSC as a 1D profile
         
-    #FSC_curve = compute_binned_radial_average(
-    #    correlation_voxel_map , radial_frequency_grid, frequency_bins
-    #)
-    frequency_threshold = [FSC_curve < threshold][0]
-    return FSC_curve, frequency_bins, frequency_threshold
+    correlation_curve = compute_binned_radial_average(
+        correlation_voxel_map , radial_frequency_grid, frequency_bins
+    )
+
+    normalisation_curve = compute_binned_radial_average(
+        normalisation_voxel_map , radial_frequency_grid, frequency_bins
+    )
+
+
+
+    FSC_curve = jnp.real(correlation_curve / normalisation_curve)
+    #remove nans and infinities which could happen if there are 0s.
+    FSC_curve = jnp.where(jnp.isnan(FSC_curve) | jnp.isinf(FSC_curve), 0.0, FSC_curve)
+
+    # return the index imeditaely before the threshold was crossed
+    # this appears to match the cryosparc conventions.
+    threshold_crossing_index = jnp.argmax(FSC_curve <= threshold)
+    frequency_threshold = frequency_bins[jnp.maximum(threshold_crossing_index - 1, 0)]       
+
+    return FSC_curve, frequency_threshold, frequency_bins
