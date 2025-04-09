@@ -3,10 +3,10 @@
 from typing import overload
 
 import jax.numpy as jnp
-from jaxtyping import Array, Inexact
+from jaxtyping import Array, Complex, Float, Inexact
 
 from ._edges import crop_to_shape
-from ._fft import fftn, ifftn
+from ._fft import fftn, ifftn, rfftn
 
 
 @overload
@@ -43,8 +43,11 @@ def downsample_with_fourier_cropping(
 
     **Returns:**
 
-    The downsampled `image_or_volume`, with shape reduced by a factor of
-    `downsample_factor`.
+    The downsampled `image_or_volume`, at the new real-space shape
+    `downsampled_shape`. If `get_real = False`, return
+    the downsampled array in fourier space, with the zero frequency
+    component in the corner. For real signals, hermitian symmetry is
+    assumed.
     """
     downsampling_factor = float(downsampling_factor)
     if downsampling_factor < 1.0:
@@ -74,14 +77,7 @@ def downsample_with_fourier_cropping(
             f"Got an array with number of dimensions {image_or_volume.ndim}."
         )
 
-    if get_real:
-        return (
-            downsampled_array.real
-            if jnp.issubdtype(image_or_volume.dtype, jnp.floating)
-            else downsampled_array
-        )
-    else:
-        return downsampled_array
+    return downsampled_array
 
 
 @overload
@@ -107,6 +103,12 @@ def downsample_to_shape_with_fourier_cropping(
 ) -> Inexact[Array, "_ _"] | Inexact[Array, "_ _ _"]:
     """Downsample an array to a specified shape using fourier cropping.
 
+    For real signals, the Hartley Transform is used to downsample the signal.
+    For complex signals, the Fourier Transform is used to downsample the signal.
+
+    The real case is based on the `downsample_transform` function in cryoDRGN
+    https://github.com/ml-struct-bio/cryodrgn/blob/4ba75502d4dd1d0e5be3ecabf4a005c652edf4b5/cryodrgn/commands/downsample.py#L154
+
     **Arguments:**
 
     - `image_or_volume`: The image or volume array to downsample.
@@ -119,14 +121,54 @@ def downsample_to_shape_with_fourier_cropping(
 
     The downsampled `image_or_volume`, at the new real-space shape
     `downsampled_shape`. If `get_real = False`, return
-    the downsampled array in fourier space assuming hermitian symmetry,
-    with the zero frequency component in the corner.
+    the downsampled array in fourier space, with the zero frequency
+    component in the corner. For real signals, hermitian symmetry is
+    assumed.
     """
+    if jnp.iscomplexobj(image_or_volume):
+        return _downsample_complex_signal_to_shape(
+            image_or_volume, downsampled_shape, get_real=get_real
+        )
+    else:
+        return _downsample_real_signal_to_shape(
+            image_or_volume, downsampled_shape, get_real=get_real
+        )
+
+
+def _downsample_real_signal_to_shape(
+    image_or_volume: Float[Array, "_ _"] | Float[Array, "_ _ _"],
+    downsampled_shape: tuple[int, int] | tuple[int, int, int],
+    get_real: bool = True,
+) -> Inexact[Array, "_ _"] | Inexact[Array, "_ _ _"]:
+    # Forward Hartley Transform
+    hartley_array = jnp.fft.fftshift(fftn(image_or_volume))
+    hartley_array = hartley_array.real - hartley_array.imag
+
+    # Crop to the desired shape
+    ds_image_or_volume = crop_to_shape(hartley_array, downsampled_shape)
+
+    # Inverse Hartley Transform
+    ds_image_or_volume = jnp.fft.fftshift(fftn(ds_image_or_volume))
+    ds_image_or_volume /= ds_image_or_volume.size
+    ds_image_or_volume = ds_image_or_volume.real - ds_image_or_volume.imag
+
+    if get_real:
+        return ds_image_or_volume
+    else:
+        return rfftn(ds_image_or_volume)
+
+
+def _downsample_complex_signal_to_shape(
+    image_or_volume: Complex[Array, "_ _"] | Complex[Array, "_ _ _"],
+    downsampled_shape: tuple[int, int] | tuple[int, int, int],
+    get_real: bool = True,
+) -> Complex[Array, "_ _"] | Complex[Array, "_ _ _"]:
     fourier_array = jnp.fft.fftshift(fftn(image_or_volume))
+
+    # Crop to the desired shape
     cropped_fourier_array = crop_to_shape(fourier_array, downsampled_shape)
+
     if get_real:
         return ifftn(jnp.fft.ifftshift(cropped_fourier_array))
     else:
-        return jnp.fft.ifftshift(cropped_fourier_array)[
-            ..., : downsampled_shape[-1] // 2 + 1
-        ]
+        return jnp.fft.ifftshift(cropped_fourier_array)
