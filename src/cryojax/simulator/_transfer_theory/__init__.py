@@ -1,11 +1,9 @@
-from .base_transfer_theory import (
+from .transfer_function import (
     AbstractTransferFunction as AbstractTransferFunction,
-)
-from .contrast_transfer_theory import (
     ContrastTransferFunction as ContrastTransferFunction,
-    ContrastTransferTheory as ContrastTransferTheory,
+    IdealTransferFunction as IdealTransferFunction,
 )
-from .wave_transfer_theory import (
-    WaveTransferFunction as WaveTransferFunction,
+from .transfer_theory import (
+    ContrastTransferTheory as ContrastTransferTheory,
     WaveTransferTheory as WaveTransferTheory,
 )
