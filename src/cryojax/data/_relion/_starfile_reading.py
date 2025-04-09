@@ -23,8 +23,9 @@ from ...simulator import (
 from .._particle_data import (
     AbstractParticleParameterReader,
     AbstractParticleStackReader,
+    ParticleStack,
 )
-from ._starfile_pytrees import RelionParticleParameters, RelionParticleStack
+from ._starfile_pytrees import RelionParticleParameters
 
 
 RELION_REQUIRED_OPTICS_KEYS = [
@@ -221,7 +222,7 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         self._broadcasts_optics_group = value
 
 
-class RelionParticleStackReader(AbstractParticleStackReader[RelionParticleStack]):
+class RelionParticleStackReader(AbstractParticleStackReader):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
@@ -237,7 +238,7 @@ class RelionParticleStackReader(AbstractParticleStackReader[RelionParticleStack]
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
-    ) -> RelionParticleStack:
+    ) -> ParticleStack:
         # ... make sure particle metadata is being loaded
         loads_metadata = self.param_reader.loads_metadata
         self.param_reader.loads_metadata = True
@@ -265,7 +266,7 @@ class RelionParticleStackReader(AbstractParticleStackReader[RelionParticleStack]
                 parameters.instrument_config, parameters.pose, parameters.transfer_theory
             )
 
-        return RelionParticleStack(parameters, images)
+        return ParticleStack(parameters, images)
 
     @override
     def __len__(self) -> int:

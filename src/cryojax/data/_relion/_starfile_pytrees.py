@@ -1,10 +1,7 @@
 from typing import Optional
 
-import jax.numpy as jnp
-from jaxtyping import Array, Float
-
 from ...simulator import ContrastTransferTheory, EulerAnglePose, InstrumentConfig
-from .._particle_data import AbstractParticleParameters, AbstractParticleStack
+from .._particle_data import AbstractParticleParameters
 
 
 class RelionParticleParameters(AbstractParticleParameters):
@@ -43,32 +40,3 @@ class RelionParticleParameters(AbstractParticleParameters):
         self.pose = pose
         # Optionally, store the raw metadata
         self.metadata = metadata
-
-
-class RelionParticleStack(AbstractParticleStack):
-    """Images from a particle stack in RELION, along with information
-    of their parameters.
-    """
-
-    parameters: RelionParticleParameters
-    images: Float[Array, "... y_dim x_dim"]
-
-    def __init__(
-        self,
-        parameters: RelionParticleParameters,
-        images: Float[Array, "... y_dim x_dim"],
-    ):
-        """**Arguments:**
-
-        - `parameters`:
-            The image parameters, represented as
-            an `RelionParticleParameters` object.
-        - `images`:
-            The stack of images. The shape of this array
-            is a leading batch dimension followed by the shape
-            of an image in the stack.
-        """
-        # Set the image parameters
-        self.parameters = parameters
-        # Set the image stack
-        self.images = jnp.asarray(images)

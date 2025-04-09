@@ -1,7 +1,8 @@
 import abc
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 
 import equinox as eqx
+import jax.numpy as jnp
 from jaxtyping import Array, Float
 
 from ..simulator import (
@@ -22,16 +23,34 @@ class AbstractParticleParameters(eqx.Module):
     pose: eqx.AbstractVar[AbstractPose]
     transfer_theory: eqx.AbstractVar[AbstractTransferTheory]
 
-    metadata: eqx.AbstractVar[Optional[dict]]
 
-
-class AbstractParticleStack(eqx.Module):
+class ParticleStack(eqx.Module, strict=True):
     """Images from a particle stack, along with information
     of their parameters.
     """
 
-    parameters: eqx.AbstractVar[AbstractParticleParameters]
-    images: eqx.AbstractVar[Float[Array, "... y_dim x_dim"]]
+    parameters: AbstractParticleParameters
+    images: Float[Array, "... y_dim x_dim"]
+
+    def __init__(
+        self,
+        parameters: AbstractParticleParameters,
+        images: Float[Array, "... y_dim x_dim"],
+    ):
+        """**Arguments:**
+
+        - `parameters`:
+            The image parameters, represented as
+            an `AbstractParticleParameters` object.
+        - `images`:
+            The stack of images. The shape of this array
+            is a leading batch dimension followed by the shape
+            of an image in the stack.
+        """
+        # Set the image parameters
+        self.parameters = parameters
+        # Set the image stack
+        self.images = jnp.asarray(images)
 
 
 class AbstractParticleParameterReader(AbstractDataset[T], Generic[T]):
@@ -46,7 +65,7 @@ class AbstractParticleParameterReader(AbstractDataset[T], Generic[T]):
         raise NotImplementedError
 
 
-class AbstractParticleStackReader(AbstractDataset[T], Generic[T]):
+class AbstractParticleStackReader(AbstractDataset[ParticleStack]):
     @property
     @abc.abstractmethod
     def param_reader(self) -> AbstractParticleParameterReader:

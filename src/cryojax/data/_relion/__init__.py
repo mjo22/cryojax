@@ -1,6 +1,5 @@
 from ._starfile_pytrees import (
     RelionParticleParameters as RelionParticleParameters,
-    RelionParticleStack as RelionParticleStack,
 )
 from ._starfile_reading import (
     RelionHelicalParameterReader as RelionHelicalParameterReader,
