@@ -30,7 +30,7 @@ class AbstractVoxelPotential(AbstractPotentialRepresentation, strict=True):
     """Abstract interface for a voxel-based scattering potential representation."""
 
     voxel_size: AbstractVar[Float[Array, ""]]
-    is_real: AbstractClassVar[bool]
+    is_real_space: AbstractClassVar[bool]
 
     @property
     @abstractmethod
@@ -149,7 +149,7 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
     frequency_slice_in_pixels: Float[Array, "1 dim dim 3"]
     voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
-    is_real: ClassVar[bool] = False
+    is_real_space: ClassVar[bool] = False
 
     @override
     def __init__(
@@ -183,7 +183,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     frequency_slice_in_pixels: Float[Array, "1 dim dim 3"]
     voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
-    is_real: ClassVar[bool] = False
+    is_real_space: ClassVar[bool] = False
 
     def __init__(
         self,
@@ -231,7 +231,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     coordinate_grid_in_pixels: Float[Array, "dim dim dim 3"]
     voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
-    is_real: ClassVar[bool] = True
+    is_real_space: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -327,7 +327,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     coordinate_list_in_pixels: Float[Array, "size 3"]
     voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
-    is_real: ClassVar[bool] = True
+    is_real_space: ClassVar[bool] = True
 
     def __init__(
         self,

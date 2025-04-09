@@ -34,7 +34,7 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
 
     @override
     def sample(
-        self, rng_key: PRNGKeyArray, *, get_real: bool = True
+        self, rng_key: PRNGKeyArray, *, outputs_real_space: bool = True
     ) -> (
         Float[
             Array,
@@ -48,13 +48,13 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
         ]
     ):
         """Sample from the gaussian noise model."""
-        return self.compute_signal(get_real=get_real) + self.compute_noise(
-            rng_key, get_real=get_real
-        )
+        return self.compute_signal(
+            outputs_real_space=outputs_real_space
+        ) + self.compute_noise(rng_key, outputs_real_space=outputs_real_space)
 
     @override
     def compute_signal(
-        self, *, get_real: bool = True
+        self, *, outputs_real_space: bool = True
     ) -> (
         Float[
             Array,
@@ -68,7 +68,9 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
         ]
     ):
         """Render the image formation model."""
-        simulated_image = self.imaging_pipeline.render(get_real=True, get_masked=False)
+        simulated_image = self.imaging_pipeline.render(
+            outputs_real_space=True, applies_mask=False
+        )
         if self.imaging_pipeline.mask is None:
             if self.normalizes_signal:
                 mean, std = jnp.mean(simulated_image), jnp.std(simulated_image)
@@ -87,11 +89,11 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
             simulated_image = self.imaging_pipeline.mask(
                 self.signal_scale_factor * simulated_image + self.signal_offset
             )
-        return simulated_image if get_real else rfftn(simulated_image)
+        return simulated_image if outputs_real_space else rfftn(simulated_image)
 
     @abstractmethod
     def compute_noise(
-        self, rng_key: PRNGKeyArray, *, get_real: bool = True
+        self, rng_key: PRNGKeyArray, *, outputs_real_space: bool = True
     ) -> (
         Float[
             Array,
@@ -158,7 +160,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
 
     @override
     def compute_noise(
-        self, rng_key: PRNGKeyArray, *, get_real: bool = True
+        self, rng_key: PRNGKeyArray, *, outputs_real_space: bool = True
     ) -> (
         Float[
             Array,
@@ -183,7 +185,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
             .at[0, 0]
             .set(0.0)
             .astype(complex),
-            get_real=get_real,
+            outputs_real_space=outputs_real_space,
         )
 
         return noise
@@ -205,7 +207,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
         """
         variance = self.variance
         # Create simulated data
-        simulated = self.compute_signal(get_real=True)
+        simulated = self.compute_signal(outputs_real_space=True)
         # Compute residuals
         residuals = simulated - observed
         # Compute standard normal random variables
@@ -266,7 +268,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         self.normalizes_signal = normalizes_signal
 
     def compute_noise(
-        self, rng_key: PRNGKeyArray, *, get_real: bool = True
+        self, rng_key: PRNGKeyArray, *, outputs_real_space: bool = True
     ) -> (
         Float[
             Array,
@@ -291,7 +293,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
             .at[0, 0]
             .set(0.0)
             .astype(complex),
-            get_real=get_real,
+            outputs_real_space=outputs_real_space,
         )
 
         return noise
@@ -317,7 +319,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         # Compute the variance and scale up to be independent of the number of pixels
         variance = n_pixels * self.variance_function(freqs)
         # Create simulated data
-        simulated = self.compute_signal(get_real=False)
+        simulated = self.compute_signal(outputs_real_space=False)
         # Compute residuals
         residuals = simulated - observed
         # Compute standard normal random variables

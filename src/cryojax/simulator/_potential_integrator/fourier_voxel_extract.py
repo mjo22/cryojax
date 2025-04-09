@@ -120,7 +120,7 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
                 )
             )
         return self._convert_raw_image_to_integrated_potential(
-            fourier_projection, potential, instrument_config, is_hermitian_symmetric=True
+            fourier_projection, potential, instrument_config, input_is_rfft=True
         )
 
     def extract_fourier_slice_from_spline_coefficients(
@@ -300,7 +300,7 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
             ewald_sphere_surface,
             potential,
             instrument_config,
-            is_hermitian_symmetric=False,
+            input_is_rfft=False,
         )
 
     def extract_ewald_sphere_from_spline_coefficients(

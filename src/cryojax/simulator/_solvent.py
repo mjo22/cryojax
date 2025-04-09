@@ -24,7 +24,7 @@ class AbstractIce(Module, strict=True):
         self,
         key: PRNGKeyArray,
         instrument_config: InstrumentConfig,
-        get_rfft: bool = True,
+        outputs_rfft: bool = True,
     ) -> (
         Complex[
             Array,
@@ -53,7 +53,7 @@ class AbstractIce(Module, strict=True):
             ]
         ),
         instrument_config: InstrumentConfig,
-        is_rfft: bool = True,
+        input_is_rfft: bool = True,
     ) -> (
         Complex[
             Array,
@@ -67,7 +67,7 @@ class AbstractIce(Module, strict=True):
         """Compute the combined spectrum of the ice and the specimen."""
         # Sample the realization of the phase due to the ice.
         ice_spectrum_at_exit_plane = self.sample_ice_spectrum(
-            key, instrument_config, get_rfft=is_rfft
+            key, instrument_config, outputs_rfft=input_is_rfft
         )
 
         return object_spectrum_at_exit_plane + ice_spectrum_at_exit_plane
@@ -95,7 +95,7 @@ class GaussianIce(AbstractIce, strict=True):
         self,
         key: PRNGKeyArray,
         instrument_config: InstrumentConfig,
-        get_rfft: bool = True,
+        outputs_rfft: bool = True,
     ) -> (
         Complex[
             Array,
@@ -122,7 +122,7 @@ class GaussianIce(AbstractIce, strict=True):
             instrument_config.wavelength_in_angstroms,
         )
 
-        if get_rfft:
+        if outputs_rfft:
             return ice_spectrum_at_exit_plane
         else:
             return fftn(

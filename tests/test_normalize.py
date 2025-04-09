@@ -10,11 +10,14 @@ jax.config.update("jax_enable_x64", True)
 
 def test_fourier_vs_real_normalized_image(noisy_model):
     key = jax.random.PRNGKey(1234)
-    im1 = normalize_image(noisy_model.render(key, get_real=True), is_real=True)
+    im1 = normalize_image(
+        noisy_model.render(key, outputs_real_space=True), input_is_real_space=True
+    )
     im2 = irfftn(
         normalize_image(
-            noisy_model.render(get_real=False),
-            is_real=False,
+            noisy_model.render(outputs_real_space=False),
+            input_is_real_space=False,
+            input_is_rfft=True,
             shape_in_real_space=im1.shape,
         ),
         s=noisy_model.instrument_config.shape,

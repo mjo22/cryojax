@@ -76,7 +76,7 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
                             rng_key,
                             object_spectrum_at_exit_plane,
                             instrument_config,
-                            is_rfft=True,
+                            input_is_rfft=True,
                         )
                     )
 
@@ -100,7 +100,7 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
                             rng_key,
                             object_spectrum_at_exit_plane,
                             instrument_config,
-                            is_rfft=False,
+                            input_is_rfft=False,
                         )
                     )
 

@@ -104,7 +104,7 @@ instrument_config = cxs.InstrumentConfig(shape=(320, 320), pixel_size=voxel_size
 # ... now the imaging pipeline
 imaging_pipeline = cxs.ContrastImagingPipeline(instrument_config, scattering_theory)
 # ... finally, simulate an image and return in real-space!
-image_without_noise = imaging_pipeline.render(get_real=True)
+image_without_noise = imaging_pipeline.render(outputs_real_space=True)
 ```
 
 `cryojax` also defines a library of distributions from which to sample the data. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentGaussianFourierModes` distribution and either sample from it or compute its log-likelihood.

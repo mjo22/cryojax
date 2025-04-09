@@ -28,10 +28,10 @@ _VALID_URLS.discard("")
 def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
     center: bool = False,
-    get_b_factors: Literal[False] = False,
+    loads_b_factors: Literal[False] = False,
     *,
     select: str = "all",
-    standardize_names: bool = True,
+    standardizes_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> tuple[Float[np.ndarray, "n_atoms 3"], Int[np.ndarray, " n_atoms"]]: ...
 
@@ -40,10 +40,10 @@ def read_atoms_from_pdb(
 def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
     center: bool = False,
-    get_b_factors: Literal[True] = True,
+    loads_b_factors: Literal[True] = True,
     *,
     select: str = "all",
-    standardize_names: bool = True,
+    standardizes_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> tuple[
     Float[np.ndarray, "n_atoms 3"],
@@ -56,10 +56,10 @@ def read_atoms_from_pdb(
 def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
     center: bool = False,
-    get_b_factors: bool = False,
+    loads_b_factors: bool = False,
     *,
     select: str,
-    standardize_names: bool = True,
+    standardizes_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> (
     tuple[Float[np.ndarray, "n_atoms 3"], Int[np.ndarray, " n_atoms"]]
@@ -74,10 +74,10 @@ def read_atoms_from_pdb(
 def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
     center: bool = False,
-    get_b_factors: bool = False,
+    loads_b_factors: bool = False,
     *,
     select: str = "all",
-    standardize_names: bool = True,
+    standardizes_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> (
     tuple[Float[np.ndarray, "n_atoms 3"], Int[np.ndarray, " n_atoms"]]
@@ -98,7 +98,7 @@ def read_atoms_from_pdb(
     - `center`:
         If `True`, center the model so that its center of mass coincides
         with the origin.
-    - `get_b_factors`:
+    - `loads_b_factors`:
         If `True`, return the B-factors of the atoms.
     - `select`:
         A selection string in `mdtraj`'s format. See `mdtraj` for documentation.
@@ -126,7 +126,7 @@ def read_atoms_from_pdb(
         `atom_element_numbers` will contain all atoms from all
         trajectories.
     """
-    with AtomicModelReader(filename_or_url, standardize_names, topology) as pdb_reader:
+    with AtomicModelReader(filename_or_url, standardizes_names, topology) as pdb_reader:
         # Read attributes
         topology = pdb_reader.topology
         atom_positions, atom_identities, atom_masses = (
@@ -144,7 +144,7 @@ def read_atoms_from_pdb(
         atom_masses = atom_masses[atom_indices]
         atom_positions = _center_atom_coordinates(atom_positions, atom_masses)
 
-    if get_b_factors:
+    if loads_b_factors:
         b_factors = b_factors[atom_indices]
         return atom_positions, atom_identities, b_factors
     else:
@@ -182,14 +182,14 @@ class AtomicModelReader:
     def __init__(
         self,
         filename_or_url: str | pathlib.Path,
-        standardize_names: bool = True,
+        standardizes_names: bool = True,
         topology: Optional[Topology] = None,
     ):
         """**Arguments:**
 
         - `filename_or_url`:
             The name of the PDB file to open. Can be a URL.
-        - `standardize_names`:
+        - `standardizes_names`:
             If `True`, non-standard atom names and residue names are standardized to
             conform with the current PDB format version. If `False`, this step is skipped.
         - `topology`:
@@ -216,7 +216,7 @@ class AtomicModelReader:
         properties_dict = _load_pdb_reader_properties_dict(
             pdb,
             topology,
-            standardize_names,
+            standardizes_names,
         )
         for k, v in properties_dict.items():
             setattr(self, k, v)
@@ -246,7 +246,7 @@ class AtomicModelReader:
 def _load_pdb_reader_properties_dict(
     pdb,
     topology: Optional[Topology],
-    standardize_names,
+    standardizes_names,
 ):
     atom_positions, b_factors, atom_identities, atom_masses = [], [], [], []
     # load all of the positions (from every model)
@@ -265,7 +265,7 @@ def _load_pdb_reader_properties_dict(
         topology = _make_topology(
             pdb,
             atom_positions,
-            standardize_names,
+            standardizes_names,
         )
 
     # Gather properties and return
@@ -286,10 +286,10 @@ def _load_pdb_reader_properties_dict(
 def _make_topology(
     pdb,
     atom_positions,
-    standardize_names,
+    standardizes_names,
 ):
     topology = Topology()
-    if standardize_names:
+    if standardizes_names:
         residue_name_replacements, atom_name_replacements = (
             _load_name_replacement_tables()
         )
@@ -301,12 +301,12 @@ def _make_topology(
             c = topology.add_chain(chain.chain_id)
             for residue in chain.iter_residues():
                 residue_name = residue.get_name()
-                if residue_name in residue_name_replacements and standardize_names:
+                if residue_name in residue_name_replacements and standardizes_names:
                     residue_name = residue_name_replacements[residue_name]
                 r = topology.add_residue(
                     residue_name, c, residue.number, residue.segment_id
                 )
-                if residue_name in atom_name_replacements and standardize_names:
+                if residue_name in atom_name_replacements and standardizes_names:
                     atom_replacements = atom_name_replacements[residue_name]
                 else:
                     atom_replacements = {}

@@ -119,7 +119,7 @@ class GaussianMixtureProjection(
             fourier_projection = downsample_to_shape_with_fourier_cropping(
                 projection * (n_pixels / upsampled_n_pixels),
                 downsampled_shape=instrument_config.padded_shape,
-                get_real=False,
+                outputs_real_space=False,
             )
         else:
             fourier_projection = rfftn(projection)
