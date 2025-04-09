@@ -162,12 +162,8 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         else:
             # Compute the "complex CTF", correcting for the amplitude contrast
             # and additional phase shift in the zero mode
-            return jnp.exp(
-                -1.0j
-                * aberration_phase_shifts.at[0, 0].add(
-                    phase_shift + amplitude_contrast_phase_shift
-                )
-            )
+            # TODO: how to include phase shift and amplitude contrast ratio?
+            return jnp.exp(-1.0j * aberration_phase_shifts)
 
 
 class IdealTransferFunction(AbstractTransferFunction, strict=True):
