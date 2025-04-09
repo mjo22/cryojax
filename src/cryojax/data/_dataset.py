@@ -3,8 +3,6 @@
 import abc
 from typing import Generic, TypeVar
 
-import jax
-
 
 T = TypeVar("T")
 
@@ -57,14 +55,4 @@ class AbstractDataset(abc.ABC, Generic[T]):
 
     @abc.abstractmethod
     def __len__(self) -> int:
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def device(self) -> jax.Device | None:
-        raise NotImplementedError
-
-    @device.setter
-    @abc.abstractmethod
-    def device(self, value: jax.Device | None):
         raise NotImplementedError

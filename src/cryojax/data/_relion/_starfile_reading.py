@@ -2,11 +2,10 @@
 
 import abc
 import pathlib
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 from typing_extensions import override
 
 import equinox as eqx
-import jax
 import jax.numpy as jnp
 import mrcfile
 import numpy as np
@@ -100,7 +99,6 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         is_metadata_loaded: bool = False,
         is_optics_group_broadcasted: bool = True,
         is_envelope_function_loaded: bool = False,
-        device: Optional[jax.Device] = None,
         make_config_fn: Callable[
             [tuple[int, int], Float[Array, "..."], Float[Array, "..."]],
             InstrumentConfig,
@@ -123,9 +121,6 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         - `is_envelope_function_loaded`:
             If `True`, read in the parameters of the CTF envelope function, i.e.
             "rlnCtfScalefactor" and "rlnCtfBfactor".
-        - `device`:
-            The device on which to load JAX arrays for parameters. For example,
-            for the CPU set `device = jax.devices("cpu")[0]`.
         - `make_config_fn`:
             A function used for `InstrumentConfig` initialization that returns
             an `InstrumentConfig`. This is used to customize the metadata of the
@@ -143,7 +138,6 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         self._is_metadata_loaded = is_metadata_loaded
         self._is_optics_group_broadcasted = is_optics_group_broadcasted
         self._is_envelope_function_loaded = is_envelope_function_loaded
-        self._device = device
 
     @override
     def __getitem__(
@@ -157,13 +151,10 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         particle_dataframe_at_index = particle_dataframe.iloc[index]
         # ... read optics data
         optics_group = self.starfile_data["optics"].iloc[0]
-        # Load the image stack and STAR file parameters. First, get the device
-        # on which to load arrays
-        # ... load image parameters into cryoJAX objects
+        # Load the image stack and STAR file parameters
         instrument_config, transfer_theory, pose = _make_pytrees_from_starfile(
             particle_dataframe_at_index,
             optics_group,
-            self.device,
             self.is_optics_group_broadcasted,
             self.is_envelope_function_loaded,
             self._make_config_fn,
@@ -197,16 +188,6 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
     @override
     def path_to_relion_project(self) -> pathlib.Path:
         return self._path_to_relion_project
-
-    @property
-    @override
-    def device(self) -> jax.Device | None:
-        return self._device
-
-    @device.setter
-    @override
-    def device(self, value: jax.Device | None):
-        self._device = value
 
     @property
     @override
@@ -244,22 +225,13 @@ class RelionParticleStackReader(AbstractParticleStackReader):
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
 
-    def __init__(
-        self,
-        param_reader: AbstractRelionParticleParameterReader,
-        *,
-        device: Optional[jax.Device] = None,
-    ):
+    def __init__(self, param_reader: AbstractRelionParticleParameterReader):
         """**Arguments:**
 
         - `param_reader`:
             The `RelionParticleParameterReader`.
-        - `device`:
-            The device on which to load JAX arrays for images. For example, for the CPU
-            set `device = jax.devices("cpu")[0]`.
         """
         self._param_reader = param_reader
-        self._device = device
 
     @override
     def __getitem__(
@@ -280,7 +252,6 @@ class RelionParticleStackReader(AbstractParticleStackReader):
         images = _get_image_stack_from_mrc(
             particle_index,
             particle_dataframe_at_index,
-            self.device,
             self.param_reader.path_to_relion_project,
         )
         if parameters.pose.offset_x_in_angstroms.ndim == 0:
@@ -302,16 +273,6 @@ class RelionParticleStackReader(AbstractParticleStackReader):
     @property
     def param_reader(self) -> AbstractRelionParticleParameterReader:
         return self._param_reader
-
-    @property
-    @override
-    def device(self) -> jax.Device | None:
-        return self._device
-
-    @device.setter
-    @override
-    def device(self, value: jax.Device | None):
-        self._device = value
 
 
 class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
@@ -386,16 +347,6 @@ class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
 
     @property
     @override
-    def device(self) -> jax.Device | None:
-        return self._param_reader._device
-
-    @device.setter
-    @override
-    def device(self, value: jax.Device | None):
-        self._param_reader._device = value
-
-    @property
-    @override
     def is_metadata_loaded(self) -> bool:
         return self._param_reader._is_metadata_loaded
 
@@ -428,31 +379,26 @@ class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
 def _make_pytrees_from_starfile(
     particle_blocks,
     optics_group,
-    device,
     is_optics_group_broadcasted,
     is_envelope_function_loaded,
     make_config_fn,
 ) -> tuple[InstrumentConfig, ContrastTransferTheory, EulerAnglePose]:
     defocus_in_angstroms = (
-        jnp.asarray(particle_blocks["rlnDefocusU"], device=device)
-        + jnp.asarray(particle_blocks["rlnDefocusV"], device=device)
+        jnp.asarray(particle_blocks["rlnDefocusU"])
+        + jnp.asarray(particle_blocks["rlnDefocusV"])
     ) / 2
-    astigmatism_in_angstroms = jnp.asarray(
-        particle_blocks["rlnDefocusU"], device=device
-    ) - jnp.asarray(particle_blocks["rlnDefocusV"], device=device)
-    astigmatism_angle = jnp.asarray(particle_blocks["rlnDefocusAngle"], device=device)
+    astigmatism_in_angstroms = jnp.asarray(particle_blocks["rlnDefocusU"]) - jnp.asarray(
+        particle_blocks["rlnDefocusV"]
+    )
+    astigmatism_angle = jnp.asarray(particle_blocks["rlnDefocusAngle"])
     phase_shift = jnp.asarray(particle_blocks["rlnPhaseShift"])
     # ... optics group data
-    image_size = jnp.asarray(optics_group["rlnImageSize"], device=device)
-    pixel_size = jnp.asarray(optics_group["rlnImagePixelSize"], device=device)
+    image_size = jnp.asarray(optics_group["rlnImageSize"])
+    pixel_size = jnp.asarray(optics_group["rlnImagePixelSize"])
     voltage_in_kilovolts = float(optics_group["rlnVoltage"])  # type: ignore
-    spherical_aberration_in_mm = jnp.asarray(
-        optics_group["rlnSphericalAberration"], device=device
-    )
-    amplitude_contrast_ratio = jnp.asarray(
-        optics_group["rlnAmplitudeContrast"], device=device
-    )
-    voltage_in_kilovolts = jnp.asarray(voltage_in_kilovolts, device=device)
+    spherical_aberration_in_mm = jnp.asarray(optics_group["rlnSphericalAberration"])
+    amplitude_contrast_ratio = jnp.asarray(optics_group["rlnAmplitudeContrast"])
+    voltage_in_kilovolts = jnp.asarray(voltage_in_kilovolts)
 
     # ... create cryojax objects. First, the InstrumentConfig
     image_shape = (int(image_size), int(image_size))
@@ -477,12 +423,12 @@ def _make_pytrees_from_starfile(
     if is_envelope_function_loaded:
         b_factor, scale_factor = (
             (
-                jnp.asarray(particle_blocks["rlnCtfBfactor"], device=device)
+                jnp.asarray(particle_blocks["rlnCtfBfactor"])
                 if "rlnCtfBfactor" in particle_blocks.keys()
                 else jnp.asarray(0.0)
             ),
             (
-                jnp.asarray(particle_blocks["rlnCtfScalefactor"], device=device)
+                jnp.asarray(particle_blocks["rlnCtfScalefactor"])
                 if "rlnCtfScalefactor" in particle_blocks.keys()
                 else jnp.asarray(1.0)
             ),
@@ -570,12 +516,7 @@ def _make_pytrees_from_starfile(
     pose = eqx.tree_at(
         lambda p: tuple([getattr(p, name) for name in pose_parameter_names]),
         pose,
-        tuple(
-            [
-                jnp.asarray(maybe_make_full(value), device=device)
-                for value in pose_parameter_values
-            ]
-        ),
+        tuple([jnp.asarray(maybe_make_full(value)) for value in pose_parameter_values]),
     )
 
     return instrument_config, transfer_theory, pose
@@ -638,7 +579,6 @@ def _make_relion_envelope(amp, b):
 def _get_image_stack_from_mrc(
     index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"],
     particle_dataframe,
-    device,
     path_to_relion_project,
 ) -> Float[Array, "... y_dim x_dim"]:
     # Load particle image stack rlnImageName
@@ -710,7 +650,7 @@ def _get_image_stack_from_mrc(
             f"`RelionParticleStackReader` index equal to {index}."
         )
 
-    return jnp.asarray(image_stack, device=device)
+    return jnp.asarray(image_stack)
 
 
 def _get_particle_indices_at_filament_index(
