@@ -11,7 +11,7 @@ from jaxtyping import Array, Float, Inexact, PRNGKeyArray
 class AbstractDistribution(Module, strict=True):
     """An image formation model equipped with a probabilistic model."""
 
-    is_signal_normalized: AbstractVar[bool]
+    normalizes_signal: AbstractVar[bool]
 
     @abstractmethod
     def log_likelihood(self, observed: Inexact[Array, "y_dim x_dim"]) -> Float[Array, ""]:
