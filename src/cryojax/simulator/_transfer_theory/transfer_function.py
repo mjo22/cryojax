@@ -154,7 +154,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
                 self.amplitude_contrast_ratio
             )
         )
-        if outputs_exp:
+        if not outputs_exp:
             # Compute the CTF
             return jnp.sin(
                 aberration_phase_shifts - (phase_shift + amplitude_contrast_phase_shift)
