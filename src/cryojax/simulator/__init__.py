@@ -65,4 +65,5 @@ from ._transfer_theory import (
     AbstractTransferFunction as AbstractTransferFunction,
     ContrastTransferFunction as ContrastTransferFunction,
     ContrastTransferTheory as ContrastTransferTheory,
+    IdealTransferFunction as IdealTransferFunction,
 )

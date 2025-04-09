@@ -17,6 +17,5 @@ from ..simulator._scattering_theory import (
     MultisliceScatteringTheory as MultisliceScatteringTheory,
 )
 from ..simulator._transfer_theory import (
-    WaveTransferFunction as WaveTransferFunction,
     WaveTransferTheory as WaveTransferTheory,
 )
