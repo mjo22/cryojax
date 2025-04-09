@@ -129,12 +129,12 @@ def masks(config):
 
 @pytest.fixture
 def transfer_theory():
-    return cs.ContrastTransferTheory(ctf=cs.ContrastTransferFunction())
+    return cs.ContrastTransferTheory(ctf=cs.CTF())
 
 
 @pytest.fixture
 def detector():
-    return cs.PoissonDetector(cs.IdealDQE())
+    return cs.PoissonDetector(cs.PerfectDQE())
 
 
 @pytest.fixture

@@ -83,15 +83,13 @@ from cryojax.image import operators as op
 # Initialize the scattering theory. First, instantiate fourier slice extraction
 potential_integrator = cxs.FourierSliceExtraction(interpolation_order=1)
 # ... next, the contrast transfer theory
-ctf = cxs.ContrastTransferFunction(
-    defocus_in_angstroms=9800.0,
-    astigmatism_in_angstroms=200.0,
-    astigmatism_angle=10.0,
-    amplitude_contrast_ratio=0.1
-)
-transfer_theory = cxs.ContrastTransferTheory(ctf, envelope=op.FourierGaussian(b_factor=5.0))
+ctf = cxs.CTF(defocus_in_angstroms=9800.0, astigmatism_in_angstroms=200.0, astigmatism_angle=10.0)
+transfer_theory = cxs.ContrastTransferTheory(
+    ctf, envelope=op.FourierGaussian(b_factor=5.0), amplitude_contrast_ratio=0.1)
 # ... now for the scattering theory
-scattering_theory = cxs.WeakPhaseScatteringTheory(structural_ensemble, potential_integrator, transfer_theory)
+scattering_theory = cxs.WeakPhaseScatteringTheory(
+    structural_ensemble, potential_integrator, transfer_theory
+)
 ```
 
 The `ContrastTransferFunction` has parameters used in CTFFIND4, which take their default values if not

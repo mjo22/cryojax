@@ -2,9 +2,10 @@ from typing import Optional
 from typing_extensions import override
 
 import jax.numpy as jnp
-from jaxtyping import Array, Complex, PRNGKeyArray
+from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ...image import ifftn, irfftn
+from ...internal import error_if_not_fractional
 from .._instrument_config import InstrumentConfig
 from .._potential_integrator import AbstractPotentialIntegrator
 from .._solvent import AbstractIce
@@ -30,6 +31,7 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
     potential_integrator: AbstractPotentialIntegrator
     transfer_theory: WaveTransferTheory
     solvent: Optional[AbstractIce]
+    amplitude_contrast_ratio: Float[Array, ""]
 
     def __init__(
         self,
@@ -37,6 +39,7 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         potential_integrator: AbstractPotentialIntegrator,
         transfer_theory: WaveTransferTheory,
         solvent: Optional[AbstractIce] = None,
+        amplitude_contrast_ratio: float | Float[Array, ""] = 0.1,
     ):
         """**Arguments:**
 
@@ -44,11 +47,13 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         - `potential_integrator`: The method for integrating the scattering potential.
         - `transfer_theory`: The wave transfer theory.
         - `solvent`: The model for the solvent.
+        - `amplitude_contrast_ratio`: The amplitude contrast ratio.
         """
         self.structural_ensemble = structural_ensemble
         self.potential_integrator = potential_integrator
         self.transfer_theory = transfer_theory
         self.solvent = solvent
+        self.amplitude_contrast_ratio = error_if_not_fractional(amplitude_contrast_ratio)
 
     @override
     def compute_wavefunction_at_exit_plane(
@@ -80,9 +85,8 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
                         )
                     )
 
-            return jnp.exp(
-                1.0j
-                * irfftn(object_spectrum_at_exit_plane, s=instrument_config.padded_shape)
+            object_at_exit_plane = irfftn(
+                object_spectrum_at_exit_plane, s=instrument_config.padded_shape
             )
         else:
             object_spectrum_at_exit_plane = convert_units_of_integrated_potential(
@@ -104,7 +108,8 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
                         )
                     )
 
-            return jnp.exp(
-                1.0j
-                * ifftn(object_spectrum_at_exit_plane, s=instrument_config.padded_shape)
+            object_at_exit_plane = ifftn(
+                object_spectrum_at_exit_plane, s=instrument_config.padded_shape
             )
+        ac = self.amplitude_contrast_ratio
+        return jnp.exp(1.0j * (1.0 + ac * 1.0j) * object_at_exit_plane)

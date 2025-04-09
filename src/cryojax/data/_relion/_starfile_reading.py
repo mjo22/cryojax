@@ -15,7 +15,7 @@ from jaxtyping import Array, Float, Int
 from ...image.operators import FourierGaussian
 from ...io import read_and_validate_starfile
 from ...simulator import (
-    ContrastTransferFunction,
+    AberratedAstigmaticCTF,
     ContrastTransferTheory,
     EulerAnglePose,
     InstrumentConfig,
@@ -23,9 +23,8 @@ from ...simulator import (
 from .._particle_data import (
     AbstractParticleParameterReader,
     AbstractParticleStackReader,
-    ParticleParameters,
-    ParticleStack,
 )
+from ._starfile_pytrees import RelionParticleParameters, RelionParticleStack
 
 
 RELION_REQUIRED_OPTICS_KEYS = [
@@ -53,7 +52,9 @@ def _default_make_config_fn(
     return InstrumentConfig(shape, pixel_size, voltage_in_kilovolts, **kwargs)
 
 
-class AbstractRelionParticleParameterReader(AbstractParticleParameterReader):
+class AbstractRelionParticleParameterReader(
+    AbstractParticleParameterReader[RelionParticleParameters]
+):
     @property
     @abc.abstractmethod
     def path_to_relion_project(self) -> pathlib.Path:
@@ -109,11 +110,11 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         - `path_to_starfile`: The path to the Relion STAR file.
         - `path_to_relion_project`: The path to the Relion project directory.
         - `loads_metadata`:
-            If `True`, the resulting `ParticleParameters` object loads
+            If `True`, the resulting `RelionParticleParameters` object loads
             the raw metadata from the STAR file.
             If this is set to `True`, extra care must be taken to make sure that
-            `ParticleParameters` objects can pass through JIT boundaries without
-            recompilation.
+            `RelionParticleParameters` objects can pass through JIT boundaries
+            without recompilation.
         - `broadcasts_optics_group`:
             If `True`, select optics group parameters are broadcasted. If
             there are multiple optics groups in the STAR file, parameters
@@ -142,7 +143,7 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
-    ) -> ParticleParameters:
+    ) -> RelionParticleParameters:
         # Validate index
         n_rows = self.starfile_data["particles"].shape[0]
         _validate_dataset_index(type(self), index, n_rows)
@@ -166,7 +167,7 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
                 columns=particle_dataframe_at_index.index,
                 index=[0],
             )
-        return ParticleParameters(
+        return RelionParticleParameters(
             instrument_config,
             pose,
             transfer_theory,
@@ -220,7 +221,7 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         self._broadcasts_optics_group = value
 
 
-class RelionParticleStackReader(AbstractParticleStackReader):
+class RelionParticleStackReader(AbstractParticleStackReader[RelionParticleStack]):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
@@ -236,7 +237,7 @@ class RelionParticleStackReader(AbstractParticleStackReader):
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
-    ) -> ParticleStack:
+    ) -> RelionParticleStack:
         # ... make sure particle metadata is being loaded
         loads_metadata = self.param_reader.loads_metadata
         self.param_reader.loads_metadata = True
@@ -260,11 +261,11 @@ class RelionParticleStackReader(AbstractParticleStackReader):
         # ... reset boolean
         self.param_reader.loads_metadata = loads_metadata
         if not loads_metadata:
-            parameters = ParticleParameters(
+            parameters = RelionParticleParameters(
                 parameters.instrument_config, parameters.pose, parameters.transfer_theory
             )
 
-        return ParticleStack(parameters, images)
+        return RelionParticleStack(parameters, images)
 
     @override
     def __len__(self) -> int:
@@ -321,7 +322,7 @@ class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
         self._n_filaments_per_micrograph = n_filaments_per_micrograph
         self._micrograph_names = micrograph_names
 
-    def __getitem__(self, index: int | Int[np.ndarray, ""]) -> ParticleParameters:
+    def __getitem__(self, index: int | Int[np.ndarray, ""]) -> RelionParticleParameters:
         _validate_helical_dataset_index(type(self), index, len(self))
         # Get the particle stack indices corresponding to this filament
         particle_dataframe = self._param_reader.starfile_data["particles"]
@@ -412,31 +413,31 @@ def _make_pytrees_from_starfile(
         broadcasts_optics_group,
     )
     # ... now the ContrastTransferTheory
-    ctf = _make_relion_ctf(
+    if loads_envelope:
+        b_factor, scale_factor = (
+            (
+                jnp.asarray(particle_blocks["rlnCtfBfactor"])
+                if "rlnCtfBfactor" in particle_blocks.keys()
+                else jnp.zeros_like(defocus_in_angstroms)
+            ),
+            (
+                jnp.asarray(particle_blocks["rlnCtfScalefactor"])
+                if "rlnCtfScalefactor" in particle_blocks.keys()
+                else jnp.ones_like(defocus_in_angstroms)
+            ),
+        )
+    else:
+        b_factor, scale_factor = None, None
+    transfer_theory = _make_transfer_theory(
         defocus_in_angstroms,
         astigmatism_in_angstroms,
         astigmatism_angle,
         spherical_aberration_in_mm,
         amplitude_contrast_ratio,
         phase_shift,
+        scale_factor,
+        b_factor,
     )
-    if loads_envelope:
-        b_factor, scale_factor = (
-            (
-                jnp.asarray(particle_blocks["rlnCtfBfactor"])
-                if "rlnCtfBfactor" in particle_blocks.keys()
-                else jnp.asarray(0.0)
-            ),
-            (
-                jnp.asarray(particle_blocks["rlnCtfScalefactor"])
-                if "rlnCtfScalefactor" in particle_blocks.keys()
-                else jnp.asarray(1.0)
-            ),
-        )
-        envelope = _make_relion_envelope(scale_factor, b_factor)
-    else:
-        envelope = None
-    transfer_theory = ContrastTransferTheory(ctf, envelope)
     # ... and finally, the EulerAnglePose
     pose = EulerAnglePose()
     # ... values for the pose are optional, so look to see if
@@ -545,35 +546,53 @@ def _make_config(
         return make_fn(pixel_size, voltage_in_kilovolts)
 
 
-def _make_relion_ctf(defocus, astig, angle, sph, ac, ps):
-    def _make(defocus, astig, angle, sph, ac, ps):
-        ctf = ContrastTransferFunction(
-            defocus_in_angstroms=defocus,
-            astigmatism_in_angstroms=astig,
-            astigmatism_angle=angle,
-            spherical_aberration_in_mm=sph,
-            amplitude_contrast_ratio=ac,
-            phase_shift=ps,
+def _make_transfer_theory(defocus, astig, angle, sph, ac, ps, amp=None, b=None):
+    if b is None:
+
+        def _make_wo_env(defocus, astig, angle, sph, ac, ps, amp, b):
+            ctf = AberratedAstigmaticCTF(
+                defocus_in_angstroms=defocus,
+                astigmatism_in_angstroms=astig,
+                astigmatism_angle=angle,
+                spherical_aberration_in_mm=sph,
+            )
+            envelope = FourierGaussian(b_factor=b, amplitude=amp)
+            return ContrastTransferTheory(
+                ctf, envelope, amplitude_contrast_ratio=ac, phase_shift=ps
+            )
+
+        @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0, 0, 0), out_axes=0)
+        def _make_wo_env_vmap(defocus, astig, angle, sph, ac, ps, amp, b):
+            return _make_wo_env(defocus, astig, angle, sph, ac, ps, amp, b)
+
+        return (
+            _make_wo_env(defocus, astig, angle, sph, ac, ps, amp, b)
+            if defocus.ndim == 0
+            else _make_wo_env_vmap(defocus, astig, angle, sph, ac, ps, amp, b)
         )
-        return ctf
 
-    @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0), out_axes=0)
-    def _make_with_vmap(defocus, astig, angle, sph, ac, ps):
-        return _make(defocus, astig, angle, sph, ac, ps)
+    else:
 
-    return (
-        _make(defocus, astig, angle, sph, ac, ps)
-        if defocus.ndim == 0
-        else _make_with_vmap(defocus, astig, angle, sph, ac, ps)
-    )
+        def _make_w_env(defocus, astig, angle, sph, ac, ps):
+            ctf = AberratedAstigmaticCTF(
+                defocus_in_angstroms=defocus,
+                astigmatism_in_angstroms=astig,
+                astigmatism_angle=angle,
+                spherical_aberration_in_mm=sph,
+            )
+            return ContrastTransferTheory(
+                ctf, envelope=None, amplitude_contrast_ratio=ac, phase_shift=ps
+            )
 
+        @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0), out_axes=0)
+        def _make_w_env_vmap(defocus, astig, angle, sph, ac, ps):
+            return _make_w_env(defocus, astig, angle, sph, ac, ps)
 
-def _make_relion_envelope(amp, b):
-    @eqx.filter_vmap
-    def _make_with_vmap(amp, b):
-        return FourierGaussian(b_factor=b, amplitude=amp)
-
-    return FourierGaussian(amp, b) if b.ndim == 0 else _make_with_vmap(amp, b)
+        return (
+            _make_w_env(defocus, astig, angle, sph, ac, ps)
+            if defocus.ndim == 0
+            else _make_w_env_vmap(defocus, astig, angle, sph, ac, ps)
+        )
 
 
 def _get_image_stack_from_mrc(

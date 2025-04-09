@@ -13,7 +13,7 @@ from jaxtyping import Array, Float, PRNGKeyArray
 from ...image.operators import Constant, FourierGaussian
 from ...io import write_image_stack_to_mrc
 from ...simulator import EulerAnglePose
-from .._particle_data import ParticleParameters
+from ._starfile_pytrees import RelionParticleParameters
 from ._starfile_reading import RelionParticleParameterReader
 
 
@@ -27,12 +27,12 @@ def _get_filename(step, n_char=6):
 
 
 def write_starfile_with_particle_parameters(
-    particle_parameters: ParticleParameters,
+    particle_parameters: RelionParticleParameters,
     filename: str | pathlib.Path,
     mrc_batch_size: Optional[int] = None,
     overwrite: bool = False,
 ) -> None:
-    """Generate a STAR file from a `ParticleParameters` object.
+    """Generate a STAR file from a `RelionParticleParameters` object.
 
     This function does not generate particles, it merely populates a starfile
     and writes it to disc at the location specified by filename.
@@ -40,12 +40,12 @@ def write_starfile_with_particle_parameters(
     **Arguments:**
 
     - `particle_parameters`:
-        The `ParticleParameters` object.
+        The `RelionParticleParameters` object.
     - `filename`:
         The filename of the STAR file to write.
     - `mrc_batch_size`:
         The number of images to write to each MRC file. If `None`, the number of
-        images in the `ParticleParameters` is used.
+        images in the `RelionParticleParameters` is used.
     - `overwrite`:
         Whether to overwrite the STAR file if it already exists.
     """
@@ -84,7 +84,7 @@ def write_starfile_with_particle_parameters(
     optics_df["rlnImagePixelSize"] = particle_parameters.instrument_config.pixel_size[0]
     optics_df["rlnImageSize"] = particle_parameters.instrument_config.shape[0]
     optics_df["rlnAmplitudeContrast"] = (
-        particle_parameters.transfer_theory.ctf.amplitude_contrast_ratio[0]
+        particle_parameters.transfer_theory.amplitude_contrast_ratio[0]
     )
     starfile_dict["optics"] = optics_df
 
@@ -103,7 +103,7 @@ def write_starfile_with_particle_parameters(
         euler_pose = particle_parameters.pose
     else:
         raise NotImplementedError(
-            "The `ParticleParameters.pose` pose must be an "
+            "The `RelionParticleParameters.pose` pose must be an "
             "`EulerAnglePose`. Found that it was a "
             f"{type(particle_parameters.pose).__name__}."
         )
@@ -139,13 +139,13 @@ def write_starfile_with_particle_parameters(
         particles_df["rlnCtfScalefactor"] = 0.0
     else:
         raise NotImplementedError(
-            "The envelope function in `ParticleParameters` must either be "
+            "The envelope function in `RelionParticleParameters` must either be "
             "`cryojax.image.operators.FourierGaussian` or "
             "`cryojax.image.operators.Constant`. Got "
             f"{type(particle_parameters.transfer_theory.envelope).__name__}."
         )
 
-    particles_df["rlnPhaseShift"] = particle_parameters.transfer_theory.ctf.phase_shift
+    particles_df["rlnPhaseShift"] = particle_parameters.transfer_theory.phase_shift
 
     n_batches = n_images // mrc_batch_size
     n_remainder = n_images % mrc_batch_size
@@ -178,9 +178,9 @@ def write_starfile_with_particle_parameters(
 def write_simulated_image_stack_from_starfile(
     param_reader: RelionParticleParameterReader,
     compute_image: (
-        Callable[[ParticleParameters, Any], Float[Array, "y_dim x_dim"]]
+        Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
         | Callable[
-            [PRNGKeyArray, ParticleParameters, Any],
+            [PRNGKeyArray, RelionParticleParameters, Any],
             Float[Array, "y_dim x_dim"],
         ]
     ),
@@ -374,9 +374,9 @@ def _compute_images_batch(indices, param_reader, compute_image_stack, args, key=
 def _write_simulated_image_stack_from_starfile_vmap(
     param_reader: RelionParticleParameterReader,
     compute_image: (
-        Callable[[ParticleParameters, Any], Float[Array, "y_dim x_dim"]]
+        Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
         | Callable[
-            [PRNGKeyArray, ParticleParameters, Any],
+            [PRNGKeyArray, RelionParticleParameters, Any],
             Float[Array, "y_dim x_dim"],
         ]
     ),
@@ -503,9 +503,9 @@ def _write_simulated_image_stack_from_starfile_vmap(
 def _write_simulated_image_stack_from_starfile_serial(
     param_reader: RelionParticleParameterReader,
     compute_image: (
-        Callable[[ParticleParameters, Any], Float[Array, "y_dim x_dim"]]
+        Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
         | Callable[
-            [PRNGKeyArray, ParticleParameters, Any],
+            [PRNGKeyArray, RelionParticleParameters, Any],
             Float[Array, "y_dim x_dim"],
         ]
     ),
