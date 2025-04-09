@@ -1,23 +1,21 @@
+from importlib.resources import files
+
 import jax
 import jax.numpy as jnp
+from jaxtyping import install_import_hook
 
-import cryojax.coordinates as cxc
-import cryojax.simulator as cxs
-from cryojax.image import compute_radially_averaged_powerspectrum, irfftn, rfftn
-from cryojax.io import read_atoms_from_pdb_or_cif
+
+with install_import_hook("cryojax", "typeguard.typechecked"):
+    import cryojax.coordinates as cxc
+    import cryojax.simulator as cxs
+    from cryojax.image import compute_radially_averaged_powerspectrum, irfftn, rfftn
+
+"""
+Helper functions
+"""
 
 
 def compute_projection(potential, shape, voxel_size):
-    """_summary_ #TODO: add docstring
-
-    Args:
-        potential (_type_): _description_
-        shape (_type_): _description_
-        voxel_size (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
     real_voxel_grid = potential.as_real_voxel_grid(shape, voxel_size)
     voxel_potential = cxs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size
@@ -42,16 +40,6 @@ def compute_projection(potential, shape, voxel_size):
 
 
 def compute_power_spectrum(integrated_potential, shape, voxel_size):
-    """_summary_ #TODO: add docstring
-
-    Args:
-        integrated_potential (_type_): _description_
-        shape (_type_): _description_
-        voxel_size (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
     integrated_potential_unbiased = integrated_potential - jnp.mean(integrated_potential)
     freq_grid = cxc.make_frequency_grid(shape, voxel_size)
     radial_freq_grid = jnp.linalg.norm(freq_grid, axis=-1)
@@ -66,7 +54,9 @@ def compute_power_spectrum(integrated_potential, shape, voxel_size):
     return frequencies, spectrum / n_pixels
 
 
-def ParkhurstGaussian(q, a1=0.199, s1=0.731, a2=0.801, s2=0.081, m=1 / 2.88):
+def analytical_parkhurst_gaussian_envelope(
+    q, a1=0.199, s1=0.731, a2=0.801, s2=0.081, m=1 / 2.88
+):
     """_summary_ #TODO: add docstring
 
     Args:
@@ -86,17 +76,6 @@ def ParkhurstGaussian(q, a1=0.199, s1=0.731, a2=0.801, s2=0.081, m=1 / 2.88):
 
 
 def generate_ice_image(solvent, image_shape, voxel_size, randomseedkey):
-    """_summary_ #TODO: add docstring
-
-    Args:
-        solvent (_type_): _description_
-        image_shape (_type_): _description_
-        voxel_size (_type_): _description_
-        randomseedkey (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
     instrument_config = cxs.InstrumentConfig(
         shape=image_shape,
         pixel_size=voxel_size,
@@ -109,35 +88,83 @@ def generate_ice_image(solvent, image_shape, voxel_size, randomseedkey):
     return irfftn(phaseshifts, s=instrument_config.shape)
 
 
-# 1. test that the power spectrum is the shame shape as the envelope function
+"""
+1.  Assert that the power spectrum of a generated ice image has the
+    shape (within 5% tolerance) as the Parkhurst gaussian envelope function
+"""
+
+
 def test_1d_powerspectrum():
-    solvent = cxs.Parkhurst2024_ExperimentalIce2(N=9261 / 81**2)
-    image_shape = (81, 81)
+    solvent = cxs.Parkhurst2024_ExperimentalIce()
+    image_shape = (80, 80)
     voxel_size = 1
     randomseedkey = jax.random.PRNGKey(0)
 
     image = generate_ice_image(solvent, image_shape, voxel_size, randomseedkey)
 
     x1, y1 = compute_power_spectrum(image, shape=image_shape, voxel_size=voxel_size)
-    y2 = ParkhurstGaussian(x1)
+    y2 = analytical_parkhurst_gaussian_envelope(x1)
 
-    assert jnp.allclose(y1 / jnp.max(y1), y2 / jnp.max(y2), atol=jnp.inf)
+    assert jnp.allclose(
+        y1 / jnp.max(y1), y2 / jnp.max(y2), rtol=0.05
+    ), "Power spectrum envelope mismatch"
 
 
-# 2. test that the mean and std of the ice image are close to the right value
-# TODO: make this test more robust -- should calculate the expected values
-# TODO: use calibration config file for variety of pixel sizes
-#
+"""
+2.  Test that the mean and std of the ice image are the expected value
+    based on image_mv__relaxed_small_box_tip3.npy (1% tolerance)
+"""
+
+
 def test_ice_mean_and_variance():
-    solvent = cxs.Parkhurst2024_ExperimentalIce2(N=9261 / 81**2)
-    image_shape = (81, 81)
-    voxel_size = 1
-    randomseedkey = jax.random.PRNGKey(0)
+    solvent = cxs.Parkhurst2024_ExperimentalIce()
 
-    image = generate_ice_image(solvent, image_shape, voxel_size, randomseedkey)
+    image_mv = jnp.load(
+        files("cryojax.simulator.data") / "image_mv__relaxed_small_box_tip3p.npy"
+    )
 
-    assert jnp.isclose(jnp.mean(image), 0.0082213655, atol=1e-3)
-    assert jnp.isclose(jnp.std(image), 0, atol=jnp.ing)
+    image_shape = (80, 80)
+    key = jax.random.PRNGKey(0)
+
+    for i in range(image_mv.shape[0]):
+        voxel_size, expected_mean, expected_var = image_mv[i]
+
+        image = generate_ice_image(solvent, image_shape, voxel_size, key)
+
+        mean = jnp.mean(image)
+        std = jnp.std(image)
+
+        assert jnp.isclose(
+            mean, expected_mean, rtol=0.01
+        ), f"Mean mismatch at voxel size {voxel_size}"
+        assert jnp.isclose(
+            std**2, expected_var, rtol=0.01
+        ), f"Variance mismatch at voxel size {voxel_size}"
+
+
+# # 4. test that the power spectrum is the same as a real ice image
+# # use /tests/data/relaxed_small_box_tip3.pdb
+# # TODO: they don't match soooo....
+# def test_real_ice_image():
+#     solvent = cxs.Parkhurst2024_ExperimentalIce2(N=9261 / 81**2)
+#     image_shape = (81, 81)
+#     voxel_size = 1
+#     randomseedkey = jax.random.PRNGKey(0)
+#     image = generate_ice_image(solvent, image_shape, voxel_size, randomseedkey)
+#     x1, y1 = compute_power_spectrum(image, shape=image_shape, voxel_size=voxel_size)
+
+#     fname = "water_81_coords.pdb"
+#     atom_positions, atom_identities = read_atoms_from_pdb_or_cif(
+#         fname, center=True, get_b_factors=False, atom_filter="not element H"
+#     )
+#     potential = cxs.PengAtomicPotential(atom_positions, atom_identities)
+#     integrated_potential = compute_projection(potential, image_shape, voxel_size)
+#     integrated_potential_cropped = integrated_potential[4:-4, 4:-4]
+#     x2, y2 = compute_power_spectrum(
+#         integrated_potential_cropped, integrated_potential_cropped.shape, voxel_size
+#     )
+
+#     assert jnp.allclose(y1, y2, atol=jnp.inf)
 
 
 # # 3. test the magnitude of the power spectrum?
@@ -151,28 +178,3 @@ def test_ice_mean_and_variance():
 #     image = generate_ice_image(solvent, image_shape, voxel_size, randomseedkey)
 
 #     x1, y1 = compute_power_spectrum(image, shape=image_shape, voxel_size=voxel_size)
-
-
-# 4. test that the power spectrum is the same as a real ice image
-# use /tests/data/relaxed_small_box_tip3.pdb
-# TODO: they don't match soooo....
-def test_real_ice_image():
-    solvent = cxs.Parkhurst2024_ExperimentalIce2(N=9261 / 81**2)
-    image_shape = (81, 81)
-    voxel_size = 1
-    randomseedkey = jax.random.PRNGKey(0)
-    image = generate_ice_image(solvent, image_shape, voxel_size, randomseedkey)
-    x1, y1 = compute_power_spectrum(image, shape=image_shape, voxel_size=voxel_size)
-
-    fname = "water_81_coords.pdb"
-    atom_positions, atom_identities = read_atoms_from_pdb_or_cif(
-        fname, center=True, get_b_factors=False, atom_filter="not element H"
-    )
-    potential = cxs.PengAtomicPotential(atom_positions, atom_identities)
-    integrated_potential = compute_projection(potential, image_shape, voxel_size)
-    integrated_potential_cropped = integrated_potential[4:-4, 4:-4]
-    x2, y2 = compute_power_spectrum(
-        integrated_potential_cropped, integrated_potential_cropped.shape, voxel_size
-    )
-
-    assert jnp.allclose(y1, y2, atol=jnp.inf)

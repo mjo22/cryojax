@@ -3,6 +3,7 @@ Abstraction of the ice in a cryo-EM image.
 """
 
 from abc import abstractmethod
+from importlib.resources import files
 from typing import overload
 from typing_extensions import override
 
@@ -246,14 +247,12 @@ class Parkhurst2024_ExperimentalIce(AbstractIce, strict=True):
     """
 
     image_mv: jnp.ndarray = field(init=False)
-    power_envelope_function: FourierOperatorLike = field(
-        init=False
-    )  # TODO: make defualt parkhurst
+    power_envelope_function: FourierOperatorLike = field(init=False)
     N_scalar: float = field(default=1.0, converter=jnp.asarray)
 
     def __post_init__(self):
         self.image_mv = jnp.load(
-            "cryojax/simulator/data/image_mv__relaxed_small_box_tip3p.npy"
+            files("cryojax.simulator.data") / "image_mv__relaxed_small_box_tip3p.npy"
         )
         self.power_envelope_function = Parkhurst2024_Gaussian()
 

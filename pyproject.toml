@@ -39,6 +39,11 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 
+[tool.hatch.build.targets.wheel]
+include = [
+  "src/cryojax/simulator/data/*.npy",
+]
+
 [tool.hatch.build.hooks.vcs]
 version-file = "src/cryojax/cryojax_version.py"
 
