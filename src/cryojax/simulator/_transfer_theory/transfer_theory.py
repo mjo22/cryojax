@@ -72,7 +72,7 @@ class ContrastTransferTheory(eqx.Module, strict=True):
             ctf_array = self.ctf(
                 frequency_grid,
                 voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
-                is_weak_phase_approximation=True,
+                outputs_exp=False,
             )
             # ... compute the contrast as the CTF multiplied by the exit plane
             # phase shifts
@@ -130,7 +130,7 @@ class WaveTransferTheory(eqx.Module, strict=True):
         ctf_array = self.ctf(
             frequency_grid,
             voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
-            is_weak_phase_approximation=False,
+            outputs_exp=True,
         )
         # ... compute the contrast as the CTF multiplied by the exit plane
         # phase shifts

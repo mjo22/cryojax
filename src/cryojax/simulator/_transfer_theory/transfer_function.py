@@ -29,7 +29,7 @@ class AbstractTransferFunction(Module, strict=True):
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         voltage_in_kilovolts: Float[Array, ""] | float,
-        is_weak_phase_approximation: bool = True,
+        outputs_exp: bool = False,
     ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
         raise NotImplementedError
 
@@ -129,7 +129,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         voltage_in_kilovolts: Float[Array, ""] | float,
-        is_weak_phase_approximation: bool = True,
+        outputs_exp: bool = False,
     ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
         """Compute the CTF as a JAX array.
 
@@ -154,7 +154,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
                 self.amplitude_contrast_ratio
             )
         )
-        if is_weak_phase_approximation:
+        if outputs_exp:
             # Compute the CTF
             return jnp.sin(
                 aberration_phase_shifts - (phase_shift + amplitude_contrast_phase_shift)
@@ -188,10 +188,10 @@ class IdealTransferFunction(AbstractTransferFunction, strict=True):
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         voltage_in_kilovolts: Float[Array, ""] | float,
-        is_weak_phase_approximation: bool = True,
+        outputs_exp: bool = False,
     ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
         shape = frequency_grid_in_angstroms.shape[:2]
-        if is_weak_phase_approximation:
+        if outputs_exp:
             return jnp.ones(shape, dtype=float)
         else:
             return jnp.ones(shape, dtype=complex)
