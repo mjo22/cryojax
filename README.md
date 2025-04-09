@@ -115,7 +115,7 @@ from cryojax.inference import distributions as dist
 
 # Passing the ImagePipeline and a variance function, instantiate the distribution
 distribution = dist.IndependentGaussianFourierModes(
-    imaging_pipeline, variance_function=op.Constant(1.0), is_signal_normalized=True
+    imaging_pipeline, variance_function=op.Constant(1.0), normalizes_signal=True
 )
 # ... then, either simulate an image from this distribution
 key = jax.random.PRNGKey(seed=0)
