@@ -547,9 +547,9 @@ def _make_config(
 
 
 def _make_transfer_theory(defocus, astig, angle, sph, ac, ps, amp=None, b=None):
-    if b is None:
+    if b is not None:
 
-        def _make_wo_env(defocus, astig, angle, sph, ac, ps, amp, b):
+        def _make_w_env(defocus, astig, angle, sph, ac, ps, amp, b):
             ctf = AberratedAstigmaticCTF(
                 defocus_in_angstroms=defocus,
                 astigmatism_in_angstroms=astig,
@@ -562,18 +562,18 @@ def _make_transfer_theory(defocus, astig, angle, sph, ac, ps, amp=None, b=None):
             )
 
         @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0, 0, 0), out_axes=0)
-        def _make_wo_env_vmap(defocus, astig, angle, sph, ac, ps, amp, b):
-            return _make_wo_env(defocus, astig, angle, sph, ac, ps, amp, b)
+        def _make_w_env_vmap(defocus, astig, angle, sph, ac, ps, amp, b):
+            return _make_w_env(defocus, astig, angle, sph, ac, ps, amp, b)
 
         return (
-            _make_wo_env(defocus, astig, angle, sph, ac, ps, amp, b)
+            _make_w_env(defocus, astig, angle, sph, ac, ps, amp, b)
             if defocus.ndim == 0
-            else _make_wo_env_vmap(defocus, astig, angle, sph, ac, ps, amp, b)
+            else _make_w_env_vmap(defocus, astig, angle, sph, ac, ps, amp, b)
         )
 
     else:
 
-        def _make_w_env(defocus, astig, angle, sph, ac, ps):
+        def _make_wo_env(defocus, astig, angle, sph, ac, ps):
             ctf = AberratedAstigmaticCTF(
                 defocus_in_angstroms=defocus,
                 astigmatism_in_angstroms=astig,
@@ -585,13 +585,13 @@ def _make_transfer_theory(defocus, astig, angle, sph, ac, ps, amp=None, b=None):
             )
 
         @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0), out_axes=0)
-        def _make_w_env_vmap(defocus, astig, angle, sph, ac, ps):
-            return _make_w_env(defocus, astig, angle, sph, ac, ps)
+        def _make_wo_env_vmap(defocus, astig, angle, sph, ac, ps):
+            return _make_wo_env(defocus, astig, angle, sph, ac, ps)
 
         return (
-            _make_w_env(defocus, astig, angle, sph, ac, ps)
+            _make_wo_env(defocus, astig, angle, sph, ac, ps)
             if defocus.ndim == 0
-            else _make_w_env_vmap(defocus, astig, angle, sph, ac, ps)
+            else _make_wo_env_vmap(defocus, astig, angle, sph, ac, ps)
         )
 
 
