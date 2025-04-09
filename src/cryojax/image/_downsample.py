@@ -103,8 +103,8 @@ def downsample_to_shape_with_fourier_cropping(
 ) -> Inexact[Array, "_ _"] | Inexact[Array, "_ _ _"]:
     """Downsample an array to a specified shape using fourier cropping.
 
-    For real signals the Hartley Transform is used to downsample the signal.
-    For complex signals the Fourier Transform is used to downsample the signal.
+    For real signals, the Hartley Transform is used to downsample the signal.
+    For complex signals, the Fourier Transform is used to downsample the signal.
 
     The real case is based on the `downsample_transform` function in cryoDRGN
     https://github.com/ml-struct-bio/cryodrgn/blob/4ba75502d4dd1d0e5be3ecabf4a005c652edf4b5/cryodrgn/commands/downsample.py#L154
@@ -124,35 +124,18 @@ def downsample_to_shape_with_fourier_cropping(
     the downsampled array in fourier space, with the zero frequency
     component in the corner. For real signals, hermitian symmetry is
     assumed.
-
     """
     if jnp.iscomplexobj(image_or_volume):
-        return _downsample_complex_signal_to_shape_with_fourier_cropping(
+        return _downsample_complex_signal_to_shape(
             image_or_volume, downsampled_shape, get_real=get_real
         )
     else:
-        return _downsample_real_signal_to_shape_with_fourier_cropping(
+        return _downsample_real_signal_to_shape(
             image_or_volume, downsampled_shape, get_real=get_real
         )
 
 
-@overload
-def _downsample_real_signal_to_shape_with_fourier_cropping(
-    image_or_volume: Float[Array, "_ _"],
-    downsampled_shape: tuple[int, int],
-    get_real: bool = True,
-) -> Inexact[Array, "_ _"]: ...
-
-
-@overload
-def _downsample_real_signal_to_shape_with_fourier_cropping(
-    image_or_volume: Float[Array, "_ _ _"],
-    downsampled_shape: tuple[int, int, int],
-    get_real: bool = True,
-) -> Inexact[Array, "_ _ _"]: ...
-
-
-def _downsample_real_signal_to_shape_with_fourier_cropping(
+def _downsample_real_signal_to_shape(
     image_or_volume: Float[Array, "_ _"] | Float[Array, "_ _ _"],
     downsampled_shape: tuple[int, int] | tuple[int, int, int],
     get_real: bool = True,
@@ -175,23 +158,7 @@ def _downsample_real_signal_to_shape_with_fourier_cropping(
         return rfftn(ds_image_or_volume)
 
 
-@overload
-def _downsample_complex_signal_to_shape_with_fourier_cropping(
-    image_or_volume: Complex[Array, "_ _"],
-    downsampled_shape: tuple[int, int],
-    get_real: bool = True,
-) -> Complex[Array, "_ _"]: ...
-
-
-@overload
-def _downsample_complex_signal_to_shape_with_fourier_cropping(
-    image_or_volume: Complex[Array, "_ _ _"],
-    downsampled_shape: tuple[int, int, int],
-    get_real: bool = True,
-) -> Complex[Array, "_ _ _"]: ...
-
-
-def _downsample_complex_signal_to_shape_with_fourier_cropping(
+def _downsample_complex_signal_to_shape(
     image_or_volume: Complex[Array, "_ _"] | Complex[Array, "_ _ _"],
     downsampled_shape: tuple[int, int] | tuple[int, int, int],
     get_real: bool = True,
