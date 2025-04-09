@@ -3,6 +3,8 @@
 import abc
 from typing import Generic, TypeVar
 
+import jax
+
 
 T = TypeVar("T")
 
@@ -59,10 +61,10 @@ class AbstractDataset(abc.ABC, Generic[T]):
 
     @property
     @abc.abstractmethod
-    def is_loading_on_cpu(self) -> bool:
+    def device(self) -> jax.Device | None:
         raise NotImplementedError
 
-    @is_loading_on_cpu.setter
+    @device.setter
     @abc.abstractmethod
-    def is_loading_on_cpu(self, value: bool):
+    def device(self, value: jax.Device | None):
         raise NotImplementedError
