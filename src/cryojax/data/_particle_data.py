@@ -88,12 +88,12 @@ class AbstractParticleParameterReader(
 ):
     @property
     @abc.abstractmethod
-    def is_metadata_loaded(self) -> bool:
+    def loads_metadata(self) -> bool:
         raise NotImplementedError
 
-    @is_metadata_loaded.setter
+    @loads_metadata.setter
     @abc.abstractmethod
-    def is_metadata_loaded(self, value: bool):
+    def loads_metadata(self, value: bool):
         raise NotImplementedError
 
 
