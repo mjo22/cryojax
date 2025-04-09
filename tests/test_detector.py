@@ -20,7 +20,7 @@ def test_constant_wavefunction_gives_constant_expected_events():
     vacuum_squared_wavefunction = jnp.ones(config.shape, dtype=float)
     fourier_vacuum_squared_wavefunction = rfftn(vacuum_squared_wavefunction)
     # Create detector models
-    dqe = cs.IdealDQE()
+    dqe = cs.PerfectDQE()
     poisson_detector = cs.PoissonDetector(dqe)
     # Compute expected events
     fourier_expected_electron_events = poisson_detector.compute_expected_electron_events(
@@ -51,7 +51,7 @@ def test_gaussian_limit():
     fourier_vacuum_squared_wavefunction = rfftn(vacuum_squared_wavefunction)
     # Create detector models
     key = jax.random.PRNGKey(1234)
-    dqe = cs.IdealDQE()
+    dqe = cs.PerfectDQE()
     gaussian_detector = cs.GaussianDetector(dqe)
     poisson_detector = cs.PoissonDetector(dqe)
     # Compute detector readout

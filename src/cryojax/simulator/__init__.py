@@ -2,8 +2,8 @@ from ._detector import (
     AbstractDetector as AbstractDetector,
     AbstractDQE as AbstractDQE,
     GaussianDetector as GaussianDetector,
-    IdealCountingDQE as IdealCountingDQE,
-    IdealDQE as IdealDQE,
+    PerfectCountingDQE as PerfectCountingDQE,
+    PerfectDQE as PerfectDQE,
     PoissonDetector as PoissonDetector,
 )
 from ._imaging_pipeline import (
@@ -62,8 +62,11 @@ from ._structural_ensemble import (
     SingleStructureEnsemble as SingleStructureEnsemble,
 )
 from ._transfer_theory import (
-    AbstractTransferFunction as AbstractTransferFunction,
-    ContrastTransferFunction as ContrastTransferFunction,
+    AberratedAstigmaticCTF as AberratedAstigmaticCTF,
+    AberratedAstigmaticCTF as CTF,  # noqa: F401
+    AberratedAstigmaticCTF as ContrastTransferFunction,  # noqa: F401 # for backwards compatibility
+    AbstractCTF as AbstractCTF,
+    AbstractTransferTheory as AbstractTransferTheory,
     ContrastTransferTheory as ContrastTransferTheory,
-    IdealTransferFunction as IdealTransferFunction,
+    PerfectCTF as PerfectCTF,
 )
