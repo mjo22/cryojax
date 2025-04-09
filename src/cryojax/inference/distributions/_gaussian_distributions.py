@@ -30,7 +30,7 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
     signal_scale_factor: AbstractVar[Float[Array, ""]]
     signal_offset: AbstractVar[Float[Array, ""]]
 
-    is_signal_normalized: AbstractVar[bool]
+    normalizes_signal: AbstractVar[bool]
 
     @override
     def sample(
@@ -70,14 +70,14 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
         """Render the image formation model."""
         simulated_image = self.imaging_pipeline.render(get_real=True, get_masked=False)
         if self.imaging_pipeline.mask is None:
-            if self.is_signal_normalized:
+            if self.normalizes_signal:
                 mean, std = jnp.mean(simulated_image), jnp.std(simulated_image)
                 simulated_image = (simulated_image - mean) / std
             simulated_image = (
                 self.signal_scale_factor * simulated_image + self.signal_offset
             )
         else:
-            if self.is_signal_normalized:
+            if self.normalizes_signal:
                 is_signal = self.imaging_pipeline.mask.array == 1.0
                 mean, std = (
                     jnp.mean(simulated_image, where=is_signal),
@@ -123,7 +123,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
     signal_scale_factor: Float[Array, ""]
     signal_offset: Float[Array, ""]
 
-    is_signal_normalized: bool = field(static=True)
+    normalizes_signal: bool = field(static=True)
 
     def __init__(
         self,
@@ -131,7 +131,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
         variance: float | Float[Array, ""] = 1.0,
         signal_scale_factor: float | Float[Array, ""] = 1.0,
         signal_offset: float | Float[Array, ""] = 0.0,
-        is_signal_normalized: bool = False,
+        normalizes_signal: bool = False,
     ):
         """**Arguments:**
 
@@ -144,7 +144,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
             from `imaging_pipeline`.
         - `signal_offset`:
             An offset for the underlying signal simulated from `imaging_pipeline`.
-        - `is_signal_normalized`:
+        - `normalizes_signal`:
             Whether or not the signal is normalized before applying the `signal_scale_factor`
             and `signal_offset`.
             If an `AbstractMask` is given to `imaging_pipeline.mask`, the signal is normalized
@@ -154,7 +154,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
         self.variance = error_if_not_positive(variance)
         self.signal_scale_factor = error_if_not_positive(signal_scale_factor)
         self.signal_offset = jnp.asarray(signal_offset)
-        self.is_signal_normalized = is_signal_normalized
+        self.normalizes_signal = normalizes_signal
 
     @override
     def compute_noise(
@@ -232,7 +232,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
     signal_scale_factor: Float[Array, ""]
     signal_offset: Float[Array, ""]
 
-    is_signal_normalized: bool = field(static=True)
+    normalizes_signal: bool = field(static=True)
 
     def __init__(
         self,
@@ -240,7 +240,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         variance_function: Optional[FourierOperatorLike] = None,
         signal_scale_factor: float | Float[Array, ""] = 1.0,
         signal_offset: float | Float[Array, ""] = 0.0,
-        is_signal_normalized: bool = False,
+        normalizes_signal: bool = False,
     ):
         """**Arguments:**
 
@@ -253,7 +253,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
             A scale factor for the underlying signal simulated from `imaging_pipeline`.
         - `signal_offset`:
             An offset for the underlying signal simulated from `imaging_pipeline`.
-        - `is_signal_normalized`:
+        - `normalizes_signal`:
             Whether or not the signal is normalized before applying the `signal_scale_factor`
             and `signal_offset`.
             If an `AbstractMask` is given to `imaging_pipeline.mask`, the signal is normalized
@@ -263,7 +263,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         self.variance_function = variance_function or Constant(1.0)
         self.signal_scale_factor = error_if_not_positive(jnp.asarray(signal_scale_factor))
         self.signal_offset = jnp.asarray(signal_offset)
-        self.is_signal_normalized = is_signal_normalized
+        self.normalizes_signal = normalizes_signal
 
     def compute_noise(
         self, rng_key: PRNGKeyArray, *, get_real: bool = True
