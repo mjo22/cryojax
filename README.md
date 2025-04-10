@@ -65,9 +65,9 @@ potential = cxs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, 
 pose = cxs.EulerAnglePose(
     offset_x_in_angstroms=5.0,
     offset_y_in_angstroms=-3.0,
-    view_phi=20.0,
-    view_theta=80.0,
-    view_psi=-10.0,
+    phi_angle=20.0,
+    theta_angle=80.0,
+    psi_angle=-10.0,
 )
 # ... now, build the ensemble. In this case, the ensemble is just a single structure
 structural_ensemble = cxs.SingleStructureEnsemble(potential, pose)
@@ -93,16 +93,16 @@ scattering_theory = cxs.WeakPhaseScatteringTheory(
 ```
 
 The `ContrastTransferFunction` has parameters used in CTFFIND4, which take their default values if not
-explicitly configured here. Finally, we can instantiate the `imaging_pipeline`--the highest level of imaging abstraction in `cryojax`--and simulate an image. Here, we choose a `ContrastImagingPipeline`, which simulates image contrast from a linear scattering theory.
+explicitly configured here. Finally, we can instantiate the `image_model`--the highest level of imaging abstraction in `cryojax`--and simulate an image. Here, we choose a `ContrastImageModel`, which simulates image contrast from a linear scattering theory.
 
 ```python
 # Finally, build the image formation model
 # ... first instantiate the instrument configuration
 instrument_config = cxs.InstrumentConfig(shape=(320, 320), pixel_size=voxel_size, voltage_in_kilovolts=300.0)
 # ... now the imaging pipeline
-imaging_pipeline = cxs.ContrastImagingPipeline(instrument_config, scattering_theory)
+image_model = cxs.ContrastImageModel(instrument_config, scattering_theory)
 # ... finally, simulate an image and return in real-space!
-image_without_noise = imaging_pipeline.render(outputs_real_space=True)
+image_without_noise = image_model.render(outputs_real_space=True)
 ```
 
 `cryojax` also defines a library of distributions from which to sample the data. These distributions define the stochastic model from which images are drawn. For example, instantiate an `IndependentGaussianFourierModes` distribution and either sample from it or compute its log-likelihood.
@@ -113,7 +113,7 @@ from cryojax.inference import distributions as dist
 
 # Passing the ImagePipeline and a variance function, instantiate the distribution
 distribution = dist.IndependentGaussianFourierModes(
-    imaging_pipeline, variance_function=op.Constant(1.0), normalizes_signal=True
+    image_model, variance_function=op.Constant(1.0), normalizes_signal=True
 )
 # ... then, either simulate an image from this distribution
 key = jax.random.PRNGKey(seed=0)

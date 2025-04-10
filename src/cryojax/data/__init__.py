@@ -1,15 +1,15 @@
 from ._dataset import AbstractDataset as AbstractDataset
 from ._particle_data import (
-    AbstractParticleParameterReader as AbstractParticleParameterReader,
+    AbstractParticleParameterDataset as AbstractParticleParameterDataset,
     AbstractParticleParameters as AbstractParticleParameters,
-    AbstractParticleStackReader as AbstractParticleStackReader,
+    AbstractParticleStackDataset as AbstractParticleStackDataset,
     ParticleStack as ParticleStack,
 )
 from ._relion import (
-    RelionHelicalParameterReader as RelionHelicalParameterReader,
-    RelionParticleParameterReader as RelionParticleParameterReader,
+    RelionHelicalParameterDataset as RelionHelicalParameterDataset,
+    RelionParticleParameterDataset as RelionParticleParameterDataset,
     RelionParticleParameters as RelionParticleParameters,
-    RelionParticleStackReader as RelionParticleStackReader,
+    RelionParticleStackDataset as RelionParticleStackDataset,
     write_simulated_image_stack_from_starfile as write_simulated_image_stack_from_starfile,  # noqa
     write_starfile_with_particle_parameters as write_starfile_with_particle_parameters,
 )

@@ -67,8 +67,8 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         potential = self.structural_ensemble.get_potential_in_lab_frame()
         if self.potential_integrator.is_projection_approximation:
             object_spectrum_at_exit_plane = convert_units_of_integrated_potential(
-                self.potential_integrator.compute_fourier_integrated_potential(
-                    potential, instrument_config
+                self.potential_integrator.compute_integrated_potential(
+                    potential, instrument_config, outputs_real_space=False
                 ),
                 instrument_config.wavelength_in_angstroms,
             )
@@ -90,8 +90,8 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
             )
         else:
             object_spectrum_at_exit_plane = convert_units_of_integrated_potential(
-                self.potential_integrator.compute_fourier_integrated_potential(
-                    potential, instrument_config
+                self.potential_integrator.compute_integrated_potential(
+                    potential, instrument_config, outputs_real_space=False
                 ),
                 instrument_config.wavelength_in_angstroms,
             )

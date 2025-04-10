@@ -102,7 +102,7 @@ def read_atoms_from_pdb(
         If `True`, return the B-factors of the atoms.
     - `select`:
         A selection string in `mdtraj`'s format. See `mdtraj` for documentation.
-    - `standard_names`:
+    - `standardizes_names`:
         If `True`, non-standard atom names and residue names are standardized to conform
         with the current PDB format version. If set to `False`, this step is skipped.
     - `topology`:
@@ -126,26 +126,23 @@ def read_atoms_from_pdb(
         `atom_element_numbers` will contain all atoms from all
         trajectories.
     """
-    with AtomicModelReader(filename_or_url, standardizes_names, topology) as pdb_reader:
-        # Read attributes
-        topology = pdb_reader.topology
-        atom_positions, atom_identities, atom_masses = (
-            pdb_reader.atom_positions,
-            pdb_reader.atom_identities,
-            pdb_reader.atom_masses,
+    with AtomicModelFile(filename_or_url) as pdb_file:
+        # Read file
+        info, topology = pdb_file.read(
+            standardizes_names=standardizes_names,
+            topology=topology,
         )
-        b_factors = pdb_reader.b_factors
     # ... get indices from filter
     atom_indices = topology.select(select)
     # ... get filtered attributes
-    atom_positions = atom_positions[atom_indices, ...]
-    atom_identities = atom_identities[atom_indices]
+    atom_positions = info.atom_positions[atom_indices, ...]
+    atom_identities = info.atom_identities[atom_indices]
     if center:
-        atom_masses = atom_masses[atom_indices]
+        atom_masses = info.atom_masses[atom_indices]
         atom_positions = _center_atom_coordinates(atom_positions, atom_masses)
 
     if loads_b_factors:
-        b_factors = b_factors[atom_indices]
+        b_factors = info.b_factors[atom_indices]
         return atom_positions, atom_identities, b_factors
     else:
         return atom_positions, atom_identities
@@ -157,44 +154,34 @@ def _center_atom_coordinates(atom_positions, atom_masses):
 
 
 @dataclasses.dataclass
-class AtomicModelReader:
-    """A PDB file loader that loads the necessary information for
-    cryo-EM. This object is based on the `PDBTrajectoryFile`
-    from `mdtraj`.
+class AtomInfo:
+    """A dataclass for the info of individual atoms.
 
     **Attributes:**
 
     - `atom_positions`: The cartesian coordinates of all of the atoms in each frame.
     - `atom_identities`: The atomic numbers of all of the atoms in each frame.
-    - `b_factors`: The B-factors of all of the atoms in each frame.
     - `atom_masses`: The mass of each atom.
-    - `topology`: mdtraj.core.Topology, default=None
-        if you give a topology as input the topology won't be parsed from the pdb file
-        it saves time if you have to parse a big number of files
+    - `b_factors`: The B-factors of all of the atoms in each frame.
     """
 
     atom_positions: np.ndarray
     atom_identities: np.ndarray
     atom_masses: np.ndarray
     b_factors: np.ndarray
-    topology: Topology
 
-    def __init__(
-        self,
-        filename_or_url: str | pathlib.Path,
-        standardizes_names: bool = True,
-        topology: Optional[Topology] = None,
-    ):
+
+class AtomicModelFile:
+    """A PDB file loader that loads the necessary information for
+    cryo-EM. This object is based on the `PDBTrajectoryFile`
+    from `mdtraj`.
+    """
+
+    def __init__(self, filename_or_url: str | pathlib.Path):
         """**Arguments:**
 
         - `filename_or_url`:
             The name of the PDB file to open. Can be a URL.
-        - `standardizes_names`:
-            If `True`, non-standard atom names and residue names are standardized to
-            conform with the current PDB format version. If `False`, this step is skipped.
-        - `topology`:
-            If the `topology` is passed as input, it won't be parsed from the PDB file.
-            This saves time if you have to parse a big number of files.
         """
         # Set field that says we are reading the file
         self._is_open = True
@@ -210,16 +197,41 @@ class AtomicModelReader:
             filename_or_url = pathlib.Path(filename_or_url)
             _validate_pdb_file(filename_or_url)
             self._file = open_maybe_zipped(filename_or_url, "r")
-        # Create the PDB structure via `mdtraj`, then close the file
-        pdb = PdbStructure(self._file, load_all_models=True)
-        # Load properties into the object
-        properties_dict = _load_pdb_reader_properties_dict(
-            pdb,
+        # Create the PDB structure via `mdtraj`
+        self._pdb_structure = PdbStructure(self._file, load_all_models=True)
+
+    @property
+    def pdb_structure(self) -> PdbStructure:
+        return self._pdb_structure
+
+    def read(
+        self,
+        *,
+        standardizes_names: bool = True,
+        topology: Optional[Topology] = None,
+    ) -> tuple[AtomInfo, Topology]:
+        """Load properties from the PDB reader.
+
+        **Arguments:**
+
+        - `standardizes_names`:
+            If `True`, non-standard atom names and residue names are standardized to
+            conform with the current PDB format version. If `False`, this step is skipped.
+        - `topology`:
+            If the `topology` is passed as input, it won't be parsed from the PDB file.
+            This saves time if you have to parse a big number of files.
+
+        **Returns:**
+
+        A tuple of the `AtomInfo` dataclass and the `mdtraj.Topology`.
+        """
+        atom_info, topology = _load_atom_info(
+            self._pdb_structure,
             topology,
             standardizes_names,
         )
-        for k, v in properties_dict.items():
-            setattr(self, k, v)
+
+        return atom_info, topology
 
     @property
     def is_open(self):
@@ -243,51 +255,11 @@ class AtomicModelReader:
         self.close()
 
 
-def _load_pdb_reader_properties_dict(
-    pdb,
-    topology: Optional[Topology],
-    standardizes_names,
-):
-    atom_positions, b_factors, atom_identities, atom_masses = [], [], [], []
-    # load all of the positions (from every model)
-    for model in pdb.iter_models(use_all_models=True):
-        for chain in model.iter_chains():
-            for residue in chain.iter_residues():
-                for atom in residue.atoms:
-                    # ... make sure this is read in angstroms?
-                    atom_positions.append(atom.get_position())
-                    b_factors.append(atom.get_temperature_factor())
-                    atom_identities.append(atom.element.atomic_number)
-                    atom_masses.append(atom.element.mass)
-
-    # Load the topology if None is given
-    if topology is None:
-        topology = _make_topology(
-            pdb,
-            atom_positions,
-            standardizes_names,
-        )
-
-    # Gather properties and return
-    atom_positions = np.array(atom_positions)
-    b_factors = np.array(b_factors)
-    atom_identities = np.array(atom_identities)
-    atom_masses = np.array(atom_masses)
-
-    return dict(
-        atom_positions=atom_positions,
-        b_factors=b_factors,
-        atom_identities=atom_identities,
-        atom_masses=atom_masses,
-        topology=topology,
-    )
-
-
 def _make_topology(
-    pdb,
-    atom_positions,
-    standardizes_names,
-):
+    pdb: PdbStructure,
+    atom_positions: np.ndarray | list,
+    standardizes_names: bool = True,
+) -> Topology:
     topology = Topology()
     if standardizes_names:
         residue_name_replacements, atom_name_replacements = (
@@ -332,6 +304,47 @@ def _make_topology(
     topology.create_disulfide_bonds(atom_positions)
 
     return topology
+
+
+def _load_atom_info(
+    pdb: PdbStructure,
+    topology: Optional[Topology],
+    standardizes_names: bool,
+):
+    atom_positions, b_factors, atom_identities, atom_masses = [], [], [], []
+    # load all of the positions (from every model)
+    for model in pdb.iter_models(use_all_models=True):
+        for chain in model.iter_chains():
+            for residue in chain.iter_residues():
+                for atom in residue.atoms:
+                    # ... make sure this is read in angstroms?
+                    atom_positions.append(atom.get_position())
+                    atom_identities.append(atom.element.atomic_number)
+                    atom_masses.append(atom.element.mass)
+                    b_factors.append(atom.get_temperature_factor())
+
+    # Load the topology if None is given
+    if topology is None:
+        topology = _make_topology(
+            pdb,
+            atom_positions,
+            standardizes_names,
+        )
+
+    # Gather properties and return
+    atom_positions = np.array(atom_positions)
+    b_factors = np.array(b_factors)
+    atom_identities = np.array(atom_identities)
+    atom_masses = np.array(atom_masses)
+
+    atom_info = AtomInfo(
+        atom_positions=atom_positions,
+        atom_identities=atom_identities,
+        atom_masses=atom_masses,
+        b_factors=b_factors,
+    )
+
+    return atom_info, topology
 
 
 def _guess_element(atom_name, residue_name, residue_length):

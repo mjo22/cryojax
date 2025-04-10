@@ -7,7 +7,7 @@ from typing import Generic, Optional, TypeVar
 
 import jax.numpy as jnp
 from equinox import AbstractClassVar, AbstractVar, error_if, Module
-from jaxtyping import Array, Complex
+from jaxtyping import Array, Complex, Float
 
 from ...image import maybe_rescale_pixel_size
 from .._instrument_config import InstrumentConfig
@@ -26,16 +26,20 @@ class AbstractPotentialIntegrator(Module, Generic[PotentialT], strict=True):
     is_projection_approximation: AbstractClassVar[bool]
 
     @abstractmethod
-    def compute_fourier_integrated_potential(
+    def compute_integrated_potential(
         self,
         potential: PotentialT,
         instrument_config: InstrumentConfig,
+        outputs_real_space: bool = False,
     ) -> (
         Complex[
             Array,
             "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
         ]
         | Complex[
+            Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+        ]
+        | Float[
             Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
         ]
     ):
