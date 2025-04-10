@@ -13,14 +13,14 @@ from jaxtyping import Array, Complex, PRNGKeyArray
 from ..image import fftn, irfftn
 from ..image.operators import FourierOperatorLike
 from ._instrument_config import InstrumentConfig
-from ._scattering_theory import convert_units_of_integrated_potential
+from ._scattering_theory import compute_object_phase_from_integrated_potential
 
 
 class AbstractIce(Module, strict=True):
     """Base class for an ice model."""
 
     @abstractmethod
-    def sample_ice_spectrum(
+    def sample_ice_phase_spectrum(
         self,
         key: PRNGKeyArray,
         instrument_config: InstrumentConfig,
@@ -39,10 +39,10 @@ class AbstractIce(Module, strict=True):
         at the exit plane."""
         raise NotImplementedError
 
-    def compute_object_spectrum_with_ice(
+    def compute_phase_spectrum_with_ice(
         self,
         key: PRNGKeyArray,
-        object_spectrum_at_exit_plane: (
+        object_phase_spectrum_at_exit_plane: (
             Complex[
                 Array,
                 "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
@@ -66,11 +66,11 @@ class AbstractIce(Module, strict=True):
     ):
         """Compute the combined spectrum of the ice and the specimen."""
         # Sample the realization of the phase due to the ice.
-        ice_spectrum_at_exit_plane = self.sample_ice_spectrum(
+        ice_phase_spectrum_at_exit_plane = self.sample_ice_phase_spectrum(
             key, instrument_config, outputs_rfft=input_is_rfft
         )
 
-        return object_spectrum_at_exit_plane + ice_spectrum_at_exit_plane
+        return object_phase_spectrum_at_exit_plane + ice_phase_spectrum_at_exit_plane
 
 
 class GaussianIce(AbstractIce, strict=True):
@@ -91,7 +91,7 @@ class GaussianIce(AbstractIce, strict=True):
         self.variance_function = variance_function
 
     @override
-    def sample_ice_spectrum(
+    def sample_ice_phase_spectrum(
         self,
         key: PRNGKeyArray,
         instrument_config: InstrumentConfig,
@@ -117,14 +117,14 @@ class GaussianIce(AbstractIce, strict=True):
             shape=frequency_grid_in_angstroms.shape[0:-1],
             dtype=complex,
         ).at[0, 0].set(0.0)
-        ice_spectrum_at_exit_plane = convert_units_of_integrated_potential(
+        ice_phase_spectrum_at_exit_plane = compute_object_phase_from_integrated_potential(
             ice_integrated_potential_at_exit_plane,
             instrument_config.wavelength_in_angstroms,
         )
 
         if outputs_rfft:
-            return ice_spectrum_at_exit_plane
+            return ice_phase_spectrum_at_exit_plane
         else:
             return fftn(
-                irfftn(ice_spectrum_at_exit_plane, s=instrument_config.padded_shape)
+                irfftn(ice_phase_spectrum_at_exit_plane, s=instrument_config.padded_shape)
             )

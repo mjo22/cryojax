@@ -12,7 +12,7 @@ from .._solvent import AbstractIce
 from .._structural_ensemble import AbstractStructuralEnsemble
 from .._transfer_theory import WaveTransferTheory
 from .base_scattering_theory import AbstractWaveScatteringTheory
-from .common_functions import convert_units_of_integrated_potential
+from .common_functions import compute_object_phase_from_integrated_potential
 
 
 class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
@@ -66,7 +66,7 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         # Compute the object spectrum in the exit plane
         potential = self.structural_ensemble.get_potential_in_lab_frame()
         if self.potential_integrator.is_projection_approximation:
-            object_spectrum_at_exit_plane = convert_units_of_integrated_potential(
+            phase_spectrum_at_exit_plane = compute_object_phase_from_integrated_potential(
                 self.potential_integrator.compute_integrated_potential(
                     potential, instrument_config, outputs_real_space=False
                 ),
@@ -76,20 +76,20 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
             if rng_key is not None:
                 # Get the potential of the specimen plus the ice
                 if self.solvent is not None:
-                    object_spectrum_at_exit_plane = (
-                        self.solvent.compute_object_spectrum_with_ice(
+                    phase_spectrum_at_exit_plane = (
+                        self.solvent.compute_phase_spectrum_with_ice(
                             rng_key,
-                            object_spectrum_at_exit_plane,
+                            phase_spectrum_at_exit_plane,
                             instrument_config,
                             input_is_rfft=True,
                         )
                     )
 
-            object_at_exit_plane = irfftn(
-                object_spectrum_at_exit_plane, s=instrument_config.padded_shape
+            phase_at_exit_plane = irfftn(
+                phase_spectrum_at_exit_plane, s=instrument_config.padded_shape
             )
         else:
-            object_spectrum_at_exit_plane = convert_units_of_integrated_potential(
+            phase_spectrum_at_exit_plane = compute_object_phase_from_integrated_potential(
                 self.potential_integrator.compute_integrated_potential(
                     potential, instrument_config, outputs_real_space=False
                 ),
@@ -99,17 +99,20 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
             if rng_key is not None:
                 # Get the potential of the specimen plus the ice
                 if self.solvent is not None:
-                    object_spectrum_at_exit_plane = (
-                        self.solvent.compute_object_spectrum_with_ice(
+                    phase_spectrum_at_exit_plane = (
+                        self.solvent.compute_phase_spectrum_with_ice(
                             rng_key,
-                            object_spectrum_at_exit_plane,
+                            phase_spectrum_at_exit_plane,
                             instrument_config,
                             input_is_rfft=False,
                         )
                     )
 
-            object_at_exit_plane = ifftn(
-                object_spectrum_at_exit_plane, s=instrument_config.padded_shape
+            phase_at_exit_plane = ifftn(
+                phase_spectrum_at_exit_plane, s=instrument_config.padded_shape
             )
         ac = self.amplitude_contrast_ratio
-        return jnp.exp(1.0j * (1.0 + ac * 1.0j) * object_at_exit_plane)
+        object_at_exit_plane = (
+            jnp.sqrt(1.0 - ac) * 1.0j - jnp.sqrt(ac)
+        ) * phase_at_exit_plane
+        return jnp.exp(object_at_exit_plane)

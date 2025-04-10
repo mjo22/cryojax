@@ -3,7 +3,7 @@ from .base_scattering_theory import (
     AbstractWaveScatteringTheory as AbstractWaveScatteringTheory,
 )
 from .common_functions import (
-    convert_units_of_integrated_potential as convert_units_of_integrated_potential,  # noqa: E501
+    compute_object_phase_from_integrated_potential as compute_object_phase_from_integrated_potential,  # noqa: E501
 )
 from .high_energy_scattering_theory import (
     HighEnergyScatteringTheory as HighEnergyScatteringTheory,
