@@ -209,7 +209,7 @@ def write_simulated_image_stack_from_starfile(
 
     # start from a previously defined `imaging_pipeline`
     # (see our Tutorials for details on how to do this)
-    imaging_pipeline = ContrastImagingPipeline(...)
+    imaging_pipeline = ContrastImageModel(...)
 
     # and a `RelionParticleParameterDataset` object
     param_dataset = RelionParticleParameterDataset(...)
@@ -219,8 +219,8 @@ def write_simulated_image_stack_from_starfile(
     @eqx.filter_jit
     @eqx.filter_vmap(in_axes=( 0, None), out_axes=0)
     def compute_image_stack(
-        img_pipeline_vmap: AbstractImagingPipeline,
-        img_pipeline_novmap: AbstractImagingPipeline,
+        img_pipeline_vmap: AbstractImageModel,
+        img_pipeline_novmap: AbstractImageModel,
     ):
 
         # Combine two previously split PyTrees

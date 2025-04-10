@@ -6,11 +6,11 @@ from ._detector import (
     PerfectDQE as PerfectDQE,
     PoissonDetector as PoissonDetector,
 )
-from ._imaging_pipeline import (
-    AbstractImagingPipeline as AbstractImagingPipeline,
-    ContrastImagingPipeline as ContrastImagingPipeline,
-    ElectronCountingImagingPipeline as ElectronCountingImagingPipeline,
-    IntensityImagingPipeline as IntensityImagingPipeline,
+from ._image_model import (
+    AbstractImageModel as AbstractImageModel,
+    ContrastImageModel as ContrastImageModel,
+    ElectronCountsImageModel as ElectronCountsImageModel,
+    IntensityImageModel as IntensityImageModel,
 )
 from ._instrument_config import InstrumentConfig as InstrumentConfig
 from ._pose import (

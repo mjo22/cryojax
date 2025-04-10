@@ -14,7 +14,7 @@ from jaxtyping import Array, Complex, Float, PRNGKeyArray
 from ...image import rfftn
 from ...image.operators import Constant, FourierOperatorLike
 from ...internal import error_if_not_positive
-from ...simulator import AbstractImagingPipeline
+from ...simulator import AbstractImageModel
 from ._base_distribution import AbstractDistribution
 
 
@@ -26,7 +26,7 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
     make different assumptions about the variance / covariance.
     """
 
-    imaging_pipeline: AbstractVar[AbstractImagingPipeline]
+    image_model: AbstractVar[AbstractImageModel]
     signal_scale_factor: AbstractVar[Float[Array, ""]]
     signal_offset: AbstractVar[Float[Array, ""]]
 
@@ -38,13 +38,13 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
     ) -> (
         Float[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim}",
         ]
         | Complex[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim//2+1}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim//2+1}",
         ]
     ):
         """Sample from the gaussian noise model."""
@@ -58,20 +58,20 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
     ) -> (
         Float[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim}",
         ]
         | Complex[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim}"
-            " {self.imaging_pipeline.instrument_config.x_dim//2+1}",
+            "{self.image_model.instrument_config.y_dim}"
+            " {self.image_model.instrument_config.x_dim//2+1}",
         ]
     ):
         """Render the image formation model."""
-        simulated_image = self.imaging_pipeline.render(
+        simulated_image = self.image_model.render(
             outputs_real_space=True, applies_mask=False
         )
-        if self.imaging_pipeline.mask is None:
+        if self.image_model.mask is None:
             if self.normalizes_signal:
                 mean, std = jnp.mean(simulated_image), jnp.std(simulated_image)
                 simulated_image = (simulated_image - mean) / std
@@ -80,13 +80,13 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
             )
         else:
             if self.normalizes_signal:
-                is_signal = self.imaging_pipeline.mask.array == 1.0
+                is_signal = self.image_model.mask.array == 1.0
                 mean, std = (
                     jnp.mean(simulated_image, where=is_signal),
                     jnp.std(simulated_image, where=is_signal),
                 )
                 simulated_image = (simulated_image - mean) / std
-            simulated_image = self.imaging_pipeline.mask(
+            simulated_image = self.image_model.mask(
                 self.signal_scale_factor * simulated_image + self.signal_offset
             )
         return simulated_image if outputs_real_space else rfftn(simulated_image)
@@ -97,13 +97,13 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
     ) -> (
         Float[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim}",
         ]
         | Complex[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim//2+1}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim//2+1}",
         ]
     ):
         """Draw a realization from the gaussian noise model and return either in
@@ -120,7 +120,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
     constant value across all pixels.
     """
 
-    imaging_pipeline: AbstractImagingPipeline
+    image_model: AbstractImageModel
     variance: Float[Array, ""]
     signal_scale_factor: Float[Array, ""]
     signal_offset: Float[Array, ""]
@@ -129,7 +129,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
 
     def __init__(
         self,
-        imaging_pipeline: AbstractImagingPipeline,
+        image_model: AbstractImageModel,
         variance: float | Float[Array, ""] = 1.0,
         signal_scale_factor: float | Float[Array, ""] = 1.0,
         signal_offset: float | Float[Array, ""] = 0.0,
@@ -137,22 +137,22 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
     ):
         """**Arguments:**
 
-        - `imaging_pipeline`:
+        - `image_model`:
             The image formation model.
         - `variance`:
             The variance of each pixel.
         - `signal_scale_factor`:
             A scale factor for the underlying signal simulated
-            from `imaging_pipeline`.
+            from `image_model`.
         - `signal_offset`:
-            An offset for the underlying signal simulated from `imaging_pipeline`.
+            An offset for the underlying signal simulated from `image_model`.
         - `normalizes_signal`:
             Whether or not the signal is normalized before applying the `signal_scale_factor`
             and `signal_offset`.
-            If an `AbstractMask` is given to `imaging_pipeline.mask`, the signal is normalized
+            If an `AbstractMask` is given to `image_model.mask`, the signal is normalized
             within the region where the mask is equal to `1`.
         """  # noqa: E501
-        self.imaging_pipeline = imaging_pipeline
+        self.image_model = image_model
         self.variance = error_if_not_positive(variance)
         self.signal_scale_factor = error_if_not_positive(signal_scale_factor)
         self.signal_offset = jnp.asarray(signal_offset)
@@ -164,16 +164,16 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
     ) -> (
         Float[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim}",
         ]
         | Complex[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim//2+1}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim//2+1}",
         ]
     ):
-        pipeline = self.imaging_pipeline
+        pipeline = self.image_model
         n_pixels = pipeline.instrument_config.padded_n_pixels
         freqs = pipeline.instrument_config.padded_frequency_grid_in_angstroms
         # Compute the zero mean variance and scale up to be independent of the number of
@@ -195,8 +195,8 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
         self,
         observed: Float[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim}",
         ],
     ) -> Float[Array, ""]:
         """Evaluate the log-likelihood of the gaussian noise model.
@@ -229,7 +229,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
     so that the variance to be an arbitrary noise power spectrum.
     """
 
-    imaging_pipeline: AbstractImagingPipeline
+    image_model: AbstractImageModel
     variance_function: FourierOperatorLike
     signal_scale_factor: Float[Array, ""]
     signal_offset: Float[Array, ""]
@@ -238,7 +238,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
 
     def __init__(
         self,
-        imaging_pipeline: AbstractImagingPipeline,
+        image_model: AbstractImageModel,
         variance_function: Optional[FourierOperatorLike] = None,
         signal_scale_factor: float | Float[Array, ""] = 1.0,
         signal_offset: float | Float[Array, ""] = 0.0,
@@ -246,22 +246,22 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
     ):
         """**Arguments:**
 
-        - `imaging_pipeline`:
+        - `image_model`:
             The image formation model.
         - `variance_function`:
             The variance of each fourier mode. By default,
             `cryojax.image.operators.Constant(1.0)`.
         - `signal_scale_factor`:
-            A scale factor for the underlying signal simulated from `imaging_pipeline`.
+            A scale factor for the underlying signal simulated from `image_model`.
         - `signal_offset`:
-            An offset for the underlying signal simulated from `imaging_pipeline`.
+            An offset for the underlying signal simulated from `image_model`.
         - `normalizes_signal`:
             Whether or not the signal is normalized before applying the `signal_scale_factor`
             and `signal_offset`.
-            If an `AbstractMask` is given to `imaging_pipeline.mask`, the signal is normalized
+            If an `AbstractMask` is given to `image_model.mask`, the signal is normalized
             within the region where the mask is equal to `1`.
         """  # noqa: E501
-        self.imaging_pipeline = imaging_pipeline
+        self.image_model = image_model
         self.variance_function = variance_function or Constant(1.0)
         self.signal_scale_factor = error_if_not_positive(jnp.asarray(signal_scale_factor))
         self.signal_offset = jnp.asarray(signal_offset)
@@ -272,16 +272,16 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
     ) -> (
         Float[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim}",
         ]
         | Complex[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim//2+1}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim//2+1}",
         ]
     ):
-        pipeline = self.imaging_pipeline
+        pipeline = self.image_model
         n_pixels = pipeline.instrument_config.padded_n_pixels
         freqs = pipeline.instrument_config.padded_frequency_grid_in_angstroms
         # Compute the zero mean variance and scale up to be independent of the number of
@@ -303,8 +303,8 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         self,
         observed: Complex[
             Array,
-            "{self.imaging_pipeline.instrument_config.y_dim} "
-            "{self.imaging_pipeline.instrument_config.x_dim//2+1}",
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim//2+1}",
         ],
     ) -> Float[Array, ""]:
         """Evaluate the log-likelihood of the gaussian noise model.
@@ -313,7 +313,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
 
         - `observed` : The observed data in fourier space.
         """
-        pipeline = self.imaging_pipeline
+        pipeline = self.image_model
         n_pixels = pipeline.instrument_config.n_pixels
         freqs = pipeline.instrument_config.frequency_grid_in_angstroms
         # Compute the variance and scale up to be independent of the number of pixels

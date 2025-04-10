@@ -17,10 +17,10 @@ from ._instrument_config import InstrumentConfig
 from ._scattering_theory import AbstractScatteringTheory
 
 
-class AbstractImagingPipeline(Module, strict=True):
+class AbstractImageModel(Module, strict=True):
     """Base class for an image formation model.
 
-    Call an `AbstractImagingPipeline`'s `render` routine.
+    Call an `AbstractImageModel`'s `render` routine.
     """
 
     instrument_config: AbstractVar[InstrumentConfig]
@@ -63,15 +63,15 @@ class AbstractImagingPipeline(Module, strict=True):
         - `removes_padding`:
             If `True`, return an image cropped to `InstrumentConfig.shape`.
             Otherwise, return an image at the `InstrumentConfig.padded_shape`.
-            If `removes_padding = False`, the `AbstractImagingPipeline.filter`
-            and `AbstractImagingPipeline.mask` are not applied, overriding
+            If `removes_padding = False`, the `AbstractImageModel.filter`
+            and `AbstractImageModel.mask` are not applied, overriding
             the booleans `applies_mask` and `applies_filter`.
         - `outputs_real_space`:
             If `True`, return the image in real space.
         - `applies_mask`:
-            If `True`, apply mask stored in `AbstractImagingPipeline.mask`.
+            If `True`, apply mask stored in `AbstractImageModel.mask`.
         - `applies_filter`:
-            If `True`, apply filter stored in `AbstractImagingPipeline.filter`.
+            If `True`, apply filter stored in `AbstractImageModel.filter`.
         """
         raise NotImplementedError
 
@@ -181,8 +181,8 @@ class AbstractImagingPipeline(Module, strict=True):
             )
 
 
-class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
-    """An image formation pipeline that returns the image contrast from a linear
+class ContrastImageModel(AbstractImageModel, strict=True):
+    """An image formation model that returns the image contrast from a linear
     scattering theory.
 
     **Attributes:**
@@ -255,8 +255,8 @@ class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
         )
 
 
-class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
-    """An image formation pipeline that returns an intensity distribution---or in other
+class IntensityImageModel(AbstractImageModel, strict=True):
+    """An image formation model that returns an intensity distribution---or in other
     words a squared wavefunction.
 
     **Attributes:**
@@ -329,8 +329,8 @@ class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
         )
 
 
-class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
-    """An image formation pipeline that returns electron counts, given a
+class ElectronCountsImageModel(AbstractImageModel, strict=True):
+    """An image formation model that returns electron counts, given a
     model for the detector.
 
     **Attributes:**

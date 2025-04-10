@@ -174,12 +174,12 @@ def theory_with_solvent(specimen, projection_method, transfer_theory, solvent):
 
 @pytest.fixture
 def noiseless_model(config, theory):
-    return cs.IntensityImagingPipeline(instrument_config=config, scattering_theory=theory)
+    return cs.IntensityImageModel(instrument_config=config, scattering_theory=theory)
 
 
 @pytest.fixture
 def noisy_model(config, theory_with_solvent, detector):
-    return cs.ElectronCountingImagingPipeline(
+    return cs.ElectronCountsImageModel(
         instrument_config=config,
         scattering_theory=theory_with_solvent,
         detector=detector,
