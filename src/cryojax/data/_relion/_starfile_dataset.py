@@ -471,20 +471,20 @@ def _make_pytrees_from_starfile(
         pose_parameter_names_and_values.append(("offset_y_in_angstroms", 0.0))
     if "rlnAngleRot" in particle_keys:
         pose_parameter_names_and_values.append(
-            ("view_phi", particle_blocks["rlnAngleRot"])
+            ("phi_angle", particle_blocks["rlnAngleRot"])
         )
     else:
-        pose_parameter_names_and_values.append(("view_phi", 0.0))
+        pose_parameter_names_and_values.append(("phi_angle", 0.0))
     if "rlnAngleTilt" in particle_keys:
         pose_parameter_names_and_values.append(
-            ("view_theta", particle_blocks["rlnAngleTilt"])
+            ("theta_angle", particle_blocks["rlnAngleTilt"])
         )
     elif "rlnAngleTiltPrior" in particle_keys:  # support for helices
         pose_parameter_names_and_values.append(
-            ("view_theta", particle_blocks["rlnAngleTiltPrior"])
+            ("theta_angle", particle_blocks["rlnAngleTiltPrior"])
         )
     else:
-        pose_parameter_names_and_values.append(("view_theta", 0.0))
+        pose_parameter_names_and_values.append(("theta_angle", 0.0))
     if "rlnAnglePsi" in particle_keys:
         # Relion uses -999.0 as a placeholder for an un-estimated in-plane
         # rotation
@@ -509,13 +509,13 @@ def _make_pytrees_from_starfile(
                 if particle_blocks["rlnAnglePsi"] == -999.0
                 else particle_blocks["rlnAnglePsi"]
             )
-        pose_parameter_names_and_values.append(("view_psi", particle_blocks_for_psi))
+        pose_parameter_names_and_values.append(("psi_angle", particle_blocks_for_psi))
     elif "rlnAnglePsiPrior" in particle_keys:  # support for helices
         pose_parameter_names_and_values.append(
-            ("view_psi", particle_blocks["rlnAnglePsiPrior"])
+            ("psi_angle", particle_blocks["rlnAnglePsiPrior"])
         )
     else:
-        pose_parameter_names_and_values.append(("view_psi", 0.0))
+        pose_parameter_names_and_values.append(("psi_angle", 0.0))
     pose_parameter_names, pose_parameter_values = tuple(
         zip(*pose_parameter_names_and_values)
     )

@@ -107,9 +107,9 @@ def write_starfile_with_particle_parameters(
             "`EulerAnglePose`. Found that it was a "
             f"{type(particle_parameters.pose).__name__}."
         )
-    particles_df["rlnAngleRot"] = euler_pose.view_phi
-    particles_df["rlnAngleTilt"] = euler_pose.view_theta
-    particles_df["rlnAnglePsi"] = euler_pose.view_psi
+    particles_df["rlnAngleRot"] = euler_pose.phi_angle
+    particles_df["rlnAngleTilt"] = euler_pose.theta_angle
+    particles_df["rlnAnglePsi"] = euler_pose.psi_angle
     particles_df["rlnDefocusU"] = (
         particle_parameters.transfer_theory.ctf.defocus_in_angstroms
         + particle_parameters.transfer_theory.ctf.astigmatism_in_angstroms / 2

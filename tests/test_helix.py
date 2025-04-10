@@ -116,7 +116,7 @@ def test_c6_rotation(
 
     np.testing.assert_allclose(
         compute_rotated_image(pipeline, cs.EulerAnglePose()),
-        compute_rotated_image(pipeline, cs.EulerAnglePose(view_phi=rotation_angle)),
+        compute_rotated_image(pipeline, cs.EulerAnglePose(phi_angle=rotation_angle)),
     )
 
 
@@ -203,15 +203,15 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
         compute_rotated_image(
             config,
             helix,
-            cs.EulerAnglePose(view_phi=0.0, view_theta=90.0, view_psi=0.0),
+            cs.EulerAnglePose(phi_angle=0.0, theta_angle=90.0, psi_angle=0.0),
         ),
         compute_rotated_image(
             config,
             helix,
             cs.EulerAnglePose(
-                view_phi=helix.twist,
-                view_theta=90.0,
-                view_psi=0.0,
+                phi_angle=helix.twist,
+                theta_angle=90.0,
+                psi_angle=0.0,
                 offset_x_in_angstroms=helix.rise,
             ),
         ),

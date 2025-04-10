@@ -65,9 +65,9 @@ potential = cxs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, 
 pose = cxs.EulerAnglePose(
     offset_x_in_angstroms=5.0,
     offset_y_in_angstroms=-3.0,
-    view_phi=20.0,
-    view_theta=80.0,
-    view_psi=-10.0,
+    phi_angle=20.0,
+    theta_angle=80.0,
+    psi_angle=-10.0,
 )
 # ... now, build the ensemble. In this case, the ensemble is just a single structure
 structural_ensemble = cxs.SingleStructureEnsemble(potential, pose)
