@@ -112,7 +112,5 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
                 phase_spectrum_at_exit_plane, s=instrument_config.padded_shape
             )
         ac = self.amplitude_contrast_ratio
-        object_at_exit_plane = (
-            jnp.sqrt(1.0 - ac) * 1.0j - jnp.sqrt(ac)
-        ) * phase_at_exit_plane
+        object_at_exit_plane = (jnp.sqrt(1.0 - ac**2) * 1.0j - ac) * phase_at_exit_plane
         return jnp.exp(object_at_exit_plane)

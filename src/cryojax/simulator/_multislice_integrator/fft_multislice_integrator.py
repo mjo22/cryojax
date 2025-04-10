@@ -125,7 +125,7 @@ class FFTMultisliceIntegrator(
         )(integrated_potential_per_slice, instrument_config.wavelength_in_angstroms)
         # Compute the transmission function
         ac = amplitude_contrast_ratio
-        object_per_slice = (jnp.sqrt(1.0 - ac) * 1.0j - jnp.sqrt(ac)) * phase_per_slice
+        object_per_slice = (jnp.sqrt(1.0 - ac**2) * 1.0j - ac) * phase_per_slice
         transmission = jnp.exp(object_per_slice)
         # Compute the fresnel propagator (TODO: check numerical factors)
         if isinstance(potential, AbstractAtomicPotential):
