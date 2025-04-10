@@ -307,10 +307,8 @@ def _compute_object_spectrum_from_scattering_potential(
     # Get potential in the lab frame
     potential = structural_ensemble.get_potential_in_lab_frame()
     # Compute the phase shifts in the exit plane
-    fourier_integrated_potential = (
-        potential_integrator.compute_fourier_integrated_potential(
-            potential, instrument_config
-        )
+    fourier_integrated_potential = potential_integrator.compute_integrated_potential(
+        potential, instrument_config, outputs_real_space=False
     )
     # Compute the phase shifts in exit plane and multiply by the translation.
     phase_shifts_in_exit_plane = convert_units_of_integrated_potential(
