@@ -53,7 +53,7 @@ class ParticleStack(eqx.Module, strict=True):
         self.images = jnp.asarray(images)
 
 
-class AbstractParticleParameterReader(AbstractDataset[T], Generic[T]):
+class AbstractParticleParameterDataset(AbstractDataset[T], Generic[T]):
     @property
     @abc.abstractmethod
     def loads_metadata(self) -> bool:
@@ -65,8 +65,8 @@ class AbstractParticleParameterReader(AbstractDataset[T], Generic[T]):
         raise NotImplementedError
 
 
-class AbstractParticleStackReader(AbstractDataset[ParticleStack]):
+class AbstractParticleStackDataset(AbstractDataset[ParticleStack]):
     @property
     @abc.abstractmethod
-    def param_reader(self) -> AbstractParticleParameterReader:
+    def param_dataset(self) -> AbstractParticleParameterDataset:
         raise NotImplementedError
