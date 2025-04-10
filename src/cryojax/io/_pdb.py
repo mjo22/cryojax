@@ -24,7 +24,7 @@ _VALID_URLS.discard("")
 
 
 @overload
-def read_atoms_from_pdb(
+def read_atoms_from_pdb(  # type: ignore
     filename_or_url: str | pathlib.Path,
     center: bool = False,
     loads_b_factors: Literal[False] = False,

@@ -15,7 +15,7 @@ def test_conformation(potential, pose, projection_method, transfer_theory, confi
         potential, pose, conformation=DiscreteConformationalVariable(0)
     )
     theory = cxs.WeakPhaseScatteringTheory(ensemble, projection_method, transfer_theory)
-    _ = theory.compute_object_spectrum_at_exit_plane(config)
+    _ = theory.compute_phase_spectrum_at_exit_plane(config)
 
 
 def test_conformation_vmap(potential, pose, projection_method, transfer_theory, config):
@@ -37,7 +37,7 @@ def test_conformation_vmap(potential, pose, projection_method, transfer_theory, 
     @partial(jax.vmap, in_axes=[0, None, None])
     def compute_conformation_stack(vmap, novmap, config):
         theory = eqx.combine(vmap, novmap)
-        return theory.compute_object_spectrum_at_exit_plane(config)
+        return theory.compute_phase_spectrum_at_exit_plane(config)
 
     # Vmap over conformations
     image_stack = compute_conformation_stack(vmap, novmap, config)

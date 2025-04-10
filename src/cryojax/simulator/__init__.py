@@ -41,7 +41,7 @@ from ._potential_representation import (
 from ._scattering_theory import (
     AbstractScatteringTheory as AbstractScatteringTheory,
     AbstractWeakPhaseScatteringTheory as AbstractWeakPhaseScatteringTheory,
-    convert_units_of_integrated_potential as convert_units_of_integrated_potential,  # noqa: E501
+    compute_object_phase_from_integrated_potential as compute_object_phase_from_integrated_potential,  # noqa: E501
     LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
     WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
 )

@@ -19,7 +19,7 @@ from .._structural_ensemble import (
 )
 from .._transfer_theory import ContrastTransferTheory
 from .base_scattering_theory import AbstractScatteringTheory
-from .common_functions import convert_units_of_integrated_potential
+from .common_functions import compute_object_phase_from_integrated_potential
 
 
 class AbstractWeakPhaseScatteringTheory(AbstractScatteringTheory, strict=True):
@@ -28,7 +28,7 @@ class AbstractWeakPhaseScatteringTheory(AbstractScatteringTheory, strict=True):
     """
 
     @abstractmethod
-    def compute_object_spectrum_at_exit_plane(
+    def compute_phase_spectrum_at_exit_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -88,7 +88,7 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         self.solvent = solvent
 
     @override
-    def compute_object_spectrum_at_exit_plane(
+    def compute_phase_spectrum_at_exit_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -96,23 +96,21 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
         # Compute the phase shifts in the exit plane
-        object_spectrum_at_exit_plane = (
-            _compute_object_spectrum_from_scattering_potential(
-                self.structural_ensemble, self.potential_integrator, instrument_config
-            )
+        phase_spectrum_at_exit_plane = _compute_phase_spectrum_from_scattering_potential(
+            self.structural_ensemble, self.potential_integrator, instrument_config
         )
 
         if rng_key is not None:
             # Get the potential of the specimen plus the ice
             if self.solvent is not None:
-                object_spectrum_at_exit_plane = self.solvent.compute_object_spectrum_with_ice(  # noqa: E501
+                phase_spectrum_at_exit_plane = self.solvent.compute_phase_spectrum_with_ice(  # noqa: E501
                     rng_key,
-                    object_spectrum_at_exit_plane,
+                    phase_spectrum_at_exit_plane,
                     instrument_config,
                     input_is_rfft=self.potential_integrator.is_projection_approximation,
                 )
 
-        return object_spectrum_at_exit_plane
+        return phase_spectrum_at_exit_plane
 
     @override
     def compute_contrast_spectrum_at_detector_plane(
@@ -122,11 +120,11 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        object_spectrum_at_exit_plane = self.compute_object_spectrum_at_exit_plane(
+        phase_spectrum_at_exit_plane = self.compute_phase_spectrum_at_exit_plane(
             instrument_config, rng_key
         )
         contrast_spectrum_at_detector_plane = self.transfer_theory.propagate_object_to_detector_plane(  # noqa: E501
-            object_spectrum_at_exit_plane,
+            phase_spectrum_at_exit_plane,
             instrument_config,
             is_projection_approximation=self.potential_integrator.is_projection_approximation,
         )
@@ -179,7 +177,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         self.batch_size = batch_size
 
     @override
-    def compute_object_spectrum_at_exit_plane(
+    def compute_phase_spectrum_at_exit_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -189,12 +187,12 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         @eqx.filter_vmap(in_axes=(0, None, None))
         def compute_image_stack(ensemble_vmap, ensemble_novmap, instrument_config):
             ensemble = eqx.combine(ensemble_vmap, ensemble_novmap)
-            object_spectrum_at_exit_plane = (
-                _compute_object_spectrum_from_scattering_potential(
+            phase_spectrum_at_exit_plane = (
+                _compute_phase_spectrum_from_scattering_potential(
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
-            return object_spectrum_at_exit_plane
+            return phase_spectrum_at_exit_plane
 
         # Get the batch
         ensemble_batch, _ = (
@@ -205,21 +203,21 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         to_vmap = jax.tree_util.tree_map(is_vmap, ensemble_batch, is_leaf=is_vmap)
         vmap, novmap = eqx.partition(ensemble_batch, to_vmap)
 
-        object_spectrum_at_exit_plane = _compute_image_superposition(
+        phase_spectrum_at_exit_plane = _compute_image_superposition(
             vmap, novmap, instrument_config, compute_image_stack
         )
 
         if rng_key is not None:
             # Get the potential of the specimen plus the ice
             if self.solvent is not None:
-                object_spectrum_at_exit_plane = self.solvent.compute_object_spectrum_with_ice(  # noqa: E501
+                phase_spectrum_at_exit_plane = self.solvent.compute_phase_spectrum_with_ice(  # noqa: E501
                     rng_key,
-                    object_spectrum_at_exit_plane,
+                    phase_spectrum_at_exit_plane,
                     instrument_config,
                     input_is_rfft=self.potential_integrator.is_projection_approximation,
                 )
 
-        return object_spectrum_at_exit_plane
+        return phase_spectrum_at_exit_plane
 
     @override
     def compute_contrast_spectrum_at_detector_plane(
@@ -235,8 +233,8 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             ensemble_novmap, transfer_novmap = pytree_novmap
             ensemble = eqx.combine(ensemble_vmap, ensemble_novmap)
             transfer_theory = eqx.combine(transfer_vmap, transfer_novmap)
-            object_spectrum_at_exit_plane = (
-                _compute_object_spectrum_from_scattering_potential(
+            phase_spectrum_at_exit_plane = (
+                _compute_phase_spectrum_from_scattering_potential(
                     ensemble, self.potential_integrator, instrument_config
                 )
             )
@@ -244,7 +242,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
                 instrument_config.padded_frequency_grid_in_angstroms
             )
             contrast_spectrum_at_detector_plane = transfer_theory.propagate_object_to_detector_plane(  # noqa: E501
-                object_spectrum_at_exit_plane,
+                phase_spectrum_at_exit_plane,
                 instrument_config,
                 is_projection_approximation=self.potential_integrator.is_projection_approximation,
             )
@@ -289,7 +287,9 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             if self.solvent is not None:
                 fourier_ice_contrast_at_detector_plane = (
                     self.transfer_theory.propagate_object_to_detector_plane(
-                        self.solvent.sample_ice_spectrum(rng_key, instrument_config),
+                        self.solvent.sample_ice_phase_spectrum(
+                            rng_key, instrument_config
+                        ),
                         instrument_config,
                         is_projection_approximation=True,
                     )
@@ -301,7 +301,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         return contrast_spectrum_at_detector_plane
 
 
-def _compute_object_spectrum_from_scattering_potential(
+def _compute_phase_spectrum_from_scattering_potential(
     structural_ensemble, potential_integrator, instrument_config
 ):
     # Get potential in the lab frame
@@ -311,7 +311,7 @@ def _compute_object_spectrum_from_scattering_potential(
         potential, instrument_config, outputs_real_space=False
     )
     # Compute the phase shifts in exit plane and multiply by the translation.
-    phase_shifts_in_exit_plane = convert_units_of_integrated_potential(
+    phase_shifts_in_exit_plane = compute_object_phase_from_integrated_potential(
         fourier_integrated_potential, instrument_config.wavelength_in_angstroms
     )
     return phase_shifts_in_exit_plane
