@@ -152,7 +152,7 @@ def _center_atom_coordinates(atom_positions, atom_masses):
     return atom_positions - com_position
 
 
-class AtomicModel(NamedTuple):
+class AtomInfo(NamedTuple):
     """A struct for the info of individual atoms.
 
     **Attributes:**
@@ -207,7 +207,7 @@ class AtomicModelFile:
         *,
         standardizes_names: bool = True,
         topology: Optional[Topology] = None,
-    ) -> tuple[AtomicModel, Topology]:
+    ) -> tuple[AtomInfo, Topology]:
         """Load properties from the PDB reader.
 
         **Arguments:**
@@ -221,7 +221,7 @@ class AtomicModelFile:
 
         **Returns:**
 
-        A tuple of the `AtomicModel` dataclass and the `mdtraj.Topology`.
+        A tuple of the `AtomInfo` dataclass and the `mdtraj.Topology`.
         """
         atom_info, topology = _load_atom_info(
             self._pdb_structure,
@@ -335,7 +335,7 @@ def _load_atom_info(
     atom_identities = np.array(atom_identities)
     atom_masses = np.array(atom_masses)
 
-    atom_info = AtomicModel(
+    atom_info = AtomInfo(
         atom_positions=atom_positions,
         atom_identities=atom_identities,
         atom_masses=atom_masses,
