@@ -69,13 +69,20 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
         self.interpolation_cval = interpolation_cval
 
     @override
-    def compute_fourier_integrated_potential(
+    def compute_integrated_potential(
         self,
         potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
         instrument_config: InstrumentConfig,
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]:
+        outputs_real_space: bool = False,
+    ) -> (
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Float[
+            Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+        ]
+    ):
         """Compute the integrated scattering potential at the `InstrumentConfig` settings
         of a voxel-based representation in fourier-space, using fourier slice extraction.
 
@@ -119,8 +126,13 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
                     irfftn(fourier_projection, s=(N, N))
                 )
             )
-        return self._convert_raw_image_to_integrated_potential(
+        fourier_projection = self._convert_raw_image_to_integrated_potential(
             fourier_projection, potential, instrument_config, input_is_rfft=True
+        )
+        return (
+            irfftn(fourier_projection, s=instrument_config.padded_shape)
+            if outputs_real_space
+            else fourier_projection
         )
 
     def extract_fourier_slice_from_spline_coefficients(
@@ -242,13 +254,19 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
         self.interpolation_cval = interpolation_cval
 
     @override
-    def compute_fourier_integrated_potential(
+    def compute_integrated_potential(
         self,
         potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
         instrument_config: InstrumentConfig,
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
-    ]:
+        outputs_real_space: bool = False,
+    ) -> (
+        Complex[
+            Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+        ]
+        | Float[
+            Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+        ]
+    ):
         """Compute the integrated scattering potential at the `InstrumentConfig` settings
         of a voxel-based representation in fourier-space, using fourier slice extraction.
 
@@ -296,11 +314,16 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
                     ifftn(ewald_sphere_surface, s=(N, N))
                 )
             )
-        return self._convert_raw_image_to_integrated_potential(
+        ewald_sphere_surface = self._convert_raw_image_to_integrated_potential(
             ewald_sphere_surface,
             potential,
             instrument_config,
             input_is_rfft=False,
+        )
+        return (
+            irfftn(ewald_sphere_surface, s=instrument_config.padded_shape)
+            if outputs_real_space
+            else ewald_sphere_surface
         )
 
     def extract_ewald_sphere_from_spline_coefficients(

@@ -64,13 +64,20 @@ class GaussianMixtureProjection(
             )
 
     @override
-    def compute_fourier_integrated_potential(
+    def compute_integrated_potential(
         self,
         potential: GaussianMixtureAtomicPotential | PengAtomicPotential,
         instrument_config: InstrumentConfig,
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]:
+        outputs_real_space: bool = False,
+    ) -> (
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Float[
+            Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+        ]
+    ):
         """Compute a projection from the atomic potential and transform it to Fourier
         space.
 
@@ -116,15 +123,13 @@ class GaussianMixtureProjection(
             # Downsample back to the original pixel size, rescaling so that the
             # downsampling produces an average in a given region, not a sum
             n_pixels, upsampled_n_pixels = instrument_config.n_pixels, math.prod(shape)
-            fourier_projection = downsample_to_shape_with_fourier_cropping(
+            return downsample_to_shape_with_fourier_cropping(
                 projection * (n_pixels / upsampled_n_pixels),
                 downsampled_shape=instrument_config.padded_shape,
-                outputs_real_space=False,
+                outputs_real_space=outputs_real_space,
             )
         else:
-            fourier_projection = rfftn(projection)
-
-        return fourier_projection
+            return projection if outputs_real_space else rfftn(projection)
 
 
 def _compute_projected_potential_from_atoms(
