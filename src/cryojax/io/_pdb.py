@@ -2,11 +2,10 @@
 Read atomic information from a PDB file using functions and objects adapted from `mdtraj`.
 """
 
-import dataclasses
 import gzip
 import pathlib
 from io import StringIO
-from typing import Literal, Optional, overload
+from typing import Literal, NamedTuple, Optional, overload
 from urllib.parse import urlparse, uses_netloc, uses_params, uses_relative
 from urllib.request import urlopen
 
@@ -153,9 +152,8 @@ def _center_atom_coordinates(atom_positions, atom_masses):
     return atom_positions - com_position
 
 
-@dataclasses.dataclass
-class AtomInfo:
-    """A dataclass for the info of individual atoms.
+class AtomInfo(NamedTuple):
+    """A struct for the info of individual atoms.
 
     **Attributes:**
 
