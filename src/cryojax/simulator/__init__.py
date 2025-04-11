@@ -41,13 +41,13 @@ from ._potential_representation import (
 from ._scattering_theory import (
     AbstractScatteringTheory as AbstractScatteringTheory,
     AbstractWeakPhaseScatteringTheory as AbstractWeakPhaseScatteringTheory,
-    compute_object_phase_from_integrated_potential as compute_object_phase_from_integrated_potential,  # noqa: E501
     LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
     WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
 )
 from ._solvent import (
-    AbstractIce as AbstractIce,
-    GaussianIce as GaussianIce,
+    AbstractSolvent as AbstractSolvent,
+    GRFSolvent as GRFSolvent,
+    SolventMixturePower as SolventMixturePower,
 )
 from ._structural_ensemble import (
     AbstractAssembly as AbstractAssembly,

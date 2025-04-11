@@ -5,26 +5,75 @@ Abstraction of the ice in a cryo-EM image.
 from abc import abstractmethod
 from typing_extensions import override
 
+import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
-from equinox import Module
-from jaxtyping import Array, Complex, PRNGKeyArray
+from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
-from ..image import fftn, irfftn
-from ..image.operators import FourierOperatorLike
+from ..image import ifftn, irfftn
+from ..image.operators import (
+    AbstractFourierOperator,
+    FourierGaussian,
+    FourierGaussianWithRadialOffset,
+    FourierOperatorLike,
+)
+from ..internal import error_if_negative
 from ._instrument_config import InstrumentConfig
-from ._scattering_theory import compute_object_phase_from_integrated_potential
 
 
-class AbstractIce(Module, strict=True):
-    """Base class for an ice model."""
+class SolventMixturePower(AbstractFourierOperator, strict=True):
+    r"""A model for the power of the gaussian random field (GRF) for solvent in cryo-EM.
+    This implementation takes inspiration from Parkhurst et al. (2024). and uses its
+    implementation as default.
+
+    Parkhurst et al. (2024) models the power as a sum of two gaussians, with
+    one gaussian modeling an envelope for the low-resolution decay of the power and
+    another gaussian modeling the peak from the solvent at high-resolutions. This
+    expression is given by
+
+    .. math::
+        P(k) = a_1 \exp(-k^2/(2 s_1^2)) + a_2 \exp(-(k-m_2)^2/(2 s_2^2)),
+
+    where index `1` is for the envelope and index `2` is for the high-resolution peak.
+
+    More generally, this class models the power as a mixture of any two functions, called
+    `envelope_function` and `peak_function`.
+    """
+
+    envelope_function: FourierOperatorLike
+    peak_function: FourierOperatorLike
+
+    def __init__(
+        self,
+        envelope_function: FourierOperatorLike | None = None,
+        peak_function: FourierOperatorLike | None = None,
+    ):
+        if envelope_function is None:
+            self.envelope_function = FourierGaussian()
+        if peak_function is None:
+            self.peak_function = FourierGaussianWithRadialOffset()
+
+    @override
+    def __call__(
+        self, frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"]
+    ) -> Float[Array, "y_dim x_dim"]:
+        mixture_function = self.envelope_function * self.peak_function
+        return mixture_function(frequency_grid_in_angstroms)
+
+
+class AbstractSolvent(eqx.Module, strict=True):
+    """Base class for a model of the solvent in cryo-EM."""
+
+    solvent_thickness_in_angstroms: eqx.AbstractVar[Float[Array, ""]]
+    potential_scale: eqx.AbstractVar[Float[Array, ""]]
 
     @abstractmethod
-    def sample_ice_phase_spectrum(
+    def sample_solvent_integrated_potential(
         self,
-        key: PRNGKeyArray,
+        rng_key: PRNGKeyArray,
         instrument_config: InstrumentConfig,
         outputs_rfft: bool = True,
+        outputs_real_space: bool = False,
     ) -> (
         Complex[
             Array,
@@ -32,17 +81,21 @@ class AbstractIce(Module, strict=True):
         ]
         | Complex[
             Array,
-            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+        ]
+        | Float[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
         ]
     ):
-        """Sample a stochastic realization of the phase shifts due to the ice
+        """Sample a stochastic realization of scattering potential due to the ice
         at the exit plane."""
         raise NotImplementedError
 
-    def compute_phase_spectrum_with_ice(
+    def compute_integrated_potential_with_solvent(
         self,
-        key: PRNGKeyArray,
-        object_phase_spectrum_at_exit_plane: (
+        rng_key: PRNGKeyArray,
+        fourier_integrated_potential_of_specimen: (
             Complex[
                 Array,
                 "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
@@ -54,48 +107,7 @@ class AbstractIce(Module, strict=True):
         ),
         instrument_config: InstrumentConfig,
         input_is_rfft: bool = True,
-    ) -> (
-        Complex[
-            Array,
-            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
-        ]
-        | Complex[
-            Array,
-            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
-        ]
-    ):
-        """Compute the combined spectrum of the ice and the specimen."""
-        # Sample the realization of the phase due to the ice.
-        ice_phase_spectrum_at_exit_plane = self.sample_ice_phase_spectrum(
-            key, instrument_config, outputs_rfft=input_is_rfft
-        )
-
-        return object_phase_spectrum_at_exit_plane + ice_phase_spectrum_at_exit_plane
-
-
-class GaussianIce(AbstractIce, strict=True):
-    r"""Ice modeled as gaussian noise.
-
-    **Attributes:**
-
-    - `variance_function` :
-        A function that computes the variance
-        of the ice, modeled as colored gaussian noise.
-        The dimensions of this function are the square
-        of the dimensions of an integrated potential.
-    """
-
-    variance_function: FourierOperatorLike
-
-    def __init__(self, variance_function: FourierOperatorLike):
-        self.variance_function = variance_function
-
-    @override
-    def sample_ice_phase_spectrum(
-        self,
-        key: PRNGKeyArray,
-        instrument_config: InstrumentConfig,
-        outputs_rfft: bool = True,
+        outputs_real_space: bool = False,
     ) -> (
         Complex[
             Array,
@@ -105,26 +117,138 @@ class GaussianIce(AbstractIce, strict=True):
             Array,
             "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
         ]
+        | Float[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+        ]
     ):
-        """Sample a realization of the ice phase shifts as colored gaussian noise."""
+        """Compute the combined spectrum of the ice and the specimen."""
+        # Sample the realization of the phase due to the ice.
+        # TODO: this function will also handle masking from a model for the
+        # solvent shell.
+        fourier_integrated_potential_of_solvent = (
+            self.sample_solvent_integrated_potential(
+                rng_key,
+                instrument_config,
+                outputs_rfft=input_is_rfft,
+                outputs_real_space=False,
+            )
+        )
+        fourier_integrated_potential = (
+            fourier_integrated_potential_of_solvent
+            + fourier_integrated_potential_of_specimen
+        )
+
+        if outputs_real_space:
+            if input_is_rfft:
+                return irfftn(
+                    fourier_integrated_potential,
+                    s=instrument_config.padded_shape,
+                )
+            else:
+                return ifftn(
+                    fourier_integrated_potential, s=instrument_config.padded_shape
+                )
+        else:
+            return fourier_integrated_potential
+
+
+class GRFSolvent(AbstractSolvent, strict=True):
+    r"""Solvent modeled as a gaussian random field (GRF)."""
+
+    solvent_thickness_in_angstroms: Float[Array, ""]
+    potential_scale: float
+    power_spectrum_function: FourierOperatorLike
+    samples_power: bool
+
+    def __init__(
+        self,
+        solvent_thickness_in_angstroms: Float[Array, ""] | float,
+        potential_scale: float = 1.0,  # TODO: default value?
+        power_spectrum_function: FourierOperatorLike | None = None,
+        samples_power: bool = False,
+    ):
+        """**Arguments:**
+
+        - `thickness_in_angstroms`:
+            The solvent thickness in angstroms.
+        - `potential_scale`:
+            A dimensional factor that quantifies the characteristic scale
+            of the potential. By default, this is calibrated from scattering
+            factors in `cryojax.constants`.
+        - `power_spectrum_function` :
+            A function that computes the power spectrum of the solvent.
+            This function is treated as dimensionless,
+            while `thickness_in_angstroms` and `potential_scale`
+            determine the dimensions of the final image.
+        - `samples_power`:
+            If `True`, the power spectrum of the sampled GRF is stochastic. If `False`,
+            the power is deterministic (i.e. the GRF is generated by sampling
+            uniform phases).
+        """
+        self.power_spectrum_function = power_spectrum_function or SolventMixturePower()
+        self.samples_power = samples_power
+        self.potential_scale = potential_scale
+        self.solvent_thickness_in_angstroms = error_if_negative(
+            solvent_thickness_in_angstroms
+        )
+
+    @override
+    def sample_solvent_integrated_potential(
+        self,
+        rng_key: PRNGKeyArray,
+        instrument_config: InstrumentConfig,
+        outputs_rfft: bool = True,
+        outputs_real_space: bool = False,
+    ) -> (
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+        ]
+        | Float[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
+        ]
+    ):
+        """Sample a realization of the ice integrated potential as a gaussian
+        random field.
+        """
         n_pixels = instrument_config.padded_n_pixels
-        frequency_grid_in_angstroms = instrument_config.padded_frequency_grid_in_angstroms
+        if outputs_real_space:
+            frequency_grid_in_angstroms = (
+                instrument_config.padded_frequency_grid_in_angstroms
+            )
+        else:
+            if outputs_rfft:
+                frequency_grid_in_angstroms = (
+                    instrument_config.padded_frequency_grid_in_angstroms
+                )
+            else:
+                frequency_grid_in_angstroms = (
+                    instrument_config.padded_full_frequency_grid_in_angstroms
+                )
         # Compute standard deviation, scaling up by the variance by the number
         # of pixels to make the realization independent pixel-independent in real-space.
-        std = jnp.sqrt(n_pixels * self.variance_function(frequency_grid_in_angstroms))
-        ice_integrated_potential_at_exit_plane = std * jr.normal(
-            key,
+        std = jnp.sqrt(
+            n_pixels * self.power_spectrum_function(frequency_grid_in_angstroms)
+        )
+        solvent_grf = std * jr.normal(
+            rng_key,
             shape=frequency_grid_in_angstroms.shape[0:-1],
             dtype=complex,
         ).at[0, 0].set(0.0)
-        ice_phase_spectrum_at_exit_plane = compute_object_phase_from_integrated_potential(
-            ice_integrated_potential_at_exit_plane,
-            instrument_config.wavelength_in_angstroms,
-        )
-
-        if outputs_rfft:
-            return ice_phase_spectrum_at_exit_plane
-        else:
-            return fftn(
-                irfftn(ice_phase_spectrum_at_exit_plane, s=instrument_config.padded_shape)
+        # Apply dimensionful scalings to get the potential
+        fourier_integrated_potential_of_solvent = (
+            self.potential_scale * self.solvent_thickness_in_angstroms
+        ) * solvent_grf
+        if outputs_real_space:
+            return irfftn(
+                fourier_integrated_potential_of_solvent,
+                s=instrument_config.padded_shape,
             )
+        else:
+            return fourier_integrated_potential_of_solvent

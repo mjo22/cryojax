@@ -186,7 +186,7 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
         )
         return config.crop_to_shape(
             irfftn(
-                theory.compute_phase_spectrum_at_exit_plane(config),
+                theory.compute_object_spectrum_at_exit_plane(config),
                 s=config.padded_shape,
             )
         )  # noqa: E501
