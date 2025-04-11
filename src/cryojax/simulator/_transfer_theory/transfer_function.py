@@ -17,9 +17,6 @@ class AbstractCTF(eqx.Module, strict=True):
     """An abstract base class for a CTF in cryo-EM."""
 
     defocus_in_angstroms: eqx.AbstractVar[Float[Array, ""]]
-    astigmatism_in_angstroms: eqx.AbstractVar[Float[Array, ""]]
-    astigmatism_angle: eqx.AbstractVar[Float[Array, ""]]
-    spherical_aberration_in_mm: eqx.AbstractVar[Float[Array, ""]]
 
     @abstractmethod
     def compute_aberration_phase_shifts(
@@ -179,15 +176,9 @@ class PerfectCTF(AbstractCTF, strict=True):
     cryo-EM densities."""
 
     defocus_in_angstroms: Float[Array, ""]
-    astigmatism_in_angstroms: Float[Array, ""]
-    astigmatism_angle: Float[Array, ""]
-    spherical_aberration_in_mm: Float[Array, ""]
 
     def __init__(self):
         self.defocus_in_angstroms = jnp.asarray(0.0)
-        self.astigmatism_in_angstroms = jnp.asarray(0.0)
-        self.astigmatism_angle = jnp.asarray(0.0)
-        self.spherical_aberration_in_mm = jnp.asarray(0.0)
 
     @override
     def compute_aberration_phase_shifts(

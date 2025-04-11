@@ -12,7 +12,7 @@ from jaxtyping import Array, Float, PRNGKeyArray
 
 from ...image.operators import Constant, FourierGaussian
 from ...io import write_image_stack_to_mrc
-from ...simulator import EulerAnglePose
+from ...simulator import AberratedAstigmaticCTF
 from ._starfile_dataset import RelionParticleParameterDataset
 from ._starfile_pytrees import RelionParticleParameters
 
@@ -72,6 +72,12 @@ def write_starfile_with_particle_parameters(
     ), "n_images must be greater than or equal to mrc_batch_size"
 
     starfile_dict = dict()
+    if not isinstance(particle_parameters.transfer_theory.ctf, AberratedAstigmaticCTF):
+        raise NotImplementedError(
+            "The `RelionParticleParameters.transfer_theory.ctf` must be an "
+            "`AberratedAstigmaticCTF`. Found that it was a "
+            f"{type(particle_parameters.transfer_theory.ctf).__name__}."
+        )
     # Generate optics group
     optics_df = pd.DataFrame()
     optics_df["rlnOpticsGroup"] = [1]
@@ -99,17 +105,9 @@ def write_starfile_with_particle_parameters(
 
     particles_df["rlnOriginXAngst"] = particle_parameters.pose.offset_x_in_angstroms
     particles_df["rlnOriginYAngst"] = particle_parameters.pose.offset_y_in_angstroms
-    if isinstance(particle_parameters.pose, EulerAnglePose):
-        euler_pose = particle_parameters.pose
-    else:
-        raise NotImplementedError(
-            "The `RelionParticleParameters.pose` pose must be an "
-            "`EulerAnglePose`. Found that it was a "
-            f"{type(particle_parameters.pose).__name__}."
-        )
-    particles_df["rlnAngleRot"] = euler_pose.phi_angle
-    particles_df["rlnAngleTilt"] = euler_pose.theta_angle
-    particles_df["rlnAnglePsi"] = euler_pose.psi_angle
+    particles_df["rlnAngleRot"] = particle_parameters.pose.phi_angle
+    particles_df["rlnAngleTilt"] = particle_parameters.pose.theta_angle
+    particles_df["rlnAnglePsi"] = particle_parameters.pose.psi_angle
     particles_df["rlnDefocusU"] = (
         particle_parameters.transfer_theory.ctf.defocus_in_angstroms
         + particle_parameters.transfer_theory.ctf.astigmatism_in_angstroms / 2
