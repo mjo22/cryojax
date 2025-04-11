@@ -50,7 +50,7 @@ def test_gaussian_limit():
     vacuum_squared_wavefunction = jnp.ones(config.shape, dtype=float)
     fourier_vacuum_squared_wavefunction = rfftn(vacuum_squared_wavefunction)
     # Create detector models
-    key = jax.random.PRNGKey(1234)
+    key = jax.random.key(1234)
     dqe = cs.PerfectDQE()
     gaussian_detector = cs.GaussianDetector(dqe)
     poisson_detector = cs.PoissonDetector(dqe)

@@ -388,7 +388,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
 ):
     # Create RNG key, along with a subkey for subsequent use
     if seed is not None:
-        key = jax.random.PRNGKey(seed=seed)
+        key = jax.random.key(seed=seed)
     else:
         key = cast(PRNGKeyArray, None)
     # Create vmapped `compute_image` kernel
@@ -516,7 +516,7 @@ def _write_simulated_image_stack_from_starfile_serial(
 ):
     # Create RNG key, along with a subkey for subsequent use
     if seed is not None:
-        key = jax.random.PRNGKey(seed=seed)
+        key = jax.random.key(seed=seed)
     else:
         key = cast(PRNGKeyArray, None)
 

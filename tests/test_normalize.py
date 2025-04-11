@@ -9,7 +9,7 @@ jax.config.update("jax_enable_x64", True)
 
 
 def test_fourier_vs_real_normalized_image(noisy_model):
-    key = jax.random.PRNGKey(1234)
+    key = jax.random.key(1234)
     im1 = normalize_image(
         noisy_model.render(key, outputs_real_space=True), input_is_real_space=True
     )

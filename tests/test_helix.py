@@ -69,7 +69,7 @@ def test_superposition_model_without_conformation(sample_subunit_mrc_path, confi
     )
     model = cs.ContrastImageModel(instrument_config=config, scattering_theory=theory)
     _ = model.render()
-    _ = model.render(jax.random.PRNGKey(0))
+    _ = model.render(jax.random.key(0))
 
 
 def test_superposition_model_with_conformation(sample_subunit_mrc_path, config):
@@ -81,7 +81,7 @@ def test_superposition_model_with_conformation(sample_subunit_mrc_path, config):
     )
     model = cs.ContrastImageModel(instrument_config=config, scattering_theory=theory)
     _ = model.render()
-    _ = model.render(jax.random.PRNGKey(0))
+    _ = model.render(jax.random.key(0))
 
 
 @pytest.mark.parametrize(

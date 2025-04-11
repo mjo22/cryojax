@@ -116,7 +116,7 @@ distribution = dist.IndependentGaussianFourierModes(
     image_model, variance_function=op.Constant(1.0), normalizes_signal=True
 )
 # ... then, either simulate an image from this distribution
-key = jax.random.PRNGKey(seed=0)
+key = jax.random.key(seed=0)
 image_with_noise = distribution.sample(key)
 # ... or compute the likelihood
 observed = rfftn(...)  # for this example, read in observed data and take FFT
