@@ -84,11 +84,6 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
                         input_is_rfft=is_projection_approx,
                     )
                 )
-
-        # Compute the exit wave object spectrum
-        object_spectrum_at_exit_plane = apply_interaction_constant(
-            fourier_integrated_potential, instrument_config.wavelength_in_angstroms
-        )
         # Back to real-space; need to be careful if the object spectrum is not an
         # rfftn
         do_ifft = lambda ft: (
@@ -96,8 +91,11 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
             if is_projection_approx
             else ifftn(ft, s=instrument_config.padded_shape)
         )
-        object_at_exit_plane = apply_amplitude_contrast_ratio(
-            do_ifft(object_spectrum_at_exit_plane), self.amplitude_contrast_ratio
+        integrated_potential = apply_amplitude_contrast_ratio(
+            do_ifft(fourier_integrated_potential), self.amplitude_contrast_ratio
+        )
+        object_at_exit_plane = apply_interaction_constant(
+            integrated_potential, instrument_config.wavelength_in_angstroms
         )
         # Compute wavefunction, with amplitude and phase contrast
         return jnp.exp(1.0j * object_at_exit_plane)

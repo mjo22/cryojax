@@ -122,11 +122,9 @@ class FFTMultisliceIntegrator(
             potential_per_slice = potential_voxel_grid
         # Compute the integrated potential in a given slice interval, multiplying by
         # the slice thickness (TODO: interpolate for different slice thicknesses?)
-        compute_object_fn = lambda pot: apply_amplitude_contrast_ratio(
-            apply_interaction_constant(
-                voxel_size * pot, instrument_config.wavelength_in_angstroms
-            ),
-            amplitude_contrast_ratio,
+        compute_object_fn = lambda pot: apply_interaction_constant(
+            apply_amplitude_contrast_ratio(voxel_size * pot, amplitude_contrast_ratio),
+            instrument_config.wavelength_in_angstroms,
         )
         object_per_slice = jax.vmap(compute_object_fn)(potential_per_slice)
         # Compute the transmission function

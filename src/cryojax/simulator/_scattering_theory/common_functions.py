@@ -1,7 +1,7 @@
 """Functions common to multiple scattering theories."""
 
 import jax.numpy as jnp
-from jaxtyping import Array, Float, Inexact
+from jaxtyping import Array, Complex, Float, Inexact
 
 
 # Not currently public API
@@ -48,11 +48,11 @@ def apply_interaction_constant(
 
 # Not currently public API
 def apply_amplitude_contrast_ratio(
-    object_at_exit_plane: Float[Array, "y_dim x_dim"],
+    integrated_potential: Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"],
     amplitude_contrast_ratio: Float[Array, ""] | float,
-) -> Float[Array, "y_dim x_dim"]:
-    """Apply the amplitude contrast ratio to compute a complex object spectrum,
-    given the object spectrum computed just with a weak-phase calculation.
+) -> Complex[Array, "y_dim x_dim"]:
+    """Apply the amplitude contrast ratio to compute a complex scattering potential,
+    given the integrated potential computed just with a weak-phase calculation.
 
     !!! info
         Given phase shift spectrum $\\eta(x, y)$ the complex object spectrum $O(x, y)$
@@ -61,4 +61,10 @@ def apply_amplitude_contrast_ratio(
         $$O(x, y) = -\\alpha \\ \\eta(x, y) + i \\sqrt{1 - \\alpha^2} \\ \\eta(x, y)$$
     """
     ac = amplitude_contrast_ratio
-    return (jnp.sqrt(1.0 - ac**2) + 1.0j * ac) * object_at_exit_plane
+    if jnp.iscomplexobj(integrated_potential):
+        return (
+            jnp.sqrt(1.0 - ac**2) * integrated_potential.real
+            + 1.0j * ac * integrated_potential.imag
+        )
+    else:
+        return (jnp.sqrt(1.0 - ac**2) + 1.0j * ac) * integrated_potential
