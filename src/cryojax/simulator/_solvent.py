@@ -23,7 +23,7 @@ from ._instrument_config import InstrumentConfig
 
 class SolventMixturePower(AbstractFourierOperator, strict=True):
     r"""A model for the power of the gaussian random field (GRF) for solvent in cryo-EM.
-    This implementation takes inspiration from Parkhurst et al. (2024). and uses its
+    This implementation takes inspiration from Parkhurst et al. (2024) and uses its
     implementation as default.
 
     Parkhurst et al. (2024) models the power as a sum of two gaussians, with
@@ -65,7 +65,7 @@ class AbstractSolvent(eqx.Module, strict=True):
     """Base class for a model of the solvent in cryo-EM."""
 
     thickness_in_angstroms: eqx.AbstractVar[Float[Array, ""]]
-    potential_scale: eqx.AbstractVar[Float[Array, ""]]
+    potential_scale: eqx.AbstractVar[float]
 
     @abstractmethod
     def sample_solvent_integrated_potential(
