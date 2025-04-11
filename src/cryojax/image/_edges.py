@@ -76,7 +76,7 @@ def crop_to_shape_with_center(
     image: Inexact[Array, "y_dim x_dim"],
     shape: tuple[int, int],
     center: tuple[int, int] | tuple[Int[Array, ""], Int[Array, ""]],
-    safe_crop: bool = True,
+    do_safe_crop: bool = True,
 ) -> Inexact[Array, "{shape[0]} {shape[1]}"]:
     """Crop an image to a new shape, given a center."""
     if image.ndim != 2:
@@ -87,10 +87,10 @@ def crop_to_shape_with_center(
     if len(shape) == 2:
         xc, yc = center
         h, w = shape
-        if safe_crop:
+        if do_safe_crop:
             if not isinstance(xc, int) or not isinstance(yc, int):
                 raise ValueError(
-                    "If `safe_crop = True`, then `center` must be passed as "
+                    "If `do_safe_crop = True`, then `center` must be passed as "
                     "a tuple of python integers. Found instead a tuple with "
                     f"type {type(xc).__name__}."
                 )

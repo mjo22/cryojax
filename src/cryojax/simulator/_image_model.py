@@ -17,10 +17,10 @@ from ._instrument_config import InstrumentConfig
 from ._scattering_theory import AbstractScatteringTheory
 
 
-class AbstractImagingPipeline(Module, strict=True):
+class AbstractImageModel(Module, strict=True):
     """Base class for an image formation model.
 
-    Call an `AbstractImagingPipeline`'s `render` routine.
+    Call an `AbstractImageModel`'s `render` routine.
     """
 
     instrument_config: AbstractVar[InstrumentConfig]
@@ -33,10 +33,10 @@ class AbstractImagingPipeline(Module, strict=True):
         self,
         rng_key: Optional[PRNGKeyArray] = None,
         *,
-        get_cropped: bool = True,
-        get_real: bool = True,
-        get_masked: bool = True,
-        get_filtered: bool = True,
+        removes_padding: bool = True,
+        outputs_real_space: bool = True,
+        applies_mask: bool = True,
+        applies_filter: bool = True,
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -60,18 +60,18 @@ class AbstractImagingPipeline(Module, strict=True):
         - `rng_key`:
             The random number generator key. If not passed, render an image
             with no stochasticity.
-        - `get_cropped`:
+        - `removes_padding`:
             If `True`, return an image cropped to `InstrumentConfig.shape`.
             Otherwise, return an image at the `InstrumentConfig.padded_shape`.
-            If `get_cropped = False`, the `AbstractImagingPipeline.filter`
-            and `AbstractImagingPipeline.mask` are not applied, overriding
-            the booleans `get_masked` and `get_filtered`.
-        - `get_real`:
+            If `removes_padding = False`, the `AbstractImageModel.filter`
+            and `AbstractImageModel.mask` are not applied, overriding
+            the booleans `applies_mask` and `applies_filter`.
+        - `outputs_real_space`:
             If `True`, return the image in real space.
-        - `get_masked`:
-            If `True`, apply mask stored in `AbstractImagingPipeline.mask`.
-        - `get_filtered`:
-            If `True`, apply filter stored in `AbstractImagingPipeline.filter`.
+        - `applies_mask`:
+            If `True`, apply mask stored in `AbstractImageModel.mask`.
+        - `applies_filter`:
+            If `True`, apply filter stored in `AbstractImageModel.filter`.
         """
         raise NotImplementedError
 
@@ -83,9 +83,9 @@ class AbstractImagingPipeline(Module, strict=True):
             "{self.instrument_config.padded_x_dim//2+1}",
         ],
         *,
-        get_real: bool = True,
-        get_masked: bool = True,
-        get_filtered: bool = True,
+        outputs_real_space: bool = True,
+        applies_mask: bool = True,
+        applies_filter: bool = True,
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Complex[
@@ -104,8 +104,10 @@ class AbstractImagingPipeline(Module, strict=True):
             # ... if there are no masks and we don't need to crop,
             # minimize moving back and forth between real and fourier space
             if self.filter is not None:
-                image = self.filter(image) if get_filtered else image
-            return irfftn(image, s=instrument_config.shape) if get_real else image
+                image = self.filter(image) if applies_filter else image
+            return (
+                irfftn(image, s=instrument_config.shape) if outputs_real_space else image
+            )
         else:
             # ... otherwise, apply filter, crop, and mask, again trying to
             # minimize moving back and forth between real and fourier space
@@ -118,18 +120,22 @@ class AbstractImagingPipeline(Module, strict=True):
                 # ... apply the filter here if it is the same size as the padded
                 # coordinates
                 is_filter_applied = True
-                image = self.filter(image) if get_filtered else image
+                image = self.filter(image) if applies_filter else image
             image = irfftn(image, s=instrument_config.padded_shape)
             image = instrument_config.crop_to_shape(image)
             if self.mask is not None:
-                image = self.mask(image) if get_masked else image
+                image = self.mask(image) if applies_mask else image
             if is_filter_applied or self.filter is None:
-                return image if get_real else rfftn(image)
+                return image if outputs_real_space else rfftn(image)
             else:
                 # ... otherwise, apply the filter here and return. assume
                 # the filter is the same size as the non-padded coordinates
-                image = self.filter(rfftn(image)) if get_filtered else rfftn(image)
-                return irfftn(image, s=instrument_config.shape) if get_real else image
+                image = self.filter(rfftn(image)) if applies_filter else rfftn(image)
+                return (
+                    irfftn(image, s=instrument_config.shape)
+                    if outputs_real_space
+                    else image
+                )
 
     def _maybe_postprocess(
         self,
@@ -139,10 +145,10 @@ class AbstractImagingPipeline(Module, strict=True):
             "{self.instrument_config.padded_x_dim//2+1}",
         ],
         *,
-        get_cropped: bool = True,
-        get_real: bool = True,
-        get_masked: bool = True,
-        get_filtered: bool = True,
+        removes_padding: bool = True,
+        outputs_real_space: bool = True,
+        applies_mask: bool = True,
+        applies_filter: bool = True,
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -160,16 +166,23 @@ class AbstractImagingPipeline(Module, strict=True):
         ]
     ):
         instrument_config = self.instrument_config
-        if get_cropped:
+        if removes_padding:
             return self.postprocess(
-                image, get_real=get_real, get_masked=get_masked, get_filtered=get_filtered
+                image,
+                outputs_real_space=outputs_real_space,
+                applies_mask=applies_mask,
+                applies_filter=applies_filter,
             )
         else:
-            return irfftn(image, s=instrument_config.padded_shape) if get_real else image
+            return (
+                irfftn(image, s=instrument_config.padded_shape)
+                if outputs_real_space
+                else image
+            )
 
 
-class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
-    """An image formation pipeline that returns the image contrast from a linear
+class ContrastImageModel(AbstractImageModel, strict=True):
+    """An image formation model that returns the image contrast from a linear
     scattering theory.
 
     **Attributes:**
@@ -206,10 +219,10 @@ class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
         self,
         rng_key: Optional[PRNGKeyArray] = None,
         *,
-        get_cropped: bool = True,
-        get_real: bool = True,
-        get_masked: bool = True,
-        get_filtered: bool = True,
+        removes_padding: bool = True,
+        outputs_real_space: bool = True,
+        applies_mask: bool = True,
+        applies_filter: bool = True,
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -235,15 +248,15 @@ class ContrastImagingPipeline(AbstractImagingPipeline, strict=True):
 
         return self._maybe_postprocess(
             fourier_contrast_at_detector_plane,
-            get_cropped=get_cropped,
-            get_real=get_real,
-            get_masked=get_masked,
-            get_filtered=get_filtered,
+            removes_padding=removes_padding,
+            outputs_real_space=outputs_real_space,
+            applies_mask=applies_mask,
+            applies_filter=applies_filter,
         )
 
 
-class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
-    """An image formation pipeline that returns an intensity distribution---or in other
+class IntensityImageModel(AbstractImageModel, strict=True):
+    """An image formation model that returns an intensity distribution---or in other
     words a squared wavefunction.
 
     **Attributes:**
@@ -279,10 +292,10 @@ class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
         self,
         rng_key: Optional[PRNGKeyArray] = None,
         *,
-        get_cropped: bool = True,
-        get_real: bool = True,
-        get_masked: bool = True,
-        get_filtered: bool = True,
+        removes_padding: bool = True,
+        outputs_real_space: bool = True,
+        applies_mask: bool = True,
+        applies_filter: bool = True,
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -309,15 +322,15 @@ class IntensityImagingPipeline(AbstractImagingPipeline, strict=True):
 
         return self._maybe_postprocess(
             fourier_squared_wavefunction_at_detector_plane,
-            get_cropped=get_cropped,
-            get_real=get_real,
-            get_masked=get_masked,
-            get_filtered=get_filtered,
+            removes_padding=removes_padding,
+            outputs_real_space=outputs_real_space,
+            applies_mask=applies_mask,
+            applies_filter=applies_filter,
         )
 
 
-class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
-    """An image formation pipeline that returns electron counts, given a
+class ElectronCountsImageModel(AbstractImageModel, strict=True):
+    """An image formation model that returns electron counts, given a
     model for the detector.
 
     **Attributes:**
@@ -357,10 +370,10 @@ class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
         self,
         rng_key: Optional[PRNGKeyArray] = None,
         *,
-        get_cropped: bool = True,
-        get_real: bool = True,
-        get_masked: bool = True,
-        get_filtered: bool = True,
+        removes_padding: bool = True,
+        outputs_real_space: bool = True,
+        applies_mask: bool = True,
+        applies_filter: bool = True,
     ) -> (
         Float[Array, "{self.instrument_config.y_dim} {self.instrument_config.x_dim}"]
         | Float[
@@ -394,10 +407,10 @@ class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
 
             return self._maybe_postprocess(
                 fourier_expected_electron_events,
-                get_cropped=get_cropped,
-                get_real=get_real,
-                get_masked=get_masked,
-                get_filtered=get_filtered,
+                removes_padding=removes_padding,
+                outputs_real_space=outputs_real_space,
+                applies_mask=applies_mask,
+                applies_filter=applies_filter,
             )
         else:
             keys = jax.random.split(rng_key)
@@ -417,8 +430,8 @@ class ElectronCountingImagingPipeline(AbstractImagingPipeline, strict=True):
 
             return self._maybe_postprocess(
                 fourier_detector_readout,
-                get_cropped=get_cropped,
-                get_real=get_real,
-                get_masked=get_masked,
-                get_filtered=get_filtered,
+                removes_padding=removes_padding,
+                outputs_real_space=outputs_real_space,
+                applies_mask=applies_mask,
+                applies_filter=applies_filter,
             )

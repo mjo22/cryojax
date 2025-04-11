@@ -9,6 +9,7 @@ from typing_extensions import override
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
+from ...image import irfftn
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import RealVoxelCloudPotential, RealVoxelGridPotential
 from .base_potential_integrator import AbstractVoxelPotentialIntegrator
@@ -65,13 +66,20 @@ class NufftProjection(
         return _project_with_nufft(weights, coordinate_list_in_angstroms, shape, self.eps)
 
     @override
-    def compute_fourier_integrated_potential(
+    def compute_integrated_potential(
         self,
         potential: RealVoxelGridPotential | RealVoxelCloudPotential,
         instrument_config: InstrumentConfig,
-    ) -> Complex[
-        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
-    ]:
+        outputs_real_space: bool = False,
+    ) -> (
+        Complex[
+            Array,
+            "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}",
+        ]
+        | Float[
+            Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
+        ]
+    ):
         """Compute the integrated scattering potential at the `InstrumentConfig` settings
         of a voxel-based representation in real-space, using non-uniform FFTs.
 
@@ -103,8 +111,13 @@ class NufftProjection(
                 "Supported types for `potential` are `RealVoxelGridPotential` and "
                 "`RealVoxelCloudPotential`."
             )
-        return self._convert_raw_image_to_integrated_potential(
-            fourier_projection, potential, instrument_config, is_hermitian_symmetric=True
+        fourier_projection = self._convert_raw_image_to_integrated_potential(
+            fourier_projection, potential, instrument_config, input_is_rfft=True
+        )
+        return (
+            irfftn(fourier_projection, s=instrument_config.padded_shape)
+            if outputs_real_space
+            else fourier_projection
         )
 
 

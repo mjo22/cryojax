@@ -42,7 +42,7 @@
         options:
             members:
                 - voxel_size
-                - is_real
+                - is_real_space
                 - shape
                 - from_real_voxel_grid
 

@@ -74,13 +74,15 @@ nav:
                 - 'api/simulator/scattering_potential.md'
                 - 'api/simulator/pose.md'
                 - 'api/simulator/structural_ensemble.md'
+            - Modeling the solvent:
+                - 'api/simulator/solvent.md'
             - Image formation:
                 - 'api/simulator/potential_integrators.md'
                 - 'api/simulator/transfer_theory.md'
                 - 'api/simulator/scattering_theory.md'
             - Putting it all together:
                 - 'api/simulator/instrument_config.md'
-                - 'api/simulator/imaging_pipeline.md'
+                - 'api/simulator/image_model.md'
         - cryojax.inference:
             - cryojax.inference.distributions:
                 - 'api/inference/distributions.md'

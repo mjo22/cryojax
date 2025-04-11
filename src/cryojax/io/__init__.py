@@ -6,7 +6,7 @@ from ._mrc import (
     write_volume_to_mrc as write_volume_to_mrc,
 )
 from ._pdb import (
-    AtomicModelReader as AtomicModelReader,
+    AtomicModelFile as AtomicModelFile,
     read_atoms_from_pdb as read_atoms_from_pdb,
 )
 from ._starfile import read_and_validate_starfile as read_and_validate_starfile

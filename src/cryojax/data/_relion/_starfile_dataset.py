@@ -15,17 +15,17 @@ from jaxtyping import Array, Float, Int
 from ...image.operators import FourierGaussian
 from ...io import read_and_validate_starfile
 from ...simulator import (
-    ContrastTransferFunction,
+    AberratedAstigmaticCTF,
     ContrastTransferTheory,
     EulerAnglePose,
     InstrumentConfig,
 )
 from .._particle_data import (
-    AbstractParticleParameterReader,
-    AbstractParticleStackReader,
-    ParticleParameters,
+    AbstractParticleParameterDataset,
+    AbstractParticleStackDataset,
     ParticleStack,
 )
+from ._starfile_pytrees import RelionParticleParameters
 
 
 RELION_REQUIRED_OPTICS_KEYS = [
@@ -53,7 +53,9 @@ def _default_make_config_fn(
     return InstrumentConfig(shape, pixel_size, voltage_in_kilovolts, **kwargs)
 
 
-class AbstractRelionParticleParameterReader(AbstractParticleParameterReader):
+class AbstractRelionParticleParameterDataset(
+    AbstractParticleParameterDataset[RelionParticleParameters]
+):
     @property
     @abc.abstractmethod
     def path_to_relion_project(self) -> pathlib.Path:
@@ -85,7 +87,7 @@ class AbstractRelionParticleParameterReader(AbstractParticleParameterReader):
         raise NotImplementedError
 
 
-class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
+class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html)
     format.
@@ -109,11 +111,11 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         - `path_to_starfile`: The path to the Relion STAR file.
         - `path_to_relion_project`: The path to the Relion project directory.
         - `loads_metadata`:
-            If `True`, the resulting `ParticleParameters` object loads
+            If `True`, the resulting `RelionParticleParameters` object loads
             the raw metadata from the STAR file.
             If this is set to `True`, extra care must be taken to make sure that
-            `ParticleParameters` objects can pass through JIT boundaries without
-            recompilation.
+            `RelionParticleParameters` objects can pass through JIT boundaries
+            without recompilation.
         - `broadcasts_optics_group`:
             If `True`, select optics group parameters are broadcasted. If
             there are multiple optics groups in the STAR file, parameters
@@ -140,9 +142,13 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         self._loads_envelope = loads_envelope
 
     @override
+    def __setitem__(self, index, value: RelionParticleParameters):
+        raise NotImplementedError
+
+    @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
-    ) -> ParticleParameters:
+    ) -> RelionParticleParameters:
         # Validate index
         n_rows = self.starfile_data["particles"].shape[0]
         _validate_dataset_index(type(self), index, n_rows)
@@ -166,7 +172,7 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
                 columns=particle_dataframe_at_index.index,
                 index=[0],
             )
-        return ParticleParameters(
+        return RelionParticleParameters(
             instrument_config,
             pose,
             transfer_theory,
@@ -220,47 +226,51 @@ class RelionParticleParameterReader(AbstractRelionParticleParameterReader):
         self._broadcasts_optics_group = value
 
 
-class RelionParticleStackReader(AbstractParticleStackReader):
+class RelionParticleStackDataset(AbstractParticleStackDataset):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
 
-    def __init__(self, param_reader: AbstractRelionParticleParameterReader):
+    def __init__(self, param_dataset: AbstractRelionParticleParameterDataset):
         """**Arguments:**
 
-        - `param_reader`:
-            The `RelionParticleParameterReader`.
+        - `param_dataset`:
+            The `RelionParticleParameterDataset`.
         """
-        self._param_reader = param_reader
+        self._param_dataset = param_dataset
+
+    @override
+    def __setitem__(self, index, value: ParticleStack):
+        raise NotImplementedError
 
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
     ) -> ParticleStack:
         # ... make sure particle metadata is being loaded
-        loads_metadata = self.param_reader.loads_metadata
-        self.param_reader.loads_metadata = True
+        loads_metadata = self.param_dataset.loads_metadata
+        self.param_dataset.loads_metadata = True
         # ... read parameters
-        parameters = self.param_reader[index]
+        parameters = self.param_dataset[index]
         # ... and construct dataframe
         metadata = parameters.metadata
         particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)  # type: ignore
-        # ... the following line is necessary for the image reader to work with both the
-        # helical reader and the regular reader
+        # ... the following line is necessary for the image dataset to work with both the
+        # helical dataset and the regular dataset
         particle_index = np.asarray(particle_dataframe_at_index.index, dtype=int)
         # ... then, load stack of images
         images = _get_image_stack_from_mrc(
             particle_index,
             particle_dataframe_at_index,
-            self.param_reader.path_to_relion_project,
+            self.param_dataset.path_to_relion_project,
         )
         if parameters.pose.offset_x_in_angstroms.ndim == 0:
             images = jnp.squeeze(images)
 
         # ... reset boolean
-        self.param_reader.loads_metadata = loads_metadata
+        self.param_dataset.loads_metadata = loads_metadata
         if not loads_metadata:
-            parameters = ParticleParameters(
+            parameters = RelionParticleParameters(
                 parameters.instrument_config, parameters.pose, parameters.transfer_theory
             )
 
@@ -268,63 +278,67 @@ class RelionParticleStackReader(AbstractParticleStackReader):
 
     @override
     def __len__(self) -> int:
-        return len(self.param_reader)
+        return len(self.param_dataset)
 
     @property
-    def param_reader(self) -> AbstractRelionParticleParameterReader:
-        return self._param_reader
+    def param_dataset(self) -> AbstractRelionParticleParameterDataset:
+        return self._param_dataset
 
 
-class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
-    """Similar to a `RelionParticleParameterReader`, but reads helical tubes.
+class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
+    """Similar to a `RelionParticleParameterDataset`, but reads helical tubes.
 
-    In particular, a `RelionHelicalParameterReader` indexes one
+    In particular, a `RelionHelicalParameterDataset` indexes one
     helical filament at a time. For example, after manual
     particle picking in RELION, we can index a particular filament
     with
 
     ```python
     # Read in a STAR file particle stack
-    helical_param_reader = RelionHelicalParameterReader(...)
+    helical_param_dataset = RelionHelicalParameterDataset(...)
     # ... get a particle stack for a filament
-    params_for_a_filament = helical_particle_reader[0]
+    params_for_a_filament = helical_particle_dataset[0]
     # ... get a particle stack for another filament
-    params_for_another_filament = helical_particle_reader[1]
+    params_for_another_filament = helical_particle_dataset[1]
     ```
 
-    Unlike a `RelionParticleParameterReader`, a `RelionHelicalParameterReader`
+    Unlike a `RelionParticleParameterDataset`, a `RelionHelicalParameterDataset`
     does not support fancy indexing.
     """
 
     def __init__(
         self,
-        param_reader: RelionParticleParameterReader,
+        param_dataset: RelionParticleParameterDataset,
     ):
         """**Arguments:**
 
-        - `param_reader`:
-            The wrappped `RelionParticleParameterReader`. This will be
+        - `param_dataset`:
+            The wrappped `RelionParticleParameterDataset`. This will be
             slightly modified to read one helix at a time, rather than
             one image crop at a time.
         """
-        # Validate the STAR file and store the reader
-        _validate_helical_starfile_data(param_reader.starfile_data)
-        self._param_reader = param_reader
+        # Validate the STAR file and store the dataset
+        _validate_helical_starfile_data(param_dataset.starfile_data)
+        self._param_dataset = param_dataset
         # Compute and store the number of filaments, number of filaments per micrograph
         # and micrograph names
         n_filaments_per_micrograph, micrograph_names = (
             _get_number_of_filaments_per_micrograph_in_helical_starfile_data(
-                param_reader.starfile_data
+                param_dataset.starfile_data
             )
         )
         self._n_filaments = int(np.sum(n_filaments_per_micrograph))
         self._n_filaments_per_micrograph = n_filaments_per_micrograph
         self._micrograph_names = micrograph_names
 
-    def __getitem__(self, index: int | Int[np.ndarray, ""]) -> ParticleParameters:
+    @override
+    def __setitem__(self, index, value: RelionParticleParameters):
+        raise NotImplementedError
+
+    def __getitem__(self, index: int | Int[np.ndarray, ""]) -> RelionParticleParameters:
         _validate_helical_dataset_index(type(self), index, len(self))
         # Get the particle stack indices corresponding to this filament
-        particle_dataframe = self._param_reader.starfile_data["particles"]
+        particle_dataframe = self._param_dataset.starfile_data["particles"]
         particle_indices_at_filament_index = _get_particle_indices_at_filament_index(
             particle_dataframe,
             index,
@@ -332,48 +346,48 @@ class RelionHelicalParameterReader(AbstractRelionParticleParameterReader):
             self._micrograph_names,
         )
         # Access the particle stack at these particle indices
-        return self._param_reader[particle_indices_at_filament_index]
+        return self._param_dataset[particle_indices_at_filament_index]
 
     def __len__(self) -> int:
         return self._n_filaments
 
     @property
     def starfile_data(self) -> dict[str, pd.DataFrame]:
-        return self._param_reader._starfile_data
+        return self._param_dataset._starfile_data
 
     @property
     def path_to_relion_project(self) -> pathlib.Path:
-        return self._param_reader._path_to_relion_project
+        return self._param_dataset._path_to_relion_project
 
     @property
     @override
     def loads_metadata(self) -> bool:
-        return self._param_reader._loads_metadata
+        return self._param_dataset._loads_metadata
 
     @loads_metadata.setter
     @override
     def loads_metadata(self, value: bool):
-        self._param_reader._loads_metadata = value
+        self._param_dataset._loads_metadata = value
 
     @property
     @override
     def loads_envelope(self) -> bool:
-        return self._param_reader._loads_envelope
+        return self._param_dataset._loads_envelope
 
     @loads_envelope.setter
     @override
     def loads_envelope(self, value: bool):
-        self._param_reader._loads_envelope = value
+        self._param_dataset._loads_envelope = value
 
     @property
     @override
     def broadcasts_optics_group(self) -> bool:
-        return self._param_reader._broadcasts_optics_group
+        return self._param_dataset._broadcasts_optics_group
 
     @broadcasts_optics_group.setter
     @override
     def broadcasts_optics_group(self, value: bool):
-        self._param_reader._broadcasts_optics_group = value
+        self._param_dataset._broadcasts_optics_group = value
 
 
 def _make_pytrees_from_starfile(
@@ -412,31 +426,31 @@ def _make_pytrees_from_starfile(
         broadcasts_optics_group,
     )
     # ... now the ContrastTransferTheory
-    ctf = _make_relion_ctf(
+    if loads_envelope:
+        b_factor, scale_factor = (
+            (
+                jnp.asarray(particle_blocks["rlnCtfBfactor"])
+                if "rlnCtfBfactor" in particle_blocks.keys()
+                else jnp.zeros_like(defocus_in_angstroms)
+            ),
+            (
+                jnp.asarray(particle_blocks["rlnCtfScalefactor"])
+                if "rlnCtfScalefactor" in particle_blocks.keys()
+                else jnp.ones_like(defocus_in_angstroms)
+            ),
+        )
+    else:
+        b_factor, scale_factor = None, None
+    transfer_theory = _make_transfer_theory(
         defocus_in_angstroms,
         astigmatism_in_angstroms,
         astigmatism_angle,
         spherical_aberration_in_mm,
         amplitude_contrast_ratio,
         phase_shift,
+        scale_factor,
+        b_factor,
     )
-    if loads_envelope:
-        b_factor, scale_factor = (
-            (
-                jnp.asarray(particle_blocks["rlnCtfBfactor"])
-                if "rlnCtfBfactor" in particle_blocks.keys()
-                else jnp.asarray(0.0)
-            ),
-            (
-                jnp.asarray(particle_blocks["rlnCtfScalefactor"])
-                if "rlnCtfScalefactor" in particle_blocks.keys()
-                else jnp.asarray(1.0)
-            ),
-        )
-        envelope = _make_relion_envelope(scale_factor, b_factor)
-    else:
-        envelope = None
-    transfer_theory = ContrastTransferTheory(ctf, envelope)
     # ... and finally, the EulerAnglePose
     pose = EulerAnglePose()
     # ... values for the pose are optional, so look to see if
@@ -457,20 +471,20 @@ def _make_pytrees_from_starfile(
         pose_parameter_names_and_values.append(("offset_y_in_angstroms", 0.0))
     if "rlnAngleRot" in particle_keys:
         pose_parameter_names_and_values.append(
-            ("view_phi", particle_blocks["rlnAngleRot"])
+            ("phi_angle", particle_blocks["rlnAngleRot"])
         )
     else:
-        pose_parameter_names_and_values.append(("view_phi", 0.0))
+        pose_parameter_names_and_values.append(("phi_angle", 0.0))
     if "rlnAngleTilt" in particle_keys:
         pose_parameter_names_and_values.append(
-            ("view_theta", particle_blocks["rlnAngleTilt"])
+            ("theta_angle", particle_blocks["rlnAngleTilt"])
         )
     elif "rlnAngleTiltPrior" in particle_keys:  # support for helices
         pose_parameter_names_and_values.append(
-            ("view_theta", particle_blocks["rlnAngleTiltPrior"])
+            ("theta_angle", particle_blocks["rlnAngleTiltPrior"])
         )
     else:
-        pose_parameter_names_and_values.append(("view_theta", 0.0))
+        pose_parameter_names_and_values.append(("theta_angle", 0.0))
     if "rlnAnglePsi" in particle_keys:
         # Relion uses -999.0 as a placeholder for an un-estimated in-plane
         # rotation
@@ -495,13 +509,13 @@ def _make_pytrees_from_starfile(
                 if particle_blocks["rlnAnglePsi"] == -999.0
                 else particle_blocks["rlnAnglePsi"]
             )
-        pose_parameter_names_and_values.append(("view_psi", particle_blocks_for_psi))
+        pose_parameter_names_and_values.append(("psi_angle", particle_blocks_for_psi))
     elif "rlnAnglePsiPrior" in particle_keys:  # support for helices
         pose_parameter_names_and_values.append(
-            ("view_psi", particle_blocks["rlnAnglePsiPrior"])
+            ("psi_angle", particle_blocks["rlnAnglePsiPrior"])
         )
     else:
-        pose_parameter_names_and_values.append(("view_psi", 0.0))
+        pose_parameter_names_and_values.append(("psi_angle", 0.0))
     pose_parameter_names, pose_parameter_values = tuple(
         zip(*pose_parameter_names_and_values)
     )
@@ -545,35 +559,53 @@ def _make_config(
         return make_fn(pixel_size, voltage_in_kilovolts)
 
 
-def _make_relion_ctf(defocus, astig, angle, sph, ac, ps):
-    def _make(defocus, astig, angle, sph, ac, ps):
-        ctf = ContrastTransferFunction(
-            defocus_in_angstroms=defocus,
-            astigmatism_in_angstroms=astig,
-            astigmatism_angle=angle,
-            spherical_aberration_in_mm=sph,
-            amplitude_contrast_ratio=ac,
-            phase_shift=ps,
+def _make_transfer_theory(defocus, astig, angle, sph, ac, ps, amp=None, b=None):
+    if b is not None:
+
+        def _make_w_env(defocus, astig, angle, sph, ac, ps, amp, b):
+            ctf = AberratedAstigmaticCTF(
+                defocus_in_angstroms=defocus,
+                astigmatism_in_angstroms=astig,
+                astigmatism_angle=angle,
+                spherical_aberration_in_mm=sph,
+            )
+            envelope = FourierGaussian(b_factor=b, amplitude=amp)
+            return ContrastTransferTheory(
+                ctf, envelope, amplitude_contrast_ratio=ac, phase_shift=ps
+            )
+
+        @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0, 0, 0), out_axes=0)
+        def _make_w_env_vmap(defocus, astig, angle, sph, ac, ps, amp, b):
+            return _make_w_env(defocus, astig, angle, sph, ac, ps, amp, b)
+
+        return (
+            _make_w_env(defocus, astig, angle, sph, ac, ps, amp, b)
+            if defocus.ndim == 0
+            else _make_w_env_vmap(defocus, astig, angle, sph, ac, ps, amp, b)
         )
-        return ctf
 
-    @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0), out_axes=0)
-    def _make_with_vmap(defocus, astig, angle, sph, ac, ps):
-        return _make(defocus, astig, angle, sph, ac, ps)
+    else:
 
-    return (
-        _make(defocus, astig, angle, sph, ac, ps)
-        if defocus.ndim == 0
-        else _make_with_vmap(defocus, astig, angle, sph, ac, ps)
-    )
+        def _make_wo_env(defocus, astig, angle, sph, ac, ps):
+            ctf = AberratedAstigmaticCTF(
+                defocus_in_angstroms=defocus,
+                astigmatism_in_angstroms=astig,
+                astigmatism_angle=angle,
+                spherical_aberration_in_mm=sph,
+            )
+            return ContrastTransferTheory(
+                ctf, envelope=None, amplitude_contrast_ratio=ac, phase_shift=ps
+            )
 
+        @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0), out_axes=0)
+        def _make_wo_env_vmap(defocus, astig, angle, sph, ac, ps):
+            return _make_wo_env(defocus, astig, angle, sph, ac, ps)
 
-def _make_relion_envelope(amp, b):
-    @eqx.filter_vmap
-    def _make_with_vmap(amp, b):
-        return FourierGaussian(b_factor=b, amplitude=amp)
-
-    return FourierGaussian(amp, b) if b.ndim == 0 else _make_with_vmap(amp, b)
+        return (
+            _make_wo_env(defocus, astig, angle, sph, ac, ps)
+            if defocus.ndim == 0
+            else _make_wo_env_vmap(defocus, astig, angle, sph, ac, ps)
+        )
 
 
 def _get_image_stack_from_mrc(
@@ -585,7 +617,7 @@ def _get_image_stack_from_mrc(
     image_stack_index_and_name_series_or_str = particle_dataframe["rlnImageName"]
     if isinstance(image_stack_index_and_name_series_or_str, str):
         # In this block, the user most likely used standard indexing, like
-        # `dataset = RelionParticleStackReader(...); particle_stack = dataset[1]`
+        # `dataset = RelionParticleStackDataset(...); particle_stack = dataset[1]`
         image_stack_index_and_name_str = image_stack_index_and_name_series_or_str
         # ... split the whole string into its image index and filename
         relion_particle_index, image_stack_filename = (
@@ -605,7 +637,7 @@ def _get_image_stack_from_mrc(
 
     elif isinstance(image_stack_index_and_name_series_or_str, pd.Series):
         # In this block, the user most likely used fancy indexing, like
-        # `dataset = RelionParticleStackReader(...); particle_stack = dataset[1:10]`
+        # `dataset = RelionParticleStackDataset(...); particle_stack = dataset[1:10]`
         image_stack_index_and_name_series = image_stack_index_and_name_series_or_str
         # ... split the pandas.Series into a pandas.DataFrame with two columns:
         # one for the image index and another for the filename
@@ -647,7 +679,7 @@ def _get_image_stack_from_mrc(
     else:
         raise IOError(
             "Could not read `rlnImageName` in STAR file for "
-            f"`RelionParticleStackReader` index equal to {index}."
+            f"`RelionParticleStackDataset` index equal to {index}."
         )
 
     return jnp.asarray(image_stack)
@@ -770,5 +802,5 @@ def _validate_helical_starfile_data(starfile_data: dict[str, pd.DataFrame]):
         raise ValueError(
             "Missing column 'rlnHelicalTubeID' in `starfile.read` output. "
             "This column must be present when using a "
-            "`RelionHelicalParameterReader`."
+            "`RelionHelicalParameterDataset`."
         )

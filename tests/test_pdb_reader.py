@@ -14,7 +14,7 @@ def test_read_single_pdb(sample_pdb_path):
         sample_pdb_path,
         center=True,
         select="protein and not element H",
-        get_b_factors=True,
+        loads_b_factors=True,
     )
 
     assert atom_positions.ndim == 2
@@ -30,7 +30,7 @@ def test_read_single_pdb_no_b_factors(sample_pdb_path):
         sample_pdb_path,
         center=True,
         select="protein and not element H",
-        get_b_factors=False,
+        loads_b_factors=False,
     )
 
     assert atom_positions.ndim == 2
@@ -47,7 +47,7 @@ def test_read_single_pdb_no_b_factors(sample_pdb_path):
 #         select="all",
 #         is_assembly=True,
 #         i_model=None,
-#         get_b_factors=True,
+#         loads_b_factors=True,
 #     )
 
 #     assert atom_positions.ndim == 2
@@ -65,7 +65,7 @@ def test_read_single_pdb_no_b_factors(sample_pdb_path):
 #         select="all",
 #         is_assembly=True,
 #         i_model=0,
-#         get_b_factors=True,
+#         loads_b_factors=True,
 #     )
 
 #     assert atom_positions.ndim == 2
@@ -83,7 +83,7 @@ def test_read_single_pdb_no_b_factors(sample_pdb_path):
 #         select="all",
 #         is_assembly=False,
 #         i_model=None,
-#         get_b_factors=True,
+#         loads_b_factors=True,
 #     )
 
 #     assert atom_positions.ndim == 2
@@ -99,7 +99,7 @@ def test_read_from_url(sample_pdb_url):
         sample_pdb_url,
         center=True,
         select="all",
-        get_b_factors=True,
+        loads_b_factors=True,
     )
 
     assert atom_positions.ndim == 2
@@ -115,7 +115,7 @@ def test_center_waterbox(sample_waterbox_pdb):
         sample_waterbox_pdb,
         center=True,
         select="all",
-        get_b_factors=True,
+        loads_b_factors=True,
     )
 
     assert not np.isnan(atom_positions).any(), "Centering resulted in positions with NaNs"

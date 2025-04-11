@@ -155,32 +155,32 @@ class MinimumSearchMethod(
     `fn` can explore its own region of parameter space in parallel.
     """
 
-    get_solution_value: bool
-    store_current_eval: bool
+    stores_solution_value: bool
+    stores_current_eval: bool
     batch_size: Optional[int]
 
     def __init__(
         self,
         *,
-        get_solution_value: bool = True,
-        store_current_eval: bool = False,
+        stores_solution_value: bool = True,
+        stores_current_eval: bool = False,
         batch_size: Optional[int] = None,
     ):
         """**Arguments:**
 
-        - `get_solution_value`: If `True`, the grid search solution will contain the
+        - `stores_solution_value`: If `True`, the grid search solution will contain the
                                 best grid point found. If `False`, only the flattened
                                 index corresponding to these grid points are returned
                                 and [`tree_grid_take`][] must be used to extract the
                                 actual grid points. Setting this to `False` may be
                                 necessary if the grid contains large arrays.
-        - `store_current_eval`: If `True`, carry over the last function evaluation in
+        - `stores_current_eval`: If `True`, carry over the last function evaluation in
                                 the `MinimumState`. This is useful when wrapping this
                                 class into new `AbstractGridSearchMethod`s.
         - `batch_size`: The stride of grid points over which to evaluate in parallel.
         """
-        self.get_solution_value = get_solution_value
-        self.store_current_eval = store_current_eval
+        self.stores_solution_value = stores_solution_value
+        self.stores_current_eval = stores_current_eval
         self.batch_size = batch_size
 
     def init(
@@ -201,7 +201,7 @@ class MinimumSearchMethod(
                     if self.batch_size is None
                     else jnp.full((self.batch_size, *f_struct.shape), 0.0, dtype=float)
                 )
-                if self.store_current_eval
+                if self.stores_current_eval
                 else None
             ),
         )
@@ -230,7 +230,7 @@ class MinimumSearchMethod(
         return MinimumState(
             current_minimum_eval,
             current_best_raveled_index,
-            current_eval=value if self.store_current_eval else None,
+            current_eval=value if self.stores_current_eval else None,
         )
 
     def batch_update(
@@ -260,7 +260,7 @@ class MinimumSearchMethod(
         return MinimumState(
             current_minimum_eval,
             current_best_raveled_index,
-            current_eval=value_batch if self.store_current_eval else None,
+            current_eval=value_batch if self.stores_current_eval else None,
         )
 
     def postprocess(
@@ -280,7 +280,7 @@ class MinimumSearchMethod(
                 f"shape {final_state.current_best_raveled_index.shape} for the "
                 "solution."
             )
-        if self.get_solution_value:
+        if self.stores_solution_value:
             # Extract the solution of the search, i.e. the grid point(s) corresponding
             # to the raveled grid index
             if f_struct.shape == ():

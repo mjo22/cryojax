@@ -31,7 +31,9 @@ class AbstractPose(Module, strict=True):
 
         phi_in_degrees, theta_in_degrees, psi_in_degrees = 10.0, 30.0, 40.0
         pose = cxs.EulerAnglePose(
-            view_phi=phi_in_degrees, view_theta=theta_in_degrees, view_psi=psi_in_degrees
+            phi_angle=phi_in_degrees,
+            theta_angle=theta_in_degrees,
+            psi_angle=psi_in_degrees,
         )
         ```
     """
@@ -154,37 +156,37 @@ class EulerAnglePose(AbstractPose, strict=True):
     offset_x_in_angstroms: Float[Array, ""]
     offset_y_in_angstroms: Float[Array, ""]
 
-    view_phi: Float[Array, ""]
-    view_theta: Float[Array, ""]
-    view_psi: Float[Array, ""]
+    phi_angle: Float[Array, ""]
+    theta_angle: Float[Array, ""]
+    psi_angle: Float[Array, ""]
 
     def __init__(
         self,
         offset_x_in_angstroms: float | Float[Array, ""] = 0.0,
         offset_y_in_angstroms: float | Float[Array, ""] = 0.0,
-        view_phi: float | Float[Array, ""] = 0.0,
-        view_theta: float | Float[Array, ""] = 0.0,
-        view_psi: float | Float[Array, ""] = 0.0,
+        phi_angle: float | Float[Array, ""] = 0.0,
+        theta_angle: float | Float[Array, ""] = 0.0,
+        psi_angle: float | Float[Array, ""] = 0.0,
     ):
         """**Arguments:**
 
         - `offset_x_in_angstroms`: In-plane translation in x direction.
         - `offset_y_in_angstroms`: In-plane translation in y direction.
-        - `view_phi`: Angle to rotate about first rotation axis, which is the z axis.
-        - `view_theta`: Angle to rotate about second rotation axis, which is the y axis.
-        - `view_psi`: Angle to rotate about third rotation axis, which is the z axis.
+        - `phi_angle`: Angle to rotate about first rotation axis, which is the z axis.
+        - `theta_angle`: Angle to rotate about second rotation axis, which is the y axis.
+        - `psi_angle`: Angle to rotate about third rotation axis, which is the z axis.
         """
         self.offset_x_in_angstroms = jnp.asarray(offset_x_in_angstroms)
         self.offset_y_in_angstroms = jnp.asarray(offset_y_in_angstroms)
-        self.view_phi = jnp.asarray(view_phi)
-        self.view_theta = jnp.asarray(view_theta)
-        self.view_psi = jnp.asarray(view_psi)
+        self.phi_angle = jnp.asarray(phi_angle)
+        self.theta_angle = jnp.asarray(theta_angle)
+        self.psi_angle = jnp.asarray(psi_angle)
 
     @cached_property
     @override
     def rotation(self) -> SO3:
         """Generate a `SO3` object from a set of Euler angles."""
-        phi, theta, psi = self.view_phi, self.view_theta, self.view_psi
+        phi, theta, psi = self.phi_angle, self.theta_angle, self.psi_angle
         # Convert to radians.
         phi = jnp.deg2rad(phi)
         theta = jnp.deg2rad(theta)
@@ -200,11 +202,11 @@ class EulerAnglePose(AbstractPose, strict=True):
     @override
     @classmethod
     def from_rotation(cls, rotation: SO3) -> Self:
-        view_phi, view_theta, view_psi = convert_quaternion_to_euler_angles(
+        phi_angle, theta_angle, psi_angle = convert_quaternion_to_euler_angles(
             rotation.wxyz,
             convention="zyz",
         )
-        return cls(view_phi=view_phi, view_theta=view_theta, view_psi=view_psi)
+        return cls(phi_angle=phi_angle, theta_angle=theta_angle, psi_angle=psi_angle)
 
 
 class QuaternionPose(AbstractPose, strict=True):

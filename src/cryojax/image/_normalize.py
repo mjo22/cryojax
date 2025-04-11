@@ -12,9 +12,9 @@ from jaxtyping import Array, Bool, Float, Inexact
 def normalize_image(
     image: Inexact[Array, "y_dim x_dim"],
     *,
-    is_real: bool = True,
+    input_is_real_space: bool = True,
     where: Optional[Bool[Array, "y_dim x_dim"]] = None,
-    is_rfft: bool = True,
+    input_is_rfft: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
 ) -> Inexact[Array, "y_dim x_dim"]:
     """Normalize so that the image is mean 0 and standard deviation 1 in real space."""
@@ -22,9 +22,9 @@ def normalize_image(
         image,
         1.0,
         0.0,
-        is_real=is_real,
+        input_is_real_space=input_is_real_space,
         where=where,
-        is_rfft=is_rfft,
+        input_is_rfft=input_is_rfft,
         shape_in_real_space=shape_in_real_space,
     )
 
@@ -34,9 +34,9 @@ def rescale_image(
     std: float | Float[Array, ""],
     mean: float | Float[Array, ""],
     *,
-    is_real: bool = True,
+    input_is_real_space: bool = True,
     where: Optional[Bool[Array, "y_dim x_dim"]] = None,
-    is_rfft: bool = True,
+    input_is_rfft: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
 ) -> Inexact[Array, "y_dim x_dim"]:
     """Normalize so that the image is mean `mean`
@@ -53,13 +53,13 @@ def rescale_image(
         Intensity standard deviation.
     mean : `float`
         Intensity offset.
-    is_real : `bool`
+    input_is_real_space : `bool`
         If ``True``, the given ``image`` is in real
         space. If ``False``, it is in Fourier space.
     where :
         As in `where` argument in `jax.numpy.std` and
         `jax.numpy.mean`. This argument is ignored if
-        `is_real = False`.
+        `input_is_real_space = False`.
 
     Returns
     -------
@@ -69,7 +69,7 @@ def rescale_image(
     """
     image = jnp.asarray(image)
     # First normalize image to zero mean and unit standard deviation
-    if is_real:
+    if input_is_real_space:
         normalized_image = (image - jnp.mean(image, where=where)) / jnp.std(
             image, where=where
         )
@@ -82,7 +82,7 @@ def rescale_image(
                 if shape_in_real_space is None
                 else math.prod(shape_in_real_space)
             )
-            if is_rfft
+            if input_is_rfft
             else N1 * N2
         )
         image_with_zero_mean = image.at[0, 0].set(0.0)
@@ -91,7 +91,7 @@ def rescale_image(
                 jnp.sum(jnp.abs(image_with_zero_mean[:, 0]) ** 2)
                 + 2 * jnp.sum(jnp.abs(image_with_zero_mean[:, 1:]) ** 2)
             )
-            if is_rfft
+            if input_is_rfft
             else jnp.linalg.norm(image_with_zero_mean)
         ) / n_pixels
         normalized_image = image_with_zero_mean / image_std

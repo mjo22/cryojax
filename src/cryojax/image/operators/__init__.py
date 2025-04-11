@@ -11,6 +11,7 @@ from ._fourier_operator import (
     AbstractFourierOperator as AbstractFourierOperator,
     FourierExp2D as FourierExp2D,
     FourierGaussian as FourierGaussian,
+    FourierGaussianWithRadialOffset as FourierGaussianWithRadialOffset,
     FourierOperatorLike as FourierOperatorLike,
     Lorenzian as Lorenzian,
     ZeroMode as ZeroMode,

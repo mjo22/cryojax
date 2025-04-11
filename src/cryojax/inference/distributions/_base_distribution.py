@@ -25,7 +25,7 @@ class AbstractDistribution(Module, strict=True):
 
     @abstractmethod
     def sample(
-        self, rng_key: PRNGKeyArray, *, get_real: bool = True
+        self, rng_key: PRNGKeyArray, *, outputs_real_space: bool = True
     ) -> Inexact[Array, "y_dim x_dim"]:
         """Sample from the distribution.
 
@@ -37,7 +37,9 @@ class AbstractDistribution(Module, strict=True):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_signal(self, *, get_real: bool = True) -> Inexact[Array, "y_dim x_dim"]:
+    def compute_signal(
+        self, *, outputs_real_space: bool = True
+    ) -> Inexact[Array, "y_dim x_dim"]:
         """Render the image formation model."""
         raise NotImplementedError
 

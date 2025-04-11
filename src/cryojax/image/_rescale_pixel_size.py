@@ -76,8 +76,8 @@ def maybe_rescale_pixel_size(
     ),
     current_pixel_size: Float[Array, ""],
     new_pixel_size: Float[Array, ""],
-    is_real: bool = True,
-    is_hermitian_symmetric: bool = True,
+    input_is_real: bool = True,
+    input_is_rfft: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,
     method: str = "bicubic",
 ) -> (
@@ -86,12 +86,12 @@ def maybe_rescale_pixel_size(
 ):
     """Rescale the image pixel size using real-space interpolation. Only
     interpolate if the `pixel_size` is not the `current_pixel_size`."""
-    if is_real:
+    if input_is_real:
         rescale_fn = lambda im: rescale_pixel_size(
             im, current_pixel_size, new_pixel_size, method=method
         )
     else:
-        if is_hermitian_symmetric:
+        if input_is_rfft:
             if shape_in_real_space is None:
                 rescale_fn = lambda im: rfftn(
                     rescale_pixel_size(

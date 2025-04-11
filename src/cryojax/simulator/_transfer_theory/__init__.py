@@ -1,9 +1,10 @@
 from .transfer_function import (
-    AbstractTransferFunction as AbstractTransferFunction,
-    ContrastTransferFunction as ContrastTransferFunction,
-    IdealTransferFunction as IdealTransferFunction,
+    AberratedAstigmaticCTF as AberratedAstigmaticCTF,
+    AbstractCTF as AbstractCTF,
+    PerfectCTF as PerfectCTF,
 )
 from .transfer_theory import (
+    AbstractTransferTheory as AbstractTransferTheory,
     ContrastTransferTheory as ContrastTransferTheory,
     WaveTransferTheory as WaveTransferTheory,
 )

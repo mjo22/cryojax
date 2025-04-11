@@ -209,3 +209,51 @@ FourierGaussian.__init__.__doc__ = """**Arguments:**
 - `b_factor`: The variance of the real-space gaussian, equal to $\\beta$
               in the above equation.
 """
+
+
+class FourierGaussianWithRadialOffset(AbstractFourierOperator, strict=True):
+    r"""This operator represents a gaussian with a radial offset.
+    Specifically, this is
+
+    .. math::
+        P(k) = \kappa \exp(- \beta (|k| - m)^2 / 4),
+
+    where :math:`k^2 = k_x^2 + k_y^2` is the length of the
+    wave vector. Here, :math:`\beta` has dimensions of length
+    squared.
+    """
+
+    amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
+    b_factor: Float[Array, ""] = field(default=1.0, converter=error_if_negative)
+    offset: Float[Array, ""] = field(default=0.0, converter=error_if_negative)
+
+    @overload
+    def __call__(
+        self, frequency_grid: Float[Array, "y_dim x_dim 2"]
+    ) -> Float[Array, "y_dim x_dim"]: ...
+
+    @overload
+    def __call__(
+        self, frequency_grid: Float[Array, "z_dim y_dim x_dim 3"]
+    ) -> Float[Array, "z_dim y_dim x_dim"]: ...
+
+    @override
+    def __call__(
+        self,
+        frequency_grid: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
+    ) -> Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]:
+        k = jnp.linalg.norm(frequency_grid, axis=-1)
+        scaling = self.amplitude * jnp.exp(-0.25 * self.b_factor * (k - self.offset) ** 2)
+        return scaling
+
+
+FourierGaussianWithRadialOffset.__init__.__doc__ = """**Arguments:**
+
+- `amplitude`: The amplitude of the operator, equal to $\\kappa$
+           in the above equation.
+- `b_factor`: The variance of the real-space gaussian, equal to $\\beta$
+              in the above equation.
+- `offset`: The radial offset of the gaussian.
+"""

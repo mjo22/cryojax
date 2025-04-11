@@ -23,7 +23,7 @@ config.update("jax_enable_x64", True)
 @pytest.mark.parametrize("shape", ((64, 64), (63, 63), (63, 64), (64, 63)))
 def test_atom_potential_integrator_shape(sample_pdb_path, shape):
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
-        sample_pdb_path, center=True, select="not element H", get_b_factors=True
+        sample_pdb_path, center=True, select="not element H", loads_b_factors=True
     )
     atom_potential = PengAtomicPotential(atom_positions, atom_identities, b_factors)
     pixel_size = 0.5
@@ -36,10 +36,8 @@ def test_atom_potential_integrator_shape(sample_pdb_path, shape):
         voltage_in_kilovolts=300.0,
     )
     # ... compute the integrated volumetric_potential
-    fourier_integrated_potential = (
-        potential_integrator.compute_fourier_integrated_potential(
-            atom_potential, instrument_config
-        )
+    fourier_integrated_potential = potential_integrator.compute_integrated_potential(
+        atom_potential, instrument_config, outputs_real_space=False
     )
 
     assert fourier_integrated_potential.shape == (shape[0], shape[1] // 2 + 1)
@@ -79,10 +77,10 @@ def test_downsampled_gmm_potential_agreement(sample_pdb_path):
         voltage_in_kilovolts=300.0,
     )
     # ... compute the integrated volumetric_potential
-    image_from_hires = integrator_int_hires.compute_fourier_integrated_potential(
+    image_from_hires = integrator_int_hires.compute_integrated_potential(
         atom_potential, instrument_config
     )
-    image_lowres = integrator_int_lowres.compute_fourier_integrated_potential(
+    image_lowres = integrator_int_lowres.compute_integrated_potential(
         atom_potential, instrument_config
     )
 
@@ -119,10 +117,10 @@ def test_peng_vs_gmm_agreement(sample_pdb_path):
 
     # Compute projections
     integrator = GaussianMixtureProjection(upsampling_factor=1)
-    projection_gmm = integrator.compute_fourier_integrated_potential(
+    projection_gmm = integrator.compute_integrated_potential(
         gmm_potential, instrument_config
     )
-    projection_peng = integrator.compute_fourier_integrated_potential(
+    projection_peng = integrator.compute_integrated_potential(
         atom_potential, instrument_config
     )
 
@@ -157,7 +155,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         # Build the potential integrators
         integrator = GaussianMixtureProjection()
         # Compute projections
-        projection = integrator.compute_fourier_integrated_potential(
+        projection = integrator.compute_integrated_potential(
             atomic_potential, instrument_config
         )
         projection = irfftn(projection)
@@ -192,7 +190,7 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         # Build the potential integrators
         integrator = GaussianMixtureProjection()
         # Compute projections
-        projection = integrator.compute_fourier_integrated_potential(
+        projection = integrator.compute_integrated_potential(
             atomic_potential, instrument_config
         )
         projection = irfftn(projection)

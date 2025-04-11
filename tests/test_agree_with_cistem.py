@@ -9,16 +9,16 @@ import cryojax.simulator as cs
 from cryojax.coordinates import cartesian_to_polar, make_frequency_grid
 from cryojax.image import compute_radially_averaged_powerspectrum, irfftn
 from cryojax.io import read_array_with_spacing_from_mrc
-from cryojax.simulator import ContrastTransferFunction, EulerAnglePose
+from cryojax.simulator import CTF, EulerAnglePose
 
 
 jax.config.update("jax_enable_x64", True)
 
 
 try:
-    from pycistem.core import AnglesAndShifts, CTF, Image  # pyright: ignore
+    from pycistem.core import AnglesAndShifts, CTF as cistemCTF, Image  # pyright: ignore
 except ModuleNotFoundError:
-    CTF, AnglesAndShifts, Image = None, None, None
+    cistemCTF, AnglesAndShifts, Image = None, None, None
 
 PYCISTEM_WARNING_MESAGE = (
     "Testing against cisTEM is not running because `pycistem` was not "
@@ -44,21 +44,22 @@ def test_ctf_with_cistem(defocus1, defocus2, asti_angle, kV, cs, ac, pixel_size)
     """Test CTF model against cisTEM.
 
     Modified from https://github.com/jojoelfe/contrasttransferfunction"""
-    if CTF is not None:
+    if cistemCTF is not None:
         shape = (512, 512)
         freqs = make_frequency_grid(shape, pixel_size)
         k_sqr, theta = cartesian_to_polar(freqs, square=True)
         # Compute cryojax CTF
-        optics = ContrastTransferFunction(
+        optics = CTF(
             defocus_in_angstroms=(defocus1 + defocus2) / 2,
             astigmatism_in_angstroms=defocus1 - defocus2,
             astigmatism_angle=asti_angle,
             spherical_aberration_in_mm=cs,
-            amplitude_contrast_ratio=ac,
         )
-        ctf = jnp.array(optics(freqs, voltage_in_kilovolts=kV))
+        ctf = jnp.array(
+            optics(freqs, voltage_in_kilovolts=kV, amplitude_contrast_ratio=ac)
+        )
         # Compute cisTEM CTF
-        cisTEM_optics = CTF(
+        cisTEM_optics = cistemCTF(
             kV=kV,
             cs=cs,
             ac=ac,
@@ -112,7 +113,7 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
     matrix[1, 2] = sin_theta * sin_phi
     matrix[2, 2] = cos_theta
     # Generate rotation that matches this rotation matrix
-    pose = EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
+    pose = EulerAnglePose(phi_angle=phi, theta_angle=theta, psi_angle=psi)
     np.testing.assert_allclose(pose.rotation.as_matrix(), matrix.T, atol=1e-12)
 
 
@@ -133,14 +134,14 @@ def test_compute_projection_with_cistem(
         potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(
             real_voxel_grid, voxel_size
         )
-        pose = cs.EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
+        pose = cs.EulerAnglePose(phi_angle=phi, theta_angle=theta, psi_angle=psi)
         projection_method = cs.FourierSliceExtraction(pixel_rescaling_method=None)
         box_size = potential.shape[0]
         config = cs.InstrumentConfig((box_size, box_size), voxel_size, 300.0)
         cryojax_projection = irfftn(
             (
-                projection_method.compute_fourier_integrated_potential(
-                    potential.rotate_to_pose(pose), config
+                projection_method.compute_integrated_potential(
+                    potential.rotate_to_pose(pose), config, outputs_real_space=False
                 )
                 / voxel_size
             )

@@ -31,8 +31,9 @@ def compute_phase_shifts_with_spherical_aberration(
 
 # Not currently public API
 def compute_phase_shift_from_amplitude_contrast_ratio(
-    amplitude_contrast_ratio: Float[Array, ""],
+    amplitude_contrast_ratio: float | Float[Array, ""],
 ) -> Float[Array, ""]:
+    amplitude_contrast_ratio = jnp.asarray(amplitude_contrast_ratio)
     return jnp.arctan(
         amplitude_contrast_ratio / jnp.sqrt(1.0 - amplitude_contrast_ratio**2)
     )
