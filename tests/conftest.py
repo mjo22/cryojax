@@ -156,7 +156,7 @@ def specimen(potential, pose):
 @pytest.fixture
 def solvent():
     return cs.GRFSolvent(
-        solvent_thickness_in_angstroms=100.0, power_spectrum_function=op.Constant(1.0)
+        thickness_in_angstroms=100.0, power_spectrum_function=op.Constant(1.0)
     )
 
 

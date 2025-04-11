@@ -64,7 +64,7 @@ class SolventMixturePower(AbstractFourierOperator, strict=True):
 class AbstractSolvent(eqx.Module, strict=True):
     """Base class for a model of the solvent in cryo-EM."""
 
-    solvent_thickness_in_angstroms: eqx.AbstractVar[Float[Array, ""]]
+    thickness_in_angstroms: eqx.AbstractVar[Float[Array, ""]]
     potential_scale: eqx.AbstractVar[Float[Array, ""]]
 
     @abstractmethod
@@ -156,14 +156,14 @@ class AbstractSolvent(eqx.Module, strict=True):
 class GRFSolvent(AbstractSolvent, strict=True):
     r"""Solvent modeled as a gaussian random field (GRF)."""
 
-    solvent_thickness_in_angstroms: Float[Array, ""]
+    thickness_in_angstroms: Float[Array, ""]
     potential_scale: float
     power_spectrum_function: FourierOperatorLike
     samples_power: bool
 
     def __init__(
         self,
-        solvent_thickness_in_angstroms: Float[Array, ""] | float,
+        thickness_in_angstroms: Float[Array, ""] | float,
         potential_scale: float = 1.0,  # TODO: default value?
         power_spectrum_function: FourierOperatorLike | None = None,
         samples_power: bool = False,
@@ -189,9 +189,7 @@ class GRFSolvent(AbstractSolvent, strict=True):
         self.power_spectrum_function = power_spectrum_function or SolventMixturePower()
         self.samples_power = samples_power
         self.potential_scale = potential_scale
-        self.solvent_thickness_in_angstroms = error_if_negative(
-            solvent_thickness_in_angstroms
-        )
+        self.thickness_in_angstroms = error_if_negative(thickness_in_angstroms)
 
     @override
     def sample_solvent_integrated_potential(
@@ -243,7 +241,7 @@ class GRFSolvent(AbstractSolvent, strict=True):
         ).at[0, 0].set(0.0)
         # Apply dimensionful scalings to get the potential
         fourier_integrated_potential_of_solvent = (
-            self.potential_scale * self.solvent_thickness_in_angstroms
+            self.potential_scale * self.thickness_in_angstroms
         ) * solvent_grf
         if outputs_real_space:
             return irfftn(
