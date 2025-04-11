@@ -138,7 +138,7 @@ class InstrumentConfig(Module, strict=True):
         """A spatial frequency coordinate system for the `shape`,
         without hermitian symmetry.
         """
-        return make_frequency_grid(shape=self.shape, get_rfftfreqs=False)
+        return make_frequency_grid(shape=self.shape, outputs_rfftfreqs=False)
 
     @cached_property
     def full_frequency_grid_in_angstroms(
@@ -190,7 +190,7 @@ class InstrumentConfig(Module, strict=True):
         """A spatial frequency coordinate system for the `padded_shape`,
         without hermitian symmetry.
         """
-        return make_frequency_grid(shape=self.padded_shape, get_rfftfreqs=False)
+        return make_frequency_grid(shape=self.padded_shape, outputs_rfftfreqs=False)
 
     @cached_property
     def padded_full_frequency_grid_in_angstroms(

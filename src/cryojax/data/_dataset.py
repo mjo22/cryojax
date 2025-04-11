@@ -54,5 +54,9 @@ class AbstractDataset(abc.ABC, Generic[T]):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def __setitem__(self, index, value: T):
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def __len__(self) -> int:
         raise NotImplementedError

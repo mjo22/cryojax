@@ -1,20 +1,22 @@
 from abc import abstractmethod
 from typing_extensions import override
 
+import equinox as eqx
 import jax.numpy as jnp
-from equinox import Module
 from jaxtyping import Array, Complex, Float
 
 from ...constants import convert_keV_to_angstroms
-from ...internal import error_if_negative, error_if_not_fractional
+from ...internal import error_if_negative
 from .common_functions import (
     compute_phase_shift_from_amplitude_contrast_ratio,
     compute_phase_shifts_with_spherical_aberration,
 )
 
 
-class AbstractTransferFunction(Module, strict=True):
+class AbstractCTF(eqx.Module, strict=True):
     """An abstract base class for a CTF in cryo-EM."""
+
+    defocus_in_angstroms: eqx.AbstractVar[Float[Array, ""]]
 
     @abstractmethod
     def compute_aberration_phase_shifts(
@@ -29,12 +31,14 @@ class AbstractTransferFunction(Module, strict=True):
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         voltage_in_kilovolts: Float[Array, ""] | float,
-        is_weak_phase_approximation: bool = True,
+        amplitude_contrast_ratio: Float[Array, ""] | float = 0.1,
+        phase_shift: Float[Array, ""] | float = 0.0,
+        outputs_exp: bool = False,
     ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
         raise NotImplementedError
 
 
-class ContrastTransferFunction(AbstractTransferFunction, strict=True):
+class AberratedAstigmaticCTF(AbstractCTF, strict=True):
     """Compute an astigmatic Contrast Transfer Function (CTF) with a
     spherical aberration correction and amplitude contrast ratio.
 
@@ -46,7 +50,7 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
 
         ```python
         defocus1, defocus2 = ... # Read from CTFFIND
-        ctf = ContrastTransferFunction(
+        ctf = AberratedAstigmaticCTF(
             defocus_in_angstroms=(defocus1+defocus2)/2,
             astigmatism_in_angstroms=defocus1-defocus2,
             ...
@@ -58,8 +62,6 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
     astigmatism_in_angstroms: Float[Array, ""]
     astigmatism_angle: Float[Array, ""]
     spherical_aberration_in_mm: Float[Array, ""]
-    amplitude_contrast_ratio: Float[Array, ""]
-    phase_shift: Float[Array, ""]
 
     def __init__(
         self,
@@ -67,8 +69,6 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         astigmatism_in_angstroms: float | Float[Array, ""] = 0.0,
         astigmatism_angle: float | Float[Array, ""] = 0.0,
         spherical_aberration_in_mm: float | Float[Array, ""] = 2.7,
-        amplitude_contrast_ratio: float | Float[Array, ""] = 0.1,
-        phase_shift: float | Float[Array, ""] = 0.0,
     ):
         """**Arguments:**
 
@@ -76,15 +76,11 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         - `astigmatism_in_angstroms`: The amount of astigmatism in Angstroms.
         - `astigmatism_angle`: The defocus angle.
         - `spherical_aberration_in_mm`: The spherical aberration coefficient in mm.
-        - `amplitude_contrast_ratio`: The amplitude contrast ratio.
-        - `phase_shift`: The additional phase shift.
         """
         self.defocus_in_angstroms = jnp.asarray(defocus_in_angstroms)
         self.astigmatism_in_angstroms = jnp.asarray(astigmatism_in_angstroms)
         self.astigmatism_angle = jnp.asarray(astigmatism_angle)
         self.spherical_aberration_in_mm = error_if_negative(spherical_aberration_in_mm)
-        self.amplitude_contrast_ratio = error_if_not_fractional(amplitude_contrast_ratio)
-        self.phase_shift = jnp.asarray(phase_shift)
 
     def compute_aberration_phase_shifts(
         self,
@@ -129,7 +125,9 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         voltage_in_kilovolts: Float[Array, ""] | float,
-        is_weak_phase_approximation: bool = True,
+        amplitude_contrast_ratio: Float[Array, ""] | float = 0.1,
+        phase_shift: Float[Array, ""] | float = 0.0,
+        outputs_exp: bool = False,
     ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
         """Compute the CTF as a JAX array.
 
@@ -142,37 +140,45 @@ class ContrastTransferFunction(AbstractTransferFunction, strict=True):
             The accelerating voltage of the microscope in kilovolts. This
             is converted to the wavelength of incident electrons using
             the function [`cryojax.constants.convert_keV_to_angstroms`](https://mjo22.github.io/cryojax/api/constants/units/#cryojax.constants.convert_keV_to_angstroms)
+        - `amplitude_contrast_ratio`:
+            The amplitude contrast ratio. This argument is not used if `outputs_exp = True`, as
+            the amplitude contrast ratio cannot simply be absorbed into a phase shift.
+        - `phase_shift`:
+            Additional constant phase shift applied to the frequency-dependent phase shifts.
+        - `outputs_exp`:
+            If `False`, return the CTF used in linear image formation theory. If `True`, return
+            the CTF (or wave transfer function) as a complex exponential.
         """  # noqa: E501
-        # Convert degrees to radians
+        # Frequency-dependent phase shifts
         aberration_phase_shifts = self.compute_aberration_phase_shifts(
             frequency_grid_in_angstroms, voltage_in_kilovolts=voltage_in_kilovolts
         )
-        # Additional phase shifts
-        phase_shift = jnp.deg2rad(self.phase_shift)
-        amplitude_contrast_phase_shift = (
-            compute_phase_shift_from_amplitude_contrast_ratio(
-                self.amplitude_contrast_ratio
-            )
-        )
-        if is_weak_phase_approximation:
+        # Constant phase shift, convert degrees to radians
+        phase_shift = jnp.deg2rad(phase_shift)
+        if not outputs_exp:
             # Compute the CTF
+            amplitude_contrast_phase_shift = (
+                compute_phase_shift_from_amplitude_contrast_ratio(
+                    amplitude_contrast_ratio
+                )
+            )
             return jnp.sin(
                 aberration_phase_shifts - (phase_shift + amplitude_contrast_phase_shift)
             )
         else:
             # Compute the "complex CTF", correcting for the amplitude contrast
             # and additional phase shift in the zero mode
-            return jnp.exp(
-                -1.0j
-                * aberration_phase_shifts.at[0, 0].add(
-                    phase_shift + amplitude_contrast_phase_shift
-                )
-            )
+            return jnp.exp(-1.0j * (aberration_phase_shifts - phase_shift))
 
 
-class IdealTransferFunction(AbstractTransferFunction, strict=True):
+class PerfectCTF(AbstractCTF, strict=True):
     """A perfect transfer function, useful for imaging
     cryo-EM densities."""
+
+    defocus_in_angstroms: Float[Array, ""]
+
+    def __init__(self):
+        self.defocus_in_angstroms = jnp.asarray(0.0)
 
     @override
     def compute_aberration_phase_shifts(
@@ -188,10 +194,12 @@ class IdealTransferFunction(AbstractTransferFunction, strict=True):
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         voltage_in_kilovolts: Float[Array, ""] | float,
-        is_weak_phase_approximation: bool = True,
+        amplitude_contrast_ratio: Float[Array, ""] | float = 0.1,
+        phase_shift: Float[Array, ""] | float = 0.0,
+        outputs_exp: bool = False,
     ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
         shape = frequency_grid_in_angstroms.shape[:2]
-        if is_weak_phase_approximation:
+        if outputs_exp:
             return jnp.ones(shape, dtype=float)
         else:
             return jnp.ones(shape, dtype=complex)

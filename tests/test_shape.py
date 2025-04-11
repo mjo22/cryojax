@@ -15,7 +15,7 @@ def test_real_shape(model, request):
     """Make sure shapes are as expected in real space."""
     model = request.getfixturevalue(model)
     image = model.render()
-    padded_image = model.render(get_cropped=False)
+    padded_image = model.render(removes_padding=False)
     assert image.shape == model.instrument_config.shape
     assert padded_image.shape == model.instrument_config.padded_shape
 
@@ -24,8 +24,8 @@ def test_real_shape(model, request):
 def test_fourier_shape(model, request):
     """Make sure shapes are as expected in fourier space."""
     model = request.getfixturevalue(model)
-    image = model.render(get_real=False)
-    padded_image = model.render(get_cropped=False, get_real=False)
+    image = model.render(outputs_real_space=False)
+    padded_image = model.render(removes_padding=False, outputs_real_space=False)
     assert image.shape == model.instrument_config.frequency_grid_in_pixels.shape[0:2]
     assert (
         padded_image.shape
@@ -50,11 +50,11 @@ def test_even_vs_odd_image_shape(shape, sample_mrc_path, pixel_size):
         control_shape, pixel_size, voltage_in_kilovolts=300.0
     )
     config_test = cs.InstrumentConfig(shape, pixel_size, voltage_in_kilovolts=300.0)
-    pipeline_control = cs.ContrastImagingPipeline(config_control, theory)
-    pipeline_test = cs.ContrastImagingPipeline(config_test, theory)
+    model_control = cs.ContrastImageModel(config_control, theory)
+    model_test = cs.ContrastImageModel(config_test, theory)
 
     np.testing.assert_allclose(
-        crop_to_shape(pipeline_test.render(), control_shape),
-        pipeline_control.render(),
+        crop_to_shape(model_test.render(), control_shape),
+        model_control.render(),
         atol=1e-4,
     )
