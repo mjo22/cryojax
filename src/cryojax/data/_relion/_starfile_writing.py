@@ -451,6 +451,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
 
         else:
             n_batches = 1
+            batch_size_per_mrc = len(indices)
             residual = 0
 
         if n_batches > 1:
