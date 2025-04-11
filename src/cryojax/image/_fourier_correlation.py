@@ -11,6 +11,7 @@ from ._average import compute_binned_radial_average
 import cryojax.coordinates as cc
 
 def _handle_fourier_transform (
+    # TO DO support padding?
     image_1: Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"] | Float[Array, "y_dim x_dim z_dim"] | Complex[Array, "y_dim x_dim z_dim"],
     image_2: Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"] | Float[Array, "y_dim x_dim z_dim"] | Complex[Array, "y_dim x_dim z_dim"],
     ):
@@ -61,35 +62,37 @@ def compute_radial_fourier_correlation(
 
     **Returns:**
 
-    A tuple where the first element is the coefficients of the FSC/FRC as a function of
-    frequency and the second element is the last value after which the corrleation
-    drops below the threshold value.
+    `frequency_bins`: The array of inverse frequencies for which we have calcualted the correlations
+    `frequency_threshold`: The inverse frequnecy at which the correlation dropped below the specified threshold.
+    `correlation_curve`: The value of the calculated radial fourier correlations. In 2D this is FRC and 3D this is FSC.
     """
 
     # check that maps have the same dimension. 
     if image_1.shape != image_2.shape:
         raise ValueError('Calculating fourier correlations for two images or volumes is only supported when they have the same shape.')
 
+    # check masks are valid.
     if real_space_mask is not None:
         if jnp.any(real_space_mask > 1) or jnp.any(real_space_mask)  < 0:
             raise ValueError('mask values are outside valid range [0,1].')
-        
     if fourier_space_mask is not None:
         if jnp.any(fourier_space_mask) < 0 or jnp.any(fourier_space_mask) > 1:
             raise ValueError('mask values are outside valid range [0,1].')
 
     # choose which mask to apply if any.
     if real_space_mask is None and fourier_space_mask is None:
-        #no mask applied
+        # no mask applied
         fourier_image_1, fourier_image_2 = _handle_fourier_transform(image_1, image_2)
     elif real_space_mask is not None and fourier_space_mask is None:
-        # real space mask applied
+        # check maks has correct dimensions.
         if real_space_mask.shape != image_1.shape:
             raise ValueError('mask and map must have same dimensions')
+        # real space mask applied
         image_1 = real_space_mask*image_1
         image_2 = real_space_mask*image_2
         fourier_image_1, fourier_image_2 = _handle_fourier_transform(image_1, image_2)
     elif real_space_mask is None and fourier_space_mask is not None:
+        # check maks has correct dimensions.
         if fourier_space_mask.shape != image_1.shape:
             raise ValueError('mask and map must have same dimensions')
         fourier_image_1, fourier_image_2 = _handle_fourier_transform(image_1, image_2)
@@ -120,17 +123,17 @@ def compute_radial_fourier_correlation(
 
      
     # Compute radially averaged FSC as a 1D profile
-    FSC_curve = jnp.real(compute_binned_radial_average(
+    correlation_curve = jnp.real(compute_binned_radial_average(
         correlation_voxel_map/normalisation_voxel_map , radial_frequency_grid, frequency_bins
     ))
 
     #remove nans and infs.
-    FSC_curve = jnp.where(jnp.isnan(FSC_curve) | jnp.isinf(FSC_curve), 0.0, FSC_curve)
+    correlation_curve = jnp.where(jnp.isnan(correlation_curve) | jnp.isinf(correlation_curve), 0.0, correlation_curve)
 
     # find threshold where radial correlation average drops below specified threshold.
     threshold_crossing_index = -1
-    for i in jnp.arange(len(FSC_curve)):
-        if FSC_curve[i] <= threshold:
+    for i in jnp.arange(len(correlation_curve)):
+        if correlation_curve[i] <= threshold:
             # max between index and 0 so that we handle the case where no good correlation exists, 
             # we will return the DC component in that case
             threshold_crossing_index = jnp.max(jnp.array((i, 0)))
@@ -138,4 +141,4 @@ def compute_radial_fourier_correlation(
 
     # return the frequency where the threshold crosses over the threshold 
     frequency_threshold = frequency_bins[threshold_crossing_index]
-    return FSC_curve, frequency_threshold, frequency_bins
+    return frequency_bins, frequency_threshold, correlation_curve
