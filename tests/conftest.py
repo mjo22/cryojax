@@ -155,7 +155,9 @@ def specimen(potential, pose):
 
 @pytest.fixture
 def solvent():
-    return cs.GaussianIce(op.Constant(0.001**2))
+    return cs.GRFSolvent(
+        solvent_thickness_in_angstroms=100.0, power_spectrum_function=op.Constant(1.0)
+    )
 
 
 @pytest.fixture
