@@ -545,14 +545,14 @@ def _write_simulated_image_stack_from_starfile_serial(
             else:
                 image_stack[i] = compute_image(param_dataset[indices[i]], args)
 
-            # ... write the image stack to an MRC file
-            filename = os.path.join(param_dataset.path_to_relion_project, mrc_fname)
-            write_image_stack_to_mrc(
-                image_stack,
-                pixel_size=pixel_size,
-                filename=filename,
-                overwrite=overwrite,
-                compression=compression,
-            )
+        # ... write the image stack to an MRC file
+        filename = os.path.join(param_dataset.path_to_relion_project, mrc_fname)
+        write_image_stack_to_mrc(
+            image_stack,
+            pixel_size=pixel_size,
+            filename=filename,
+            overwrite=overwrite,
+            compression=compression,
+        )
 
     return
