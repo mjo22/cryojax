@@ -17,8 +17,8 @@ def compute_radially_averaged_powerspectrum(
     ),
     pixel_size: Float[Array, ""] | float = 1.0,
     *,
-    minimum_frequency: Optional[Float[Array, ""] | float] = None,
-    maximum_frequency: Optional[Float[Array, ""] | float] = None,
+    minimum_frequency: Optional[float] = None,
+    maximum_frequency: Optional[float] = None,
 ) -> tuple[Float[Array, " n_bins"], Float[Array, " n_bins"]]:
     """Compute the power spectrum of an image averaged on a set
     of radial bins.
