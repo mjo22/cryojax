@@ -4,7 +4,8 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float, Inexact
 
 
-def compute_object_phase_from_integrated_potential(
+# Not currently public API
+def apply_interaction_constant(
     integrated_potential: Inexact[Array, "y_dim x_dim"],
     wavelength_in_angstroms: Float[Array, ""] | float,
 ) -> Inexact[Array, "y_dim x_dim"]:
@@ -43,3 +44,21 @@ def compute_object_phase_from_integrated_potential(
     See the documentation on atom-based scattering potentials for more information.
     """  # noqa: E501
     return integrated_potential * jnp.asarray(wavelength_in_angstroms) / (4 * jnp.pi)
+
+
+# Not currently public API
+def apply_amplitude_contrast_ratio(
+    object_at_exit_plane: Float[Array, "y_dim x_dim"],
+    amplitude_contrast_ratio: Float[Array, ""] | float,
+) -> Float[Array, "y_dim x_dim"]:
+    """Apply the amplitude contrast ratio to compute a complex object spectrum,
+    given the object spectrum computed just with a weak-phase calculation.
+
+    !!! info
+        Given phase shift spectrum $\\eta(x, y)$ the complex object spectrum $O(x, y)$
+        for amplitude contrast ratio $\\alpha$ is
+
+        $$O(x, y) = -\\alpha \\ \\eta(x, y) + i \\sqrt{1 - \\alpha^2} \\ \\eta(x, y)$$
+    """
+    ac = amplitude_contrast_ratio
+    return (jnp.sqrt(1.0 - ac**2) + 1.0j * ac) * object_at_exit_plane

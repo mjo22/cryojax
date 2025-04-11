@@ -3,7 +3,8 @@ from .base_scattering_theory import (
     AbstractWaveScatteringTheory as AbstractWaveScatteringTheory,
 )
 from .common_functions import (
-    compute_object_phase_from_integrated_potential as compute_object_phase_from_integrated_potential,  # noqa: E501
+    apply_amplitude_contrast_ratio as apply_amplitude_contrast_ratio,
+    apply_interaction_constant as apply_interaction_constant,
 )
 from .high_energy_scattering_theory import (
     HighEnergyScatteringTheory as HighEnergyScatteringTheory,

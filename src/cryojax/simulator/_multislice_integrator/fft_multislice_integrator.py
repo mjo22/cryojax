@@ -10,7 +10,10 @@ from ...coordinates import make_frequency_grid
 from ...image import fftn, ifftn, map_coordinates
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import AbstractAtomicPotential, RealVoxelGridPotential
-from .._scattering_theory import compute_object_phase_from_integrated_potential
+from .._scattering_theory import (
+    apply_amplitude_contrast_ratio,
+    apply_interaction_constant,
+)
 from .base_multislice_integrator import AbstractMultisliceIntegrator
 
 
@@ -119,14 +122,15 @@ class FFTMultisliceIntegrator(
             potential_per_slice = potential_voxel_grid
         # Compute the integrated potential in a given slice interval, multiplying by
         # the slice thickness (TODO: interpolate for different slice thicknesses?)
-        integrated_potential_per_slice = potential_per_slice * voxel_size
-        phase_per_slice = jax.vmap(
-            compute_object_phase_from_integrated_potential, in_axes=[0, None]
-        )(integrated_potential_per_slice, instrument_config.wavelength_in_angstroms)
+        compute_object_fn = lambda pot: apply_amplitude_contrast_ratio(
+            apply_interaction_constant(
+                voxel_size * pot, instrument_config.wavelength_in_angstroms
+            ),
+            amplitude_contrast_ratio,
+        )
+        object_per_slice = jax.vmap(compute_object_fn)(potential_per_slice)
         # Compute the transmission function
-        ac = amplitude_contrast_ratio
-        object_per_slice = (jnp.sqrt(1.0 - ac**2) * 1.0j - ac) * phase_per_slice
-        transmission = jnp.exp(object_per_slice)
+        transmission = jnp.exp(1.0j * object_per_slice)
         # Compute the fresnel propagator (TODO: check numerical factors)
         if isinstance(potential, AbstractAtomicPotential):
             radial_frequency_grid = jnp.sum(

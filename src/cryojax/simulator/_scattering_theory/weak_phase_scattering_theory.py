@@ -11,7 +11,7 @@ from ...utils import batched_scan, get_filter_spec
 from .._instrument_config import InstrumentConfig
 from .._pose import AbstractPose
 from .._potential_integrator import AbstractPotentialIntegrator
-from .._solvent import AbstractIce
+from .._solvent import AbstractSolvent
 from .._structural_ensemble import (
     AbstractAssembly,
     AbstractConformationalVariable,
@@ -19,7 +19,7 @@ from .._structural_ensemble import (
 )
 from .._transfer_theory import ContrastTransferTheory
 from .base_scattering_theory import AbstractScatteringTheory
-from .common_functions import compute_object_phase_from_integrated_potential
+from .common_functions import apply_interaction_constant
 
 
 class AbstractWeakPhaseScatteringTheory(AbstractScatteringTheory, strict=True):
@@ -28,7 +28,7 @@ class AbstractWeakPhaseScatteringTheory(AbstractScatteringTheory, strict=True):
     """
 
     @abstractmethod
-    def compute_phase_spectrum_at_exit_plane(
+    def compute_object_spectrum_at_exit_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -66,14 +66,14 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
     structural_ensemble: AbstractStructuralEnsemble
     potential_integrator: AbstractPotentialIntegrator
     transfer_theory: ContrastTransferTheory
-    solvent: Optional[AbstractIce] = None
+    solvent: Optional[AbstractSolvent] = None
 
     def __init__(
         self,
         structural_ensemble: AbstractStructuralEnsemble,
         potential_integrator: AbstractPotentialIntegrator,
         transfer_theory: ContrastTransferTheory,
-        solvent: Optional[AbstractIce] = None,
+        solvent: Optional[AbstractSolvent] = None,
     ):
         """**Arguments:**
 
@@ -88,29 +88,33 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
         self.solvent = solvent
 
     @override
-    def compute_phase_spectrum_at_exit_plane(
+    def compute_object_spectrum_at_exit_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        # Compute the phase shifts in the exit plane
-        phase_spectrum_at_exit_plane = _compute_phase_spectrum_from_scattering_potential(
+        # Compute the integrated potential
+        fourier_integrated_potential = _integrate_potential_to_exit_plane(
             self.structural_ensemble, self.potential_integrator, instrument_config
         )
 
         if rng_key is not None:
             # Get the potential of the specimen plus the ice
             if self.solvent is not None:
-                phase_spectrum_at_exit_plane = self.solvent.compute_phase_spectrum_with_ice(  # noqa: E501
+                fourier_integrated_potential = self.solvent.compute_integrated_potential_with_solvent(  # noqa: E501
                     rng_key,
-                    phase_spectrum_at_exit_plane,
+                    fourier_integrated_potential,
                     instrument_config,
                     input_is_rfft=self.potential_integrator.is_projection_approximation,
                 )
 
-        return phase_spectrum_at_exit_plane
+        object_spectrum_at_exit_plane = apply_interaction_constant(
+            fourier_integrated_potential, instrument_config.wavelength_in_angstroms
+        )
+
+        return object_spectrum_at_exit_plane
 
     @override
     def compute_contrast_spectrum_at_detector_plane(
@@ -120,11 +124,11 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
     ]:
-        phase_spectrum_at_exit_plane = self.compute_phase_spectrum_at_exit_plane(
+        object_spectrum_at_exit_plane = self.compute_object_spectrum_at_exit_plane(
             instrument_config, rng_key
         )
         contrast_spectrum_at_detector_plane = self.transfer_theory.propagate_object_to_detector_plane(  # noqa: E501
-            phase_spectrum_at_exit_plane,
+            object_spectrum_at_exit_plane,
             instrument_config,
             is_projection_approximation=self.potential_integrator.is_projection_approximation,
         )
@@ -146,7 +150,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
     structural_ensemble: AbstractAssembly
     potential_integrator: AbstractPotentialIntegrator
     transfer_theory: ContrastTransferTheory
-    solvent: Optional[AbstractIce]
+    solvent: Optional[AbstractSolvent]
 
     batch_size: int
 
@@ -155,7 +159,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         structural_ensemble: AbstractAssembly,
         potential_integrator: AbstractPotentialIntegrator,
         transfer_theory: ContrastTransferTheory,
-        solvent: Optional[AbstractIce] = None,
+        solvent: Optional[AbstractSolvent] = None,
         *,
         batch_size: int = 1,
     ):
@@ -177,7 +181,7 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         self.batch_size = batch_size
 
     @override
-    def compute_phase_spectrum_at_exit_plane(
+    def compute_object_spectrum_at_exit_plane(
         self,
         instrument_config: InstrumentConfig,
         rng_key: Optional[PRNGKeyArray] = None,
@@ -187,12 +191,10 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         @eqx.filter_vmap(in_axes=(0, None, None))
         def compute_image_stack(ensemble_vmap, ensemble_novmap, instrument_config):
             ensemble = eqx.combine(ensemble_vmap, ensemble_novmap)
-            phase_spectrum_at_exit_plane = (
-                _compute_phase_spectrum_from_scattering_potential(
-                    ensemble, self.potential_integrator, instrument_config
-                )
+            fourier_integrated_potential = _integrate_potential_to_exit_plane(
+                ensemble, self.potential_integrator, instrument_config
             )
-            return phase_spectrum_at_exit_plane
+            return fourier_integrated_potential
 
         # Get the batch
         ensemble_batch, _ = (
@@ -203,21 +205,25 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         to_vmap = jax.tree_util.tree_map(is_vmap, ensemble_batch, is_leaf=is_vmap)
         vmap, novmap = eqx.partition(ensemble_batch, to_vmap)
 
-        phase_spectrum_at_exit_plane = _compute_image_superposition(
+        fourier_integrated_potential = _compute_image_superposition(
             vmap, novmap, instrument_config, compute_image_stack
         )
 
         if rng_key is not None:
             # Get the potential of the specimen plus the ice
             if self.solvent is not None:
-                phase_spectrum_at_exit_plane = self.solvent.compute_phase_spectrum_with_ice(  # noqa: E501
+                fourier_integrated_potential = self.solvent.compute_integrated_potential_with_solvent(  # noqa: E501
                     rng_key,
-                    phase_spectrum_at_exit_plane,
+                    fourier_integrated_potential,
                     instrument_config,
                     input_is_rfft=self.potential_integrator.is_projection_approximation,
                 )
 
-        return phase_spectrum_at_exit_plane
+        object_spectrum_at_exit_plane = apply_interaction_constant(
+            fourier_integrated_potential, instrument_config.wavelength_in_angstroms
+        )
+
+        return object_spectrum_at_exit_plane
 
     @override
     def compute_contrast_spectrum_at_detector_plane(
@@ -233,16 +239,17 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             ensemble_novmap, transfer_novmap = pytree_novmap
             ensemble = eqx.combine(ensemble_vmap, ensemble_novmap)
             transfer_theory = eqx.combine(transfer_vmap, transfer_novmap)
-            phase_spectrum_at_exit_plane = (
-                _compute_phase_spectrum_from_scattering_potential(
-                    ensemble, self.potential_integrator, instrument_config
-                )
+            fourier_integrated_potential = _integrate_potential_to_exit_plane(
+                ensemble, self.potential_integrator, instrument_config
+            )
+            object_spectrum_at_exit_plane = apply_interaction_constant(
+                fourier_integrated_potential, instrument_config.wavelength_in_angstroms
             )
             translational_phase_shifts = ensemble.pose.compute_shifts(
                 instrument_config.padded_frequency_grid_in_angstroms
             )
             contrast_spectrum_at_detector_plane = transfer_theory.propagate_object_to_detector_plane(  # noqa: E501
-                phase_spectrum_at_exit_plane,
+                object_spectrum_at_exit_plane,
                 instrument_config,
                 is_projection_approximation=self.potential_integrator.is_projection_approximation,
             )
@@ -285,23 +292,31 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
         if rng_key is not None:
             # Get the contrast from the ice and add to that of the image batch
             if self.solvent is not None:
-                fourier_ice_contrast_at_detector_plane = (
+                fourier_integrated_potential_of_solvent = (
+                    self.solvent.sample_solvent_integrated_potential(
+                        rng_key,
+                        instrument_config,
+                    )
+                )
+                solvent_spectrum_at_exit_plane = apply_interaction_constant(
+                    fourier_integrated_potential_of_solvent,
+                    instrument_config.wavelength_in_angstroms,
+                )
+                solvent_contrast_spectrum_at_detector_plane = (
                     self.transfer_theory.propagate_object_to_detector_plane(
-                        self.solvent.sample_ice_phase_spectrum(
-                            rng_key, instrument_config
-                        ),
+                        solvent_spectrum_at_exit_plane,
                         instrument_config,
                         is_projection_approximation=True,
                     )
                 )
                 contrast_spectrum_at_detector_plane += (
-                    fourier_ice_contrast_at_detector_plane
+                    solvent_contrast_spectrum_at_detector_plane
                 )
 
         return contrast_spectrum_at_detector_plane
 
 
-def _compute_phase_spectrum_from_scattering_potential(
+def _integrate_potential_to_exit_plane(
     structural_ensemble, potential_integrator, instrument_config
 ):
     # Get potential in the lab frame
@@ -310,11 +325,7 @@ def _compute_phase_spectrum_from_scattering_potential(
     fourier_integrated_potential = potential_integrator.compute_integrated_potential(
         potential, instrument_config, outputs_real_space=False
     )
-    # Compute the phase shifts in exit plane and multiply by the translation.
-    phase_shifts_in_exit_plane = compute_object_phase_from_integrated_potential(
-        fourier_integrated_potential, instrument_config.wavelength_in_angstroms
-    )
-    return phase_shifts_in_exit_plane
+    return fourier_integrated_potential
 
 
 @eqx.filter_jit
