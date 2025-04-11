@@ -224,12 +224,13 @@ def _compute_contrast_from_ewald_sphere(
 
 
 def _ewald_propagate_kernel(neg, pos, ac, sin, cos):
+    w1, w2 = ac, jnp.sqrt(1 - ac**2)
     return (
-        (neg.real + pos.real + ac * (neg.imag + pos.imag)) * sin
-        + (neg.imag + pos.imag - ac * (neg.real + pos.real)) * cos
+        (w2 * (neg.real + pos.real) + w1 * (neg.imag + pos.imag)) * sin
+        + (w2 * (neg.imag + pos.imag) - w1 * (neg.real + pos.real)) * cos
         + 1.0j
         * (
-            (pos.imag - neg.imag + ac * (neg.real - pos.real)) * sin
-            + (neg.real - pos.real + ac * (neg.imag - pos.imag)) * cos
+            (w2 * (pos.imag - neg.imag) + w1 * (neg.real - pos.real)) * sin
+            + (w2 * (neg.real - pos.real) + w1 * (neg.imag - pos.imag)) * cos
         )
     )
