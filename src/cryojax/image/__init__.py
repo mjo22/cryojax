@@ -36,3 +36,7 @@ from ._spectrum import (
 from ._fourier_correlation import (
     compute_radial_fourier_correlation  as compute_radial_fourier_correlation ,
 )
+
+from ._fourier_correlation import (
+    compute_radial_fourier_correlation  as compute_radial_fourier_correlation ,
+)

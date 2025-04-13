@@ -5,6 +5,7 @@ Functions for creating coordinate systems.
 from typing import Optional
 
 import jax.numpy as jnp
+import equinox as eqx
 import numpy as np
 from jaxtyping import Array, Float
 
@@ -33,6 +34,7 @@ def make_coordinate_grid(
     )
     return coordinate_grid
 
+@eqx.filter_jit
 def make_radial_frequency_grid(
     shape: tuple[int, ...],
     grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
