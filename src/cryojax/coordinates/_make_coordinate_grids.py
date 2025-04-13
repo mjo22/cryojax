@@ -33,6 +33,44 @@ def make_coordinate_grid(
     )
     return coordinate_grid
 
+def make_radial_frequency_grid(
+    shape: tuple[int, ...],
+    grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
+    get_rfftfreqs: bool = False,
+) -> Float[Array, "*shape ndim"]:
+    """Create a fourier-space cartesian coordinate system on a grid.
+    The zero-frequency component is in the center.
+
+    This will help us do things like calculate fourier shell
+    correlations and power spectrums.
+
+    **Arguments:**
+
+    - `shape`:
+        Shape of the grid, with `ndim = len(shape)`.
+    - `grid_spacing`:
+        The grid spacing (i.e. pixel/voxel size),
+        in units of length.
+    - `get_rfftfreqs`:
+        Return a frequency grid for use with `jax.numpy.fft.rfftn`.
+        `shape[-1]` is the axis on which the negative
+        frequencies are omitted.
+
+    **Returns:**
+
+    A cartesian coordinate system in frequency space.
+    """
+    
+    # make a cartesian grid
+    frequency_grid = make_frequency_grid(shape = shape, 
+                                        grid_spacing=grid_spacing, 
+                                        get_rfftfreqs=get_rfftfreqs)
+    
+    # now make it radially symmetric with the origin in the center. 
+    radial_frequency_grid = jnp.fft.ifftshift(
+                    jnp.linalg.norm(frequency_grid, axis=-1))
+    
+    return radial_frequency_grid
 
 def make_frequency_grid(
     shape: tuple[int, ...],
