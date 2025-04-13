@@ -49,9 +49,8 @@ def compute_radially_averaged_powerspectrum(
     radial_frequency_grid = cc.make_radial_frequency_grid(fourier_image.shape,grid_spacing=pixel_size)
     start = 0 
     stop = jnp.sqrt(2) / (pixel_size*2.0) 
-    frequency_bins = jnp.linspace(start, stop, jnp.int32(fourier_image.shape[0]/2)+1)
+    frequency_bins = jnp.linspace(start, stop, int(fourier_image.shape[0]/2)+1)
     squared_fourier_amplitudes = jnp.real(fourier_image * jnp.conjugate(fourier_image))
-    print(frequency_bins)
 
     spectrum = compute_binned_radial_average(squared_fourier_amplitudes, radial_frequency_grid, frequency_bins)
 
