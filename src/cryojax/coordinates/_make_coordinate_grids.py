@@ -74,6 +74,7 @@ def make_radial_frequency_grid(
     
     return radial_frequency_grid
 
+@eqx.filter_jit
 def make_frequency_grid(
     shape: tuple[int, ...],
     grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
@@ -227,6 +228,7 @@ def make_1d_frequency_grid(
     return frequency_array
 
 
+@eqx.filter_jit
 def _make_coordinates_or_frequencies(
     shape: tuple[int, ...],
     grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
