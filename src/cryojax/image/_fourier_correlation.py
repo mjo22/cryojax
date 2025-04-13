@@ -62,9 +62,9 @@ def compute_radial_fourier_correlation(
 
     # Compute bins
     start = 0
-    stop = sqrt2 / (2.0 * pixel_size)
+    stop = 1 / (2.0 * pixel_size)
     
-    frequency_bins = jnp.linspace(0, stop, 1 + int(sqrt2 * image_1.shape[0]/2) + 1)
+    frequency_bins = jnp.linspace(0, stop, 1 + int(image_1.shape[0]/2) + 1)
 
     # Compute radially averaged FSC as a 1D profile
     correlation_curve = jnp.real(compute_binned_radial_average(
@@ -73,6 +73,7 @@ def compute_radial_fourier_correlation(
     normalisation_curve = jnp.real(compute_binned_radial_average(
         normalisation_voxel_map, radial_frequency_grid, frequency_bins
     ))
+
     FSC_curve = correlation_curve /normalisation_curve
 
     #remove nans and infs.
@@ -102,4 +103,4 @@ def compute_radial_fourier_correlation(
     threshold_crossing_index = eqx.error_if(threshold_crossing_index, threshold_crossing_index == dummy_index, "Error message...")
     frequency_threshold = frequency_bins[threshold_crossing_index]
 
-    return frequency_bins, frequency_threshold, correlation_curve
+    return frequency_bins, frequency_threshold, FSC_curve
