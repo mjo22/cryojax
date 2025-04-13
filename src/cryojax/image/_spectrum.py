@@ -23,9 +23,6 @@ from ._average import compute_binned_radial_average  # keep import inside jit-sa
 def compute_radially_averaged_powerspectrum(
     fourier_image: Complex[Array, "y x"] | Complex[Array, "z y x"],
     pixel_size: float = 1.0,
-    *,
-    minimum_frequency: Optional[float] = None,
-    maximum_frequency: Optional[float] = None,
 ) -> tuple[Float[Array, "n_bins"], Float[Array, "n_bins"]]:
 
     import cryojax.coordinates  as cc
