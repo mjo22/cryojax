@@ -6,41 +6,21 @@ from typing import Union, Optional
 
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
+import equinox as eqx
 
 from ._average import compute_binned_radial_average
 import cryojax.coordinates as cc
 
-def _handle_fourier_transform (
-    # TO DO support padding?
-    image_1: Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"] | Float[Array, "y_dim x_dim z_dim"] | Complex[Array, "y_dim x_dim z_dim"],
-    image_2: Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"] | Float[Array, "y_dim x_dim z_dim"] | Complex[Array, "y_dim x_dim z_dim"],
-    ):
-    
-    if jnp.iscomplexobj(image_1):
-        fourier_image_1 = image_1
-    else:
-        fourier_image_1 = jnp.fft.fftshift(jnp.fft.fftn(image_1))
-    if jnp.iscomplexobj(image_2):
-        fourier_image_2 = image_2
-    else:
-        fourier_image_2 = jnp.fft.fftshift(jnp.fft.fftn(image_2))
-    return fourier_image_1, fourier_image_2
-
+@eqx.filter_jit
 def compute_radial_fourier_correlation(
-    # TODO make jit compatible.
     image_1: Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"] | Float[Array, "y_dim x_dim z_dim"] | Complex[Array, "y_dim x_dim z_dim"],
     image_2: Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"] | Float[Array, "y_dim x_dim z_dim"] | Complex[Array, "y_dim x_dim z_dim"],
     pixel_size: Float[Array, ""] | float = 1.0,
     #default threshold is 0.5 for two 'known' volumes according to the half-bit criterion.
     # However, for half maps derived from ab initio refinemnts. The threshold is 0.143 by convention.
     # todo: add van heel criterion.
+    do_fft: bool | bool = True,
     threshold: Float | float = 0.5, 
-                                               
-    minimum_frequency: Optional[Float[Array, ""] | float] = None,
-    maximum_frequency: Optional[Float[Array, ""] | float] = None,
-    real_space_mask: Optional[Float[Array, "y_dim x_dim z_dim"]] = None,
-    fourier_space_mask: Optional[Float[Array, "y_dim x_dim z_dim"]] = None
-   
 ) -> tuple[Float[Array, "n_bins"], Float]:
 
     """compute the fourier ring correlation or fourier shell correlation for two images or two voxel maps.
@@ -53,12 +33,10 @@ def compute_radial_fourier_correlation(
         An image in real or fourier space.
     `pixel_size`:
         The pixel size of `the images`.
-    `minimum_frequency`:
-        Minimum frequency bin. By default, `0.0`.
-    `maximum_frequency`:
-        Maximum frequency bin. By default, `1 / (2 * pixel_size)` nyquist frequency.
-    `mask`:
-        mask for input volumes.
+    `do_fft`:
+        Choose whether to transform the volumes/images into fourier space.
+    `threshold`:
+        The threshold at which to draw the distinction between input maps.
 
     **Returns:**
 
@@ -67,78 +45,61 @@ def compute_radial_fourier_correlation(
     `correlation_curve`: The value of the calculated radial fourier correlations. In 2D this is FRC and 3D this is FSC.
     """
 
-    # check that maps have the same dimension. 
-    if image_1.shape != image_2.shape:
-        raise ValueError('Calculating fourier correlations for two images or volumes is only supported when they have the same shape.')
-
-    # check masks are valid.
-    if real_space_mask is not None:
-        if jnp.any(real_space_mask > 1) or jnp.any(real_space_mask)  < 0:
-            raise ValueError('mask values are outside valid range [0,1].')
-    if fourier_space_mask is not None:
-        if jnp.any(fourier_space_mask) < 0 or jnp.any(fourier_space_mask) > 1:
-            raise ValueError('mask values are outside valid range [0,1].')
-
-    # choose which mask to apply if any.
-    if real_space_mask is None and fourier_space_mask is None:
-        # no mask applied
-        fourier_image_1, fourier_image_2 = _handle_fourier_transform(image_1, image_2)
-    elif real_space_mask is not None and fourier_space_mask is None:
-        # check maks has correct dimensions.
-        if real_space_mask.shape != image_1.shape:
-            raise ValueError('mask and map must have same dimensions')
-        # real space mask applied
-        image_1 = real_space_mask*image_1
-        image_2 = real_space_mask*image_2
-        fourier_image_1, fourier_image_2 = _handle_fourier_transform(image_1, image_2)
-    elif real_space_mask is None and fourier_space_mask is not None:
-        # check maks has correct dimensions.
-        if fourier_space_mask.shape != image_1.shape:
-            raise ValueError('mask and map must have same dimensions')
-        fourier_image_1, fourier_image_2 = _handle_fourier_transform(image_1, image_2)
-
-        # fourier mask applied
-        fourier_image_1 = fourier_space_mask*fourier_image_1
-        fourier_image_2 = fourier_space_mask*fourier_image_2
+    if do_fft == True:
+        fourier_image_1 = jnp.fft.fftshift(jnp.fft.fftn(image_1))
+        fourier_image_2 = jnp.fft.fftshift(jnp.fft.fftn(image_2))
     else:
-        raise ValueError('Specifying both a real space mask and a fourier mask is not supported.')
-
+        fourier_image_1 = image_1
+        fourier_image_2 = image_2
     correlation_voxel_map = (fourier_image_1 * jnp.conjugate(fourier_image_2))
     normalisation_voxel_map = jnp.sqrt(jnp.abs(fourier_image_1)**2 * jnp.abs(fourier_image_2)**2)
 
-    frequency_grid = cc.make_frequency_grid(jnp.array(image_1.shape), pixel_size, get_rfftfreqs=False)
-    radial_frequency_grid = jnp.fft.ifftshift(jnp.linalg.norm(frequency_grid, axis=-1))
+    radial_frequency_grid = cc.make_radial_frequency_grid(image_1.shape, pixel_size, get_rfftfreqs=False)
+
+    #radial_frequency_grid = jnp.fft.ifftshift(jnp.linalg.norm(frequency_grid, axis=-1))
+
+    sqrt2 = 1.4142135623730951
 
     # Compute bins
-    q_min = 0.0 if minimum_frequency is None else minimum_frequency
-    q_max = (
-        # set maximum at nyquist, ignore corners by default.
-        1 / (pixel_size * 2.0)
-        if maximum_frequency is None
-        else maximum_frequency
-    )
+    start = 0
+    stop = sqrt2 / (2.0 * pixel_size)
     
-    q_step = 1.0 / (pixel_size * max(*fourier_image_1.shape))
-    frequency_bins = jnp.linspace(q_min, q_max, 1 + int((q_max - q_min) / q_step))
+    frequency_bins = jnp.linspace(0, stop, 1 + int(sqrt2 * image_1.shape[0]/2) + 1)
 
-     
     # Compute radially averaged FSC as a 1D profile
     correlation_curve = jnp.real(compute_binned_radial_average(
-        correlation_voxel_map/normalisation_voxel_map , radial_frequency_grid, frequency_bins
+        correlation_voxel_map, radial_frequency_grid, frequency_bins
     ))
+    normalisation_curve = jnp.real(compute_binned_radial_average(
+        normalisation_voxel_map, radial_frequency_grid, frequency_bins
+    ))
+    FSC_curve = correlation_curve /normalisation_curve
 
     #remove nans and infs.
     correlation_curve = jnp.where(jnp.isnan(correlation_curve) | jnp.isinf(correlation_curve), 0.0, correlation_curve)
 
     # find threshold where radial correlation average drops below specified threshold.
     threshold_crossing_index = -1
-    for i in jnp.arange(len(correlation_curve)):
-        if correlation_curve[i] <= threshold:
-            # max between index and 0 so that we handle the case where no good correlation exists, 
-            # we will return the DC component in that case
-            threshold_crossing_index = jnp.max(jnp.array((i, 0)))
-            break
+    #for i in jnp.arange(len(correlation_curve)):
+    #    if correlation_curve[i] <= threshold:
+    #        # max between index and 0 so that we handle the case where no good correlation exists, 
+    #        # we will return the DC component in that case
+    #        threshold_crossing_index = jnp.max(jnp.array((i, 0)))
+    #        break
 
     # return the frequency where the threshold crosses over the threshold 
+
+    where_below_threshold = jnp.where(correlation_curve < threshold, 0, 1) # 0s when below, 1s, when above
+    # Find minimum index where we flip from 0 to 1
+    where_is_crossing = jnp.diff(where_below_threshold)
+    # ... make an array that has a value of its index when we have a crossing, and a dummy value otherwise
+    arr_size = where_is_crossing.size
+    arr_indices = jnp.arange(arr_size, dtype=int)
+    dummy_index = arr_size + 100
+    indices_at_0_to_1_flips = jnp.where(where_is_crossing == 1, arr_indices, dummy_index)
+    # ... get minimum of array
+    threshold_crossing_index = jnp.amin(indices_at_0_to_1_flips)
+    threshold_crossing_index = eqx.error_if(threshold_crossing_index, threshold_crossing_index == dummy_index, "Error message...")
     frequency_threshold = frequency_bins[threshold_crossing_index]
+
     return frequency_bins, frequency_threshold, correlation_curve
