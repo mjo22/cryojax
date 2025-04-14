@@ -1,14 +1,13 @@
 import os
 import pathlib
-from functools import partial
-from typing import Any, Callable, Optional
+from typing import Callable, Optional, TypeVar
 
 import equinox as eqx
 import jax
 import numpy as np
 import pandas as pd
 import starfile
-from jaxtyping import Array, Float, PRNGKeyArray
+from jaxtyping import Array, Float
 
 from ...image.operators import Constant, FourierGaussian
 from ...io import write_image_stack_to_mrc
@@ -16,6 +15,10 @@ from ...simulator import AberratedAstigmaticCTF
 from ...utils import batched_map
 from ._starfile_dataset import RelionParticleParameterDataset
 from ._starfile_pytrees import RelionParticleParameters
+
+
+PerParticlePyTree = TypeVar("PerParticlePyTree")
+ConstantPyTree = TypeVar("ConstantPyTree")
 
 
 def _get_filename(step, n_char=6):
@@ -176,15 +179,12 @@ def write_starfile_with_particle_parameters(
 
 def write_simulated_image_stack_from_starfile(
     param_dataset: RelionParticleParameterDataset,
-    compute_image: (
-        Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
-        | Callable[
-            [PRNGKeyArray, RelionParticleParameters, Any],
-            Float[Array, "y_dim x_dim"],
-        ]
-    ),
-    constant_args: Any,
-    per_particle_args: Any,
+    compute_image: Callable[
+        [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
+        Float[Array, "y_dim x_dim"],
+    ],
+    constant_args: ConstantPyTree,
+    per_particle_args: PerParticlePyTree,
     is_jittable: bool = False,
     batch_size_per_mrc: Optional[int] = None,
     overwrite: bool = False,
@@ -355,8 +355,8 @@ def _compute_image_stack_map_wrapper(
     compute_image_stack: Callable,
     particle_parameters_vmap: RelionParticleParameters,
     particle_parameters_novmap: RelionParticleParameters,
-    constant_args: Any,
-    per_particle_args: Any,
+    constant_args,
+    per_particle_args,
 ):
     particle_parameters = eqx.combine(
         particle_parameters_vmap, particle_parameters_novmap
@@ -371,15 +371,12 @@ def _compute_image_stack_map_wrapper(
 
 def _write_simulated_image_stack_from_starfile_vmap(
     param_dataset: RelionParticleParameterDataset,
-    compute_image: (
-        Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
-        | Callable[
-            [PRNGKeyArray, RelionParticleParameters, Any],
-            Float[Array, "y_dim x_dim"],
-        ]
-    ),
-    constant_args: Any,
-    per_particle_args: Any,
+    compute_image: Callable[
+        [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
+        Float[Array, "y_dim x_dim"],
+    ],
+    constant_args: ConstantPyTree,
+    per_particle_args: PerParticlePyTree,
     batch_size_per_mrc: Optional[int] = None,
     overwrite: bool = False,
     compression: Optional[str] = None,
@@ -454,15 +451,12 @@ def _write_simulated_image_stack_from_starfile_vmap(
 
 def _write_simulated_image_stack_from_starfile_serial(
     param_dataset: RelionParticleParameterDataset,
-    compute_image: (
-        Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
-        | Callable[
-            [PRNGKeyArray, RelionParticleParameters, Any],
-            Float[Array, "y_dim x_dim"],
-        ]
-    ),
-    constant_args: Any,
-    per_particle_args: Any,
+    compute_image: Callable[
+        [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
+        Float[Array, "y_dim x_dim"],
+    ],
+    constant_args: ConstantPyTree,
+    per_particle_args: PerParticlePyTree,
     overwrite: bool = False,
     compression: Optional[str] = None,
 ):
@@ -475,9 +469,6 @@ def _write_simulated_image_stack_from_starfile_serial(
 
     box_size = int(param_dataset.starfile_data["optics"]["rlnImageSize"][0])
     pixel_size = float(param_dataset.starfile_data["optics"]["rlnImagePixelSize"][0])
-
-    if constant_args is not None:
-        compute_image = partial(compute_image, constant_args=constant_args)
 
     # ... now, generate images for each mrcfile
     for mrc_fname in mrc_fnames:
