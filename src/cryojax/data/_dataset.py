@@ -1,12 +1,13 @@
 """Functionality in `cryojax` for representing datasets."""
 
 import abc
-import dataclasses
-from typing import Any
+from typing import Generic, TypeVar
 
 
-@dataclasses.dataclass(frozen=True)
-class AbstractDataset(metaclass=abc.ABCMeta):
+T = TypeVar("T")
+
+
+class AbstractDataset(abc.ABC, Generic[T]):
     """An abstraction of a dataset in `cryojax`. To create an
     `AbstractDataset`, implement its `__init__`, `__getitem__`, and
     `__len__` methods.
@@ -44,50 +45,16 @@ class AbstractDataset(metaclass=abc.ABCMeta):
         An `equinox.Module` is just a pytree, so it can be safely
         passed to `jax` transformations. However, an `AbstractDataset`
         can *not* be passed to `jax` transformations. Therefore, it is
-        not a pytree. Rather, it is a [frozen dataclass](https://docs.python.org/3/library/dataclasses.html#frozen-instances).
+        not a pytree. Rather, it is a normal python class.
 
-        There are gotchas when implementing frozen dataclasses. For example,
-        the following will result in a `FrozenInstanceError`:
-
-        ```python
-        import dataclasses
-
-        @dataclasses.dataclass(frozen=True)
-        class BuggyFrozenDataclass:
-
-            a: int
-
-            def __init__(self, a: int):
-                self.a = a
-
-        BuggyFrozenDataclass(10)  # Will raise the FrozenInstanceError
-        ```
-
-        As of the time of writing this, frozen dataclasses must use the following
-        syntax to set attributes in a custom `__init__`:
-
-        ```python
-        import dataclasses
-
-        @dataclasses.dataclass(frozen=True)
-        class CorrectFrozenDataclass:
-
-            a: int
-
-            def __init__(self, a: int):
-                object.__setattr__(self, "a", a)
-
-        example = CorrectFrozenDataclass(10)  # Will not raise a FrozenInstanceError
-        print(example.a)  # This will print a, which here was 10
-        ```
     """
 
     @abc.abstractmethod
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __getitem__(self, index) -> T:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __getitem__(self, index) -> Any:
+    def __setitem__(self, index, value: T):
         raise NotImplementedError
 
     @abc.abstractmethod

@@ -2,16 +2,17 @@ from typing import Optional
 from typing_extensions import override
 
 import jax.numpy as jnp
-from jaxtyping import Array, Complex, PRNGKeyArray
+from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ...image import ifftn, irfftn
+from ...internal import error_if_not_fractional
 from .._instrument_config import InstrumentConfig
 from .._potential_integrator import AbstractPotentialIntegrator
-from .._solvent import AbstractIce
+from .._solvent import AbstractSolvent
 from .._structural_ensemble import AbstractStructuralEnsemble
 from .._transfer_theory import WaveTransferTheory
 from .base_scattering_theory import AbstractWaveScatteringTheory
-from .common_functions import convert_units_of_integrated_potential
+from .common_functions import apply_amplitude_contrast_ratio, apply_interaction_constant
 
 
 class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
@@ -29,14 +30,16 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
     structural_ensemble: AbstractStructuralEnsemble
     potential_integrator: AbstractPotentialIntegrator
     transfer_theory: WaveTransferTheory
-    solvent: Optional[AbstractIce]
+    solvent: Optional[AbstractSolvent]
+    amplitude_contrast_ratio: Float[Array, ""]
 
     def __init__(
         self,
         structural_ensemble: AbstractStructuralEnsemble,
         potential_integrator: AbstractPotentialIntegrator,
         transfer_theory: WaveTransferTheory,
-        solvent: Optional[AbstractIce] = None,
+        solvent: Optional[AbstractSolvent] = None,
+        amplitude_contrast_ratio: float | Float[Array, ""] = 0.1,
     ):
         """**Arguments:**
 
@@ -44,11 +47,13 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         - `potential_integrator`: The method for integrating the scattering potential.
         - `transfer_theory`: The wave transfer theory.
         - `solvent`: The model for the solvent.
+        - `amplitude_contrast_ratio`: The amplitude contrast ratio.
         """
         self.structural_ensemble = structural_ensemble
         self.potential_integrator = potential_integrator
         self.transfer_theory = transfer_theory
         self.solvent = solvent
+        self.amplitude_contrast_ratio = error_if_not_fractional(amplitude_contrast_ratio)
 
     @override
     def compute_wavefunction_at_exit_plane(
@@ -58,53 +63,39 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
-        # Compute the object spectrum in the exit plane
+        # Compute the integrated potential in the exit plane
         potential = self.structural_ensemble.get_potential_in_lab_frame()
-        if self.potential_integrator.is_projection_approximation:
-            object_spectrum_at_exit_plane = convert_units_of_integrated_potential(
-                self.potential_integrator.compute_fourier_integrated_potential(
-                    potential, instrument_config
-                ),
-                instrument_config.wavelength_in_angstroms,
+        fourier_integrated_potential = (
+            self.potential_integrator.compute_integrated_potential(
+                potential, instrument_config, outputs_real_space=False
             )
-
-            if rng_key is not None:
-                # Get the potential of the specimen plus the ice
-                if self.solvent is not None:
-                    object_spectrum_at_exit_plane = (
-                        self.solvent.compute_object_spectrum_with_ice(
-                            rng_key,
-                            object_spectrum_at_exit_plane,
-                            instrument_config,
-                            is_hermitian_symmetric=True,
-                        )
+        )
+        # The integrated potential may not be from an rfft; this depends on
+        # if it is a projection approx
+        is_projection_approx = self.potential_integrator.is_projection_approximation
+        if rng_key is not None:
+            # Get the potential of the specimen plus the ice
+            if self.solvent is not None:
+                fourier_integrated_potential = (
+                    self.solvent.compute_integrated_potential_with_solvent(
+                        rng_key,
+                        fourier_integrated_potential,
+                        instrument_config,
+                        input_is_rfft=is_projection_approx,
                     )
-
-            return jnp.exp(
-                1.0j
-                * irfftn(object_spectrum_at_exit_plane, s=instrument_config.padded_shape)
-            )
-        else:
-            object_spectrum_at_exit_plane = convert_units_of_integrated_potential(
-                self.potential_integrator.compute_fourier_integrated_potential(
-                    potential, instrument_config
-                ),
-                instrument_config.wavelength_in_angstroms,
-            )
-
-            if rng_key is not None:
-                # Get the potential of the specimen plus the ice
-                if self.solvent is not None:
-                    object_spectrum_at_exit_plane = (
-                        self.solvent.compute_object_spectrum_with_ice(
-                            rng_key,
-                            object_spectrum_at_exit_plane,
-                            instrument_config,
-                            is_hermitian_symmetric=False,
-                        )
-                    )
-
-            return jnp.exp(
-                1.0j
-                * ifftn(object_spectrum_at_exit_plane, s=instrument_config.padded_shape)
-            )
+                )
+        # Back to real-space; need to be careful if the object spectrum is not an
+        # rfftn
+        do_ifft = lambda ft: (
+            irfftn(ft, s=instrument_config.padded_shape)
+            if is_projection_approx
+            else ifftn(ft, s=instrument_config.padded_shape)
+        )
+        integrated_potential = apply_amplitude_contrast_ratio(
+            do_ifft(fourier_integrated_potential), self.amplitude_contrast_ratio
+        )
+        object_at_exit_plane = apply_interaction_constant(
+            integrated_potential, instrument_config.wavelength_in_angstroms
+        )
+        # Compute wavefunction, with amplitude and phase contrast
+        return jnp.exp(1.0j * object_at_exit_plane)
