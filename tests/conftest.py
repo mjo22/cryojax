@@ -129,20 +129,20 @@ def masks(config):
 
 @pytest.fixture
 def transfer_theory():
-    return cs.ContrastTransferTheory(ctf=cs.ContrastTransferFunction())
+    return cs.ContrastTransferTheory(ctf=cs.CTF())
 
 
 @pytest.fixture
 def detector():
-    return cs.PoissonDetector(cs.IdealDQE())
+    return cs.PoissonDetector(cs.PerfectDQE())
 
 
 @pytest.fixture
 def pose():
     return cs.EulerAnglePose(
-        view_phi=30.0,
-        view_theta=100.0,
-        view_psi=-10.0,
+        phi_angle=30.0,
+        theta_angle=100.0,
+        psi_angle=-10.0,
         offset_x_in_angstroms=10.0,
         offset_y_in_angstroms=-5.0,
     )
@@ -155,7 +155,9 @@ def specimen(potential, pose):
 
 @pytest.fixture
 def solvent():
-    return cs.GaussianIce(op.Constant(0.001**2))
+    return cs.GRFSolvent(
+        thickness_in_angstroms=100.0, power_spectrum_function=op.Constant(1.0)
+    )
 
 
 @pytest.fixture
@@ -174,12 +176,12 @@ def theory_with_solvent(specimen, projection_method, transfer_theory, solvent):
 
 @pytest.fixture
 def noiseless_model(config, theory):
-    return cs.IntensityImagingPipeline(instrument_config=config, scattering_theory=theory)
+    return cs.IntensityImageModel(instrument_config=config, scattering_theory=theory)
 
 
 @pytest.fixture
 def noisy_model(config, theory_with_solvent, detector):
-    return cs.ElectronCountingImagingPipeline(
+    return cs.ElectronCountsImageModel(
         instrument_config=config,
         scattering_theory=theory_with_solvent,
         detector=detector,

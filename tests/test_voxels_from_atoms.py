@@ -35,7 +35,7 @@ def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
     atom_positions, atom_elements = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
-        atom_filter="not element H",
+        select="not element H",
     )
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
@@ -76,7 +76,7 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
     atom_positions, atom_elements = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
-        atom_filter="not element H",
+        select="not element H",
     )
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
@@ -108,7 +108,7 @@ def test_z_plane_batched_vs_non_batched_loop_agreement(
     atom_positions, atom_elements = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
-        atom_filter="not element H",
+        select="not element H",
     )
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
@@ -131,7 +131,7 @@ def test_compute_rectangular_voxel_grid(sample_pdb_path, shape):
     atom_positions, atom_elements = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
-        atom_filter="not element H",
+        select="not element H",
     )
     # Load atomistic potential
     atomic_potential = PengAtomicPotential(atom_positions, atom_elements)

@@ -4,7 +4,7 @@ from typing_extensions import override
 
 import equinox as eqx
 import jax.numpy as jnp
-from jaxtyping import Array, Complex, PRNGKeyArray
+from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ...image import fftn, ifftn, rfftn
 from .._instrument_config import InstrumentConfig
@@ -41,6 +41,8 @@ class AbstractScatteringTheory(eqx.Module, strict=True):
 
 class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
     """Base class for a wave-based scattering theory."""
+
+    amplitude_contrast_ratio: eqx.AbstractVar[Float[Array, ""]]
 
     @abstractmethod
     def compute_wavefunction_at_exit_plane(

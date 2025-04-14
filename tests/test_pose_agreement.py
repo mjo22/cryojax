@@ -59,11 +59,15 @@ def test_axis_angle_euler_agreement():
     ],
 )
 def test_euler_angle_conversion(phi, theta, psi):
-    pose = cs.EulerAnglePose(view_phi=phi, view_theta=theta, view_psi=psi)
+    pose = cs.EulerAnglePose(phi_angle=phi, theta_angle=theta, psi_angle=psi)
     converted_pose = cs.EulerAnglePose.from_rotation(pose.rotation)
     np.testing.assert_allclose(
         np.asarray((phi, theta, psi)),
         np.asarray(
-            (converted_pose.view_phi, converted_pose.view_theta, converted_pose.view_psi)
+            (
+                converted_pose.phi_angle,
+                converted_pose.theta_angle,
+                converted_pose.psi_angle,
+            )
         ),
     )

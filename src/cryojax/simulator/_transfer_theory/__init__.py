@@ -1,11 +1,10 @@
-from .base_transfer_theory import (
-    AbstractTransferFunction as AbstractTransferFunction,
+from .transfer_function import (
+    AberratedAstigmaticCTF as AberratedAstigmaticCTF,
+    AbstractCTF as AbstractCTF,
+    PerfectCTF as PerfectCTF,
 )
-from .contrast_transfer_theory import (
-    ContrastTransferFunction as ContrastTransferFunction,
+from .transfer_theory import (
+    AbstractTransferTheory as AbstractTransferTheory,
     ContrastTransferTheory as ContrastTransferTheory,
-)
-from .wave_transfer_theory import (
-    WaveTransferFunction as WaveTransferFunction,
     WaveTransferTheory as WaveTransferTheory,
 )

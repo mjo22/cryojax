@@ -30,7 +30,7 @@ class AbstractVoxelPotential(AbstractPotentialRepresentation, strict=True):
     """Abstract interface for a voxel-based scattering potential representation."""
 
     voxel_size: AbstractVar[Float[Array, ""]]
-    is_real: AbstractClassVar[bool]
+    is_real_space: AbstractClassVar[bool]
 
     @property
     @abstractmethod
@@ -136,7 +136,8 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
         fourier_voxel_grid = jnp.fft.fftshift(fourier_voxel_grid_with_zero_in_corner)
         # ... create in-plane frequency slice on the half space
         frequency_slice = make_frequency_slice(
-            cast(tuple[int, int], padded_real_voxel_grid.shape[:-1]), get_rfftfreqs=False
+            cast(tuple[int, int], padded_real_voxel_grid.shape[:-1]),
+            outputs_rfftfreqs=False,
         )
 
         return cls(fourier_voxel_grid, frequency_slice, voxel_size)
@@ -149,7 +150,7 @@ class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
     frequency_slice_in_pixels: Float[Array, "1 dim dim 3"]
     voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
-    is_real: ClassVar[bool] = False
+    is_real_space: ClassVar[bool] = False
 
     @override
     def __init__(
@@ -183,7 +184,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     frequency_slice_in_pixels: Float[Array, "1 dim dim 3"]
     voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
-    is_real: ClassVar[bool] = False
+    is_real_space: ClassVar[bool] = False
 
     def __init__(
         self,
@@ -231,7 +232,7 @@ class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):
     coordinate_grid_in_pixels: Float[Array, "dim dim dim 3"]
     voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
-    is_real: ClassVar[bool] = True
+    is_real_space: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -327,7 +328,7 @@ class RealVoxelCloudPotential(AbstractVoxelPotential, strict=True):
     coordinate_list_in_pixels: Float[Array, "size 3"]
     voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
-    is_real: ClassVar[bool] = True
+    is_real_space: ClassVar[bool] = True
 
     def __init__(
         self,
