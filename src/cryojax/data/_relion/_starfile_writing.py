@@ -179,12 +179,12 @@ def write_starfile_with_particle_parameters(
 
 def write_simulated_image_stack_from_starfile(
     param_dataset: RelionParticleParameterDataset,
-    compute_image: Callable[
+    compute_image_fn: Callable[
         [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
         Float[Array, "y_dim x_dim"],
     ],
-    constant_args: ConstantPyTree,
-    per_particle_args: PerParticlePyTree,
+    constant_args: Optional[ConstantPyTree] = None,
+    per_particle_args: Optional[PerParticlePyTree] = None,
     is_jittable: bool = False,
     batch_size_per_mrc: Optional[int] = None,
     overwrite: bool = False,
@@ -330,7 +330,7 @@ def write_simulated_image_stack_from_starfile(
     if is_jittable:
         _write_simulated_image_stack_from_starfile_vmap(
             param_dataset=param_dataset,
-            compute_image=compute_image,
+            compute_image_fn=compute_image_fn,
             constant_args=constant_args,
             per_particle_args=per_particle_args,
             batch_size_per_mrc=batch_size_per_mrc,
@@ -341,7 +341,7 @@ def write_simulated_image_stack_from_starfile(
     else:
         _write_simulated_image_stack_from_starfile_serial(
             param_dataset=param_dataset,
-            compute_image=compute_image,
+            compute_image_fn=compute_image_fn,
             constant_args=constant_args,
             per_particle_args=per_particle_args,
             overwrite=overwrite,
@@ -351,27 +351,9 @@ def write_simulated_image_stack_from_starfile(
     return
 
 
-def _compute_image_stack_map_wrapper(
-    compute_image_stack: Callable,
-    particle_parameters_vmap: RelionParticleParameters,
-    particle_parameters_novmap: RelionParticleParameters,
-    constant_args,
-    per_particle_args,
-):
-    particle_parameters = eqx.combine(
-        particle_parameters_vmap, particle_parameters_novmap
-    )
-
-    return compute_image_stack(
-        particle_parameters,
-        constant_args,
-        per_particle_args,
-    )
-
-
 def _write_simulated_image_stack_from_starfile_vmap(
     param_dataset: RelionParticleParameterDataset,
-    compute_image: Callable[
+    compute_image_fn: Callable[
         [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
         Float[Array, "y_dim x_dim"],
     ],
@@ -383,7 +365,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
 ):
     # Create vmapped `compute_image` kernel
     compute_image_stack = eqx.filter_vmap(
-        lambda params, const_args, per_part_args: compute_image(
+        lambda params, const_args, per_part_args: compute_image_fn(
             params, const_args, per_part_args
         ),  # type: ignore
         in_axes=(eqx.if_array(0), None, 0),
@@ -425,10 +407,19 @@ def _write_simulated_image_stack_from_starfile_vmap(
             batch_size_for_map = min(batch_size_per_mrc, len(indices))
 
         vmap, novmap = eqx.partition(param_dataset[indices], eqx.is_array)
+        # image_stack = batched_map(
+        #     lambda x: _compute_image_stack_map_wrapper(
+        #         compute_image_stack, x[0], novmap, constant_args, x[1]
+        #     ),
+        #     xs=(
+        #         vmap,  # type: ignore
+        #         jax.tree.map(lambda x: x[indices], per_particle_args),  # type: ignore
+        #     ),
+        #     batch_size=batch_size_for_map,
+        # )
+
         image_stack = batched_map(
-            lambda x: _compute_image_stack_map_wrapper(
-                compute_image_stack, x[0], novmap, constant_args, x[1]
-            ),
+            lambda x: compute_image_stack(eqx.combine(x[0], novmap), constant_args, x[1]),
             xs=(
                 vmap,  # type: ignore
                 jax.tree.map(lambda x: x[indices], per_particle_args),  # type: ignore
@@ -451,7 +442,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
 
 def _write_simulated_image_stack_from_starfile_serial(
     param_dataset: RelionParticleParameterDataset,
-    compute_image: Callable[
+    compute_image_fn: Callable[
         [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
         Float[Array, "y_dim x_dim"],
     ],
@@ -478,7 +469,7 @@ def _write_simulated_image_stack_from_starfile_serial(
         image_stack = np.empty((len(indices), box_size, box_size), dtype=np.float32)
 
         for i in range(len(indices)):
-            image_stack[i] = compute_image(
+            image_stack[i] = compute_image_fn(
                 param_dataset[indices[i]],
                 constant_args,
                 jax.tree_map(lambda x: x[indices[i]], per_particle_args),  # type: ignore
