@@ -183,8 +183,8 @@ def write_simulated_image_stack_from_starfile(
         [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
         Float[Array, "y_dim x_dim"],
     ],
-    constant_args: Optional[ConstantPyTree] = None,
-    per_particle_args: Optional[PerParticlePyTree] = None,
+    constant_args: ConstantPyTree = None,
+    per_particle_args: PerParticlePyTree = None,
     is_jittable: bool = False,
     batch_size_per_mrc: Optional[int] = None,
     overwrite: bool = False,
@@ -367,7 +367,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
     compute_image_stack = eqx.filter_vmap(
         lambda params, const_args, per_part_args: compute_image_fn(
             params, const_args, per_part_args
-        ),  # type: ignore
+        ),
         in_axes=(eqx.if_array(0), None, 0),
     )
     compute_image_stack = eqx.filter_jit(compute_image_stack)
@@ -378,7 +378,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
         compute_image_stack(
             test_particle_parameters,
             constant_args,
-            jax.tree_map(lambda x: x[0:1], per_particle_args),  # type: ignore
+            jax.tree_map(lambda x: x[0:1], per_particle_args),
         )
     except Exception as e:
         raise RuntimeError(
@@ -421,8 +421,8 @@ def _write_simulated_image_stack_from_starfile_vmap(
         image_stack = batched_map(
             lambda x: compute_image_stack(eqx.combine(x[0], novmap), constant_args, x[1]),
             xs=(
-                vmap,  # type: ignore
-                jax.tree.map(lambda x: x[indices], per_particle_args),  # type: ignore
+                vmap,
+                jax.tree.map(lambda x: x[indices], per_particle_args),
             ),
             batch_size=batch_size_for_map,
         )
