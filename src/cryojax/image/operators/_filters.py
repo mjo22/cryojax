@@ -15,7 +15,7 @@ from ...coordinates import make_frequency_grid
 from .._average import interpolate_radial_average_on_grid
 from .._edges import resize_with_crop_or_pad
 from .._fft import irfftn, rfftn
-from .._spectrum import compute_radially_averaged_powerspectrum
+from .._fourier_statistics import compute_binned_powerspectrum
 from ._operator import AbstractImageMultiplier
 
 
@@ -181,7 +181,7 @@ class WhiteningFilter(AbstractFilter, strict=True):
         shape: Optional[tuple[int, int]] = None,
         *,
         interpolation_mode: str = "linear",
-        get_squared: bool = False,
+        outputs_squared: bool = False,
     ):
         """**Arguments:**
 
@@ -193,7 +193,7 @@ class WhiteningFilter(AbstractFilter, strict=True):
         - `interpolation_mode`:
             The method of interpolating the binned, radially averaged
             power spectrum onto a 2D grid. Either `nearest` or `linear`.
-        - `get_squared`:
+        - `outputs_squared`:
             If `False`, the whitening filter is the inverse square root of the image
             power. If `True`, the filter is the inverse of the image power.
         """
@@ -215,7 +215,7 @@ class WhiteningFilter(AbstractFilter, strict=True):
             image_stack,
             shape,
             interpolation_mode=interpolation_mode,
-            get_squared=get_squared,
+            outputs_squared=outputs_squared,
         )
 
 
@@ -259,7 +259,7 @@ def _compute_whitening_filter(
     image_stack: Float[Array, "n_images y_dim x_dim"],
     shape: Optional[tuple[int, int]] = None,
     interpolation_mode: str = "linear",
-    get_squared: bool = False,
+    outputs_squared: bool = False,
 ) -> Float[Array, "{shape[0]} {shape[1]}"]:
     # Make coordinates
     frequency_grid = make_frequency_grid(image_stack.shape[1:])
@@ -269,17 +269,15 @@ def _compute_whitening_filter(
     # Compute norms
     radial_frequency_grid = jnp.linalg.norm(frequency_grid, axis=-1)
     # Compute stack of power spectra
-    compute_radially_averaged_powerspectrum_stack = jax.vmap(
-        lambda im, freq: compute_radially_averaged_powerspectrum(
+    compute_powerspectrum_stack = jax.vmap(
+        lambda im, freq: compute_binned_powerspectrum(
             im, freq, maximum_frequency=math.sqrt(2) / 2
         ),
         in_axes=[0, None],
         out_axes=(0, None),
     )
-    radially_averaged_powerspectrum_stack, frequency_bins = (
-        compute_radially_averaged_powerspectrum_stack(
-            fourier_image_stack, radial_frequency_grid
-        )
+    radially_averaged_powerspectrum_stack, frequency_bins = compute_powerspectrum_stack(
+        fourier_image_stack, radial_frequency_grid
     )
     # Take the mean over the stack
     radially_averaged_powerspectrum = jnp.mean(
@@ -308,11 +306,11 @@ def _compute_whitening_filter(
             radially_averaged_powerspectrum_on_grid,
         )
     # Compute inverse square root (or inverse square)
-    inverse_fun = jax.lax.reciprocal if get_squared else jax.lax.rsqrt
+    inverse_fn = jax.lax.reciprocal if outputs_squared else jax.lax.rsqrt
     whitening_filter = jnp.where(
         jnp.isclose(radially_averaged_powerspectrum_on_grid, 0.0),
         0.0,
-        inverse_fun(radially_averaged_powerspectrum_on_grid),
+        inverse_fn(radially_averaged_powerspectrum_on_grid),
     )
     # Set zero mode manually to 0, defining the filter to zero out this mode
     whitening_filter = whitening_filter.at[0, 0].set(0.0)

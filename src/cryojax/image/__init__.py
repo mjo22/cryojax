@@ -19,6 +19,11 @@ from ._fft import (
     irfftn as irfftn,
     rfftn as rfftn,
 )
+from ._fourier_statistics import (
+    compute_binned_powerspectrum as compute_binned_powerspectrum,
+    compute_fourier_ring_correlation as compute_fourier_ring_correlation,
+    compute_fourier_shell_correlation as compute_fourier_shell_correlation,
+)
 from ._map_coordinates import (
     compute_spline_coefficients as compute_spline_coefficients,
     map_coordinates as map_coordinates,
@@ -28,7 +33,4 @@ from ._normalize import normalize_image as normalize_image, rescale_image as res
 from ._rescale_pixel_size import (
     maybe_rescale_pixel_size as maybe_rescale_pixel_size,
     rescale_pixel_size as rescale_pixel_size,
-)
-from ._spectrum import (
-    compute_radially_averaged_powerspectrum as compute_radially_averaged_powerspectrum,
 )
