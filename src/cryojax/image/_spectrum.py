@@ -10,6 +10,7 @@ from jaxtyping import Array, Complex, Float, Bool
 
 
 import jax.numpy as jnp
+import math
 import equinox as eqx
 from jax import Array
 from jaxtyping import Float, Complex
@@ -25,17 +26,14 @@ def compute_radially_averaged_powerspectrum(
     pixel_size: float = 1.0,
 ) -> tuple[Float[Array, "n_bins"], Float[Array, "n_bins"]]:
 
-    import cryojax.coordinates  as cc
-
     radial_frequency_grid = cc.make_radial_frequency_grid(fourier_image.shape,grid_spacing=pixel_size)
     start = 0 
-    stop = jnp.sqrt(2) / (pixel_size*2.0) 
+    stop = math.sqrt(2) / (pixel_size*2.0) 
 
     # hard code constant to avoid problems in linspace shape size.
     # jnp.sqrt(2) will get traced sadly.
-    sqrt2 = 1.4142135623730951
 
-    frequency_bins = jnp.linspace(start, stop, int(fourier_image.shape[0]*sqrt2/2)+1)
+    frequency_bins = jnp.linspace(start, stop, int(fourier_image.shape[0]*math.sqrt(2)/2)+1)
     squared_fourier_amplitudes = jnp.real(fourier_image * jnp.conjugate(fourier_image))
 
     spectrum = compute_binned_radial_average(squared_fourier_amplitudes, radial_frequency_grid, frequency_bins)

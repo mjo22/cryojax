@@ -69,8 +69,7 @@ def make_radial_frequency_grid(
                                         get_rfftfreqs=get_rfftfreqs)
     
     # now make it radially symmetric with the origin in the center. 
-    radial_frequency_grid = jnp.fft.ifftshift(
-                    jnp.linalg.norm(frequency_grid, axis=-1))
+    radial_frequency_grid = jnp.linalg.norm(frequency_grid, axis=-1)
     
     return radial_frequency_grid
 

@@ -6,6 +6,7 @@ from typing import Union, Optional
 
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
+import math
 import equinox as eqx
 
 from ._average import compute_binned_radial_average
@@ -20,7 +21,7 @@ def compute_radial_fourier_correlation(
     # However, for half maps derived from ab initio refinemnts. The threshold is 0.143 by convention.
     # todo: add van heel criterion.
     do_fft: bool | bool = True,
-    threshold: Float | float = 0.5, 
+    threshold: Float | float = 0.5,
 ) -> tuple[Float[Array, "n_bins"], Float]:
 
     """compute the fourier ring correlation or fourier shell correlation for two images or two voxel maps.
@@ -52,18 +53,19 @@ def compute_radial_fourier_correlation(
         fourier_image_2 = image_2
     correlation_voxel_map = (fourier_image_1 * jnp.conjugate(fourier_image_2))
     normalisation_voxel_map = jnp.sqrt(jnp.abs(fourier_image_1)**2 * jnp.abs(fourier_image_2)**2)
+    
 
-    radial_frequency_grid = cc.make_radial_frequency_grid(image_1.shape, grid_spacing=pixel_size, get_rfftfreqs=False)
+    radial_frequency_grid = jnp.fft.ifftshift(cc.make_radial_frequency_grid(image_1.shape, grid_spacing=pixel_size, get_rfftfreqs=False))
 
     # hard code constant to avoid problems in linspace shape size.
     # jnp.sqrt(2) will get traced sadly.
-    sqrt2 = 1.4142135623730951
 
     # Compute bins
     start = 0
-    stop = sqrt2 / (2.0 * pixel_size)
-    
-    frequency_bins = jnp.linspace(start, stop, int(sqrt2*image_1.shape[0]/2) + 1)
+    stop = math.sqrt(2) / (2.0 * pixel_size)
+
+    frequency_bins = jnp.linspace(start, stop, int(math.sqrt(2) * image_1.shape[0]/2) + 1)
+
     correlation_voxel_map / normalisation_voxel_map
 
     # Compute radially averaged FSC as a 1D profile
