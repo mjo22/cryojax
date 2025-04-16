@@ -55,6 +55,8 @@ def compute_radial_fourier_correlation(
 
     radial_frequency_grid = cc.make_radial_frequency_grid(image_1.shape, grid_spacing=pixel_size, get_rfftfreqs=False)
 
+    # hard code constant to avoid problems in linspace shape size.
+    # jnp.sqrt(2) will get traced sadly.
     sqrt2 = 1.4142135623730951
 
     # Compute bins
