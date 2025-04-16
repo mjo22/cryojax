@@ -40,7 +40,7 @@ def make_radial_coordinate_grid(
 ) -> Float[Array, " *shape"]:
     """Create a real-space radial coordinate system on a grid.
 
-    This simple wraps the function `make_coordinate_grid` to compute
+    This wraps the function `make_coordinate_grid` to compute
     the coordinate vector magnitude.
 
     **Arguments:**
@@ -107,7 +107,7 @@ def make_radial_frequency_grid(
     """Create a fourier-space radial coordinate system on a grid.
     The zero-frequency component is in the corner.
 
-    This simple wraps the function `make_frequency_grid` to compute
+    This wraps the function `make_frequency_grid` to compute
     the frequency magnitude, which is a common use case for
     things like computing fourier shell correlations and power spectrums.
 
