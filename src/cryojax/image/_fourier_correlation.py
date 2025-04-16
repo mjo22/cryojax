@@ -44,7 +44,6 @@ def compute_radial_fourier_correlation(
     `frequency_threshold`: The inverse frequnecy at which the correlation dropped below the specified threshold.
     `correlation_curve`: The value of the calculated radial fourier correlations. In 2D this is FRC and 3D this is FSC.
     """
-
     if do_fft == True:
         fourier_image_1 = jnp.fft.fftshift(jnp.fft.fftn(image_1))
         fourier_image_2 = jnp.fft.fftshift(jnp.fft.fftn(image_2))
@@ -54,53 +53,34 @@ def compute_radial_fourier_correlation(
     correlation_voxel_map = (fourier_image_1 * jnp.conjugate(fourier_image_2))
     normalisation_voxel_map = jnp.sqrt(jnp.abs(fourier_image_1)**2 * jnp.abs(fourier_image_2)**2)
 
-    radial_frequency_grid = cc.make_radial_frequency_grid(image_1.shape, pixel_size, get_rfftfreqs=False)
-
-    #radial_frequency_grid = jnp.fft.ifftshift(jnp.linalg.norm(frequency_grid, axis=-1))
+    radial_frequency_grid = cc.make_radial_frequency_grid(image_1.shape, grid_spacing=pixel_size, get_rfftfreqs=False)
 
     sqrt2 = 1.4142135623730951
 
     # Compute bins
     start = 0
-    stop = 1 / (2.0 * pixel_size)
+    stop = sqrt2 / (2.0 * pixel_size)
     
-    frequency_bins = jnp.linspace(0, stop, 1 + int(image_1.shape[0]/2) + 1)
+    frequency_bins = jnp.linspace(start, stop, int(sqrt2*image_1.shape[0]/2) + 1)
+    correlation_voxel_map / normalisation_voxel_map
 
     # Compute radially averaged FSC as a 1D profile
     correlation_curve = jnp.real(compute_binned_radial_average(
-        correlation_voxel_map, radial_frequency_grid, frequency_bins
-    ))
-    normalisation_curve = jnp.real(compute_binned_radial_average(
-        normalisation_voxel_map, radial_frequency_grid, frequency_bins
+        correlation_voxel_map/normalisation_voxel_map , radial_frequency_grid, frequency_bins
     ))
 
-    FSC_curve = correlation_curve /normalisation_curve
-
-    #remove nans and infs.
-    correlation_curve = jnp.where(jnp.isnan(correlation_curve) | jnp.isinf(correlation_curve), 0.0, correlation_curve)
-
-    # find threshold where radial correlation average drops below specified threshold.
-    threshold_crossing_index = -1
-    #for i in jnp.arange(len(correlation_curve)):
-    #    if correlation_curve[i] <= threshold:
-    #        # max between index and 0 so that we handle the case where no good correlation exists, 
-    #        # we will return the DC component in that case
-    #        threshold_crossing_index = jnp.max(jnp.array((i, 0)))
-    #        break
-
-    # return the frequency where the threshold crosses over the threshold 
-
+    ## Code block which finds where the FSC drops below the specified threshold. 
     where_below_threshold = jnp.where(correlation_curve < threshold, 0, 1) # 0s when below, 1s, when above
-    # Find minimum index where we flip from 0 to 1
+    ## Find minimum index where we flip from 0 to 1
     where_is_crossing = jnp.diff(where_below_threshold)
     # ... make an array that has a value of its index when we have a crossing, and a dummy value otherwise
     arr_size = where_is_crossing.size
     arr_indices = jnp.arange(arr_size, dtype=int)
     dummy_index = arr_size + 100
-    indices_at_0_to_1_flips = jnp.where(where_is_crossing == 1, arr_indices, dummy_index)
+    indices_at_0_to_1_flips = jnp.where(where_is_crossing == -1, arr_indices, dummy_index)
     # ... get minimum of array
-    threshold_crossing_index = jnp.amin(indices_at_0_to_1_flips)
-    threshold_crossing_index = eqx.error_if(threshold_crossing_index, threshold_crossing_index == dummy_index, "Error message...")
+    threshold_crossing_index = jnp.amin(indices_at_0_to_1_flips)+1
+    threshold_crossing_index = eqx.error_if(threshold_crossing_index, threshold_crossing_index == dummy_index, "Error in calculating thershold. Check arrays for nans and infs.")
     frequency_threshold = frequency_bins[threshold_crossing_index]
 
-    return frequency_bins, frequency_threshold, FSC_curve
+    return frequency_bins, frequency_threshold, correlation_curve
