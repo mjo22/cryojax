@@ -150,7 +150,7 @@ class AbstractPose(Module, strict=True):
 class EulerAnglePose(AbstractPose, strict=True):
     r"""An `AbstractPose` represented by Euler angles.
     Angles are given in degrees, and the sequence of rotations is
-    given by a zyz extrinsic rotations.
+    given by a zyz extrinsic rotation.
     """
 
     offset_x_in_angstroms: Float[Array, ""]
