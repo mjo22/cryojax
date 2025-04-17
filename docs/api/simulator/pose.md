@@ -9,11 +9,11 @@
 
     where $\vec{x}'$ and $\vec{x}$ are the 3D coordinate vectors in the rotated and unrotated frames, and $R$ and $\vec{t} = (t_x, t_y, 0)$ are the rotation and in-plane translation vector.
 
-    This is different than other softwares like RELION and cryoSPARC, which define the rotation and translation to "undo" the observed pose. This results in a translation to the center, followed by a zyz intrinsic rotation, captured in the equation
+    This is different than other softwares like RELION and cryoSPARC, which define the rotation and translation to "undo" the observed pose. This results in a translation to the center, followed by a intrinsic rotation, captured in the equation
 
     $$\vec{x} = (\vec{x}' + \vec{t}^*) R^*.$$
 
-    When $R^* = R^T$ and $\vec{t}^* = -\vec{t}$, this equation can be inverted for $\vec{x}'$ to recover the `cryojax` convention. In reality, to convert between conventions, for the translation we indeed have $\vec{t}^* = -\vec{t}$, but for the rotation we actually have $R^* = R$ (therefore, no conversion is necessary). This is because `cryojax` defines its rotation parameterizations with respect to a real-space rotation, while other softwares define them with respect to fourier space.
+    When $R^* = R^T$ and $\vec{t}^* = -\vec{t}$, this equation can be inverted for $\vec{x}'$ to recover the `cryojax` convention. To actually convert between conventions, for the translation we indeed have $\vec{t}^* = -\vec{t}$, but for the rotation we actually have $R^* = R$ (therefore, no conversion is necessary). This is because `cryojax` defines its rotation parameterizations with respect to a real-space rotation, while other softwares define them with respect to fourier space.
 
 !!! info "Degrees vs radians conventions"
     Angular quantities in `cryojax` are always in *degrees*.
