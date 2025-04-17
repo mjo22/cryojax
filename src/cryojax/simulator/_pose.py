@@ -20,22 +20,6 @@ class AbstractPose(Module, strict=True):
     """Base class for the image pose. Subclasses will choose a
     particular convention for parameterizing the rotation by
     overwriting the `AbstractPose.rotation` property.
-
-    !!! info
-        Angular quantities in `cryojax` are always in *degrees*.
-        Therefore concrete classes of the `AbstractPose` have
-        angles in degrees, e.g.
-
-        ```python
-        import cryojax.simulator as cxs
-
-        phi_in_degrees, theta_in_degrees, psi_in_degrees = 10.0, 30.0, 40.0
-        pose = cxs.EulerAnglePose(
-            phi_angle=phi_in_degrees,
-            theta_angle=theta_in_degrees,
-            psi_angle=psi_in_degrees,
-        )
-        ```
     """
 
     offset_x_in_angstroms: AbstractVar[Float[Array, ""]]
@@ -150,7 +134,8 @@ class AbstractPose(Module, strict=True):
 class EulerAnglePose(AbstractPose, strict=True):
     r"""An `AbstractPose` represented by Euler angles.
     Angles are given in degrees, and the sequence of rotations is
-    given by a zyz extrinsic rotation.
+    zyz, with `phi_angle` as the first euler angle, `theta_angle` as
+    the second, and `psi_angle` is the third.
     """
 
     offset_x_in_angstroms: Float[Array, ""]
