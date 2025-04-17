@@ -99,7 +99,7 @@ def compute_fourier_ring_correlation(
     minimum_frequency: float = 0.0,
     maximum_frequency: float = math.sqrt(2) / 2,
 ) -> tuple[Float[Array, " n_bins"], Float[Array, " n_bins"], Float[Array, ""]]:
-    """Compute the fourier ring correlation for two voxel maps.
+    """Compute the fourier ring correlation for two images.
 
     **Arguments:**
 
@@ -130,10 +130,10 @@ def compute_fourier_ring_correlation(
     - `frc_curve`:
         The fourier ring correlations as a function of `frequency_bins`.
     - `frequency_bins`:
-        The array of inverse frequencies for which we have calculated the
+        The array of frequencies for which we have calculated the
         correlations.
     - `frequency_threshold`:
-        The inverse frequencies at which the correlation dropped below the
+        The frequency at which the correlation drops below the
         specified threshold.
     """
     frc_curve, frequency_bins, frequency_threshold = _compute_fourier_correlation(
@@ -186,15 +186,15 @@ def compute_fourier_shell_correlation(
     - `fsc_curve`:
         The fourier shell correlations as a function of `frequency_bins`.
     - `frequency_bins`:
-        The array of inverse frequencies for which we have calculated the
+        The array of frequencies for which we have calculated the
         correlations.
     - `frequency_threshold`:
-        The inverse frequencies at which the correlation dropped below the
+        The frequencies at which the correlation drops below the
         specified threshold.
 
     !!! warning
 
-        It is common to obtain for `frequency_threshold` given in inverse angstroms.
+        It is common to obtain a `frequency_threshold` given in inverse angstroms.
         This function achieves this behavior if the `voxel_size` argument is passed
         and the `radial_frequency_grid` argument is given in inverse angstroms. For
         example,
@@ -215,7 +215,7 @@ def compute_fourier_shell_correlation(
 
         This behavior can be similarly achieved by leaving out the `voxel_size` of
         the functions `make_radial_frequency_grid` and `compute_fourier_shell_correlation`
-        and computing `frequency_bins / voxel_size` and `frequency_threshold / voxel_size`
+        and computing `frequency_bins / voxel_size` and `frequency_threshold / voxel_size`.
     """  # noqa: E501
     fsc_curve, frequency_bins, frequency_threshold = _compute_fourier_correlation(
         volume_1,
