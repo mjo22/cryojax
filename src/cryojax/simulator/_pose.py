@@ -97,7 +97,7 @@ class AbstractPose(Module, strict=True):
         grid of in-plane phase shifts $\\exp{(- 2 \\pi i (t_x q_x + t_y q_y))}$.
         """
         xy = self.offset_in_angstroms[0:2]
-        return jnp.exp(1.0j * (2 * jnp.pi * jnp.matmul(frequency_grid_in_angstroms, xy)))
+        return jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(frequency_grid_in_angstroms, xy)))
 
     @cached_property
     def offset_in_angstroms(self) -> Float[Array, "2"]:
