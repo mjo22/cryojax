@@ -4,6 +4,7 @@ import pytest
 from jaxtyping import Array
 
 import cryojax.simulator as cxs
+from cryojax.image import irfftn
 from cryojax.io import read_atoms_from_pdb
 
 
@@ -62,32 +63,36 @@ def test_real_vs_fourier_convention_no_rotation(sample_pdb_path, shape):
     fourier_projection_by_real_method = np.asarray(
         compute_fourier_projection(atom_potential, real_space_method, instrument_config)
     )
-    projection_by_fourier_method = np.asarray(
+    real_projection_by_fourier_method = np.asarray(
         compute_real_projection(
             fourier_voxel_potential, fourier_space_method, instrument_config
         )
     )
-    projection_by_real_method = np.asarray(
+    real_projection_by_real_method = np.asarray(
         compute_real_projection(atom_potential, real_space_method, instrument_config)
     )
     np.testing.assert_allclose(
-        projection_by_real_method, projection_by_fourier_method, atol=1e-8
+        real_projection_by_real_method, real_projection_by_fourier_method, atol=1e-12
     )
     np.testing.assert_allclose(
-        fourier_projection_by_real_method, fourier_projection_by_fourier_method, atol=1e-8
+        fourier_projection_by_real_method,
+        fourier_projection_by_fourier_method,
+        atol=1e-12,
     )
 
 
 @pytest.mark.parametrize(
     "shape, euler_pose_params",
     (
-        ((64, 64), (0.0, 0.0, 0.0, 0.0, 0.0)),
-        # ((63, 63), (0.0, 0.0, 0.0, 0.0, 0.0)),
-        #        ((63, 64), (0.0, 0.0, 0.0, 0.0, 0.0)),
-        #        ((64, 63), (0.0, 0.0, 0.0, 0.0, 0.0)),
+        ((64, 64), (2.5, -5.0, 0.0, 0.0, 0.0)),
+        ((63, 63), (2.5, -5.0, 0.0, 0.0, 0.0)),
+        ((64, 64), (0.0, 0.0, 10.0, -30.0, 60.0)),
+        ((63, 63), (0.0, 0.0, 10.0, -30.0, 60.0)),
+        ((64, 64), (2.5, -5.0, 10.0, -30.0, 60.0)),
+        ((63, 63), (2.5, -5.0, 10.0, -30.0, 60.0)),
     ),
 )
-def test_real_vs_fourier_convention_with_rotation(
+def test_real_vs_fourier_convention_with_rotation_and_translation(
     sample_pdb_path, shape, euler_pose_params
 ):
     """Test that computing a projection in real
@@ -119,8 +124,17 @@ def test_real_vs_fourier_convention_with_rotation(
         config: cxs.InstrumentConfig,
     ) -> Array:
         rotated_potential = potential.rotate_to_pose(pose)
-        return method.compute_integrated_potential(
+        fourier_projection = method.compute_integrated_potential(
             rotated_potential, config, outputs_real_space=False
+        )
+        translation_operator = pose.compute_translation_operator(
+            config.padded_frequency_grid_in_angstroms
+        )
+        return irfftn(
+            pose.translate_image(
+                fourier_projection, translation_operator, instrument_config.padded_shape
+            ),
+            s=instrument_config.padded_shape,
         )
 
     projection_by_fourier_method = np.asarray(
@@ -133,5 +147,19 @@ def test_real_vs_fourier_convention_with_rotation(
             atom_potential, real_space_method, euler_pose, instrument_config
         )
     )
-    _, _ = projection_by_fourier_method, projection_by_real_method
-    # np.testing.assert_allclose(projection_by_real_method, projection_by_fourier_method)
+    from matplotlib import pyplot as plt
+
+    fig, axes = plt.subplots(ncols=3, figsize=(10, 4))
+    _ = axes[0].imshow(projection_by_real_method, aspect="auto")
+    _ = axes[1].imshow(projection_by_fourier_method, aspect="auto")
+    im = axes[2].imshow(
+        np.abs(projection_by_real_method - projection_by_fourier_method), aspect="auto"
+    )
+    axes[0].set(title="Real-space projection")
+    axes[1].set(title="Fourier-slice extraction")
+    axes[2].set(title="Residuals")
+    fig.colorbar(im, ax=axes[2])
+    plt.show()
+    # np.testing.assert_allclose(
+    #     projection_by_real_method, projection_by_fourier_method, atol=1e-12
+    # )

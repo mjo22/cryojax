@@ -67,10 +67,10 @@ class AbstractPose(Module, strict=True):
 
     def translate_image(
         self,
-        fourier_image: Float[Array, "y_dim x_dim//2+1"],
-        translation_operator: Float[Array, "y_dim x_dim//2+1"],
+        fourier_image: Complex[Array, "{shape[0]} {shape[1]}//2+1"],
+        translation_operator: Complex[Array, "{shape[0]} {shape[1]}//2+1"],
         shape: tuple[int, int],
-    ) -> Float[Array, "y_dim x_dim//2+1"]:
+    ) -> Complex[Array, "{shape[0]} {shape[1]}//2+1"]:
         """Apply translational phase shifts to a fourier-space image.
 
         **Arguments:**
