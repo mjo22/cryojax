@@ -3,17 +3,17 @@
 `cryojax` provides different parameterizations for the pose of a structure. These are captured through the abstract base class called `AbstractPose`.
 
 !!! info "Rotation and translation conventions"
-    The rotation in an `AbstractPose` represent a *extrinsic* rotation in real-space, and a positive translation represents a translation in the + direction. This is captured in the equation
+    The rotation in an `AbstractPose` represent a extrinsic rotation in real-space, and a positive translation represents a translation in the + direction. This is captured in the equation
 
     $$\vec{x}' = R \vec{x} + \vec{t},$$
 
     where $\vec{x}'$ and $\vec{x}$ are the 3D coordinate vectors in the rotated and unrotated frames, and $R$ and $\vec{t} = (t_x, t_y, 0)$ are the rotation and in-plane translation vector.
 
-    This is different than other softwares like RELION and cryoSPARC, which define the rotation and translation to "undo" the observed pose. This results in a translation to the center, followed by a intrinsic rotation, captured in the equation
+    Some standard softwares define the rotation and translation to "undo" the observed pose. This can be captured by a translation to the center, followed by a intrinsic rotation:
 
     $$\vec{x} = (\vec{x}' + \vec{t}^*) R^*.$$
 
-    When $R^* = R^T$ and $\vec{t}^* = -\vec{t}$, this equation can be inverted for $\vec{x}'$ to recover the `cryojax` convention. To actually convert between conventions, for the translation we indeed have $\vec{t}^* = -\vec{t}$, but for the rotation we actually have $R^* = R$ (therefore, no conversion is necessary). This is because `cryojax` defines its rotation parameterizations with respect to a real-space rotation, while other softwares define them with respect to fourier space.
+    When $R^* = R^T$ and $\vec{t}^* = -\vec{t}$, this equation can be inverted for $\vec{x}'$ to recover the `cryojax` convention. To actually convert between conventions for standard softwares such as RELION, for the translation we indeed have $\vec{t}^* = -\vec{t}$, but for the rotation we actually have $R^* = R$ (therefore, no conversion is necessary). This discrepency can perhaps be explained by the fact that `cryojax` defines its rotation parameterization with respect to a real-space rotation, but other softwares may define them with respect to fourier space. Real vs fourier space rotations differ only by transpose.
 
 !!! info "Degrees vs radians conventions"
     Angular quantities in `cryojax` are always in *degrees*.
