@@ -36,7 +36,7 @@ def test_real_vs_fourier_convention_no_rotation(sample_pdb_path, shape):
     fourier_space_method = cxs.FourierSliceExtraction(interpolation_order=1)
     real_space_method = cxs.GaussianMixtureProjection(use_error_functions=True)
 
-    def compute_projection(
+    def compute_fourier_projection(
         potential: cxs.AbstractPotentialRepresentation,
         method: cxs.AbstractPotentialIntegrator,
         config: cxs.InstrumentConfig,
@@ -45,26 +45,37 @@ def test_real_vs_fourier_convention_no_rotation(sample_pdb_path, shape):
             potential, config, outputs_real_space=False
         )
 
+    def compute_real_projection(
+        potential: cxs.AbstractPotentialRepresentation,
+        method: cxs.AbstractPotentialIntegrator,
+        config: cxs.InstrumentConfig,
+    ) -> Array:
+        return method.compute_integrated_potential(
+            potential, config, outputs_real_space=True
+        )
+
+    fourier_projection_by_fourier_method = np.asarray(
+        compute_fourier_projection(
+            fourier_voxel_potential, fourier_space_method, instrument_config
+        )
+    )
+    fourier_projection_by_real_method = np.asarray(
+        compute_fourier_projection(atom_potential, real_space_method, instrument_config)
+    )
     projection_by_fourier_method = np.asarray(
-        compute_projection(
+        compute_real_projection(
             fourier_voxel_potential, fourier_space_method, instrument_config
         )
     )
     projection_by_real_method = np.asarray(
-        compute_projection(atom_potential, real_space_method, instrument_config)
+        compute_real_projection(atom_potential, real_space_method, instrument_config)
     )
-    _, _ = projection_by_fourier_method, projection_by_real_method
-    # np.testing.assert_allclose(projection_by_real_method, projection_by_fourier_method)
-    # from matplotlib import pyplot as plt
-    # from cryojax.image import irfftn
-
-    # im = np.fft.fftshift(np.fft.irfftn(projection_by_fourier_method, s=shape))
-    # f_im = np.fft.fftshift(projection_by_fourier_method, axes=(0,))
-    # plt.imshow(np.abs(f_im))
-    # plt.imshow(im)
-    # plt.show()
-    # print(f_im.shape)
-    # print(f_im[shape[0] - 1, :])
+    np.testing.assert_allclose(
+        projection_by_real_method, projection_by_fourier_method, atol=1e-8
+    )
+    np.testing.assert_allclose(
+        fourier_projection_by_real_method, fourier_projection_by_fourier_method, atol=1e-8
+    )
 
 
 @pytest.mark.parametrize(

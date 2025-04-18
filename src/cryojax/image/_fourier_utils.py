@@ -1,12 +1,12 @@
 from typing import Optional
 
-from jaxtyping import Array, Float
+from jaxtyping import Array, Complex
 
 
 def convert_fftn_to_rfftn(
-    fftn_array: Float[Array, "y_dim x_dim"],
+    fftn_array: Complex[Array, "y_dim x_dim"],
     mode: Optional[str] = "zero",
-) -> Float[Array, "y_dim x_dim//2+1"]:
+) -> Complex[Array, "y_dim x_dim//2+1"]:
     """Converts the output of a call to `jax.numpy.fft.fftn` to
     an `jax.numpy.fft.rfftn`.
 
@@ -56,11 +56,11 @@ def convert_fftn_to_rfftn(
 
 
 def enforce_self_conjugate_rfftn_components(
-    rfftn_array: Float[Array, "{shape[0]} {shape[1]}//2+1"],
+    rfftn_array: Complex[Array, "{shape[0]} {shape[1]}//2+1"],
     shape: tuple[int, int],
     includes_zero_frequency: bool = False,
     mode: str = "zero",
-) -> Float[Array, "{shape[0]} {shape[1]}//2+1"]:
+) -> Complex[Array, "{shape[0]} {shape[1]}//2+1"]:
     """For an array that is the output of a call to an "rfftn"
     function, enforce that self-conjugate components are real-valued.
 

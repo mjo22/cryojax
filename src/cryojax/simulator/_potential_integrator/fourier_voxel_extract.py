@@ -9,6 +9,7 @@ import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
 from ...image import (
+    convert_fftn_to_rfftn,
     fftn,
     ifftn,
     irfftn,
@@ -413,24 +414,26 @@ def _extract_slice(
     interpolation_order,
     **kwargs,
 ) -> Complex[Array, "dim dim//2+1"]:
-    return _apply_hermitian_symmetry_to_fourier_slice(
+    return convert_fftn_to_rfftn(
         _extract_surface_from_voxel_grid(
             fourier_voxel_grid,
             frequency_slice,
             is_spline_coefficients=False,
             interpolation_order=interpolation_order,
             **kwargs,
-        )
+        ),
+        mode="real",
     )
 
 
 def _extract_slice_with_cubic_spline(
     spline_coefficients, frequency_slice, **kwargs
 ) -> Complex[Array, "dim dim//2+1"]:
-    return _apply_hermitian_symmetry_to_fourier_slice(
+    return convert_fftn_to_rfftn(
         _extract_surface_from_voxel_grid(
             spline_coefficients, frequency_slice, is_spline_coefficients=True, **kwargs
-        )
+        ),
+        mode="real",
     )
 
 
@@ -522,15 +525,3 @@ def _extract_surface_from_voxel_grid(
     surface = jnp.fft.ifftshift(surface)
 
     return surface
-
-
-def _apply_hermitian_symmetry_to_fourier_slice(fourier_slice):
-    dim = fourier_slice.shape[0]
-    # Take upper half plane
-    fourier_slice = fourier_slice[:, : dim // 2 + 1]
-    # Set last line of frequencies to zero if image dimension is even
-    if dim % 2 == 0:
-        fourier_slice = (
-            fourier_slice.at[:, -1].set(0.0 + 0.0j).at[dim // 2, :].set(0.0 + 0.0j)
-        )
-    return fourier_slice

@@ -9,7 +9,7 @@ from typing_extensions import override
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
-from ...image import irfftn
+from ...image import convert_fftn_to_rfftn, irfftn
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import RealVoxelCloudPotential, RealVoxelGridPotential
 from .base_potential_integrator import AbstractVoxelPotentialIntegrator
@@ -136,12 +136,8 @@ def _project_with_nufft(weights, coordinate_list, shape, eps=1e-6):
     coordinates_periodic = 2 * jnp.pi * coordinates_xy / image_size
     # Unpack and compute
     x, y = coordinates_periodic[:, 0], coordinates_periodic[:, 1]
-    projection = nufft1(shape, weights, y, x, eps=eps, iflag=-1)
-    # Shift zero frequency component to corner and take upper half plane
-    projection = jnp.fft.ifftshift(projection)[:, : M2 // 2 + 1]
-    # Set last line of frequencies to zero if image dimension is even
-    if M2 % 2 == 0:
-        projection = projection.at[:, -1].set(0.0 + 0.0j)
-    if M1 % 2 == 0:
-        projection = projection.at[M1 // 2, :].set(0.0 + 0.0j)
-    return projection
+    fourier_projection = nufft1(shape, weights, y, x, eps=eps, iflag=-1)
+    # Shift zero frequency component to corner
+    fourier_projection = jnp.fft.ifftshift(fourier_projection)
+    # Convert to rfftn output
+    return convert_fftn_to_rfftn(fourier_projection, mode="real")
