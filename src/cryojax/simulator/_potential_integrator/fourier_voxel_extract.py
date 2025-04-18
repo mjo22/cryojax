@@ -138,7 +138,7 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
 
     def extract_fourier_slice_from_spline_coefficients(
         self,
-        spline_coefficients: Complex[Array, "dim+2 dim+2 dim+2"],
+        spline_coefficients: Complex[Array, "coeff_dim coeff_dim coeff_dim"],
         frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
     ) -> Complex[Array, "dim dim//2+1"]:
         """Extract a fourier slice using the interpolation defined by
@@ -329,7 +329,7 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
 
     def extract_ewald_sphere_from_spline_coefficients(
         self,
-        spline_coefficients: Complex[Array, "dim+2 dim+2 dim+2"],
+        spline_coefficients: Complex[Array, "coeff_dim coeff_dim coeff_dim"],
         frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
         voxel_size: Float[Array, ""],
         wavelength_in_angstroms: Float[Array, ""],
