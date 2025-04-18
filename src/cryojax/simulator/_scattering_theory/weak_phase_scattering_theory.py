@@ -133,10 +133,16 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
             is_projection_approximation=self.potential_integrator.is_projection_approximation,
         )
         # ... apply in-plane translation
-        translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
+        translation_operator = self.structural_ensemble.pose.compute_translation_operator(
             instrument_config.padded_frequency_grid_in_angstroms
         )
-        contrast_spectrum_at_detector_plane *= translational_phase_shifts
+        contrast_spectrum_at_detector_plane = (
+            self.structural_ensemble.pose.translate_image(
+                contrast_spectrum_at_detector_plane,
+                translation_operator,
+                instrument_config.padded_shape,
+            )
+        )
 
         return contrast_spectrum_at_detector_plane
 
@@ -245,16 +251,21 @@ class LinearSuperpositionScatteringTheory(AbstractWeakPhaseScatteringTheory, str
             object_spectrum_at_exit_plane = apply_interaction_constant(
                 fourier_integrated_potential, instrument_config.wavelength_in_angstroms
             )
-            translational_phase_shifts = ensemble.pose.compute_shifts(
-                instrument_config.padded_frequency_grid_in_angstroms
-            )
             contrast_spectrum_at_detector_plane = transfer_theory.propagate_object_to_detector_plane(  # noqa: E501
                 object_spectrum_at_exit_plane,
                 instrument_config,
                 is_projection_approximation=self.potential_integrator.is_projection_approximation,
             )
 
-            return translational_phase_shifts * contrast_spectrum_at_detector_plane
+            translation_operator = ensemble.pose.compute_translation_operator(
+                instrument_config.padded_frequency_grid_in_angstroms
+            )
+            contrast_spectrum_at_detector_plane = ensemble.pose.translate_image(
+                contrast_spectrum_at_detector_plane,
+                translation_operator,
+                instrument_config.padded_shape,
+            )
+            return contrast_spectrum_at_detector_plane
 
         # Get the batches
         ensemble_batch, z_positions = (

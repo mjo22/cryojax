@@ -13,6 +13,7 @@ import numpy as np
 from equinox import AbstractVar, Module
 from jaxtyping import Array, Complex, Float
 
+from ..image import enforce_self_conjugate_rfftn_components
 from ..rotations import convert_quaternion_to_euler_angles, SO3
 
 
@@ -64,7 +65,36 @@ class AbstractPose(Module, strict=True):
             )
         return rotated_coordinate_grid_or_list
 
-    def compute_shifts(
+    def translate_image(
+        self,
+        fourier_image: Float[Array, "y_dim x_dim//2+1"],
+        translation_operator: Float[Array, "y_dim x_dim//2+1"],
+        shape: tuple[int, int],
+    ) -> Float[Array, "y_dim x_dim//2+1"]:
+        """Apply translational phase shifts to a fourier-space image.
+
+        **Arguments:**
+
+        - `fourier_image`:
+            The image in fourier-space, which is the output of a call
+            to `cryojax.image.rfftn`.
+        - `phase_shifts`:
+            The phase shifts for translation, which are computed from
+            `AbstractPose.compute_translation_phase_shifts`.
+        - `shape`:
+            The shape of `fourier_image` in real-space.
+
+        **Return:**
+
+        The translated `fourier_image`, taking care to avoid image
+        artifacts when applying the phase shifts.
+        """
+        fourier_image = enforce_self_conjugate_rfftn_components(
+            fourier_image, shape, includes_zero_frequency=False, mode="zero"
+        )
+        return fourier_image * translation_operator
+
+    def compute_translation_operator(
         self, frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"]
     ) -> Complex[Array, "y_dim x_dim"]:
         """Compute the phase shifts from the in-plane translation,
