@@ -43,7 +43,7 @@ def convert_fftn_to_rfftn(
         raise NotImplementedError(
             "Only two-dimensional arrays are supported "
             "in function `convert_fftn_to_rfftn`. "
-            f"Passed an array with ndim={fftn_array.ndim}."
+            f"Passed an array with `ndim = {fftn_array.ndim}`."
         )
     if mode is not None:
         rfftn_array = enforce_self_conjugate_rfftn_components(
@@ -122,6 +122,6 @@ def enforce_self_conjugate_rfftn_components(
         raise NotImplementedError(
             "Only two-dimensional arrays are supported "
             "in function `enforce_self_conjugate_rfftn_components`. "
-            f"Passed an array with ndim={rfftn_array.ndim}."
+            f"Passed an array with `ndim = {rfftn_array.ndim}`."
         )
     return rfftn_array
