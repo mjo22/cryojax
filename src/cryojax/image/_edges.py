@@ -200,11 +200,11 @@ def resize_with_crop_or_pad(
 def _get_left_vs_right_pad(pad_dim, image_dim):
     pad = pad_dim - image_dim
     if pad_dim % 2 == 0 and image_dim % 2 == 0:
-        pad_l, pad_r = (pad // 2 + pad % 2, pad // 2)
+        pad_l, pad_r = (pad // 2, pad // 2)
     elif pad_dim % 2 == 1 and image_dim % 2 == 0:
-        pad_l, pad_r = (pad // 2, pad // 2 + pad % 2)
+        pad_l, pad_r = (pad // 2, pad // 2 + 1)
     elif pad_dim % 2 == 0 and image_dim % 2 == 1:
-        pad_l, pad_r = (pad // 2 + pad % 2, pad // 2)
+        pad_l, pad_r = (pad // 2 + 1, pad // 2)
     else:
-        pad_l, pad_r = (pad // 2 + pad % 2, pad // 2)
+        pad_l, pad_r = (pad // 2, pad // 2)
     return pad_l, pad_r
