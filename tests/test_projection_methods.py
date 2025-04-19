@@ -112,20 +112,24 @@ def test_projection_methods_no_pose(sample_pdb_path, pixel_size, shape):
 
 
 @pytest.mark.parametrize(
-    "pixel_size, shape, padded_shape, grid_shape",
+    "pixel_size, shape, padded_shape, grid_dim",
     (
-        (0.25, (128, 128), (256, 256), (256, 256)),
-        (0.25, (128, 128), (255, 255), (256, 256)),
-        (0.25, (127, 127), (255, 255), (256, 256)),
-        (0.25, (127, 127), (254, 254), (256, 256)),
-        (0.25, (128, 128), (256, 256), (128, 128)),
-        (0.25, (128, 128), (255, 255), (128, 128)),
-        (0.25, (127, 127), (255, 255), (128, 128)),
-        (0.25, (127, 127), (254, 254), (128, 128)),
+        # (0.25, (128, 128), (256, 256), 256),
+        # (0.25, (128, 128), (255, 255), 256),
+        # (0.25, (127, 127), (255, 255), 256),
+        # (0.25, (127, 127), (254, 254), 256),
+        (0.25, (128, 128), (256, 255), 128),
+        (0.25, (128, 128), (255, 256), 128),
+        (0.25, (127, 127), (254, 255), 128),
+        (0.25, (127, 127), (255, 254), 128),
+        (0.25, (128, 128), (255, 255), 127),
+        (0.25, (128, 128), (256, 256), 127),
+        (0.25, (127, 127), (254, 255), 127),
+        (0.25, (127, 127), (255, 254), 127),
     ),
 )
 def test_if_voxel_vs_atom_has_pixel_offset(
-    sample_pdb_path, pixel_size, shape, padded_shape, grid_shape
+    sample_pdb_path, pixel_size, shape, padded_shape, grid_dim
 ):
     """Test that even after padding and cropping, there remains
     no pixel-wise offset between atom and voxel representations
@@ -135,12 +139,12 @@ def test_if_voxel_vs_atom_has_pixel_offset(
         shape, pixel_size, voltage_in_kilovolts=300.0, padded_shape=padded_shape
     )
     # Atom vs voxel potentials
-    dim = max(*grid_shape)
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path, center=True, loads_b_factors=True
     )
     atom_potential = cxs.PengAtomicPotential(atom_positions, atom_identities, b_factors)
     atom_method = cxs.GaussianMixtureProjection(use_error_functions=True)
+    dim = grid_dim
     real_voxel_grid = atom_potential.as_real_voxel_grid((dim, dim, dim), pixel_size)
     voxel_potential = cxs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, pixel_size

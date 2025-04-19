@@ -157,11 +157,11 @@ def pad_to_shape(
         image = image_or_volume
         y_pad = shape[0] - image.shape[0]
         x_pad = shape[1] - image.shape[1]
-        # left_y_pad = y_pad // 2 if y_pad % 2 == 1 else y_pad // 2 + y_pad % 2
-        # right_y_pad = y_pad // 2 + y_pad % 2 if y_pad % 2 == 1 else y_pad // 2
-        # left_x_pad = x_pad // 2 if x_pad % 2 == 1 else x_pad // 2 + x_pad % 2
-        # right_x_pad = x_pad // 2 + x_pad % 2 if x_pad % 2 == 1 else x_pad // 2
-        # padding = ((left_y_pad, right_y_pad), (left_x_pad, right_x_pad))
+        # y_pad_l = y_pad // 2 if y_pad % 2 == 1 else y_pad // 2 + y_pad % 2
+        # y_pad_r = y_pad // 2 + y_pad % 2 if y_pad % 2 == 1 else y_pad // 2
+        # x_pad_l = x_pad // 2 if x_pad % 2 == 1 else x_pad // 2 + x_pad % 2
+        # x_pad_r = x_pad // 2 + x_pad % 2 if x_pad % 2 == 1 else x_pad // 2
+        # padding = ((y_pad_l, y_pad_r), (x_pad_l, x_pad_r))
         padding = (
             (y_pad // 2 + y_pad % 2, y_pad // 2),
             (x_pad // 2 + x_pad % 2, x_pad // 2),
