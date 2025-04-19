@@ -102,7 +102,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         ```python
         from cryojax.constants import (
-            peng_element_scattering_factor_parameter_table,
+            read_peng_element_scattering_factor_parameter_table,
             get_tabulated_scattering_factor_parameters,
         )
         from cryojax.io import read_atoms_from_pdb
@@ -111,7 +111,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         # Load positions of atoms and one-hot encoded atom names
         atom_positions, atom_identities = read_atoms_from_pdb(...)
         scattering_factor_a, scattering_factor_b = get_tabulated_scattering_factor_parameters(
-            atom_identities, peng_element_scattering_factor_parameter_table
+            atom_identities, read_element_scattering_factor_parameter_table()
         )
         potential = GaussianMixtureAtomicPotential(
             atom_positions, scattering_factor_a, scattering_factor_b
