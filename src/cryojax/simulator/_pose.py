@@ -80,7 +80,7 @@ class AbstractPose(Module, strict=True):
             to `cryojax.image.rfftn`.
         - `phase_shifts`:
             The phase shifts for translation, which are computed from
-            `AbstractPose.compute_translation_phase_shifts`.
+            `AbstractPose.compute_translation_operator`.
         - `shape`:
             The shape of `fourier_image` in real-space.
 
