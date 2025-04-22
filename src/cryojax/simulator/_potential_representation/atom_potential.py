@@ -12,12 +12,8 @@ import jax.numpy as jnp
 import jax.scipy as jsp
 import jax.tree_util as jtu
 import numpy as np
-from jaxtyping import Array, Float, Int, PyTree
+from jaxtyping import Array, Float, PyTree
 
-from ...constants import (
-    get_tabulated_scattering_factor_parameters,
-    read_peng_element_scattering_factor_parameter_table,
-)
 from ...coordinates import make_1d_coordinate_grid
 from ...internal import error_if_negative, error_if_not_positive
 from .._pose import AbstractPose
@@ -94,7 +90,9 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     The naming and numerical convention of parameters `gaussian_amplitudes` and
     `gaussian_widths` follows "Robust Parameterization of Elastic and Absorptive
     Electron Atomic Scattering Factors" by Peng et al. (1996), where $a_i$ are
-    the `gaussian_amplitudes` and $b_i$ are the `gaussian_widths`.
+    the `gaussian_amplitudes` and $b_i$ are the `gaussian_widths`. This means
+    that `gaussian_widths` are *not* a variance or standard deviation; they are
+    b-factors.
 
     !!! info
         In order to load a `GaussianMixtureAtomicPotential` from tabulated
@@ -110,11 +108,13 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         # Load positions of atoms and one-hot encoded atom names
         atom_positions, atom_identities = read_atoms_from_pdb(...)
-        scattering_factor_a, scattering_factor_b = get_tabulated_scattering_factor_parameters(
-            atom_identities, read_element_scattering_factor_parameter_table()
+        scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+            atom_identities, read_peng_element_scattering_factor_parameter_table()
         )
         potential = GaussianMixtureAtomicPotential(
-            atom_positions, scattering_factor_a, scattering_factor_b
+            atom_positions,
+            gaussian_amplitudes=scattering_factor_parameters["a"],
+            gaussian_widths=scattering_factor_parameters["b"],
         )
         ```
     """  # noqa: E501
@@ -210,7 +210,14 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
     # Load positions of atoms and one-hot encoded atom names
     filename = "example.pdb"
     atom_positions, atom_identities = read_atoms_from_pdb(filename)
-    potential = PengAtomicPotential(atom_positions, atom_identities)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_identities, read_peng_element_scattering_factor_parameter_table()
+        )
+    potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+    )
     ```
 
     Alternatively, use the following to load with B-factors:
@@ -224,7 +231,15 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         filename, get_b_factors=True
     )
-    potential = PengAtomicPotential(atom_positions, atom_identities, b_factors)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_identities, read_peng_element_scattering_factor_parameter_table()
+        )
+    potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+        b_factors=b_factors,
+    )
     ```
 
     **References:**
@@ -244,13 +259,10 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
     def __init__(
         self,
         atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
-        atom_identities: Int[Array, " n_atoms"] | Int[np.ndarray, " n_atoms"],
+        scattering_factor_a: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
+        scattering_factor_b: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
         b_factors: Optional[
             Float[Array, " n_atoms"] | Float[np.ndarray, " n_atoms"]
-        ] = None,
-        *,
-        scattering_factor_parameter_table: Optional[
-            Float[Array, "2 n_elements 5"] | Float[np.ndarray, "2 n_elements 5"]
         ] = None,
     ):
         """**Arguments:**
@@ -264,19 +276,11 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
             The B-factors applied to each atom.
         - `scattering_factor_parameter_table`:
             The scattering factor parameter table from Peng et al. (1996). If
-            not provided, load from `cryojax.constants`.
+            not provided, load from `cryojax.constants`. This is optionally
+            provided in order to avoid loading from memory multiple times.
 
         """
-        if scattering_factor_parameter_table is None:
-            scattering_factor_parameter_table = (
-                read_peng_element_scattering_factor_parameter_table()
-            )
         self.atom_positions = jnp.asarray(atom_positions)
-        scattering_factor_a, scattering_factor_b = (
-            get_tabulated_scattering_factor_parameters(
-                atom_identities, scattering_factor_parameter_table
-            )
-        )
         self.scattering_factor_a = jnp.asarray(scattering_factor_a)
         self.scattering_factor_b = jnp.asarray(scattering_factor_b)
         if b_factors is None:

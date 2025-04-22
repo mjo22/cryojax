@@ -44,10 +44,15 @@ def test_projection_methods_no_pose(sample_pdb_path, pixel_size, shape):
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path, center=True, loads_b_factors=True
     )
-    scattering_factor_a, scattering_factor_b = get_tabulated_scattering_factor_parameters(
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
         atom_identities, read_peng_element_scattering_factor_parameter_table()
     )
-    base_potential = cxs.PengAtomicPotential(atom_positions, atom_identities, b_factors)
+    base_potential = cxs.PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+        b_factors=b_factors,
+    )
     base_method = cxs.GaussianMixtureProjection(use_error_functions=True)
 
     real_voxel_grid = base_potential.as_real_voxel_grid((dim, dim, dim), pixel_size)
@@ -57,7 +62,9 @@ def test_projection_methods_no_pose(sample_pdb_path, pixel_size, shape):
             real_voxel_grid, pixel_size
         ),
         cxs.GaussianMixtureAtomicPotential(
-            atom_positions, scattering_factor_a, scattering_factor_b + b_factors[:, None]
+            atom_positions,
+            scattering_factor_parameters["a"],
+            scattering_factor_parameters["b"] + b_factors[:, None],
         ),
     ]
     #     cxs.RealVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, pixel_size),
@@ -134,7 +141,15 @@ def test_if_voxel_vs_atom_has_pixel_offset(
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path, center=True, loads_b_factors=True
     )
-    atom_potential = cxs.PengAtomicPotential(atom_positions, atom_identities, b_factors)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_identities, read_peng_element_scattering_factor_parameter_table()
+    )
+    atom_potential = cxs.PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+        b_factors=b_factors,
+    )
     atom_method = cxs.GaussianMixtureProjection(use_error_functions=True)
     dim = grid_dim
     real_voxel_grid = atom_potential.as_real_voxel_grid((dim, dim, dim), pixel_size)
@@ -195,10 +210,15 @@ def test_if_voxel_vs_atom_has_pixel_offset(
 #     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
 #         sample_pdb_path, center=True, loads_b_factors=True
 #     )
-#     scat_a, scat_b = get_tabulated_scattering_factor_parameters(
-#         atom_identities, read_peng_element_scattering_factor_parameter_table()
-#     )
-#     base_potential = cxs.PengAtomicPotential(atom_positions, atom_identities, b_factors)
+# scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+#     atom_identities, read_peng_element_scattering_factor_parameter_table()
+# )
+# atom_potential = cxs.PengAtomicPotential(
+#     atom_positions,
+#     scattering_factor_a=scattering_factor_parameters["a"],
+#     scattering_factor_b=scattering_factor_parameters["b"],
+#     b_factors=b_factors,
+# )
 #     base_method = cxs.GaussianMixtureProjection(use_error_functions=True)
 
 #     real_voxel_grid = base_potential.as_real_voxel_grid((dim, dim, dim), pixel_size)
@@ -208,7 +228,9 @@ def test_if_voxel_vs_atom_has_pixel_offset(
 #             real_voxel_grid, pixel_size
 #         ),
 #         cxs.GaussianMixtureAtomicPotential(
-#             atom_positions, scat_a, scat_b + b_factors[:, None]
+#             atom_positions,
+#             scattering_factor_parameters["a"],
+#             scattering_factor_parameters["b"] + b_factors[:, None],
 #         ),
 #     ]
 #     #     cxs.RealVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, pixel_size),
