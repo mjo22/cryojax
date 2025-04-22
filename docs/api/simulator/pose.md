@@ -10,7 +10,7 @@
     where $\vec{x}'$ and $\vec{x}$ are the 3D coordinate vectors in the rotated and unrotated frames, and $R$ and $\vec{t} = (t_x, t_y, 0)$ are the rotation and in-plane translation vector.
 
     Some standard softwares define the rotation and translation to "undo" the observed pose.
-    This can be captured by a translation to the center, followed by a intrinsic rotation:
+    This can be captured by a translation to the center, followed by a rotation:
 
     $$\vec{x} = (\vec{x}' + \vec{t}^*) R^*.$$
 
