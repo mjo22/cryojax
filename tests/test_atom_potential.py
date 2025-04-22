@@ -125,11 +125,11 @@ def test_peng_vs_gmm_agreement(sample_pdb_path):
         scattering_factor_b=scattering_factor_parameters["b"],
     )
 
-    gaussian_widths = atom_potential.scattering_factor_b
+    gaussian_variances = atom_potential.scattering_factor_b / (8.0 * jnp.pi**2)
     gaussian_amplitudes = atom_potential.scattering_factor_a
 
     gmm_potential = GaussianMixtureAtomicPotential(
-        atom_positions, gaussian_amplitudes, gaussian_widths
+        atom_positions, gaussian_amplitudes, gaussian_variances
     )
 
     # Create instrument configuration
@@ -172,7 +172,9 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         coordinate_grid = make_coordinate_grid(n_pixels_per_side, voxel_size)
 
         # Build the potential
-        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+        atomic_potential = GaussianMixtureAtomicPotential(
+            atom_positions, ff_a, ff_b / (8.0 * jnp.pi**2)
+        )
         instrument_config = InstrumentConfig(
             shape=n_pixels_per_side,
             pixel_size=voxel_size,
@@ -207,7 +209,9 @@ class TestBuildRealSpaceVoxelsFromAtoms:
 
         n_pixels_per_side = n_voxels_per_side[:2]
         # Build the potential
-        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+        atomic_potential = GaussianMixtureAtomicPotential(
+            atom_positions, ff_a, ff_b / (8.0 * jnp.pi**2)
+        )
         instrument_config = InstrumentConfig(
             shape=n_pixels_per_side,
             pixel_size=voxel_size,
