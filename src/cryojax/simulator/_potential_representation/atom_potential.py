@@ -112,7 +112,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         potential = GaussianMixtureAtomicPotential(
             atom_positions,
             gaussian_amplitudes=scattering_factor_parameters["a"],
-            gaussian_widths=scattering_factor_parameters["b"],
+            gaussian_variances=scattering_factor_parameters["b"] / (8 * jnp.pi**2),
         )
         ```
     """  # noqa: E501
