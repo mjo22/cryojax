@@ -269,16 +269,14 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
 
         - `atom_positions`:
             The coordinates of the atoms in units of angstroms.
-        - `atom_identities`:
-            Array containing the index of the one-hot encoded atom names.
-            Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.
+        - `scattering_factor_a`:
+            Scattering factor parameters $\\{a_i\\}_{i = 1}^5$
+            for each atom from Peng et al. (1996).
+        - `scattering_factor_b`:
+            Scattering factor parameters $\\{b_i\\}_{i = 1}^5$
+            for each atom from Peng et al. (1996).
         - `b_factors`:
             The B-factors applied to each atom.
-        - `scattering_factor_parameter_table`:
-            The scattering factor parameter table from Peng et al. (1996). If
-            not provided, load from `cryojax.constants`. This is optionally
-            provided in order to avoid loading from memory multiple times.
-
         """
         self.atom_positions = jnp.asarray(atom_positions)
         self.scattering_factor_a = jnp.asarray(scattering_factor_a)
