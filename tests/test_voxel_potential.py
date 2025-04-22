@@ -218,7 +218,9 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         ff_a = ff_a.at[largest_atom].add(1.0)
 
         # Build the potential
-        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+        atomic_potential = GaussianMixtureAtomicPotential(
+            atom_positions, ff_a, ff_b / (8 * jnp.pi**2)
+        )
         real_voxel_grid = atomic_potential.as_real_voxel_grid(
             n_voxels_per_side, voxel_size
         )
@@ -244,7 +246,9 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         ) = toy_gaussian_cloud
 
         # Build the potential
-        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+        atomic_potential = GaussianMixtureAtomicPotential(
+            atom_positions, ff_a, ff_b / (8 * jnp.pi**2)
+        )
         real_voxel_grid = atomic_potential.as_real_voxel_grid(
             n_voxels_per_side, voxel_size
         )
@@ -264,7 +268,11 @@ class TestBuildRealSpaceVoxelsFromAtoms:
     #     ) = toy_gaussian_cloud
     #     coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
     #     # Build the potential
-    #     atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+    #     atomic_potential = GaussianMixtureAtomicPotential(
+    #         atom_positions,
+    #         ff_a,
+    #         ff_b / (8 * jnp.pi**2)
+    #     )
     #     real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
     #     fourier_potential = FourierVoxelGridPotential.from_real_voxel_grid(
     #         real_voxel_grid, voxel_size
@@ -322,18 +330,18 @@ class TestBuildVoxelsFromTrajectories:
 
         make_voxel_grids = jax.vmap(
             lambda pos, ff_a, ff_b: GaussianMixtureAtomicPotential(
-                pos, ff_a, ff_b
+                pos, ff_a, ff_b / (8 * jnp.pi**2)
             ).as_real_voxel_grid(n_voxels_per_side, voxel_size),
             in_axes=[0, None, None],
         )
         traj_voxels = make_voxel_grids(traj, ff_a, ff_b)
 
         voxel1 = GaussianMixtureAtomicPotential(
-            atom_positions, ff_a, ff_b
+            atom_positions, ff_a, ff_b / (8 * jnp.pi**2)
         ).as_real_voxel_grid(n_voxels_per_side, voxel_size)
 
         voxel2 = GaussianMixtureAtomicPotential(
-            second_set_of_positions, ff_a, ff_b
+            second_set_of_positions, ff_a, ff_b / (8 * jnp.pi**2)
         ).as_real_voxel_grid(n_voxels_per_side, voxel_size)
 
         np.testing.assert_allclose(traj_voxels[0], voxel1, atol=1e-12)

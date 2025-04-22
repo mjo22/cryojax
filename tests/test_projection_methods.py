@@ -1,6 +1,7 @@
 import warnings
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 import pytest
 from jaxtyping import Array
@@ -64,7 +65,7 @@ def test_projection_methods_no_pose(sample_pdb_path, pixel_size, shape):
         cxs.GaussianMixtureAtomicPotential(
             atom_positions,
             scattering_factor_parameters["a"],
-            scattering_factor_parameters["b"] + b_factors[:, None],
+            (scattering_factor_parameters["b"] + b_factors[:, None]) / (8 * jnp.pi**2),
         ),
     ]
     #     cxs.RealVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, pixel_size),
@@ -230,7 +231,7 @@ def test_if_voxel_vs_atom_has_pixel_offset(
 #         cxs.GaussianMixtureAtomicPotential(
 #             atom_positions,
 #             scattering_factor_parameters["a"],
-#             scattering_factor_parameters["b"] + b_factors[:, None],
+#             (scattering_factor_parameters["b"] + b_factors[:, None]) / (8 * jnp.pi**2),
 #         ),
 #     ]
 #     #     cxs.RealVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, pixel_size),
