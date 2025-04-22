@@ -1,20 +1,24 @@
 import os
 import pathlib
-from typing import Any, Callable, cast, Optional
+from typing import Callable, Optional, TypeVar
 
 import equinox as eqx
 import jax
-import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 import starfile
-from jaxtyping import Array, Float, PRNGKeyArray
+from jaxtyping import Array, Float
 
 from ...image.operators import Constant, FourierGaussian
 from ...io import write_image_stack_to_mrc
 from ...simulator import AberratedAstigmaticCTF
+from ...utils import batched_map
 from ._starfile_dataset import RelionParticleParameterDataset
 from ._starfile_pytrees import RelionParticleParameters
+
+
+PerParticlePyTree = TypeVar("PerParticlePyTree")
+ConstantPyTree = TypeVar("ConstantPyTree")
 
 
 def _get_filename(step, n_char=6):
@@ -175,17 +179,14 @@ def write_starfile_with_particle_parameters(
 
 def write_simulated_image_stack_from_starfile(
     param_dataset: RelionParticleParameterDataset,
-    compute_image: (
-        Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
-        | Callable[
-            [PRNGKeyArray, RelionParticleParameters, Any],
-            Float[Array, "y_dim x_dim"],
-        ]
-    ),
-    args: Any,
+    compute_image_fn: Callable[
+        [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
+        Float[Array, "y_dim x_dim"],
+    ],
+    constant_args: ConstantPyTree = None,
+    per_particle_args: PerParticlePyTree = None,
     is_jittable: bool = False,
     batch_size_per_mrc: Optional[int] = None,
-    seed: Optional[int] = None,  # seed for the noise
     overwrite: bool = False,
     compression: Optional[str] = None,
 ):
@@ -194,81 +195,91 @@ def write_simulated_image_stack_from_starfile(
 
     !!! note
         This function works generally for a function that computes
-        images of the form `compute_image_stack(pytree, args)` or
-        `compute_image_stack(key, pytree, args)`, where `key` is a
-        random number generator key(s), and `pytree` and `args` are
-        the two pytrees resulting from the `eqx.partition` function,
-        using the `vmap_filter_spec` as the filter.
+        images of the form `compute_image_fn(parameter_dataset, constant_args, per_particle_args)`
+        where `parameter_dataset`is a cryojax RelionParticleParameterDataset,
+        `constant_args` is a parameter that does not change between images
+        , and `per_particle_args` is a pytree whose leaves have a batch dimension
+        equal to the number of particles to be simulated.
 
     ```python
+    # Example 1: Using the function with a `compute_image_fn`
+    # function that does not use `per_particle_args`
 
-    # Example 1: Using the function with a `compute_image_stack`
-    # function that does not take a key
-
-    # start from a previously defined `imaging_pipeline`
-    # (see our Tutorials for details on how to do this)
-    imaging_pipeline = ContrastImageModel(...)
-
-    # and a `RelionParticleParameterDataset` object
+    # load a `RelionParticleParameterDataset` object
     param_dataset = RelionParticleParameterDataset(...)
 
-    # Write your `compute_image_stack` function.
+    # to build an`image_model` object
+    # (see our Tutorials for details on how to do this)
 
-    @eqx.filter_jit
-    @eqx.filter_vmap(in_axes=( 0, None), out_axes=0)
-    def compute_image_stack(
-        img_pipeline_vmap: AbstractImageModel,
-        img_pipeline_novmap: AbstractImageModel,
+    # Write your `compute_image_fn` function.
+    def compute_image_fn(
+        particle_parameters: RelionParticleParameters,
+        constant_args
     ):
 
-        # Combine two previously split PyTrees
-        img_pipeline = eqx.combine(img_pipeline_vmap, img_pipeline_novmap)
+        # constant_args do not change between images
+        potential_integrator, ... = constant_args # Just an example
+
+        # use the pose, ctf, etc from the particle_parameters
+        img_pipeline = ContrastImageModel(...)
 
         return img_pipeline.render()
 
     write_simulated_image_stack_from_starfile(
-        param_dataset,
-        compute_image_stack,
-        imaging_pipeline,
-        seed=None, # our image pipeline does not require a seed
+        param_dataset, # contains particle_parameters objects
+        compute_image_fn,
+        constant_args=(potential_integrator, ...)
+        per_particle_args=None, # default
+        is_jittable=True,
         overwrite=True,
     )
 
     ```
 
     ```python
-    # Example 2: Using the function with a `compute_image_stack`
-    # function that takes a key
+    # Example 2: Using the function with a `compute_image_fn`
+    # function that uses per_particle arguments
 
-    # start from a previously defined cryojax `distribution`
+    # now we will build a cryojax `distribution` and use it
+    # to generate noisy images.
     # (see our Tutorials for details on how to do this)
 
-    distribution = cryojax.inference.IndependentGaussianFourierModes(...)
+    # Let's define a `RelionParticleParameterDataset` object
 
-    # and a `RelionParticleParameterDataset` object
     param_dataset = RelionParticleParameterDataset(...)
 
-    # Write your `compute_image_stack` function
+    # and the rng keys to generate the noise for the images
+    seed = 0
+    key = jax.random.key(seed)
+    key, *keys_noise = jax.random.split(key, n_images+1)
+    keys_noise = jnp.array(keys_noise)
 
-    @eqx.filter_jit
-    @eqx.filter_vmap(in_axes=(0, 0, None), out_axes=0)
+    # In addition, we will add a scaling parameter to our images
+
+    key, subkey = jax.random.split(key)
+    scaling_params = jax.random.uniform(subkey, shape=(n_images,))
+
+    # Write your `compute_image_fn` function
     def compute_noisy_image_stack(
-        key: PRNGKeyArray,
-        dist_vmap: dist.AbstractDistribution,
-        dist_novmap: dist.AbstractDistribution,
+        particle_parameters: RelionParticleParameters,
+        constant_args,
+        per_particle_args
     ):
-        '''Simulate an image with noise from a `imaging_pipeline`.'''
+        ... = constant_args
+        key, scale = per_particle_args
 
         # Combine two previously split PyTrees
-        distribution = eqx.combine(dist_vmap, dist_novmap)
+        image_model = cxs.ContrastImageModel(...)
+        distribution = cxs.IndependentGaussianPixels(image_model, ...)
 
-        return distribution.sample(key)
+        return scale * distribution.sample(key)
 
     write_simulated_image_stack_from_starfile(
-        param_dataset,
-        compute_image_stack,
-        imaging_pipeline,
-        seed=0,
+        param_dataset, # contains particle_parameters objects
+        compute_image_fn,
+        constant_args=(...)
+        per_particle_args=(keys_noise, scaling_params)
+        is_jittable=True,
         overwrite=True,
     )
     ```
@@ -277,27 +288,28 @@ def write_simulated_image_stack_from_starfile(
 
     - `param_dataset`:
         The `RelionParticleParameterDataset` dataset.
-    - `compute_image_stack`:
+    - `compute_image_fn`:
         A callable that computes the image stack from the parameters contained
         in the STAR file.
-    - `pytree` :
-        The pytree that is given to `compute_image_stack`
-        to compute the image stack (before filtering for vmapping).
-    - `args`:
-        The arguments to pass to the `compute_image_stack` function.
+    - `constant_args`:
+        The constant arguments to pass to the `compute_image_fn` function.
+        These must be the same for all images.
+    - `per_particle_args`:
+        Arguments to pass to the `compute_image_fn` function.
+        This is a pytree with leaves having a batch size with equal dimension
+        to the number of images.
     - `is_jittable`:
-        Whether the `compute_image_stack` function is jittable with `equinox.filter_jit`.
+        Whether the `compute_image_fn` function is jittable with `equinox.filter_jit`.
     - `batch_size_per_mrc`:
         The maximum number of images that will be computed in each vmap operation.
         If `None`, all images for a single mrc file will be computed in a single vmap operation.
         Only relevant if `is_jittable` is True.
-    - `seed`:
-        The seed for the random number generator.
     - `overwrite`:
         Whether to overwrite the MRC files if they already exist.
     - `compression`:
         The compression to use when writing the MRC files.
     """  # noqa
+
     # Create the directory for the MRC files if it doesn't exist
     if not os.path.exists(param_dataset.path_to_relion_project):
         os.makedirs(param_dataset.path_to_relion_project)
@@ -324,13 +336,26 @@ def write_simulated_image_stack_from_starfile(
                 if os.path.exists(filename):
                     os.remove(filename)
 
+    if per_particle_args is not None:
+        shape_check = jax.tree.map(
+            lambda x: eqx.error_if(
+                x=x,
+                pred=x.shape[0] != len(param_dataset),
+                msg="All leaves of per_particle_args should have"
+                + "a batch dimension equal to the number of images",
+            ),
+            per_particle_args,
+        )
+
+        del shape_check
+
     if is_jittable:
         _write_simulated_image_stack_from_starfile_vmap(
             param_dataset=param_dataset,
-            compute_image=compute_image,
-            args=args,
+            compute_image_fn=compute_image_fn,
+            constant_args=constant_args,
+            per_particle_args=per_particle_args,
             batch_size_per_mrc=batch_size_per_mrc,
-            seed=seed,
             overwrite=overwrite,
             compression=compression,
         )
@@ -338,9 +363,9 @@ def write_simulated_image_stack_from_starfile(
     else:
         _write_simulated_image_stack_from_starfile_serial(
             param_dataset=param_dataset,
-            compute_image=compute_image,
-            args=args,
-            seed=seed,
+            compute_image_fn=compute_image_fn,
+            constant_args=constant_args,
+            per_particle_args=per_particle_args,
             overwrite=overwrite,
             compression=compression,
         )
@@ -348,84 +373,39 @@ def write_simulated_image_stack_from_starfile(
     return
 
 
-def _compute_images_batch(indices, param_dataset, compute_image_stack, args, key=None):
-    particle_parameters = param_dataset[indices]
-    # ... simulate images in the image stack
-    if key is None:
-        image_stack = compute_image_stack(particle_parameters, args)
-
-    else:
-        # ... generate keys for each image in the mrcfile,
-        # and a subkey for the next iteration
-
-        key, *subkeys = jax.random.split(key, len(indices) + 1)
-        subkeys = jax.numpy.array(subkeys)
-
-        image_stack = compute_image_stack(
-            subkeys,
-            particle_parameters,
-            args,  # type: ignore
-        )
-    return image_stack, key
-
-
 def _write_simulated_image_stack_from_starfile_vmap(
     param_dataset: RelionParticleParameterDataset,
-    compute_image: (
-        Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
-        | Callable[
-            [PRNGKeyArray, RelionParticleParameters, Any],
-            Float[Array, "y_dim x_dim"],
-        ]
-    ),
-    args: Any,
+    compute_image_fn: Callable[
+        [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
+        Float[Array, "y_dim x_dim"],
+    ],
+    constant_args: ConstantPyTree,
+    per_particle_args: PerParticlePyTree,
     batch_size_per_mrc: Optional[int] = None,
-    seed: Optional[int] = None,  # seed for the noise
     overwrite: bool = False,
     compression: Optional[str] = None,
 ):
-    # Create RNG key, along with a subkey for subsequent use
-    if seed is not None:
-        key = jax.random.key(seed=seed)
-    else:
-        key = cast(PRNGKeyArray, None)
     # Create vmapped `compute_image` kernel
-    compute_image_stack = (
-        eqx.filter_vmap(
-            lambda params, args: compute_image(params, args),  # type: ignore
-            in_axes=(eqx.if_array(0), None),
-        )
-        if seed is None
-        else eqx.filter_vmap(
-            lambda key, params, args: compute_image(key, params, args),  # type: ignore
-            in_axes=(0, eqx.if_array(0), None),
-        )
+    compute_image_stack = eqx.filter_vmap(
+        compute_image_fn,
+        in_axes=(eqx.if_array(0), None, eqx.if_array(0)),
     )
     compute_image_stack = eqx.filter_jit(compute_image_stack)
 
     # check if function runs
-    test_params = param_dataset[0:1]
-
-    if seed is None:
-        try:
-            compute_image_stack(test_params, args)
-        except Exception as e:
-            raise RuntimeError(
-                "The `compute_image` function failed to run.\
-                    Please check the function signature and arguments.\
-                        Confirm that your function is jittable if necessary."
-            ) from e
-    else:
-        key, subkeys = jax.random.split(key, 2)
-        subkeys = subkeys[None, ...]
-        try:
-            compute_image_stack(jnp.array(subkeys), test_params, args)
-        except Exception as e:
-            raise RuntimeError(
-                "The `compute_image` function failed to run.\
-                    Please check the function signature and arguments.\
-                        Confirm that your function is jittable if necessary."
-            ) from e
+    test_particle_parameters = param_dataset[0:1]
+    try:
+        compute_image_stack(
+            test_particle_parameters,
+            constant_args,
+            jax.tree_map(lambda x: x[0:1], per_particle_args),
+        )
+    except Exception as e:
+        raise RuntimeError(
+            "The `compute_image` function failed to run.\
+                Please check the function signature and arguments.\
+                    Confirm that your function is jittable if necessary."
+        ) from e
 
     # Now, let's preparing the simulation loop. First check how many unique MRC
     # files we have in the starfile
@@ -433,8 +413,6 @@ def _write_simulated_image_stack_from_starfile_vmap(
         "@", expand=True
     )
     mrc_fnames = particles_fnames[1].unique()
-
-    box_size = int(param_dataset.starfile_data["optics"]["rlnImageSize"][0])
     pixel_size = float(param_dataset.starfile_data["optics"]["rlnImagePixelSize"][0])
 
     # ... now, generate images for each mrcfile
@@ -443,48 +421,31 @@ def _write_simulated_image_stack_from_starfile_vmap(
         # and load the particle stack parameters
         indices = particles_fnames[particles_fnames[1] == mrc_fname].index.to_numpy()
 
-        if batch_size_per_mrc is not None:
-            n_batches = max(len(indices) // batch_size_per_mrc, 1)
-            residual = len(indices) % batch_size_per_mrc if n_batches > 1 else 0
-
+        if batch_size_per_mrc is None:
+            batch_size_for_map = len(indices)
         else:
-            n_batches = 1
-            batch_size_per_mrc = len(indices)
-            residual = 0
+            batch_size_for_map = min(batch_size_per_mrc, len(indices))
 
-        if n_batches > 1:
-            image_stack = np.empty((len(indices), box_size, box_size), dtype=np.float32)
+        vmap, novmap = eqx.partition(param_dataset[indices], eqx.is_array)
+        # image_stack = batched_map(
+        #     lambda x: _compute_image_stack_map_wrapper(
+        #         compute_image_stack, x[0], novmap, constant_args, x[1]
+        #     ),
+        #     xs=(
+        #         vmap,  # type: ignore
+        #         jax.tree.map(lambda x: x[indices], per_particle_args),  # type: ignore
+        #     ),
+        #     batch_size=batch_size_for_map,
+        # )
 
-            for i in range(n_batches):
-                idx_0 = i * batch_size_per_mrc
-                idx_1 = (i + 1) * batch_size_per_mrc
-                image_stack[idx_0:idx_1], key = _compute_images_batch(
-                    indices[idx_0:idx_1],
-                    param_dataset,
-                    compute_image_stack,
-                    args,
-                    key=key,
-                )
-
-            if residual > 0:
-                image_stack[-residual:], key = _compute_images_batch(
-                    indices[-residual:],
-                    param_dataset,
-                    compute_image_stack,
-                    args,
-                    key=key,
-                )
-
-            image_stack = jnp.array(image_stack)
-
-        else:
-            image_stack, key = _compute_images_batch(
-                indices,
-                param_dataset,
-                compute_image_stack,
-                args,
-                key=key,
-            )
+        image_stack = batched_map(
+            lambda x: compute_image_stack(eqx.combine(x[0], novmap), constant_args, x[1]),
+            xs=(
+                vmap,
+                jax.tree.map(lambda x: x[indices], per_particle_args),
+            ),
+            batch_size=batch_size_for_map,
+        )
 
         # ... write the image stack to an MRC file
         filename = os.path.join(param_dataset.path_to_relion_project, mrc_fname)
@@ -501,24 +462,15 @@ def _write_simulated_image_stack_from_starfile_vmap(
 
 def _write_simulated_image_stack_from_starfile_serial(
     param_dataset: RelionParticleParameterDataset,
-    compute_image: (
-        Callable[[RelionParticleParameters, Any], Float[Array, "y_dim x_dim"]]
-        | Callable[
-            [PRNGKeyArray, RelionParticleParameters, Any],
-            Float[Array, "y_dim x_dim"],
-        ]
-    ),
-    args: Any,
-    seed: Optional[int] = None,  # seed for the noise
+    compute_image_fn: Callable[
+        [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
+        Float[Array, "y_dim x_dim"],
+    ],
+    constant_args: ConstantPyTree,
+    per_particle_args: PerParticlePyTree,
     overwrite: bool = False,
     compression: Optional[str] = None,
 ):
-    # Create RNG key, along with a subkey for subsequent use
-    if seed is not None:
-        key = jax.random.key(seed=seed)
-    else:
-        key = cast(PRNGKeyArray, None)
-
     # Now, let's preparing the simulation loop. First check how many unique MRC
     # files we have in the starfile
     particles_fnames = param_dataset.starfile_data["particles"]["rlnImageName"].str.split(
@@ -537,12 +489,11 @@ def _write_simulated_image_stack_from_starfile_serial(
         image_stack = np.empty((len(indices), box_size, box_size), dtype=np.float32)
 
         for i in range(len(indices)):
-            if seed is not None:
-                key, subkey = jax.random.split(key)
-                image_stack[i] = compute_image(subkey, param_dataset[indices[i]], args)
-
-            else:
-                image_stack[i] = compute_image(param_dataset[indices[i]], args)
+            image_stack[i] = compute_image_fn(
+                param_dataset[indices[i]],
+                constant_args,
+                jax.tree_map(lambda x: x[indices[i]], per_particle_args),  # type: ignore
+            )
 
         # ... write the image stack to an MRC file
         filename = os.path.join(param_dataset.path_to_relion_project, mrc_fname)
