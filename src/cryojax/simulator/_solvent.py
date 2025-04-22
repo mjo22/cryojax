@@ -33,7 +33,7 @@ class SolventMixturePower(AbstractFourierOperator, strict=True):
     expression is given by
 
     .. math::
-        P(k) = a_1 \exp(-k^2/(2 s_1^2)) + a_2 \exp(-(k-m_2)^2/(2 s_2^2)),
+        P(k) = a_1 \exp(-k^2/(2 s_1^2)) + a_2 \exp(-(k-m)^2/(2 s_2^2)),
 
     where index `1` is for the envelope and index `2` is for the high-resolution peak.
 
