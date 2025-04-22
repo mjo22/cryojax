@@ -103,7 +103,7 @@ class GaussianMixtureProjection(
                 gaussian_widths += potential.b_factors[:, None]
         elif isinstance(potential, GaussianMixtureAtomicPotential):
             gaussian_amplitudes = potential.gaussian_amplitudes
-            gaussian_widths = potential.gaussian_widths
+            gaussian_widths = potential.gaussian_variances * 8 * jnp.pi**2
         else:
             raise ValueError(
                 "Supported types for `potential` are `PengAtomicPotential` and "

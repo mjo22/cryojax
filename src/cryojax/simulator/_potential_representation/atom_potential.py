@@ -88,11 +88,9 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     gaussians.
 
     The naming and numerical convention of parameters `gaussian_amplitudes` and
-    `gaussian_widths` follows "Robust Parameterization of Elastic and Absorptive
+    `gaussian_variances` follows "Robust Parameterization of Elastic and Absorptive
     Electron Atomic Scattering Factors" by Peng et al. (1996), where $a_i$ are
-    the `gaussian_amplitudes` and $b_i$ are the `gaussian_widths`. This means
-    that `gaussian_widths` are *not* a variance or standard deviation; they are
-    b-factors.
+    the `gaussian_amplitudes` and $b_i$ are the `gaussian_variances` multiplied by $8\pi^2$.
 
     !!! info
         In order to load a `GaussianMixtureAtomicPotential` from tabulated
@@ -121,7 +119,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
     atom_positions: Float[Array, "n_atoms 3"]
     gaussian_amplitudes: Float[Array, "n_atoms n_gaussians_per_atom"]
-    gaussian_widths: Float[Array, "n_atoms n_gaussians_per_atom"]
+    gaussian_variances: Float[Array, "n_atoms n_gaussians_per_atom"]
 
     def __init__(
         self,
@@ -130,7 +128,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             Float[Array, "n_atoms n_gaussians_per_atom"]
             | Float[np.ndarray, "n_atoms n_gaussians_per_atom"]
         ),
-        gaussian_widths: (
+        gaussian_variances: (
             Float[Array, "n_atoms n_gaussians_per_atom"]
             | Float[np.ndarray, "n_atoms n_gaussians_per_atom"]
         ),
@@ -141,14 +139,14 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         - `gaussian_amplitudes`:
             The strength for each atom and for each gaussian per atom.
             This has units of angstroms.
-        - `gaussian_widths`:
+        - `gaussian_variances`:
             The variance (up to numerical constants) for each atom and
             for each gaussian per atom. This has units of angstroms
             squared.
         """
         self.atom_positions = jnp.asarray(atom_positions)
         self.gaussian_amplitudes = jnp.asarray(gaussian_amplitudes)
-        self.gaussian_widths = error_if_not_positive(jnp.asarray(gaussian_widths))
+        self.gaussian_variances = error_if_not_positive(jnp.asarray(gaussian_variances))
 
     @override
     def as_real_voxel_grid(
@@ -187,7 +185,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             jnp.asarray(voxel_size),
             self.atom_positions,
             self.gaussian_amplitudes,
-            self.gaussian_widths,
+            self.gaussian_variances * 8 * jnp.pi**2,  # convert to b-factors
             batch_size_for_z_planes=batch_size_for_z_planes,
             n_batches_of_atoms=n_batches_of_atoms,
         )
