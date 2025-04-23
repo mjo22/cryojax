@@ -81,11 +81,17 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             ).real
         )
         # ... apply translation
-        translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
+        pose = self.structural_ensemble.pose
+        phase_shifts = pose.compute_translation_operator(
             instrument_config.padded_frequency_grid_in_angstroms
         )
+        intensity_spectrum_at_detector_plane = pose.translate_image(
+            intensity_spectrum_at_detector_plane,
+            phase_shifts,
+            instrument_config.padded_shape,
+        )
 
-        return translational_phase_shifts * intensity_spectrum_at_detector_plane
+        return intensity_spectrum_at_detector_plane
 
     @override
     def compute_contrast_spectrum_at_detector_plane(
@@ -119,8 +125,14 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             / (1 + squared_wavefunction_at_detector_plane)
         )
         # ... apply translation
-        translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
+        pose = self.structural_ensemble.pose
+        phase_shifts = pose.compute_translation_operator(
             instrument_config.padded_frequency_grid_in_angstroms
         )
+        contrast_spectrum_at_detector_plane = pose.translate_image(
+            contrast_spectrum_at_detector_plane,
+            phase_shifts,
+            instrument_config.padded_shape,
+        )
 
-        return translational_phase_shifts * contrast_spectrum_at_detector_plane
+        return contrast_spectrum_at_detector_plane

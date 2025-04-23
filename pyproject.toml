@@ -26,6 +26,7 @@ dependencies = [
     "mrcfile",
     "starfile",
     "pandas",
+    "xarray",
     "typing_extensions>=4.5.0",
     "tqdm",
     "mdtraj",

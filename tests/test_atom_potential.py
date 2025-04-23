@@ -6,6 +6,10 @@ from jaxtyping import install_import_hook
 
 
 with install_import_hook("cryojax", "typeguard.typechecked"):
+    from cryojax.constants import (
+        get_tabulated_scattering_factor_parameters,
+        read_peng_element_scattering_factor_parameter_table,
+    )
     from cryojax.coordinates import make_coordinate_grid
     from cryojax.image import irfftn
     from cryojax.io import read_atoms_from_pdb
@@ -25,7 +29,15 @@ def test_atom_potential_integrator_shape(sample_pdb_path, shape):
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path, center=True, select="not element H", loads_b_factors=True
     )
-    atom_potential = PengAtomicPotential(atom_positions, atom_identities, b_factors)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_identities, read_peng_element_scattering_factor_parameter_table()
+    )
+    atom_potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+        b_factors=b_factors,
+    )
     pixel_size = 0.5
 
     potential_integrator = GaussianMixtureProjection(upsampling_factor=2)
@@ -52,7 +64,14 @@ def test_downsampled_gmm_potential_agreement(sample_pdb_path):
         center=True,
         select="not element H",
     )
-    atom_potential = PengAtomicPotential(atom_positions, atom_identities)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_identities, read_peng_element_scattering_factor_parameter_table()
+    )
+    atom_potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+    )
 
     # Parameters for rasterization
     shape = (128, 128)
@@ -97,13 +116,20 @@ def test_peng_vs_gmm_agreement(sample_pdb_path):
         center=True,
         select="not element H",
     )
-    atom_potential = PengAtomicPotential(atom_positions, atom_identities)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_identities, read_peng_element_scattering_factor_parameter_table()
+    )
+    atom_potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+    )
 
-    gaussian_widths = atom_potential.scattering_factor_b
+    gaussian_variances = atom_potential.scattering_factor_b / (8.0 * jnp.pi**2)
     gaussian_amplitudes = atom_potential.scattering_factor_a
 
     gmm_potential = GaussianMixtureAtomicPotential(
-        atom_positions, gaussian_amplitudes, gaussian_widths
+        atom_positions, gaussian_amplitudes, gaussian_variances
     )
 
     # Create instrument configuration
@@ -146,7 +172,9 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         coordinate_grid = make_coordinate_grid(n_pixels_per_side, voxel_size)
 
         # Build the potential
-        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+        atomic_potential = GaussianMixtureAtomicPotential(
+            atom_positions, ff_a, ff_b / (8.0 * jnp.pi**2)
+        )
         instrument_config = InstrumentConfig(
             shape=n_pixels_per_side,
             pixel_size=voxel_size,
@@ -181,7 +209,9 @@ class TestBuildRealSpaceVoxelsFromAtoms:
 
         n_pixels_per_side = n_voxels_per_side[:2]
         # Build the potential
-        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+        atomic_potential = GaussianMixtureAtomicPotential(
+            atom_positions, ff_a, ff_b / (8.0 * jnp.pi**2)
+        )
         instrument_config = InstrumentConfig(
             shape=n_pixels_per_side,
             pixel_size=voxel_size,
