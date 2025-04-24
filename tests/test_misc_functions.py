@@ -77,7 +77,11 @@ def test_fft_agrees_with_jax_numpy(shape):
         ((10, 10), (5, 5)),
         ((10, 10), (6, 6)),
         ((11, 11), (5, 5)),
-        ((11, 11), (5, 5)),
+        ((11, 11), (6, 6)),
+        ((11, 10), (5, 6)),
+        ((10, 11), (6, 5)),
+        ((11, 10), (6, 5)),
+        ((10, 11), (5, 6)),
     ),
 )
 def test_crop(shape, cropped_shape):
@@ -92,6 +96,10 @@ def test_crop(shape, cropped_shape):
         axis=-1,
     )
     cropped_frequency_grid = cxi.crop_to_shape(larger_frequency_grid, cropped_shape)
+    np.testing.assert_allclose(
+        smaller_frequency_grid[cropped_shape[0] // 2, cropped_shape[1] // 2],
+        cropped_frequency_grid[cropped_shape[0] // 2, cropped_shape[1] // 2],
+    )
     np.testing.assert_allclose(smaller_frequency_grid, cropped_frequency_grid)
 
 
@@ -101,7 +109,11 @@ def test_crop(shape, cropped_shape):
         ((10, 10), (5, 5)),
         ((10, 10), (6, 6)),
         ((11, 11), (5, 5)),
-        ((11, 11), (5, 5)),
+        ((11, 11), (6, 6)),
+        ((11, 10), (5, 6)),
+        ((10, 11), (6, 5)),
+        ((11, 10), (6, 5)),
+        ((10, 11), (5, 6)),
     ),
 )
 def test_pad(padded_shape, shape):
@@ -116,6 +128,10 @@ def test_pad(padded_shape, shape):
         axis=-1,
     )
     padded_frequency_grid = cxi.pad_to_shape(smaller_frequency_grid, padded_shape)
+    np.testing.assert_allclose(
+        larger_frequency_grid[padded_shape[0] // 2, padded_shape[1] // 2],
+        padded_frequency_grid[padded_shape[0] // 2, padded_shape[1] // 2],
+    )
     np.testing.assert_allclose(
         cxi.crop_to_shape(larger_frequency_grid, shape),
         cxi.crop_to_shape(padded_frequency_grid, shape),
