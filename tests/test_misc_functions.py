@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 import cryojax.image as cxi
+from cryojax.coordinates import make_frequency_grid
 
 
 jax.config.update("jax_enable_x64", True)
@@ -39,7 +40,7 @@ def test_fourier_vs_real_normalize(noisy_model):
             noisy_model.render(outputs_real_space=False),
             input_is_real_space=False,
             input_is_rfft=True,
-            shape_in_real_space=im1.shape,
+            shape_in_real_space=im1.shape,  # type: ignore
         ),
         s=noisy_model.instrument_config.shape,
     )  # type: ignore
@@ -64,4 +65,58 @@ def test_fft_agrees_with_jax_numpy(shape):
     np.testing.assert_allclose(
         cxi.irfftn(cxi.rfftn(random), s=shape),
         jnp.fft.irfftn(jnp.fft.rfftn(random), s=shape),
+    )
+
+
+#
+# Cropping and padding
+#
+@pytest.mark.parametrize(
+    "shape, cropped_shape",
+    (
+        ((10, 10), (5, 5)),
+        ((10, 10), (6, 6)),
+        ((11, 11), (5, 5)),
+        ((11, 11), (5, 5)),
+    ),
+)
+def test_crop(shape, cropped_shape):
+    larger_frequency_grid = jnp.linalg.norm(
+        jnp.asarray((shape[0], shape[1]))
+        * jnp.fft.fftshift(make_frequency_grid(shape, outputs_rfftfreqs=False)),
+        axis=-1,
+    )
+    smaller_frequency_grid = jnp.linalg.norm(
+        jnp.asarray((cropped_shape[0], cropped_shape[1]))
+        * jnp.fft.fftshift(make_frequency_grid(cropped_shape, outputs_rfftfreqs=False)),
+        axis=-1,
+    )
+    cropped_frequency_grid = cxi.crop_to_shape(larger_frequency_grid, cropped_shape)
+    np.testing.assert_allclose(smaller_frequency_grid, cropped_frequency_grid)
+
+
+@pytest.mark.parametrize(
+    "padded_shape, shape",
+    (
+        ((10, 10), (5, 5)),
+        ((10, 10), (6, 6)),
+        ((11, 11), (5, 5)),
+        ((11, 11), (5, 5)),
+    ),
+)
+def test_pad(padded_shape, shape):
+    smaller_frequency_grid = jnp.linalg.norm(
+        jnp.asarray((shape[0], shape[1]))
+        * jnp.fft.fftshift(make_frequency_grid(shape, outputs_rfftfreqs=False)),
+        axis=-1,
+    )
+    larger_frequency_grid = jnp.linalg.norm(
+        jnp.asarray((padded_shape[0], padded_shape[1]))
+        * jnp.fft.fftshift(make_frequency_grid(padded_shape, outputs_rfftfreqs=False)),
+        axis=-1,
+    )
+    padded_frequency_grid = cxi.pad_to_shape(smaller_frequency_grid, padded_shape)
+    np.testing.assert_allclose(
+        cxi.crop_to_shape(larger_frequency_grid, shape),
+        cxi.crop_to_shape(padded_frequency_grid, shape),
     )
