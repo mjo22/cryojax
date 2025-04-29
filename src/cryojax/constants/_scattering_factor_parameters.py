@@ -35,7 +35,7 @@ def get_tabulated_scattering_factor_parameters(
 
     The particular scattering factor parameters stored in
     `scattering_factor_parameter_table` for `atom_identities`.
-    """  # noqa: #E501
+    """  # noqa: E501
     if scattering_factor_parameter_table is None:
         scattering_factor_parameter_table = (
             read_peng_element_scattering_factor_parameter_table()
