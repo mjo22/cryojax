@@ -19,14 +19,14 @@ from ._fft import (
     irfftn as irfftn,
     rfftn as rfftn,
 )
-from ._fourier_utils import (
-    convert_fftn_to_rfftn as convert_fftn_to_rfftn,
-    enforce_self_conjugate_rfftn_components as enforce_self_conjugate_rfftn_components,
-)
 from ._fourier_statistics import (
     compute_binned_powerspectrum as compute_binned_powerspectrum,
     compute_fourier_ring_correlation as compute_fourier_ring_correlation,
     compute_fourier_shell_correlation as compute_fourier_shell_correlation,
+)
+from ._fourier_utils import (
+    convert_fftn_to_rfftn as convert_fftn_to_rfftn,
+    enforce_self_conjugate_rfftn_components as enforce_self_conjugate_rfftn_components,
 )
 from ._map_coordinates import (
     compute_spline_coefficients as compute_spline_coefficients,
