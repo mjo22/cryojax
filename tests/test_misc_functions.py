@@ -20,7 +20,7 @@ jax.config.update("jax_enable_x64", True)
 )
 def test_downsample_preserves_sum(shape, downsample_factor):
     upsampled_shape = tuple(downsample_factor * s for s in shape)
-    rng_key = jr.PRNGKey(seed=1234)
+    rng_key = jr.key(seed=1234)
     upsampled_image = 2.0 + 1.0 * jr.normal(rng_key, upsampled_shape)
     image = cxi.downsample_with_fourier_cropping(upsampled_image, downsample_factor)
     np.testing.assert_allclose(image.sum(), upsampled_image.sum())
@@ -105,6 +105,28 @@ def test_crop(shape, cropped_shape):
         smaller_frequency_grid[dc_freq], cropped_frequency_grid[dc_freq]
     )
     np.testing.assert_allclose(smaller_frequency_grid, cropped_frequency_grid)
+
+
+def test_crop_symmetric_signal():
+    signal = np.zeros((20, 20))
+    signal[0:7, 0:7] = 1.0
+    signal[-7:, 0:7] = 1.0
+    signal[0:7, -7:] = 1.0
+    signal[-7:, -7:] = 1.0
+    signal_crop = cxi.crop_to_shape(signal, (14, 14))
+    np.testing.assert_allclose(np.sum(signal_crop[0:7, 0:7]), np.sum(signal_crop[7:, 7:]))
+
+
+def test_pad_symmetric_signal():
+    signal = np.zeros((20, 20))
+    signal[0:7, 0:7] = 1.0
+    signal[-7:, 0:7] = 1.0
+    signal[0:7, -7:] = 1.0
+    signal[-7:, -7:] = 1.0
+    signal_pad = cxi.pad_to_shape(signal, (32, 32))
+    np.testing.assert_allclose(
+        np.sum(signal_pad[0:16, 0:16]), np.sum(signal_pad[16:, 16:])
+    )
 
 
 @pytest.mark.parametrize(
