@@ -14,6 +14,7 @@ import jax.tree_util as jtu
 import numpy as np
 from jaxtyping import Array, Float, PyTree
 
+from ...constants._conventions import convert_variance_to_b_factor
 from ...coordinates import make_1d_coordinate_grid
 from ...internal import error_if_negative, error_if_not_positive
 from .._pose import AbstractPose
@@ -185,7 +186,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             jnp.asarray(voxel_size),
             self.atom_positions,
             self.gaussian_amplitudes,
-            self.gaussian_variances * 8 * jnp.pi**2,  # convert to b-factors
+            convert_variance_to_b_factor(self.gaussian_variances),
             batch_size_for_z_planes=batch_size_for_z_planes,
             n_batches_of_atoms=n_batches_of_atoms,
         )
