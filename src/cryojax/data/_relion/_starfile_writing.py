@@ -101,17 +101,19 @@ def write_starfile_with_particle_parameters(
     # Generate particles group
     particles_df = pd.DataFrame()
 
-    # fixed values
+    # Fixed value parameters
     particles_df["rlnCtfMaxResolution"] = np.zeros(n_images)
     particles_df["rlnCtfFigureOfMerit"] = np.zeros(n_images)
     particles_df["rlnClassNumber"] = np.ones(n_images)
     particles_df["rlnOpticsGroup"] = np.ones(n_images)
-
-    particles_df["rlnOriginXAngst"] = particle_parameters.pose.offset_x_in_angstroms
-    particles_df["rlnOriginYAngst"] = particle_parameters.pose.offset_y_in_angstroms
+    # Pose (flipping the sign of the translations); RELION's convention
+    # thinks about "undoing" a translation, opposed to simulating an image at a coordinate
+    particles_df["rlnOriginXAngst"] = -particle_parameters.pose.offset_x_in_angstroms
+    particles_df["rlnOriginYAngst"] = -particle_parameters.pose.offset_y_in_angstroms
     particles_df["rlnAngleRot"] = particle_parameters.pose.phi_angle
     particles_df["rlnAngleTilt"] = particle_parameters.pose.theta_angle
     particles_df["rlnAnglePsi"] = particle_parameters.pose.psi_angle
+    # CTF
     particles_df["rlnDefocusU"] = (
         particle_parameters.transfer_theory.ctf.defocus_in_angstroms
         + particle_parameters.transfer_theory.ctf.astigmatism_in_angstroms / 2

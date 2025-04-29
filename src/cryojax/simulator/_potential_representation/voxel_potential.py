@@ -180,7 +180,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
     by spline coefficients.
     """
 
-    coefficients: Float[Array, "coeff_dim coeff_dim coeff_dim"]
+    coefficients: Complex[Array, "coeff_dim coeff_dim coeff_dim"]
     frequency_slice_in_pixels: Float[Array, "1 dim dim 3"]
     voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
@@ -188,7 +188,7 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
 
     def __init__(
         self,
-        fourier_voxel_grid: Float[Array, "dim dim dim"],
+        fourier_voxel_grid: Complex[Array, "dim dim dim"],
         frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
         voxel_size: Float[Array, ""] | float,
     ):

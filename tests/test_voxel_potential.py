@@ -3,12 +3,13 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from jax import config
-from jaxtyping import install_import_hook
+from jaxtyping import Array, Float, install_import_hook
 
 from cryojax.image import downsample_with_fourier_cropping
 
 
 with install_import_hook("cryojax", "typeguard.typechecked"):
+    import cryojax.simulator as cxs
     from cryojax.coordinates import make_coordinate_grid
     from cryojax.image import ifftn
     from cryojax.io import read_atoms_from_pdb
@@ -23,6 +24,35 @@ with install_import_hook("cryojax", "typeguard.typechecked"):
 config.update("jax_enable_x64", True)
 
 
+#
+# Test different representations
+#
+def test_voxel_potential_loaders():
+    real_voxel_grid = jnp.zeros((10, 10, 10), dtype=float)
+    voxel_size = 1.1
+    fourier_potential = cxs.FourierVoxelGridPotential.from_real_voxel_grid(
+        real_voxel_grid, voxel_size=voxel_size
+    )
+    real_potential = cxs.RealVoxelGridPotential.from_real_voxel_grid(
+        real_voxel_grid, voxel_size=voxel_size
+    )
+    cloud_potential = cxs.RealVoxelCloudPotential.from_real_voxel_grid(
+        real_voxel_grid, voxel_size=voxel_size
+    )
+    for potential in [real_potential, fourier_potential, cloud_potential]:
+        assert potential.voxel_size == jnp.asarray(voxel_size)
+
+    assert isinstance(
+        fourier_potential.frequency_slice_in_pixels,
+        Float[Array, "1 _ _ 3"],
+    )
+    assert isinstance(real_potential.coordinate_grid_in_pixels, Float[Array, "_ _ _ 3"])
+    assert isinstance(cloud_potential.coordinate_list_in_pixels, Float[Array, "_ 3"])
+
+
+#
+# Test rendering
+#
 def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
     """
     Integration test ensuring that the VoxelGrid classes
