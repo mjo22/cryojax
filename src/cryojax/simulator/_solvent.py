@@ -197,7 +197,9 @@ class GRFSolvent(AbstractSolvent, strict=True):
         self.power_spectrum_function = power_spectrum_function or SolventMixturePower()
         self.samples_power = samples_power
         self.potential_scale = potential_scale
-        self.thickness_in_angstroms = error_if_negative(thickness_in_angstroms)
+        self.thickness_in_angstroms = error_if_negative(
+            jnp.asarray(thickness_in_angstroms)
+        )
 
     @override
     def sample_solvent_integrated_potential(

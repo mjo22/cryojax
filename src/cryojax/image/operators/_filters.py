@@ -292,6 +292,7 @@ def _compute_whitening_filter(
     )
     # Resize to be the desired shape
     if shape is not None:
+        new_shape = shape
         radially_averaged_powerspectrum_on_grid = rfftn(
             resize_with_crop_or_pad(
                 irfftn(radially_averaged_powerspectrum_on_grid, s=image_stack.shape[1:]),
@@ -305,6 +306,8 @@ def _compute_whitening_filter(
             0.0,
             radially_averaged_powerspectrum_on_grid,
         )
+    else:
+        new_shape = image_stack.shape[1], image_stack.shape[2]
     # Compute inverse square root (or inverse square)
     inverse_fn = jax.lax.reciprocal if outputs_squared else jax.lax.rsqrt
     whitening_filter = jnp.where(
@@ -312,7 +315,12 @@ def _compute_whitening_filter(
         0.0,
         inverse_fn(radially_averaged_powerspectrum_on_grid),
     )
-    # Set zero mode manually to 0, defining the filter to zero out this mode
+    # Set zero mode to 0, defining the filter to zero out these modes
     whitening_filter = whitening_filter.at[0, 0].set(0.0)
+    # If the image size is even, there can be an issue with the nyquist corner
+    if new_shape[0] % 2 == 0 and new_shape[1] % 2 == 0:
+        whitening_filter = whitening_filter.at[new_shape[0] // 2, new_shape[1] // 2].set(
+            0.0
+        )
 
     return whitening_filter
