@@ -314,6 +314,6 @@ def _make_coordinates_or_frequencies_1d(
             raise ValueError("Internal error in `cryojax.coordinates`.")
         else:
             fn = jnp.fft.rfftfreq if outputs_rfftfreqs else jnp.fft.fftfreq
-            make_1d = lambda size, dx: fn(size, grid_spacing)
+            make_1d = lambda size, dx: fn(size, dx)
 
     return make_1d(size, grid_spacing)
