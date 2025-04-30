@@ -457,15 +457,17 @@ def _make_pytrees_from_starfile(
     # each key is present
     particle_keys = particle_blocks.keys()
     pose_parameter_names_and_values = []
+    # read the pose, fipping the sign of the translations. RELION's convention
+    # thinks about "undoing" a translation, opposed to simulating an image at a coordinate
     if "rlnOriginXAngst" in particle_keys:
         pose_parameter_names_and_values.append(
-            ("offset_x_in_angstroms", particle_blocks["rlnOriginXAngst"])
+            ("offset_x_in_angstroms", -particle_blocks["rlnOriginXAngst"])
         )
     else:
         pose_parameter_names_and_values.append(("offset_x_in_angstroms", 0.0))
     if "rlnOriginYAngst" in particle_keys:
         pose_parameter_names_and_values.append(
-            ("offset_y_in_angstroms", particle_blocks["rlnOriginYAngst"])
+            ("offset_y_in_angstroms", -particle_blocks["rlnOriginYAngst"])
         )
     else:
         pose_parameter_names_and_values.append(("offset_y_in_angstroms", 0.0))

@@ -155,22 +155,15 @@ def pad_to_shape(
         )
     if len(shape) == 2:
         image = image_or_volume
-        y_pad = shape[0] - image.shape[0]
-        x_pad = shape[1] - image.shape[1]
-        padding = (
-            (y_pad // 2, y_pad // 2 + y_pad % 2),
-            (x_pad // 2, x_pad // 2 + x_pad % 2),
-        )
+        y_padding = _get_left_vs_right_pad(shape[0], image.shape[0])
+        x_padding = _get_left_vs_right_pad(shape[1], image.shape[1])
+        padding = (y_padding, x_padding)
     elif len(shape) == 3:
         volume = image_or_volume
-        z_pad = shape[0] - volume.shape[0]
-        y_pad = shape[1] - volume.shape[1]
-        x_pad = shape[2] - volume.shape[2]
-        padding = (
-            (z_pad // 2, z_pad // 2 + z_pad % 2),
-            (y_pad // 2, y_pad // 2 + y_pad % 2),
-            (x_pad // 2, x_pad // 2 + x_pad % 2),
-        )
+        z_padding = _get_left_vs_right_pad(shape[0], volume.shape[0])
+        y_padding = _get_left_vs_right_pad(shape[1], volume.shape[1])
+        x_padding = _get_left_vs_right_pad(shape[2], volume.shape[2])
+        padding = (z_padding, y_padding, x_padding)
     else:
         raise ValueError(
             "pad_to_shape can only pad images and volumes. Got desired shape of "
@@ -202,3 +195,16 @@ def resize_with_crop_or_pad(
         image = pad_to_shape(image, (M1, M2), **kwargs)
 
     return image
+
+
+def _get_left_vs_right_pad(pad_dim, image_dim):
+    pad = pad_dim - image_dim
+    if pad_dim % 2 == 0 and image_dim % 2 == 0:
+        pad_l, pad_r = (pad // 2, pad // 2)
+    elif pad_dim % 2 == 1 and image_dim % 2 == 0:
+        pad_l, pad_r = (pad // 2, pad // 2 + 1)
+    elif pad_dim % 2 == 0 and image_dim % 2 == 1:
+        pad_l, pad_r = (pad // 2 + 1, pad // 2)
+    else:
+        pad_l, pad_r = (pad // 2, pad // 2)
+    return pad_l, pad_r

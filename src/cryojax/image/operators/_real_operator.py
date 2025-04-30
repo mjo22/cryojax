@@ -7,7 +7,7 @@ from typing import overload
 from typing_extensions import override
 
 import jax.numpy as jnp
-from equinox import field
+import numpy as np
 from jaxtyping import Array, Float
 
 from ...internal import error_if_not_positive
@@ -36,7 +36,7 @@ class AbstractRealOperator(AbstractImageOperator, strict=True):
 
     @overload
     @abstractmethod
-    def __call__(
+    def __call__(  # type: ignore
         self, coordinate_grid: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
@@ -57,14 +57,36 @@ class Gaussian2D(AbstractRealOperator, strict=True):
     """This operator represents a simple gaussian in 2D.
     Specifically, this is
 
-    $$g(r) = \\frac{\\kappa}{2\\pi \beta} \\exp(- (r - r_0)^2 / (2 \\sigma))$$
+    $$g(r) = \\frac{\\kappa}{2\\pi \\beta} \\exp(- (r - r_0)^2 / (2 \\sigma))$$
 
     where $r^2 = x^2 + y^2$.
     """
 
-    amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
-    variance: Float[Array, ""] = field(default=1.0, converter=error_if_not_positive)
-    offset: Float[Array, "2"] = field(default=(0.0, 0.0), converter=jnp.asarray)
+    amplitude: Float[Array, ""]
+    variance: Float[Array, ""]
+    offset: Float[Array, "2"]
+
+    def __init__(
+        self,
+        amplitude: float | Float[Array, ""] = 1.0,
+        variance: float | Float[Array, ""] = 1.0,
+        offset: Float[Array | np.ndarray, "2"] | tuple[float, float] = (0.0, 0.0),
+    ):
+        """**Arguments:**
+
+        - `amplitude`:
+            The amplitude of the operator, equal to $\\kappa$
+            in the above equation.
+        - `variance`:
+            The variance of the gaussian, equal to $\\sigma$
+            in the above equation.
+        - `offset`:
+            An offset to the origin, equal to $r_0$
+            in the above equation.
+        """
+        self.amplitude = jnp.asarray(amplitude, dtype=float)
+        self.variance = error_if_not_positive(jnp.asarray(variance, dtype=float))
+        self.offset = jnp.asarray(offset, dtype=float)
 
     @override
     def __call__(
@@ -75,14 +97,3 @@ class Gaussian2D(AbstractRealOperator, strict=True):
             -0.5 * r_sqr / self.variance
         )
         return scaling
-
-
-Gaussian2D.__init__.__doc__ = """**Arguments:**
-
-- `amplitude`: The amplitude of the operator, equal to $\\kappa$
-               in the above equation.
-- `variance`: The variance of the gaussian, equal to $\\sigma$
-              in the above equation.
-- `offset`: An offset to the origin, equal to $r_0$
-            in the above equation.
-"""

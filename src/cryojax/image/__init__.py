@@ -19,6 +19,10 @@ from ._fft import (
     irfftn as irfftn,
     rfftn as rfftn,
 )
+from ._fourier_utils import (
+    convert_fftn_to_rfftn as convert_fftn_to_rfftn,
+    enforce_self_conjugate_rfftn_components as enforce_self_conjugate_rfftn_components,
+)
 from ._map_coordinates import (
     compute_spline_coefficients as compute_spline_coefficients,
     map_coordinates as map_coordinates,

@@ -13,7 +13,6 @@ from typing import overload
 from typing_extensions import override
 
 import jax.numpy as jnp
-from equinox import field
 from jaxtyping import Array, Float, Inexact
 
 from ...internal import error_if_negative, error_if_not_positive
@@ -42,7 +41,7 @@ class AbstractFourierOperator(AbstractImageOperator, strict=True):
 
     @overload
     @abstractmethod
-    def __call__(
+    def __call__(  # type: ignore
         self, frequency_grid: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Inexact[Array, "z_dim y_dim x_dim"]: ...
 
@@ -62,7 +61,14 @@ FourierOperatorLike = AbstractFourierOperator | AbstractImageOperator
 class ZeroMode(AbstractFourierOperator, strict=True):
     """This operator returns a constant in the zero mode."""
 
-    value: Float[Array, ""] = field(default=0.0, converter=jnp.asarray)
+    value: Float[Array, ""]
+
+    def __init__(self, value: float | Float[Array, ""] = 0.0):
+        """**Arguments:**
+
+        - `value`: The value of the zero mode.
+        """
+        self.value = jnp.asarray(value)
 
     @override
     def __call__(
@@ -70,12 +76,6 @@ class ZeroMode(AbstractFourierOperator, strict=True):
     ) -> Float[Array, "y_dim x_dim"]:
         N1, N2 = frequency_grid.shape[0:-1]
         return jnp.zeros((N1, N2)).at[0, 0].set(self.value)
-
-
-ZeroMode.__init__.__doc__ = """**Arguments:**
-
-- `value`: The value of the zero mode.
-"""
 
 
 class FourierExp2D(AbstractFourierOperator, strict=True):
@@ -98,8 +98,23 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
     scale.
     """
 
-    amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
-    length_scale: Float[Array, ""] = field(default=1.0, converter=error_if_not_positive)
+    amplitude: Float[Array, ""]
+    length_scale: Float[Array, ""]
+
+    def __init__(
+        self,
+        amplitude: float | Float[Array, ""] = 1.0,
+        length_scale: float | Float[Array, ""] = 1.0,
+    ):
+        """**Arguments:**
+
+        - `amplitude`: The amplitude of the operator, equal to $\\kappa$
+                in the above equation.
+        - `length_scale`: The length scale of the operator, equal to $\\xi$
+                    in the above equation.
+        """
+        self.amplitude = jnp.asarray(amplitude, dtype=float)
+        self.length_scale = error_if_not_positive(jnp.asarray(length_scale, dtype=float))
 
     @override
     def __call__(
@@ -109,15 +124,6 @@ class FourierExp2D(AbstractFourierOperator, strict=True):
         scaling = 1.0 / (k_sqr + jnp.divide(1, (self.length_scale) ** 2)) ** 1.5
         scaling *= jnp.divide(self.amplitude, 2 * jnp.pi * self.length_scale**3)
         return scaling
-
-
-FourierExp2D.__init__.__doc__ = """**Arguments:**
-
-- `amplitude`: The amplitude of the operator, equal to $\\kappa$
-           in the above equation.
-- `length_scale`: The length scale of the operator, equal to $\\xi$
-              in the above equation.
-"""
 
 
 class Lorenzian(AbstractFourierOperator, strict=True):
@@ -130,8 +136,23 @@ class Lorenzian(AbstractFourierOperator, strict=True):
     scale.
     """
 
-    amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
-    length_scale: Float[Array, ""] = field(default=1.0, converter=error_if_not_positive)
+    amplitude: Float[Array, ""]
+    length_scale: Float[Array, ""]
+
+    def __init__(
+        self,
+        amplitude: float | Float[Array, ""] = 1.0,
+        length_scale: float | Float[Array, ""] = 1.0,
+    ):
+        """**Arguments:**
+
+        - `amplitude`: The amplitude of the operator, equal to $\\kappa$
+                in the above equation.
+        - `length_scale`: The length scale of the operator, equal to $\\xi$
+                    in the above equation.
+        """
+        self.amplitude = jnp.asarray(amplitude, dtype=float)
+        self.length_scale = error_if_not_positive(jnp.asarray(length_scale, dtype=float))
 
     @overload
     def __call__(
@@ -139,7 +160,7 @@ class Lorenzian(AbstractFourierOperator, strict=True):
     ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
-    def __call__(
+    def __call__(  # type: ignore
         self, frequency_grid: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
@@ -156,15 +177,6 @@ class Lorenzian(AbstractFourierOperator, strict=True):
         return scaling
 
 
-Lorenzian.__init__.__doc__ = """**Arguments:**
-
-- `amplitude`: The amplitude of the operator, equal to $\\kappa$
-           in the above equation.
-- `length_scale`: The length scale of the operator, equal to $\\xi$
-              in the above equation.
-"""
-
-
 class FourierGaussian(AbstractFourierOperator, strict=True):
     r"""This operator represents a simple gaussian.
     Specifically, this is
@@ -177,8 +189,25 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
     squared.
     """
 
-    amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
-    b_factor: Float[Array, ""] = field(default=1.0, converter=error_if_negative)
+    amplitude: Float[Array, ""]
+    b_factor: Float[Array, ""]
+
+    def __init__(
+        self,
+        amplitude: float | Float[Array, ""] = 1.0,
+        b_factor: float | Float[Array, ""] = 1.0,
+    ):
+        """**Arguments:**
+
+        - `amplitude`:
+            The amplitude of the operator, equal to $\\kappa$
+            in the above equation.
+        - `b_factor`:
+            The B-factor of the gaussian, equal to $\\beta$
+            in the above equation.
+        """
+        self.amplitude = jnp.asarray(amplitude, dtype=float)
+        self.b_factor = error_if_not_positive(jnp.asarray(b_factor, dtype=float))
 
     @overload
     def __call__(
@@ -186,7 +215,7 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
     ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
-    def __call__(
+    def __call__(  # type: ignore
         self, frequency_grid: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
@@ -202,15 +231,6 @@ class FourierGaussian(AbstractFourierOperator, strict=True):
         return scaling
 
 
-FourierGaussian.__init__.__doc__ = """**Arguments:**
-
-- `amplitude`: The amplitude of the operator, equal to $\\kappa$
-           in the above equation.
-- `b_factor`: The variance of the real-space gaussian, equal to $\\beta$
-              in the above equation.
-"""
-
-
 class FourierGaussianWithRadialOffset(AbstractFourierOperator, strict=True):
     r"""This operator represents a gaussian with a radial offset.
     Specifically, this is
@@ -223,9 +243,30 @@ class FourierGaussianWithRadialOffset(AbstractFourierOperator, strict=True):
     squared.
     """
 
-    amplitude: Float[Array, ""] = field(default=1.0, converter=jnp.asarray)
-    b_factor: Float[Array, ""] = field(default=1.0, converter=error_if_negative)
-    offset: Float[Array, ""] = field(default=0.0, converter=error_if_negative)
+    amplitude: Float[Array, ""]
+    b_factor: Float[Array, ""]
+    offset: Float[Array, ""]
+
+    def __init__(
+        self,
+        amplitude: float | Float[Array, ""] = 1.0,
+        b_factor: float | Float[Array, ""] = 1.0,
+        offset: float | Float[Array, ""] = 0.0,
+    ):
+        """**Arguments:**
+
+        - `amplitude`:
+            The amplitude of the operator, equal to $\\kappa$
+            in the above equation.
+        - `b_factor`:
+            The B-factor of the gaussian, equal to $\\beta$
+            in the above equation.
+        - `offset`:
+            The radial offset of the gaussian.
+        """
+        self.amplitude = jnp.asarray(amplitude, dtype=float)
+        self.b_factor = error_if_not_positive(jnp.asarray(b_factor, dtype=float))
+        self.offset = error_if_negative(jnp.asarray(offset, dtype=float))
 
     @overload
     def __call__(
@@ -233,7 +274,7 @@ class FourierGaussianWithRadialOffset(AbstractFourierOperator, strict=True):
     ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
-    def __call__(
+    def __call__(  # type: ignore
         self, frequency_grid: Float[Array, "z_dim y_dim x_dim 3"]
     ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
@@ -247,13 +288,3 @@ class FourierGaussianWithRadialOffset(AbstractFourierOperator, strict=True):
         k = jnp.linalg.norm(frequency_grid, axis=-1)
         scaling = self.amplitude * jnp.exp(-0.25 * self.b_factor * (k - self.offset) ** 2)
         return scaling
-
-
-FourierGaussianWithRadialOffset.__init__.__doc__ = """**Arguments:**
-
-- `amplitude`: The amplitude of the operator, equal to $\\kappa$
-           in the above equation.
-- `b_factor`: The variance of the real-space gaussian, equal to $\\beta$
-              in the above equation.
-- `offset`: The radial offset of the gaussian.
-"""

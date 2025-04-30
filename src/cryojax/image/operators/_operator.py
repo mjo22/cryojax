@@ -83,17 +83,18 @@ class AbstractImageMultiplier(eqx.Module, strict=True):
 class Constant(AbstractImageOperator, strict=True):
     """An operator that is a constant."""
 
-    value: Float[Array, "..."] = eqx.field(default=1.0, converter=jnp.asarray)
+    value: Float[Array, "..."]
+
+    def __init__(self, value: float | Float[Array, "..."]):
+        """**Arguments:**
+
+        - `value`: The value of the constant
+        """
+        self.value = jnp.asarray(value)
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Float[Array, ""]:
         return self.value
-
-
-Constant.__init__.__doc__ = """**Arguments:**
-
-- `value`: The value of the constant
-"""
 
 
 class CustomOperator(AbstractImageOperator, strict=True):
@@ -109,6 +110,10 @@ class CustomOperator(AbstractImageOperator, strict=True):
         ],
         **kwargs: Any,
     ):
+        """**Arguments:**
+
+        - `fn`: The `Callable` wrapped into a `AbstractImageOperator`.
+        """
         self.fn = fn
         self.kwargs = kwargs
 
@@ -117,12 +122,6 @@ class CustomOperator(AbstractImageOperator, strict=True):
         self, *args: Any, **kwargs: Any
     ) -> Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]:
         return self.fn(*args, **kwargs, **self.kwargs)
-
-
-CustomOperator.__init__.__doc__ = """**Arguments:**
-
-- `fn`: The `Callable` wrapped into a `AbstractImageOperator`.
-"""
 
 
 class Empirical(AbstractImageOperator, strict=True):
@@ -135,19 +134,25 @@ class Empirical(AbstractImageOperator, strict=True):
         | Inexact[Array, "... z_dim y_dim x_dim"]
         | Float[Array, "..."]
     )
-    amplitude: Float[Array, "..."] = eqx.field(default=1.0, converter=jnp.asarray)
+
+    def __init__(
+        self,
+        array: (
+            Inexact[Array, "... y_dim x_dim"]
+            | Inexact[Array, "... z_dim y_dim x_dim"]
+            | Float[Array, "..."]
+        ),
+    ):
+        """**Arguments:**
+
+        - `array`: The array to be returned upon calling `Empirical`.
+        """
+        self.array = jnp.asarray(array)
 
     @override
     def __call__(self, *args: Any, **kwargs: Any) -> Inexact[Array, "y_dim x_dim"]:
         """Return the scaled and offset measurement."""
-        return self.amplitude * jax.lax.stop_gradient(self.array)
-
-
-Empirical.__init__.__doc__ = """**Arguments:**
-
-- `array`: The array to be returned upon calling `Empirical`.
-- `amplitude`: An amplitude scaling for `array`.
-"""
+        return self.array
 
 
 class ProductImageMultiplier(AbstractImageMultiplier, strict=True):
