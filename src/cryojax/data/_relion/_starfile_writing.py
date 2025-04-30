@@ -110,9 +110,9 @@ def write_starfile_with_particle_parameters(
     # thinks about "undoing" a translation, opposed to simulating an image at a coordinate
     particles_df["rlnOriginXAngst"] = -particle_parameters.pose.offset_x_in_angstroms
     particles_df["rlnOriginYAngst"] = -particle_parameters.pose.offset_y_in_angstroms
-    particles_df["rlnAngleRot"] = particle_parameters.pose.phi_angle
-    particles_df["rlnAngleTilt"] = particle_parameters.pose.theta_angle
-    particles_df["rlnAnglePsi"] = particle_parameters.pose.psi_angle
+    particles_df["rlnAngleRot"] = -particle_parameters.pose.phi_angle
+    particles_df["rlnAngleTilt"] = -particle_parameters.pose.theta_angle
+    particles_df["rlnAnglePsi"] = -particle_parameters.pose.psi_angle
     # CTF
     particles_df["rlnDefocusU"] = (
         particle_parameters.transfer_theory.ctf.defocus_in_angstroms

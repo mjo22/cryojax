@@ -163,9 +163,17 @@ class AbstractPose(Module, strict=True):
 
 class EulerAnglePose(AbstractPose, strict=True):
     r"""An `AbstractPose` represented by Euler angles.
-    Angles are given in degrees, and the sequence of rotations is
-    zyz, with `phi_angle` as the first euler angle, `theta_angle` as
-    the second, and `psi_angle` is the third.
+    Angles are given in degrees, and the sequence of rotations is a
+    zyz *extrinsic* rotation, with `phi_angle` as the first euler angle,
+    `theta_angle` as the second, and `psi_angle` is the third.
+
+    !!! info "Converting to RELION and FREALIGN convention"
+
+        RELION/FREALIGN convention is that the euler angles represent
+        a zyz *intrinsic* rotation that "undoes" the rotation in the image. cryoJAX
+        defines its convention to be a zyz *extrinsic* rotation that generates the
+        pose in the image. In order to convert to the RELION/FREALIGN convention,
+        simply **negate each euler angle**.
     """
 
     offset_x_in_angstroms: Float[Array, ""]
@@ -218,8 +226,7 @@ class EulerAnglePose(AbstractPose, strict=True):
     @classmethod
     def from_rotation(cls, rotation: SO3) -> Self:
         phi_angle, theta_angle, psi_angle = convert_quaternion_to_euler_angles(
-            rotation.wxyz,
-            convention="zyz",
+            rotation.wxyz, convention="zyz", extrinsic=True
         )
         return cls(phi_angle=phi_angle, theta_angle=theta_angle, psi_angle=psi_angle)
 

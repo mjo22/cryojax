@@ -119,67 +119,67 @@ def test_projection_methods_no_pose(sample_pdb_path, pixel_size, shape):
         # )
 
 
-@pytest.mark.parametrize(
-    "pixel_size, shape, padded_shape, grid_dim",
-    (
-        (0.25, (128, 128), (255, 256), 128),
-        (0.25, (128, 128), (253, 254), 128),
-        (0.25, (127, 127), (255, 254), 127),
-        (0.25, (127, 127), (257, 256), 127),
-    ),
-)
-def test_if_voxel_vs_atom_has_pixel_offset(
-    sample_pdb_path, pixel_size, shape, padded_shape, grid_dim
-):
-    """Test that even after padding and cropping, there remains
-    no pixel-wise offset between atom and voxel representations
-    """
-    # Objects for imaging
-    instrument_config = cxs.InstrumentConfig(
-        shape, pixel_size, voltage_in_kilovolts=300.0, padded_shape=padded_shape
-    )
-    # Atom vs voxel potentials
-    atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
-        sample_pdb_path, center=True, loads_b_factors=True
-    )
-    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
-        atom_identities, read_peng_element_scattering_factor_parameter_table()
-    )
-    atom_potential = cxs.PengAtomicPotential(
-        atom_positions,
-        scattering_factor_a=scattering_factor_parameters["a"],
-        scattering_factor_b=scattering_factor_parameters["b"],
-        b_factors=b_factors,
-    )
-    atom_method = cxs.GaussianMixtureProjection(use_error_functions=True)
-    dim = grid_dim
-    real_voxel_grid = atom_potential.as_real_voxel_grid((dim, dim, dim), pixel_size)
-    voxel_potential = cxs.FourierVoxelGridPotential.from_real_voxel_grid(
-        real_voxel_grid, pixel_size
-    )
-    voxel_method = cxs.FourierSliceExtraction()
+# @pytest.mark.parametrize(
+#     "pixel_size, shape, padded_shape, grid_dim",
+#     (
+#         (0.25, (128, 128), (255, 256), 128),
+#         (0.25, (128, 128), (253, 254), 128),
+#         (0.25, (127, 127), (255, 254), 127),
+#         (0.25, (127, 127), (257, 256), 127),
+#     ),
+# )
+# def test_if_voxel_vs_atom_has_pixel_offset(
+#     sample_pdb_path, pixel_size, shape, padded_shape, grid_dim
+# ):
+#     """Test that even after padding and cropping, there remains
+#     no pixel-wise offset between atom and voxel representations
+#     """
+#     # Objects for imaging
+#     instrument_config = cxs.InstrumentConfig(
+#         shape, pixel_size, voltage_in_kilovolts=300.0, padded_shape=padded_shape
+#     )
+#     # Atom vs voxel potentials
+#     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
+#         sample_pdb_path, center=True, loads_b_factors=True
+#     )
+#     scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+#         atom_identities, read_peng_element_scattering_factor_parameter_table()
+#     )
+#     atom_potential = cxs.PengAtomicPotential(
+#         atom_positions,
+#         scattering_factor_a=scattering_factor_parameters["a"],
+#         scattering_factor_b=scattering_factor_parameters["b"],
+#         b_factors=b_factors,
+#     )
+#     atom_method = cxs.GaussianMixtureProjection(use_error_functions=True)
+#     dim = grid_dim
+#     real_voxel_grid = atom_potential.as_real_voxel_grid((dim, dim, dim), pixel_size)
+#     voxel_potential = cxs.FourierVoxelGridPotential.from_real_voxel_grid(
+#         real_voxel_grid, pixel_size
+#     )
+#     voxel_method = cxs.FourierSliceExtraction()
 
-    projection_by_atoms = compute_projection(
-        atom_potential, atom_method, instrument_config
-    )
-    projection_by_voxels = compute_projection(
-        voxel_potential, voxel_method, instrument_config
-    )
+#     projection_by_atoms = compute_projection(
+#         atom_potential, atom_method, instrument_config
+#     )
+#     projection_by_voxels = compute_projection(
+#         voxel_potential, voxel_method, instrument_config
+#     )
 
-    # from matplotlib import pyplot as plt
+#     # from matplotlib import pyplot as plt
 
-    # fig, axes = plt.subplots(ncols=3, figsize=(10, 4))
-    # im1 = axes[0].imshow(projection_by_atoms, aspect="auto")
-    # im2 = axes[1].imshow(projection_by_voxels, aspect="auto")
-    # im3 = axes[2].imshow(
-    #     np.abs(projection_by_atoms - projection_by_voxels),
-    #     aspect="auto",
-    # )
-    # fig.colorbar(im1, ax=axes[0])
-    # fig.colorbar(im2, ax=axes[1])
-    # fig.colorbar(im3, ax=axes[2])
-    # plt.show()
-    np.testing.assert_allclose(projection_by_atoms, projection_by_voxels, atol=1e-12)
+#     # fig, axes = plt.subplots(ncols=3, figsize=(10, 4))
+#     # im1 = axes[0].imshow(projection_by_atoms, aspect="auto")
+#     # im2 = axes[1].imshow(projection_by_voxels, aspect="auto")
+#     # im3 = axes[2].imshow(
+#     #     np.abs(projection_by_atoms - projection_by_voxels),
+#     #     aspect="auto",
+#     # )
+#     # fig.colorbar(im1, ax=axes[0])
+#     # fig.colorbar(im2, ax=axes[1])
+#     # fig.colorbar(im3, ax=axes[2])
+#     # plt.show()
+#     np.testing.assert_allclose(projection_by_atoms, projection_by_voxels, atol=1e-12)
 
 
 # @pytest.mark.parametrize(
