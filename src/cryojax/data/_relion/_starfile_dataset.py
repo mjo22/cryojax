@@ -431,7 +431,7 @@ def _make_pytrees_from_starfile(
             (
                 jnp.asarray(particle_blocks["rlnCtfBfactor"])
                 if "rlnCtfBfactor" in particle_blocks.keys()
-                else jnp.zeros_like(defocus_in_angstroms)
+                else None
             ),
             (
                 jnp.asarray(particle_blocks["rlnCtfScalefactor"])
@@ -441,6 +441,7 @@ def _make_pytrees_from_starfile(
         )
     else:
         b_factor, scale_factor = None, None
+
     transfer_theory = _make_transfer_theory(
         defocus_in_angstroms,
         astigmatism_in_angstroms,

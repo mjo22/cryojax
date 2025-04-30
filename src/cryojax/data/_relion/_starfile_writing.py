@@ -134,13 +134,14 @@ def write_starfile_with_particle_parameters(
             particle_parameters.transfer_theory.envelope.amplitude
         )
     elif isinstance(particle_parameters.transfer_theory.envelope, Constant):
-        particles_df["rlnCtfBfactor"] = 0.0
+        # particles_df["rlnCtfBfactor"] = 0.0
         particles_df["rlnCtfScalefactor"] = (
             particle_parameters.transfer_theory.envelope.value
         )
     elif particle_parameters.transfer_theory.envelope is None:
-        particles_df["rlnCtfBfactor"] = 0.0
-        particles_df["rlnCtfScalefactor"] = 0.0
+        pass
+        # particles_df["rlnCtfBfactor"] = 0.0
+        # particles_df["rlnCtfScalefactor"] = 0.0
     else:
         raise NotImplementedError(
             "The envelope function in `RelionParticleParameters` must either be "
