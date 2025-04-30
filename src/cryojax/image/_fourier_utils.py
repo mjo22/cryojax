@@ -83,6 +83,7 @@ def enforce_self_conjugate_rfftn_components(
         real-valued. Supported modes are
 
         - "zero": sets components to zero
+        - "one": sets components to one
         - "real": takes real part of components
 
         By default, `mode = "zero"`.
@@ -94,13 +95,15 @@ def enforce_self_conjugate_rfftn_components(
     """
     if mode == "zero":
         replace_fn = lambda _: 0.0
+    elif mode == "one":
+        replace_fn = lambda _: 1.0
     elif mode == "real":
         replace_fn = lambda arr: arr.real
     else:
         raise NotImplementedError(
             f"`mode = {mode}` not supported for function "
             "`enforce_self_conjugate_rfftn_components`. "
-            "The supported modes are 'zero' and 'real'."
+            "The supported modes are 'zero', 'one', and 'real'."
         )
     if rfftn_array.ndim == 2:
         y_dim, x_dim = shape

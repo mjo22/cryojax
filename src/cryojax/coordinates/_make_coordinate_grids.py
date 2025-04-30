@@ -34,6 +34,38 @@ def make_coordinate_grid(
     return coordinate_grid
 
 
+def make_radial_coordinate_grid(
+    shape: tuple[int, ...],
+    grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
+) -> Float[Array, " *shape"]:
+    """Create a real-space radial coordinate system on a grid.
+
+    This wraps the function `make_coordinate_grid` to compute
+    the coordinate vector magnitude.
+
+    **Arguments:**
+
+    - `shape`:
+        Shape of the grid, with `ndim = len(shape)`.
+    - `grid_spacing`:
+        The grid spacing (i.e. pixel/voxel size),
+        in units of length.
+
+    **Returns:**
+
+    A radial coordinate system in real space.
+    """
+    # Make a cartesian grid
+    coordinate_grid = make_frequency_grid(
+        shape=shape,
+        grid_spacing=grid_spacing,
+    )
+    # Now compute the magnitude of the coordinate vector
+    radial_coordinate_grid = jnp.linalg.norm(coordinate_grid, axis=-1)
+
+    return radial_coordinate_grid
+
+
 def make_frequency_grid(
     shape: tuple[int, ...],
     grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
@@ -65,6 +97,45 @@ def make_frequency_grid(
         outputs_rfftfreqs=outputs_rfftfreqs,
     )
     return frequency_grid
+
+
+def make_radial_frequency_grid(
+    shape: tuple[int, ...],
+    grid_spacing: float | Float[np.ndarray, ""] | Float[Array, ""] = 1.0,
+    outputs_rfftfreqs: bool = True,
+) -> Float[Array, " *shape"]:
+    """Create a fourier-space radial coordinate system on a grid.
+    The zero-frequency component is in the corner.
+
+    This wraps the function `make_frequency_grid` to compute
+    the frequency magnitude, which is a common use case for
+    things like computing fourier shell correlations and power spectrums.
+
+    **Arguments:**
+
+    - `shape`:
+        Shape of the grid, with `ndim = len(shape)`.
+    - `grid_spacing`:
+        The grid spacing (i.e. pixel/voxel size),
+        in units of length.
+    - `outputs_rfftfreqs`:
+        Return a frequency grid for use with `jax.numpy.fft.rfftn`.
+        `shape[-1]` is the axis on which the negative
+        frequencies are omitted.
+
+    **Returns:**
+
+    A radial coordinate system in frequency space.
+    """
+    # Make a cartesian grid
+    frequency_grid = make_frequency_grid(
+        shape=shape, grid_spacing=grid_spacing, outputs_rfftfreqs=outputs_rfftfreqs
+    )
+
+    # Now compute the magnitude of the frequency vector
+    radial_frequency_grid = jnp.linalg.norm(frequency_grid, axis=-1)
+
+    return radial_frequency_grid
 
 
 def make_frequency_slice(
@@ -243,6 +314,6 @@ def _make_coordinates_or_frequencies_1d(
             raise ValueError("Internal error in `cryojax.coordinates`.")
         else:
             fn = jnp.fft.rfftfreq if outputs_rfftfreqs else jnp.fft.fftfreq
-            make_1d = lambda size, dx: fn(size, grid_spacing)
+            make_1d = lambda size, dx: fn(size, dx)
 
     return make_1d(size, grid_spacing)

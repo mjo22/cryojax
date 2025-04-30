@@ -19,6 +19,11 @@ from ._fft import (
     irfftn as irfftn,
     rfftn as rfftn,
 )
+from ._fourier_statistics import (
+    compute_binned_powerspectrum as compute_binned_powerspectrum,
+    compute_fourier_ring_correlation as compute_fourier_ring_correlation,
+    compute_fourier_shell_correlation as compute_fourier_shell_correlation,
+)
 from ._fourier_utils import (
     convert_fftn_to_rfftn as convert_fftn_to_rfftn,
     enforce_self_conjugate_rfftn_components as enforce_self_conjugate_rfftn_components,
@@ -32,7 +37,4 @@ from ._normalize import normalize_image as normalize_image, rescale_image as res
 from ._rescale_pixel_size import (
     maybe_rescale_pixel_size as maybe_rescale_pixel_size,
     rescale_pixel_size as rescale_pixel_size,
-)
-from ._spectrum import (
-    compute_radially_averaged_powerspectrum as compute_radially_averaged_powerspectrum,
 )

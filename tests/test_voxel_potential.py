@@ -10,6 +10,10 @@ from cryojax.image import downsample_with_fourier_cropping
 
 with install_import_hook("cryojax", "typeguard.typechecked"):
     import cryojax.simulator as cxs
+    from cryojax.constants import (
+        get_tabulated_scattering_factor_parameters,
+        read_peng_element_scattering_factor_parameter_table,
+    )
     from cryojax.coordinates import make_coordinate_grid
     from cryojax.image import ifftn
     from cryojax.io import read_atoms_from_pdb
@@ -44,10 +48,10 @@ def test_voxel_potential_loaders():
 
     assert isinstance(
         fourier_potential.frequency_slice_in_pixels,
-        Float[Array, "1 _ _ 3"],
+        Float[Array, "1 _ _ 3"],  # type: ignore
     )
-    assert isinstance(real_potential.coordinate_grid_in_pixels, Float[Array, "_ _ _ 3"])
-    assert isinstance(cloud_potential.coordinate_list_in_pixels, Float[Array, "_ 3"])
+    assert isinstance(real_potential.coordinate_grid_in_pixels, Float[Array, "_ _ _ 3"])  # type: ignore
+    assert isinstance(cloud_potential.coordinate_list_in_pixels, Float[Array, "_ 3"])  # type: ignore
 
 
 #
@@ -68,7 +72,14 @@ def test_fourier_vs_real_voxel_potential_agreement(sample_pdb_path):
         select="not element H",
     )
     # Load atomistic potential
-    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_elements, read_peng_element_scattering_factor_parameter_table()
+    )
+    atomic_potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+    )
     # Build the grid
     potential_as_real_voxel_grid = atomic_potential.as_real_voxel_grid(
         n_voxels_per_side, voxel_size
@@ -109,7 +120,14 @@ def test_downsampled_voxel_potential_agreement(sample_pdb_path):
         select="not element H",
     )
     # Load atomistic potential
-    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_elements, read_peng_element_scattering_factor_parameter_table()
+    )
+    atomic_potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+    )
     # Build the grids
     low_resolution_potential_grid = atomic_potential.as_real_voxel_grid(
         downsampled_shape, downsampled_voxel_size
@@ -141,7 +159,14 @@ def test_z_plane_batched_vs_non_batched_loop_agreement(
         select="not element H",
     )
     # Load atomistic potential
-    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_elements, read_peng_element_scattering_factor_parameter_table()
+    )
+    atomic_potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+    )
     # Build the grid
     voxels = atomic_potential.as_real_voxel_grid(shape, voxel_size)
     voxels_with_batching = atomic_potential.as_real_voxel_grid(
@@ -164,7 +189,14 @@ def test_compute_rectangular_voxel_grid(sample_pdb_path, shape):
         select="not element H",
     )
     # Load atomistic potential
-    atomic_potential = PengAtomicPotential(atom_positions, atom_elements)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_elements, read_peng_element_scattering_factor_parameter_table()
+    )
+    atomic_potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+    )
     # Build the grid
     voxels = atomic_potential.as_real_voxel_grid(shape, voxel_size)
     assert voxels.shape == shape
@@ -186,7 +218,9 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         ff_a = ff_a.at[largest_atom].add(1.0)
 
         # Build the potential
-        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+        atomic_potential = GaussianMixtureAtomicPotential(
+            atom_positions, ff_a, ff_b / (8 * jnp.pi**2)
+        )
         real_voxel_grid = atomic_potential.as_real_voxel_grid(
             n_voxels_per_side, voxel_size
         )
@@ -212,7 +246,9 @@ class TestBuildRealSpaceVoxelsFromAtoms:
         ) = toy_gaussian_cloud
 
         # Build the potential
-        atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+        atomic_potential = GaussianMixtureAtomicPotential(
+            atom_positions, ff_a, ff_b / (8 * jnp.pi**2)
+        )
         real_voxel_grid = atomic_potential.as_real_voxel_grid(
             n_voxels_per_side, voxel_size
         )
@@ -232,7 +268,11 @@ class TestBuildRealSpaceVoxelsFromAtoms:
     #     ) = toy_gaussian_cloud
     #     coordinate_grid = make_coordinate_grid(n_voxels_per_side, voxel_size)
     #     # Build the potential
-    #     atomic_potential = GaussianMixtureAtomicPotential(atom_positions, ff_a, ff_b)
+    #     atomic_potential = GaussianMixtureAtomicPotential(
+    #         atom_positions,
+    #         ff_a,
+    #         ff_b / (8 * jnp.pi**2)
+    #     )
     #     real_voxel_grid = atomic_potential.as_real_voxel_grid(coordinate_grid)
     #     fourier_potential = FourierVoxelGridPotential.from_real_voxel_grid(
     #         real_voxel_grid, voxel_size
@@ -290,18 +330,18 @@ class TestBuildVoxelsFromTrajectories:
 
         make_voxel_grids = jax.vmap(
             lambda pos, ff_a, ff_b: GaussianMixtureAtomicPotential(
-                pos, ff_a, ff_b
+                pos, ff_a, ff_b / (8 * jnp.pi**2)
             ).as_real_voxel_grid(n_voxels_per_side, voxel_size),
             in_axes=[0, None, None],
         )
         traj_voxels = make_voxel_grids(traj, ff_a, ff_b)
 
         voxel1 = GaussianMixtureAtomicPotential(
-            atom_positions, ff_a, ff_b
+            atom_positions, ff_a, ff_b / (8 * jnp.pi**2)
         ).as_real_voxel_grid(n_voxels_per_side, voxel_size)
 
         voxel2 = GaussianMixtureAtomicPotential(
-            second_set_of_positions, ff_a, ff_b
+            second_set_of_positions, ff_a, ff_b / (8 * jnp.pi**2)
         ).as_real_voxel_grid(n_voxels_per_side, voxel_size)
 
         np.testing.assert_allclose(traj_voxels[0], voxel1, atol=1e-12)
