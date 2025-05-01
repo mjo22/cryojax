@@ -9,12 +9,15 @@
 
     where $\vec{x}'$ and $\vec{x}$ are the 3D coordinate vectors in the rotated and unrotated frames, and $R$ and $\vec{t} = (t_x, t_y, 0)$ are the rotation and in-plane translation vector.
 
-    Some standard softwares define the rotation and translation to "undo" the observed pose.
-    This can be captured by a translation to the center, followed by a rotation:
+    Standard softwares such as RELION and cisTEM define the rotation and translation to
+    "undo" the observed pose. This can be captured by a translation to the center, followed by a rotation:
 
     $$\vec{x} = (\vec{x}' + \vec{t}^*) R^*.$$
 
-    When $R^* = R^T$ and $\vec{t}^* = -\vec{t}$, this equation can be inverted for $\vec{x}'$ to recover the `cryojax` convention. To actually convert between conventions for standard softwares such as RELION, for the translation we indeed have $\vec{t}^* = -\vec{t}$, but for the rotation we actually have $R^* = R$ (therefore, no conversion is necessary). This discrepency can perhaps be explained by the fact that `cryojax` defines its rotation parameterization with respect to a real-space rotation, but other softwares may define them with respect to fourier space. Real vs fourier space coordinate rotations differ only by transpose.
+    When $R^* = R^T$ and $\vec{t}^* = -\vec{t}$, this equation can be inverted for $\vec{x}'$ to recover the cryoJAX convention.
+
+    Additional considerations are required to convert between RELION and cisTEM euler angles since this is a composition
+    of three rotations. See the `EulerAnglePose` documentation for more information.
 
 !!! info "Degrees vs radians conventions"
     Angular quantities in `cryojax` are always in *degrees*.

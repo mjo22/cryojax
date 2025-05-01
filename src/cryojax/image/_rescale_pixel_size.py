@@ -14,8 +14,8 @@ from ._fft import fftn, ifftn, irfftn, rfftn
 
 def rescale_pixel_size(
     image: Float[Array, "y_dim x_dim"],
-    current_pixel_size: Float[Array, ""],
-    new_pixel_size: Float[Array, ""],
+    current_pixel_size: Float[Array, ""] | float,
+    new_pixel_size: Float[Array, ""] | float,
     method: str = "bicubic",
     antialias: bool = True,
 ) -> Float[Array, "y_dim x_dim"]:
@@ -74,8 +74,8 @@ def maybe_rescale_pixel_size(
         Inexact[Array, "padded_y_dim padded_x_dim"]
         | Complex[Array, "padded_y_dim padded_x_dim//2+1"]
     ),
-    current_pixel_size: Float[Array, ""],
-    new_pixel_size: Float[Array, ""],
+    current_pixel_size: Float[Array, ""] | float,
+    new_pixel_size: Float[Array, ""] | float,
     input_is_real: bool = True,
     input_is_rfft: bool = True,
     shape_in_real_space: Optional[tuple[int, int]] = None,

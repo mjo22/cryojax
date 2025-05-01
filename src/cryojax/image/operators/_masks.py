@@ -20,7 +20,7 @@ class AbstractMask(AbstractImageMultiplier, strict=True):
     ) -> Float[Array, "y_dim x_dim"]: ...
 
     @overload
-    def __call__(
+    def __call__(  # type: ignore
         self, image: Float[Array, "z_dim y_dim x_dim"]
     ) -> Float[Array, "z_dim y_dim x_dim"]: ...
 
@@ -233,7 +233,7 @@ def _compute_circular_or_spherical_mask(
 
 
 @overload
-def _compute_circular_or_spherical_mask(
+def _compute_circular_or_spherical_mask(  # type: ignore
     coordinate_grid: Float[Array, "z_dim y_dim x_dim 3"],
     radius: Float[Array, ""],
     rolloff_width: Float[Array, ""],
@@ -332,9 +332,11 @@ def _compute_cylindrical_mask_2d_without_length(
     angle_in_radians = jnp.deg2rad(angle)
     cos_angle = jnp.cos(angle_in_radians)
     sin_angle = jnp.sin(angle_in_radians)
-    cylinder_radial_coordinate_grid = jnp.sqrt(
-        (coordinate_grid[..., 0] * sin_angle + coordinate_grid[..., 1] * cos_angle) ** 2
-    )
+    x, y = coordinate_grid[..., 0], coordinate_grid[..., 1]
+    y_rotated = x * sin_angle + y * cos_angle
+    # ... the mask in 2D is just a rectangle; the cylindrical coordinate is
+    # the rotated y coordinate
+    cylinder_radial_coordinate_grid = jnp.sqrt(y_rotated**2)
 
     def compute_mask_at_coordinate(cylinder_radial_coordinate):
         r = cylinder_radial_coordinate
@@ -365,12 +367,10 @@ def _compute_cylindrical_mask_2d_with_length(
     angle_in_radians = jnp.deg2rad(angle)
     cos_angle = jnp.cos(angle_in_radians)
     sin_angle = jnp.sin(angle_in_radians)
-    cylinder_r_coordinate_grid = (
-        coordinate_grid[..., 0] * sin_angle + coordinate_grid[..., 1] * cos_angle
-    )
-    cylinder_z_coordinate_grid = (
-        coordinate_grid[..., 0] * cos_angle - coordinate_grid[..., 1] * sin_angle
-    )
+    x, y = coordinate_grid[..., 0], coordinate_grid[..., 1]
+    x_rotated, y_rotated = x * cos_angle - y * sin_angle, x * sin_angle + y * cos_angle
+    cylinder_r_coordinate_grid = y_rotated
+    cylinder_z_coordinate_grid = x_rotated
 
     is_in_rect_fn = lambda abs_x, abs_y, s_x, s_y: jnp.logical_and(
         abs_x <= s_x / 2, abs_y <= s_y / 2

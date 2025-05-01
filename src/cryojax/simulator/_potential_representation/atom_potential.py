@@ -12,12 +12,9 @@ import jax.numpy as jnp
 import jax.scipy as jsp
 import jax.tree_util as jtu
 import numpy as np
-from jaxtyping import Array, Float, Int, PyTree
+from jaxtyping import Array, Float, PyTree
 
-from ...constants import (
-    get_tabulated_scattering_factor_parameters,
-    read_peng_element_scattering_factor_parameter_table,
-)
+from ...constants._conventions import convert_variance_to_b_factor
 from ...coordinates import make_1d_coordinate_grid
 from ...internal import error_if_negative, error_if_not_positive
 from .._pose import AbstractPose
@@ -92,9 +89,9 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
     gaussians.
 
     The naming and numerical convention of parameters `gaussian_amplitudes` and
-    `gaussian_widths` follows "Robust Parameterization of Elastic and Absorptive
+    `gaussian_variances` follows "Robust Parameterization of Elastic and Absorptive
     Electron Atomic Scattering Factors" by Peng et al. (1996), where $a_i$ are
-    the `gaussian_amplitudes` and $b_i$ are the `gaussian_widths`.
+    the `gaussian_amplitudes` and $b_i$ are the `gaussian_variances` multiplied by $8\pi^2$.
 
     !!! info
         In order to load a `GaussianMixtureAtomicPotential` from tabulated
@@ -110,18 +107,20 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
 
         # Load positions of atoms and one-hot encoded atom names
         atom_positions, atom_identities = read_atoms_from_pdb(...)
-        scattering_factor_a, scattering_factor_b = get_tabulated_scattering_factor_parameters(
-            atom_identities, read_element_scattering_factor_parameter_table()
+        scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+            atom_identities, read_peng_element_scattering_factor_parameter_table()
         )
         potential = GaussianMixtureAtomicPotential(
-            atom_positions, scattering_factor_a, scattering_factor_b
+            atom_positions,
+            gaussian_amplitudes=scattering_factor_parameters["a"],
+            gaussian_variances=scattering_factor_parameters["b"] / (8 * jnp.pi**2),
         )
         ```
     """  # noqa: E501
 
     atom_positions: Float[Array, "n_atoms 3"]
     gaussian_amplitudes: Float[Array, "n_atoms n_gaussians_per_atom"]
-    gaussian_widths: Float[Array, "n_atoms n_gaussians_per_atom"]
+    gaussian_variances: Float[Array, "n_atoms n_gaussians_per_atom"]
 
     def __init__(
         self,
@@ -130,7 +129,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             Float[Array, "n_atoms n_gaussians_per_atom"]
             | Float[np.ndarray, "n_atoms n_gaussians_per_atom"]
         ),
-        gaussian_widths: (
+        gaussian_variances: (
             Float[Array, "n_atoms n_gaussians_per_atom"]
             | Float[np.ndarray, "n_atoms n_gaussians_per_atom"]
         ),
@@ -141,14 +140,14 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
         - `gaussian_amplitudes`:
             The strength for each atom and for each gaussian per atom.
             This has units of angstroms.
-        - `gaussian_widths`:
+        - `gaussian_variances`:
             The variance (up to numerical constants) for each atom and
             for each gaussian per atom. This has units of angstroms
             squared.
         """
         self.atom_positions = jnp.asarray(atom_positions)
         self.gaussian_amplitudes = jnp.asarray(gaussian_amplitudes)
-        self.gaussian_widths = error_if_not_positive(jnp.asarray(gaussian_widths))
+        self.gaussian_variances = error_if_not_positive(jnp.asarray(gaussian_variances))
 
     @override
     def as_real_voxel_grid(
@@ -187,7 +186,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             jnp.asarray(voxel_size),
             self.atom_positions,
             self.gaussian_amplitudes,
-            self.gaussian_widths,
+            convert_variance_to_b_factor(self.gaussian_variances),
             batch_size_for_z_planes=batch_size_for_z_planes,
             n_batches_of_atoms=n_batches_of_atoms,
         )
@@ -210,7 +209,14 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
     # Load positions of atoms and one-hot encoded atom names
     filename = "example.pdb"
     atom_positions, atom_identities = read_atoms_from_pdb(filename)
-    potential = PengAtomicPotential(atom_positions, atom_identities)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_identities, read_peng_element_scattering_factor_parameter_table()
+        )
+    potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+    )
     ```
 
     Alternatively, use the following to load with B-factors:
@@ -224,7 +230,15 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         filename, get_b_factors=True
     )
-    potential = PengAtomicPotential(atom_positions, atom_identities, b_factors)
+    scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
+        atom_identities, read_peng_element_scattering_factor_parameter_table()
+        )
+    potential = PengAtomicPotential(
+        atom_positions,
+        scattering_factor_a=scattering_factor_parameters["a"],
+        scattering_factor_b=scattering_factor_parameters["b"],
+        b_factors=b_factors,
+    )
     ```
 
     **References:**
@@ -244,39 +258,26 @@ class PengAtomicPotential(AbstractTabulatedAtomicPotential, strict=True):
     def __init__(
         self,
         atom_positions: Float[Array, "n_atoms 3"] | Float[np.ndarray, "n_atoms 3"],
-        atom_identities: Int[Array, " n_atoms"] | Int[np.ndarray, " n_atoms"],
+        scattering_factor_a: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
+        scattering_factor_b: Float[Array, "n_atoms 5"] | Float[np.ndarray, "n_atoms 5"],
         b_factors: Optional[
             Float[Array, " n_atoms"] | Float[np.ndarray, " n_atoms"]
-        ] = None,
-        *,
-        scattering_factor_parameter_table: Optional[
-            Float[Array, "2 n_elements 5"] | Float[np.ndarray, "2 n_elements 5"]
         ] = None,
     ):
         """**Arguments:**
 
         - `atom_positions`:
             The coordinates of the atoms in units of angstroms.
-        - `atom_identities`:
-            Array containing the index of the one-hot encoded atom names.
-            Hydrogen is "1", Carbon is "6", Nitrogen is "7", etc.
+        - `scattering_factor_a`:
+            Scattering factor parameters $\\{a_i\\}_{i = 1}^5$
+            for each atom from Peng et al. (1996).
+        - `scattering_factor_b`:
+            Scattering factor parameters $\\{b_i\\}_{i = 1}^5$
+            for each atom from Peng et al. (1996).
         - `b_factors`:
             The B-factors applied to each atom.
-        - `scattering_factor_parameter_table`:
-            The scattering factor parameter table from Peng et al. (1996). If
-            not provided, load from `cryojax.constants`.
-
         """
-        if scattering_factor_parameter_table is None:
-            scattering_factor_parameter_table = (
-                read_peng_element_scattering_factor_parameter_table()
-            )
         self.atom_positions = jnp.asarray(atom_positions)
-        scattering_factor_a, scattering_factor_b = (
-            get_tabulated_scattering_factor_parameters(
-                atom_identities, scattering_factor_parameter_table
-            )
-        )
         self.scattering_factor_a = jnp.asarray(scattering_factor_a)
         self.scattering_factor_b = jnp.asarray(scattering_factor_b)
         if b_factors is None:

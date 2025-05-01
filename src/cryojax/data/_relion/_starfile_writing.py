@@ -110,9 +110,9 @@ def write_starfile_with_particle_parameters(
     # thinks about "undoing" a translation, opposed to simulating an image at a coordinate
     particles_df["rlnOriginXAngst"] = -particle_parameters.pose.offset_x_in_angstroms
     particles_df["rlnOriginYAngst"] = -particle_parameters.pose.offset_y_in_angstroms
-    particles_df["rlnAngleRot"] = particle_parameters.pose.phi_angle
-    particles_df["rlnAngleTilt"] = particle_parameters.pose.theta_angle
-    particles_df["rlnAnglePsi"] = particle_parameters.pose.psi_angle
+    particles_df["rlnAngleRot"] = -particle_parameters.pose.phi_angle
+    particles_df["rlnAngleTilt"] = -particle_parameters.pose.theta_angle
+    particles_df["rlnAnglePsi"] = -particle_parameters.pose.psi_angle
     # CTF
     particles_df["rlnDefocusU"] = (
         particle_parameters.transfer_theory.ctf.defocus_in_angstroms
@@ -401,7 +401,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
         compute_image_stack(
             test_particle_parameters,
             constant_args,
-            jax.tree_map(lambda x: x[0:1], per_particle_args),
+            jax.tree.map(lambda x: x[0:1], per_particle_args),
         )
     except Exception as e:
         raise RuntimeError(
@@ -495,7 +495,7 @@ def _write_simulated_image_stack_from_starfile_serial(
             image_stack[i] = compute_image_fn(
                 param_dataset[indices[i]],
                 constant_args,
-                jax.tree_map(lambda x: x[indices[i]], per_particle_args),  # type: ignore
+                jax.tree.map(lambda x: x[indices[i]], per_particle_args),  # type: ignore
             )
 
         # ... write the image stack to an MRC file

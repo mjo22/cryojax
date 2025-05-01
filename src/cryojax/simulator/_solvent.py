@@ -10,6 +10,7 @@ import jax.numpy as jnp
 import jax.random as jr
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
+from ..constants import PARKHURST2024_POWER_CONSTANTS
 from ..image import ifftn, irfftn
 from ..image.operators import (
     AbstractFourierOperator,
@@ -32,7 +33,7 @@ class SolventMixturePower(AbstractFourierOperator, strict=True):
     expression is given by
 
     .. math::
-        P(k) = a_1 \exp(-k^2/(2 s_1^2)) + a_2 \exp(-(k-m_2)^2/(2 s_2^2)),
+        P(k) = a_1 \exp(-k^2/(2 s_1^2)) + a_2 \exp(-(k-m)^2/(2 s_2^2)),
 
     where index `1` is for the envelope and index `2` is for the high-resolution peak.
 
@@ -49,9 +50,16 @@ class SolventMixturePower(AbstractFourierOperator, strict=True):
         peak_function: FourierOperatorLike | None = None,
     ):
         if envelope_function is None:
-            self.envelope_function = FourierGaussian()
+            self.envelope_function = FourierGaussian(
+                amplitude=PARKHURST2024_POWER_CONSTANTS.a_1,
+                b_factor=2 / PARKHURST2024_POWER_CONSTANTS.s_1**2,
+            )
         if peak_function is None:
-            self.peak_function = FourierGaussianWithRadialOffset()
+            self.peak_function = FourierGaussianWithRadialOffset(
+                amplitude=PARKHURST2024_POWER_CONSTANTS.a_2,
+                b_factor=2 / PARKHURST2024_POWER_CONSTANTS.s_2**2,
+                offset=PARKHURST2024_POWER_CONSTANTS.m,
+            )
 
     @override
     def __call__(
