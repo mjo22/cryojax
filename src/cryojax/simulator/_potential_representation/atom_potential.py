@@ -186,7 +186,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             jnp.asarray(voxel_size),
             self.atom_positions,
             self.gaussian_amplitudes,
-            convert_variance_to_b_factor(self.gaussian_variances),
+            jnp.asarray(convert_variance_to_b_factor(self.gaussian_variances)),
             batch_size_for_z_planes=batch_size_for_z_planes,
             n_batches_of_atoms=n_batches_of_atoms,
         )
