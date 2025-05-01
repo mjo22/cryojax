@@ -400,7 +400,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
         compute_image_stack(
             test_particle_parameters,
             constant_args,
-            jax.tree_map(lambda x: x[0:1], per_particle_args),
+            jax.tree.map(lambda x: x[0:1], per_particle_args),
         )
     except Exception as e:
         raise RuntimeError(
@@ -494,7 +494,7 @@ def _write_simulated_image_stack_from_starfile_serial(
             image_stack[i] = compute_image_fn(
                 param_dataset[indices[i]],
                 constant_args,
-                jax.tree_map(lambda x: x[indices[i]], per_particle_args),  # type: ignore
+                jax.tree.map(lambda x: x[indices[i]], per_particle_args),  # type: ignore
             )
 
         # ... write the image stack to an MRC file
