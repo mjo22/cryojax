@@ -32,7 +32,7 @@ from ._potential_representation import (
     AbstractTabulatedAtomicPotential as AbstractTabulatedAtomicPotential,
     AbstractVoxelPotential as AbstractVoxelPotential,
     FourierVoxelGridPotential as FourierVoxelGridPotential,
-    FourierVoxelGridPotentialInterpolator as FourierVoxelGridPotentialInterpolator,
+    FourierVoxelSplinePotential as FourierVoxelSplinePotential,
     GaussianMixtureAtomicPotential as GaussianMixtureAtomicPotential,
     PengAtomicPotential as PengAtomicPotential,
     RealVoxelCloudPotential as RealVoxelCloudPotential,

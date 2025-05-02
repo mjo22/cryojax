@@ -1,5 +1,6 @@
 import warnings
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -59,9 +60,7 @@ def test_projection_methods_no_pose(sample_pdb_path, pixel_size, shape):
     real_voxel_grid = base_potential.as_real_voxel_grid((dim, dim, dim), pixel_size)
     other_potentials = [
         cxs.FourierVoxelGridPotential.from_real_voxel_grid(real_voxel_grid, pixel_size),
-        cxs.FourierVoxelGridPotentialInterpolator.from_real_voxel_grid(
-            real_voxel_grid, pixel_size
-        ),
+        make_spline_potential(real_voxel_grid, pixel_size),
         cxs.GaussianMixtureAtomicPotential(
             atom_positions,
             scattering_factor_parameters["a"],
@@ -72,7 +71,7 @@ def test_projection_methods_no_pose(sample_pdb_path, pixel_size, shape):
     #     cxs.RealVoxelCloudPotential.from_real_voxel_grid(real_voxel_grid, pixel_size),
     # ]
     other_projection_methods = [
-        cxs.FourierSliceExtraction(interpolation_order=1),
+        cxs.FourierSliceExtraction(),
         cxs.FourierSliceExtraction(),
         base_method,
     ]
@@ -238,7 +237,7 @@ def test_projection_methods_no_pose(sample_pdb_path, pixel_size, shape):
 #     #     cxs.RealVoxelCloudPotential.from_real_voxel_grid(real_voxel_grid, pixel_size),
 #     # ]
 #     other_projection_methods = [
-#         cxs.FourierSliceExtraction(interpolation_order=1),
+#         cxs.FourierSliceExtraction(),
 #         cxs.FourierSliceExtraction(),
 #         base_method,
 #     ]
@@ -303,6 +302,7 @@ def test_projection_methods_no_pose(sample_pdb_path, pixel_size, shape):
 #     )
 
 
+@eqx.filter_jit
 def compute_projection(
     potential: cxs.AbstractPotentialRepresentation,
     method: cxs.AbstractPotentialIntegrator,
@@ -320,6 +320,7 @@ def compute_projection(
     )
 
 
+@eqx.filter_jit
 def compute_projection_at_pose(
     potential: cxs.AbstractPotentialRepresentation,
     method: cxs.AbstractPotentialIntegrator,
@@ -343,4 +344,11 @@ def compute_projection_at_pose(
             s=config.padded_shape,
         ),
         config.shape,
+    )
+
+
+@eqx.filter_jit
+def make_spline_potential(real_voxel_grid, voxel_size):
+    return cxs.FourierVoxelSplinePotential.from_real_voxel_grid(
+        real_voxel_grid, voxel_size
     )

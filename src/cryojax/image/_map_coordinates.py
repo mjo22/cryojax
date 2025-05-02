@@ -10,7 +10,6 @@ import itertools
 import operator
 from typing import List, Sequence, Tuple
 
-import jax
 import jax.numpy as jnp
 import lineax as lx
 from jax import lax, util, vmap
@@ -18,11 +17,11 @@ from jaxtyping import Array, ArrayLike
 
 
 def map_coordinates(
-    input: ArrayLike,
-    coordinates: Sequence[ArrayLike],
+    input: Array,
+    coordinates: Sequence[Array],
     order: int,
     mode: str = "fill",
-    cval: ArrayLike = 0.0,
+    cval: float | complex = 0.0,
 ):
     """
     Similar to `scipy.map_coordinates`, but diverges from the API.
@@ -47,10 +46,10 @@ def map_coordinates(
 
 
 def map_coordinates_with_cubic_spline(
-    coefficients: ArrayLike,
-    coordinates: Sequence[ArrayLike],
+    coefficients: Array,
+    coordinates: Sequence[Array],
     mode: str = "fill",
-    cval: ArrayLike = 0.0,
+    cval: float | complex = 0.0,
 ):
     """
     Similar to scipy.map_coordinates, but takes cubic spline coefficients as input.
@@ -69,7 +68,6 @@ def map_coordinates_with_cubic_spline(
     return _map_coordinates_with_cubic_spline(coefficients, coordinates, mode, cval)
 
 
-@jax.jit
 def compute_spline_coefficients(data: Array) -> Array:
     """Solve for the spline coefficients of an input array."""
     ndim = data.ndim
@@ -84,13 +82,12 @@ def compute_spline_coefficients(data: Array) -> Array:
     return data
 
 
-@functools.partial(jax.jit, static_argnums=(2, 3, 4))
 def _map_coordinates_nn_or_linear(
     input: ArrayLike,
     coordinates: Sequence[ArrayLike],
     order: int,
     mode: str,
-    cval: ArrayLike,
+    cval: float | complex,
 ) -> Array:
     input_arr = jnp.asarray(input)
     coordinate_arrs = [jnp.asarray(c) for c in coordinates]
@@ -127,7 +124,6 @@ def _map_coordinates_nn_or_linear(
     return result.astype(input_arr.dtype)
 
 
-@functools.partial(jax.jit, static_argnums=(2, 3))
 def _map_coordinates_with_cubic_spline(
     coefficients: ArrayLike,
     coordinates: Sequence[ArrayLike],
@@ -225,7 +221,7 @@ def _spline_basis(t: Array) -> Array:
     fn2 = lambda t: 4 - 6 * t**2 + 3 * t**3
     return jnp.where(
         at >= 1,
-        jnp.where(at <= 2, fn1(at), 0),
+        jnp.where(at <= 2, fn1(at), 0),  # type: ignore
         jnp.where(at <= 1, fn2(at), 0),  # type: ignore
     )
 

@@ -20,7 +20,7 @@ from ...image import (
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import (
     FourierVoxelGridPotential,
-    FourierVoxelGridPotentialInterpolator,
+    FourierVoxelSplinePotential,
 )
 from .base_potential_integrator import AbstractVoxelPotentialIntegrator
 
@@ -33,9 +33,8 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
     """
 
     pixel_rescaling_method: Optional[str]
-    interpolation_order: int
-    interpolation_mode: str
-    interpolation_cval: complex
+    out_of_bounds_mode: str
+    fill_value: complex
 
     is_projection_approximation: ClassVar[bool] = True
 
@@ -43,36 +42,29 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
         self,
         *,
         pixel_rescaling_method: Optional[str] = None,
-        interpolation_order: int = 1,
-        interpolation_mode: str = "fill",
-        interpolation_cval: complex = 0.0 + 0.0j,
+        out_of_bounds_mode: str = "fill",
+        fill_value: complex = 0.0 + 0.0j,
     ):
         """**Arguments:**
 
         - `pixel_rescaling_method`:
             Method for rescaling the final image to the `InstrumentConfig`
             pixel size. See `cryojax.image.rescale_pixel_size` for documentation.
-        - `interpolation_order`:
-            The interpolation order. This can be `0` (nearest-neighbor), `1`
-            (linear), or `3` (cubic).
-            Note that this argument is ignored when using this object with a
-            `FourierVoxelGridInterpolator`.
-        - `interpolation_mode`:
+        - `out_of_bounds_mode`:
             Specify how to handle out of bounds indexing. See
             `cryojax.image.map_coordinates` for documentation.
-        - `interpolation_cval`:
+        - `fill_value`:
             Value for filling out-of-bounds indices. Used only when
-            `interpolation_mode = "fill"`.
+            `out_of_bounds_mode = "fill"`.
         """
         self.pixel_rescaling_method = pixel_rescaling_method
-        self.interpolation_order = interpolation_order
-        self.interpolation_mode = interpolation_mode
-        self.interpolation_cval = interpolation_cval
+        self.out_of_bounds_mode = out_of_bounds_mode
+        self.fill_value = fill_value
 
     @override
     def compute_integrated_potential(
         self,
-        potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
+        potential: FourierVoxelGridPotential | FourierVoxelSplinePotential,
         instrument_config: InstrumentConfig,
         outputs_real_space: bool = False,
     ) -> (
@@ -104,9 +96,9 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
                 "Only cubic boxes are supported for fourier slice extraction."
             )
         # Compute the fourier projection
-        if isinstance(potential, FourierVoxelGridPotentialInterpolator):
+        if isinstance(potential, FourierVoxelSplinePotential):
             fourier_projection = self.extract_fourier_slice_from_spline_coefficients(
-                potential.coefficients,
+                potential.spline_coefficients,
                 frequency_slice,
             )
         elif isinstance(potential, FourierVoxelGridPotential):
@@ -117,7 +109,7 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
         else:
             raise ValueError(
                 "Supported types for `potential` are `FourierVoxelGridPotential` and "
-                "`FourierVoxelGridPotentialInterpolator`."
+                "`FourierVoxelSplinePotential`."
             )
 
         # Resize the image to match the InstrumentConfig.padded_shape
@@ -169,8 +161,8 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
         return _extract_slice_with_cubic_spline(
             spline_coefficients,
             frequency_slice_in_pixels,
-            mode=self.interpolation_mode,
-            cval=self.interpolation_cval,
+            mode=self.out_of_bounds_mode,
+            cval=self.fill_value,
         )
 
     def extract_fourier_slice_from_grid_points(
@@ -203,9 +195,9 @@ class FourierSliceExtraction(AbstractVoxelPotentialIntegrator, strict=True):
         return _extract_slice(
             fourier_voxel_grid,
             frequency_slice_in_pixels,
-            interpolation_order=self.interpolation_order,
-            mode=self.interpolation_mode,
-            cval=self.interpolation_cval,
+            interpolation_order=1,
+            mode=self.out_of_bounds_mode,
+            cval=self.fill_value,
         )
 
 
@@ -218,9 +210,8 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
     """
 
     pixel_rescaling_method: Optional[str]
-    interpolation_order: int
-    interpolation_mode: str
-    interpolation_cval: complex
+    out_of_bounds_mode: str
+    fill_value: complex
 
     is_projection_approximation: ClassVar[bool] = False
 
@@ -228,36 +219,29 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
         self,
         *,
         pixel_rescaling_method: Optional[str] = None,
-        interpolation_order: int = 1,
-        interpolation_mode: str = "fill",
-        interpolation_cval: complex = 0.0 + 0.0j,
+        out_of_bounds_mode: str = "fill",
+        fill_value: complex = 0.0 + 0.0j,
     ):
         """**Arguments:**
 
         - `pixel_rescaling_method`:
             Method for rescaling the final image to the `InstrumentConfig`
             pixel size. See `cryojax.image.rescale_pixel_size` for documentation.
-        - `interpolation_order`:
-            The interpolation order. This can be `0` (nearest-neighbor), `1`
-            (linear), or `3` (cubic).
-            Note that this argument is ignored when using this object with a
-            `FourierVoxelGridInterpolator`.
-        - `interpolation_mode`:
+        - `out_of_bounds_mode`:
             Specify how to handle out of bounds indexing. See
             `cryojax.image.map_coordinates` for documentation.
-        - `interpolation_cval`:
+        - `fill_value`:
             Value for filling out-of-bounds indices. Used only when
-            `interpolation_mode = "fill"`.
+            `out_of_bounds_mode = "fill"`.
         """
         self.pixel_rescaling_method = pixel_rescaling_method
-        self.interpolation_order = interpolation_order
-        self.interpolation_mode = interpolation_mode
-        self.interpolation_cval = interpolation_cval
+        self.out_of_bounds_mode = out_of_bounds_mode
+        self.fill_value = fill_value
 
     @override
     def compute_integrated_potential(
         self,
-        potential: FourierVoxelGridPotential | FourierVoxelGridPotentialInterpolator,
+        potential: FourierVoxelGridPotential | FourierVoxelSplinePotential,
         instrument_config: InstrumentConfig,
         outputs_real_space: bool = False,
     ) -> (
@@ -288,9 +272,9 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
                 "Only cubic boxes are supported for fourier slice extraction."
             )
         # Compute the fourier projection
-        if isinstance(potential, FourierVoxelGridPotentialInterpolator):
+        if isinstance(potential, FourierVoxelSplinePotential):
             ewald_sphere_surface = self.extract_ewald_sphere_from_spline_coefficients(
-                potential.coefficients,
+                potential.spline_coefficients,
                 frequency_slice,
                 potential.voxel_size,
                 instrument_config.wavelength_in_angstroms,
@@ -305,7 +289,7 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
         else:
             raise ValueError(
                 "Supported types for `potential` are `FourierVoxelGridPotential` and "
-                "`FourierVoxelGridPotentialInterpolator`."
+                "`FourierVoxelSplinePotential`."
             )
 
         # Resize the image to match the InstrumentConfig.padded_shape
@@ -364,8 +348,8 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
             frequency_slice_in_pixels,
             voxel_size,
             wavelength_in_angstroms,
-            mode=self.interpolation_mode,
-            cval=self.interpolation_cval,
+            mode=self.out_of_bounds_mode,
+            cval=self.fill_value,
         )
 
     def extract_ewald_sphere_from_grid_points(
@@ -402,9 +386,9 @@ class EwaldSphereExtraction(AbstractVoxelPotentialIntegrator, strict=True):
             frequency_slice_in_pixels,
             voxel_size,
             wavelength_in_angstroms,
-            interpolation_order=self.interpolation_order,
-            mode=self.interpolation_mode,
-            cval=self.interpolation_cval,
+            interpolation_order=1,
+            mode=self.out_of_bounds_mode,
+            cval=self.fill_value,
         )
 
 
