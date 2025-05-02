@@ -2,6 +2,7 @@
 docs/examples/outputs/
 
 .vscode/settings.json
+.DS_STORE
 *.swp
 *_version.py
 **/__pycache__
