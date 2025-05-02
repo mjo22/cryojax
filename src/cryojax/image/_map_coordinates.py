@@ -132,7 +132,7 @@ def _map_coordinates_with_cubic_spline(
     coefficients: ArrayLike,
     coordinates: Sequence[ArrayLike],
     mode: str,
-    cval: ArrayLike,
+    cval: complex | float,
 ) -> Array:
     coefficients = jnp.asarray(coefficients)
     if len(coordinates) != coefficients.ndim:
@@ -235,7 +235,7 @@ def _spline_value(
     coordinate: Array,
     index: Array,
     mode: str,
-    cval: ArrayLike,
+    cval: complex | float,
 ) -> Array:
     coefficient = coefficients.at[tuple(index)].get(mode=mode, fill_value=cval)
     fn = vmap(lambda x, i: _spline_basis(x - i + 1), (0, 0))
@@ -246,7 +246,7 @@ def _spline_point(
     coefficients: Array,
     coordinate: Array,
     mode: str,
-    cval: ArrayLike,
+    cval: complex | float,
 ) -> Array:
     index_fn = lambda x: (jnp.arange(0, 4) + jnp.floor(x)).astype(int)
     index_vals = vmap(index_fn)(coordinate)

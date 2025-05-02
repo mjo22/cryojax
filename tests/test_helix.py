@@ -63,7 +63,7 @@ def build_helix_with_conformation(
 def test_superposition_model_without_conformation(sample_subunit_mrc_path, config):
     helix = build_helix(sample_subunit_mrc_path, 1)
     projection_method = cs.FourierSliceExtraction()
-    transfer_theory = cs.ContrastTransferTheory(cs.ContrastTransferFunction())
+    transfer_theory = cs.ContrastTransferTheory(cs.CTF())
     theory = cs.LinearSuperpositionScatteringTheory(
         helix, projection_method, transfer_theory
     )
@@ -75,7 +75,7 @@ def test_superposition_model_without_conformation(sample_subunit_mrc_path, confi
 def test_superposition_model_with_conformation(sample_subunit_mrc_path, config):
     helix = build_helix_with_conformation(sample_subunit_mrc_path, 2)
     projection_method = cs.FourierSliceExtraction()
-    transfer_theory = cs.ContrastTransferTheory(cs.ContrastTransferFunction())
+    transfer_theory = cs.ContrastTransferTheory(cs.CTF())
     theory = cs.LinearSuperpositionScatteringTheory(
         helix, projection_method, transfer_theory
     )
@@ -93,7 +93,7 @@ def test_c6_rotation(
 ):
     helix = build_helix(sample_subunit_mrc_path, n_subunits_per_start)
     projection_method = cs.FourierSliceExtraction()
-    transfer_theory = cs.ContrastTransferTheory(cs.ContrastTransferFunction())
+    transfer_theory = cs.ContrastTransferTheory(cs.CTF())
     theory = cs.LinearSuperpositionScatteringTheory(
         helix, projection_method, transfer_theory
     )
@@ -129,12 +129,12 @@ def test_agree_with_3j9g_assembly(
     superposition_theory = cs.LinearSuperpositionScatteringTheory(
         helix,
         cs.FourierSliceExtraction(),
-        cs.ContrastTransferTheory(cs.ContrastTransferFunction()),
+        cs.ContrastTransferTheory(cs.CTF()),
     )
     theory = cs.WeakPhaseScatteringTheory(
         specimen_39jg,
         cs.FourierSliceExtraction(),
-        cs.ContrastTransferTheory(cs.ContrastTransferFunction()),
+        cs.ContrastTransferTheory(cs.CTF()),
     )
     model_for_assembly = cs.ContrastImageModel(
         instrument_config=config, scattering_theory=superposition_theory
@@ -182,7 +182,7 @@ def test_transform_by_rise_and_twist(sample_subunit_mrc_path, pixel_size):
         theory = cs.LinearSuperpositionScatteringTheory(
             helix,
             cs.FourierSliceExtraction(),
-            cs.ContrastTransferTheory(cs.ContrastTransferFunction()),
+            cs.ContrastTransferTheory(cs.CTF()),
         )
         return config.crop_to_shape(
             irfftn(
