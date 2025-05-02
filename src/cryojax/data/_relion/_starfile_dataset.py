@@ -2,6 +2,7 @@
 
 import abc
 import pathlib
+import warnings
 from typing import Any, Callable
 from typing_extensions import override
 
@@ -12,7 +13,7 @@ import numpy as np
 import pandas as pd
 from jaxtyping import Array, Float, Int
 
-from ...image.operators import FourierGaussian
+from ...image.operators import Constant, FourierGaussian
 from ...io import read_and_validate_starfile
 from ...simulator import (
     AberratedAstigmaticCTF,
@@ -431,16 +432,18 @@ def _make_pytrees_from_starfile(
             (
                 jnp.asarray(starfile_dataframe["rlnCtfBfactor"])
                 if "rlnCtfBfactor" in starfile_dataframe.keys()
-                else jnp.zeros_like(defocus_in_angstroms)
+                else None
             ),
             (
                 jnp.asarray(starfile_dataframe["rlnCtfScalefactor"])
                 if "rlnCtfScalefactor" in starfile_dataframe.keys()
-                else jnp.ones_like(defocus_in_angstroms)
+                else None
             ),
         )
+        envelope = _make_envelope_function(scale_factor, b_factor)
     else:
-        b_factor, scale_factor = None, None
+        envelope = None
+
     transfer_theory = _make_transfer_theory(
         defocus_in_angstroms,
         astigmatism_in_angstroms,
@@ -448,8 +451,7 @@ def _make_pytrees_from_starfile(
         spherical_aberration_in_mm,
         amplitude_contrast_ratio,
         phase_shift,
-        scale_factor,
-        b_factor,
+        envelope,
     )
     # ... and finally, the EulerAnglePose
     pose = EulerAnglePose()
@@ -564,29 +566,65 @@ def _make_config(
         return make_fn(pixel_size, voltage_in_kilovolts)
 
 
-def _make_transfer_theory(defocus, astig, angle, sph, ac, ps, amp=None, b=None):
-    if b is not None:
+def _make_envelope_function(amp, b_factor):
+    if b_factor is None and amp is None:
+        warnings.warn(
+            "loads_envelope was set to True, but no envelope parameters were found. "
+            + "Setting envelope as None. "
+            + "Make sure your starfile is correctly formatted or set loads_envelope=False"
+        )
+        return None
 
-        def _make_w_env(defocus, astig, angle, sph, ac, ps, amp, b):
+    elif b_factor is None and amp is not None:
+
+        def _make_const_env(amp):
+            return Constant(amp)
+
+        @eqx.filter_vmap(in_axes=0, out_axes=0)
+        def _make_const_env_vmap(amp):
+            return _make_const_env(amp)
+
+        return _make_const_env(amp) if amp.ndim == 0 else _make_const_env_vmap(amp)
+    else:
+        if amp is None:
+            amp = jnp.asarray(1.0) if b_factor.ndim == 0 else jnp.ones_like(b_factor)
+
+        def _make_gaussian_env(amp, b):
+            return FourierGaussian(amplitude=amp, b_factor=b)
+
+        @eqx.filter_vmap(in_axes=0, out_axes=0)
+        def _make_gaussian_env_vmap(amp, b):
+            return _make_gaussian_env(amp, b)
+
+        return (
+            _make_gaussian_env(b_factor)
+            if b_factor.ndim == 0
+            else _make_gaussian_env_vmap(b_factor)
+        )
+
+
+def _make_transfer_theory(defocus, astig, angle, sph, ac, ps, env=None):
+    if env is not None:
+
+        def _make_w_env(defocus, astig, angle, sph, ac, ps, env):
             ctf = AberratedAstigmaticCTF(
                 defocus_in_angstroms=defocus,
                 astigmatism_in_angstroms=astig,
                 astigmatism_angle=angle,
                 spherical_aberration_in_mm=sph,
             )
-            envelope = FourierGaussian(b_factor=b, amplitude=amp)
             return ContrastTransferTheory(
-                ctf, envelope, amplitude_contrast_ratio=ac, phase_shift=ps
+                ctf, env, amplitude_contrast_ratio=ac, phase_shift=ps
             )
 
-        @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0, 0, 0), out_axes=0)
-        def _make_w_env_vmap(defocus, astig, angle, sph, ac, ps, amp, b):
-            return _make_w_env(defocus, astig, angle, sph, ac, ps, amp, b)
+        @eqx.filter_vmap(in_axes=(0, 0, 0, None, None, 0, 0), out_axes=0)
+        def _make_w_env_vmap(defocus, astig, angle, sph, ac, ps, env):
+            return _make_w_env(defocus, astig, angle, sph, ac, ps, env)
 
         return (
-            _make_w_env(defocus, astig, angle, sph, ac, ps, amp, b)
+            _make_w_env(defocus, astig, angle, sph, ac, ps, env)
             if defocus.ndim == 0
-            else _make_w_env_vmap(defocus, astig, angle, sph, ac, ps, amp, b)
+            else _make_w_env_vmap(defocus, astig, angle, sph, ac, ps, env)
         )
 
     else:
