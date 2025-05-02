@@ -1,9 +1,9 @@
 from ._detector import (
     AbstractDetector as AbstractDetector,
     AbstractDQE as AbstractDQE,
+    CountingDQE as CountingDQE,
     GaussianDetector as GaussianDetector,
-    PerfectCountingDQE as PerfectCountingDQE,
-    PerfectDQE as PerfectDQE,
+    NullDQE as NullDQE,
     PoissonDetector as PoissonDetector,
 )
 from ._image_model import (
@@ -32,7 +32,7 @@ from ._potential_representation import (
     AbstractTabulatedAtomicPotential as AbstractTabulatedAtomicPotential,
     AbstractVoxelPotential as AbstractVoxelPotential,
     FourierVoxelGridPotential as FourierVoxelGridPotential,
-    FourierVoxelGridPotentialInterpolator as FourierVoxelGridPotentialInterpolator,
+    FourierVoxelSplinePotential as FourierVoxelSplinePotential,
     GaussianMixtureAtomicPotential as GaussianMixtureAtomicPotential,
     PengAtomicPotential as PengAtomicPotential,
     RealVoxelCloudPotential as RealVoxelCloudPotential,
@@ -44,11 +44,7 @@ from ._scattering_theory import (
     LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
     WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
 )
-from ._solvent import (
-    AbstractSolvent as AbstractSolvent,
-    GRFSolvent as GRFSolvent,
-    SolventMixturePower as SolventMixturePower,
-)
+from ._solvent import AbstractSolvent as AbstractSolvent
 from ._structural_ensemble import (
     AbstractAssembly as AbstractAssembly,
     AbstractAssemblyWithSubunit as AbstractAssemblyWithSubunit,
@@ -64,9 +60,8 @@ from ._structural_ensemble import (
 from ._transfer_theory import (
     AberratedAstigmaticCTF as AberratedAstigmaticCTF,
     AberratedAstigmaticCTF as CTF,  # noqa: F401
-    AberratedAstigmaticCTF as ContrastTransferFunction,  # noqa: F401 # for backwards compatibility
     AbstractCTF as AbstractCTF,
     AbstractTransferTheory as AbstractTransferTheory,
     ContrastTransferTheory as ContrastTransferTheory,
-    PerfectCTF as PerfectCTF,
+    NullCTF as NullCTF,
 )

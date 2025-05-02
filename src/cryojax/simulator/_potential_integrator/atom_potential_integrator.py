@@ -7,8 +7,13 @@ import jax.numpy as jnp
 import jax.scipy as jsp
 from jaxtyping import Array, Complex, Float
 
+from ...constants._conventions import convert_variance_to_b_factor
 from ...coordinates import make_1d_coordinate_grid
-from ...image import downsample_to_shape_with_fourier_cropping, rfftn
+from ...image import (
+    downsample_to_shape_with_fourier_cropping,
+    resize_with_crop_or_pad,
+    rfftn,
+)
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import (
     GaussianMixtureAtomicPotential,
@@ -22,6 +27,7 @@ class GaussianMixtureProjection(
     strict=True,
 ):
     upsampling_factor: Optional[int]
+    shape: Optional[tuple[int, int]]
     use_error_functions: bool
     n_batches: int
 
@@ -31,6 +37,7 @@ class GaussianMixtureProjection(
         self,
         *,
         upsampling_factor: Optional[int] = None,
+        shape: Optional[tuple[int, int]] = None,
         use_error_functions: bool = False,
         n_batches: int = 1,
     ):
@@ -41,6 +48,10 @@ class GaussianMixtureProjection(
             If `upsampling_factor` is greater than 1, the images will be computed
             at a higher resolution and then downsampled to the original resolution.
             This can be useful for reducing aliasing artifacts in the images.
+        - `shape`:
+            The shape of the plane on which projections are computed before padding or
+            cropping to the `InstrumentConfig.padded_shape`. This argument is particularly
+            useful if the `InstrumentConfig.padded_shape` is much larger than the protein.
         - `use_error_functions`:
             If `True`, use error functions to evaluate the projected potential at
             a pixel to be the average value within the pixel using gaussian
@@ -53,6 +64,7 @@ class GaussianMixtureProjection(
             `1`, which computes a projection for all atoms at once.
         """  # noqa: E501
         self.upsampling_factor = upsampling_factor
+        self.shape = shape
         self.use_error_functions = use_error_functions
         self.n_batches = n_batches
 
@@ -88,13 +100,22 @@ class GaussianMixtureProjection(
 
         **Returns:**
 
-        The Fourier transform of the integrated potential.
+        The integrated potential in real or fourier space at the `InstrumentConfig.padded_shape`.
         """  # noqa: E501
         # Grab the image configuration
-        pixel_size, shape = instrument_config.pixel_size, instrument_config.padded_shape
+        shape = instrument_config.padded_shape if self.shape is None else self.shape
+        pixel_size = instrument_config.pixel_size
         if self.upsampling_factor is not None:
             u = self.upsampling_factor
-            pixel_size, shape = pixel_size / u, (shape[0] * u, shape[1] * u)
+            upsampled_pixel_size, upsampled_shape = (
+                pixel_size / u,
+                (
+                    shape[0] * u,
+                    shape[1] * u,
+                ),
+            )
+        else:
+            upsampled_pixel_size, upsampled_shape = pixel_size, shape
         # Grab the gaussian amplitudes and widths
         if isinstance(potential, PengAtomicPotential):
             gaussian_amplitudes = potential.scattering_factor_a
@@ -103,7 +124,9 @@ class GaussianMixtureProjection(
                 gaussian_widths += potential.b_factors[:, None]
         elif isinstance(potential, GaussianMixtureAtomicPotential):
             gaussian_amplitudes = potential.gaussian_amplitudes
-            gaussian_widths = potential.gaussian_widths
+            gaussian_widths = jnp.asarray(
+                convert_variance_to_b_factor(potential.gaussian_variances)
+            )
         else:
             raise ValueError(
                 "Supported types for `potential` are `PengAtomicPotential` and "
@@ -111,8 +134,8 @@ class GaussianMixtureProjection(
             )
         # Compute the projection
         projection = _compute_projected_potential_from_atoms(
-            shape,
-            pixel_size,
+            upsampled_shape,
+            upsampled_pixel_size,
             potential.atom_positions,
             gaussian_amplitudes,
             gaussian_widths,
@@ -122,14 +145,31 @@ class GaussianMixtureProjection(
         if self.upsampling_factor is not None:
             # Downsample back to the original pixel size, rescaling so that the
             # downsampling produces an average in a given region, not a sum
-            n_pixels, upsampled_n_pixels = instrument_config.n_pixels, math.prod(shape)
-            return downsample_to_shape_with_fourier_cropping(
-                projection * (n_pixels / upsampled_n_pixels),
-                downsampled_shape=instrument_config.padded_shape,
-                outputs_real_space=outputs_real_space,
-            )
+            n_pixels, upsampled_n_pixels = math.prod(shape), math.prod(upsampled_shape)
+            if self.shape is None:
+                return downsample_to_shape_with_fourier_cropping(
+                    projection * (n_pixels / upsampled_n_pixels),
+                    downsampled_shape=shape,
+                    outputs_real_space=outputs_real_space,
+                )
+            else:
+                projection = downsample_to_shape_with_fourier_cropping(
+                    projection * (n_pixels / upsampled_n_pixels),
+                    downsampled_shape=shape,
+                    outputs_real_space=True,
+                )
+                projection = resize_with_crop_or_pad(
+                    projection, instrument_config.padded_shape
+                )
+                return projection if outputs_real_space else rfftn(projection)
         else:
-            return projection if outputs_real_space else rfftn(projection)
+            if self.shape is None:
+                return projection if outputs_real_space else rfftn(projection)
+            else:
+                projection = resize_with_crop_or_pad(
+                    projection, instrument_config.padded_shape
+                )
+                return projection if outputs_real_space else rfftn(projection)
 
 
 def _compute_projected_potential_from_atoms(

@@ -68,6 +68,38 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
     ):
         raise NotImplementedError
 
+
+class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
+    """A 3D scattering potential voxel grid in fourier-space."""
+
+    fourier_voxel_grid: Complex[Array, "dim dim dim"]
+    frequency_slice_in_pixels: Float[Array, "1 dim dim 3"]
+    voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
+
+    is_real_space: ClassVar[bool] = False
+
+    @override
+    def __init__(
+        self,
+        fourier_voxel_grid: Complex[Array, "dim dim dim"],
+        frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
+        voxel_size: Float[Array, ""] | float,
+    ):
+        """**Arguments:**
+
+        - `fourier_voxel_grid`: The cubic voxel grid in fourier space.
+        - `frequency_slice_in_pixels`: Frequency slice coordinate system.
+        - `voxel_size`: The voxel size.
+        """
+        self.fourier_voxel_grid = jnp.asarray(fourier_voxel_grid)
+        self.frequency_slice_in_pixels = frequency_slice_in_pixels
+        self.voxel_size = jnp.asarray(voxel_size)
+
+    @property
+    def shape(self) -> tuple[int, int, int]:
+        """The shape of the `fourier_voxel_grid`."""
+        return cast(tuple[int, int, int], self.fourier_voxel_grid.shape)
+
     @cached_property
     def frequency_slice_in_angstroms(self) -> Float[Array, "1 dim dim 3"]:
         """The `frequency_slice_in_pixels` in angstroms."""
@@ -143,77 +175,34 @@ class AbstractFourierVoxelGridPotential(AbstractVoxelPotential, strict=True):
         return cls(fourier_voxel_grid, frequency_slice, voxel_size)
 
 
-class FourierVoxelGridPotential(AbstractFourierVoxelGridPotential):
-    """A 3D scattering potential voxel grid in fourier-space."""
+class FourierVoxelSplinePotential(AbstractFourierVoxelGridPotential):
+    """A 3D scattering potential voxel grid in fourier-space, represented
+    by spline coefficients.
+    """
 
-    fourier_voxel_grid: Complex[Array, "dim dim dim"]
+    spline_coefficients: Complex[Array, "coeff_dim coeff_dim coeff_dim"]
     frequency_slice_in_pixels: Float[Array, "1 dim dim 3"]
     voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
 
     is_real_space: ClassVar[bool] = False
 
-    @override
     def __init__(
         self,
-        fourier_voxel_grid: Complex[Array, "dim dim dim"],
+        spline_coefficients: Complex[Array, "coeff_dim coeff_dim coeff_dim"],
         frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
         voxel_size: Float[Array, ""] | float,
     ):
         """**Arguments:**
 
-        - `fourier_voxel_grid`: The cubic voxel grid in fourier space.
-        - `frequency_slice_in_pixels`: Frequency slice coordinate system.
+        - `spline_coefficients`:
+            The spline coefficents computed from the cubic voxel grid
+            in fourier space. See `cryojax.image.compute_spline_coefficients`.
+        - `frequency_slice_in_pixels`:
+            Frequency slice coordinate system.
+            See `cryojax.coordinates.make_frequency_slice`.
         - `voxel_size`: The voxel size.
         """
-        self.fourier_voxel_grid = jnp.asarray(fourier_voxel_grid)
-        self.frequency_slice_in_pixels = frequency_slice_in_pixels
-        self.voxel_size = jnp.asarray(voxel_size)
-
-    @property
-    def shape(self) -> tuple[int, int, int]:
-        """The shape of the `fourier_voxel_grid`."""
-        return cast(tuple[int, int, int], self.fourier_voxel_grid.shape)
-
-
-class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
-    """A 3D scattering potential voxel grid in fourier-space, represented
-    by spline coefficients.
-    """
-
-    coefficients: Float[Array, "coeff_dim coeff_dim coeff_dim"]
-    frequency_slice_in_pixels: Float[Array, "1 dim dim 3"]
-    voxel_size: Float[Array, ""] = field(converter=error_if_not_positive)
-
-    is_real_space: ClassVar[bool] = False
-
-    def __init__(
-        self,
-        fourier_voxel_grid: Float[Array, "dim dim dim"],
-        frequency_slice_in_pixels: Float[Array, "1 dim dim 3"],
-        voxel_size: Float[Array, ""] | float,
-    ):
-        """
-        !!! note
-            The argument `fourier_voxel_grid` is used to set
-            `FourierVoxelGridPotentialInterpolator.coefficients` in the `__init__`,
-            but it is not stored in the class. For example,
-
-            ```python
-            voxels = FourierVoxelGridPotentialInterpolator(
-                fourier_voxel_grid, frequency_slice, voxel_size
-            )
-            assert hasattr(voxels, "fourier_voxel_grid")  # This will return an error
-            assert hasattr(voxels, "coefficients")  # Instead, store spline coefficients
-            ```
-
-        **Arguments:**
-
-        - `fourier_voxel_grid`: The cubic voxel grid in fourier space.
-        - `frequency_slice_in_pixels`: Frequency slice coordinate system,
-                                               wrapped in a `FrequencySlice` object.
-        - `voxel_size`: The voxel size.
-        """
-        self.coefficients = compute_spline_coefficients(jnp.asarray(fourier_voxel_grid))
+        self.spline_coefficients = spline_coefficients
         self.frequency_slice_in_pixels = frequency_slice_in_pixels
         self.voxel_size = jnp.asarray(voxel_size)
 
@@ -222,7 +211,85 @@ class FourierVoxelGridPotentialInterpolator(AbstractFourierVoxelGridPotential):
         """The shape of the original `fourier_voxel_grid` from which
         `coefficients` were computed.
         """
-        return cast(tuple[int, int, int], tuple([s - 2 for s in self.coefficients.shape]))
+        return cast(
+            tuple[int, int, int], tuple([s - 2 for s in self.spline_coefficients.shape])
+        )
+
+    @cached_property
+    def frequency_slice_in_angstroms(self) -> Float[Array, "1 dim dim 3"]:
+        """The `frequency_slice_in_pixels` in angstroms."""
+        return _safe_multiply_grid_by_constant(
+            self.frequency_slice_in_pixels, 1 / self.voxel_size
+        )
+
+    def rotate_to_pose(self, pose: AbstractPose) -> Self:
+        """Return a new potential with a rotated `frequency_slice_in_pixels`."""
+        return eqx.tree_at(
+            lambda d: d.frequency_slice_in_pixels,
+            self,
+            pose.rotate_coordinates(self.frequency_slice_in_pixels, inverse=True),
+        )
+
+    @classmethod
+    def from_real_voxel_grid(
+        cls,
+        real_voxel_grid: Float[Array, "dim dim dim"] | Float[np.ndarray, "dim dim dim"],
+        voxel_size: Float[Array, ""] | Float[np.ndarray, ""] | float,
+        *,
+        pad_scale: float = 1.0,
+        pad_mode: str = "constant",
+        filter: Optional[AbstractFilter] = None,
+    ) -> Self:
+        """Load an `AbstractFourierVoxelGridPotential` from real-valued 3D electron
+        scattering potential voxel grid.
+
+        **Arguments:**
+
+        - `real_voxel_grid`: A scattering potential voxel grid in real space.
+        - `voxel_size`: The voxel size of `real_voxel_grid`.
+        - `pad_scale`: Scale factor at which to pad `real_voxel_grid` before fourier
+                     transform. Must be a value greater than `1.0`.
+        - `pad_mode`: Padding method. See `jax.numpy.pad` for documentation.
+        - `filter`: A filter to apply to the result of the fourier transform of
+                  `real_voxel_grid`, i.e. `fftn(real_voxel_grid)`. Note that the zero
+                  frequency component is assumed to be in the corner.
+        """
+        # Cast to jax array
+        real_voxel_grid, voxel_size = (
+            jnp.asarray(real_voxel_grid),
+            jnp.asarray(voxel_size),
+        )
+        # Pad template
+        if pad_scale < 1.0:
+            raise ValueError("`pad_scale` must be greater than 1.0")
+        # ... always pad to even size to avoid interpolation issues in
+        # fourier slice extraction.
+        padded_shape = cast(
+            tuple[int, int, int],
+            tuple([int(s * pad_scale) for s in real_voxel_grid.shape]),
+        )
+        padded_real_voxel_grid = pad_to_shape(
+            real_voxel_grid, padded_shape, mode=pad_mode
+        )
+        # Load potential and coordinates. For now, do not store the
+        # fourier potential only on the half space. Fourier slice extraction
+        # does not currently work if rfftn is used.
+        fourier_voxel_grid_with_zero_in_corner = (
+            fftn(padded_real_voxel_grid)
+            if filter is None
+            else filter(fftn(padded_real_voxel_grid))
+        )
+        # ... store the potential grid with the zero frequency component in the center
+        fourier_voxel_grid = jnp.fft.fftshift(fourier_voxel_grid_with_zero_in_corner)
+        # ... compute spline coefficients
+        spline_coefficients = compute_spline_coefficients(jnp.asarray(fourier_voxel_grid))
+        # ... create in-plane frequency slice on the half space
+        frequency_slice = make_frequency_slice(
+            cast(tuple[int, int], padded_real_voxel_grid.shape[:-1]),
+            outputs_rfftfreqs=False,
+        )
+
+        return cls(spline_coefficients, frequency_slice, voxel_size)
 
 
 class RealVoxelGridPotential(AbstractVoxelPotential, strict=True):

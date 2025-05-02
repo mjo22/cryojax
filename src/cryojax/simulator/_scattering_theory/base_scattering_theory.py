@@ -9,14 +9,14 @@ from jaxtyping import Array, Complex, Float, PRNGKeyArray
 from ...image import fftn, ifftn, rfftn
 from .._instrument_config import InstrumentConfig
 from .._structural_ensemble import AbstractStructuralEnsemble
-from .._transfer_theory import WaveTransferTheory
+from .._transfer_theory import AbstractTransferTheory, WaveTransferTheory
 
 
 class AbstractScatteringTheory(eqx.Module, strict=True):
     """Base class for a scattering theory."""
 
     structural_ensemble: eqx.AbstractVar[AbstractStructuralEnsemble]
-    transfer_theory: eqx.AbstractVar[WaveTransferTheory]
+    transfer_theory: eqx.AbstractVar[AbstractTransferTheory]
 
     @abstractmethod
     def compute_contrast_spectrum_at_detector_plane(
@@ -42,6 +42,7 @@ class AbstractScatteringTheory(eqx.Module, strict=True):
 class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
     """Base class for a wave-based scattering theory."""
 
+    transfer_theory: eqx.AbstractVar[WaveTransferTheory]
     amplitude_contrast_ratio: eqx.AbstractVar[Float[Array, ""]]
 
     @abstractmethod
@@ -81,11 +82,17 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             ).real
         )
         # ... apply translation
-        translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
+        pose = self.structural_ensemble.pose
+        phase_shifts = pose.compute_translation_operator(
             instrument_config.padded_frequency_grid_in_angstroms
         )
+        intensity_spectrum_at_detector_plane = pose.translate_image(
+            intensity_spectrum_at_detector_plane,
+            phase_shifts,
+            instrument_config.padded_shape,
+        )
 
-        return translational_phase_shifts * intensity_spectrum_at_detector_plane
+        return intensity_spectrum_at_detector_plane
 
     @override
     def compute_contrast_spectrum_at_detector_plane(
@@ -119,8 +126,14 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             / (1 + squared_wavefunction_at_detector_plane)
         )
         # ... apply translation
-        translational_phase_shifts = self.structural_ensemble.pose.compute_shifts(
+        pose = self.structural_ensemble.pose
+        phase_shifts = pose.compute_translation_operator(
             instrument_config.padded_frequency_grid_in_angstroms
         )
+        contrast_spectrum_at_detector_plane = pose.translate_image(
+            contrast_spectrum_at_detector_plane,
+            phase_shifts,
+            instrument_config.padded_shape,
+        )
 
-        return translational_phase_shifts * contrast_spectrum_at_detector_plane
+        return contrast_spectrum_at_detector_plane

@@ -9,7 +9,7 @@ from typing_extensions import override
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float
 
-from ...image import irfftn
+from ...image import convert_fftn_to_rfftn, irfftn
 from .._instrument_config import InstrumentConfig
 from .._potential_representation import RealVoxelCloudPotential, RealVoxelGridPotential
 from .base_potential_integrator import AbstractVoxelPotentialIntegrator
@@ -21,23 +21,23 @@ class NufftProjection(
 ):
     """Integrate points onto the exit plane using non-uniform FFTs."""
 
-    pixel_rescaling_method: Optional[str]
+    pixel_size_rescaling_method: Optional[str]
     eps: float
 
     is_projection_approximation: ClassVar[bool] = True
 
     def __init__(
-        self, *, pixel_rescaling_method: Optional[str] = None, eps: float = 1e-6
+        self, *, pixel_size_rescaling_method: Optional[str] = None, eps: float = 1e-6
     ):
         """**Arguments:**
 
-        - `pixel_rescaling_method`: Method for interpolating the final image to
+        - `pixel_size_rescaling_method`: Method for interpolating the final image to
                                     the `InstrumentConfig` pixel size. See
                                     `cryojax.image.rescale_pixel_size` for documentation.
         - `eps`: See [`jax-finufft`](https://github.com/flatironinstitute/jax-finufft)
                  for documentation.
         """
-        self.pixel_rescaling_method = pixel_rescaling_method
+        self.pixel_size_rescaling_method = pixel_size_rescaling_method
         self.eps = eps
 
     def project_voxel_cloud_with_nufft(
@@ -136,12 +136,8 @@ def _project_with_nufft(weights, coordinate_list, shape, eps=1e-6):
     coordinates_periodic = 2 * jnp.pi * coordinates_xy / image_size
     # Unpack and compute
     x, y = coordinates_periodic[:, 0], coordinates_periodic[:, 1]
-    projection = nufft1(shape, weights, y, x, eps=eps, iflag=-1)
-    # Shift zero frequency component to corner and take upper half plane
-    projection = jnp.fft.ifftshift(projection)[:, : M2 // 2 + 1]
-    # Set last line of frequencies to zero if image dimension is even
-    if M2 % 2 == 0:
-        projection = projection.at[:, -1].set(0.0 + 0.0j)
-    if M1 % 2 == 0:
-        projection = projection.at[M1 // 2, :].set(0.0 + 0.0j)
-    return projection
+    fourier_projection = nufft1(shape, weights, y, x, eps=eps, iflag=-1)
+    # Shift zero frequency component to corner
+    fourier_projection = jnp.fft.ifftshift(fourier_projection)
+    # Convert to rfftn output
+    return convert_fftn_to_rfftn(fourier_projection, mode="real")

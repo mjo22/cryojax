@@ -31,12 +31,16 @@ class AbstractRotation(Module, strict=True):
             return self.apply(other)
         elif isinstance(other, AbstractRotation):
             if not self.space_dimension == other.space_dimension:
-                raise ValueError("Cannot compose rotations of different types.")
+                raise ValueError(
+                    f"Rotation of type {type(other).__name__} is "
+                    f"incompatible with type {type(self).__name__}. "
+                    "Tried to compose these rotations with A @ B syntax."
+                )
             return self.compose(other)
         else:
             raise ValueError(
-                "Allowed types for `@` operator are arrays and other"
-                f"rotations. Got {type(other)}."
+                "Allowed types for `@` operator are JAX arrays and other "
+                f"rotations. Tried to compose with type {type(other).__name__}."
             )
 
     @abstractmethod
@@ -58,7 +62,7 @@ class AbstractRotation(Module, strict=True):
     @abstractmethod
     def identity(cls: Type[Self]) -> Self:
         """Return the identity element."""
-        return NotADirectoryError
+        raise NotImplementedError
 
     @classmethod
     @abstractmethod
