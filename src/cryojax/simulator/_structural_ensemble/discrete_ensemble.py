@@ -6,7 +6,7 @@ from typing import Optional
 from typing_extensions import override
 
 import jax
-from equinox import field
+import jax.numpy as jnp
 from jaxtyping import Array, Int
 
 from ...internal import error_if_negative
@@ -19,7 +19,10 @@ from .base_ensemble import AbstractStructuralEnsemble
 class DiscreteConformationalVariable(AbstractConformationalVariable, strict=True):
     """A conformational variable as a discrete index."""
 
-    value: Int[Array, ""] = field(converter=error_if_negative)
+    value: Int[Array, ""]
+
+    def __init__(self, value: int | Int[Array, ""]):
+        self.value = jnp.asarray(error_if_negative(value))
 
 
 class DiscreteStructuralEnsemble(AbstractStructuralEnsemble, strict=True):

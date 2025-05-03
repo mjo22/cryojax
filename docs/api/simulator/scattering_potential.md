@@ -66,7 +66,7 @@
 
 ---
 
-::: cryojax.simulator.FourierVoxelGridPotentialInterpolator
+::: cryojax.simulator.FourierVoxelSplinePotential
         options:
             members:
                 - __init__

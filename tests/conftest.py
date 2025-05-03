@@ -8,7 +8,8 @@ from jaxtyping import install_import_hook
 
 
 with install_import_hook("cryojax", "typeguard.typechecked"):
-    import cryojax.simulator as cs
+    import cryojax.experimental as cxe
+    import cryojax.simulator as cxs
     from cryojax.image import operators as op, rfftn
     from cryojax.io import read_array_with_spacing_from_mrc
 
@@ -97,18 +98,18 @@ def voltage_in_kilovolts():
 
 @pytest.fixture
 def config(pixel_size, voltage_in_kilovolts):
-    return cs.InstrumentConfig((65, 66), pixel_size, voltage_in_kilovolts, pad_scale=1.1)
+    return cxs.InstrumentConfig((65, 66), pixel_size, voltage_in_kilovolts, pad_scale=1.1)
 
 
 @pytest.fixture
 def projection_method():
-    return cs.FourierSliceExtraction(interpolation_order=1)
+    return cxs.FourierSliceExtraction()
 
 
 @pytest.fixture
 def potential(sample_mrc_path):
     real_voxel_grid, voxel_size = read_array_with_spacing_from_mrc(sample_mrc_path)
-    return cs.FourierVoxelGridPotential.from_real_voxel_grid(
+    return cxs.FourierVoxelGridPotential.from_real_voxel_grid(
         real_voxel_grid, voxel_size, pad_scale=1.3
     )
 
@@ -129,17 +130,17 @@ def masks(config):
 
 @pytest.fixture
 def transfer_theory():
-    return cs.ContrastTransferTheory(ctf=cs.CTF())
+    return cxs.ContrastTransferTheory(ctf=cxs.CTF())
 
 
 @pytest.fixture
 def detector():
-    return cs.PoissonDetector(cs.PerfectDQE())
+    return cxs.PoissonDetector(cxs.NullDQE())
 
 
 @pytest.fixture
 def pose():
-    return cs.EulerAnglePose(
+    return cxs.EulerAnglePose(
         phi_angle=30.0,
         theta_angle=100.0,
         psi_angle=-10.0,
@@ -150,38 +151,38 @@ def pose():
 
 @pytest.fixture
 def specimen(potential, pose):
-    return cs.SingleStructureEnsemble(potential, pose)
+    return cxs.SingleStructureEnsemble(potential, pose)
 
 
 @pytest.fixture
 def solvent():
-    return cs.GRFSolvent(
+    return cxe.GRFSolvent(
         thickness_in_angstroms=100.0, power_spectrum_function=op.Constant(1.0)
     )
 
 
 @pytest.fixture
 def theory(specimen, projection_method, transfer_theory, solvent):
-    return cs.WeakPhaseScatteringTheory(
+    return cxs.WeakPhaseScatteringTheory(
         specimen, projection_method, transfer_theory, solvent
     )
 
 
 @pytest.fixture
 def theory_with_solvent(specimen, projection_method, transfer_theory, solvent):
-    return cs.WeakPhaseScatteringTheory(
+    return cxs.WeakPhaseScatteringTheory(
         specimen, projection_method, transfer_theory, solvent
     )
 
 
 @pytest.fixture
 def noiseless_model(config, theory):
-    return cs.IntensityImageModel(instrument_config=config, scattering_theory=theory)
+    return cxs.IntensityImageModel(instrument_config=config, scattering_theory=theory)
 
 
 @pytest.fixture
 def noisy_model(config, theory_with_solvent, detector):
-    return cs.ElectronCountsImageModel(
+    return cxs.ElectronCountsImageModel(
         instrument_config=config,
         scattering_theory=theory_with_solvent,
         detector=detector,

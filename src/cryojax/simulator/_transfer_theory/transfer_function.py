@@ -171,7 +171,7 @@ class AberratedAstigmaticCTF(AbstractCTF, strict=True):
             return jnp.exp(-1.0j * (aberration_phase_shifts - phase_shift))
 
 
-class PerfectCTF(AbstractCTF, strict=True):
+class NullCTF(AbstractCTF, strict=True):
     """A perfect transfer function, useful for imaging
     cryo-EM densities."""
 
