@@ -135,7 +135,7 @@ def test_compute_projection_with_cistem(
             real_voxel_grid, voxel_size
         )
         pose = cs.EulerAnglePose(phi_angle=-phi, theta_angle=-theta, psi_angle=-psi)
-        projection_method = cs.FourierSliceExtraction(pixel_rescaling_method=None)
+        projection_method = cs.FourierSliceExtraction(pixel_size_rescaling_method=None)
         box_size = potential.shape[0]
         config = cs.InstrumentConfig((box_size, box_size), voxel_size, 300.0)
         cryojax_projection = irfftn(
