@@ -1,5 +1,6 @@
 # generate-starfile-and-mrcs tutorial generated data
 docs/examples/outputs/
+.coverage
 
 .vscode/settings.json
 .DS_STORE
