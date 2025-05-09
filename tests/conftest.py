@@ -20,6 +20,16 @@ jax.config.update("jax_enable_x64", True)
 
 
 @pytest.fixture
+def sample_starfile_path():
+    return os.path.join(os.path.dirname(__file__), "data", "test_starfile.star")
+
+
+@pytest.fixture
+def sample_path_to_relion_project():
+    return os.path.join(os.path.dirname(__file__), "data")
+
+
+@pytest.fixture
 def sample_mrc_path():
     return os.path.join(os.path.dirname(__file__), "data", "3j9g_potential_ps4_4.mrc")
 

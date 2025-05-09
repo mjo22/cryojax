@@ -11,7 +11,13 @@ from jaxtyping import Array, Float
 
 from ...image.operators import Constant, FourierGaussian
 from ...io import write_image_stack_to_mrc
-from ...simulator import AberratedAstigmaticCTF
+from ...simulator import (
+    AberratedAstigmaticCTF,
+    AbstractPose,
+    AbstractTransferTheory,
+    ContrastTransferTheory,
+    EulerAnglePose,
+)
 from ...utils import batched_map
 from ._starfile_dataset import RelionParticleParameterDataset
 from ._starfile_pytrees import RelionParticleParameters
@@ -21,13 +27,12 @@ PerParticlePyTree = TypeVar("PerParticlePyTree")
 ConstantPyTree = TypeVar("ConstantPyTree")
 
 
-def _get_filename(step, n_char=6):
-    if step == 0:
-        fname = "0" * n_char
+def _format_string_for_filename(iteration_index, total_characters=6):
+    if iteration_index == 0:
+        return "0" * total_characters
     else:
-        n_dec = int(np.log10(step))
-        fname = "0" * (n_char - n_dec) + str(step)
-    return fname
+        num_digits = int(np.log10(iteration_index)) + 1
+        return "0" * (total_characters - num_digits) + str(iteration_index)
 
 
 def write_starfile_with_particle_parameters(
@@ -63,121 +68,220 @@ def write_starfile_with_particle_parameters(
             f"Overwrite was set to False, but STAR file {filename} already exists."
         )
 
-    if particle_parameters.pose.offset_x_in_angstroms.shape == ():
+    _validate_particle_parameters_dimensions(particle_parameters=particle_parameters)
+    _validate_particle_parameters_pytrees(
+        particle_parameters.pose, particle_parameters.transfer_theory
+    )
+
+    if particle_parameters.pose.offset_x_in_angstroms.ndim == 0:
         n_images = 1
     else:
         n_images = particle_parameters.pose.offset_x_in_angstroms.shape[0]
 
-    if mrc_batch_size is None:
-        mrc_batch_size = n_images
-
-    assert (
-        n_images >= mrc_batch_size
-    ), "n_images must be greater than or equal to mrc_batch_size"
+    mrc_batch_size = (
+        min(n_images, mrc_batch_size) if mrc_batch_size is not None else n_images
+    )
 
     starfile_dict = dict()
-    if not isinstance(particle_parameters.transfer_theory.ctf, AberratedAstigmaticCTF):
-        raise NotImplementedError(
-            "The `RelionParticleParameters.transfer_theory.ctf` must be an "
-            "`AberratedAstigmaticCTF`. Found that it was a "
-            f"{type(particle_parameters.transfer_theory.ctf).__name__}."
-        )
+
     # Generate optics group
-    optics_df = pd.DataFrame()
-    optics_df["rlnOpticsGroup"] = [1]
-    optics_df["rlnVoltage"] = particle_parameters.instrument_config.voltage_in_kilovolts[
-        0
-    ]
-    optics_df["rlnSphericalAberration"] = (
-        particle_parameters.transfer_theory.ctf.spherical_aberration_in_mm[0]
+    starfile_dict["optics"] = _populate_starfile_optics_group(
+        particle_parameters=particle_parameters,
     )
-    optics_df["rlnImagePixelSize"] = particle_parameters.instrument_config.pixel_size[0]
-    optics_df["rlnImageSize"] = particle_parameters.instrument_config.shape[0]
-    optics_df["rlnAmplitudeContrast"] = (
-        particle_parameters.transfer_theory.amplitude_contrast_ratio[0]
-    )
-    starfile_dict["optics"] = optics_df
 
     # Generate particles group
     particles_df = pd.DataFrame()
 
     # Fixed value parameters
+    particles_df = _populate_misc_starfile_parameters(
+        particles_df=particles_df,
+        n_images=n_images,
+    )
+
+    # Pose
+    particles_df = _populate_starfile_pose_params(
+        particles_df=particles_df,
+        pose=particle_parameters.pose,
+    )
+
+    # CTF
+    particles_df = _populate_starfile_transfer_theory_params(
+        particles_df=particles_df,
+        transfer_theory=particle_parameters.transfer_theory,
+    )
+
+    # Image names
+    particles_df = _populate_starfile_image_names(
+        particles_df=particles_df,
+        n_images=n_images,
+        mrc_batch_size=mrc_batch_size,
+    )
+
+    starfile_dict["particles"] = particles_df
+    starfile.write(starfile_dict, pathlib.Path(filename))
+
+    return
+
+
+def _validate_particle_parameters_dimensions(
+    particle_parameters: RelionParticleParameters,
+) -> None:
+    def _return_batch_dimension(x):
+        if x.ndim == 0:
+            return 0
+        else:
+            return x.shape[0]
+
+    shapes = jax.tree.flatten(
+        jax.tree.map(
+            _return_batch_dimension, eqx.filter(particle_parameters, eqx.is_array)
+        )
+    )[0]
+    # assert all shapes are equal
+    assert all(
+        [s == shapes[0] for s in shapes]
+    ), "The first dimension of all array-leaves in `particle_parameters` must be equal."
+    return
+
+
+def _validate_particle_parameters_pytrees(
+    pose: AbstractPose,
+    transfer_theory: AbstractTransferTheory,
+) -> None:
+    if not isinstance(transfer_theory.ctf, AberratedAstigmaticCTF):
+        raise NotImplementedError(
+            "The `RelionParticleParameters.transfer_theory.ctf` must be an "
+            "`AberratedAstigmaticCTF`. Found that it was a "
+            f"{type(transfer_theory.ctf).__name__}."
+        )
+    if not isinstance(pose, EulerAnglePose):
+        raise NotImplementedError(
+            "The `RelionParticleParameters.pose` must be an "
+            "`EulerAnglePose`. Found that it was a "
+            f"{type(pose).__name__}."
+        )
+    return
+
+
+def _populate_starfile_optics_group(
+    particle_parameters: RelionParticleParameters,
+) -> pd.DataFrame:
+    def _extract_first_value(value):
+        if value.ndim == 0:
+            return value
+        else:
+            return value[0]
+
+    optics_df = pd.DataFrame()
+    optics_df["rlnOpticsGroup"] = [1]
+    instrument_config = particle_parameters.instrument_config
+    transfer_theory = particle_parameters.transfer_theory
+
+    optics_df["rlnVoltage"] = _extract_first_value(instrument_config.voltage_in_kilovolts)
+    optics_df["rlnSphericalAberration"] = _extract_first_value(
+        transfer_theory.ctf.spherical_aberration_in_mm
+    )
+    optics_df["rlnAmplitudeContrast"] = _extract_first_value(
+        transfer_theory.amplitude_contrast_ratio
+    )
+    optics_df["rlnImagePixelSize"] = _extract_first_value(instrument_config.pixel_size)
+    optics_df["rlnImageSize"] = particle_parameters.instrument_config.shape[0]
+
+    return optics_df
+
+
+def _populate_misc_starfile_parameters(
+    particles_df: pd.DataFrame,
+    n_images: int,
+) -> pd.DataFrame:
     particles_df["rlnCtfMaxResolution"] = np.zeros(n_images)
     particles_df["rlnCtfFigureOfMerit"] = np.zeros(n_images)
     particles_df["rlnClassNumber"] = np.ones(n_images)
     particles_df["rlnOpticsGroup"] = np.ones(n_images)
-    # Pose (flipping the sign of the translations); RELION's convention
-    # thinks about "undoing" a translation, opposed to simulating an image at a coordinate
-    particles_df["rlnOriginXAngst"] = -particle_parameters.pose.offset_x_in_angstroms
-    particles_df["rlnOriginYAngst"] = -particle_parameters.pose.offset_y_in_angstroms
-    particles_df["rlnAngleRot"] = -particle_parameters.pose.phi_angle
-    particles_df["rlnAngleTilt"] = -particle_parameters.pose.theta_angle
-    particles_df["rlnAnglePsi"] = -particle_parameters.pose.psi_angle
-    # CTF
+
+    return particles_df
+
+
+def _populate_starfile_pose_params(
+    particles_df: pd.DataFrame, pose: EulerAnglePose
+) -> pd.DataFrame:
+    """Pose (flipping the sign of the translations); RELION's convention
+    thinks about "undoing" a translation, opposed to simulating an image at a coordinate
+    """
+
+    particles_df["rlnOriginXAngst"] = -pose.offset_x_in_angstroms
+    particles_df["rlnOriginYAngst"] = -pose.offset_y_in_angstroms
+    particles_df["rlnAngleRot"] = -pose.phi_angle
+    particles_df["rlnAngleTilt"] = -pose.theta_angle
+    particles_df["rlnAnglePsi"] = -pose.psi_angle
+    return particles_df
+
+
+def _populate_starfile_transfer_theory_params(
+    particles_df: pd.DataFrame,
+    transfer_theory: ContrastTransferTheory,
+) -> pd.DataFrame:
     particles_df["rlnDefocusU"] = (
-        particle_parameters.transfer_theory.ctf.defocus_in_angstroms
-        + particle_parameters.transfer_theory.ctf.astigmatism_in_angstroms / 2
+        transfer_theory.ctf.defocus_in_angstroms
+        + transfer_theory.ctf.astigmatism_in_angstroms / 2
     )
     particles_df["rlnDefocusV"] = (
-        particle_parameters.transfer_theory.ctf.defocus_in_angstroms
-        - particle_parameters.transfer_theory.ctf.astigmatism_in_angstroms / 2
+        transfer_theory.ctf.defocus_in_angstroms
+        - transfer_theory.ctf.astigmatism_in_angstroms / 2
     )
-    particles_df["rlnDefocusAngle"] = (
-        particle_parameters.transfer_theory.ctf.astigmatism_angle
-    )
+    particles_df["rlnDefocusAngle"] = transfer_theory.ctf.astigmatism_angle
 
-    if isinstance(particle_parameters.transfer_theory.envelope, FourierGaussian):
-        particles_df["rlnCtfBfactor"] = (
-            particle_parameters.transfer_theory.envelope.b_factor
-        )
-        particles_df["rlnCtfScalefactor"] = (
-            particle_parameters.transfer_theory.envelope.amplitude
-        )
-    elif isinstance(particle_parameters.transfer_theory.envelope, Constant):
+    if isinstance(transfer_theory.envelope, FourierGaussian):
+        particles_df["rlnCtfBfactor"] = transfer_theory.envelope.b_factor
+        particles_df["rlnCtfScalefactor"] = transfer_theory.envelope.amplitude
+    elif isinstance(transfer_theory.envelope, Constant):
         # particles_df["rlnCtfBfactor"] = 0.0
-        particles_df["rlnCtfScalefactor"] = (
-            particle_parameters.transfer_theory.envelope.value
-        )
-    elif particle_parameters.transfer_theory.envelope is None:
+        particles_df["rlnCtfScalefactor"] = transfer_theory.envelope.value
+    elif transfer_theory.envelope is None:
         pass
-        # particles_df["rlnCtfBfactor"] = 0.0
-        # particles_df["rlnCtfScalefactor"] = 0.0
     else:
         raise NotImplementedError(
             "The envelope function in `RelionParticleParameters` must either be "
             "`cryojax.image.operators.FourierGaussian` or "
             "`cryojax.image.operators.Constant`. Got "
-            f"{type(particle_parameters.transfer_theory.envelope).__name__}."
+            f"{type(transfer_theory.envelope).__name__}."
         )
+    particles_df["rlnPhaseShift"] = transfer_theory.phase_shift
+    return particles_df
 
-    particles_df["rlnPhaseShift"] = particle_parameters.transfer_theory.phase_shift
 
+def _populate_starfile_image_names(
+    particles_df: pd.DataFrame,
+    n_images: int,
+    mrc_batch_size: int,
+) -> pd.DataFrame:
     n_batches = n_images // mrc_batch_size
     n_remainder = n_images % mrc_batch_size
 
     image_names = []
 
-    for step in range(n_batches):
-        mrc_filename = _get_filename(step, n_char=6)
+    for batch in range(n_batches):
+        mrc_filename = _format_string_for_filename(batch, total_characters=6)
         mrc_relative_path = mrc_filename + ".mrcs"
         image_names += [
-            _get_filename(i + 1, n_char=6) + "@" + mrc_relative_path
+            _format_string_for_filename(i + 1, total_characters=6)
+            + "@"
+            + mrc_relative_path
             for i in range(mrc_batch_size)
         ]
 
     if n_remainder > 0:
-        mrc_filename = _get_filename(n_batches, n_char=6)
+        mrc_filename = _format_string_for_filename(n_batches, total_characters=6)
         mrc_relative_path = mrc_filename + ".mrcs"
         image_names += [
-            _get_filename(i + 1, n_char=6) + "@" + mrc_relative_path
+            _format_string_for_filename(i + 1, total_characters=6)
+            + "@"
+            + mrc_relative_path
             for i in range(n_remainder)
         ]
 
     particles_df["rlnImageName"] = image_names
-    starfile_dict["particles"] = particles_df
-    starfile.write(starfile_dict, pathlib.Path(filename))
-
-    return
+    return particles_df
 
 
 def write_simulated_image_stack_from_starfile(
@@ -424,22 +528,13 @@ def _write_simulated_image_stack_from_starfile_vmap(
         # and load the particle stack parameters
         indices = particles_fnames[particles_fnames[1] == mrc_fname].index.to_numpy()
 
-        if batch_size_per_mrc is None:
-            batch_size_for_map = len(indices)
-        else:
-            batch_size_for_map = min(batch_size_per_mrc, len(indices))
+        batch_size_for_map = (
+            min(batch_size_per_mrc, len(indices))
+            if batch_size_per_mrc is not None
+            else len(indices)
+        )
 
         vmap, novmap = eqx.partition(param_dataset[indices], eqx.is_array)
-        # image_stack = batched_map(
-        #     lambda x: _compute_image_stack_map_wrapper(
-        #         compute_image_stack, x[0], novmap, constant_args, x[1]
-        #     ),
-        #     xs=(
-        #         vmap,  # type: ignore
-        #         jax.tree.map(lambda x: x[indices], per_particle_args),  # type: ignore
-        #     ),
-        #     batch_size=batch_size_for_map,
-        # )
 
         image_stack = batched_map(
             lambda x: compute_image_stack(eqx.combine(x[0], novmap), constant_args, x[1]),
