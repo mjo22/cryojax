@@ -686,9 +686,7 @@ def test_write_starfile_different_envs():
 def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
     def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
         # Mock the image computation
-        c1, c2 = constant_args
-        p1, p2 = per_particle_args
-        return jnp.ones(particle_parameters.instrument_config.shape, dtype=jnp.float32)
+        return per_particle_args
 
     """Test writing a simulated image stack from a starfile."""
     parameter_dataset = RelionParticleParameterDataset(
@@ -699,12 +697,16 @@ def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
     )
 
     n_images = len(parameter_dataset)
+    shape = parameter_dataset[0].instrument_config.shape
+    true_images = jax.random.normal(
+        jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
+    )
     # Create a simulated image stack
     write_simulated_image_stack_from_starfile(
         param_dataset=parameter_dataset,
         compute_image_fn=_mock_compute_image,
         constant_args=(1.0, 2.0),
-        per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
+        per_particle_args=true_images,
         is_jittable=True,
         overwrite=True,
     )
@@ -714,7 +716,7 @@ def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
         param_dataset=parameter_dataset,
         compute_image_fn=_mock_compute_image,
         constant_args=(1.0, 2.0),
-        per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
+        per_particle_args=true_images,
         is_jittable=True,
         overwrite=True,
     )
@@ -725,7 +727,7 @@ def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
             param_dataset=parameter_dataset,
             compute_image_fn=_mock_compute_image,
             constant_args=(1.0, 2.0),
-            per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
+            per_particle_args=true_images,
             is_jittable=True,
             overwrite=False,
         )
@@ -735,7 +737,7 @@ def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
     images = particle_dataset[:].images
     np.testing.assert_allclose(
         images,
-        np.ones_like(images),
+        true_images,
     )
 
     # Clean up
@@ -748,8 +750,7 @@ def test_write_simulated_image_stack_from_starfile_nojit(sample_starfile_path):
     def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
         # Mock the image computation
         c1, c2 = constant_args
-        p1, p2 = per_particle_args
-        image = jnp.ones(particle_parameters.instrument_config.shape, dtype=jnp.float32)
+        image = per_particle_args
         return image / np.linalg.norm(image)
 
     """Test writing a simulated image stack from a starfile."""
@@ -761,6 +762,10 @@ def test_write_simulated_image_stack_from_starfile_nojit(sample_starfile_path):
     )
 
     n_images = len(parameter_dataset)
+    shape = parameter_dataset[0].instrument_config.shape
+    true_images = jax.random.normal(
+        jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
+    )
 
     # check jit fails
     with pytest.raises(RuntimeError):
@@ -768,7 +773,7 @@ def test_write_simulated_image_stack_from_starfile_nojit(sample_starfile_path):
             param_dataset=parameter_dataset,
             compute_image_fn=_mock_compute_image,
             constant_args=(1.0, 2.0),
-            per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
+            per_particle_args=true_images,
             is_jittable=True,
             overwrite=True,
         )
@@ -778,7 +783,7 @@ def test_write_simulated_image_stack_from_starfile_nojit(sample_starfile_path):
         param_dataset=parameter_dataset,
         compute_image_fn=_mock_compute_image,
         constant_args=(1.0, 2.0),
-        per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
+        per_particle_args=true_images,
         is_jittable=False,
         overwrite=True,
     )
@@ -787,8 +792,7 @@ def test_write_simulated_image_stack_from_starfile_nojit(sample_starfile_path):
     images = particle_dataset[:].images
     np.testing.assert_allclose(
         images,
-        np.ones_like(images)
-        / np.linalg.norm(np.ones_like(images), axis=(1, 2), keepdims=True),
+        true_images / np.linalg.norm(true_images, axis=(1, 2), keepdims=True),
     )
 
     # Clean up
