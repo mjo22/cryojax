@@ -3,6 +3,7 @@ Check coverage with
 pytest --cov-report term-missing:skip-covered --cov=src/cryojax/data/_relion tests/test_relion_data.py
 """  # noqa
 
+import os
 import pathlib
 import shutil
 from functools import partial
@@ -13,6 +14,7 @@ import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 import pytest
+import starfile
 from jaxtyping import install_import_hook
 
 
@@ -448,6 +450,66 @@ def test_load_starfile_and_mrcs(sample_starfile_path, sample_path_to_relion_proj
     return
 
 
+def test_default_starfile():
+    path_to_starfile = "tests/outputs/starfile_writing/"
+    os.makedirs(path_to_starfile, exist_ok=True)
+
+    n_images = 1
+    starfile_dict = dict()
+
+    # Optics
+    optics_df = pd.DataFrame()
+
+    optics_df["rlnOpticsGroup"] = [1]
+    optics_df["rlnVoltage"] = 300.0
+    optics_df["rlnSphericalAberration"] = 2.7
+    optics_df["rlnAmplitudeContrast"] = 0.1
+    optics_df["rlnImagePixelSize"] = 3.0
+    optics_df["rlnImageSize"] = 16
+
+    # Particles
+    particles_df = pd.DataFrame()
+
+    # Misc
+    particles_df["rlnCtfMaxResolution"] = np.zeros(n_images)
+    particles_df["rlnCtfFigureOfMerit"] = np.zeros(n_images)
+    particles_df["rlnClassNumber"] = np.ones(n_images)
+    particles_df["rlnOpticsGroup"] = np.ones(n_images)
+
+    # CTF
+    particles_df["rlnDefocusU"] = 10000.0
+    particles_df["rlnDefocusV"] = 9000.0
+    particles_df["rlnDefocusAngle"] = 0.0
+    particles_df["rlnPhaseShift"] = 0.0
+
+    # we skip pose, as this one has default values
+
+    # Image name
+    particles_df["rlnImageName"] = "test.mrcs"
+
+    starfile_dict["optics"] = optics_df
+    starfile_dict["particles"] = particles_df
+    starfile.write(starfile_dict, os.path.join(path_to_starfile, "test.star"))
+
+    # now load the starfile
+    parameter_dataset = RelionParticleParameterDataset(
+        path_to_starfile=os.path.join(path_to_starfile, "test.star"),
+        path_to_relion_project=path_to_starfile,
+        loads_envelope=False,
+        loads_metadata=False,
+        broadcasts_optics_group=False,
+    )
+
+    assert all(
+        jax.tree.leaves(
+            jax.tree.map(lambda x: jnp.isclose(x, 0.0), parameter_dataset[:].pose)
+        )
+    )
+
+    # clean up
+    os.remove(os.path.join(path_to_starfile, "test.star"))
+
+
 # Starfile writing
 def test_format_filename_for_mrcs():
     formated_number = _format_string_for_filename(10, total_characters=5)
@@ -727,6 +789,72 @@ def test_write_simulated_image_stack_from_starfile_nojit(sample_starfile_path):
         images,
         np.ones_like(images)
         / np.linalg.norm(np.ones_like(images), axis=(1, 2), keepdims=True),
+    )
+
+    # Clean up
+    shutil.rmtree("tests/outputs/starfile_writing/")
+
+    return
+
+
+def test_write_single_image(sample_starfile_path):
+    def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
+        # Mock the image computation
+        c1, c2 = constant_args
+        p1, p2 = per_particle_args
+        image = jnp.ones(particle_parameters.instrument_config.shape, dtype=jnp.float32)
+        return image / np.linalg.norm(image)
+
+    """Test writing a simulated image stack from a starfile."""
+    parameter_dataset = RelionParticleParameterDataset(
+        path_to_starfile=sample_starfile_path,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        loads_envelope=False,
+        loads_metadata=False,
+    )
+
+    write_starfile_with_particle_parameters(
+        particle_parameters=parameter_dataset[0],
+        filename="tests/outputs/starfile_writing/test_particle_parameters.star",
+        mrc_batch_size=None,
+        overwrite=True,
+    )
+
+    parameter_dataset = RelionParticleParameterDataset(
+        path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        loads_envelope=False,
+        loads_metadata=False,
+    )
+
+    n_images = 1
+
+    # check jit fails
+    with pytest.raises(RuntimeError):
+        write_simulated_image_stack_from_starfile(
+            param_dataset=parameter_dataset,
+            compute_image_fn=_mock_compute_image,
+            constant_args=(1.0, 2.0),
+            per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
+            is_jittable=True,
+            overwrite=True,
+        )
+
+    # check that non jit mode works
+    write_simulated_image_stack_from_starfile(
+        param_dataset=parameter_dataset,
+        compute_image_fn=_mock_compute_image,
+        constant_args=(1.0, 2.0),
+        per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
+        is_jittable=False,
+        overwrite=True,
+    )
+
+    particle_dataset = RelionParticleStackDataset(parameter_dataset)
+    images = particle_dataset[:].images
+    np.testing.assert_allclose(
+        images,
+        np.ones_like(images) / np.linalg.norm(np.ones_like(images)),
     )
 
     # Clean up
