@@ -657,37 +657,13 @@ def _get_image_stack_from_mrc(
     path_to_relion_project,
 ) -> Float[Array, "... y_dim x_dim"]:
     # Load particle image stack rlnImageName
-    image_stack_index_and_name_series_or_str = particle_dataframe["rlnImageName"]
+    image_stack_index_and_name = particle_dataframe["rlnImageName"]
 
-    # TODO: Does this ever happen? Probably not
-    if isinstance(image_stack_index_and_name_series_or_str, str):
-        # In this block, the user most likely used standard indexing, like
-        # `dataset = RelionParticleStackDataset(...); particle_stack = dataset[1]`
-        image_stack_index_and_name_str = image_stack_index_and_name_series_or_str
-        # ... split the whole string into its image index and filename
-        relion_particle_index, image_stack_filename = (
-            image_stack_index_and_name_str.split("@")
-        )
-        # ... create full path to the image stack
-        path_to_image_stack = pathlib.Path(path_to_relion_project, image_stack_filename)
-        # ... relion convention starts indexing at 1, not 0
-        particle_index = np.asarray(relion_particle_index, dtype=int) - 1
-
-        with mrcfile.mmap(path_to_image_stack, mode="r", permissive=True) as mrc:
-            mrc_data = np.asarray(mrc.data)
-            if mrc_data.ndim == 2:
-                image_stack = mrc_data
-            else:
-                image_stack = mrc_data[particle_index]
-
-    elif isinstance(image_stack_index_and_name_series_or_str, pd.Series):
-        # In this block, the user most likely used fancy indexing, like
-        # `dataset = RelionParticleStackDataset(...); particle_stack = dataset[1:10]`
-        image_stack_index_and_name_series = image_stack_index_and_name_series_or_str
+    if all([isinstance(elem, str) for elem in image_stack_index_and_name]):
         # ... split the pandas.Series into a pandas.DataFrame with two columns:
         # one for the image index and another for the filename
         image_stack_index_and_name_dataframe = (
-            image_stack_index_and_name_series.str.split("@", expand=True)
+            image_stack_index_and_name.str.split("@", expand=True)
         ).reset_index()
         # ... check dtype and shape of images
         path_to_test_image_stack = pathlib.Path(

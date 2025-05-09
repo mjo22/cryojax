@@ -5,23 +5,137 @@
 
 
 ### ToDO ###
-# src/cryojax/data/_relion/_starfile_dataset.py  132-142, 146, 153-175, 186, 191, 196, 201, 206, 211, 216, 221, 226, 240, 244, 251-277, 281, 285, 321-332, 336, 339-349, 352, 356, 360, 365, 370, 375, 380, 385, 390, 400-538, 549-561, 565-606, 619-687, 697-714, 720-731, 735-750, 761-770, 779-795, 802-804 # noqa: E501
+# src/cryojax/data/_relion/_starfile_dataset.py 63, 68, 73, 78, 83, 88, 322-333, 337, 340-350, 353, 357, 361, 366, 371, 376, 381, 386, 391, 479-482, 494, 508-511, 571-576, 580-587, 590, 696, 716-733, 739-750, 767, 780-789, 821-823 #noqa
 
-# src/cryojax/data/_relion/_starfile_pytrees.py  36-42
-
-# src/cryojax/data/_relion/_starfile_writing.py 21-26, 53-175, 304-350, 354-371, 390-501, 519-559 # noqa: E501
+# src/cryojax/data/_relion/_starfile_writing.py 25-30, 57-180, 317-376, 392-463, 479-511 #noqa
 
 import pathlib
 
 import jax.numpy as jnp
 import numpy as np
+import pandas as pd
+import pytest
 from jaxtyping import install_import_hook
 
 
 with install_import_hook("cryojax", "typeguard.typechecked"):
     import cryojax.simulator as cxs
-    from cryojax.data import RelionParticleParameterDataset, RelionParticleStackDataset
-    from cryojax.data._relion._starfile_dataset import _default_make_config_fn
+    from cryojax.data import (
+        ParticleStack,
+        RelionParticleParameterDataset,
+        RelionParticleParameters,
+        RelionParticleStackDataset,
+    )
+    from cryojax.data._relion._starfile_dataset import (
+        _default_make_config_fn,
+        _get_image_stack_from_mrc,
+        _validate_starfile_data,
+    )
+
+
+@pytest.fixture
+def parameter_dataset(sample_starfile_path, sample_path_to_relion_project):
+    return RelionParticleParameterDataset(
+        path_to_starfile=sample_starfile_path,
+        path_to_relion_project=sample_path_to_relion_project,
+        loads_envelope=True,
+        loads_metadata=True,
+    )
+
+
+@pytest.fixture
+def relion_parameters():
+    instrument_config = cxs.InstrumentConfig(
+        shape=(4, 4),
+        pixel_size=1.5,
+        voltage_in_kilovolts=300.0,
+        padded_shape=(140, 140),
+        pad_mode="constant",
+    )
+
+    pose = cxs.EulerAnglePose()
+    transfer_theory = cxs.ContrastTransferTheory(
+        ctf=cxs.CTF(),
+    )
+    return RelionParticleParameters(instrument_config, pose, transfer_theory)
+
+
+class TestErrorRaising:
+    def test_param_dataset_setitem(self, parameter_dataset, relion_parameters):
+        with pytest.raises(NotImplementedError):
+            parameter_dataset[0] = relion_parameters
+
+    def test_stack_dataset_setitem(self, parameter_dataset, relion_parameters):
+        stack_dataset = RelionParticleStackDataset(parameter_dataset)
+        particle_stack = ParticleStack(
+            relion_parameters, images=jnp.zeros(relion_parameters.instrument_config.shape)
+        )
+        with pytest.raises(NotImplementedError):
+            stack_dataset[0] = particle_stack
+
+    def test_load_with_badparticle_name(self, parameter_dataset):
+        with pytest.raises(IOError):
+            metadata = parameter_dataset[0].metadata
+            particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)
+            particle_dataframe_at_index["rlnImageName"] = 0.0
+
+            _get_image_stack_from_mrc(
+                0,
+                particle_dataframe_at_index,
+                parameter_dataset.path_to_relion_project,
+            )
+
+    def test_param_dataset_max_index_int(self, parameter_dataset):
+        with pytest.raises(IndexError):
+            parameter_dataset[len(parameter_dataset)]
+
+    def test_stack_dataset_max_index_int(self, parameter_dataset):
+        stack_dataset = RelionParticleStackDataset(parameter_dataset)
+        with pytest.raises(IndexError):
+            stack_dataset[len(stack_dataset)]
+
+    def test_param_dataset_max_index_slice(self, parameter_dataset):
+        with pytest.raises(IndexError):
+            parameter_dataset[len(parameter_dataset) :]
+
+    def test_stack_dataset_max_index_slice(self, parameter_dataset):
+        stack_dataset = RelionParticleStackDataset(parameter_dataset)
+        with pytest.raises(IndexError):
+            stack_dataset[len(stack_dataset) :]
+
+    def test_param_dataset_badintex_type(self, parameter_dataset):
+        with pytest.raises(IndexError):
+            parameter_dataset["wrong_index"]
+
+    def test_stack_dataset_badindex_type(self, parameter_dataset):
+        stack_dataset = RelionParticleStackDataset(parameter_dataset)
+        with pytest.raises(IndexError):
+            stack_dataset["wrong_index"]
+
+    def test_validate_starfile_data(self):
+        with pytest.raises(ValueError):
+            _validate_starfile_data({"wrong": pd.DataFrame({})})
+
+        with pytest.raises(ValueError):
+            _validate_starfile_data({"particles": pd.DataFrame({})})
+
+        mock_particles_df = pd.DataFrame(
+            {
+                "rlnDefocusU": 0.0,
+                "rlnDefocusV": 0.0,
+                "rlnDefocusAngle": 0.0,
+                "rlnPhaseShift": 0.0,
+                "rlnImageName": "mock.mrcs",
+            },
+            index=[0],
+        )
+        with pytest.raises(ValueError):
+            _validate_starfile_data({"particles": mock_particles_df})
+
+        with pytest.raises(ValueError):
+            _validate_starfile_data(
+                {"particles": mock_particles_df, "optics": pd.DataFrame({})}
+            )
 
 
 def test_default_make_config_fn():
