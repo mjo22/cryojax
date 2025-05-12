@@ -131,9 +131,9 @@ def _project_with_nufft(weights, coordinate_list, shape, eps=1e-6):
     # Get x and y coordinates
     coordinates_xy = coordinate_list[:, :2]
     # Normalize coordinates betweeen -pi and pi
-    M1, M2 = shape
-    image_size = jnp.asarray((M1, M2), dtype=float)
-    coordinates_periodic = 2 * jnp.pi * coordinates_xy / image_size
+    ny, nx = shape
+    box_xy = jnp.asarray((nx, ny), dtype=float)
+    coordinates_periodic = 2 * jnp.pi * coordinates_xy / box_xy
     # Unpack and compute
     x, y = coordinates_periodic[:, 0], coordinates_periodic[:, 1]
     fourier_projection = nufft1(shape, weights, y, x, eps=eps, iflag=-1)
