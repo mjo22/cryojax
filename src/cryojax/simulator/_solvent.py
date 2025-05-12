@@ -165,7 +165,7 @@ class GRFSolvent(AbstractSolvent, strict=True):
 
     thickness_in_angstroms: Float[Array, ""]
     molecules_per_angstrom_cubed: float
-    potential_per_molecule: float
+    total_potential_per_molecule: float
     power_spectrum_function: FourierOperatorLike
     samples_power: bool
 
@@ -173,7 +173,7 @@ class GRFSolvent(AbstractSolvent, strict=True):
         self,
         thickness_in_angstroms: Float[Array, ""] | float,
         molecules_per_angstrom_cubed: float = 0.0325,
-        potential_per_molecule: float = 38.214333,
+        total_potential_per_molecule: float = 38.214333,
         power_spectrum_function: FourierOperatorLike | None = None,
         samples_power: bool = False,
     ):
@@ -182,9 +182,12 @@ class GRFSolvent(AbstractSolvent, strict=True):
         - `thickness_in_angstroms`:
             The solvent thickness in angstroms.
         - `potential_per_molecule`:
-            A dimensional factor that quantifies the characteristic scale
-            of the potential per molecule. By default, this is calibrated
-            from scattering factors in `cryojax.constants`.
+            A dimensional factor that quantifies the total electrostatic
+            potential per molecule. This has units of energy times volume,
+            which in `cryojax` conventions is measured in Angstroms.
+            By default, this is calibrated as the q = 0 component of
+            an electron scattering factor for water, computed from
+            `cryojax.constants`.
         - `molecules_per_angstrom_cubed`:
             A dimensional factor that quantifies the number of water molecules
             per unit volume. By default, this is calibrated from MD simulations
@@ -205,7 +208,7 @@ class GRFSolvent(AbstractSolvent, strict=True):
             jnp.asarray(thickness_in_angstroms)
         )
         self.molecules_per_angstrom_cubed = molecules_per_angstrom_cubed
-        self.potential_per_molecule = potential_per_molecule
+        self.total_potential_per_molecule = total_potential_per_molecule
 
     @override
     def sample_solvent_integrated_potential(
@@ -256,11 +259,10 @@ class GRFSolvent(AbstractSolvent, strict=True):
             dtype=complex,
         ).at[0, 0].set(0.0)
         # Scale to desired mean and standard deviation
-        mean = (
-            self.molecules_per_angstrom_cubed
-            * self.potential_per_molecule
-            * self.thickness_in_angstroms
+        molecules_per_angstrom_squared = (
+            self.thickness_in_angstroms * self.molecules_per_angstrom_cubed
         )
+        mean = self.total_potential_per_molecule * molecules_per_angstrom_squared
         std = 1.0  # TODO: set standard deviation
         fourier_integrated_potential_of_solvent = rescale_image(
             solvent_grf,
