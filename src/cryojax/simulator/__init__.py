@@ -41,7 +41,8 @@ from ._potential_representation import (
 from ._scattering_theory import (
     AbstractScatteringTheory as AbstractScatteringTheory,
     AbstractWeakPhaseScatteringTheory as AbstractWeakPhaseScatteringTheory,
-    LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
+    apply_amplitude_contrast_ratio as apply_amplitude_contrast_ratio,
+    apply_interaction_constant as apply_interaction_constant,
     WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
 )
 from ._solvent import AbstractSolvent as AbstractSolvent
@@ -50,11 +51,8 @@ from ._structural_ensemble import (
     AbstractAssemblyWithSubunit as AbstractAssemblyWithSubunit,
     AbstractConformationalVariable as AbstractConformationalVariable,
     AbstractStructuralEnsemble as AbstractStructuralEnsemble,
-    compute_helical_lattice_positions as compute_helical_lattice_positions,
-    compute_helical_lattice_rotations as compute_helical_lattice_rotations,
     DiscreteConformationalVariable as DiscreteConformationalVariable,
     DiscreteStructuralEnsemble as DiscreteStructuralEnsemble,
-    HelicalAssembly as HelicalAssembly,
     SingleStructureEnsemble as SingleStructureEnsemble,
 )
 from ._transfer_theory import (

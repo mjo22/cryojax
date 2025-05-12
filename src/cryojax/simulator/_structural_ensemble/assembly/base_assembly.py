@@ -23,7 +23,7 @@ class AbstractAssembly(AbstractStructuralEnsemble, strict=True):
     """Abstraction of a biological assembly.
 
     To subclass an `AbstractAssembly`,
-        1) Overwrite the `AbstractAssembly.n_subunits`
+        1) Overwrite the `AbstractAssembly.n_subcomponents`
            property
         2) Overwrite the `AbstractAssembly.offsets_in_angstroms`
            and `AbstractAssembly.rotations` properties.

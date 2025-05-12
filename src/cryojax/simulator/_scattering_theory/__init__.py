@@ -14,6 +14,5 @@ from .multislice_scattering_theory import (
 )
 from .weak_phase_scattering_theory import (
     AbstractWeakPhaseScatteringTheory as AbstractWeakPhaseScatteringTheory,
-    LinearSuperpositionScatteringTheory as LinearSuperpositionScatteringTheory,
     WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
 )

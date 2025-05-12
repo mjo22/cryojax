@@ -8,8 +8,13 @@ from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ...image import fftn, ifftn, rfftn
 from .._instrument_config import InstrumentConfig
+from .._potential_integrator import AbstractPotentialIntegrator
 from .._structural_ensemble import AbstractStructuralEnsemble
-from .._transfer_theory import AbstractTransferTheory, WaveTransferTheory
+from .._transfer_theory import (
+    AbstractTransferTheory,
+    ContrastTransferTheory,
+    WaveTransferTheory,
+)
 
 
 class AbstractScatteringTheory(eqx.Module, strict=True):
@@ -137,3 +142,44 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         )
 
         return contrast_spectrum_at_detector_plane
+
+
+class AbstractWeakPhaseScatteringTheory(AbstractScatteringTheory, strict=True):
+    """Base class for a scattering theory in linear image formation theory
+    (the weak-phase approximation).
+    """
+
+    transfer_theory: eqx.AbstractVar[ContrastTransferTheory]
+    potential_integrator: eqx.AbstractVar[AbstractPotentialIntegrator]
+
+    @abstractmethod
+    def compute_object_spectrum_at_exit_plane(
+        self,
+        instrument_config: InstrumentConfig,
+        rng_key: Optional[PRNGKeyArray] = None,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
+        raise NotImplementedError
+
+    @override
+    def compute_intensity_spectrum_at_detector_plane(
+        self,
+        instrument_config: InstrumentConfig,
+        rng_key: Optional[PRNGKeyArray] = None,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
+        """Compute the squared wavefunction at the detector plane, given the
+        contrast.
+        """
+        N1, N2 = instrument_config.padded_shape
+        # ... compute the squared wavefunction directly from the image contrast
+        # as |psi|^2 = 1 + 2C.
+        contrast_spectrum_at_detector_plane = (
+            self.compute_contrast_spectrum_at_detector_plane(instrument_config, rng_key)
+        )
+        intensity_spectrum_at_detector_plane = (
+            (2 * contrast_spectrum_at_detector_plane).at[0, 0].add(1.0 * N1 * N2)
+        )
+        return intensity_spectrum_at_detector_plane
