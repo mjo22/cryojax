@@ -11,7 +11,7 @@ import jax.random as jr
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..constants import PARKHURST2024_POWER_CONSTANTS
-from ..image import ifftn, irfftn
+from ..image import ifftn, irfftn, rescale_image
 from ..image.operators import (
     AbstractFourierOperator,
     FourierGaussian,
@@ -73,7 +73,6 @@ class AbstractSolvent(eqx.Module, strict=True):
     """Base class for a model of the solvent in cryo-EM."""
 
     thickness_in_angstroms: eqx.AbstractVar[Float[Array, ""]]
-    potential_scale: eqx.AbstractVar[float]
 
     @abstractmethod
     def sample_solvent_integrated_potential(
@@ -165,14 +164,16 @@ class GRFSolvent(AbstractSolvent, strict=True):
     r"""Solvent modeled as a gaussian random field (GRF)."""
 
     thickness_in_angstroms: Float[Array, ""]
-    potential_scale: float
+    molecules_per_angstrom_cubed: float
+    potential_per_molecule: float
     power_spectrum_function: FourierOperatorLike
     samples_power: bool
 
     def __init__(
         self,
         thickness_in_angstroms: Float[Array, ""] | float,
-        potential_scale: float = 1.0,  # TODO: default value?
+        molecules_per_angstrom_cubed: float = 0.0325,
+        potential_per_molecule: float = 38.214333,
         power_spectrum_function: FourierOperatorLike | None = None,
         samples_power: bool = False,
     ):
@@ -180,10 +181,14 @@ class GRFSolvent(AbstractSolvent, strict=True):
 
         - `thickness_in_angstroms`:
             The solvent thickness in angstroms.
-        - `potential_scale`:
+        - `potential_per_molecule`:
             A dimensional factor that quantifies the characteristic scale
-            of the potential. By default, this is calibrated from scattering
-            factors in `cryojax.constants`.
+            of the potential per molecule. By default, this is calibrated
+            from scattering factors in `cryojax.constants`.
+        - `molecules_per_angstrom_cubed`:
+            A dimensional factor that quantifies the number of water molecules
+            per unit volume. By default, this is calibrated from MD simulations
+            of water.
         - `power_spectrum_function` :
             A function that computes the power spectrum of the solvent.
             This function is treated as dimensionless,
@@ -196,10 +201,11 @@ class GRFSolvent(AbstractSolvent, strict=True):
         """
         self.power_spectrum_function = power_spectrum_function or SolventMixturePower()
         self.samples_power = samples_power
-        self.potential_scale = potential_scale
         self.thickness_in_angstroms = error_if_negative(
             jnp.asarray(thickness_in_angstroms)
         )
+        self.molecules_per_angstrom_cubed = molecules_per_angstrom_cubed
+        self.potential_per_molecule = potential_per_molecule
 
     @override
     def sample_solvent_integrated_potential(
@@ -249,10 +255,20 @@ class GRFSolvent(AbstractSolvent, strict=True):
             shape=frequency_grid_in_angstroms.shape[0:-1],
             dtype=complex,
         ).at[0, 0].set(0.0)
-        # Apply dimensionful scalings to get the potential
-        fourier_integrated_potential_of_solvent = (
-            self.potential_scale * self.thickness_in_angstroms
-        ) * solvent_grf
+        # Scale to desired mean and standard deviation
+        mean = (
+            self.molecules_per_angstrom_cubed
+            * self.potential_per_molecule
+            * self.thickness_in_angstroms
+        )
+        std = 1.0  # TODO: set standard deviation
+        fourier_integrated_potential_of_solvent = rescale_image(
+            solvent_grf,
+            mean=mean,
+            std=std,
+            input_is_real_space=False,
+            input_is_rfft=outputs_rfft,
+        )
         if outputs_real_space:
             return irfftn(
                 fourier_integrated_potential_of_solvent,
