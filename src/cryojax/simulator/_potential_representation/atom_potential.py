@@ -75,6 +75,17 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
             pose.rotate_coordinates(self.atom_positions),
         )
 
+    def translate_to_pose(self, pose: AbstractPose) -> Self:
+        """Return a new potential with rotated `atom_positions`."""
+        offset_in_angstroms = pose.offset_in_angstroms
+        if pose.offset_z_in_angstroms is None:
+            offset_in_angstroms = jnp.concatenate(
+                (offset_in_angstroms, jnp.atleast_1d(0.0))
+            )
+        return eqx.tree_at(
+            lambda d: d.atom_positions, self, self.atom_positions + offset_in_angstroms
+        )
+
     @abstractmethod
     def as_real_voxel_grid(
         self,
@@ -85,7 +96,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
 
 
 class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
-    """An atomistic representation of scattering potential as a mixture of
+    r"""An atomistic representation of scattering potential as a mixture of
     gaussians.
 
     The naming and numerical convention of parameters `gaussian_amplitudes` and

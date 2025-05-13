@@ -8,10 +8,8 @@ from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ...image import fftn, ifftn, rfftn
 from .._instrument_config import InstrumentConfig
-from .._potential_integrator import AbstractPotentialIntegrator
 from .._structural_ensemble import AbstractStructuralEnsemble
 from .._transfer_theory import (
-    AbstractTransferTheory,
     ContrastTransferTheory,
     WaveTransferTheory,
 )
@@ -21,7 +19,6 @@ class AbstractScatteringTheory(eqx.Module, strict=True):
     """Base class for a scattering theory."""
 
     structural_ensemble: eqx.AbstractVar[AbstractStructuralEnsemble]
-    transfer_theory: eqx.AbstractVar[AbstractTransferTheory]
 
     @abstractmethod
     def compute_contrast_spectrum_at_detector_plane(
@@ -117,6 +114,7 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             self.transfer_theory.propagate_wavefunction_to_detector_plane(
                 fourier_wavefunction_at_exit_plane,
                 instrument_config,
+                defocus_offset=self.structural_ensemble.pose.offset_z_in_angstroms,
             )
         )
         wavefunction_at_detector_plane = ifftn(fourier_wavefunction_at_detector_plane)
@@ -150,7 +148,6 @@ class AbstractWeakPhaseScatteringTheory(AbstractScatteringTheory, strict=True):
     """
 
     transfer_theory: eqx.AbstractVar[ContrastTransferTheory]
-    potential_integrator: eqx.AbstractVar[AbstractPotentialIntegrator]
 
     @abstractmethod
     def compute_object_spectrum_at_exit_plane(

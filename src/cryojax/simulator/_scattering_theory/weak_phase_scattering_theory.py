@@ -85,6 +85,7 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
             object_spectrum_at_exit_plane,
             instrument_config,
             is_projection_approximation=self.potential_integrator.is_projection_approximation,
+            defocus_offset=self.structural_ensemble.pose.offset_z_in_angstroms,
         )
         # ... apply in-plane translation
         translation_operator = self.structural_ensemble.pose.compute_translation_operator(
@@ -102,10 +103,14 @@ class WeakPhaseScatteringTheory(AbstractWeakPhaseScatteringTheory, strict=True):
 
 
 def _integrate_potential_to_exit_plane(
-    structural_ensemble, potential_integrator, instrument_config
+    structural_ensemble: AbstractStructuralEnsemble,
+    potential_integrator: AbstractPotentialIntegrator,
+    instrument_config: InstrumentConfig,
 ):
     # Get potential in the lab frame
-    potential = structural_ensemble.get_potential_in_lab_frame()
+    potential = structural_ensemble.get_potential_in_transformed_frame(
+        apply_translation=False
+    )
     # Compute the phase shifts in the exit plane
     fourier_integrated_potential = potential_integrator.compute_integrated_potential(
         potential, instrument_config, outputs_real_space=False
