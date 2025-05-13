@@ -16,8 +16,6 @@ from .common_functions import (
 class AbstractCTF(eqx.Module, strict=True):
     """An abstract base class for a CTF in cryo-EM."""
 
-    defocus_in_angstroms: eqx.AbstractVar[Float[Array, ""]]
-
     @abstractmethod
     def compute_aberration_phase_shifts(
         self,
@@ -166,19 +164,15 @@ class AberratedAstigmaticCTF(AbstractCTF, strict=True):
                 aberration_phase_shifts - (phase_shift + amplitude_contrast_phase_shift)
             )
         else:
-            # Compute the "complex CTF", correcting for the amplitude contrast
-            # and additional phase shift in the zero mode
+            # Compute the "complex CTF". Note that the amplitude contrast is
+            # not applied in this case, as it cannot be simply expressed as a phase
+            # shift
             return jnp.exp(-1.0j * (aberration_phase_shifts - phase_shift))
 
 
 class NullCTF(AbstractCTF, strict=True):
     """A perfect transfer function, useful for imaging
     cryo-EM densities."""
-
-    defocus_in_angstroms: Float[Array, ""]
-
-    def __init__(self):
-        self.defocus_in_angstroms = jnp.asarray(0.0)
 
     @override
     def compute_aberration_phase_shifts(

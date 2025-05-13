@@ -47,8 +47,6 @@ from ._scattering_theory import (
 )
 from ._solvent import AbstractSolvent as AbstractSolvent
 from ._structural_ensemble import (
-    AbstractAssembly as AbstractAssembly,
-    AbstractAssemblyWithSubunit as AbstractAssemblyWithSubunit,
     AbstractConformationalVariable as AbstractConformationalVariable,
     AbstractStructuralEnsemble as AbstractStructuralEnsemble,
     DiscreteConformationalVariable as DiscreteConformationalVariable,

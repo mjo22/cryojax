@@ -1,7 +1,3 @@
-from .assembly import (
-    AbstractAssembly as AbstractAssembly,
-    AbstractAssemblyWithSubunit as AbstractAssemblyWithSubunit,
-)
 from .base_conformation import (
     AbstractConformationalVariable as AbstractConformationalVariable,
 )
