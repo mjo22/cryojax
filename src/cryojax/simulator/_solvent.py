@@ -268,6 +268,7 @@ class GRFSolvent(AbstractSolvent, strict=True):
             std=std,
             input_is_real_space=False,
             input_is_rfft=outputs_rfft,
+            shape_in_real_space=instrument_config.padded_shape,
         )
         if outputs_real_space:
             return irfftn(
