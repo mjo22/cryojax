@@ -592,14 +592,14 @@ def _make_envelope_function(amp, b_factor):
         def _make_gaussian_env(amp, b):
             return FourierGaussian(amplitude=amp, b_factor=b)
 
-        @eqx.filter_vmap(in_axes=0, out_axes=0)
+        @eqx.filter_vmap(in_axes=(0, 0), out_axes=0)
         def _make_gaussian_env_vmap(amp, b):
             return _make_gaussian_env(amp, b)
 
         return (
-            _make_gaussian_env(b_factor)
+            _make_gaussian_env(amp, b_factor)
             if b_factor.ndim == 0
-            else _make_gaussian_env_vmap(b_factor)
+            else _make_gaussian_env_vmap(amp, b_factor)
         )
 
 
