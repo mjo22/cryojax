@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Optional
 from typing_extensions import override
 
 import equinox as eqx
@@ -16,13 +17,12 @@ from .common_functions import (
 class AbstractCTF(eqx.Module, strict=True):
     """An abstract base class for a CTF in cryo-EM."""
 
-    defocus_in_angstroms: eqx.AbstractVar[Float[Array, ""]]
-
     @abstractmethod
     def compute_aberration_phase_shifts(
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         voltage_in_kilovolts: Float[Array, ""] | float,
+        defocus_offset: Optional[Float[Array, ""] | float] = None,
     ) -> Float[Array, "y_dim x_dim"]:
         raise NotImplementedError
 
@@ -33,6 +33,7 @@ class AbstractCTF(eqx.Module, strict=True):
         amplitude_contrast_ratio: Float[Array, ""] | float = 0.1,
         phase_shift: Float[Array, ""] | float = 0.0,
         outputs_exp: bool = False,
+        defocus_offset: Optional[Float[Array, ""] | float] = None,
     ) -> Float[Array, "y_dim x_dim"] | Complex[Array, "y_dim x_dim"]:
         """Compute the CTF as a JAX array.
 
@@ -124,6 +125,7 @@ class AberratedAstigmaticCTF(AbstractCTF, strict=True):
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         voltage_in_kilovolts: Float[Array, ""] | float,
+        defocus_offset: Optional[Float[Array, ""] | float] = None,
     ) -> Float[Array, "y_dim x_dim"]:
         """Compute the frequency-dependent phase shifts due to wave aberration.
 
@@ -139,6 +141,8 @@ class AberratedAstigmaticCTF(AbstractCTF, strict=True):
             The accelerating voltage of the microscope in kilovolts. This
             is converted to the wavelength of incident electrons using
             the function [`cryojax.constants.convert_keV_to_angstroms`](https://mjo22.github.io/cryojax/api/constants/units/#cryojax.constants.convert_keV_to_angstroms)
+        - `defocus_offset`:
+            An optional defocus offset to apply to the `defocus_in_angstroms` at runtime.
         """
         astigmatism_angle = jnp.deg2rad(self.astigmatism_angle)
         # Convert spherical abberation coefficient to angstroms
@@ -150,7 +154,11 @@ class AberratedAstigmaticCTF(AbstractCTF, strict=True):
         # Compute phase shifts for CTF
         phase_shifts = compute_phase_shifts_with_spherical_aberration(
             frequency_grid_in_angstroms,
-            self.defocus_in_angstroms,
+            (
+                self.defocus_in_angstroms
+                if defocus_offset is None
+                else self.defocus_in_angstroms + jnp.asarray(defocus_offset, dtype=float)
+            ),
             self.astigmatism_in_angstroms,
             astigmatism_angle,
             wavelength_in_angstroms,
@@ -163,16 +171,12 @@ class NullCTF(AbstractCTF, strict=True):
     """A perfect transfer function, useful for imaging
     cryo-EM densities."""
 
-    defocus_in_angstroms: Float[Array, ""]
-
-    def __init__(self):
-        self.defocus_in_angstroms = jnp.asarray(0.0)
-
     @override
     def compute_aberration_phase_shifts(
         self,
         frequency_grid_in_angstroms: Float[Array, "y_dim x_dim 2"],
         voltage_in_kilovolts: Float[Array, ""] | float,
+        defocus_offset: Optional[Float[Array, ""] | float] = None,
     ) -> Float[Array, "y_dim x_dim"]:
         shape = frequency_grid_in_angstroms.shape[:2]
         return jnp.full(shape, jnp.pi / 2)

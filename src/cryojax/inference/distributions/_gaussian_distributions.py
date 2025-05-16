@@ -12,7 +12,7 @@ from equinox import AbstractVar, field
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ...image import rfftn
-from ...image.operators import Constant, FourierOperatorLike
+from ...image.operators import AbstractBooleanMask, Constant, FourierOperatorLike
 from ...internal import error_if_not_positive
 from ...simulator import AbstractImageModel
 from ._base_distribution import AbstractDistribution
@@ -34,7 +34,12 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
 
     @override
     def sample(
-        self, rng_key: PRNGKeyArray, *, outputs_real_space: bool = True
+        self,
+        rng_key: PRNGKeyArray,
+        *,
+        outputs_real_space: bool = True,
+        applies_filter: bool = True,
+        applies_mask: bool = True,
     ) -> (
         Float[
             Array,
@@ -47,14 +52,37 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
             "{self.image_model.instrument_config.x_dim//2+1}",
         ]
     ):
-        """Sample from the gaussian noise model."""
+        """Sample a noisy image from the gaussian noise model.
+
+        **Arguments:**
+
+        - `outputs_real_space`:
+            If `True`, return the signal in real space.
+        - `applies_mask`:
+            If `True`, apply mask stored in
+            `AbstractGaussianDistribution.image_model.mask`.
+        - `applies_filter`:
+            If `True`, apply filter stored in
+            `AbstractGaussianDistribution.image_model.filter`.
+        """
         return self.compute_signal(
-            outputs_real_space=outputs_real_space
-        ) + self.compute_noise(rng_key, outputs_real_space=outputs_real_space)
+            outputs_real_space=outputs_real_space,
+            applies_filter=applies_filter,
+            applies_mask=applies_mask,
+        ) + self.compute_noise(
+            rng_key,
+            outputs_real_space=outputs_real_space,
+            applies_filter=applies_filter,
+            applies_mask=applies_mask,
+        )
 
     @override
     def compute_signal(
-        self, *, outputs_real_space: bool = True
+        self,
+        *,
+        outputs_real_space: bool = True,
+        applies_filter: bool = True,
+        applies_mask: bool = True,
     ) -> (
         Float[
             Array,
@@ -67,9 +95,45 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
             " {self.image_model.instrument_config.x_dim//2+1}",
         ]
     ):
-        """Render the image formation model."""
+        """Render the signal from the image formation model.
+
+        !!! info
+
+            If the `AbstractImageModel` has a `mask` property, images will be
+            normalized with the mean and standard deviation computed
+            within the region where the mask is equal to 1.
+
+            In particular, the following code is used
+
+            ```python
+                import jax.numpy as jnp
+
+                signal = ...
+                mask_array = ...
+                is_signal = mask_array == 1.0
+                mean, std = (
+                    jnp.mean(signal, where=is_signal),
+                    jnp.std(signal, where=is_signal),
+                )
+                normalized_signal = (signal - mean) / std
+            ```
+
+            If `applies_mask = False`, the mask will not be applied to the signal
+            but it will still be used for normalization.
+
+        **Arguments:**
+
+        - `outputs_real_space`:
+            If `True`, return the signal in real space.
+        - `applies_mask`:
+            If `True`, apply mask stored in
+            `AbstractGaussianDistribution.image_model.mask`.
+        - `applies_filter`:
+            If `True`, apply filter stored in
+            `AbstractGaussianDistribution.image_model.filter`.
+        """
         simulated_image = self.image_model.render(
-            outputs_real_space=True, applies_mask=False
+            outputs_real_space=True, applies_mask=False, applies_filter=applies_filter
         )
         if self.image_model.mask is None:
             if self.normalizes_signal:
@@ -80,20 +144,31 @@ class AbstractGaussianDistribution(AbstractDistribution, strict=True):
             )
         else:
             if self.normalizes_signal:
-                is_signal = self.image_model.mask.array == 1.0
+                mask = self.image_model.mask
+                if isinstance(mask, AbstractBooleanMask):
+                    is_signal = mask.is_not_masked
+                else:
+                    is_signal = mask.array == 1.0
                 mean, std = (
                     jnp.mean(simulated_image, where=is_signal),
                     jnp.std(simulated_image, where=is_signal),
                 )
                 simulated_image = (simulated_image - mean) / std
-            simulated_image = self.image_model.mask(
+            simulated_image = (
                 self.signal_scale_factor * simulated_image + self.signal_offset
             )
+            if applies_mask:
+                simulated_image = self.image_model.mask(simulated_image)
         return simulated_image if outputs_real_space else rfftn(simulated_image)
 
     @abstractmethod
     def compute_noise(
-        self, rng_key: PRNGKeyArray, *, outputs_real_space: bool = True
+        self,
+        rng_key: PRNGKeyArray,
+        *,
+        outputs_real_space: bool = True,
+        applies_filter: bool = True,
+        applies_mask: bool = True,
     ) -> (
         Float[
             Array,
@@ -160,7 +235,12 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
 
     @override
     def compute_noise(
-        self, rng_key: PRNGKeyArray, *, outputs_real_space: bool = True
+        self,
+        rng_key: PRNGKeyArray,
+        *,
+        outputs_real_space: bool = True,
+        applies_filter: bool = True,
+        applies_mask: bool = True,
     ) -> (
         Float[
             Array,
@@ -173,6 +253,19 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
             "{self.image_model.instrument_config.x_dim//2+1}",
         ]
     ):
+        """Sample a realization of the noise from the distribution.
+
+        **Arguments:**
+
+        - `outputs_real_space`:
+            If `True`, return the noise in real space.
+        - `applies_mask`:
+            If `True`, apply mask stored in
+            `AbstractGaussianDistribution.image_model.mask`.
+        - `applies_filter`:
+            If `True`, apply filter stored in
+            `AbstractGaussianDistribution.image_model.filter`.
+        """
         pipeline = self.image_model
         n_pixels = pipeline.instrument_config.padded_n_pixels
         freqs = pipeline.instrument_config.padded_frequency_grid_in_angstroms
@@ -186,6 +279,8 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
             .set(0.0)
             .astype(complex),
             outputs_real_space=outputs_real_space,
+            applies_filter=applies_filter,
+            applies_mask=applies_mask,
         )
 
         return noise
@@ -198,16 +293,39 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
             "{self.image_model.instrument_config.y_dim} "
             "{self.image_model.instrument_config.x_dim}",
         ],
+        *,
+        applies_filter: bool = True,
+        applies_mask: bool = True,
     ) -> Float[Array, ""]:
         """Evaluate the log-likelihood of the gaussian noise model.
+
+        !!! info
+
+            When computing the likelihood, the observed image is assumed to have already
+            been preprocessed with filters and masks. In other words,
+            if `applies_filter` or `applies_mask` is `True`, filters and masks
+            will *not* be applied to `observed`. The user must do this
+            manually if desired.
 
         **Arguments:**
 
         - `observed` : The observed data in real space.
+        - `applies_mask`:
+            If `True`, apply mask stored in
+            `AbstractGaussianDistribution.image_model.mask`
+            *to the signal*.
+        - `applies_filter`:
+            If `True`, apply filter stored in
+            `AbstractGaussianDistribution.image_model.filter`
+            *to the signal*.
         """
         variance = self.variance
         # Create simulated data
-        simulated = self.compute_signal(outputs_real_space=True)
+        simulated = self.compute_signal(
+            outputs_real_space=True,
+            applies_filter=applies_filter,
+            applies_mask=applies_mask,
+        )
         # Compute residuals
         residuals = simulated - observed
         # Compute standard normal random variables
@@ -268,7 +386,12 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         self.normalizes_signal = normalizes_signal
 
     def compute_noise(
-        self, rng_key: PRNGKeyArray, *, outputs_real_space: bool = True
+        self,
+        rng_key: PRNGKeyArray,
+        *,
+        outputs_real_space: bool = True,
+        applies_filter: bool = True,
+        applies_mask: bool = True,
     ) -> (
         Float[
             Array,
@@ -281,6 +404,19 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
             "{self.image_model.instrument_config.x_dim//2+1}",
         ]
     ):
+        """Sample a realization of the noise from the distribution.
+
+        **Arguments:**
+
+        - `outputs_real_space`:
+            If `True`, return the noise in real space.
+        - `applies_mask`:
+            If `True`, apply mask stored in
+            `AbstractGaussianDistribution.image_model.mask`.
+        - `applies_filter`:
+            If `True`, apply filter stored in
+            `AbstractGaussianDistribution.image_model.filter`.
+        """
         pipeline = self.image_model
         n_pixels = pipeline.instrument_config.padded_n_pixels
         freqs = pipeline.instrument_config.padded_frequency_grid_in_angstroms
@@ -294,6 +430,8 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
             .set(0.0)
             .astype(complex),
             outputs_real_space=outputs_real_space,
+            applies_filter=applies_filter,
+            applies_mask=applies_mask,
         )
 
         return noise
@@ -306,12 +444,31 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
             "{self.image_model.instrument_config.y_dim} "
             "{self.image_model.instrument_config.x_dim//2+1}",
         ],
+        *,
+        applies_filter: bool = True,
+        applies_mask: bool = True,
     ) -> Float[Array, ""]:
         """Evaluate the log-likelihood of the gaussian noise model.
+
+        !!! info
+
+            When computing the likelihood, the observed image is assumed to have already
+            been preprocessed with filters and masks. In other words,
+            if `applies_filter` or `applies_mask` is `True`, filters and masks
+            will *not* be applied to `observed`. The user must do this
+            manually if desired.
 
         **Arguments:**
 
         - `observed` : The observed data in fourier space.
+        - `applies_mask`:
+            If `True`, apply mask stored in
+            `AbstractGaussianDistribution.image_model.mask`
+            *to the signal*.
+        - `applies_filter`:
+            If `True`, apply filter stored in
+            `AbstractGaussianDistribution.image_model.filter`
+            *to the signal*.
         """
         pipeline = self.image_model
         n_pixels = pipeline.instrument_config.n_pixels
@@ -319,7 +476,11 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         # Compute the variance and scale up to be independent of the number of pixels
         variance = n_pixels * self.variance_function(freqs)
         # Create simulated data
-        simulated = self.compute_signal(outputs_real_space=False)
+        simulated = self.compute_signal(
+            outputs_real_space=False,
+            applies_filter=applies_filter,
+            applies_mask=applies_mask,
+        )
         # Compute residuals
         residuals = simulated - observed
         # Compute standard normal random variables

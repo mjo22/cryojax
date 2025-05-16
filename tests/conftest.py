@@ -20,15 +20,18 @@ jax.config.update("jax_enable_x64", True)
 
 
 @pytest.fixture
-def sample_mrc_path():
-    return os.path.join(os.path.dirname(__file__), "data", "3j9g_potential_ps4_4.mrc")
+def sample_starfile_path():
+    return os.path.join(os.path.dirname(__file__), "data", "test_starfile.star")
 
 
 @pytest.fixture
-def sample_subunit_mrc_path():
-    return os.path.join(
-        os.path.dirname(__file__), "data", "3j9g_subunit_potential_ps4_4.mrc"
-    )
+def sample_path_to_relion_project():
+    return os.path.join(os.path.dirname(__file__), "data")
+
+
+@pytest.fixture
+def sample_mrc_path():
+    return os.path.join(os.path.dirname(__file__), "data", "3j9g_potential_ps4_4.mrc")
 
 
 @pytest.fixture
@@ -123,8 +126,8 @@ def filters(config):
 def masks(config):
     return op.CircularCosineMask(
         config.padded_coordinate_grid_in_angstroms,
-        radius_in_angstroms_or_pixels=20 * float(config.pixel_size),
-        rolloff_width_in_angstroms_or_pixels=3 * float(config.pixel_size),
+        radius=20 * float(config.pixel_size),
+        rolloff_width=3 * float(config.pixel_size),
     )
 
 

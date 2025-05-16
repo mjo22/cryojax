@@ -28,7 +28,7 @@ class AbstractFilter(AbstractImageMultiplier, strict=True):
     ) -> Complex[Array, "y_dim x_dim"]: ...
 
     @overload
-    def __call__(
+    def __call__(  # type: ignore
         self, image: Complex[Array, "z_dim y_dim x_dim"]
     ) -> Complex[Array, "z_dim y_dim x_dim"]: ...
 
@@ -84,9 +84,6 @@ class LowpassFilter(AbstractFilter, strict=True):
 
     array: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
-    frequency_cutoff_fraction: Float[Array, ""]
-    rolloff_width_fraction: Float[Array, ""]
-
     def __init__(
         self,
         frequency_grid_in_angstroms_or_pixels: (
@@ -109,13 +106,11 @@ class LowpassFilter(AbstractFilter, strict=True):
             The rolloff width as a fraction of the Nyquist frequency.
             By default, ``0.05``.
         """
-        self.frequency_cutoff_fraction = jnp.asarray(frequency_cutoff_fraction)
-        self.rolloff_width_fraction = jnp.asarray(rolloff_width_fraction)
         self.array = _compute_lowpass_filter(
             frequency_grid_in_angstroms_or_pixels,
             jnp.asarray(grid_spacing),
-            self.frequency_cutoff_fraction,
-            self.rolloff_width_fraction,
+            jnp.asarray(frequency_cutoff_fraction),
+            jnp.asarray(rolloff_width_fraction),
         )
 
 
@@ -126,9 +121,6 @@ class HighpassFilter(AbstractFilter, strict=True):
 
     array: Inexact[Array, "y_dim x_dim"] | Inexact[Array, "z_dim y_dim x_dim"]
 
-    frequency_cutoff_fraction: Float[Array, ""]
-    rolloff_width_fraction: Float[Array, ""]
-
     def __init__(
         self,
         frequency_grid_in_angstroms_or_pixels: (
@@ -151,13 +143,11 @@ class HighpassFilter(AbstractFilter, strict=True):
             The rolloff width as a fraction of the Nyquist frequency.
             By default, ``0.05``.
         """
-        self.frequency_cutoff_fraction = jnp.asarray(frequency_cutoff_fraction)
-        self.rolloff_width_fraction = jnp.asarray(rolloff_width_fraction)
         self.array = 1.0 - _compute_lowpass_filter(
             frequency_grid_in_angstroms_or_pixels,
             jnp.asarray(grid_spacing),
-            self.frequency_cutoff_fraction,
-            self.rolloff_width_fraction,
+            jnp.asarray(frequency_cutoff_fraction),
+            jnp.asarray(rolloff_width_fraction),
         )
 
 

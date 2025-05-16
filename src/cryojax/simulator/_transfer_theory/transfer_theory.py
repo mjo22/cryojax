@@ -66,6 +66,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         ),
         instrument_config: InstrumentConfig,
         *,
+        defocus_offset: Optional[Float[Array, ""] | float] = None,
         is_projection_approximation: bool = True,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
@@ -85,6 +86,9 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
             array. If `False`, `object_spectrum_in_exit_plane` is extracted from
             the ewald sphere and is therefore the fourier transform of a complex-valued
             array.
+        - `defocus_offset`:
+            An optional defocus offset to apply to the CTF defocus at
+            runtime.
         """
         frequency_grid = instrument_config.padded_frequency_grid_in_angstroms
         if is_projection_approximation:
@@ -95,6 +99,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
                 phase_shift=self.phase_shift,
                 amplitude_contrast_ratio=self.amplitude_contrast_ratio,
                 outputs_exp=False,
+                defocus_offset=defocus_offset,
             )
             # ... compute the contrast as the CTF multiplied by the exit plane
             # phase shifts
@@ -107,6 +112,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
             aberration_phase_shifts = self.ctf.compute_aberration_phase_shifts(
                 frequency_grid,
                 voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
+                defocus_offset=defocus_offset,
             ) - jnp.deg2rad(self.phase_shift)
             contrast_spectrum_at_detector_plane = _compute_contrast_from_ewald_sphere(
                 object_spectrum_at_exit_plane,
@@ -143,6 +149,8 @@ class WaveTransferTheory(AbstractTransferTheory, strict=True):
             "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
         ],
         instrument_config: InstrumentConfig,
+        *,
+        defocus_offset: Optional[Float[Array, ""] | float] = None,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
@@ -153,6 +161,7 @@ class WaveTransferTheory(AbstractTransferTheory, strict=True):
             frequency_grid,
             voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
             outputs_exp=True,
+            defocus_offset=defocus_offset,
         )
         # ... compute the contrast as the CTF multiplied by the exit plane
         # phase shifts

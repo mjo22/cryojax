@@ -23,6 +23,7 @@
             members:
                 - __init__
                 - rotate_to_pose
+                - translate_to_pose
                 - as_real_voxel_grid
 
 
@@ -31,6 +32,7 @@
             members:
                 - __init__
                 - rotate_to_pose
+                - translate_to_pose
                 - as_real_voxel_grid
 
 
