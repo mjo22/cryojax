@@ -64,7 +64,7 @@ def apply_amplitude_contrast_ratio(
     if jnp.iscomplexobj(integrated_potential):
         return (
             jnp.sqrt(1.0 - ac**2) * integrated_potential.real
-            + 1.0j * ac * integrated_potential.imag
+            + 1.0j * (ac * integrated_potential.real + integrated_potential.imag)
         )
     else:
         return (jnp.sqrt(1.0 - ac**2) + 1.0j * ac) * integrated_potential
