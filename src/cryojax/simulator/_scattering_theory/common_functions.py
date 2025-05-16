@@ -55,16 +55,15 @@ def apply_amplitude_contrast_ratio(
     given the integrated potential computed just with a weak-phase calculation.
 
     !!! info
-        Given phase shift spectrum $\\eta(x, y)$ the complex object spectrum $O(x, y)$
-        for amplitude contrast ratio $\\alpha$ is
+        Given a projected electrostatic potential $\\u(x, y)$, the complex potential
+        $\\phi(x, y)$ for amplitude contrast ratio $\\alpha$ is
 
-        $$O(x, y) = -\\alpha \\ \\eta(x, y) + i \\sqrt{1 - \\alpha^2} \\ \\eta(x, y)$$
+        $$\\phi(x, y) = \\sqrt{1 - \\alpha^2} \\ u(x, y) + i \\alpha \\ u(x, y)$$
     """
     ac = amplitude_contrast_ratio
     if jnp.iscomplexobj(integrated_potential):
-        return (
-            jnp.sqrt(1.0 - ac**2) * integrated_potential.real
-            + 1.0j * (ac * integrated_potential.real + integrated_potential.imag)
+        return jnp.sqrt(1.0 - ac**2) * integrated_potential.real + 1.0j * (
+            integrated_potential.imag + ac * integrated_potential.real
         )
     else:
         return (jnp.sqrt(1.0 - ac**2) + 1.0j * ac) * integrated_potential
