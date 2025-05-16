@@ -40,9 +40,6 @@ class AbstractBooleanMask(AbstractMask, strict=True):
         Bool[Array, "y_dim x_dim"] | Bool[Array, "z_dim y_dim x_dim"]
     ]
 
-    def __post_init__(self):
-        self.is_not_masked = self.array == 1.0
-
 
 MaskLike = AbstractMask | AbstractImageMultiplier
 
@@ -86,6 +83,7 @@ class CircularCosineMask(AbstractBooleanMask, strict=True):
             jnp.asarray(radius),
             jnp.asarray(rolloff_width),
         )
+        self.is_not_masked = self.array == 1.0
 
 
 class SphericalCosineMask(AbstractBooleanMask, strict=True):
@@ -116,6 +114,7 @@ class SphericalCosineMask(AbstractBooleanMask, strict=True):
             jnp.asarray(radius),
             jnp.asarray(rolloff_width),
         )
+        self.is_not_masked = self.array == 1.0
 
 
 class SquareCosineMask(AbstractBooleanMask, strict=True):
@@ -144,6 +143,7 @@ class SquareCosineMask(AbstractBooleanMask, strict=True):
         self.array = _compute_square_mask(
             coordinate_grid, jnp.asarray(side_length), jnp.asarray(rolloff_width)
         )
+        self.is_not_masked = self.array == 1.0
 
 
 class Cylindrical2DCosineMask(AbstractBooleanMask, strict=True):
@@ -193,6 +193,7 @@ class Cylindrical2DCosineMask(AbstractBooleanMask, strict=True):
                 jnp.asarray(in_plane_rotation_angle),
                 jnp.asarray(rolloff_width),
             )
+        self.is_not_masked = self.array == 1.0
 
 
 class Rectangular2DCosineMask(AbstractBooleanMask, strict=True):
@@ -232,6 +233,7 @@ class Rectangular2DCosineMask(AbstractBooleanMask, strict=True):
             jnp.asarray(in_plane_rotation_angle),
             jnp.asarray(rolloff_width),
         )
+        self.is_not_masked = self.array == 1.0
 
 
 class Rectangular3DCosineMask(AbstractBooleanMask, strict=True):
@@ -270,6 +272,7 @@ class Rectangular3DCosineMask(AbstractBooleanMask, strict=True):
             jnp.asarray(z_width),
             jnp.asarray(rolloff_width),
         )
+        self.is_not_masked = self.array == 1.0
 
 
 @overload
