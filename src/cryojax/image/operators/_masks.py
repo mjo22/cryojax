@@ -226,6 +226,19 @@ class Rectangular3DCosineMask(AbstractMask, strict=True):
         z_width: float | Float[Array, ""],
         rolloff_width: float | Float[Array, ""],
     ):
+        """**Arguments:**
+
+        - `coordinate_grid`:
+            The image coordinates.
+        - `x_width`:
+            The width of the rectangle along the x-axis.
+        - `y_width`:
+            The width of the rectangle along the y-axis.
+        - `z_width`:
+            The width of the rectangle along the z-axis.
+        - `rolloff_width`:
+            The rolloff width of the soft edge.
+        """
         self.array = _compute_rectangular_mask_3d(
             coordinate_grid,
             jnp.asarray(x_width),
