@@ -39,9 +39,9 @@ class CustomMask(AbstractMask, strict=True):
     array: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
 
     def __init__(
-        self, mask: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
+        self, mask_array: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
     ):
-        self.array = mask
+        self.array = mask_array
 
 
 class CircularCosineMask(AbstractMask, strict=True):
@@ -51,34 +51,54 @@ class CircularCosineMask(AbstractMask, strict=True):
 
     array: Float[Array, "y_dim x_dim"]
 
-    radius_in_angstroms_or_pixels: Float[Array, ""]
-    rolloff_width_in_angstroms_or_pixels: Float[Array, ""]
-
     def __init__(
         self,
-        coordinate_grid_in_angstroms_or_pixels: Float[Array, "y_dim x_dim 2"],
-        radius_in_angstroms_or_pixels: float | Float[Array, ""],
-        rolloff_width_in_angstroms_or_pixels: float | Float[Array, ""],
+        coordinate_grid: Float[Array, "y_dim x_dim 2"],
+        radius: float | Float[Array, ""],
+        rolloff_width: float | Float[Array, ""],
     ):
         """**Arguments:**
 
-        - `coordinate_grid_in_angstroms_or_pixels`:
+        - `coordinate_grid`:
             The image coordinates.
-        - `grid_spacing`:
-            The pixel or voxel size of `coordinate_grid_in_angstroms_or_pixels`.
-        - `radius_in_angstroms_or_pixels`:
+        - `radius`:
             The radius of the circular mask.
-        - `rolloff_width_in_angstroms_or_pixels`:
+        - `rolloff_width`:
             The rolloff width of the soft edge.
         """
-        self.radius_in_angstroms_or_pixels = jnp.asarray(radius_in_angstroms_or_pixels)
-        self.rolloff_width_in_angstroms_or_pixels = jnp.asarray(
-            rolloff_width_in_angstroms_or_pixels
-        )
         self.array = _compute_circular_or_spherical_mask(
-            coordinate_grid_in_angstroms_or_pixels,
-            self.radius_in_angstroms_or_pixels,
-            self.rolloff_width_in_angstroms_or_pixels,
+            coordinate_grid,
+            jnp.asarray(radius),
+            jnp.asarray(rolloff_width),
+        )
+
+
+class SphericalCosineMask(AbstractMask, strict=True):
+    """Apply a spherical mask to a volume with a cosine
+    soft-edge.
+    """
+
+    array: Float[Array, "z_dim y_dim x_dim"]
+
+    def __init__(
+        self,
+        coordinate_grid: Float[Array, "z_dim y_dim x_dim 3"],
+        radius: float | Float[Array, ""],
+        rolloff_width: float | Float[Array, ""],
+    ):
+        """**Arguments:**
+
+        - `coordinate_grid`:
+            The volume coordinates.
+        - `radius`:
+            The radius of the spherical mask.
+        - `rolloff_width`:
+            The rolloff width of the soft edge.
+        """
+        self.array = _compute_circular_or_spherical_mask(
+            coordinate_grid,
+            jnp.asarray(radius),
+            jnp.asarray(rolloff_width),
         )
 
 
@@ -89,36 +109,23 @@ class SquareCosineMask(AbstractMask, strict=True):
 
     array: Float[Array, "y_dim x_dim"]
 
-    side_length_in_angstroms_or_pixels: Float[Array, ""]
-    rolloff_width_in_angstroms_or_pixels: Float[Array, ""]
-
     def __init__(
         self,
-        coordinate_grid_in_angstroms_or_pixels: Float[Array, "y_dim x_dim 2"],
-        side_length_in_angstroms_or_pixels: float | Float[Array, ""],
-        rolloff_width_in_angstroms_or_pixels: float | Float[Array, ""],
+        coordinate_grid: Float[Array, "y_dim x_dim 2"],
+        side_length: float | Float[Array, ""],
+        rolloff_width: float | Float[Array, ""],
     ):
         """**Arguments:**
 
-        - `coordinate_grid_in_angstroms_or_pixels`:
+        - `coordinate_grid`:
             The image coordinates.
-        - `grid_spacing`:
-            The pixel or voxel size of `coordinate_grid_in_angstroms_or_pixels`.
-        - `side_length_in_angstroms_or_pixels`:
+        - `side_length`:
             The side length of the square.
-        - `rolloff_width_in_angstroms_or_pixels`:
+        - `rolloff_width`:
             The rolloff width of the soft edge.
         """
-        self.side_length_in_angstroms_or_pixels = jnp.asarray(
-            side_length_in_angstroms_or_pixels
-        )
-        self.rolloff_width_in_angstroms_or_pixels = jnp.asarray(
-            rolloff_width_in_angstroms_or_pixels
-        )
         self.array = _compute_square_mask(
-            coordinate_grid_in_angstroms_or_pixels,
-            self.side_length_in_angstroms_or_pixels,
-            self.rolloff_width_in_angstroms_or_pixels,
+            coordinate_grid, jnp.asarray(side_length), jnp.asarray(rolloff_width)
         )
 
 
@@ -130,97 +137,101 @@ class Cylindrical2DCosineMask(AbstractMask, strict=True):
 
     array: Float[Array, "y_dim x_dim"]
 
-    radius_in_angstroms_or_pixels: Float[Array, ""]
-    length_in_angstroms_or_pixels: Optional[Float[Array, ""]]
-    in_plane_rotation_angle: Float[Array, ""]
-    rolloff_width_in_angstroms_or_pixels: Float[Array, ""]
-
     def __init__(
         self,
-        coordinate_grid_in_angstroms_or_pixels: Float[Array, "y_dim x_dim 2"],
-        radius_in_angstroms_or_pixels: float | Float[Array, ""],
-        rolloff_width_in_angstroms_or_pixels: float | Float[Array, ""],
+        coordinate_grid: Float[Array, "y_dim x_dim 2"],
+        radius: float | Float[Array, ""],
+        rolloff_width: float | Float[Array, ""],
         in_plane_rotation_angle: float | Float[Array, ""] = 0.0,
-        length_in_angstroms_or_pixels: Optional[float | Float[Array, ""]] = None,
+        length: Optional[float | Float[Array, ""]] = None,
     ):
         """**Arguments:**
 
-        - `coordinate_grid_in_angstroms_or_pixels`:
+        - `coordinate_grid`:
             The image coordinates.
-        - `grid_spacing`:
-            The pixel or voxel size of `coordinate_grid_in_angstroms_or_pixels`.
-        - `radius_in_angstroms_or_pixels`:
+        - `radius`:
             The radius of the cylinder.
-        - `rolloff_width_in_angstroms_or_pixels`:
+        - `rolloff_width`:
             The rolloff width of the soft edge.
         - `in_plane_rotation_angle`:
             The in-plane rotation angle of the cylinder in degrees. By default,
             `0.0`.
-        - `length_in_angstroms_or_pixels`:
+        - `length`:
             The length of the cylinder. If `None`, do not mask the cylinder length-wise.
         """
-        self.radius_in_angstroms_or_pixels = jnp.asarray(radius_in_angstroms_or_pixels)
-        self.length_in_angstroms_or_pixels = (
-            None
-            if length_in_angstroms_or_pixels is None
-            else jnp.asarray(length_in_angstroms_or_pixels)
-        )
-        self.rolloff_width_in_angstroms_or_pixels = jnp.asarray(
-            rolloff_width_in_angstroms_or_pixels
-        )
-        self.in_plane_rotation_angle = jnp.asarray(in_plane_rotation_angle)
-        if self.length_in_angstroms_or_pixels is None:
+        length = None if length is None else jnp.asarray(length)
+        if length is None:
             self.array = _compute_cylindrical_mask_2d_without_length(
-                coordinate_grid_in_angstroms_or_pixels,
-                self.radius_in_angstroms_or_pixels,
-                self.in_plane_rotation_angle,
-                self.rolloff_width_in_angstroms_or_pixels,
+                coordinate_grid,
+                jnp.asarray(radius),
+                jnp.asarray(in_plane_rotation_angle),
+                jnp.asarray(rolloff_width),
             )
         else:
             self.array = _compute_cylindrical_mask_2d_with_length(
-                coordinate_grid_in_angstroms_or_pixels,
-                self.radius_in_angstroms_or_pixels,
-                self.length_in_angstroms_or_pixels,
-                self.in_plane_rotation_angle,
-                self.rolloff_width_in_angstroms_or_pixels,
+                coordinate_grid,
+                jnp.asarray(radius),
+                length,
+                jnp.asarray(in_plane_rotation_angle),
+                jnp.asarray(rolloff_width),
             )
 
 
-class SphericalCosineMask(AbstractMask, strict=True):
-    """Apply a spherical mask to a volume with a cosine
-    soft-edge.
+class Rectangular2DCosineMask(AbstractMask, strict=True):
+    """Apply a rectangular mask to an image with a cosine
+    soft-edge. Optionally, rotate the rectangle by an angle.
     """
 
-    array: Float[Array, "z_dim y_dim x_dim"]
-
-    radius_in_angstroms_or_voxels: Float[Array, ""]
-    rolloff_width_in_angstroms_or_pixels: Float[Array, ""]
+    array: Float[Array, "y_dim x_dim"]
 
     def __init__(
         self,
-        coordinate_grid_in_angstroms_or_voxels: Float[Array, "z_dim y_dim x_dim 3"],
-        radius_in_angstroms_or_voxels: float | Float[Array, ""],
-        rolloff_width_in_angstroms_or_pixels: float | Float[Array, ""],
+        coordinate_grid: Float[Array, "y_dim x_dim 2"],
+        x_width: float | Float[Array, ""],
+        y_width: float | Float[Array, ""],
+        rolloff_width: float | Float[Array, ""],
+        in_plane_rotation_angle: float | Float[Array, ""] = 0.0,
     ):
         """**Arguments:**
 
-        - `coordinate_grid_in_angstroms_or_voxels`:
-            The volume coordinates.
-        - `grid_spacing`:
-            The pixel or voxel size of `coordinate_grid_in_angstroms_or_voxels`.
-        - `radius_in_angstroms_or_voxels`:
-            The radius of the spherical mask.
-        - `rolloff_width_in_angstroms_or_pixels`:
+        - `coordinate_grid`:
+            The image coordinates.
+        - `x_width`:
+            The width of the rectangle along the x-axis.
+        - `y_width`:
+            The width of the rectangle along the y-axis.
+        - `rolloff_width`:
             The rolloff width of the soft edge.
+        - `in_plane_rotation_angle`:
+            The in-plane rotation angle of the rectangle in degrees. By default,
+            `0.0`.
         """
-        self.radius_in_angstroms_or_voxels = jnp.asarray(radius_in_angstroms_or_voxels)
-        self.rolloff_width_in_angstroms_or_pixels = jnp.asarray(
-            rolloff_width_in_angstroms_or_pixels
+        self.array = _compute_cylindrical_mask_2d_with_length(
+            coordinate_grid,
+            jnp.asarray(y_width / 2),
+            jnp.asarray(x_width),
+            jnp.asarray(in_plane_rotation_angle),
+            jnp.asarray(rolloff_width),
         )
-        self.array = _compute_circular_or_spherical_mask(
-            coordinate_grid_in_angstroms_or_voxels,
-            self.radius_in_angstroms_or_voxels,
-            self.rolloff_width_in_angstroms_or_pixels,
+
+
+class Rectangular3DCosineMask(AbstractMask, strict=True):
+    array: Float[Array, "z_dim y_dim x_dim"]
+
+    def __init__(
+        self,
+        coordinate_grid: Float[Array, "z_dim y_dim x_dim 3"],
+        x_width: float | Float[Array, ""],
+        y_width: float | Float[Array, ""],
+        z_width: float | Float[Array, ""],
+        rolloff_width: float | Float[Array, ""],
+    ):
+        self.array = _compute_rectangular_mask_3d(
+            coordinate_grid,
+            jnp.asarray(x_width),
+            jnp.asarray(y_width),
+            jnp.asarray(z_width),
+            jnp.asarray(rolloff_width),
         )
 
 
@@ -418,3 +429,85 @@ def _compute_cylindrical_mask_2d_with_length(
     compute_mask = jax.vmap(jax.vmap(compute_mask_at_coordinate))
 
     return compute_mask(cylinder_r_coordinate_grid, cylinder_z_coordinate_grid)
+
+
+def _compute_rectangular_mask_3d(
+    coordinate_grid: Float[Array, "z_dim y_dim x_dim 3"],
+    x_width: Float[Array, ""],
+    y_width: Float[Array, ""],
+    z_width: Float[Array, ""],
+    rolloff_width: Float[Array, ""],
+):
+    is_in_rect_fn = lambda abs_x, abs_y, abs_z, s_x, s_y, s_z: jnp.logical_and(
+        jnp.logical_and(abs_x <= s_x / 2, abs_y <= s_y / 2), abs_z <= s_z / 2
+    )
+    is_in_edge_fn = lambda abs_x_or_y_or_z, s, w: jnp.logical_and(
+        abs_x_or_y_or_z > s / 2, abs_x_or_y_or_z < s / 2 + w
+    )
+    compute_edge_fn = lambda abs_x_or_y_or_z, s, w: 0.5 * (
+        1 + jnp.cos(jnp.pi * (abs_x_or_y_or_z - s / 2) / w)
+    )
+
+    def compute_mask_at_coordinate(coordinate):
+        x, y, z = coordinate
+        abs_x, abs_y, abs_z = jnp.abs(x), jnp.abs(y), jnp.abs(z)
+        # Check coordinate is in either the rectangular of the unmasked region
+        is_in_unmasked_rect = is_in_rect_fn(
+            abs_x, abs_y, abs_z, x_width, y_width, z_width
+        )
+        # ... or the rectangle of the unmasked region, plus the rolloff width
+        # of the soft edge
+        is_in_unmasked_plus_soft_edge_rect = is_in_rect_fn(
+            abs_x,
+            abs_y,
+            abs_z,
+            x_width + 2 * rolloff_width,
+            y_width + 2 * rolloff_width,
+            z_width + 2 * rolloff_width,
+        )
+        # Next, compute where (if anywhere) the coordinate is in the soft edge
+        # region
+        is_in_edge_x = is_in_edge_fn(abs_x, x_width, rolloff_width)
+        is_in_edge_y = is_in_edge_fn(abs_y, y_width, rolloff_width)
+        is_in_edge_z = is_in_edge_fn(abs_z, z_width, rolloff_width)
+        # Compute the soft edges
+        edge_x, edge_y, edge_z = (
+            compute_edge_fn(abs_x, x_width, rolloff_width),
+            compute_edge_fn(abs_y, y_width, rolloff_width),
+            compute_edge_fn(abs_z, z_width, rolloff_width),
+        )
+
+        return jnp.where(
+            is_in_unmasked_rect,
+            1.0,
+            jnp.where(
+                is_in_unmasked_plus_soft_edge_rect,
+                jnp.where(
+                    jnp.logical_and(
+                        jnp.logical_and(is_in_edge_x, is_in_edge_y), is_in_edge_z
+                    ),
+                    edge_x * edge_y * edge_z,
+                    jnp.where(
+                        jnp.logical_and(is_in_edge_x, is_in_edge_y),
+                        edge_x * edge_y,
+                        jnp.where(
+                            jnp.logical_and(is_in_edge_x, is_in_edge_z),
+                            edge_x * edge_z,
+                            jnp.where(
+                                jnp.logical_and(is_in_edge_y, is_in_edge_z),
+                                edge_y * edge_z,
+                                jnp.where(
+                                    is_in_edge_x,
+                                    edge_x,
+                                    jnp.where(is_in_edge_y, edge_y, edge_z),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                0.0,
+            ),
+        )
+
+    compute_mask = jax.vmap(jax.vmap(jax.vmap(compute_mask_at_coordinate)))
+    return compute_mask(coordinate_grid)
