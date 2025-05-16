@@ -35,13 +35,6 @@ def sample_mrc_path():
 
 
 @pytest.fixture
-def sample_subunit_mrc_path():
-    return os.path.join(
-        os.path.dirname(__file__), "data", "3j9g_subunit_potential_ps4_4.mrc"
-    )
-
-
-@pytest.fixture
 def sample_pdb_path():
     return os.path.join(os.path.dirname(__file__), "data", "1uao.pdb")
 
