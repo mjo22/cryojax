@@ -4,9 +4,10 @@ Masks to apply to images in real space.
 
 from typing import Optional, overload
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Float
+from jaxtyping import Array, Bool, Float
 
 from ._operator import AbstractImageMultiplier
 
@@ -30,6 +31,19 @@ class AbstractMask(AbstractImageMultiplier, strict=True):
         return image * jax.lax.stop_gradient(self.array)
 
 
+class AbstractBooleanMask(AbstractMask, strict=True):
+    """Base class for computing and applying an image mask,
+    which takes on values equal to 1 where there are regions
+    of signal."""
+
+    is_not_masked: eqx.AbstractVar[
+        Bool[Array, "y_dim x_dim"] | Bool[Array, "z_dim y_dim x_dim"]
+    ]
+
+    def __post_init__(self):
+        self.is_not_masked = self.array == 1.0
+
+
 MaskLike = AbstractMask | AbstractImageMultiplier
 
 
@@ -44,12 +58,13 @@ class CustomMask(AbstractMask, strict=True):
         self.array = mask_array
 
 
-class CircularCosineMask(AbstractMask, strict=True):
+class CircularCosineMask(AbstractBooleanMask, strict=True):
     """Apply a circular mask to an image with a cosine
     soft-edge.
     """
 
     array: Float[Array, "y_dim x_dim"]
+    is_not_masked: Bool[Array, "y_dim x_dim"]
 
     def __init__(
         self,
@@ -73,12 +88,13 @@ class CircularCosineMask(AbstractMask, strict=True):
         )
 
 
-class SphericalCosineMask(AbstractMask, strict=True):
+class SphericalCosineMask(AbstractBooleanMask, strict=True):
     """Apply a spherical mask to a volume with a cosine
     soft-edge.
     """
 
     array: Float[Array, "z_dim y_dim x_dim"]
+    is_not_masked: Bool[Array, "z_dim y_dim x_dim"]
 
     def __init__(
         self,
@@ -102,12 +118,13 @@ class SphericalCosineMask(AbstractMask, strict=True):
         )
 
 
-class SquareCosineMask(AbstractMask, strict=True):
+class SquareCosineMask(AbstractBooleanMask, strict=True):
     """Apply a square mask to an image with a cosine
     soft-edge.
     """
 
     array: Float[Array, "y_dim x_dim"]
+    is_not_masked: Bool[Array, "y_dim x_dim"]
 
     def __init__(
         self,
@@ -129,13 +146,14 @@ class SquareCosineMask(AbstractMask, strict=True):
         )
 
 
-class Cylindrical2DCosineMask(AbstractMask, strict=True):
+class Cylindrical2DCosineMask(AbstractBooleanMask, strict=True):
     """Apply a cylindrical mask to an image with a cosine
     soft-edge. This implements an infinite in-plane cylinder,
     rotated at a given angle.
     """
 
     array: Float[Array, "y_dim x_dim"]
+    is_not_masked: Bool[Array, "y_dim x_dim"]
 
     def __init__(
         self,
@@ -177,12 +195,13 @@ class Cylindrical2DCosineMask(AbstractMask, strict=True):
             )
 
 
-class Rectangular2DCosineMask(AbstractMask, strict=True):
+class Rectangular2DCosineMask(AbstractBooleanMask, strict=True):
     """Apply a rectangular mask in 2D to an image with a cosine
     soft-edge. Optionally, rotate the rectangle by an angle.
     """
 
     array: Float[Array, "y_dim x_dim"]
+    is_not_masked: Bool[Array, "y_dim x_dim"]
 
     def __init__(
         self,
@@ -215,12 +234,13 @@ class Rectangular2DCosineMask(AbstractMask, strict=True):
         )
 
 
-class Rectangular3DCosineMask(AbstractMask, strict=True):
+class Rectangular3DCosineMask(AbstractBooleanMask, strict=True):
     """Apply a rectangular mask to a volume with a cosine
     soft-edge.
     """
 
     array: Float[Array, "z_dim y_dim x_dim"]
+    is_not_masked: Bool[Array, "z_dim y_dim x_dim"]
 
     def __init__(
         self,
