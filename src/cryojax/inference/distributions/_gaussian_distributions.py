@@ -332,7 +332,7 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
         squared_standard_normal_per_pixel = jnp.abs(residuals) ** 2 / (2 * variance)
         # Compute the log-likelihood for each pixel.
         log_likelihood_per_pixel = -1.0 * (
-            squared_standard_normal_per_pixel - jnp.log(2 * jnp.pi * variance) / 2
+            squared_standard_normal_per_pixel + jnp.log(2 * jnp.pi * variance) / 2
         )
         # Compute log-likelihood, summing over pixels
         log_likelihood = jnp.sum(log_likelihood_per_pixel)
@@ -487,7 +487,7 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         squared_standard_normal_per_mode = jnp.abs(residuals) ** 2 / (2 * variance)
         # Compute the log-likelihood for each fourier mode.
         log_likelihood_per_mode = (
-            squared_standard_normal_per_mode - jnp.log(2 * jnp.pi * variance) / 2
+            squared_standard_normal_per_mode + jnp.log(2 * jnp.pi * variance) / 2
         )
         # Compute log-likelihood, throwing away the zero mode. Need to take care
         # to compute the loss function in fourier space for a real-valued function.
