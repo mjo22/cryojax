@@ -178,7 +178,7 @@ class Cylindrical2DCosineMask(AbstractMask, strict=True):
 
 
 class Rectangular2DCosineMask(AbstractMask, strict=True):
-    """Apply a rectangular mask to an image with a cosine
+    """Apply a rectangular mask in 2D to an image with a cosine
     soft-edge. Optionally, rotate the rectangle by an angle.
     """
 
@@ -216,6 +216,10 @@ class Rectangular2DCosineMask(AbstractMask, strict=True):
 
 
 class Rectangular3DCosineMask(AbstractMask, strict=True):
+    """Apply a rectangular mask to a volume with a cosine
+    soft-edge.
+    """
+
     array: Float[Array, "z_dim y_dim x_dim"]
 
     def __init__(
