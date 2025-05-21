@@ -16,7 +16,7 @@ jax.config.update("jax_enable_x64", True)
 
 
 try:
-    from pycistem.core import AnglesAndShifts, CTF as cistemCTF, Image  # pyright: ignore
+    from pycistem.core import CTF as cistemCTF, AnglesAndShifts, Image  # pyright: ignore
 except ModuleNotFoundError:
     cistemCTF, AnglesAndShifts, Image = None, None, None
 

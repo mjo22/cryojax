@@ -3,8 +3,8 @@ Abstraction of rotations represented by matrix lie groups.
 """
 
 from abc import abstractmethod
-from typing import cast, ClassVar
-from typing_extensions import override, Self
+from typing import ClassVar, cast
+from typing_extensions import Self, override
 
 import equinox as eqx
 import jax

@@ -41,9 +41,9 @@ from ._potential_representation import (
 from ._scattering_theory import (
     AbstractScatteringTheory as AbstractScatteringTheory,
     AbstractWeakPhaseScatteringTheory as AbstractWeakPhaseScatteringTheory,
+    WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
     apply_amplitude_contrast_ratio as apply_amplitude_contrast_ratio,
     apply_interaction_constant as apply_interaction_constant,
-    WeakPhaseScatteringTheory as WeakPhaseScatteringTheory,
 )
 from ._solvent import AbstractSolvent as AbstractSolvent
 from ._structural_ensemble import (

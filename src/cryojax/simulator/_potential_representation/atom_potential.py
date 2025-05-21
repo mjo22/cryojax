@@ -4,7 +4,7 @@ Atomistic representation of the scattering potential.
 
 from abc import abstractmethod
 from typing import Callable, Optional
-from typing_extensions import override, Self
+from typing_extensions import Self, override
 
 import equinox as eqx
 import jax

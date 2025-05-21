@@ -8,7 +8,7 @@ from typing_extensions import override
 
 import equinox as eqx
 import jax
-from equinox import field, Module
+from equinox import Module, field
 from jaxtyping import PyTree
 
 

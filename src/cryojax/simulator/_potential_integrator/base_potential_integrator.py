@@ -6,7 +6,7 @@ from abc import abstractmethod
 from typing import Generic, Optional, TypeVar
 
 import jax.numpy as jnp
-from equinox import AbstractClassVar, AbstractVar, error_if, Module
+from equinox import AbstractClassVar, AbstractVar, Module, error_if
 from jaxtyping import Array, Complex, Float
 
 from ...image import maybe_rescale_pixel_size

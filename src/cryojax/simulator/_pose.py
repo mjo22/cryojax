@@ -5,7 +5,7 @@ Representations of rigid body rotations and translations of 3D coordinate system
 from abc import abstractmethod
 from functools import cached_property
 from typing import Optional
-from typing_extensions import override, Self
+from typing_extensions import Self, override
 
 import equinox as eqx
 import jax
@@ -15,7 +15,7 @@ from equinox import AbstractVar, Module
 from jaxtyping import Array, Complex, Float
 
 from ..image import enforce_self_conjugate_rfftn_components
-from ..rotations import convert_quaternion_to_euler_angles, SO3
+from ..rotations import SO3, convert_quaternion_to_euler_angles
 
 
 class AbstractPose(Module, strict=True):

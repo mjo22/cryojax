@@ -3,7 +3,7 @@ Abstraction of a rotation.
 """
 
 from abc import abstractmethod
-from typing import overload, Type
+from typing import Type, overload
 from typing_extensions import Self
 
 from equinox import AbstractClassVar, Module

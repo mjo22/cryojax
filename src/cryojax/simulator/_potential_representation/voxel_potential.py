@@ -4,8 +4,8 @@ Voxel-based representations of the scattering potential.
 
 from abc import abstractmethod
 from functools import cached_property
-from typing import cast, ClassVar, Optional
-from typing_extensions import override, Self
+from typing import ClassVar, Optional, cast
+from typing_extensions import Self, override
 
 import equinox as eqx
 import jax.numpy as jnp
