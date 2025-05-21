@@ -24,10 +24,17 @@ class AbstractParticleParameters(eqx.Module):
     transfer_theory: eqx.AbstractVar[AbstractTransferTheory]
 
 
-class ParticleStack(eqx.Module, strict=True):
+class AbstractParticleStack(eqx.Module, strict=True):
     """Images from a particle stack, along with information
     of their parameters.
     """
+
+    parameters: eqx.AbstractVar[AbstractParticleParameters]
+    images: eqx.AbstractVar[Float[Array, "... y_dim x_dim"]]
+
+
+class ParticleStack(AbstractParticleStack, strict=True):
+    """A basic particle stack"""
 
     parameters: AbstractParticleParameters
     images: Float[Array, "... y_dim x_dim"]
@@ -65,7 +72,7 @@ class AbstractParticleParameterDataset(AbstractDataset[T], Generic[T]):
         raise NotImplementedError
 
 
-class AbstractParticleStackDataset(AbstractDataset[ParticleStack]):
+class AbstractParticleStackDataset(AbstractDataset[T], Generic[T]):
     @property
     @abc.abstractmethod
     def param_dataset(self) -> AbstractParticleParameterDataset:

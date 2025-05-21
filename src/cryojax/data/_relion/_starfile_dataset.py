@@ -227,7 +227,7 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         self._broadcasts_optics_group = value
 
 
-class RelionParticleStackDataset(AbstractParticleStackDataset):
+class RelionParticleStackDataset(AbstractParticleStackDataset[ParticleStack]):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
