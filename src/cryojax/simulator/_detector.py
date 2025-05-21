@@ -42,7 +42,7 @@ class AbstractDQE(eqx.Module, strict=True):
         raise NotImplementedError
 
 
-class PerfectCountingDQE(AbstractDQE, strict=True):
+class CountingDQE(AbstractDQE, strict=True):
     r"""A perfect DQE for a detector at a discrete pixel size.
 
     See Ruskin et. al. "Quantitative characterization of electron detectors for
@@ -76,7 +76,7 @@ class PerfectCountingDQE(AbstractDQE, strict=True):
         )
 
 
-class PerfectDQE(AbstractDQE, strict=True):
+class NullDQE(AbstractDQE, strict=True):
     r"""A DQE that is perfect across all spatial frequencies."""
 
     fraction_detected_electrons: Float[Array, ""]

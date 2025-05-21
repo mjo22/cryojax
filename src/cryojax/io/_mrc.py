@@ -3,7 +3,7 @@ Routines for working with MRC files.
 """
 
 import pathlib
-from typing import cast, Optional
+from typing import Optional, cast
 
 import mrcfile
 import numpy as np

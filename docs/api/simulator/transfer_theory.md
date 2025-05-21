@@ -49,7 +49,7 @@ This documentation describes the elements of transfer theory in `cryojax`. More 
                 - __init__
                 - __call__
 
-::: cryojax.simulator.PerfectCTF
+::: cryojax.simulator.NullCTF
         options:
             members:
                 - __init__

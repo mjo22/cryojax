@@ -1,7 +1,10 @@
 # generate-starfile-and-mrcs tutorial generated data
 docs/examples/outputs/
+.coverage
+tests/outputs/
 
 .vscode/settings.json
+.DS_STORE
 *.swp
 *_version.py
 **/__pycache__

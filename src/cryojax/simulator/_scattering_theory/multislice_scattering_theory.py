@@ -47,7 +47,9 @@ class MultisliceScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
         # Get potential in the lab frame
-        potential = self.structural_ensemble.get_potential_in_lab_frame()
+        potential = self.structural_ensemble.get_potential_in_transformed_frame(
+            apply_translation=False
+        )
         # Compute the wavefunction in the exit plane
         wavefunction_at_exit_plane = (
             self.multislice_integrator.compute_wavefunction_at_exit_plane(

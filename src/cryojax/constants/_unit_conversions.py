@@ -1,11 +1,12 @@
 """Unit conversions."""
 
 import jax.numpy as jnp
+import numpy as np
 from jaxtyping import Array, Float
 
 
 def convert_keV_to_angstroms(
-    energy_in_keV: Float[Array, ""] | float,
+    energy_in_keV: Float[Array | np.ndarray, ""] | float,
 ) -> Float[Array, ""]:
     """Get the relativistic electron wavelength at a given accelerating voltage. For
     reference, see Equation 2.5 in Section 2.1 from *Spence, John CH. High-resolution

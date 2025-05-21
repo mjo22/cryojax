@@ -9,7 +9,10 @@ from typing_extensions import override
 from equinox import AbstractVar, Module
 
 from .._pose import AbstractPose, EulerAnglePose
-from .._potential_representation import AbstractPotentialRepresentation
+from .._potential_representation import (
+    AbstractAtomicPotential,
+    AbstractPotentialRepresentation,
+)
 from .base_conformation import AbstractConformationalVariable
 
 
@@ -23,14 +26,19 @@ class AbstractStructuralEnsemble(Module, strict=True):
 
     @abstractmethod
     def get_potential_in_body_frame(self) -> AbstractPotentialRepresentation:
-        """Get the scattering potential in the center of mass
-        frame."""
+        """Get the scattering potential representation."""
         raise NotImplementedError
 
-    def get_potential_in_lab_frame(self) -> AbstractPotentialRepresentation:
-        """Get the scattering potential in the lab frame."""
+    def get_potential_in_transformed_frame(
+        self, *, apply_translation: bool = False
+    ) -> AbstractPotentialRepresentation:
+        """Get the scattering potential, transformed by the pose."""
         potential = self.get_potential_in_body_frame()
-        return potential.rotate_to_pose(self.pose)
+        transformed_potential = potential.rotate_to_pose(self.pose)
+        if isinstance(transformed_potential, AbstractAtomicPotential):
+            if apply_translation:
+                transformed_potential = transformed_potential.translate_to_pose(self.pose)
+        return transformed_potential
 
 
 class SingleStructureEnsemble(AbstractStructuralEnsemble, strict=True):
@@ -47,9 +55,10 @@ class SingleStructureEnsemble(AbstractStructuralEnsemble, strict=True):
     ):
         """**Arguments:**
 
-        - `conformational_space`: The scattering potential representation of the
-                         specimen as a single scattering potential object.
-        - `pose`: The pose of the specimen.
+        - `potential`:
+            The scattering potential representation of the specimen.
+        - `pose`:
+            The pose of the specimen.
         """
         self.potential = potential
         self.pose = pose or EulerAnglePose()

@@ -16,7 +16,7 @@ jax.config.update("jax_enable_x64", True)
 
 
 try:
-    from pycistem.core import AnglesAndShifts, CTF as cistemCTF, Image  # pyright: ignore
+    from pycistem.core import CTF as cistemCTF, AnglesAndShifts, Image  # pyright: ignore
 except ModuleNotFoundError:
     cistemCTF, AnglesAndShifts, Image = None, None, None
 
@@ -104,17 +104,17 @@ def test_euler_matrix_with_cistem(phi, theta, psi):
     cos_psi = np.cos(psi_in_rad)
     sin_psi = np.sin(psi_in_rad)
     matrix[0, 0] = cos_phi * cos_theta * cos_psi - sin_phi * sin_psi
-    matrix[1, 0] = sin_phi * cos_theta * cos_psi + cos_phi * sin_psi
-    matrix[2, 0] = -sin_theta * cos_psi
-    matrix[0, 1] = -cos_phi * cos_theta * sin_psi - sin_phi * cos_psi
+    matrix[0, 1] = sin_phi * cos_theta * cos_psi + cos_phi * sin_psi
+    matrix[0, 2] = -sin_theta * cos_psi
+    matrix[1, 0] = -cos_phi * cos_theta * sin_psi - sin_phi * cos_psi
     matrix[1, 1] = -sin_phi * cos_theta * sin_psi + cos_phi * cos_psi
-    matrix[2, 1] = sin_theta * sin_psi
-    matrix[0, 2] = sin_theta * cos_phi
-    matrix[1, 2] = sin_theta * sin_phi
+    matrix[1, 2] = sin_theta * sin_psi
+    matrix[2, 0] = sin_theta * cos_phi
+    matrix[2, 1] = sin_theta * sin_phi
     matrix[2, 2] = cos_theta
     # Generate rotation that matches this rotation matrix
-    pose = EulerAnglePose(phi_angle=phi, theta_angle=theta, psi_angle=psi)
-    np.testing.assert_allclose(pose.rotation.as_matrix(), matrix.T, atol=1e-12)
+    pose = EulerAnglePose(phi_angle=-phi, theta_angle=-theta, psi_angle=-psi)
+    np.testing.assert_allclose(pose.rotation.as_matrix(), matrix, atol=1e-12)
 
 
 @pytest.mark.parametrize(
@@ -134,8 +134,8 @@ def test_compute_projection_with_cistem(
         potential = cs.FourierVoxelGridPotential.from_real_voxel_grid(
             real_voxel_grid, voxel_size
         )
-        pose = cs.EulerAnglePose(phi_angle=phi, theta_angle=theta, psi_angle=psi)
-        projection_method = cs.FourierSliceExtraction(pixel_rescaling_method=None)
+        pose = cs.EulerAnglePose(phi_angle=-phi, theta_angle=-theta, psi_angle=-psi)
+        projection_method = cs.FourierSliceExtraction(pixel_size_rescaling_method=None)
         box_size = potential.shape[0]
         config = cs.InstrumentConfig((box_size, box_size), voxel_size, 300.0)
         cryojax_projection = irfftn(
@@ -164,7 +164,7 @@ def test_compute_projection_with_cistem(
 
 def _load_pycistem_template(filename, box_size):
     """Load pycistem template in fourier space."""
-    volume = Image()
+    volume = Image()  # type: ignore
     volume.QuickAndDirtyReadSlices(filename, 1, box_size)
     volume.ForwardFFT(True)
     volume.ZeroCentralPixel()
@@ -175,7 +175,7 @@ def _load_pycistem_template(filename, box_size):
 
 def _compute_projection(volume, angles, box_size):
     """Compute scattering projection of pycistem volume."""
-    projection = Image()
+    projection = Image()  # type: ignore
     projection.Allocate(box_size, box_size, False)
 
     volume.ExtractSlice(projection, angles, 1.0, False)

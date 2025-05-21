@@ -2,6 +2,7 @@ from ._dataset import AbstractDataset as AbstractDataset
 from ._particle_data import (
     AbstractParticleParameterDataset as AbstractParticleParameterDataset,
     AbstractParticleParameters as AbstractParticleParameters,
+    AbstractParticleStack as AbstractParticleStack,
     AbstractParticleStackDataset as AbstractParticleStackDataset,
     ParticleStack as ParticleStack,
 )

@@ -1,7 +1,7 @@
 from ._lie_group import (
-    AbstractMatrixLieGroup as AbstractMatrixLieGroup,
     SE3 as SE3,
     SO3 as SO3,
+    AbstractMatrixLieGroup as AbstractMatrixLieGroup,
 )
 from ._rotation import AbstractRotation as AbstractRotation
 from ._utils import (

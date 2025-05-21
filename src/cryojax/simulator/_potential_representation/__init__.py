@@ -11,7 +11,7 @@ from .voxel_potential import (
     AbstractFourierVoxelGridPotential as AbstractFourierVoxelGridPotential,
     AbstractVoxelPotential as AbstractVoxelPotential,
     FourierVoxelGridPotential as FourierVoxelGridPotential,
-    FourierVoxelGridPotentialInterpolator as FourierVoxelGridPotentialInterpolator,
+    FourierVoxelSplinePotential as FourierVoxelSplinePotential,
     RealVoxelCloudPotential as RealVoxelCloudPotential,
     RealVoxelGridPotential as RealVoxelGridPotential,
 )

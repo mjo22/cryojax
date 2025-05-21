@@ -4,7 +4,7 @@ Atomistic representation of the scattering potential.
 
 from abc import abstractmethod
 from typing import Callable, Optional
-from typing_extensions import override, Self
+from typing_extensions import Self, override
 
 import equinox as eqx
 import jax
@@ -75,6 +75,17 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
             pose.rotate_coordinates(self.atom_positions),
         )
 
+    def translate_to_pose(self, pose: AbstractPose) -> Self:
+        """Return a new potential with rotated `atom_positions`."""
+        offset_in_angstroms = pose.offset_in_angstroms
+        if pose.offset_z_in_angstroms is None:
+            offset_in_angstroms = jnp.concatenate(
+                (offset_in_angstroms, jnp.atleast_1d(0.0))
+            )
+        return eqx.tree_at(
+            lambda d: d.atom_positions, self, self.atom_positions + offset_in_angstroms
+        )
+
     @abstractmethod
     def as_real_voxel_grid(
         self,
@@ -85,7 +96,7 @@ class AbstractAtomicPotential(AbstractPotentialRepresentation, strict=True):
 
 
 class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
-    """An atomistic representation of scattering potential as a mixture of
+    r"""An atomistic representation of scattering potential as a mixture of
     gaussians.
 
     The naming and numerical convention of parameters `gaussian_amplitudes` and
@@ -186,7 +197,7 @@ class GaussianMixtureAtomicPotential(AbstractAtomicPotential, strict=True):
             jnp.asarray(voxel_size),
             self.atom_positions,
             self.gaussian_amplitudes,
-            convert_variance_to_b_factor(self.gaussian_variances),
+            jnp.asarray(convert_variance_to_b_factor(self.gaussian_variances)),
             batch_size_for_z_planes=batch_size_for_z_planes,
             n_batches_of_atoms=n_batches_of_atoms,
         )

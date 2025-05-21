@@ -9,14 +9,16 @@ from jaxtyping import Array, Complex, Float, PRNGKeyArray
 from ...image import fftn, ifftn, rfftn
 from .._instrument_config import InstrumentConfig
 from .._structural_ensemble import AbstractStructuralEnsemble
-from .._transfer_theory import WaveTransferTheory
+from .._transfer_theory import (
+    ContrastTransferTheory,
+    WaveTransferTheory,
+)
 
 
 class AbstractScatteringTheory(eqx.Module, strict=True):
     """Base class for a scattering theory."""
 
     structural_ensemble: eqx.AbstractVar[AbstractStructuralEnsemble]
-    transfer_theory: eqx.AbstractVar[WaveTransferTheory]
 
     @abstractmethod
     def compute_contrast_spectrum_at_detector_plane(
@@ -42,6 +44,7 @@ class AbstractScatteringTheory(eqx.Module, strict=True):
 class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
     """Base class for a wave-based scattering theory."""
 
+    transfer_theory: eqx.AbstractVar[WaveTransferTheory]
     amplitude_contrast_ratio: eqx.AbstractVar[Float[Array, ""]]
 
     @abstractmethod
@@ -111,6 +114,7 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
             self.transfer_theory.propagate_wavefunction_to_detector_plane(
                 fourier_wavefunction_at_exit_plane,
                 instrument_config,
+                defocus_offset=self.structural_ensemble.pose.offset_z_in_angstroms,
             )
         )
         wavefunction_at_detector_plane = ifftn(fourier_wavefunction_at_detector_plane)
@@ -136,3 +140,43 @@ class AbstractWaveScatteringTheory(AbstractScatteringTheory, strict=True):
         )
 
         return contrast_spectrum_at_detector_plane
+
+
+class AbstractWeakPhaseScatteringTheory(AbstractScatteringTheory, strict=True):
+    """Base class for a scattering theory in linear image formation theory
+    (the weak-phase approximation).
+    """
+
+    transfer_theory: eqx.AbstractVar[ContrastTransferTheory]
+
+    @abstractmethod
+    def compute_object_spectrum_at_exit_plane(
+        self,
+        instrument_config: InstrumentConfig,
+        rng_key: Optional[PRNGKeyArray] = None,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
+        raise NotImplementedError
+
+    @override
+    def compute_intensity_spectrum_at_detector_plane(
+        self,
+        instrument_config: InstrumentConfig,
+        rng_key: Optional[PRNGKeyArray] = None,
+    ) -> Complex[
+        Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
+    ]:
+        """Compute the squared wavefunction at the detector plane, given the
+        contrast.
+        """
+        N1, N2 = instrument_config.padded_shape
+        # ... compute the squared wavefunction directly from the image contrast
+        # as |psi|^2 = 1 + 2C.
+        contrast_spectrum_at_detector_plane = (
+            self.compute_contrast_spectrum_at_detector_plane(instrument_config, rng_key)
+        )
+        intensity_spectrum_at_detector_plane = (
+            (2 * contrast_spectrum_at_detector_plane).at[0, 0].add(1.0 * N1 * N2)
+        )
+        return intensity_spectrum_at_detector_plane

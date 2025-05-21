@@ -1,10 +1,11 @@
+import jax.numpy as jnp
 import numpy as np
-from jaxtyping import ArrayLike, Shaped
+from jaxtyping import Array, Float
 
 
 def convert_b_factor_to_variance(
-    b_factor: Shaped[ArrayLike, "..."],
-) -> Shaped[ArrayLike, "..."]:
+    b_factor: Float[Array | np.ndarray, "..."] | float,
+) -> Float[Array, "..."]:
     """From the B-factor of a gaussian, return the corresponding
     value of the variance of the gaussian. This simply does the
     conversion
@@ -23,12 +24,12 @@ def convert_b_factor_to_variance(
 
     The variance.
     """
-    return b_factor / (8 * np.pi**2)
+    return jnp.asarray(b_factor / (8 * np.pi**2))
 
 
 def convert_variance_to_b_factor(
-    variance: Shaped[ArrayLike, "..."],
-) -> Shaped[ArrayLike, "..."]:
+    variance: Float[Array | np.ndarray, "..."] | float,
+) -> Float[Array, "..."]:
     """From the variance of a gaussian, return the corresponding
     value of the B-factor of the gaussian. This simply does the
     conversion
@@ -47,4 +48,4 @@ def convert_variance_to_b_factor(
 
     The B-factor.
     """
-    return (8 * np.pi**2) * variance
+    return jnp.asarray((8 * np.pi**2) * variance)
