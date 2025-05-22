@@ -7,6 +7,7 @@ import os
 import pathlib
 import shutil
 from functools import partial
+from typing import cast
 
 import equinox as eqx
 import jax
@@ -21,9 +22,9 @@ from jaxtyping import install_import_hook
 with install_import_hook("cryojax", "typeguard.typechecked"):
     import cryojax.simulator as cxs
     from cryojax.data import (
-        ParticleStack,
         RelionParticleParameterDataset,
         RelionParticleParameters,
+        RelionParticleStack,
         RelionParticleStackDataset,
         write_simulated_image_stack_from_starfile,
         write_starfile_with_particle_parameters,
@@ -89,7 +90,7 @@ class TestErrorRaisingForLoading:
 
     def test_stack_dataset_setitem(self, parameter_dataset, relion_parameters):
         stack_dataset = RelionParticleStackDataset(parameter_dataset)
-        particle_stack = ParticleStack(
+        particle_stack = RelionParticleStack(
             relion_parameters, images=jnp.zeros(relion_parameters.instrument_config.shape)
         )
         with pytest.raises(NotImplementedError):
@@ -250,7 +251,7 @@ def test_load_starfile_ctf_params(sample_starfile_path, sample_path_to_relion_pr
     assert parameters.transfer_theory.envelope is None
 
     transfer_theory = parameters.transfer_theory
-    ctf = transfer_theory.ctf
+    ctf = cast(cxs.AberratedAstigmaticCTF, transfer_theory.ctf)
 
     # check CTF parameters
     for i in range(len(param_dataset)):
@@ -473,8 +474,8 @@ def test_default_starfile():
     # Misc
     particles_df["rlnCtfMaxResolution"] = np.zeros(n_images)
     particles_df["rlnCtfFigureOfMerit"] = np.zeros(n_images)
-    particles_df["rlnClassNumber"] = np.ones(n_images)
-    particles_df["rlnOpticsGroup"] = np.ones(n_images)
+    particles_df["rlnClassNumber"] = np.ones(n_images, dtype=int)
+    particles_df["rlnOpticsGroup"] = np.ones(n_images, dtype=int)
 
     # CTF
     particles_df["rlnDefocusU"] = 10000.0

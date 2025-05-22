@@ -176,10 +176,9 @@ def _populate_starfile_optics_group(
     optics_df["rlnOpticsGroup"] = [1]
     instrument_config = particle_parameters.instrument_config
     transfer_theory = particle_parameters.transfer_theory
-
     optics_df["rlnVoltage"] = _extract_first_value(instrument_config.voltage_in_kilovolts)
     optics_df["rlnSphericalAberration"] = _extract_first_value(
-        transfer_theory.ctf.spherical_aberration_in_mm
+        transfer_theory.ctf.spherical_aberration_in_mm  # type: ignore
     )
     optics_df["rlnAmplitudeContrast"] = _extract_first_value(
         transfer_theory.amplitude_contrast_ratio
@@ -196,8 +195,8 @@ def _populate_misc_starfile_parameters(
 ) -> pd.DataFrame:
     particles_df["rlnCtfMaxResolution"] = np.zeros(n_images)
     particles_df["rlnCtfFigureOfMerit"] = np.zeros(n_images)
-    particles_df["rlnClassNumber"] = np.ones(n_images)
-    particles_df["rlnOpticsGroup"] = np.ones(n_images)
+    particles_df["rlnClassNumber"] = np.ones(n_images, dtype=int)
+    particles_df["rlnOpticsGroup"] = np.ones(n_images, dtype=int)
 
     return particles_df
 
@@ -221,15 +220,21 @@ def _populate_starfile_transfer_theory_params(
     particles_df: pd.DataFrame,
     transfer_theory: ContrastTransferTheory,
 ) -> pd.DataFrame:
-    particles_df["rlnDefocusU"] = (
-        transfer_theory.ctf.defocus_in_angstroms
-        + transfer_theory.ctf.astigmatism_in_angstroms / 2
-    )
-    particles_df["rlnDefocusV"] = (
-        transfer_theory.ctf.defocus_in_angstroms
-        - transfer_theory.ctf.astigmatism_in_angstroms / 2
-    )
-    particles_df["rlnDefocusAngle"] = transfer_theory.ctf.astigmatism_angle
+    if isinstance(transfer_theory.ctf, AberratedAstigmaticCTF):
+        particles_df["rlnDefocusU"] = (
+            transfer_theory.ctf.defocus_in_angstroms
+            + transfer_theory.ctf.astigmatism_in_angstroms / 2
+        )
+        particles_df["rlnDefocusV"] = (
+            transfer_theory.ctf.defocus_in_angstroms
+            - transfer_theory.ctf.astigmatism_in_angstroms / 2
+        )
+        particles_df["rlnDefocusAngle"] = transfer_theory.ctf.astigmatism_angle
+    else:
+        raise Exception(
+            "Caught an unknown internal error checking the "
+            "type of the `transfer_theory.ctf`."
+        )
 
     if isinstance(transfer_theory.envelope, FourierGaussian):
         particles_df["rlnCtfBfactor"] = transfer_theory.envelope.b_factor

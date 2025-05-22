@@ -2,7 +2,6 @@ import abc
 from typing import Generic, TypeVar
 
 import equinox as eqx
-import jax.numpy as jnp
 from jaxtyping import Array, Float
 
 from ..simulator import (
@@ -33,34 +32,15 @@ class AbstractParticleStack(eqx.Module, strict=True):
     images: eqx.AbstractVar[Float[Array, "... y_dim x_dim"]]
 
 
-class ParticleStack(AbstractParticleStack, strict=True):
-    """A basic particle stack"""
-
-    parameters: AbstractParticleParameters
-    images: Float[Array, "... y_dim x_dim"]
-
-    def __init__(
-        self,
-        parameters: AbstractParticleParameters,
-        images: Float[Array, "... y_dim x_dim"],
-    ):
-        """**Arguments:**
-
-        - `parameters`:
-            The image parameters, represented as
-            an `AbstractParticleParameters` object.
-        - `images`:
-            The stack of images. The shape of this array
-            is a leading batch dimension followed by the shape
-            of an image in the stack.
-        """
-        # Set the image parameters
-        self.parameters = parameters
-        # Set the image stack
-        self.images = jnp.asarray(images)
-
-
 class AbstractParticleParameterDataset(AbstractDataset[T], Generic[T]):
+    @abc.abstractmethod
+    def append(self, value: T):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def save(self):
+        raise NotImplementedError
+
     @property
     @abc.abstractmethod
     def loads_metadata(self) -> bool:
