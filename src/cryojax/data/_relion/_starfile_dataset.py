@@ -475,9 +475,9 @@ class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
 
 
 def _load_starfile_data(
-    path_to_starfile: pathlib.Path, mode: Literal["r", "w", "rw"], overwrite: bool
+    path_to_starfile: pathlib.Path, mode: Literal["r", "w"], overwrite: bool
 ) -> dict[str, pd.DataFrame]:
-    if mode in ["r", "rw"]:
+    if mode == "r":
         if path_to_starfile.exists():
             starfile_data = _validate_starfile_data(
                 read_and_validate_starfile(path_to_starfile)
@@ -491,8 +491,9 @@ def _load_starfile_data(
         if path_to_starfile.exists() and not overwrite:
             raise FileExistsError(
                 f"Set `mode = 'w'`, but STAR file {str(path_to_starfile)} already "
-                "exists. To modify an existing STAR file, set `mode = 'rw'` or "
-                "to erase an existing STAR file, pass `overwrite=True`."
+                "exists. To read an existing STAR file, set `mode = 'r'` or "
+                "to erase an existing STAR file, set `mode = 'w'` and "
+                "`overwrite=True`."
             )
         else:
             starfile_data = dict(optics=pd.DataFrame(), particles=pd.DataFrame())
