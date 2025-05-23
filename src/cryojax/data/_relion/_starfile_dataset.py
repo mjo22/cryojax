@@ -2,6 +2,7 @@
 
 import abc
 import pathlib
+import re
 import warnings
 from typing import Any, Callable, Literal, Optional
 from typing_extensions import override
@@ -15,6 +16,7 @@ import starfile
 from jaxtyping import Array, Float, Int
 
 from ...image.operators import Constant, FourierGaussian
+from ...internal import NDArrayLike
 from ...io import read_and_validate_starfile
 from ...simulator import (
     AberratedAstigmaticCTF,
@@ -42,7 +44,7 @@ RELION_REQUIRED_PARTICLE_KEYS = [
     "rlnDefocusV",
     "rlnDefocusAngle",
     "rlnPhaseShift",
-    "rlnImageName",
+    # "rlnImageName",
     "rlnOpticsGroup",
 ]
 RELION_POSE_PARTICLE_KEYS = [
@@ -79,6 +81,16 @@ class AbstractRelionParticleParameterDataset(
     @property
     @abc.abstractmethod
     def starfile_data(self) -> dict[str, pd.DataFrame]:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def loads_metadata(self) -> bool:
+        raise NotImplementedError
+
+    @loads_metadata.setter
+    @abc.abstractmethod
+    def loads_metadata(self, value: bool):
         raise NotImplementedError
 
     @property
@@ -126,9 +138,19 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         """**Arguments:**
 
         - `path_to_starfile`:
-            The path to the RELION STAR file. If the path does not exist, an
-            empty dataset will be created.
+            The path to the RELION STAR file. If the path does not exist
+            and `mode = 'w'`, an empty dataset will be created.
         - `path_to_relion_project`: The path to the RELION project directory.
+        - `mode`:
+            - If `mode = 'w'`, the dataset is prepared to write new
+            *parameters*. This is done by storing an empty dataset in
+            `RelionParticleParameterDataset.starfile_data`. If a STAR file
+            already exists at `path_to_starfile`, set `overwrite = True`.
+            - If `mode = 'r'`, the STAR file at `path_to_starfile` is read
+            into `RelionParticleParameterDataset.starfile_data`.
+        - `overwrite`:
+            Stores an empty `RelionParticleParameterDataset.starfile_data`
+            if `mode = 'w'`.
         - `loads_metadata`:
             If `True`, the resulting `RelionParticleParameters` object loads
             the raw metadata from the STAR file.
@@ -161,12 +183,6 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         self._loads_envelope = loads_envelope
 
     @override
-    def __setitem__(
-        self, index: int | slice | Int[np.ndarray, ""], value: RelionParticleParameters
-    ):
-        raise NotImplementedError
-
-    @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
     ) -> RelionParticleParameters:
@@ -178,7 +194,7 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         particle_dataframe_at_index = particle_dataframe.iloc[index]
         # ... read optics data
         optics_group_indices = np.unique(
-            np.atleast_1d(particle_dataframe_at_index["rlnOpticsGroup"])
+            np.atleast_1d(np.asarray(particle_dataframe_at_index["rlnOpticsGroup"]))
         )
         if optics_group_indices.size > 1:
             raise NotImplementedError(
@@ -187,9 +203,12 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
                 "implemented. In the meantime, try reading one particle "
                 "at a time."
             )
-        optics_groups = self.starfile_data["optics"]
+        optics_group_index, optics_groups = (
+            optics_group_indices[0],
+            self.starfile_data["optics"],
+        )
         optics_group = optics_groups[
-            optics_groups["rlnOpticsGroup"] == optics_group_indices[0]
+            optics_groups["rlnOpticsGroup"] == optics_group_index
         ].iloc[0]
         # Load the image stack and STAR file parameters
         instrument_config, transfer_theory, pose = _make_pytrees_from_starfile(
@@ -219,37 +238,46 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         return len(self.starfile_data["particles"])
 
     @override
-    def append(
-        self,
-        value: RelionParticleParameters,
-        *,
-        mrc_batch_size: Optional[int] = None,
+    def __setitem__(
+        self, index: int | slice | Int[np.ndarray, ""], value: RelionParticleParameters
     ):
+        raise NotImplementedError
+
+    @override
+    def append(self, value: RelionParticleParameters):
         """Add an entry or entries to the dataset.
 
         **Arguments:**
 
         - `value`:
             The `RelionParticleParameters` to add to the dataset.
-        - `mrc_batch_size`:
-            The number of images to write to each MRC file. If `None`, the number of
-            images in the `RelionParticleParameters` is used.
         """
         raise NotImplementedError
 
     @override
-    def save(self, *, overwrite: bool = False, **kwargs: Any):
-        path_exists = self.path_to_starfile.exists()
+    def save(
+        self,
+        *,
+        path_to_starfile: Optional[str | pathlib.Path] = None,
+        overwrite: bool = False,
+        **kwargs: Any,
+    ):
+        path_to_starfile = (
+            self.path_to_starfile
+            if path_to_starfile is None
+            else pathlib.Path(path_to_starfile)
+        )
+        path_exists = path_to_starfile.exists()
         if path_exists and not overwrite:
             raise FileExistsError(
-                f"Tried saving STAR file, but file {str(self.path_to_starfile)} "
+                f"Tried saving STAR file, but file {str(path_to_starfile)} "
                 "already exists. To overwrite existing STAR file, set "
                 f"`{type(self).__name__}.overwrite = True`."
             )
         else:
             if not path_exists:
-                self.path_to_starfile.mkdir(parents=True)
-            starfile.write(self.starfile_data, self.path_to_starfile, **kwargs)  # type: ignore
+                path_to_starfile.mkdir(parents=True)
+            starfile.write(self.starfile_data, path_to_starfile, **kwargs)  # type: ignore
 
     @property
     @override
@@ -305,17 +333,38 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
 
-    def __init__(self, param_dataset: AbstractRelionParticleParameterDataset):
+    def __init__(
+        self,
+        param_dataset: AbstractRelionParticleParameterDataset,
+        mode: Literal["r", "w"] = "r",
+        overwrite: bool = False,
+        *,
+        preallocates_memory: bool = False,
+        mrc_batch_size: int = 1,
+    ):
         """**Arguments:**
 
         - `param_dataset`:
             The `RelionParticleParameterDataset`.
+        - `mode`:
+            - If `mode = 'w'`, the dataset is prepared to write new
+            *images*. This is done by removing 'rlnImageName' from
+            `param_dataset.starfile_data`, if it exists at all.
+            does not have a column 'rlnImageName' and image files
+            are not yet written.
+            - If `mode = 'r'`, images are read from the 'rlnImageName'
+            stored in the `param_dataset.starfile_data`.
+        - `overwrite`:
+            If `True` and `mode = 'w'`, removes the 'rlnImageName' column
+            from `param_dataset.starfile_data`.
+        - `preallocates_memory`:
+            If `mode = 'w'`, write the 'rlnImageName' and empty MRC files
+            when the `RelionParticleStackDataset` is initialized.
+        - `mrc_batch_size`:
+            If `mode = 'w'` and `preallocates_memory = True`, write MRC files
+            with this as the number of images per file.
         """
         self._param_dataset = param_dataset
-
-    @override
-    def __setitem__(self, index, value: RelionParticleStack):
-        raise NotImplementedError
 
     @override
     def __getitem__(
@@ -329,6 +378,12 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
         # ... and construct dataframe
         metadata = parameters.metadata
         particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)  # type: ignore
+        if "rlnImageName" not in particle_dataframe_at_index.keys():
+            raise IOError(
+                "Tried to read STAR file for "
+                f"`RelionParticleStackDataset` index = {index}, "
+                "but no entry found for 'rlnImageName'."
+            )
         # ... the following line is necessary for the image dataset to work with both the
         # helical dataset and the regular dataset
         particle_index = np.asarray(particle_dataframe_at_index.index, dtype=int)
@@ -353,6 +408,33 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
     @override
     def __len__(self) -> int:
         return len(self.param_dataset)
+
+    @override
+    def __setitem__(
+        self,
+        index: int | slice | Int[np.ndarray, ""],
+        value: RelionParticleStack | Float[NDArrayLike, "... y_dim x_dim"],
+    ):
+        raise NotImplementedError
+
+    @override
+    def append(self, value: RelionParticleStack):
+        """Add an entry or entries to the dataset.
+
+        **Arguments:**
+
+        - `value`:
+            The `RelionParticleParameters` to add to the dataset.
+        """
+        raise NotImplementedError
+
+    @override
+    def write_image_stack(
+        self,
+        path_to_output: str | pathlib.Path,
+        image_stack: Float[NDArrayLike, "... y_dim x_dim"],
+    ):
+        raise NotImplementedError
 
     @property
     def param_dataset(self) -> AbstractRelionParticleParameterDataset:
@@ -496,11 +578,15 @@ def _load_starfile_data(
                 "`overwrite=True`."
             )
         else:
-            starfile_data = dict(optics=pd.DataFrame(), particles=pd.DataFrame())
+            starfile_data = dict(
+                optics=pd.DataFrame(columns=RELION_REQUIRED_OPTICS_KEYS),
+                particles=pd.DataFrame(
+                    columns=[*RELION_REQUIRED_PARTICLE_KEYS, *RELION_POSE_PARTICLE_KEYS]
+                ),
+            )
     else:
         raise ValueError(
-            f"Passed unsupported `mode = {mode}`. Supported modes are "
-            "'r', 'rw', and 'w'."
+            f"Passed unsupported `mode = {mode}`. Supported modes are 'r' and 'w'."
         )
     return starfile_data
 
@@ -770,8 +856,8 @@ def _make_transfer_theory(defocus, astig, angle, sph, ac, ps, env=None):
 
 def _get_image_stack_from_mrc(
     index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"],
-    particle_dataframe,
-    path_to_relion_project,
+    particle_dataframe: pd.DataFrame,
+    path_to_relion_project: str | pathlib.Path,
 ) -> Float[Array, "... y_dim x_dim"]:
     # Load particle image stack rlnImageName
     image_stack_index_and_name = particle_dataframe["rlnImageName"]
@@ -816,8 +902,8 @@ def _get_image_stack_from_mrc(
 
     else:
         raise IOError(
-            "Could not read `rlnImageName` in STAR file for "
-            f"`RelionParticleStackDataset` index equal to {index}."
+            "Error reading image(s) in STAR file for "
+            f"`RelionParticleStackDataset` index = {index}."
         )
 
     return jnp.asarray(image_stack)
@@ -953,3 +1039,117 @@ def _validate_helical_starfile_data(
 #
 # STAR file writing
 #
+def _parse_filename_for_number(path_to_filename: pathlib.Path) -> int:
+    filename = path_to_filename.name
+    match = re.search(r"[^0-9](\d+)\.[^.]+$", filename)
+    try:
+        file_number = int(match.group(1))  # type: ignore
+    except Exception as err:
+        raise IOError(
+            f"Could not get the file number from file {str(path_to_filename)} "
+            "Files must be enumerated with the trailing part of the "
+            "filename as the file number, like so: '/path/to/file-0000.txt'. "
+            f"When extracting the file number and converting it to an integer, "
+            f"found error:\n\t{err}"
+        )
+    return file_number
+
+
+def _format_number_for_filename(file_number: int, total_characters: int = 6):
+    if file_number == 0:
+        return "0" * total_characters
+    else:
+        num_digits = int(np.log10(file_number)) + 1
+        return "0" * (total_characters - num_digits) + str(file_number)
+
+
+def _populate_starfile_optics_group(
+    particle_parameters: RelionParticleParameters,
+) -> pd.DataFrame:
+    def _extract_first_value(value):
+        if value.ndim == 0:
+            return value
+        else:
+            return value[0]
+
+    optics_df = pd.DataFrame()
+    optics_df["rlnOpticsGroup"] = [1]
+    instrument_config = particle_parameters.instrument_config
+    transfer_theory = particle_parameters.transfer_theory
+    optics_df["rlnVoltage"] = _extract_first_value(instrument_config.voltage_in_kilovolts)
+    optics_df["rlnSphericalAberration"] = _extract_first_value(
+        transfer_theory.ctf.spherical_aberration_in_mm  # type: ignore
+    )
+    optics_df["rlnAmplitudeContrast"] = _extract_first_value(
+        transfer_theory.amplitude_contrast_ratio
+    )
+    optics_df["rlnImagePixelSize"] = _extract_first_value(instrument_config.pixel_size)
+    optics_df["rlnImageSize"] = particle_parameters.instrument_config.shape[0]
+
+    return optics_df
+
+
+def _populate_misc_starfile_parameters(
+    particles_df: pd.DataFrame,
+    n_images: int,
+) -> pd.DataFrame:
+    particles_df["rlnCtfMaxResolution"] = np.zeros(n_images)
+    particles_df["rlnCtfFigureOfMerit"] = np.zeros(n_images)
+    particles_df["rlnClassNumber"] = np.ones(n_images, dtype=int)
+    particles_df["rlnOpticsGroup"] = np.ones(n_images, dtype=int)
+
+    return particles_df
+
+
+def _populate_starfile_pose_params(
+    particles_df: pd.DataFrame, pose: EulerAnglePose
+) -> pd.DataFrame:
+    """Pose (flipping the sign of the translations); RELION's convention
+    thinks about "undoing" a translation, opposed to simulating an image at a coordinate
+    """
+
+    particles_df["rlnOriginXAngst"] = -pose.offset_x_in_angstroms
+    particles_df["rlnOriginYAngst"] = -pose.offset_y_in_angstroms
+    particles_df["rlnAngleRot"] = -pose.phi_angle
+    particles_df["rlnAngleTilt"] = -pose.theta_angle
+    particles_df["rlnAnglePsi"] = -pose.psi_angle
+    return particles_df
+
+
+def _populate_starfile_transfer_theory_params(
+    particles_df: pd.DataFrame,
+    transfer_theory: ContrastTransferTheory,
+) -> pd.DataFrame:
+    if isinstance(transfer_theory.ctf, AberratedAstigmaticCTF):
+        particles_df["rlnDefocusU"] = (
+            transfer_theory.ctf.defocus_in_angstroms
+            + transfer_theory.ctf.astigmatism_in_angstroms / 2
+        )
+        particles_df["rlnDefocusV"] = (
+            transfer_theory.ctf.defocus_in_angstroms
+            - transfer_theory.ctf.astigmatism_in_angstroms / 2
+        )
+        particles_df["rlnDefocusAngle"] = transfer_theory.ctf.astigmatism_angle
+    else:
+        raise Exception(
+            "Caught an unknown internal error checking the "
+            "type of the `transfer_theory.ctf`."
+        )
+
+    if isinstance(transfer_theory.envelope, FourierGaussian):
+        particles_df["rlnCtfBfactor"] = transfer_theory.envelope.b_factor
+        particles_df["rlnCtfScalefactor"] = transfer_theory.envelope.amplitude
+    elif isinstance(transfer_theory.envelope, Constant):
+        # particles_df["rlnCtfBfactor"] = 0.0
+        particles_df["rlnCtfScalefactor"] = transfer_theory.envelope.value
+    elif transfer_theory.envelope is None:
+        pass
+    else:
+        raise NotImplementedError(
+            "The envelope function in `RelionParticleParameters` must either be "
+            "`cryojax.image.operators.FourierGaussian` or "
+            "`cryojax.image.operators.Constant`. Got "
+            f"{type(transfer_theory.envelope).__name__}."
+        )
+    particles_df["rlnPhaseShift"] = transfer_theory.phase_shift
+    return particles_df

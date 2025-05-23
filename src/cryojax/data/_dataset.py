@@ -26,7 +26,7 @@ class AbstractDataset(abc.ABC, Generic[T]):
         def __init__(cryojax_dataset: AbstractDataset):
             self.cryojax_dataset = cryojax_dataset
 
-        def __getitem___(self, index) -> dict[str, Array]:
+        def __getitem___(self, index) -> dict[str, np.ndarray]:
             particle_stack = self.cryojax_dataset[index]
             return dict(index=index, image_stack=np.asarray(particle_stack.image_stack))
 
@@ -51,10 +51,6 @@ class AbstractDataset(abc.ABC, Generic[T]):
 
     @abc.abstractmethod
     def __getitem__(self, index) -> T:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def __setitem__(self, index, value: T):
         raise NotImplementedError
 
     @abc.abstractmethod

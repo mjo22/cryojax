@@ -1,9 +1,11 @@
 import abc
+import pathlib
 from typing import Generic, TypeVar
 
 import equinox as eqx
-from jaxtyping import Array, Float
+from jaxtyping import Array, Inexact
 
+from ..internal import NDArrayLike
 from ..simulator import (
     AbstractPose,
     AbstractTransferTheory,
@@ -29,10 +31,14 @@ class AbstractParticleStack(eqx.Module, strict=True):
     """
 
     parameters: eqx.AbstractVar[AbstractParticleParameters]
-    images: eqx.AbstractVar[Float[Array, "... y_dim x_dim"]]
+    images: eqx.AbstractVar[Inexact[Array, "... y_dim x_dim"]]
 
 
 class AbstractParticleParameterDataset(AbstractDataset[T], Generic[T]):
+    @abc.abstractmethod
+    def __setitem__(self, index, value: T):
+        raise NotImplementedError
+
     @abc.abstractmethod
     def append(self, value: T):
         raise NotImplementedError
@@ -41,19 +47,20 @@ class AbstractParticleParameterDataset(AbstractDataset[T], Generic[T]):
     def save(self):
         raise NotImplementedError
 
-    @property
-    @abc.abstractmethod
-    def loads_metadata(self) -> bool:
-        raise NotImplementedError
-
-    @loads_metadata.setter
-    @abc.abstractmethod
-    def loads_metadata(self, value: bool):
-        raise NotImplementedError
-
 
 class AbstractParticleStackDataset(AbstractDataset[T], Generic[T]):
-    @property
     @abc.abstractmethod
-    def param_dataset(self) -> AbstractParticleParameterDataset:
+    def __setitem__(self, index, value: T | Inexact[NDArrayLike, "... y_dim x_dim"]):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def append(self, value: T):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def write_image_stack(
+        self,
+        path_to_output: str | pathlib.Path,
+        image_stack: Inexact[NDArrayLike, "... y_dim x_dim"],
+    ):
         raise NotImplementedError
