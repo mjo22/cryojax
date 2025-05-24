@@ -252,7 +252,26 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         - `value`:
             The `RelionParticleParameters` to add to the dataset.
         """
-        raise NotImplementedError
+        optics_group_index = _get_optics_group_index(self.starfile_data["optics"])
+        optics_df, optics_df_to_append = (
+            self.starfile_data["optics"],
+            _params_to_optics_entry(value, optics_group_index),
+        )
+        particle_df, particle_df_to_append = (
+            self.starfile_data["particles"],
+            _params_to_particle_entry(value, optics_group_index),
+        )
+        optics_df = (
+            pd.concat([optics_df, optics_df_to_append])
+            if len(optics_df) > 0
+            else optics_df_to_append
+        )
+        particle_df = (
+            pd.concat([particle_df, particle_df_to_append])
+            if len(particle_df) > 0
+            else particle_df_to_append
+        )
+        self._starfile_data = dict(particles=particle_df, optics=optics_df)
 
     @override
     def save(
@@ -611,15 +630,13 @@ def _make_pytrees_from_starfile(
     astigmatism_angle = jnp.asarray(starfile_dataframe["rlnDefocusAngle"])
     phase_shift = jnp.asarray(starfile_dataframe["rlnPhaseShift"])
     # ... optics group data
-    image_size = jnp.asarray(optics_group["rlnImageSize"])
+    image_size = int(optics_group["rlnImageSize"])
     pixel_size = jnp.asarray(optics_group["rlnImagePixelSize"])
-    voltage_in_kilovolts = float(optics_group["rlnVoltage"])  # type: ignore
+    voltage_in_kilovolts = jnp.asarray(optics_group["rlnVoltage"])
     spherical_aberration_in_mm = jnp.asarray(optics_group["rlnSphericalAberration"])
     amplitude_contrast_ratio = jnp.asarray(optics_group["rlnAmplitudeContrast"])
-    voltage_in_kilovolts = jnp.asarray(voltage_in_kilovolts)
-
     # ... create cryojax objects. First, the InstrumentConfig
-    image_shape = (int(image_size), int(image_size))
+    image_shape = (image_size, image_size)
     batch_dim = 0 if defocus_in_angstroms.ndim == 0 else defocus_in_angstroms.shape[0]
     instrument_config = _make_config(
         image_shape,
@@ -1063,93 +1080,125 @@ def _format_number_for_filename(file_number: int, total_characters: int = 6):
         return "0" * (total_characters - num_digits) + str(file_number)
 
 
-def _populate_starfile_optics_group(
-    particle_parameters: RelionParticleParameters,
+def _params_to_optics_entry(
+    parameters: RelionParticleParameters, optics_group_index: int
 ) -> pd.DataFrame:
-    def _extract_first_value(value):
-        if value.ndim == 0:
-            return value
+    shape = parameters.instrument_config.shape
+    if shape[0] == shape[1]:
+        dim = shape[0]
+    else:
+        raise ValueError(
+            "Found non-square shape in "
+            "`RelionParticleParameters.instrument_config.shape`. Only "
+            "square shapes are supported."
+        )
+    pixel_size = parameters.instrument_config.pixel_size
+    voltage_in_kilovolts = parameters.instrument_config.voltage_in_kilovolts
+    amplitude_contrast_ratio = parameters.transfer_theory.amplitude_contrast_ratio
+    if isinstance(parameters.transfer_theory.ctf, AberratedAstigmaticCTF):
+        spherical_aberration_in_mm = getattr(
+            parameters.transfer_theory.ctf, "spherical_aberration_in_mm"
+        )
+    else:
+        raise ValueError(
+            "`RelionParticleParameters.transfer_theory.ctf` must be type "
+            "`AberratedAstigmaticCTF`. Got type "
+            f"{type(parameters.transfer_theory.ctf).__name__}."
+        )
+    optics_group_dict = {
+        "rlnOpticsGroup": optics_group_index,
+        "rlnImageSize": dim,
+        "rlnImagePixelSize": pixel_size,
+        "rlnVoltage": voltage_in_kilovolts,
+        "rlnSphericalAberration": spherical_aberration_in_mm,
+        "rlnAmplitudeContrast": amplitude_contrast_ratio,
+    }
+    for k, v in optics_group_dict.items():
+        if isinstance(v, Array | np.ndarray):
+            arr = np.atleast_1d(np.asarray(v))
+            if arr.size > 1:
+                if np.unique(arr).size > 1:
+                    raise ValueError(
+                        "Tried to fill a RELION optics group entry with an array "
+                        "that has multiple unique values. Optics group compatible "
+                        "arrays in `RelionParticleParameters`, such as "
+                        "`RelionParticleParameters.instrument_config.pixel_size`, "
+                        "must be either scalars or arrays all with the same value. "
+                        f"Error occurred when filling '{k}' with array {v}."
+                    )
+            optics_group_dict[k] = arr.ravel()[0, None]
         else:
-            return value[0]
+            optics_group_dict[k] = [v]
 
-    optics_df = pd.DataFrame()
-    optics_df["rlnOpticsGroup"] = [1]
-    instrument_config = particle_parameters.instrument_config
-    transfer_theory = particle_parameters.transfer_theory
-    optics_df["rlnVoltage"] = _extract_first_value(instrument_config.voltage_in_kilovolts)
-    optics_df["rlnSphericalAberration"] = _extract_first_value(
-        transfer_theory.ctf.spherical_aberration_in_mm  # type: ignore
-    )
-    optics_df["rlnAmplitudeContrast"] = _extract_first_value(
-        transfer_theory.amplitude_contrast_ratio
-    )
-    optics_df["rlnImagePixelSize"] = _extract_first_value(instrument_config.pixel_size)
-    optics_df["rlnImageSize"] = particle_parameters.instrument_config.shape[0]
-
-    return optics_df
+    return pd.DataFrame.from_dict(optics_group_dict)
 
 
-def _populate_misc_starfile_parameters(
-    particles_df: pd.DataFrame,
-    n_images: int,
+def _params_to_particle_entry(
+    parameters: RelionParticleParameters, optics_group_index: int
 ) -> pd.DataFrame:
-    particles_df["rlnCtfMaxResolution"] = np.zeros(n_images)
-    particles_df["rlnCtfFigureOfMerit"] = np.zeros(n_images)
-    particles_df["rlnClassNumber"] = np.ones(n_images, dtype=int)
-    particles_df["rlnOpticsGroup"] = np.ones(n_images, dtype=int)
-
-    return particles_df
-
-
-def _populate_starfile_pose_params(
-    particles_df: pd.DataFrame, pose: EulerAnglePose
-) -> pd.DataFrame:
-    """Pose (flipping the sign of the translations); RELION's convention
-    thinks about "undoing" a translation, opposed to simulating an image at a coordinate
-    """
-
-    particles_df["rlnOriginXAngst"] = -pose.offset_x_in_angstroms
-    particles_df["rlnOriginYAngst"] = -pose.offset_y_in_angstroms
-    particles_df["rlnAngleRot"] = -pose.phi_angle
-    particles_df["rlnAngleTilt"] = -pose.theta_angle
-    particles_df["rlnAnglePsi"] = -pose.psi_angle
-    return particles_df
-
-
-def _populate_starfile_transfer_theory_params(
-    particles_df: pd.DataFrame,
-    transfer_theory: ContrastTransferTheory,
-) -> pd.DataFrame:
+    particles_dict = {}
+    # Fill CTF parameters
+    transfer_theory = parameters.transfer_theory
     if isinstance(transfer_theory.ctf, AberratedAstigmaticCTF):
-        particles_df["rlnDefocusU"] = (
+        particles_dict["rlnDefocusU"] = (
             transfer_theory.ctf.defocus_in_angstroms
             + transfer_theory.ctf.astigmatism_in_angstroms / 2
         )
-        particles_df["rlnDefocusV"] = (
+        particles_dict["rlnDefocusV"] = (
             transfer_theory.ctf.defocus_in_angstroms
             - transfer_theory.ctf.astigmatism_in_angstroms / 2
         )
-        particles_df["rlnDefocusAngle"] = transfer_theory.ctf.astigmatism_angle
+        particles_dict["rlnDefocusAngle"] = transfer_theory.ctf.astigmatism_angle
     else:
-        raise Exception(
-            "Caught an unknown internal error checking the "
-            "type of the `transfer_theory.ctf`."
+        raise ValueError(
+            "`RelionParticleParameters.transfer_theory.ctf` must be type "
+            "`AberratedAstigmaticCTF`. Got type "
+            f"{type(transfer_theory.ctf).__name__}."
         )
 
     if isinstance(transfer_theory.envelope, FourierGaussian):
-        particles_df["rlnCtfBfactor"] = transfer_theory.envelope.b_factor
-        particles_df["rlnCtfScalefactor"] = transfer_theory.envelope.amplitude
+        particles_dict["rlnCtfBfactor"] = transfer_theory.envelope.b_factor
+        particles_dict["rlnCtfScalefactor"] = transfer_theory.envelope.amplitude
     elif isinstance(transfer_theory.envelope, Constant):
-        # particles_df["rlnCtfBfactor"] = 0.0
-        particles_df["rlnCtfScalefactor"] = transfer_theory.envelope.value
+        particles_dict["rlnCtfScalefactor"] = transfer_theory.envelope.value
     elif transfer_theory.envelope is None:
         pass
     else:
         raise NotImplementedError(
-            "The envelope function in `RelionParticleParameters` must either be "
-            "`cryojax.image.operators.FourierGaussian` or "
+            "The envelope function in `RelionParticleParameters` must either "
+            "be type `cryojax.image.operators.FourierGaussian` or "
             "`cryojax.image.operators.Constant`. Got "
             f"{type(transfer_theory.envelope).__name__}."
         )
-    particles_df["rlnPhaseShift"] = transfer_theory.phase_shift
-    return particles_df
+    particles_dict["rlnPhaseShift"] = transfer_theory.phase_shift
+    # Now, pose parameters
+    pose = parameters.pose
+    particles_dict["rlnOriginXAngst"] = -pose.offset_x_in_angstroms
+    particles_dict["rlnOriginYAngst"] = -pose.offset_y_in_angstroms
+    particles_dict["rlnAngleRot"] = -pose.phi_angle
+    particles_dict["rlnAngleTilt"] = -pose.theta_angle
+    particles_dict["rlnAnglePsi"] = -pose.psi_angle
+    # Now, broadcast parameters to same dimension
+    n_particles = pose.offset_x_in_angstroms.size
+    for k, v in particles_dict.items():
+        if v.shape == (0,):
+            particles_dict[k] = np.full((n_particles,), np.asarray(v))
+        elif v.size == n_particles:
+            particles_dict[k] = np.asarray(v.ravel())
+        else:
+            raise Exception()
+    # Now, miscellaneous parameters
+    particles_dict["rlnOpticsGroup"] = np.full(
+        (n_particles,), optics_group_index, dtype=int
+    )
+    particles_dict["rlnClassNumber"] = np.ones(n_particles, dtype=int)
+
+    return pd.DataFrame.from_dict(particles_dict)
+
+
+def _get_optics_group_index(optics_dataframe: pd.DataFrame) -> int:
+    optics_group_indices = np.asarray(optics_dataframe["rlnOpticsGroup"], dtype=int)
+    last_optics_group_index = (
+        0 if optics_group_indices.size == 0 else optics_group_indices[-1]
+    )
+    return last_optics_group_index + 1

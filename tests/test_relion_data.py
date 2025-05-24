@@ -521,7 +521,7 @@ def test_format_filename_for_mrcs():
 
 
 def test_write_particle_parameters():
-    def _make_particle_params(dummy_idx):
+    def make_particle_params(dummy_idx):
         instrument_config = cxs.InstrumentConfig(
             shape=(4, 4),
             pixel_size=1.5,
@@ -537,15 +537,9 @@ def test_write_particle_parameters():
             instrument_config, pose, transfer_theory, metadata={}
         )
 
-    particle_params = _make_particle_params(0)
-
-    # write_starfile_with_particle_parameters(
-    #     particle_parameters=particle_params,
-    #     filename="tests/outputs/starfile_writing/test_particle_parameters.star",
-    #     mrc_batch_size=None,
-    #     overwrite=True,
-    # )
-
+    # Make particle parameters
+    particle_params = make_particle_params(0)
+    # Add to dataset
     path_to_starfile = "tests/outputs/starfile_writing/test_particle_parameters.star"
     path_to_relion_project = "tests/outputs/starfile_writing/"
     param_dataset = RelionParticleParameterDataset(
@@ -553,8 +547,8 @@ def test_write_particle_parameters():
         path_to_relion_project=path_to_relion_project,
         mode="w",
         overwrite=True,
+        loads_envelope=True,
     )
-
     param_dataset.append(particle_params)
 
     assert compare_pytrees(param_dataset[0], particle_params)
@@ -569,21 +563,13 @@ def test_write_particle_parameters():
             loads_envelope=True,
             loads_metadata=False,
         )
-        # write_starfile_with_particle_parameters(
-        #     particle_parameters=particle_params,
-        #     filename="tests/outputs/starfile_writing/test_particle_parameters.star",
-        #     mrc_batch_size=None,
-        #     overwrite=False,
-        # )
 
-    # write multiple parameters
+    # Write multiple parameters
     particle_params = eqx.filter_vmap(
-        _make_particle_params, in_axes=(0), out_axes=eqx.if_array(0)
+        make_particle_params, in_axes=(0), out_axes=eqx.if_array(0)
     )
     # Clean up
     shutil.rmtree("tests/outputs/starfile_writing/")
-
-    return
 
 
 def test_file_not_found_error():
