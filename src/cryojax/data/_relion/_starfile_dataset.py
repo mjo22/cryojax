@@ -113,6 +113,16 @@ class AbstractRelionParticleParameterDataset(
     def broadcasts_optics_group(self, value: bool):
         raise NotImplementedError
 
+    @property
+    @abc.abstractmethod
+    def updates_optics_group(self) -> bool:
+        raise NotImplementedError
+
+    @updates_optics_group.setter
+    @abc.abstractmethod
+    def updates_optics_group(self, value: bool):
+        raise NotImplementedError
+
 
 class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
     """A dataset that wraps a RELION particle stack in
@@ -130,6 +140,7 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         loads_metadata: bool = False,
         broadcasts_optics_group: bool = True,
         loads_envelope: bool = False,
+        updates_optics_group: bool = False,
         make_config_fn: Callable[
             [tuple[int, int], Float[Array, "..."], Float[Array, "..."]],
             InstrumentConfig,
@@ -164,6 +175,9 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         - `loads_envelope`:
             If `True`, read in the parameters of the CTF envelope function, i.e.
             "rlnCtfScalefactor" and "rlnCtfBfactor".
+        - `updates_optics_group`:
+            If `True`, when re-writing STAR file entries via
+            `dataset[idx] = parameters` syntax, creates a new optics group entry.
         - `make_config_fn`:
             A function used for `InstrumentConfig` initialization that returns
             an `InstrumentConfig`. This is used to customize the metadata of the
@@ -181,10 +195,12 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         self._loads_metadata = loads_metadata
         self._broadcasts_optics_group = broadcasts_optics_group
         self._loads_envelope = loads_envelope
+        # Properties for writing
+        self._updates_optics_group = updates_optics_group
 
     @override
     def __getitem__(
-        self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
+        self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " _"]
     ) -> RelionParticleParameters:
         # Validate index
         n_rows = self.starfile_data["particles"].shape[0]
@@ -239,9 +255,26 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
 
     @override
     def __setitem__(
-        self, index: int | slice | Int[np.ndarray, ""], value: RelionParticleParameters
+        self,
+        index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " _"],
+        value: RelionParticleParameters,
     ):
-        raise NotImplementedError
+        if self.updates_optics_group:
+            optics_group_index = _get_optics_group_index(self.starfile_data["optics"])
+            particle_df_update = _params_to_particle_df(value, optics_group_index)
+            optics_df_to_append = _params_to_optics_df(value, optics_group_index)
+            optics_df = pd.concat([self.starfile_data["optics"], optics_df_to_append])
+        else:
+            particle_df_update = _params_to_particle_df(value)
+            optics_df = self.starfile_data["optics"]
+        particle_df = self.starfile_data["particles"]
+        if isinstance(index, (int, np.ndarray)):
+            index = np.atleast_1d(index)
+
+        particle_df.loc[particle_df.index[index], particle_df_update.columns] = (
+            particle_df_update.values
+        )
+        self._starfile_data = dict(particles=particle_df, optics=optics_df)
 
     @override
     def append(self, value: RelionParticleParameters):
@@ -255,11 +288,11 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         optics_group_index = _get_optics_group_index(self.starfile_data["optics"])
         optics_df, optics_df_to_append = (
             self.starfile_data["optics"],
-            _params_to_optics_entry(value, optics_group_index),
+            _params_to_optics_df(value, optics_group_index),
         )
         particle_df, particle_df_to_append = (
             self.starfile_data["particles"],
-            _params_to_particle_entry(value, optics_group_index),
+            _params_to_particle_df(value, optics_group_index),
         )
         optics_df = (
             pd.concat([optics_df, optics_df_to_append])
@@ -294,8 +327,8 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
                 f"`{type(self).__name__}.overwrite = True`."
             )
         else:
-            if not path_exists:
-                path_to_starfile.mkdir(parents=True)
+            if not path_to_starfile.parent.exists():
+                path_to_starfile.parent.mkdir(parents=True)
             starfile.write(self.starfile_data, path_to_starfile, **kwargs)  # type: ignore
 
     @property
@@ -345,6 +378,16 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
     @override
     def broadcasts_optics_group(self, value: bool):
         self._broadcasts_optics_group = value
+
+    @property
+    @override
+    def updates_optics_group(self) -> bool:
+        return self._updates_optics_group
+
+    @updates_optics_group.setter
+    @override
+    def updates_optics_group(self, value: bool):
+        self._updates_optics_group = value
 
 
 class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStack]):
@@ -407,7 +450,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
         # helical dataset and the regular dataset
         particle_index = np.asarray(particle_dataframe_at_index.index, dtype=int)
         # ... then, load stack of images
-        images = _get_image_stack_from_mrc(
+        images = _load_image_stack_from_mrc(
             particle_index,
             particle_dataframe_at_index,
             self.param_dataset.path_to_relion_project,
@@ -573,6 +616,16 @@ class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
     @override
     def broadcasts_optics_group(self, value: bool):
         self._param_dataset._broadcasts_optics_group = value
+
+    @property
+    @override
+    def updates_optics_group(self) -> bool:
+        return self._param_dataset._updates_optics_group
+
+    @updates_optics_group.setter
+    @override
+    def updates_optics_group(self, value: bool):
+        self._param_dataset._updates_optics_group = value
 
 
 def _load_starfile_data(
@@ -871,7 +924,7 @@ def _make_transfer_theory(defocus, astig, angle, sph, ac, ps, env=None):
         )
 
 
-def _get_image_stack_from_mrc(
+def _load_image_stack_from_mrc(
     index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"],
     particle_dataframe: pd.DataFrame,
     path_to_relion_project: str | pathlib.Path,
@@ -1080,7 +1133,7 @@ def _format_number_for_filename(file_number: int, total_characters: int = 6):
         return "0" * (total_characters - num_digits) + str(file_number)
 
 
-def _params_to_optics_entry(
+def _params_to_optics_df(
     parameters: RelionParticleParameters, optics_group_index: int
 ) -> pd.DataFrame:
     shape = parameters.instrument_config.shape
@@ -1133,8 +1186,8 @@ def _params_to_optics_entry(
     return pd.DataFrame.from_dict(optics_group_dict)
 
 
-def _params_to_particle_entry(
-    parameters: RelionParticleParameters, optics_group_index: int
+def _params_to_particle_df(
+    parameters: RelionParticleParameters, optics_group_index: Optional[int] = None
 ) -> pd.DataFrame:
     particles_dict = {}
     # Fill CTF parameters
@@ -1186,12 +1239,17 @@ def _params_to_particle_entry(
         elif v.size == n_particles:
             particles_dict[k] = np.asarray(v.ravel())
         else:
-            raise Exception()
+            raise ValueError(
+                "Found inconsistent number of particles "
+                "in `RelionParticleParameters` instance. Arrays "
+                "in this class must either be scalars or "
+                "have the same number of dimensions."
+            )
     # Now, miscellaneous parameters
-    particles_dict["rlnOpticsGroup"] = np.full(
-        (n_particles,), optics_group_index, dtype=int
-    )
-    particles_dict["rlnClassNumber"] = np.ones(n_particles, dtype=int)
+    if optics_group_index is not None:
+        particles_dict["rlnOpticsGroup"] = np.full(
+            (n_particles,), optics_group_index, dtype=int
+        )
 
     return pd.DataFrame.from_dict(particles_dict)
 

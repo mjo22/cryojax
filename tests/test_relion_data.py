@@ -11,6 +11,7 @@ from typing import cast
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import jax.random as jr
 import numpy as np
 import pandas as pd
 import pytest
@@ -23,16 +24,16 @@ with install_import_hook("cryojax", "typeguard.typechecked"):
     from cryojax.data import (
         RelionParticleParameterDataset,
         RelionParticleParameters,
-        RelionParticleStack,
         RelionParticleStackDataset,
     )
     from cryojax.data._relion._starfile_dataset import (
         _default_make_config_fn,
         _format_number_for_filename,
-        _get_image_stack_from_mrc,
+        _load_image_stack_from_mrc,
         _validate_starfile_data,
     )
     from cryojax.image.operators import FourierGaussian
+    from cryojax.rotations import SO3
 
 
 def compare_pytrees(pytree1, pytree2):
@@ -81,25 +82,13 @@ def relion_parameters():
 # Tests for starfile loading
 #
 class TestErrorRaisingForLoading:
-    def test_param_dataset_setitem(self, parameter_dataset, relion_parameters):
-        with pytest.raises(NotImplementedError):
-            parameter_dataset[0] = relion_parameters
-
-    def test_stack_dataset_setitem(self, parameter_dataset, relion_parameters):
-        stack_dataset = RelionParticleStackDataset(parameter_dataset)
-        particle_stack = RelionParticleStack(
-            relion_parameters, images=jnp.zeros(relion_parameters.instrument_config.shape)
-        )
-        with pytest.raises(NotImplementedError):
-            stack_dataset[0] = particle_stack
-
     def test_load_with_badparticle_name(self, parameter_dataset):
         with pytest.raises(IOError):
             metadata = parameter_dataset[0].metadata
             particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)
             particle_dataframe_at_index["rlnImageName"] = 0.0
 
-            _get_image_stack_from_mrc(
+            _load_image_stack_from_mrc(
                 0,
                 particle_dataframe_at_index,
                 parameter_dataset.path_to_relion_project,
@@ -553,6 +542,9 @@ def test_write_particle_parameters():
 
     assert compare_pytrees(param_dataset[0], particle_params)
 
+    # Save
+    param_dataset.save()
+
     # Test no overwrite
     with pytest.raises(FileExistsError):
         _ = RelionParticleParameterDataset(
@@ -569,7 +561,66 @@ def test_write_particle_parameters():
         make_particle_params, in_axes=(0), out_axes=eqx.if_array(0)
     )
     # Clean up
-    shutil.rmtree("tests/outputs/starfile_writing/")
+    shutil.rmtree(path_to_relion_project)
+
+
+@pytest.mark.parametrize(
+    "index, updates_optics_group, sets_envelope",
+    [
+        (0, False, False),
+    ],
+)
+def test_set_particle_parameters(
+    sample_starfile_path,
+    sample_path_to_relion_project,
+    index,
+    updates_optics_group,
+    sets_envelope,
+):
+    index = np.asarray(index)
+    n_particles, ndim = index.size, index.ndim
+
+    def make_params(rng_key):
+        rng_keys = jr.split(rng_key, n_particles)
+        make_pose = eqx.filter_vmap(
+            lambda rng_key: cxs.EulerAnglePose.from_rotation(SO3.sample_uniform(rng_key))
+        )
+        pose = make_pose(rng_keys)
+        return RelionParticleParameters(
+            instrument_config=cxs.InstrumentConfig(
+                shape=(4, 4), pixel_size=3.324, voltage_in_kilovolts=121.3
+            ),
+            pose=pose,
+            transfer_theory=cxs.ContrastTransferTheory(
+                cxs.CTF(defocus_in_angstroms=1234.0),
+                amplitude_contrast_ratio=0.1234,
+                envelope=FourierGaussian(b_factor=12.34) if sets_envelope else None,
+            ),
+        )
+
+    # @eqx.filter_vmap
+    # def make_params_vmap(rng_key):
+    #     pass
+
+    rng_key = jr.key(0)
+    new_parameters = make_params(rng_key)
+    if ndim == 0:
+        new_parameters = jax.tree.map(
+            lambda x: jnp.squeeze(x) if isinstance(x, jax.Array) else x, new_parameters
+        )
+
+    param_dataset = RelionParticleParameterDataset(
+        path_to_starfile=sample_starfile_path,
+        path_to_relion_project=sample_path_to_relion_project,
+        mode="r",
+        loads_envelope=False,
+        loads_metadata=True,
+        updates_optics_group=updates_optics_group,
+    )
+    param_dataset[index] = new_parameters
+    loaded_parameters = param_dataset[index]
+
+    compare_pytrees(new_parameters, loaded_parameters)
 
 
 def test_file_not_found_error():
