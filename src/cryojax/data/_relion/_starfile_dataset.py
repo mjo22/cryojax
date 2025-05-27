@@ -1,4 +1,4 @@
-"""Cryojax compatibility with [RELION](https://relion.readthedocs.io/en/release-5.0/)."""
+"""cryoJAX compatibility with [RELION](https://relion.readthedocs.io/en/release-5.0/)."""
 
 import abc
 import pathlib
@@ -260,7 +260,9 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
             optics_group_index = _make_optics_group_index(self.starfile_data["optics"])
             particle_data_for_update = _params_to_particle_data(value, optics_group_index)
             optics_data_to_append = _params_to_optics_data(value, optics_group_index)
-            optics_data = pd.concat([self.starfile_data["optics"], optics_data_to_append])
+            optics_data = pd.concat(
+                [self.starfile_data["optics"], optics_data_to_append], ignore_index=True
+            )
         else:
             particle_data_for_update = _params_to_particle_data(value)
             optics_data = self.starfile_data["optics"]
@@ -292,12 +294,12 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
             _params_to_particle_data(value, optics_group_index),
         )
         optics_data = (
-            pd.concat([optics_data, optics_data_to_append])
+            pd.concat([optics_data, optics_data_to_append], ignore_index=True)
             if len(optics_data) > 0
             else optics_data_to_append
         )
         particle_data = (
-            pd.concat([particle_data, particle_data_to_append])
+            pd.concat([particle_data, particle_data_to_append], ignore_index=True)
             if len(particle_data) > 0
             else particle_data_to_append
         )
@@ -539,26 +541,11 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
                 "When setting `particle_stack_dataset[index] = ...`, "
                 "it is not supported to pass `index` as a 1D numpy-array."
             )
-        # Get relevant metadata
-        particle_data = self.parameter_dataset.starfile_data["particles"]
-        optics_data = self.parameter_dataset.starfile_data["optics"]
         if isinstance(value, RelionParticleStack):
             self.parameter_dataset[index] = value.parameters
-            images = np.asarray(value.images)
-            pixel_size, dim = (
-                value.parameters.instrument_config.pixel_size,
-                value.parameters.instrument_config.shape[0],
-            )
+            images, parameters = np.asarray(value.images), value.parameters
         elif isinstance(value, NDArrayLike):  # type: ignore
-            images = np.asarray(value)
-            # ... read optics group given the particle data
-            optics_group = _get_optics_group_from_particle_data(
-                particle_data.iloc[index], optics_data
-            )
-            pixel_size, dim = (
-                float(optics_group["rlnImagePixelSize"]),
-                int(optics_group["rlnImageSize"]),
-            )
+            images, parameters = np.asarray(value), None
         else:
             raise ValueError(
                 "Dataset entries can only be set with "
@@ -567,51 +554,9 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
                 "`(n_images, dim, dim)` or `(dim, dim)`, where "
                 "`dim` is equal to the 'rlnImageSize'."
             )
-        if not isinstance(
-            images, (Float[np.ndarray, "dim dim"], Float[np.ndarray, "_ dim dim"])
-        ):  # type: ignore
-            raise ValueError(
-                "Image(s) must be of `np.float_` dtype and "
-                "shape `(n_images dim, dim)` or `(dim, dim)`. "
-                f"Tried writing image(s) of dtype {images.dtype} "
-                f"and shape {images.shape}."
-            )
-        # Prepare to write images
-        images = np.atleast_3d(images)
-        n_images, image_dim = images.shape[0], images.shape[1]
         n_particles = len(self.parameter_dataset)
-        if dim != image_dim:
-            raise ValueError(
-                "Found inconsistent image shape and "
-                "'rlnImageSize' entry. The image dimension "
-                f"was {dim}, while the 'rlnImageSize' was "
-                f"{image_dim}."
-            )
-        # Convert index into 1D ascending numpy array
         index_array = np.atleast_1d(_index_to_array(index, n_particles))
-        n_indices = index_array.size
-        if n_images != n_indices:
-            raise ValueError(
-                "Tried to set dataset elements with an inconsistent number "
-                f"of images. Found that the number of images was {n_images}, "
-                f"while the number of dataset indices was {n_indices}."
-            )
-        # Get absolute path to the filename, as well as the 'rlnImageName'
-        # column
-        path_to_filename, rln_image_names = _make_image_filename(
-            index_array,
-            particle_data,
-            n_particles,
-            self.filename_settings,
-            self.path_to_relion_project,
-        )
-        # Set the STAR file column
-        particle_data["rlnImageName"].iloc[index_array] = rln_image_names
-        self.parameter_dataset.starfile_data = dict(
-            particles=particle_data, optics=optics_data
-        )
-        # ... and write the images to disk
-        self.write_images(path_to_filename, images, pixel_size)
+        self._write_images_at_index(index_array, images, parameters=parameters)
 
     @override
     def append(self, value: RelionParticleStack):
@@ -622,7 +567,15 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
         - `value`:
             The `RelionParticleParameters` to add to the dataset.
         """
-        raise NotImplementedError
+        start = len(self.parameter_dataset)
+        parameters, images = value.parameters, value.images
+        # Append parameters. This automatically sets the 'rlnImageName'
+        # column to NaNs
+        self.parameter_dataset.append(parameters)
+        # Write images
+        stop = len(self.parameter_dataset)
+        index_array = np.arange(start, stop, dtype=int)
+        self._write_images_at_index(index_array, images, parameters=parameters)
 
     @override
     def write_images(
@@ -650,6 +603,71 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
     @property
     def parameter_dataset(self) -> AbstractRelionParticleParameterDataset:
         return self._parameter_dataset
+
+    def _write_images_at_index(
+        self,
+        index_array: Int[np.ndarray, " _"],
+        images: Float[NDArrayLike, "... _ _"],
+        parameters: Optional[RelionParticleParameters] = None,
+    ):
+        # Get relevant metadata
+        particle_data = self.parameter_dataset.starfile_data["particles"]
+        optics_data = self.parameter_dataset.starfile_data["optics"]
+        if parameters is None:
+            optics_group = _get_optics_group_from_particle_data(
+                particle_data.iloc[index_array], optics_data
+            )
+            pixel_size, dim = (
+                float(optics_group["rlnImagePixelSize"]),
+                int(optics_group["rlnImageSize"]),
+            )
+        else:
+            pixel_size, dim = (
+                float(np.atleast_1d(parameters.instrument_config.pixel_size)[0]),
+                parameters.instrument_config.shape[0],
+            )
+        if not (images.ndim in [2, 3] and images.shape[-2:] == (dim, dim)):
+            raise ValueError(
+                "Image(s) must be of "
+                "shape `(n_images, dim, dim)` or `(dim, dim)`. "
+                f"Tried writing image(s) of "
+                f"shape {images.shape}."
+            )
+        # Prepare to write images
+        images = np.atleast_3d(images)
+        n_images, image_dim = images.shape[0], images.shape[1]
+        n_particles = len(self.parameter_dataset)
+        if dim != image_dim:
+            raise ValueError(
+                "Found inconsistent image shape and "
+                "'rlnImageSize' entry. The image dimension "
+                f"was {dim}, while the 'rlnImageSize' was "
+                f"{image_dim}."
+            )
+        # Convert index into 1D ascending numpy array
+        n_indices = index_array.size
+        if n_images != n_indices:
+            raise ValueError(
+                "Tried to set dataset elements with an inconsistent number "
+                f"of images. Found that the number of images was {n_images}, "
+                f"while the number of dataset indices was {n_indices}."
+            )
+        # Get absolute path to the filename, as well as the 'rlnImageName'
+        # column
+        path_to_filename, rln_image_names = _make_image_filename(
+            index_array,
+            particle_data,
+            n_particles,
+            self.filename_settings,
+            self.path_to_relion_project,
+        )
+        # Set the STAR file column
+        particle_data["rlnImageName"].iloc[index_array] = rln_image_names
+        self.parameter_dataset.starfile_data = dict(
+            particles=particle_data, optics=optics_data
+        )
+        # ... and write the images to disk
+        self.write_images(path_to_filename, images, pixel_size)
 
 
 class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
