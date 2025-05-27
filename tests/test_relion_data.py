@@ -32,15 +32,13 @@ with install_import_hook("cryojax", "typeguard.typechecked"):
         _load_image_stack_from_mrc,
         _validate_starfile_data,
     )
-    from cryojax.image.operators import FourierGaussian
+    from cryojax.image import operators as op
     from cryojax.rotations import SO3
 
 
 def compare_pytrees(pytree1, pytree2):
     arrays1, others1 = eqx.partition(pytree1, eqx.is_array)
     arrays2, others2 = eqx.partition(pytree2, eqx.is_array)
-
-    jax.tree.map(lambda x, y: jnp.allclose(x, y), arrays1, arrays2)
 
     bool_arrays = all(
         jax.tree.leaves(jax.tree.map(lambda x, y: jnp.allclose(x, y), arrays1, arrays2))
@@ -509,7 +507,19 @@ def test_format_filename_for_mrcs():
     assert formated_number == "00000"
 
 
-def test_write_particle_parameters():
+@pytest.mark.parametrize(
+    "index, loads_envelope",
+    [
+        (0, False),
+        ([0, 1], False),
+        (0, True),
+    ],
+)
+def test_append_particle_parameters(index, loads_envelope):
+    index = np.asarray(index)
+    ndim = index.ndim
+
+    @eqx.filter_vmap
     def make_particle_params(dummy_idx):
         instrument_config = cxs.InstrumentConfig(
             shape=(4, 4),
@@ -520,14 +530,18 @@ def test_write_particle_parameters():
         pose = cxs.EulerAnglePose()
         transfer_theory = cxs.ContrastTransferTheory(
             ctf=cxs.CTF(),
-            envelope=FourierGaussian(),
+            envelope=op.FourierGaussian() if loads_envelope else None,
         )
         return RelionParticleParameters(
             instrument_config, pose, transfer_theory, metadata={}
         )
 
     # Make particle parameters
-    particle_params = make_particle_params(0)
+    particle_params = make_particle_params(jnp.atleast_1d(index))
+    if ndim == 0:
+        particle_params = jax.tree.map(
+            lambda x: jnp.squeeze(x) if isinstance(x, jax.Array) else x, particle_params
+        )
     # Add to dataset
     path_to_starfile = "tests/outputs/starfile_writing/test_particle_parameters.star"
     path_to_relion_project = "tests/outputs/starfile_writing/"
@@ -536,38 +550,20 @@ def test_write_particle_parameters():
         path_to_relion_project=path_to_relion_project,
         mode="w",
         overwrite=True,
-        loads_envelope=True,
+        loads_envelope=loads_envelope,
     )
     param_dataset.append(particle_params)
 
-    assert compare_pytrees(param_dataset[0], particle_params)
-
-    # Save
-    param_dataset.save()
-
-    # Test no overwrite
-    with pytest.raises(FileExistsError):
-        _ = RelionParticleParameterDataset(
-            path_to_starfile=path_to_starfile,
-            path_to_relion_project=path_to_relion_project,
-            mode="w",
-            overwrite=False,
-            loads_envelope=True,
-            loads_metadata=False,
-        )
-
-    # Write multiple parameters
-    particle_params = eqx.filter_vmap(
-        make_particle_params, in_axes=(0), out_axes=eqx.if_array(0)
-    )
-    # Clean up
-    shutil.rmtree(path_to_relion_project)
+    assert compare_pytrees(param_dataset[index], particle_params)
 
 
 @pytest.mark.parametrize(
     "index, updates_optics_group, sets_envelope",
     [
         (0, False, False),
+        ([0, 1], False, False),
+        (0, True, False),
+        (0, False, True),
     ],
 )
 def test_set_particle_parameters(
@@ -594,13 +590,9 @@ def test_set_particle_parameters(
             transfer_theory=cxs.ContrastTransferTheory(
                 cxs.CTF(defocus_in_angstroms=1234.0),
                 amplitude_contrast_ratio=0.1234,
-                envelope=FourierGaussian(b_factor=12.34) if sets_envelope else None,
+                envelope=op.FourierGaussian(b_factor=12.34) if sets_envelope else None,
             ),
         )
-
-    # @eqx.filter_vmap
-    # def make_params_vmap(rng_key):
-    #     pass
 
     rng_key = jr.key(0)
     new_parameters = make_params(rng_key)
@@ -613,14 +605,61 @@ def test_set_particle_parameters(
         path_to_starfile=sample_starfile_path,
         path_to_relion_project=sample_path_to_relion_project,
         mode="r",
-        loads_envelope=False,
-        loads_metadata=True,
+        loads_envelope=sets_envelope,
+        loads_metadata=False,
         updates_optics_group=updates_optics_group,
     )
+    # Set params
     param_dataset[index] = new_parameters
+    # Load params that were just set
     loaded_parameters = param_dataset[index]
 
-    compare_pytrees(new_parameters, loaded_parameters)
+    if updates_optics_group:
+        assert compare_pytrees(new_parameters, loaded_parameters)
+    else:
+        assert compare_pytrees(new_parameters.pose, loaded_parameters.pose)
+        np.testing.assert_allclose(
+            new_parameters.transfer_theory.ctf.defocus_in_angstroms,  # type: ignore
+            loaded_parameters.transfer_theory.ctf.defocus_in_angstroms,  # type: ignore
+        )
+        if sets_envelope:
+            np.testing.assert_allclose(
+                new_parameters.transfer_theory.envelope.b_factor,  # type: ignore
+                loaded_parameters.transfer_theory.envelope.b_factor,  # type: ignore
+            )
+
+
+def test_file_exists_error():
+    # Create pytrees
+    parameters = RelionParticleParameters(
+        instrument_config=cxs.InstrumentConfig(
+            shape=(4, 4), pixel_size=1.1, voltage_in_kilovolts=300.0
+        ),
+        pose=cxs.EulerAnglePose(),
+        transfer_theory=cxs.ContrastTransferTheory(ctf=cxs.CTF()),
+    )
+    # Add to dataset
+    path_to_starfile = "tests/outputs/starfile_writing/test_particle_parameters.star"
+    path_to_relion_project = "tests/outputs/starfile_writing/"
+    param_dataset = RelionParticleParameterDataset(
+        path_to_starfile=path_to_starfile,
+        path_to_relion_project=path_to_relion_project,
+        mode="w",
+        overwrite=True,
+    )
+    param_dataset.append(parameters)
+    param_dataset.save()
+
+    # Test no overwrite
+    with pytest.raises(FileExistsError):
+        _ = RelionParticleParameterDataset(
+            path_to_starfile=path_to_starfile,
+            path_to_relion_project=path_to_relion_project,
+            mode="w",
+            overwrite=False,
+        )
+    # Clean up
+    shutil.rmtree(path_to_relion_project)
 
 
 def test_file_not_found_error():
@@ -638,6 +677,95 @@ def test_file_not_found_error():
     return
 
 
+def test_set_wrong_parameters_error():
+    # Wrong parameters
+    wrong_pose = cxs.QuaternionPose()
+    wrong_transfer_theory_1 = cxs.ContrastTransferTheory(ctf=cxs.NullCTF())
+    wrong_transfer_theory_2 = cxs.ContrastTransferTheory(
+        ctf=cxs.CTF(), envelope=op.ZeroMode()
+    )
+    # Right parameters
+    right_pose = cxs.EulerAnglePose()
+    right_transfer_theory = cxs.ContrastTransferTheory(ctf=cxs.CTF())
+    instrument_config = cxs.InstrumentConfig(
+        shape=(4, 4), pixel_size=1.1, voltage_in_kilovolts=300.0
+    )
+    # Create pytrees
+    wrong_parameters_1 = RelionParticleParameters(
+        instrument_config=instrument_config,
+        pose=right_pose,
+        transfer_theory=wrong_transfer_theory_1,
+    )
+    wrong_parameters_2 = RelionParticleParameters(
+        instrument_config=instrument_config,
+        pose=right_pose,
+        transfer_theory=wrong_transfer_theory_2,
+    )
+    temp = RelionParticleParameters(
+        instrument_config=instrument_config,
+        pose=right_pose,
+        transfer_theory=right_transfer_theory,
+    )
+    wrong_parameters_3 = eqx.tree_at(lambda x: x.pose, temp, wrong_pose)
+    # Now the parameter dataset
+    # Add to dataset
+    path_to_starfile = "path/to/dummy/project/and/starfile.star"
+    path_to_relion_project = "path/to/dummy/project/"
+    param_dataset = RelionParticleParameterDataset(
+        path_to_starfile=path_to_starfile,
+        path_to_relion_project=path_to_relion_project,
+        mode="w",
+        overwrite=True,
+    )
+
+    with pytest.raises(ValueError):
+        param_dataset.append(wrong_parameters_1)
+
+    with pytest.raises(ValueError):
+        param_dataset.append(wrong_parameters_2)
+
+    with pytest.raises(ValueError):
+        param_dataset.append(wrong_parameters_3)
+
+
+def test_bad_pytree_error():
+    # Right parameters
+    make_pose = eqx.filter_vmap(
+        lambda x, y, phi, theta, psi: cxs.EulerAnglePose(x, y, phi, theta, psi)
+    )
+    pose = make_pose(
+        jnp.atleast_1d(1.0),
+        jnp.atleast_1d(-1.0),
+        jnp.atleast_1d(1.0),
+        jnp.atleast_1d(2.0),
+        jnp.atleast_1d(3.0),
+    )
+    pose = eqx.tree_at(lambda x: x.offset_x_in_angstroms, pose, jnp.asarray((1.0, 2.0)))
+    transfer_theory = cxs.ContrastTransferTheory(ctf=cxs.CTF())
+    instrument_config = cxs.InstrumentConfig(
+        shape=(4, 4), pixel_size=1.1, voltage_in_kilovolts=300.0
+    )
+    # Create pytrees
+    parameters = RelionParticleParameters(
+        instrument_config=instrument_config,
+        pose=pose,
+        transfer_theory=transfer_theory,
+    )
+    # Now the parameter dataset
+    # Add to dataset
+    path_to_starfile = "path/to/dummy/project/and/starfile.star"
+    path_to_relion_project = "path/to/dummy/project/"
+    param_dataset = RelionParticleParameterDataset(
+        path_to_starfile=path_to_starfile,
+        path_to_relion_project=path_to_relion_project,
+        mode="w",
+        overwrite=True,
+    )
+
+    with pytest.raises(ValueError):
+        param_dataset.append(parameters)
+
+
 # def test_write_particle_batched_particle_parameters():
 #     @partial(eqx.filter_vmap, in_axes=(0), out_axes=eqx.if_array(0))
 #     def _make_particle_params(dummy_idx):
@@ -649,7 +777,7 @@ def test_file_not_found_error():
 
 #         pose = cxs.EulerAnglePose()
 #         transfer_theory = cxs.ContrastTransferTheory(
-#             ctf=cxs.CTF(), envelope=FourierGaussian()
+#             ctf=cxs.CTF(), envelope=op.FourierGaussian()
 #         )
 #         return RelionParticleParameters(
 #             instrument_config, pose, transfer_theory, metadata={}
@@ -678,20 +806,6 @@ def test_file_not_found_error():
 #     return
 
 
-# def test_wrong_particle_parameters_pytrees():
-#     pose_quat = cxs.QuaternionPose()
-#     pose_euler = cxs.EulerAnglePose()
-
-#     transfer_theory = cxs.ContrastTransferTheory(ctf=cxs.CTF())
-#     transfer_theory_null = cxs.ContrastTransferTheory(ctf=cxs.NullCTF())
-
-#     with pytest.raises(NotImplementedError):
-#         _validate_particle_parameters_pytrees(pose_quat, transfer_theory)
-
-#     with pytest.raises(NotImplementedError):
-#         _validate_particle_parameters_pytrees(pose_euler, transfer_theory_null)
-
-
 # def test_write_starfile_different_envs():
 #     def _make_particle_params(envelope):
 #         instrument_config = cxs.InstrumentConfig(
@@ -709,7 +823,7 @@ def test_file_not_found_error():
 #             instrument_config, pose, transfer_theory, metadata={}
 #         )
 
-#     particle_params = _make_particle_params(FourierGaussian())
+#     particle_params = _make_particle_params(op.FourierGaussian())
 #     write_starfile_with_particle_parameters(
 #         particle_parameters=particle_params,
 #         filename="tests/outputs/starfile_writing/test_particle_parameters.star",
@@ -943,7 +1057,7 @@ def test_file_not_found_error():
 
 #         pose = cxs.EulerAnglePose()
 #         transfer_theory = cxs.ContrastTransferTheory(
-#             ctf=cxs.CTF(), envelope=FourierGaussian()
+#             ctf=cxs.CTF(), envelope=op.FourierGaussian()
 #         )
 #         return RelionParticleParameters(
 #             instrument_config, pose, transfer_theory, metadata={}

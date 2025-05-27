@@ -1187,7 +1187,8 @@ def _params_to_optics_df(
 
 
 def _params_to_particle_df(
-    parameters: RelionParticleParameters, optics_group_index: Optional[int] = None
+    parameters: RelionParticleParameters,
+    optics_group_index: Optional[int] = None,
 ) -> pd.DataFrame:
     particles_dict = {}
     # Fill CTF parameters
@@ -1217,15 +1218,21 @@ def _params_to_particle_df(
     elif transfer_theory.envelope is None:
         pass
     else:
-        raise NotImplementedError(
-            "The envelope function in `RelionParticleParameters` must either "
-            "be type `cryojax.image.operators.FourierGaussian` or "
-            "`cryojax.image.operators.Constant`. Got "
+        raise ValueError(
+            "`RelionParticleParameters.transfer_theory.envelope` must "
+            "either be type `cryojax.image.operators.FourierGaussian` "
+            "or `cryojax.image.operators.Constant`. Got "
             f"{type(transfer_theory.envelope).__name__}."
         )
     particles_dict["rlnPhaseShift"] = transfer_theory.phase_shift
     # Now, pose parameters
     pose = parameters.pose
+    if not isinstance(pose, EulerAnglePose):
+        raise ValueError(
+            "`RelionParticleParameters.pose` must be type "
+            "`EulerAnglePose`. Got type "
+            f"{type(pose).__name__}."
+        )
     particles_dict["rlnOriginXAngst"] = -pose.offset_x_in_angstroms
     particles_dict["rlnOriginYAngst"] = -pose.offset_y_in_angstroms
     particles_dict["rlnAngleRot"] = -pose.phi_angle
@@ -1234,7 +1241,7 @@ def _params_to_particle_df(
     # Now, broadcast parameters to same dimension
     n_particles = pose.offset_x_in_angstroms.size
     for k, v in particles_dict.items():
-        if v.shape == (0,):
+        if v.shape == ():
             particles_dict[k] = np.full((n_particles,), np.asarray(v))
         elif v.size == n_particles:
             particles_dict[k] = np.asarray(v.ravel())
@@ -1257,6 +1264,6 @@ def _params_to_particle_df(
 def _get_optics_group_index(optics_dataframe: pd.DataFrame) -> int:
     optics_group_indices = np.asarray(optics_dataframe["rlnOpticsGroup"], dtype=int)
     last_optics_group_index = (
-        0 if optics_group_indices.size == 0 else optics_group_indices[-1]
+        0 if optics_group_indices.size == 0 else int(optics_group_indices[-1])
     )
     return last_optics_group_index + 1
