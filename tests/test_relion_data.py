@@ -4,7 +4,6 @@ pytest --cov-report term-missing:skip-covered --cov=src/cryojax/data/_relion tes
 """  # noqa
 
 import os
-import pathlib
 import shutil
 from typing import cast
 
@@ -50,10 +49,9 @@ def compare_pytrees(pytree1, pytree2):
 
 
 @pytest.fixture
-def parameter_dataset(sample_starfile_path, sample_path_to_relion_project):
+def parameter_dataset(sample_starfile_path):
     return RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
-        path_to_relion_project=sample_path_to_relion_project,
         loads_envelope=True,
         loads_metadata=True,
     )
@@ -80,7 +78,9 @@ def relion_parameters():
 # Tests for starfile loading
 #
 class TestErrorRaisingForLoading:
-    def test_load_with_badparticle_name(self, parameter_dataset):
+    def test_load_with_badparticle_name(
+        self, parameter_dataset, sample_path_to_relion_project
+    ):
         with pytest.raises(IOError):
             metadata = parameter_dataset[0].metadata
             particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)
@@ -89,11 +89,14 @@ class TestErrorRaisingForLoading:
             _load_image_stack_from_mrc(
                 0,
                 particle_dataframe_at_index,
-                parameter_dataset.path_to_relion_project,
+                sample_path_to_relion_project,
             )
 
-    def test_with_bad_indices(self, parameter_dataset):
-        stack_dataset = RelionParticleStackDataset(parameter_dataset)
+    def test_with_bad_indices(self, parameter_dataset, sample_path_to_relion_project):
+        stack_dataset = RelionParticleStackDataset(
+            path_to_relion_project=sample_path_to_relion_project,
+            parameter_dataset=parameter_dataset,
+        )
 
         # overflow index
         with pytest.raises(IndexError):
@@ -178,12 +181,9 @@ def test_default_make_config_fn():
     return
 
 
-def test_load_starfile_envelope_params(
-    sample_starfile_path, sample_path_to_relion_project
-):
+def test_load_starfile_envelope_params(sample_starfile_path):
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
-        path_to_relion_project=sample_path_to_relion_project,
         loads_envelope=True,
         loads_metadata=True,
     )
@@ -212,7 +212,7 @@ def test_load_starfile_envelope_params(
     return
 
 
-def test_load_starfile_ctf_params(sample_starfile_path, sample_path_to_relion_project):
+def test_load_starfile_ctf_params(sample_starfile_path):
     def compute_defocus(defU, defV):
         return 0.5 * (defU + defV)
 
@@ -221,7 +221,6 @@ def test_load_starfile_ctf_params(sample_starfile_path, sample_path_to_relion_pr
 
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
-        path_to_relion_project=sample_path_to_relion_project,
         loads_envelope=False,
         loads_metadata=True,
     )
@@ -276,10 +275,9 @@ def test_load_starfile_ctf_params(sample_starfile_path, sample_path_to_relion_pr
     return
 
 
-def test_load_starfile_pose_params(sample_starfile_path, sample_path_to_relion_project):
+def test_load_starfile_pose_params(sample_starfile_path):
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
-        path_to_relion_project=sample_path_to_relion_project,
         loads_envelope=False,
         loads_metadata=True,
     )
@@ -327,11 +325,10 @@ def test_load_starfile_pose_params(sample_starfile_path, sample_path_to_relion_p
     return
 
 
-def test_load_starfile_wo_metadata(sample_starfile_path, sample_path_to_relion_project):
+def test_load_starfile_wo_metadata(sample_starfile_path):
     """Test loading a starfile without metadata."""
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
-        path_to_relion_project=sample_path_to_relion_project,
         loads_envelope=False,
         loads_metadata=False,
     )
@@ -344,11 +341,10 @@ def test_load_starfile_wo_metadata(sample_starfile_path, sample_path_to_relion_p
     return
 
 
-def test_load_starfile_optics_group(sample_starfile_path, sample_path_to_relion_project):
+def test_load_starfile_optics_group(sample_starfile_path):
     """Test loading a starfile with optics group."""
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
-        path_to_relion_project=sample_path_to_relion_project,
         loads_envelope=False,
         loads_metadata=True,
         broadcasts_optics_group=True,
@@ -362,7 +358,6 @@ def test_load_starfile_optics_group(sample_starfile_path, sample_path_to_relion_
 
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
-        path_to_relion_project=sample_path_to_relion_project,
         loads_envelope=False,
         loads_metadata=True,
         broadcasts_optics_group=False,
@@ -376,18 +371,13 @@ def test_load_starfile_optics_group(sample_starfile_path, sample_path_to_relion_
     return
 
 
-def test_load_starfile_misc(sample_starfile_path, sample_path_to_relion_project):
+def test_load_starfile_misc(sample_starfile_path):
     """Test loading a starfile with miscellaneous parameters."""
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
-        path_to_relion_project=sample_path_to_relion_project,
         loads_envelope=False,
         loads_metadata=False,
         broadcasts_optics_group=False,
-    )
-
-    assert param_dataset.path_to_relion_project == pathlib.Path(
-        sample_path_to_relion_project
     )
 
     # set to True to load metadata
@@ -407,12 +397,13 @@ def test_load_starfile_and_mrcs(sample_starfile_path, sample_path_to_relion_proj
     """Test loading a starfile with mrcs."""
     parameter_dataset = RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
-        path_to_relion_project=sample_path_to_relion_project,
         loads_envelope=False,
         loads_metadata=False,
         broadcasts_optics_group=False,
     )
-    particle_stack_dataset = RelionParticleStackDataset(parameter_dataset)
+    particle_stack_dataset = RelionParticleStackDataset(
+        parameter_dataset, sample_path_to_relion_project
+    )
 
     particle_stack = particle_stack_dataset[:]
     instrument_config = particle_stack.parameters.instrument_config
@@ -478,7 +469,6 @@ def test_default_starfile():
     # now load the starfile
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=os.path.join(path_to_starfile, "test.star"),
-        path_to_relion_project=path_to_starfile,
         loads_envelope=False,
         loads_metadata=False,
         broadcasts_optics_group=False,
@@ -498,11 +488,11 @@ def test_default_starfile():
 # Tests for starfile writing
 #
 def test_format_filename_for_mrcs():
-    formated_number = _format_number_for_filename(10, total_characters=5)
+    formated_number = _format_number_for_filename(10, n_characters=5)
 
     assert formated_number == "00010"
 
-    formated_number = _format_number_for_filename(0, total_characters=5)
+    formated_number = _format_number_for_filename(0, n_characters=5)
     assert formated_number == "00000"
 
 
@@ -543,10 +533,8 @@ def test_append_particle_parameters(index, loads_envelope):
         )
     # Add to dataset
     path_to_starfile = "tests/outputs/starfile_writing/test_particle_parameters.star"
-    path_to_relion_project = "tests/outputs/starfile_writing/"
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=path_to_starfile,
-        path_to_relion_project=path_to_relion_project,
         mode="w",
         overwrite=True,
         loads_envelope=loads_envelope,
@@ -567,7 +555,6 @@ def test_append_particle_parameters(index, loads_envelope):
 )
 def test_set_particle_parameters(
     sample_starfile_path,
-    sample_path_to_relion_project,
     index,
     updates_optics_group,
     sets_envelope,
@@ -602,7 +589,6 @@ def test_set_particle_parameters(
 
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
-        path_to_relion_project=sample_path_to_relion_project,
         mode="r",
         loads_envelope=sets_envelope,
         loads_metadata=False,
@@ -639,37 +625,32 @@ def test_file_exists_error():
     )
     # Add to dataset
     path_to_starfile = "tests/outputs/starfile_writing/test_particle_parameters.star"
-    path_to_relion_project = "tests/outputs/starfile_writing/"
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=path_to_starfile,
-        path_to_relion_project=path_to_relion_project,
         mode="w",
         overwrite=True,
     )
     param_dataset.append(parameters)
-    param_dataset.save()
+    param_dataset.save(overwrite=True)
 
     # Test no overwrite
     with pytest.raises(FileExistsError):
         _ = RelionParticleParameterDataset(
             path_to_starfile=path_to_starfile,
-            path_to_relion_project=path_to_relion_project,
             mode="w",
             overwrite=False,
         )
     # Clean up
-    shutil.rmtree(path_to_relion_project)
+    shutil.rmtree(param_dataset.path_to_starfile.parent)
 
 
 def test_file_not_found_error():
     dummy_path_to_starfile = "path/to/nonexistant/dir/nonexistant_file.star"
-    dummy_path_to_relion_project = "path/to/nonexistant/"
 
     # Test no overwrite
     with pytest.raises(FileNotFoundError):
         _ = RelionParticleParameterDataset(
             path_to_starfile=dummy_path_to_starfile,
-            path_to_relion_project=dummy_path_to_relion_project,
             mode="r",
         )
 
@@ -709,10 +690,8 @@ def test_set_wrong_parameters_error():
     # Now the parameter dataset
     # Add to dataset
     path_to_starfile = "path/to/dummy/project/and/starfile.star"
-    path_to_relion_project = "path/to/dummy/project/"
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=path_to_starfile,
-        path_to_relion_project=path_to_relion_project,
         mode="w",
         overwrite=True,
     )
@@ -753,10 +732,8 @@ def test_bad_pytree_error():
     # Now the parameter dataset
     # Add to dataset
     path_to_starfile = "path/to/dummy/project/and/starfile.star"
-    path_to_relion_project = "path/to/dummy/project/"
     param_dataset = RelionParticleParameterDataset(
         path_to_starfile=path_to_starfile,
-        path_to_relion_project=path_to_relion_project,
         mode="w",
         overwrite=True,
     )

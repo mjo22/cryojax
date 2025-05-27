@@ -3,7 +3,7 @@ import pathlib
 from typing import Generic, TypeVar
 
 import equinox as eqx
-from jaxtyping import Array, Inexact
+from jaxtyping import Array, Float, Inexact
 
 from ..internal import NDArrayLike
 from ..simulator import (
@@ -58,9 +58,10 @@ class AbstractParticleStackDataset(AbstractDataset[T], Generic[T]):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def write_image_stack(
+    def write_images(
         self,
-        path_to_output: str | pathlib.Path,
-        image_stack: Inexact[NDArrayLike, "... y_dim x_dim"],
+        path_to_filename: str | pathlib.Path,
+        images: Inexact[NDArrayLike, "... _ _"],
+        pixel_size: float | Float[NDArrayLike, ""] = -1.0,
     ):
         raise NotImplementedError
