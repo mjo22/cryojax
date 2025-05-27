@@ -44,7 +44,6 @@ RELION_REQUIRED_PARTICLE_KEYS = [
     "rlnDefocusV",
     "rlnDefocusAngle",
     "rlnPhaseShift",
-    # "rlnImageName",
     "rlnOpticsGroup",
 ]
 RELION_POSE_PARTICLE_KEYS = [
@@ -480,7 +479,8 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
                     "`overwrite=True`."
                 )
             else:
-                _set_empty_image_names(particle_data)
+                # Write empty "rlnImageName" column (defaults to NaN values)
+                particle_data["rlnImageName"] = pd.Series(dtype=str)
                 parameter_dataset.starfile_data = dict(
                     optics=optics_data, particles=particle_data
                 )
@@ -1442,34 +1442,6 @@ def _get_optics_group_from_particle_data(
 #
 # Now, functions for writing image files
 #
-def _set_empty_image_names(particle_data: pd.DataFrame):
-    particle_data["rlnImageName"] = pd.Series(dtype=str)
-
-
-def _parse_filename_for_number(path_to_filename: pathlib.Path) -> int:
-    filename = path_to_filename.name
-    match = re.search(r"[^0-9](\d+)\.[^.]+$", filename)
-    try:
-        file_number = int(match.group(1))  # type: ignore
-    except Exception as err:
-        raise IOError(
-            f"Could not get the file number from file {str(path_to_filename)} "
-            "Files must be enumerated with the trailing part of the "
-            "filename as the file number, like so: '/path/to/file-0000.txt'. "
-            f"When extracting the file number and converting it to an integer, "
-            f"found error:\n\t{err}"
-        )
-    return file_number
-
-
-def _format_number_for_filename(file_number: int, n_characters: int = 6):
-    if file_number == 0:
-        return "0" * n_characters
-    else:
-        n_digits = int(np.log10(file_number)) + 1
-        return "0" * (n_characters - n_digits) + str(file_number)
-
-
 def _dict_to_filename_settings(d: dict[str, Any]) -> ImageFilenameSettings:
     prefix = d["prefix"] if "prefix" in d else ""
     output_folder = d["output_folder"] if "output_folder" in d else ""
@@ -1481,6 +1453,13 @@ def _dict_to_filename_settings(d: dict[str, Any]) -> ImageFilenameSettings:
         delimiter=delimiter,
         n_characters=n_characters,
     )
+
+
+def _index_to_array(indices: slice | int | np.ndarray, size: int) -> np.ndarray:
+    if isinstance(indices, slice):
+        return np.asarray(range(*indices.indices(size)))
+    else:
+        return np.asarray(indices, dtype=int)
 
 
 def _make_image_filename(
@@ -1534,8 +1513,25 @@ def _make_image_filename(
     return path_to_filename, rln_image_names
 
 
-def _index_to_array(indices: slice | int | np.ndarray, size: int) -> np.ndarray:
-    if isinstance(indices, slice):
-        return np.asarray(range(*indices.indices(size)))
+def _parse_filename_for_number(path_to_filename: pathlib.Path) -> int:
+    filename = path_to_filename.name
+    match = re.search(r"[^0-9](\d+)\.[^.]+$", filename)
+    try:
+        file_number = int(match.group(1))  # type: ignore
+    except Exception as err:
+        raise IOError(
+            f"Could not get the file number from file {str(path_to_filename)} "
+            "Files must be enumerated with the trailing part of the "
+            "filename as the file number, like so: '/path/to/file-0000.txt'. "
+            f"When extracting the file number and converting it to an integer, "
+            f"found error:\n\t{err}"
+        )
+    return file_number
+
+
+def _format_number_for_filename(file_number: int, n_characters: int = 6):
+    if file_number == 0:
+        return "0" * n_characters
     else:
-        return np.asarray(indices, dtype=int)
+        n_digits = int(np.log10(file_number)) + 1
+        return "0" * (n_characters - n_digits) + str(file_number)
