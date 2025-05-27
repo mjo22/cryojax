@@ -405,20 +405,19 @@ def test_load_starfile_misc(sample_starfile_path, sample_path_to_relion_project)
 
 def test_load_starfile_and_mrcs(sample_starfile_path, sample_path_to_relion_project):
     """Test loading a starfile with mrcs."""
-    param_dataset = RelionParticleParameterDataset(
+    parameter_dataset = RelionParticleParameterDataset(
         path_to_starfile=sample_starfile_path,
         path_to_relion_project=sample_path_to_relion_project,
         loads_envelope=False,
         loads_metadata=False,
         broadcasts_optics_group=False,
     )
-
-    particle_stack_dataset = RelionParticleStackDataset(param_dataset=param_dataset)
+    particle_stack_dataset = RelionParticleStackDataset(parameter_dataset)
 
     particle_stack = particle_stack_dataset[:]
     instrument_config = particle_stack.parameters.instrument_config
     assert particle_stack.images.shape == (
-        len(param_dataset),
+        len(parameter_dataset),
         *instrument_config.shape,
     )
 
@@ -430,7 +429,7 @@ def test_load_starfile_and_mrcs(sample_starfile_path, sample_path_to_relion_proj
     instrument_config = particle_stack.parameters.instrument_config
     assert particle_stack.images.shape == (2, *instrument_config.shape)
 
-    assert len(particle_stack_dataset) == len(param_dataset)
+    assert len(particle_stack_dataset) == len(parameter_dataset)
 
     return
 

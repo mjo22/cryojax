@@ -397,7 +397,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
 
     def __init__(
         self,
-        param_dataset: AbstractRelionParticleParameterDataset,
+        parameter_dataset: AbstractRelionParticleParameterDataset,
         mode: Literal["r", "w"] = "r",
         overwrite: bool = False,
         *,
@@ -406,19 +406,19 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
     ):
         """**Arguments:**
 
-        - `param_dataset`:
+        - `parameter_dataset`:
             The `RelionParticleParameterDataset`.
         - `mode`:
             - If `mode = 'w'`, the dataset is prepared to write new
             *images*. This is done by removing 'rlnImageName' from
-            `param_dataset.starfile_data`, if it exists at all.
+            `parameter_dataset.starfile_data`, if it exists at all.
             does not have a column 'rlnImageName' and image files
             are not yet written.
             - If `mode = 'r'`, images are read from the 'rlnImageName'
-            stored in the `param_dataset.starfile_data`.
+            stored in the `parameter_dataset.starfile_data`.
         - `overwrite`:
             If `True` and `mode = 'w'`, removes the 'rlnImageName' column
-            from `param_dataset.starfile_data`.
+            from `parameter_dataset.starfile_data`.
         - `preallocates_memory`:
             If `mode = 'w'`, write the 'rlnImageName' and empty MRC files
             when the `RelionParticleStackDataset` is initialized.
@@ -426,17 +426,17 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
             If `mode = 'w'` and `preallocates_memory = True`, write MRC files
             with this as the number of images per file.
         """
-        self._param_dataset = param_dataset
+        self._parameter_dataset = parameter_dataset
 
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
     ) -> RelionParticleStack:
         # ... make sure particle metadata is being loaded
-        loads_metadata = self.param_dataset.loads_metadata
-        self.param_dataset.loads_metadata = True
+        loads_metadata = self.parameter_dataset.loads_metadata
+        self.parameter_dataset.loads_metadata = True
         # ... read parameters
-        parameters = self.param_dataset[index]
+        parameters = self.parameter_dataset[index]
         # ... and construct dataframe
         metadata = parameters.metadata
         particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)  # type: ignore
@@ -453,13 +453,13 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
         images = _load_image_stack_from_mrc(
             particle_index,
             particle_dataframe_at_index,
-            self.param_dataset.path_to_relion_project,
+            self.parameter_dataset.path_to_relion_project,
         )
         if parameters.pose.offset_x_in_angstroms.ndim == 0:
             images = jnp.squeeze(images)
 
         # ... reset boolean
-        self.param_dataset.loads_metadata = loads_metadata
+        self.parameter_dataset.loads_metadata = loads_metadata
         if not loads_metadata:
             parameters = RelionParticleParameters(
                 parameters.instrument_config, parameters.pose, parameters.transfer_theory
@@ -469,7 +469,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
 
     @override
     def __len__(self) -> int:
-        return len(self.param_dataset)
+        return len(self.parameter_dataset)
 
     @override
     def __setitem__(
@@ -499,8 +499,8 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
         raise NotImplementedError
 
     @property
-    def param_dataset(self) -> AbstractRelionParticleParameterDataset:
-        return self._param_dataset
+    def parameter_dataset(self) -> AbstractRelionParticleParameterDataset:
+        return self._parameter_dataset
 
 
 class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
@@ -513,11 +513,11 @@ class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
 
     ```python
     # Read in a STAR file particle stack
-    helical_param_dataset = RelionHelicalParameterDataset(...)
+    dataset = RelionHelicalParameterDataset(...)
     # ... get a particle stack for a filament
-    params_for_a_filament = helical_particle_dataset[0]
+    parameters_for_a_filament = dataset[0]
     # ... get a particle stack for another filament
-    params_for_another_filament = helical_particle_dataset[1]
+    parameters_for_another_filament = dataset[1]
     ```
 
     Unlike a `RelionParticleParameterDataset`, a `RelionHelicalParameterDataset`
@@ -526,23 +526,23 @@ class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
 
     def __init__(
         self,
-        param_dataset: RelionParticleParameterDataset,
+        parameter_dataset: RelionParticleParameterDataset,
     ):
         """**Arguments:**
 
-        - `param_dataset`:
+        - `parameter_dataset`:
             The wrappped `RelionParticleParameterDataset`. This will be
             slightly modified to read one helix at a time, rather than
             one image crop at a time.
         """
         # Validate the STAR file and store the dataset
-        _ = _validate_helical_starfile_data(param_dataset.starfile_data)
-        self._param_dataset = param_dataset
+        _ = _validate_helical_starfile_data(parameter_dataset.starfile_data)
+        self._parameter_dataset = parameter_dataset
         # Compute and store the number of filaments, number of filaments per micrograph
         # and micrograph names
         n_filaments_per_micrograph, micrograph_names = (
             _get_number_of_filaments_per_micrograph_in_helical_starfile_data(
-                param_dataset.starfile_data
+                parameter_dataset.starfile_data
             )
         )
         self._n_filaments = int(np.sum(n_filaments_per_micrograph))
@@ -552,7 +552,7 @@ class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
     def __getitem__(self, index: int | Int[np.ndarray, ""]) -> RelionParticleParameters:
         _validate_helical_dataset_index(type(self), index, len(self))
         # Get the particle stack indices corresponding to this filament
-        particle_dataframe = self._param_dataset.starfile_data["particles"]
+        particle_dataframe = self._parameter_dataset.starfile_data["particles"]
         particle_indices_at_filament_index = _get_particle_indices_at_filament_index(
             particle_dataframe,
             index,
@@ -560,7 +560,7 @@ class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
             self._micrograph_names,
         )
         # Access the particle stack at these particle indices
-        return self._param_dataset[particle_indices_at_filament_index]
+        return self._parameter_dataset[particle_indices_at_filament_index]
 
     def __len__(self) -> int:
         return self._n_filaments
@@ -577,55 +577,55 @@ class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
 
     @override
     def save(self, **kwargs: Any):
-        return self._param_dataset.save(**kwargs)
+        return self._parameter_dataset.save(**kwargs)
 
     @property
     def starfile_data(self) -> dict[str, pd.DataFrame]:
-        return self._param_dataset._starfile_data
+        return self._parameter_dataset._starfile_data
 
     @property
     def path_to_relion_project(self) -> pathlib.Path:
-        return self._param_dataset._path_to_relion_project
+        return self._parameter_dataset._path_to_relion_project
 
     @property
     @override
     def loads_metadata(self) -> bool:
-        return self._param_dataset._loads_metadata
+        return self._parameter_dataset._loads_metadata
 
     @loads_metadata.setter
     @override
     def loads_metadata(self, value: bool):
-        self._param_dataset._loads_metadata = value
+        self._parameter_dataset._loads_metadata = value
 
     @property
     @override
     def loads_envelope(self) -> bool:
-        return self._param_dataset._loads_envelope
+        return self._parameter_dataset._loads_envelope
 
     @loads_envelope.setter
     @override
     def loads_envelope(self, value: bool):
-        self._param_dataset._loads_envelope = value
+        self._parameter_dataset._loads_envelope = value
 
     @property
     @override
     def broadcasts_optics_group(self) -> bool:
-        return self._param_dataset._broadcasts_optics_group
+        return self._parameter_dataset._broadcasts_optics_group
 
     @broadcasts_optics_group.setter
     @override
     def broadcasts_optics_group(self, value: bool):
-        self._param_dataset._broadcasts_optics_group = value
+        self._parameter_dataset._broadcasts_optics_group = value
 
     @property
     @override
     def updates_optics_group(self) -> bool:
-        return self._param_dataset._updates_optics_group
+        return self._parameter_dataset._updates_optics_group
 
     @updates_optics_group.setter
     @override
     def updates_optics_group(self, value: bool):
-        self._param_dataset._updates_optics_group = value
+        self._parameter_dataset._updates_optics_group = value
 
 
 def _load_starfile_data(
