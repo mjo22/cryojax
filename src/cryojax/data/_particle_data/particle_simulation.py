@@ -145,7 +145,7 @@ def write_simulated_image_stack(
     **Arguments:**
 
     - `dataset`:
-        The `RelionParticleStackDataset` dataset. Note that this must be
+        The `AbstractParticleStackDataset` dataset. Note that this must be
         passed in *writing mode*, i.e. `mode = 'w'`.
     - `compute_image_fn`:
         A callable that computes the image stack from the parameters contained
@@ -164,9 +164,10 @@ def write_simulated_image_stack(
         images in a python for-loop.
     -  `path_to_output`:
         The location to write the metadata file, i.e. the
-        `RelionParticleStackDataset.parameter_dataset.path_to_output`.
+        `AbstractParticleStackDataset.parameter_dataset.path_to_output`.
     - `kwargs`:
-        Keyword arguments passed `AbstractParticleParameterDataset.save`.
+        Keyword arguments passed to
+        `AbstractParticleStackDataset.parameter_dataset.save`.
     """
     if dataset.mode == "r":
         raise ValueError(
