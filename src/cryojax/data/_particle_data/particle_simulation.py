@@ -6,6 +6,8 @@ import jax
 import numpy as np
 from jaxtyping import Array, Float, Int
 
+from ...internal import NDArrayLike
+from ...utils import batched_scan
 from .base_particle_dataset import (
     AbstractParticleParameterDataset,
     AbstractParticleParameters,
@@ -26,8 +28,9 @@ def write_simulated_image_stack(
     ],
     constant_args: ConstantT = None,
     per_particle_args: PerParticleT = None,
+    path_to_metadata: Optional[str | pathlib.Path] = None,
     batch_size: Optional[int] = None,
-    path_to_output: Optional[str | pathlib.Path] = None,
+    images_per_file: Optional[int] = None,
     **kwargs: Any,
 ):
     """Write a stack of images from parameters contained in an
@@ -75,10 +78,9 @@ def write_simulated_image_stack(
         # example, include the method of taking projections
         potential_integrator, ... = constant_args
         # Using the pose, CTF, and config from the
-        # `parameters`, build image simulation model and
-        # compute
+        # `parameters`, build image simulation model
         image_model = cxs.ContrastImageModel(...)
-
+        # ... and compute
         return image_model.render()
 
     # Simulate images and write to disk
@@ -157,14 +159,17 @@ def write_simulated_image_stack(
         Arguments to pass to the `compute_image_fn` function.
         This is a pytree with leaves having a batch size with equal dimension
         to the number of images.
-    - `batch_size`:
-        The number of particle indices to compute in parallel and
-        store in a single image file. If an integer, compute `batch_size`
-        images at a time using `equinox.filter_vmap`. If `None`, simulate
-        images in a python for-loop.
-    -  `path_to_output`:
+    -  `path_to_metadata`:
         The location to write the metadata file, i.e. the
         `AbstractParticleStackDataset.parameter_dataset.path_to_output`.
+    - `batch_size`:
+        The number images to compute in parallel using `jax.vmap`.
+        If `None`, simulate images in a python for-loop. This is
+        useful if the user isn't yet familiar with debugging JIT
+        compilation.
+    - `images_per_file`:
+        The number of images to write in a single image file. By default,
+        set this as the number of particles in the dataset.
     - `kwargs`:
         Keyword arguments passed to
         `AbstractParticleStackDataset.parameter_dataset.save`.
@@ -176,34 +181,35 @@ def write_simulated_image_stack(
             "writing mode (`mode = 'w'`)."
         )
     n_particles = len(dataset)
-    if batch_size is None:
-        do_vmap, batch_size = False, 1
-    else:
-        do_vmap = True
-
+    images_per_file = n_particles if images_per_file is None else images_per_file
     # Get function that simulates batch of images
     compute_image_stack_fn = _configure_simulation_fn(
-        compute_image_fn, batch_size, do_vmap
+        compute_image_fn,
+        batch_size,
+        images_per_file,
     )
     # Run control flow
-    n_batches, remainder = n_particles // batch_size, n_particles % batch_size
+    n_iterations, remainder = (
+        n_particles // images_per_file,
+        n_particles % images_per_file,
+    )
     parameter_dataset = dataset.parameter_dataset
-    for batch_index in range(n_batches):
-        index_array = np.arange(
-            batch_index * batch_size, (batch_index + 1) * batch_size, dtype=int
+    for file_index in range(n_iterations):
+        dataset_index = np.arange(
+            file_index * images_per_file, (file_index + 1) * images_per_file, dtype=int
         )
         images, parameters = _simulate_images(
-            index_array,
+            dataset_index,
             parameter_dataset,
             compute_image_stack_fn,
             constant_args,
             per_particle_args,
         )
-        dataset.write_images(index_array, images, parameters)
+        dataset.write_images(dataset_index, images, parameters)
     # ... handle remainder
     if remainder > 0:
         compute_image_stack_fn = _configure_simulation_fn(
-            compute_image_fn, remainder, do_vmap
+            compute_image_fn, batch_size, images_per_file
         )
         index_array = np.arange(n_particles - remainder, n_particles, dtype=int)
         images, parameters = _simulate_images(
@@ -215,8 +221,8 @@ def write_simulated_image_stack(
         )
         dataset.write_images(index_array, images, parameters)
     # Finally, save metadata file
-    if path_to_output is not None:
-        parameter_dataset.path_to_output = path_to_output
+    if path_to_metadata is not None:
+        parameter_dataset.path_to_output = path_to_metadata
     parameter_dataset.save(**kwargs)
 
 
@@ -225,11 +231,11 @@ def _simulate_images(
     parameter_dataset: AbstractParticleParameterDataset,
     compute_image_stack_fn: Callable[
         [AbstractParticleParameters, ConstantT, PerParticleT],
-        Float[Array, "_ _ _"],
+        Float[NDArrayLike, "_ _ _"],
     ],
     constant_args: ConstantT,
     per_particle_args: PerParticleT,
-) -> tuple[Float[Array, "_ _ _"], AbstractParticleParameterDataset]:
+) -> tuple[Float[NDArrayLike, "_ _ _"], AbstractParticleParameterDataset]:
     parameters = parameter_dataset[index]
     args = (constant_args, _index_pytree(index, per_particle_args))
     image_stack = compute_image_stack_fn(parameters, *args)
@@ -242,24 +248,18 @@ def _configure_simulation_fn(
         [AbstractParticleParameters, ConstantT, PerParticleT],
         Float[Array, "_ _"],
     ],
-    batch_size: int,
-    do_vmap: bool,
+    batch_size: int | None,
+    images_per_file: int,
 ) -> Callable[
     [AbstractParticleParameters, ConstantT, PerParticleT],
-    Float[Array, "_ _ _"],
+    Float[NDArrayLike, "_ _ _"],
 ]:
-    if do_vmap:
-        compute_image_stack_fn = eqx.filter_jit(
-            eqx.filter_vmap(
-                compute_image_fn, in_axes=(eqx.if_array(0), None, eqx.if_array(0))
-            )
-        )
-    else:
+    if batch_size is None:
 
-        def compute_image_stack_fn(parameters, constant_args, per_particle_args):
+        def compute_image_stack_fn(parameters, constant_args, per_particle_args):  # type: ignore
             shape = parameters.instrument_config.shape
-            image_stack = np.empty((batch_size, *shape))
-            for i in range(batch_size):
+            image_stack = np.empty((images_per_file, *shape))
+            for i in range(images_per_file):
                 parameters_at_i = _index_pytree(i, parameters)
                 per_particle_args_at_i = _index_pytree(i, per_particle_args)
                 image = compute_image_fn(
@@ -267,6 +267,45 @@ def _configure_simulation_fn(
                 )
                 image_stack[i] = np.asarray(image)
             return image_stack
+
+    else:
+        batch_size = min(images_per_file, batch_size)
+        compute_vmap = eqx.filter_vmap(
+            compute_image_fn, in_axes=(eqx.if_array(0), None, eqx.if_array(0))
+        )
+        if batch_size == images_per_file:
+            compute_image_stack_fn = eqx.filter_jit(compute_vmap)
+        else:
+
+            @eqx.filter_jit
+            def compute_image_stack_fn(parameters, constant_args, per_particle_args):
+                # Compute with `jax.lax.scan`
+                params_dynamic, params_static = eqx.partition(parameters, eqx.is_array)
+                const_dynamic, const_static = eqx.partition(constant_args, eqx.is_array)
+                per_particle_dynamic, per_particle_static = eqx.partition(
+                    per_particle_args, eqx.is_array
+                )
+                # ... prepare for scan
+                init = const_dynamic
+                xs = (params_dynamic, per_particle_dynamic)
+
+                def f_scan(carry, xs):
+                    params_dynamic, per_particle_dynamic = xs
+                    parameters = eqx.combine(params_dynamic, params_static)
+                    per_particle_args = eqx.combine(
+                        per_particle_dynamic, per_particle_static
+                    )
+                    constant_args = eqx.combine(carry, const_static)
+
+                    image_stack = compute_vmap(
+                        parameters, constant_args, per_particle_args
+                    )
+
+                    return carry, image_stack
+
+                _, image_stack = batched_scan(f_scan, init, xs, batch_size=batch_size)
+
+                return image_stack
 
     return compute_image_stack_fn  # type: ignore
 
