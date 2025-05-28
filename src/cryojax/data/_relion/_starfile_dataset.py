@@ -80,8 +80,23 @@ class AbstractRelionParticleParameterDataset(
     AbstractParticleParameterDataset[RelionParticleParameters]
 ):
     @property
+    @override
+    def path_to_output(self) -> pathlib.Path:
+        return self.path_to_starfile
+
+    @path_to_output.setter
+    @override
+    def path_to_output(self, value: str | pathlib.Path):
+        self.path_to_starfile = value
+
+    @property
     @abc.abstractmethod
     def path_to_starfile(self) -> pathlib.Path:
+        raise NotImplementedError
+
+    @path_to_starfile.setter
+    @abc.abstractmethod
+    def path_to_starfile(self, value: str | pathlib.Path):
         raise NotImplementedError
 
     @property
@@ -195,7 +210,7 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         """
         # Private attributes
         self._make_config_fn = make_config_fn
-        self._mode = mode
+        self._mode = _validate_mode(mode)
         # Properties without setters
         # ... read starfile and load path
         self._path_to_starfile = pathlib.Path(path_to_starfile)
@@ -257,13 +272,15 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
     ):
         if self.updates_optics_group:
             optics_group_index = _make_optics_group_index(self.starfile_data["optics"])
-            particle_data_for_update = _params_to_particle_data(value, optics_group_index)
-            optics_data_to_append = _params_to_optics_data(value, optics_group_index)
+            particle_data_for_update = _parameters_to_particle_data(
+                value, optics_group_index
+            )
+            optics_data_to_append = _parameters_to_optics_data(value, optics_group_index)
             optics_data = pd.concat(
                 [self.starfile_data["optics"], optics_data_to_append], ignore_index=True
             )
         else:
-            particle_data_for_update = _params_to_particle_data(value)
+            particle_data_for_update = _parameters_to_particle_data(value)
             optics_data = self.starfile_data["optics"]
         particle_data = self.starfile_data["particles"]
         if isinstance(index, (int, np.ndarray)):
@@ -286,11 +303,11 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
         optics_group_index = _make_optics_group_index(self.starfile_data["optics"])
         optics_data, optics_data_to_append = (
             self.starfile_data["optics"],
-            _params_to_optics_data(value, optics_group_index),
+            _parameters_to_optics_data(value, optics_group_index),
         )
         particle_data, particle_data_to_append = (
             self.starfile_data["particles"],
-            _params_to_particle_data(value, optics_group_index),
+            _parameters_to_particle_data(value, optics_group_index),
         )
         optics_data = (
             pd.concat([optics_data, optics_data_to_append], ignore_index=True)
@@ -326,6 +343,20 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
 
     @property
     @override
+    def path_to_starfile(self) -> pathlib.Path:
+        return self._path_to_starfile
+
+    @path_to_starfile.setter
+    @override
+    def path_to_starfile(self, value: str | pathlib.Path):
+        self._path_to_starfile = pathlib.Path(value)
+
+    @property
+    def mode(self) -> Literal["r", "w"]:
+        return self._mode  # type: ignore
+
+    @property
+    @override
     def starfile_data(self) -> StarfileData:
         return self._starfile_data
 
@@ -356,14 +387,6 @@ class RelionParticleParameterDataset(AbstractRelionParticleParameterDataset):
                 "'particles' and 'optics'. Tried setting "
                 f"with a dictionary with keys {list(value.keys())}."
             )
-
-    @property
-    def path_to_starfile(self) -> pathlib.Path:
-        return self._path_to_starfile
-
-    @path_to_starfile.setter
-    def path_to_starfile(self, value: str | pathlib.Path):
-        self._path_to_starfile = pathlib.Path(value)
 
     @property
     @override
@@ -460,6 +483,8 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
                 filename for image stack 0 will be called "f-00000.mrcs",
                 for `n_characters = 5` and `prefix = 'f'`.
         """
+        self._parameter_dataset = parameter_dataset
+        self._mode = _validate_mode(mode)
         # Set properties for reading image files
         self._path_to_relion_project = pathlib.Path(path_to_relion_project)
         # Set properties for writing image files
@@ -484,8 +509,6 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
                 parameter_dataset.starfile_data = dict(
                     optics=optics_data, particles=particle_data
                 )
-        # The parameter dataset
-        self._parameter_dataset = parameter_dataset
 
     @override
     def __getitem__(
@@ -532,9 +555,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
 
     @override
     def __setitem__(
-        self,
-        index: int | slice | Int[np.ndarray, ""],
-        value: RelionParticleStack | Float[NDArrayLike, "... _ _"],
+        self, index: int | slice | Int[np.ndarray, ""], value: RelionParticleStack
     ):
         if isinstance(index, Int[np.ndarray, "_"]):  # type: ignore
             raise ValueError(
@@ -544,19 +565,15 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
         if isinstance(value, RelionParticleStack):
             self.parameter_dataset[index] = value.parameters
             images, parameters = np.asarray(value.images), value.parameters
-        elif isinstance(value, NDArrayLike):  # type: ignore
-            images, parameters = np.asarray(value), None
         else:
             raise ValueError(
-                "Dataset entries can only be set with "
-                "the `RelionParticleStack` type or array "
-                "types, i.e. image arrays with shape "
-                "`(n_images, dim, dim)` or `(dim, dim)`, where "
-                "`dim` is equal to the 'rlnImageSize'."
+                "Dataset entries must be set with "
+                "the `RelionParticleStack` type. Found type "
+                f"{type(value).__name__}."
             )
         n_particles = len(self.parameter_dataset)
         index_array = np.atleast_1d(_index_to_array(index, n_particles))
-        self._write_images_at_index(index_array, images, parameters=parameters)
+        self.write_images(index_array, images, parameters=parameters)
 
     @override
     def append(self, value: RelionParticleStack):
@@ -567,44 +584,25 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
         - `value`:
             The `RelionParticleParameters` to add to the dataset.
         """
+        if isinstance(value, RelionParticleStack):
+            images, parameters = np.asarray(value.images), value.parameters
+        else:
+            raise ValueError(
+                "Dataset can only append the "
+                "the `RelionParticleStack` type. Found type "
+                f"{type(value).__name__}."
+            )
         start = len(self.parameter_dataset)
-        parameters, images = value.parameters, value.images
         # Append parameters. This automatically sets the 'rlnImageName'
         # column to NaNs
         self.parameter_dataset.append(parameters)
         # Write images
         stop = len(self.parameter_dataset)
         index_array = np.arange(start, stop, dtype=int)
-        self._write_images_at_index(index_array, images, parameters=parameters)
+        self.write_images(index_array, images, parameters=parameters)
 
     @override
     def write_images(
-        self,
-        path_to_filename: str | pathlib.Path,
-        images: Float[NDArrayLike, "... _ _"],
-        pixel_size: float | Float[NDArrayLike, ""] = -1.0,
-    ):
-        if images.ndim == 2:
-            images = np.atleast_3d(images)
-        write_image_stack_to_mrc(images, pixel_size, path_to_filename)
-
-    @property
-    def path_to_relion_project(self) -> pathlib.Path:
-        return self._path_to_relion_project
-
-    @property
-    def filename_settings(self) -> ImageFilenameSettings:
-        return self._filename_settings
-
-    @filename_settings.setter
-    def filename_settings(self, value: dict[str, Any]):
-        self._filename_settings = _dict_to_filename_settings(value)
-
-    @property
-    def parameter_dataset(self) -> AbstractRelionParticleParameterDataset:
-        return self._parameter_dataset
-
-    def _write_images_at_index(
         self,
         index_array: Int[np.ndarray, " _"],
         images: Float[NDArrayLike, "... _ _"],
@@ -667,7 +665,29 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
             particles=particle_data, optics=optics_data
         )
         # ... and write the images to disk
-        self.write_images(path_to_filename, images, pixel_size)
+        write_image_stack_to_mrc(images, pixel_size, path_to_filename)
+
+    @property
+    @override
+    def parameter_dataset(self) -> AbstractRelionParticleParameterDataset:
+        return self._parameter_dataset
+
+    @property
+    @override
+    def mode(self) -> Literal["r", "w"]:
+        return self._mode  # type: ignore
+
+    @property
+    def path_to_relion_project(self) -> pathlib.Path:
+        return self._path_to_relion_project
+
+    @property
+    def filename_settings(self) -> ImageFilenameSettings:
+        return self._filename_settings
+
+    @filename_settings.setter
+    def filename_settings(self, value: dict[str, Any]):
+        self._filename_settings = _dict_to_filename_settings(value)
 
 
 class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
@@ -748,6 +768,16 @@ class RelionHelicalParameterDataset(AbstractRelionParticleParameterDataset):
 
     @property
     @override
+    def path_to_starfile(self) -> pathlib.Path:
+        return self._parameter_dataset.path_to_starfile
+
+    @path_to_starfile.setter
+    @override
+    def path_to_starfile(self, value: str | pathlib.Path):
+        self._parameter_dataset.path_to_starfile = value
+
+    @property
+    @override
     def starfile_data(self) -> StarfileData:
         return self._parameter_dataset._starfile_data
 
@@ -809,7 +839,7 @@ def _load_starfile_data(
                 f"Set `mode = '{mode}'`, but STAR file {str(path_to_starfile)} does not "
                 "exist. To write a new STAR file, set `mode = 'w'`."
             )
-    elif mode == "w":
+    else:
         if path_to_starfile.exists() and not overwrite:
             raise FileExistsError(
                 f"Set `mode = 'w'`, but STAR file {str(path_to_starfile)} already "
@@ -824,13 +854,18 @@ def _load_starfile_data(
                     columns=[*RELION_REQUIRED_PARTICLE_KEYS, *RELION_POSE_PARTICLE_KEYS]
                 ),
             )
-    else:
-        raise ValueError(
-            f"Passed unsupported `mode = {mode}`. Supported modes are 'r' and 'w'."
-        )
+
     return StarfileData(
         particles=starfile_data["particles"], optics=starfile_data["optics"]
     )
+
+
+def _validate_mode(mode: str) -> Literal["r", "w"]:
+    if mode not in ["r", "w"]:
+        raise ValueError(
+            f"Passed unsupported `mode = {mode}`. Supported modes are 'r' and 'w'."
+        )
+    return mode  # type: ignore
 
 
 #
@@ -1273,7 +1308,7 @@ def _validate_helical_starfile_data(starfile_data: StarfileData):
 #
 # STAR file writing. First, functions for writing parameters
 #
-def _params_to_optics_data(
+def _parameters_to_optics_data(
     parameters: RelionParticleParameters, optics_group_index: int
 ) -> pd.DataFrame:
     shape = parameters.instrument_config.shape
@@ -1326,7 +1361,7 @@ def _params_to_optics_data(
     return pd.DataFrame.from_dict(optics_group_dict)
 
 
-def _params_to_particle_data(
+def _parameters_to_particle_data(
     parameters: RelionParticleParameters,
     optics_group_index: Optional[int] = None,
 ) -> pd.DataFrame:

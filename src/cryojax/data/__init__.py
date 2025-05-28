@@ -4,6 +4,7 @@ from ._particle_data import (
     AbstractParticleParameters as AbstractParticleParameters,
     AbstractParticleStack as AbstractParticleStack,
     AbstractParticleStackDataset as AbstractParticleStackDataset,
+    write_simulated_image_stack as write_simulated_image_stack,
 )
 from ._relion import (
     RelionHelicalParameterDataset as RelionHelicalParameterDataset,

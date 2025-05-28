@@ -1,17 +1,18 @@
 import abc
 import pathlib
-from typing import Generic, TypeVar
+from typing import Any, Generic, Literal, Optional, TypeVar
 
 import equinox as eqx
-from jaxtyping import Array, Float, Inexact
+import numpy as np
+from jaxtyping import Array, Float, Inexact, Int
 
-from ..internal import NDArrayLike
-from ..simulator import (
+from ...internal import NDArrayLike
+from ...simulator import (
     AbstractPose,
     AbstractTransferTheory,
     InstrumentConfig,
 )
-from ._dataset import AbstractDataset
+from .._dataset import AbstractDataset
 
 
 T = TypeVar("T")
@@ -47,10 +48,29 @@ class AbstractParticleParameterDataset(AbstractDataset[T], Generic[T]):
     def save(self):
         raise NotImplementedError
 
+    @property
+    @abc.abstractmethod
+    def path_to_output(self) -> pathlib.Path:
+        raise NotImplementedError
+
+    @path_to_output.setter
+    @abc.abstractmethod
+    def path_to_output(self, value: str | pathlib.Path):
+        raise NotImplementedError
+
+    @property
+    def mode(self) -> Literal["r", "w"]:
+        raise NotImplementedError
+
 
 class AbstractParticleStackDataset(AbstractDataset[T], Generic[T]):
+    @property
     @abc.abstractmethod
-    def __setitem__(self, index, value: T | Inexact[NDArrayLike, "... y_dim x_dim"]):
+    def parameter_dataset(self) -> AbstractParticleParameterDataset:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def __setitem__(self, index, value: T):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -60,8 +80,12 @@ class AbstractParticleStackDataset(AbstractDataset[T], Generic[T]):
     @abc.abstractmethod
     def write_images(
         self,
-        path_to_filename: str | pathlib.Path,
-        images: Inexact[NDArrayLike, "... _ _"],
-        pixel_size: float | Float[NDArrayLike, ""] = -1.0,
+        index_array: Int[np.ndarray, " _"],
+        images: Float[NDArrayLike, "... _ _"],
+        parameters: Optional[Any] = None,
     ):
+        raise NotImplementedError
+
+    @property
+    def mode(self) -> Literal["r", "w"]:
         raise NotImplementedError

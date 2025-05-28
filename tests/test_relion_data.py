@@ -641,7 +641,7 @@ def test_file_exists_error():
             overwrite=False,
         )
     # Clean up
-    shutil.rmtree(param_dataset.path_to_starfile.parent)
+    shutil.rmtree(param_dataset.path_to_output.parent)
 
 
 def test_file_not_found_error():
