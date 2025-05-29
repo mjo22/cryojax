@@ -1,4 +1,3 @@
-import pathlib
 from typing import Any, Callable, Optional, TypeVar
 
 import equinox as eqx
@@ -20,7 +19,7 @@ ConstantT = TypeVar("ConstantT")
 T = TypeVar("T")
 
 
-def write_simulated_image_stack(
+def simulate_particle_stack(
     dataset: AbstractParticleStackDataset,
     compute_image_fn: Callable[
         [AbstractParticleParameters, ConstantT, PerParticleT],
@@ -28,7 +27,6 @@ def write_simulated_image_stack(
     ],
     constant_args: ConstantT = None,
     per_particle_args: PerParticleT = None,
-    path_to_metadata: Optional[str | pathlib.Path] = None,
     batch_size: Optional[int] = None,
     images_per_file: Optional[int] = None,
     **kwargs: Any,
@@ -159,9 +157,6 @@ def write_simulated_image_stack(
         Arguments to pass to the `compute_image_fn` function.
         This is a pytree with leaves having a batch size with equal dimension
         to the number of images.
-    -  `path_to_metadata`:
-        The location to write the metadata file, i.e. the
-        `AbstractParticleStackDataset.parameter_dataset.path_to_output`.
     - `batch_size`:
         The number images to compute in parallel using `jax.vmap`.
         If `None`, simulate images in a python for-loop. This is
@@ -221,8 +216,6 @@ def write_simulated_image_stack(
         )
         dataset.write_images(index_array, images, parameters)
     # Finally, save metadata file
-    if path_to_metadata is not None:
-        parameter_dataset.path_to_output = path_to_metadata
     parameter_dataset.save(**kwargs)
 
 
