@@ -19,7 +19,7 @@ from ...simulator import (
     EulerAnglePose,
 )
 from ...utils import batched_map
-from ._starfile_dataset import RelionParticleParameterDataset
+from ._starfile_dataset import RelionParticleParameterFile
 from ._starfile_pytrees import RelionParticleParameters
 
 
@@ -290,7 +290,7 @@ def _populate_starfile_image_names(
 
 
 def write_simulated_image_stack_from_starfile(
-    param_dataset: RelionParticleParameterDataset,
+    param_dataset: RelionParticleParameterFile,
     compute_image_fn: Callable[
         [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
         Float[Array, "y_dim x_dim"],
@@ -308,7 +308,7 @@ def write_simulated_image_stack_from_starfile(
     !!! note
         This function works generally for a function that computes
         images of the form `compute_image_fn(parameter_dataset, constant_args, per_particle_args)`
-        where `parameter_dataset`is a cryojax RelionParticleParameterDataset,
+        where `parameter_dataset`is a cryojax RelionParticleParameterFile,
         `constant_args` is a parameter that does not change between images
         , and `per_particle_args` is a pytree whose leaves have a batch dimension
         equal to the number of particles to be simulated.
@@ -317,8 +317,8 @@ def write_simulated_image_stack_from_starfile(
     # Example 1: Using the function with a `compute_image_fn`
     # function that does not use `per_particle_args`
 
-    # load a `RelionParticleParameterDataset` object
-    param_dataset = RelionParticleParameterDataset(...)
+    # load a `RelionParticleParameterFile` object
+    param_dataset = RelionParticleParameterFile(...)
 
     # to build an`image_model` object
     # (see our Tutorials for details on how to do this)
@@ -356,9 +356,9 @@ def write_simulated_image_stack_from_starfile(
     # to generate noisy images.
     # (see our Tutorials for details on how to do this)
 
-    # Let's define a `RelionParticleParameterDataset` object
+    # Let's define a `RelionParticleParameterFile` object
 
-    param_dataset = RelionParticleParameterDataset(...)
+    param_dataset = RelionParticleParameterFile(...)
 
     # and the rng keys to generate the noise for the images
     seed = 0
@@ -399,7 +399,7 @@ def write_simulated_image_stack_from_starfile(
     **Arguments:**
 
     - `param_dataset`:
-        The `RelionParticleParameterDataset` dataset.
+        The `RelionParticleParameterFile` dataset.
     - `compute_image_fn`:
         A callable that computes the image stack from the parameters contained
         in the STAR file.
@@ -486,7 +486,7 @@ def write_simulated_image_stack_from_starfile(
 
 
 def _write_simulated_image_stack_from_starfile_vmap(
-    param_dataset: RelionParticleParameterDataset,
+    param_dataset: RelionParticleParameterFile,
     compute_image_fn: Callable[
         [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
         Float[Array, "y_dim x_dim"],
@@ -564,7 +564,7 @@ def _write_simulated_image_stack_from_starfile_vmap(
 
 
 def _write_simulated_image_stack_from_starfile_serial(
-    param_dataset: RelionParticleParameterDataset,
+    param_dataset: RelionParticleParameterFile,
     compute_image_fn: Callable[
         [RelionParticleParameters, ConstantPyTree, PerParticlePyTree],
         Float[Array, "y_dim x_dim"],

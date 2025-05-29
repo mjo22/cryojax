@@ -1,5 +1,5 @@
 from .base_particle_dataset import (
-    AbstractParticleParameterDataset as AbstractParticleParameterDataset,
+    AbstractParticleParameterFile as AbstractParticleParameterFile,
     AbstractParticleParameters as AbstractParticleParameters,
     AbstractParticleStack as AbstractParticleStack,
     AbstractParticleStackDataset as AbstractParticleStackDataset,

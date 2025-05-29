@@ -8,7 +8,7 @@ from jaxtyping import Array, Float, Int
 from ...internal import NDArrayLike
 from ...utils import batched_scan
 from .base_particle_dataset import (
-    AbstractParticleParameterDataset,
+    AbstractParticleParameterFile,
     AbstractParticleParameters,
     AbstractParticleStackDataset,
 )
@@ -188,14 +188,14 @@ def simulate_particle_stack(
         n_particles // images_per_file,
         n_particles % images_per_file,
     )
-    parameter_dataset = dataset.parameter_dataset
+    parameter_file = dataset.parameter_file
     for file_index in range(n_iterations):
         dataset_index = np.arange(
             file_index * images_per_file, (file_index + 1) * images_per_file, dtype=int
         )
         images, parameters = _simulate_images(
             dataset_index,
-            parameter_dataset,
+            parameter_file,
             compute_image_stack_fn,
             constant_args,
             per_particle_args,
@@ -209,26 +209,26 @@ def simulate_particle_stack(
         index_array = np.arange(n_particles - remainder, n_particles, dtype=int)
         images, parameters = _simulate_images(
             index_array,
-            parameter_dataset,
+            parameter_file,
             compute_image_stack_fn,
             constant_args,
             per_particle_args,
         )
         dataset.write_images(index_array, images, parameters)
     # Finally, save metadata file
-    parameter_dataset.save(**kwargs)
+    parameter_file.save(**kwargs)
 
 
 def _simulate_images(
     index: Int[np.ndarray, " _"],
-    parameter_dataset: AbstractParticleParameterDataset,
+    parameter_dataset: AbstractParticleParameterFile,
     compute_image_stack_fn: Callable[
         [AbstractParticleParameters, ConstantT, PerParticleT],
         Float[NDArrayLike, "_ _ _"],
     ],
     constant_args: ConstantT,
     per_particle_args: PerParticleT,
-) -> tuple[Float[NDArrayLike, "_ _ _"], AbstractParticleParameterDataset]:
+) -> tuple[Float[NDArrayLike, "_ _ _"], AbstractParticleParameterFile]:
     parameters = parameter_dataset[index]
     args = (constant_args, _index_pytree(index, per_particle_args))
     image_stack = compute_image_stack_fn(parameters, *args)

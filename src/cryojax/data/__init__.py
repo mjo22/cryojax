@@ -1,14 +1,14 @@
 from ._dataset import AbstractDataset as AbstractDataset
 from ._particle_data import (
-    AbstractParticleParameterDataset as AbstractParticleParameterDataset,
+    AbstractParticleParameterFile as AbstractParticleParameterFile,
     AbstractParticleParameters as AbstractParticleParameters,
     AbstractParticleStack as AbstractParticleStack,
     AbstractParticleStackDataset as AbstractParticleStackDataset,
     simulate_particle_stack as simulate_particle_stack,
 )
 from ._relion import (
-    RelionHelicalParameterDataset as RelionHelicalParameterDataset,
-    RelionParticleParameterDataset as RelionParticleParameterDataset,
+    RelionHelicalParameterFile as RelionHelicalParameterFile,
+    RelionParticleParameterFile as RelionParticleParameterFile,
     RelionParticleParameters as RelionParticleParameters,
     RelionParticleStack as RelionParticleStack,
     RelionParticleStackDataset as RelionParticleStackDataset,

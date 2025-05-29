@@ -21,7 +21,7 @@ from jaxtyping import install_import_hook
 with install_import_hook("cryojax", "typeguard.typechecked"):
     import cryojax.simulator as cxs
     from cryojax.data import (
-        RelionParticleParameterDataset,
+        RelionParticleParameterFile,
         RelionParticleParameters,
         RelionParticleStackDataset,
     )
@@ -49,8 +49,8 @@ def compare_pytrees(pytree1, pytree2):
 
 
 @pytest.fixture
-def parameter_dataset(sample_starfile_path):
-    return RelionParticleParameterDataset(
+def parameter_file(sample_starfile_path):
+    return RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         loads_envelope=True,
         loads_metadata=True,
@@ -79,10 +79,10 @@ def relion_parameters():
 #
 class TestErrorRaisingForLoading:
     def test_load_with_badparticle_name(
-        self, parameter_dataset, sample_path_to_relion_project
+        self, parameter_file, sample_path_to_relion_project
     ):
         with pytest.raises(IOError):
-            metadata = parameter_dataset[0].metadata
+            metadata = parameter_file[0].metadata
             particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)
             particle_dataframe_at_index["rlnImageName"] = 0.0
 
@@ -92,29 +92,29 @@ class TestErrorRaisingForLoading:
                 sample_path_to_relion_project,
             )
 
-    def test_with_bad_indices(self, parameter_dataset, sample_path_to_relion_project):
+    def test_with_bad_indices(self, parameter_file, sample_path_to_relion_project):
         stack_dataset = RelionParticleStackDataset(
             path_to_relion_project=sample_path_to_relion_project,
-            parameter_dataset=parameter_dataset,
+            parameter_file=parameter_file,
         )
 
         # overflow index
         with pytest.raises(IndexError):
-            parameter_dataset[len(parameter_dataset)]
+            parameter_file[len(parameter_file)]
 
         with pytest.raises(IndexError):
             stack_dataset[len(stack_dataset)]
 
         # overflow slice
         with pytest.raises(IndexError):
-            parameter_dataset[len(parameter_dataset) :]
+            parameter_file[len(parameter_file) :]
 
         with pytest.raises(IndexError):
             stack_dataset[len(stack_dataset) :]
 
         # wrong index type
         with pytest.raises(IndexError):
-            parameter_dataset["wrong_index"]
+            parameter_file["wrong_index"]
 
         with pytest.raises(IndexError):
             stack_dataset["wrong_index"]
@@ -182,22 +182,22 @@ def test_default_make_config_fn():
 
 
 def test_load_starfile_envelope_params(sample_starfile_path):
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         loads_envelope=True,
         loads_metadata=True,
     )
 
-    assert param_dataset.loads_envelope is True
-    parameter = param_dataset[0]
+    assert parameter_file.loads_envelope is True
+    parameter = parameter_file[0]
     assert parameter.transfer_theory.envelope is not None
 
-    parameters = param_dataset[:]
+    parameters = parameter_file[:]
     assert parameters.transfer_theory.envelope is not None
 
     envelope = parameters.transfer_theory.envelope
     # check that envelope params match
-    for i in range(len(param_dataset)):
+    for i in range(len(parameter_file)):
         # check b-factors
         np.testing.assert_allclose(
             envelope.b_factor[i],
@@ -219,25 +219,25 @@ def test_load_starfile_ctf_params(sample_starfile_path):
     def compute_astigmatism(defU, defV):
         return defU - defV
 
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         loads_envelope=False,
         loads_metadata=True,
     )
 
-    assert param_dataset.loads_envelope is False
+    assert parameter_file.loads_envelope is False
 
-    parameter = param_dataset[0]
+    parameter = parameter_file[0]
     assert parameter.transfer_theory.envelope is None
 
-    parameters = param_dataset[:]
+    parameters = parameter_file[:]
     assert parameters.transfer_theory.envelope is None
 
     transfer_theory = parameters.transfer_theory
     ctf = cast(cxs.AberratedAstigmaticCTF, transfer_theory.ctf)
 
     # check CTF parameters
-    for i in range(len(param_dataset)):
+    for i in range(len(parameter_file)):
         # defocus
         np.testing.assert_allclose(
             ctf.defocus_in_angstroms[i],
@@ -276,17 +276,17 @@ def test_load_starfile_ctf_params(sample_starfile_path):
 
 
 def test_load_starfile_pose_params(sample_starfile_path):
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         loads_envelope=False,
         loads_metadata=True,
     )
 
-    parameters = param_dataset[:]
+    parameters = parameter_file[:]
     pose = parameters.pose
 
     # check pose parameters
-    for i in range(len(param_dataset)):
+    for i in range(len(parameter_file)):
         # offset x
         np.testing.assert_allclose(
             pose.offset_x_in_angstroms[i],
@@ -327,53 +327,53 @@ def test_load_starfile_pose_params(sample_starfile_path):
 
 def test_load_starfile_wo_metadata(sample_starfile_path):
     """Test loading a starfile without metadata."""
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         loads_envelope=False,
         loads_metadata=False,
     )
 
     # check that metadata is empty dict
-    assert param_dataset[0].metadata == {}
-    assert param_dataset[:].metadata == {}
-    assert param_dataset.loads_metadata is False
+    assert parameter_file[0].metadata == {}
+    assert parameter_file[:].metadata == {}
+    assert parameter_file.loads_metadata is False
 
     return
 
 
 def test_load_starfile_optics_group(sample_starfile_path):
     """Test loading a starfile with optics group."""
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         loads_envelope=False,
         loads_metadata=True,
         broadcasts_optics_group=True,
     )
 
-    parameters = param_dataset[:]
+    parameters = parameter_file[:]
     instrument_config = parameters.instrument_config
     assert instrument_config.voltage_in_kilovolts.ndim > 0
     assert instrument_config.pixel_size.ndim > 0
-    assert param_dataset.broadcasts_optics_group is True
+    assert parameter_file.broadcasts_optics_group is True
 
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         loads_envelope=False,
         loads_metadata=True,
         broadcasts_optics_group=False,
     )
-    parameters = param_dataset[:]
+    parameters = parameter_file[:]
     instrument_config = parameters.instrument_config
     assert instrument_config.voltage_in_kilovolts.ndim == 0
     assert instrument_config.pixel_size.ndim == 0
-    assert param_dataset.broadcasts_optics_group is False
+    assert parameter_file.broadcasts_optics_group is False
 
     return
 
 
 def test_load_starfile_misc(sample_starfile_path):
     """Test loading a starfile with miscellaneous parameters."""
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         loads_envelope=False,
         loads_metadata=False,
@@ -381,34 +381,34 @@ def test_load_starfile_misc(sample_starfile_path):
     )
 
     # set to True to load metadata
-    param_dataset.loads_metadata = True
-    assert param_dataset.loads_metadata is True
+    parameter_file.loads_metadata = True
+    assert parameter_file.loads_metadata is True
 
     # set to True to load envelope
-    param_dataset.loads_envelope = True
-    assert param_dataset.loads_envelope is True
+    parameter_file.loads_envelope = True
+    assert parameter_file.loads_envelope is True
 
     # set to True to load optics group
-    param_dataset.broadcasts_optics_group = True
-    assert param_dataset.broadcasts_optics_group is True
+    parameter_file.broadcasts_optics_group = True
+    assert parameter_file.broadcasts_optics_group is True
 
 
 def test_load_starfile_and_mrcs(sample_starfile_path, sample_path_to_relion_project):
     """Test loading a starfile with mrcs."""
-    parameter_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         loads_envelope=False,
         loads_metadata=False,
         broadcasts_optics_group=False,
     )
     particle_stack_dataset = RelionParticleStackDataset(
-        parameter_dataset, sample_path_to_relion_project
+        parameter_file, sample_path_to_relion_project
     )
 
     particle_stack = particle_stack_dataset[:]
     instrument_config = particle_stack.parameters.instrument_config
     assert particle_stack.images.shape == (
-        len(parameter_dataset),
+        len(parameter_file),
         *instrument_config.shape,
     )
 
@@ -420,7 +420,7 @@ def test_load_starfile_and_mrcs(sample_starfile_path, sample_path_to_relion_proj
     instrument_config = particle_stack.parameters.instrument_config
     assert particle_stack.images.shape == (2, *instrument_config.shape)
 
-    assert len(particle_stack_dataset) == len(parameter_dataset)
+    assert len(particle_stack_dataset) == len(parameter_file)
 
     return
 
@@ -467,7 +467,7 @@ def test_default_starfile():
     starfile.write(starfile_dict, os.path.join(path_to_starfile, "test.star"))
 
     # now load the starfile
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=os.path.join(path_to_starfile, "test.star"),
         loads_envelope=False,
         loads_metadata=False,
@@ -476,7 +476,7 @@ def test_default_starfile():
 
     assert all(
         jax.tree.leaves(
-            jax.tree.map(lambda x: jnp.isclose(x, 0.0), param_dataset[:].pose)
+            jax.tree.map(lambda x: jnp.isclose(x, 0.0), parameter_file[:].pose)
         )
     )
 
@@ -533,15 +533,15 @@ def test_append_particle_parameters(index, loads_envelope):
         )
     # Add to dataset
     path_to_starfile = "tests/outputs/starfile_writing/test_particle_parameters.star"
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=path_to_starfile,
         mode="w",
         overwrite=True,
         loads_envelope=loads_envelope,
     )
-    param_dataset.append(particle_params)
+    parameter_file.append(particle_params)
 
-    assert compare_pytrees(param_dataset[index], particle_params)
+    assert compare_pytrees(parameter_file[index], particle_params)
 
 
 @pytest.mark.parametrize(
@@ -587,7 +587,7 @@ def test_set_particle_parameters(
             lambda x: jnp.squeeze(x) if isinstance(x, jax.Array) else x, new_parameters
         )
 
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         mode="r",
         loads_envelope=sets_envelope,
@@ -595,9 +595,9 @@ def test_set_particle_parameters(
         updates_optics_group=updates_optics_group,
     )
     # Set params
-    param_dataset[index] = new_parameters
+    parameter_file[index] = new_parameters
     # Load params that were just set
-    loaded_parameters = param_dataset[index]
+    loaded_parameters = parameter_file[index]
 
     if updates_optics_group:
         assert compare_pytrees(new_parameters, loaded_parameters)
@@ -625,23 +625,23 @@ def test_file_exists_error():
     )
     # Add to dataset
     path_to_starfile = "tests/outputs/starfile_writing/test_particle_parameters.star"
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=path_to_starfile,
         mode="w",
         overwrite=True,
     )
-    param_dataset.append(parameters)
-    param_dataset.save(overwrite=True)
+    parameter_file.append(parameters)
+    parameter_file.save(overwrite=True)
 
     # Test no overwrite
     with pytest.raises(FileExistsError):
-        _ = RelionParticleParameterDataset(
+        _ = RelionParticleParameterFile(
             path_to_starfile=path_to_starfile,
             mode="w",
             overwrite=False,
         )
     # Clean up
-    shutil.rmtree(param_dataset.path_to_output.parent)
+    shutil.rmtree(parameter_file.path_to_output.parent)
 
 
 def test_file_not_found_error():
@@ -649,7 +649,7 @@ def test_file_not_found_error():
 
     # Test no overwrite
     with pytest.raises(FileNotFoundError):
-        _ = RelionParticleParameterDataset(
+        _ = RelionParticleParameterFile(
             path_to_starfile=dummy_path_to_starfile,
             mode="r",
         )
@@ -690,20 +690,20 @@ def test_set_wrong_parameters_error():
     # Now the parameter dataset
     # Add to dataset
     path_to_starfile = "path/to/dummy/project/and/starfile.star"
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=path_to_starfile,
         mode="w",
         overwrite=True,
     )
 
     with pytest.raises(ValueError):
-        param_dataset.append(wrong_parameters_1)
+        parameter_file.append(wrong_parameters_1)
 
     with pytest.raises(ValueError):
-        param_dataset.append(wrong_parameters_2)
+        parameter_file.append(wrong_parameters_2)
 
     with pytest.raises(ValueError):
-        param_dataset.append(wrong_parameters_3)
+        parameter_file.append(wrong_parameters_3)
 
 
 def test_bad_pytree_error():
@@ -732,14 +732,14 @@ def test_bad_pytree_error():
     # Now the parameter dataset
     # Add to dataset
     path_to_starfile = "path/to/dummy/project/and/starfile.star"
-    param_dataset = RelionParticleParameterDataset(
+    parameter_file = RelionParticleParameterFile(
         path_to_starfile=path_to_starfile,
         mode="w",
         overwrite=True,
     )
 
     with pytest.raises(ValueError):
-        param_dataset.append(parameters)
+        parameter_file.append(parameters)
 
 
 # def test_write_particle_batched_particle_parameters():
@@ -768,14 +768,14 @@ def test_bad_pytree_error():
 #         overwrite=True,
 #     )
 
-#     param_dataset = RelionParticleParameterDataset(
+#     parameter_file = RelionParticleParameterFile(
 #         path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
 #         path_to_relion_project="tests/outputs/starfile_writing/",
 #         loads_envelope=True,
 #         loads_metadata=False,
 #     )
 
-#     assert compare_pytrees(param_dataset[:], particle_params)
+#     assert compare_pytrees(parameter_file[:], particle_params)
 #     # Clean up
 #     shutil.rmtree("tests/outputs/starfile_writing/")
 
@@ -844,21 +844,21 @@ def test_bad_pytree_error():
 #         return per_particle_args
 
 #     """Test writing a simulated image stack from a starfile."""
-#     param_dataset = RelionParticleParameterDataset(
+#     parameter_file = RelionParticleParameterFile(
 #         path_to_starfile=sample_starfile_path,
 #         path_to_relion_project="tests/outputs/starfile_writing/",
 #         loads_envelope=False,
 #         loads_metadata=False,
 #     )
 
-#     n_images = len(param_dataset)
-#     shape = param_dataset[0].instrument_config.shape
+#     n_images = len(parameter_file)
+#     shape = parameter_file[0].instrument_config.shape
 #     true_images = jax.random.normal(
 #         jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
 #     )
 #     # Create a simulated image stack
 #     write_simulated_image_stack_from_starfile(
-#         param_dataset=param_dataset,
+#         parameter_file=parameter_file,
 #         compute_image_fn=_mock_compute_image,
 #         constant_args=(1.0, 2.0),
 #         per_particle_args=true_images,
@@ -868,7 +868,7 @@ def test_bad_pytree_error():
 
 #     # try to overwrite
 #     write_simulated_image_stack_from_starfile(
-#         param_dataset=param_dataset,
+#         parameter_file=parameter_file,
 #         compute_image_fn=_mock_compute_image,
 #         constant_args=(1.0, 2.0),
 #         per_particle_args=true_images,
@@ -879,7 +879,7 @@ def test_bad_pytree_error():
 #     # Now trigger overwrite error
 #     with pytest.raises(FileExistsError):
 #         write_simulated_image_stack_from_starfile(
-#             param_dataset=param_dataset,
+#             parameter_file=parameter_file,
 #             compute_image_fn=_mock_compute_image,
 #             constant_args=(1.0, 2.0),
 #             per_particle_args=true_images,
@@ -888,7 +888,7 @@ def test_bad_pytree_error():
 #         )
 
 #     # load the simulated image stack
-#     particle_dataset = RelionParticleStackDataset(param_dataset)
+#     particle_dataset = RelionParticleStackDataset(parameter_file)
 #     images = particle_dataset[:].images
 #     np.testing.assert_allclose(
 #         images,
@@ -909,15 +909,15 @@ def test_bad_pytree_error():
 #         return image / np.linalg.norm(image)
 
 #     """Test writing a simulated image stack from a starfile."""
-#     param_dataset = RelionParticleParameterDataset(
+#     parameter_file = RelionParticleParameterFile(
 #         path_to_starfile=sample_starfile_path,
 #         path_to_relion_project="tests/outputs/starfile_writing/",
 #         loads_envelope=False,
 #         loads_metadata=False,
 #     )
 
-#     n_images = len(param_dataset)
-#     shape = param_dataset[0].instrument_config.shape
+#     n_images = len(parameter_file)
+#     shape = parameter_file[0].instrument_config.shape
 #     true_images = jax.random.normal(
 #         jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
 #     )
@@ -925,7 +925,7 @@ def test_bad_pytree_error():
 #     # check jit fails
 #     with pytest.raises(RuntimeError):
 #         write_simulated_image_stack_from_starfile(
-#             param_dataset=param_dataset,
+#             parameter_file=parameter_file,
 #             compute_image_fn=_mock_compute_image,
 #             constant_args=(1.0, 2.0),
 #             per_particle_args=true_images,
@@ -935,7 +935,7 @@ def test_bad_pytree_error():
 
 #     # check that non jit mode works
 #     write_simulated_image_stack_from_starfile(
-#         param_dataset=param_dataset,
+#         parameter_file=parameter_file,
 #         compute_image_fn=_mock_compute_image,
 #         constant_args=(1.0, 2.0),
 #         per_particle_args=true_images,
@@ -943,7 +943,7 @@ def test_bad_pytree_error():
 #         overwrite=True,
 #     )
 
-#     particle_dataset = RelionParticleStackDataset(param_dataset)
+#     particle_dataset = RelionParticleStackDataset(parameter_file)
 #     images = particle_dataset[:].images
 #     np.testing.assert_allclose(
 #         images,
@@ -965,7 +965,7 @@ def test_bad_pytree_error():
 #         return image / np.linalg.norm(image)
 
 #     """Test writing a simulated image stack from a starfile."""
-#     param_dataset = RelionParticleParameterDataset(
+#     parameter_file = RelionParticleParameterFile(
 #         path_to_starfile=sample_starfile_path,
 #         path_to_relion_project="tests/outputs/starfile_writing/",
 #         loads_envelope=False,
@@ -973,13 +973,13 @@ def test_bad_pytree_error():
 #     )
 
 #     write_starfile_with_particle_parameters(
-#         particle_parameters=param_dataset[0],
+#         particle_parameters=parameter_file[0],
 #         filename="tests/outputs/starfile_writing/test_particle_parameters.star",
 #         mrc_batch_size=None,
 #         overwrite=True,
 #     )
 
-#     param_dataset = RelionParticleParameterDataset(
+#     parameter_file = RelionParticleParameterFile(
 #         path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
 #         path_to_relion_project="tests/outputs/starfile_writing/",
 #         loads_envelope=False,
@@ -991,7 +991,7 @@ def test_bad_pytree_error():
 #     # check jit fails
 #     with pytest.raises(RuntimeError):
 #         write_simulated_image_stack_from_starfile(
-#             param_dataset=param_dataset,
+#             parameter_file=parameter_file,
 #             compute_image_fn=_mock_compute_image,
 #             constant_args=(1.0, 2.0),
 #             per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
@@ -1001,7 +1001,7 @@ def test_bad_pytree_error():
 
 #     # check that non jit mode works
 #     write_simulated_image_stack_from_starfile(
-#         param_dataset=param_dataset,
+#         parameter_file=parameter_file,
 #         compute_image_fn=_mock_compute_image,
 #         constant_args=(1.0, 2.0),
 #         per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
@@ -1009,7 +1009,7 @@ def test_bad_pytree_error():
 #         overwrite=True,
 #     )
 
-#     particle_dataset = RelionParticleStackDataset(param_dataset)
+#     particle_dataset = RelionParticleStackDataset(parameter_file)
 #     images = particle_dataset[:].images
 #     np.testing.assert_allclose(
 #         images,
@@ -1052,22 +1052,22 @@ def test_bad_pytree_error():
 #         overwrite=True,
 #     )
 
-#     param_dataset = RelionParticleParameterDataset(
+#     parameter_file = RelionParticleParameterFile(
 #         path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
 #         path_to_relion_project="tests/outputs/starfile_writing/",
 #         loads_envelope=True,
 #         loads_metadata=False,
 #     )
 
-#     n_images = len(param_dataset)
-#     shape = param_dataset[0].instrument_config.shape
+#     n_images = len(parameter_file)
+#     shape = parameter_file[0].instrument_config.shape
 #     true_images = jax.random.normal(
 #         jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
 #     )
 
 #     # Create a simulated image stack
 #     write_simulated_image_stack_from_starfile(
-#         param_dataset=param_dataset,
+#         parameter_file=parameter_file,
 #         compute_image_fn=_mock_compute_image,
 #         constant_args=(1.0, 2.0),
 #         per_particle_args=true_images,
@@ -1075,11 +1075,11 @@ def test_bad_pytree_error():
 #         overwrite=True,
 #     )
 
-#     stack_dataset = RelionParticleStackDataset(param_dataset)
+#     stack_dataset = RelionParticleStackDataset(parameter_file)
 
 #     n_tests = 10
 #     for i in range(n_tests):
-#         indices = np.random.choice(len(param_dataset), size=3, replace=False)
+#         indices = np.random.choice(len(parameter_file), size=3, replace=False)
 
 #         images = stack_dataset[indices].images
 #         np.testing.assert_allclose(

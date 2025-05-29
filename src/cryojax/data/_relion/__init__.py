@@ -1,6 +1,6 @@
 from ._starfile_dataset import (
-    RelionHelicalParameterDataset as RelionHelicalParameterDataset,
-    RelionParticleParameterDataset as RelionParticleParameterDataset,
+    RelionHelicalParameterFile as RelionHelicalParameterFile,
+    RelionParticleParameterFile as RelionParticleParameterFile,
     RelionParticleStackDataset as RelionParticleStackDataset,
 )
 from ._starfile_pytrees import (

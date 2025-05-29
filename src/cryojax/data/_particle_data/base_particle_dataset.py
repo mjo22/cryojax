@@ -35,7 +35,7 @@ class AbstractParticleStack(eqx.Module, strict=True):
     images: eqx.AbstractVar[Inexact[Array, "... y_dim x_dim"]]
 
 
-class AbstractParticleParameterDataset(AbstractDataset[T], Generic[T]):
+class AbstractParticleParameterFile(AbstractDataset[T], Generic[T]):
     @abc.abstractmethod
     def __setitem__(self, index, value: T):
         raise NotImplementedError
@@ -66,7 +66,7 @@ class AbstractParticleParameterDataset(AbstractDataset[T], Generic[T]):
 class AbstractParticleStackDataset(AbstractDataset[T], Generic[T]):
     @property
     @abc.abstractmethod
-    def parameter_dataset(self) -> AbstractParticleParameterDataset:
+    def parameter_file(self) -> AbstractParticleParameterFile:
         raise NotImplementedError
 
     @abc.abstractmethod
