@@ -64,6 +64,8 @@ class ImageFilenameSettings(TypedDict):
     output_folder: str | pathlib.Path
     n_characters: int
     delimiter: str
+    overwrite: bool
+    compression: str | None
 
 
 def _default_make_config_fn(
@@ -631,7 +633,8 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
                 f"shape {images.shape}."
             )
         # Prepare to write images
-        images = np.atleast_3d(images)
+        if images.ndim == 2:
+            images = images[None, ...]
         n_images, image_dim = images.shape[0], images.shape[1]
         n_particles = len(self.parameter_file)
         if dim != image_dim:
@@ -659,12 +662,30 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
             self.path_to_relion_project,
         )
         # Set the STAR file column
-        particle_data["rlnImageName"].iloc[index_array] = rln_image_names
+        particle_data.loc[particle_data.index[index_array], "rlnImageName"] = (
+            rln_image_names
+        )
         self.parameter_file.starfile_data = dict(
             particles=particle_data, optics=optics_data
         )
         # ... and write the images to disk
-        write_image_stack_to_mrc(images, pixel_size, path_to_filename)
+        try:
+            write_image_stack_to_mrc(
+                images,
+                pixel_size,
+                path_to_filename,
+                overwrite=self.filename_settings["overwrite"],
+                compression=self.filename_settings["compression"],
+            )
+        except Exception as err:
+            raise IOError(
+                "Error occurred when writing image stack to MRC "
+                "file. Most likely, the filename the writer "
+                f"chose ({str(path_to_filename)}) already "
+                "exists. Try changing the "
+                "`RelionParticleStackDataset.filename_settings`. "
+                f"The error message was:\n{err}"
+            )
 
     @property
     @override
@@ -1480,12 +1501,16 @@ def _dict_to_filename_settings(d: dict[str, Any]) -> ImageFilenameSettings:
     prefix = d["prefix"] if "prefix" in d else ""
     output_folder = d["output_folder"] if "output_folder" in d else ""
     delimiter = d["delimiter"] if "delimiter" in d else "_"
-    n_characters = d["n_characters"] if "n_characters" in d else 6
+    n_characters = d["n_characters"] if "n_characters" in d else 5
+    overwrite = d["overwrite"] if "overwrite" in d else False
+    compression = d["compression"] if "compression" in d else None
     return ImageFilenameSettings(
         prefix=prefix,
         output_folder=output_folder,
         delimiter=delimiter,
         n_characters=n_characters,
+        overwrite=overwrite,
+        compression=compression,
     )
 
 
@@ -1538,7 +1563,9 @@ def _make_image_filename(
         )
     # Finally, generate the 'rln_image_name' column, which includes the particle index
     rln_image_names = [
-        _format_number_for_filename(i, n_characters) + "@" + relative_path_to_filename
+        _format_number_for_filename(int(i), n_characters)
+        + "@"
+        + relative_path_to_filename
         for i in index
     ]
     # Finally, the path to the filename

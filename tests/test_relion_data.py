@@ -14,25 +14,24 @@ import jax.random as jr
 import numpy as np
 import pandas as pd
 import pytest
-import starfile
-from jaxtyping import install_import_hook
+from jaxtyping import TypeCheckError
 
-
-with install_import_hook("cryojax", "typeguard.typechecked"):
-    import cryojax.simulator as cxs
-    from cryojax.data import (
-        RelionParticleParameterFile,
-        RelionParticleParameters,
-        RelionParticleStackDataset,
-    )
-    from cryojax.data._relion._starfile_dataset import (
-        _default_make_config_fn,
-        _format_number_for_filename,
-        _load_image_stack_from_mrc,
-        _validate_starfile_data,
-    )
-    from cryojax.image import operators as op
-    from cryojax.rotations import SO3
+import cryojax.simulator as cxs
+from cryojax.data import (
+    RelionParticleParameterFile,
+    RelionParticleParameters,
+    RelionParticleStack,
+    RelionParticleStackDataset,
+)
+from cryojax.data._relion._starfile_dataset import (
+    _default_make_config_fn,
+    _format_number_for_filename,
+    _load_image_stack_from_mrc,
+    _validate_starfile_data,
+)
+from cryojax.image import operators as op
+from cryojax.io import read_array_from_mrc
+from cryojax.rotations import SO3
 
 
 def compare_pytrees(pytree1, pytree2):
@@ -46,6 +45,26 @@ def compare_pytrees(pytree1, pytree2):
         jax.tree.leaves(jax.tree.map(lambda x, y: x == y, others1, others2))
     )
     return bool_arrays and bool_others
+
+
+@pytest.fixture
+def sample_starfile_path():
+    return os.path.join(os.path.dirname(__file__), "data", "test_starfile.star")
+
+
+@pytest.fixture
+def sample_relion_project_path():
+    return os.path.join(os.path.dirname(__file__), "data")
+
+
+@pytest.fixture
+def sample_image_stack_path(sample_relion_project_path):
+    return os.path.join(sample_relion_project_path, "000000.mrcs")
+
+
+@pytest.fixture
+def sample_image_stack(sample_image_stack_path):
+    return read_array_from_mrc(sample_image_stack_path)
 
 
 @pytest.fixture
@@ -78,9 +97,7 @@ def relion_parameters():
 # Tests for starfile loading
 #
 class TestErrorRaisingForLoading:
-    def test_load_with_badparticle_name(
-        self, parameter_file, sample_path_to_relion_project
-    ):
+    def test_load_with_badparticle_name(self, parameter_file, sample_relion_project_path):
         with pytest.raises(IOError):
             metadata = parameter_file[0].metadata
             particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)
@@ -89,12 +106,12 @@ class TestErrorRaisingForLoading:
             _load_image_stack_from_mrc(
                 0,
                 particle_dataframe_at_index,
-                sample_path_to_relion_project,
+                sample_relion_project_path,
             )
 
-    def test_with_bad_indices(self, parameter_file, sample_path_to_relion_project):
-        stack_dataset = RelionParticleStackDataset(
-            path_to_relion_project=sample_path_to_relion_project,
+    def test_with_bad_indices(self, parameter_file, sample_relion_project_path):
+        dataset = RelionParticleStackDataset(
+            path_to_relion_project=sample_relion_project_path,
             parameter_file=parameter_file,
         )
 
@@ -103,21 +120,21 @@ class TestErrorRaisingForLoading:
             parameter_file[len(parameter_file)]
 
         with pytest.raises(IndexError):
-            stack_dataset[len(stack_dataset)]
+            dataset[len(dataset)]
 
         # overflow slice
         with pytest.raises(IndexError):
             parameter_file[len(parameter_file) :]
 
         with pytest.raises(IndexError):
-            stack_dataset[len(stack_dataset) :]
+            dataset[len(dataset) :]
 
         # wrong index type
         with pytest.raises(IndexError):
             parameter_file["wrong_index"]
 
         with pytest.raises(IndexError):
-            stack_dataset["wrong_index"]
+            dataset["wrong_index"]  # type: ignore
 
     def test_validate_starfile_data(self):
         with pytest.raises(ValueError):
@@ -148,7 +165,7 @@ class TestErrorRaisingForLoading:
 def test_default_make_config_fn():
     """Test the default make_config_fn function."""
     # Test with a valid input
-    instrument_config = _default_make_config_fn(
+    config = _default_make_config_fn(
         shape=(128, 128),
         pixel_size=jnp.asarray(1.5),
         voltage_in_kilovolts=jnp.asarray(300.0),
@@ -156,7 +173,7 @@ def test_default_make_config_fn():
         pad_mode="constant",
     )
 
-    ref_instrument_config = cxs.InstrumentConfig(
+    ref_config = cxs.InstrumentConfig(
         shape=(128, 128),
         pixel_size=1.5,
         voltage_in_kilovolts=300.0,
@@ -164,21 +181,15 @@ def test_default_make_config_fn():
         pad_mode="constant",
     )
 
-    assert instrument_config.shape == ref_instrument_config.shape
-    assert instrument_config.pixel_size == ref_instrument_config.pixel_size
+    assert config.shape == ref_config.shape
+    assert config.pixel_size == ref_config.pixel_size
+    assert config.voltage_in_kilovolts == ref_config.voltage_in_kilovolts
     assert (
-        instrument_config.voltage_in_kilovolts
-        == ref_instrument_config.voltage_in_kilovolts
-    )
-    assert (
-        instrument_config.electrons_per_angstrom_squared
-        == ref_instrument_config.electrons_per_angstrom_squared
+        config.electrons_per_angstrom_squared == ref_config.electrons_per_angstrom_squared
     )
 
-    assert instrument_config.padded_shape == ref_instrument_config.padded_shape
-    assert instrument_config.pad_mode == ref_instrument_config.pad_mode
-
-    return
+    assert config.padded_shape == ref_config.padded_shape
+    assert config.pad_mode == ref_config.pad_mode
 
 
 def test_load_starfile_envelope_params(sample_starfile_path):
@@ -200,12 +211,12 @@ def test_load_starfile_envelope_params(sample_starfile_path):
     for i in range(len(parameter_file)):
         # check b-factors
         np.testing.assert_allclose(
-            envelope.b_factor[i],
+            envelope.b_factor[i],  # type: ignore
             parameters.metadata["rlnCtfBfactor"][i],
             rtol=1e-5,
         )
         np.testing.assert_allclose(
-            envelope.amplitude[i],
+            envelope.amplitude[i],  # type: ignore
             parameters.metadata["rlnCtfScalefactor"][i],
             rtol=1e-5,
         )
@@ -322,8 +333,6 @@ def test_load_starfile_pose_params(sample_starfile_path):
             rtol=1e-5,
         )
 
-    return
-
 
 def test_load_starfile_wo_metadata(sample_starfile_path):
     """Test loading a starfile without metadata."""
@@ -336,12 +345,10 @@ def test_load_starfile_wo_metadata(sample_starfile_path):
     # check that metadata is empty dict
     assert parameter_file[0].metadata == {}
     assert parameter_file[:].metadata == {}
-    assert parameter_file.loads_metadata is False
-
-    return
+    assert not parameter_file.loads_metadata
 
 
-def test_load_starfile_optics_group(sample_starfile_path):
+def test_load_optics_group_broadcasting(sample_starfile_path):
     """Test loading a starfile with optics group."""
     parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
@@ -371,29 +378,29 @@ def test_load_starfile_optics_group(sample_starfile_path):
     return
 
 
-def test_load_starfile_misc(sample_starfile_path):
-    """Test loading a starfile with miscellaneous parameters."""
+def test_parameter_file_setters(sample_starfile_path):
     parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         loads_envelope=False,
         loads_metadata=False,
         broadcasts_optics_group=False,
+        updates_optics_group=False,
     )
 
-    # set to True to load metadata
     parameter_file.loads_metadata = True
-    assert parameter_file.loads_metadata is True
+    assert parameter_file.loads_metadata
 
-    # set to True to load envelope
     parameter_file.loads_envelope = True
-    assert parameter_file.loads_envelope is True
+    assert parameter_file.loads_envelope
 
-    # set to True to load optics group
     parameter_file.broadcasts_optics_group = True
-    assert parameter_file.broadcasts_optics_group is True
+    assert parameter_file.broadcasts_optics_group
+
+    parameter_file.updates_optics_group = True
+    assert parameter_file.updates_optics_group
 
 
-def test_load_starfile_and_mrcs(sample_starfile_path, sample_path_to_relion_project):
+def test_load_starfile_vs_mrcs_shape(sample_starfile_path, sample_relion_project_path):
     """Test loading a starfile with mrcs."""
     parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
@@ -401,87 +408,26 @@ def test_load_starfile_and_mrcs(sample_starfile_path, sample_path_to_relion_proj
         loads_metadata=False,
         broadcasts_optics_group=False,
     )
-    particle_stack_dataset = RelionParticleStackDataset(
-        parameter_file, sample_path_to_relion_project
-    )
+    dataset = RelionParticleStackDataset(parameter_file, sample_relion_project_path)
 
-    particle_stack = particle_stack_dataset[:]
+    particle_stack = dataset[:]
     instrument_config = particle_stack.parameters.instrument_config
     assert particle_stack.images.shape == (
         len(parameter_file),
         *instrument_config.shape,
     )
 
-    particle_stack = particle_stack_dataset[0]
+    particle_stack = dataset[0]
     instrument_config = particle_stack.parameters.instrument_config
     assert particle_stack.images.shape == instrument_config.shape
 
-    particle_stack = particle_stack_dataset[0:2]
+    particle_stack = dataset[0:2]
     instrument_config = particle_stack.parameters.instrument_config
     assert particle_stack.images.shape == (2, *instrument_config.shape)
 
-    assert len(particle_stack_dataset) == len(parameter_file)
+    assert len(dataset) == len(parameter_file)
 
     return
-
-
-def test_default_starfile():
-    path_to_starfile = "tests/outputs/starfile_writing/"
-    os.makedirs(path_to_starfile, exist_ok=True)
-
-    n_images = 1
-    starfile_dict = dict()
-
-    # Optics
-    optics_df = pd.DataFrame()
-
-    optics_df["rlnOpticsGroup"] = [1]
-    optics_df["rlnVoltage"] = 300.0
-    optics_df["rlnSphericalAberration"] = 2.7
-    optics_df["rlnAmplitudeContrast"] = 0.1
-    optics_df["rlnImagePixelSize"] = 3.0
-    optics_df["rlnImageSize"] = 16
-
-    # Particles
-    particles_df = pd.DataFrame()
-
-    # Misc
-    particles_df["rlnCtfMaxResolution"] = np.zeros(n_images)
-    particles_df["rlnCtfFigureOfMerit"] = np.zeros(n_images)
-    particles_df["rlnClassNumber"] = np.ones(n_images, dtype=int)
-    particles_df["rlnOpticsGroup"] = np.ones(n_images, dtype=int)
-
-    # CTF
-    particles_df["rlnDefocusU"] = 10000.0
-    particles_df["rlnDefocusV"] = 9000.0
-    particles_df["rlnDefocusAngle"] = 0.0
-    particles_df["rlnPhaseShift"] = 0.0
-
-    # we skip pose, as this one has default values
-
-    # Image name
-    particles_df["rlnImageName"] = "test.mrcs"
-
-    starfile_dict["optics"] = optics_df
-    starfile_dict["particles"] = particles_df
-    starfile.write(starfile_dict, os.path.join(path_to_starfile, "test.star"))
-
-    # now load the starfile
-    parameter_file = RelionParticleParameterFile(
-        path_to_starfile=os.path.join(path_to_starfile, "test.star"),
-        loads_envelope=False,
-        loads_metadata=False,
-        broadcasts_optics_group=False,
-    )
-
-    assert all(
-        jax.tree.leaves(
-            jax.tree.map(lambda x: jnp.isclose(x, 0.0), parameter_file[:].pose)
-        )
-    )
-
-    # clean up
-    os.remove(os.path.join(path_to_starfile, "test.star"))
 
 
 #
@@ -740,6 +686,63 @@ def test_bad_pytree_error():
 
     with pytest.raises(ValueError):
         parameter_file.append(parameters)
+
+
+def test_write_image(
+    sample_relion_project_path,
+    sample_starfile_path,
+    relion_parameters,
+):
+    parameter_file = RelionParticleParameterFile(
+        path_to_starfile=sample_starfile_path,
+        mode="r",
+        overwrite=True,
+    )
+
+    with pytest.raises(IOError):
+        dataset = RelionParticleStackDataset(
+            parameter_file,
+            path_to_relion_project=sample_relion_project_path,
+            mode="w",
+        )
+
+    dataset = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project=sample_relion_project_path,
+        mode="w",
+        overwrite=True,
+    )
+    starfile_data = dataset.parameter_file.starfile_data
+    assert starfile_data["particles"]["rlnImageName"].isna().all()
+
+    shape = relion_parameters.instrument_config.shape
+    particle = RelionParticleStack(
+        parameters=relion_parameters,
+        images=jnp.zeros(shape, dtype=np.float32),
+    )
+    bad_shape_particle = RelionParticleStack(
+        parameters=relion_parameters,
+        images=jnp.zeros((shape[0], shape[1] + 1), dtype=np.float32),
+    )
+    bad_dim_particle = eqx.tree_at(
+        lambda x: x.images, bad_shape_particle, jnp.zeros(shape[0], dtype=np.float32)
+    )
+
+    with pytest.raises(ValueError):
+        dataset[0] = bad_shape_particle
+
+    with pytest.raises(TypeCheckError):
+        dataset[0] = bad_dim_particle
+
+    # with pytest.raises(IOError):
+    #     dataset[0] = particle
+
+    dataset.filename_settings = dict(prefix="f", overwrite=True)
+    dataset[0] = particle
+
+    starfile_data = dataset.parameter_file.starfile_data
+    assert not pd.isna(starfile_data["particles"]["rlnImageName"][0])
+    assert starfile_data["particles"]["rlnImageName"][1:].isna().all()
 
 
 # def test_write_particle_batched_particle_parameters():
