@@ -12,12 +12,11 @@ import jax.numpy as jnp
 import mrcfile
 import numpy as np
 import pandas as pd
-import starfile
 from jaxtyping import Array, Float, Int
 
 from ...image.operators import Constant, FourierGaussian
 from ...internal import NDArrayLike
-from ...io import read_and_validate_starfile, write_image_stack_to_mrc
+from ...io import read_starfile, write_image_stack_to_mrc, write_starfile
 from ...simulator import (
     AberratedAstigmaticCTF,
     ContrastTransferTheory,
@@ -339,7 +338,7 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
         else:
             if not path_to_starfile.parent.exists():
                 path_to_starfile.parent.mkdir(parents=True)
-            starfile.write(self.starfile_data, path_to_starfile, **kwargs)  # type: ignore
+            write_starfile(self.starfile_data, path_to_starfile, **kwargs)
 
     @property
     @override
@@ -832,7 +831,7 @@ def _load_starfile_data(
 ) -> StarfileData:
     if mode == "r":
         if path_to_starfile.exists():
-            starfile_data = read_and_validate_starfile(path_to_starfile)
+            starfile_data = read_starfile(path_to_starfile)
             _validate_starfile_data(starfile_data)
         else:
             raise FileNotFoundError(
