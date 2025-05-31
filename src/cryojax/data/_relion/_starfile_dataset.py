@@ -1501,7 +1501,7 @@ def _dict_to_filename_settings(d: dict[str, Any]) -> ImageFilenameSettings:
     prefix = d["prefix"] if "prefix" in d else ""
     output_folder = d["output_folder"] if "output_folder" in d else ""
     delimiter = d["delimiter"] if "delimiter" in d else "_"
-    n_characters = d["n_characters"] if "n_characters" in d else 5
+    n_characters = d["n_characters"] if "n_characters" in d else 6
     overwrite = d["overwrite"] if "overwrite" in d else False
     compression = d["compression"] if "compression" in d else None
     return ImageFilenameSettings(

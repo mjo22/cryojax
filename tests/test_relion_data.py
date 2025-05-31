@@ -734,15 +734,23 @@ def test_write_image(
     with pytest.raises(TypeCheckError):
         dataset[0] = bad_dim_particle
 
-    # with pytest.raises(IOError):
-    #     dataset[0] = particle
+    with pytest.raises(IOError):
+        dataset[0] = particle
 
     dataset.filename_settings = dict(prefix="f", overwrite=True)
     dataset[0] = particle
 
     starfile_data = dataset.parameter_file.starfile_data
-    assert not pd.isna(starfile_data["particles"]["rlnImageName"][0])
+    rln_image_name = starfile_data["particles"]["rlnImageName"][0]
+    # Assert entry was written
+    assert not pd.isna(rln_image_name)
     assert starfile_data["particles"]["rlnImageName"][1:].isna().all()
+    # Assert file was written and delete it
+    filename = str(rln_image_name).split("@")[1]
+    path_to_filename = os.path.join(sample_relion_project_path, filename)
+    assert os.path.exists(path_to_filename)
+    os.remove(path_to_filename)
+    assert not os.path.exists(path_to_filename)
 
 
 # def test_write_particle_batched_particle_parameters():
