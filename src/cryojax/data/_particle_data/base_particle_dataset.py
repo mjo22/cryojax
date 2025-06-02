@@ -18,7 +18,7 @@ from .._dataset import AbstractDataset
 T = TypeVar("T")
 
 
-class AbstractParticleParameters(eqx.Module):
+class AbstractParticleParameters(eqx.Module, strict=True):
     """Parameters for a particle stack."""
 
     instrument_config: eqx.AbstractVar[InstrumentConfig]
