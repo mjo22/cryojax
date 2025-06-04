@@ -7,7 +7,7 @@ from ._particle_data import (
     simulate_particle_stack as simulate_particle_stack,
 )
 from ._relion import (
-    RelionHelicalParameterFile as RelionHelicalParameterFile,
+    AbstractRelionParticleParameterFile as AbstractRelionParticleParameterFile,
     RelionParticleParameterFile as RelionParticleParameterFile,
     RelionParticleParameters as RelionParticleParameters,
     RelionParticleStack as RelionParticleStack,

@@ -710,143 +710,6 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
         self._filename_settings = _dict_to_filename_settings(value)
 
 
-class RelionHelicalParameterFile(AbstractRelionParticleParameterFile):
-    """Similar to a `RelionParticleParameterFile`, but reads helical tubes.
-
-    In particular, a `RelionHelicalParameterFile` indexes one
-    helical filament at a time. For example, after manual
-    particle picking in RELION, we can index a particular filament
-    with
-
-    ```python
-    # Read in a STAR file particle stack
-    dataset = RelionHelicalParameterFile(...)
-    # ... get a particle stack for a filament
-    parameters_for_a_filament = dataset[0]
-    # ... get a particle stack for another filament
-    parameters_for_another_filament = dataset[1]
-    ```
-
-    Unlike a `RelionParticleParameterFile`, a `RelionHelicalParameterFile`
-    does not support fancy indexing.
-    """
-
-    def __init__(
-        self,
-        parameter_file: RelionParticleParameterFile,
-    ):
-        """**Arguments:**
-
-        - `parameter_file`:
-            The wrappped `RelionParticleParameterFile`. This will be
-            slightly modified to read one helix at a time, rather than
-            one image crop at a time.
-        """
-        # Validate the STAR file and store the dataset
-        _validate_helical_starfile_data(parameter_file.starfile_data)
-        self._parameter_file = parameter_file
-        # Compute and store the number of filaments, number of filaments per micrograph
-        # and micrograph names
-        n_filaments_per_micrograph, micrograph_names = (
-            _get_number_of_filaments_per_micrograph_in_helical_starfile_data(
-                parameter_file.starfile_data
-            )
-        )
-        self._n_filaments = int(np.sum(n_filaments_per_micrograph))
-        self._n_filaments_per_micrograph = n_filaments_per_micrograph
-        self._micrograph_names = micrograph_names
-
-    def __getitem__(self, index: int | Int[np.ndarray, ""]) -> RelionParticleParameters:
-        _validate_helical_dataset_index(type(self), index, len(self))
-        # Get the particle stack indices corresponding to this filament
-        particle_dataframe = self._parameter_file.starfile_data["particles"]
-        particle_indices_at_filament_index = _get_particle_indices_at_filament_index(
-            particle_dataframe,
-            index,
-            self._n_filaments_per_micrograph,
-            self._micrograph_names,
-        )
-        # Access the particle stack at these particle indices
-        return self._parameter_file[particle_indices_at_filament_index]
-
-    def __len__(self) -> int:
-        return self._n_filaments
-
-    @override
-    def __setitem__(
-        self, index: int | Int[np.ndarray, ""], value: RelionParticleParameters
-    ):
-        raise NotImplementedError
-
-    @override
-    def append(self, value: RelionParticleParameters):
-        raise NotImplementedError
-
-    @override
-    def save(self, **kwargs: Any):
-        return self._parameter_file.save(**kwargs)
-
-    @property
-    @override
-    def path_to_starfile(self) -> pathlib.Path:
-        return self._parameter_file.path_to_starfile
-
-    @path_to_starfile.setter
-    @override
-    def path_to_starfile(self, value: str | pathlib.Path):
-        self._parameter_file.path_to_starfile = value
-
-    @property
-    @override
-    def starfile_data(self) -> StarfileData:
-        return self._parameter_file._starfile_data
-
-    @starfile_data.setter
-    @override
-    def starfile_data(self, value: dict[str, pd.DataFrame]):
-        self._parameter_file.starfile_data = value
-
-    @property
-    @override
-    def loads_metadata(self) -> bool:
-        return self._parameter_file._loads_metadata
-
-    @loads_metadata.setter
-    @override
-    def loads_metadata(self, value: bool):
-        self._parameter_file._loads_metadata = value
-
-    @property
-    @override
-    def loads_envelope(self) -> bool:
-        return self._parameter_file._loads_envelope
-
-    @loads_envelope.setter
-    @override
-    def loads_envelope(self, value: bool):
-        self._parameter_file._loads_envelope = value
-
-    @property
-    @override
-    def broadcasts_optics_group(self) -> bool:
-        return self._parameter_file._broadcasts_optics_group
-
-    @broadcasts_optics_group.setter
-    @override
-    def broadcasts_optics_group(self, value: bool):
-        self._parameter_file._broadcasts_optics_group = value
-
-    @property
-    @override
-    def updates_optics_group(self) -> bool:
-        return self._parameter_file._updates_optics_group
-
-    @updates_optics_group.setter
-    @override
-    def updates_optics_group(self, value: bool):
-        self._parameter_file._updates_optics_group = value
-
-
 def _load_starfile_data(
     path_to_starfile: pathlib.Path, mode: Literal["r", "w"], overwrite: bool
 ) -> StarfileData:
@@ -1204,50 +1067,6 @@ def _load_image_stack_from_mrc(
     return jnp.asarray(image_stack)
 
 
-def _get_particle_indices_at_filament_index(
-    particle_dataframe,
-    filament_index,
-    n_filaments_per_micrograph,
-    micrograph_names,
-):
-    # ... map the filament index to a micrograph index
-    n_filaments_per_micrograph = np.asarray(n_filaments_per_micrograph, dtype=int)
-    last_index_of_filament_per_micrograph = np.cumsum(n_filaments_per_micrograph) - 1
-    micrograph_index = np.where(last_index_of_filament_per_micrograph >= filament_index)[
-        0
-    ].min()
-    # Get the filament index in this particular micrograph
-    filament_index_in_micrograph = (n_filaments_per_micrograph[micrograph_index] - 1) - (
-        last_index_of_filament_per_micrograph[micrograph_index] - filament_index
-    )
-    # .. get the data blocks only at the filament corresponding to the filament index
-    particle_dataframe_at_micrograph = particle_dataframe[
-        particle_dataframe["rlnMicrographName"] == micrograph_names[micrograph_index]
-    ]
-    particle_dataframe_at_filament = particle_dataframe_at_micrograph[
-        particle_dataframe_at_micrograph["rlnHelicalTubeID"]
-        == filament_index_in_micrograph + 1
-    ]
-    return np.asarray(particle_dataframe_at_filament.index, dtype=int)
-
-
-def _get_number_of_filaments_per_micrograph_in_helical_starfile_data(
-    starfile_data: StarfileData,
-) -> tuple[list[int], list[str]]:
-    particle_dataframe = starfile_data["particles"]
-    micrograph_names = particle_dataframe["rlnMicrographName"].unique().tolist()
-    n_filaments_per_micrograph = list(
-        int(
-            particle_dataframe[
-                particle_dataframe["rlnMicrographName"] == micrograph_name
-            ]["rlnHelicalTubeID"].max()
-        )
-        for micrograph_name in micrograph_names
-    )
-
-    return n_filaments_per_micrograph, micrograph_names  # type: ignore
-
-
 def _validate_dataset_index(cls, index, n_rows):
     index_error_msg = lambda idx: (
         f"The index at which the `{cls.__name__}` was accessed was out of bounds! "
@@ -1274,24 +1093,6 @@ def _validate_dataset_index(cls, index, n_rows):
         )
 
 
-def _validate_helical_dataset_index(cls, filament_index, n_filaments):
-    if not isinstance(filament_index, (int, np.integer)):  # type: ignore
-        raise IndexError(
-            f"When indexing a `{cls.__name__}`, only "
-            f"python or numpy-like integer particle_index are supported, such as "
-            "`helical_particle_stack = helical_dataset[3]`. "
-            f"Got index {filament_index} of type {type(filament_index)}."
-        )
-    # Make sure the filament index is in-bounds
-    if filament_index + 1 > n_filaments:
-        raise IndexError(
-            f"The index at which the `{cls.__name__}` was "
-            f"accessed was out of bounds! The number of filaments in "
-            f"the dataset is {n_filaments}, but you tried to "
-            f"access the index {filament_index}."
-        )
-
-
 def _validate_starfile_data(starfile_data: dict[str, pd.DataFrame]):
     if "particles" not in starfile_data.keys():
         raise ValueError("Missing key 'particles' in `starfile.read` output.")
@@ -1313,16 +1114,6 @@ def _validate_starfile_data(starfile_data: dict[str, pd.DataFrame]):
                 "Missing required keys in starfile 'optics' group. "
                 f"Required keys are {RELION_REQUIRED_OPTICS_KEYS}."
             )
-
-
-def _validate_helical_starfile_data(starfile_data: StarfileData):
-    particle_dataframe = starfile_data["particles"]
-    if "rlnHelicalTubeID" not in particle_dataframe.columns:
-        raise ValueError(
-            "Missing column 'rlnHelicalTubeID' in `starfile.read` output. "
-            "This column must be present when using a "
-            "`RelionHelicalParameterFile`."
-        )
 
 
 #

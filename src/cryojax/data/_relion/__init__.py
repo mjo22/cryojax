@@ -1,5 +1,5 @@
 from ._starfile_dataset import (
-    RelionHelicalParameterFile as RelionHelicalParameterFile,
+    AbstractRelionParticleParameterFile as AbstractRelionParticleParameterFile,
     RelionParticleParameterFile as RelionParticleParameterFile,
     RelionParticleStackDataset as RelionParticleStackDataset,
 )

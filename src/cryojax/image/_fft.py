@@ -7,9 +7,11 @@ from typing import Optional
 import jax.numpy as jnp
 from jaxtyping import Array, Complex, Float, Inexact
 
+from ..internal import NDArrayLike
+
 
 def ifftn(
-    ft: Inexact[Array, "..."],
+    ft: Inexact[NDArrayLike, "..."],
     s: Optional[tuple[int, ...]] = None,
     axes: Optional[tuple[int, ...]] = None,
 ) -> Complex[Array, "..."]:
@@ -32,7 +34,7 @@ def ifftn(
 
 
 def fftn(
-    ift: Inexact[Array, "..."],
+    ift: Inexact[NDArrayLike, "..."],
     s: Optional[tuple[int, ...]] = None,
     axes: Optional[tuple[int, ...]] = None,
 ) -> Complex[Array, "..."]:
@@ -55,7 +57,7 @@ def fftn(
 
 
 def irfftn(
-    ft: Inexact[Array, "..."],
+    ft: Inexact[NDArrayLike, "..."],
     s: Optional[tuple[int, ...]] = None,
     axes: Optional[tuple[int, ...]] = None,
 ) -> Float[Array, "..."]:
@@ -78,7 +80,7 @@ def irfftn(
 
 
 def rfftn(
-    ift: Float[Array, "..."],
+    ift: Float[NDArrayLike, "..."],
     s: Optional[tuple[int, ...]] = None,
     axes: Optional[tuple[int, ...]] = None,
 ) -> Complex[Array, "..."]:
