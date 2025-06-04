@@ -455,7 +455,7 @@ def test_append_particle_parameters(index, loads_envelope):
     ndim = index.ndim
 
     @eqx.filter_vmap
-    def make_particle_params(dummy_idx):
+    def make_particle_params(dummy_idx, metadata):
         instrument_config = cxs.InstrumentConfig(
             shape=(4, 4),
             pixel_size=1.5,
@@ -468,11 +468,19 @@ def test_append_particle_parameters(index, loads_envelope):
             envelope=op.FourierGaussian() if loads_envelope else None,
         )
         return RelionParticleParameters(
-            instrument_config, pose, transfer_theory, metadata={}
+            instrument_config, pose, transfer_theory, metadata=metadata
         )
 
-    # Make particle parameters
-    particle_params = make_particle_params(jnp.atleast_1d(index))
+    # Make particle parameters, using custom metadata
+    metadata = pd.DataFrame(
+        data={
+            "rlnMicrographName": list("dummy/micrograph.mrc" for _ in range(index.size)),
+            "rlnCoordinateX": np.atleast_1d(np.full_like(index, 2, dtype=int)),
+            "rlnCoordinateY": np.atleast_1d(np.full_like(index, 1, dtype=int)),
+        },
+    )
+    particle_params = make_particle_params(jnp.atleast_1d(index), metadata.to_dict())
+    # ... custom metadata
     if ndim == 0:
         particle_params = jax.tree.map(
             lambda x: jnp.squeeze(x) if isinstance(x, jax.Array) else x, particle_params
@@ -484,10 +492,23 @@ def test_append_particle_parameters(index, loads_envelope):
         mode="w",
         overwrite=True,
         loads_envelope=loads_envelope,
+        loads_metadata=False,
     )
     parameter_file.append(particle_params)
-
-    assert compare_pytrees(parameter_file[index], particle_params)
+    # Make sure parameters read and the same as what was appended
+    loaded_particle_params = parameter_file[index]
+    assert compare_pytrees(
+        loaded_particle_params, eqx.tree_at(lambda x: x.metadata, particle_params, {})
+    )
+    # Make sure custom metadata was added
+    particle_dataframe = parameter_file.starfile_data["particles"]
+    assert set(metadata.columns).issubset(particle_dataframe.columns)
+    # Make sure dataframes are the same
+    metadata_extracted = particle_dataframe.loc[
+        particle_dataframe.index[np.atleast_1d(index)],
+        ["rlnMicrographName", "rlnCoordinateX", "rlnCoordinateY"],
+    ]
+    assert metadata.convert_dtypes().equals(metadata_extracted)
 
 
 @pytest.mark.parametrize(
@@ -508,7 +529,7 @@ def test_set_particle_parameters(
     index = np.asarray(index)
     n_particles, ndim = index.size, index.ndim
 
-    def make_params(rng_key):
+    def make_params(rng_key, metadata):
         rng_keys = jr.split(rng_key, n_particles)
         make_pose = eqx.filter_vmap(
             lambda rng_key: cxs.EulerAnglePose.from_rotation(SO3.sample_uniform(rng_key))
@@ -524,10 +545,18 @@ def test_set_particle_parameters(
                 amplitude_contrast_ratio=0.1234,
                 envelope=op.FourierGaussian(b_factor=12.34) if sets_envelope else None,
             ),
+            metadata=metadata,
         )
 
+    metadata = pd.DataFrame(
+        data={
+            "rlnMicrographName": list("dummy/micrograph.mrc" for _ in range(n_particles)),
+            "rlnCoordinateX": np.atleast_1d(np.full(n_particles, 2, dtype=int)),
+            "rlnCoordinateY": np.atleast_1d(np.full(n_particles, 1, dtype=int)),
+        },
+    )
     rng_key = jr.key(0)
-    new_parameters = make_params(rng_key)
+    new_parameters = make_params(rng_key, metadata.to_dict())
     if ndim == 0:
         new_parameters = jax.tree.map(
             lambda x: jnp.squeeze(x) if isinstance(x, jax.Array) else x, new_parameters
@@ -546,7 +575,9 @@ def test_set_particle_parameters(
     loaded_parameters = parameter_file[index]
 
     if updates_optics_group:
-        assert compare_pytrees(new_parameters, loaded_parameters)
+        assert compare_pytrees(
+            eqx.tree_at(lambda x: x.metadata, new_parameters, {}), loaded_parameters
+        )
     else:
         assert compare_pytrees(new_parameters.pose, loaded_parameters.pose)
         np.testing.assert_allclose(
@@ -558,6 +589,15 @@ def test_set_particle_parameters(
                 new_parameters.transfer_theory.envelope.b_factor,  # type: ignore
                 loaded_parameters.transfer_theory.envelope.b_factor,  # type: ignore
             )
+    # Make sure custom metadata was added
+    particle_dataframe = parameter_file.starfile_data["particles"]
+    assert set(metadata.columns).issubset(particle_dataframe.columns)
+    # Make sure dataframes are the same
+    metadata_extracted = particle_dataframe.loc[
+        particle_dataframe.index[np.atleast_1d(index)],
+        ["rlnMicrographName", "rlnCoordinateX", "rlnCoordinateY"],
+    ]
+    assert metadata.convert_dtypes().equals(metadata_extracted)
 
 
 def test_file_exists_error():

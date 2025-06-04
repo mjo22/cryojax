@@ -33,7 +33,9 @@ class RelionParticleParameters(AbstractParticleParameters):
         - `transfer_theory`:
             The contrast transfer theory.
         - `metadata`:
-            The raw particle metadata as a dictionary.
+            The raw particle metadata as a dictionary. Assumes
+            this can be transformed to a `pandas.DataFrame` with
+            `pandas.DataFrame.from_dict(metadata)`.
         """
         # Set instrument config as is
         self.instrument_config = instrument_config

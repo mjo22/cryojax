@@ -30,27 +30,27 @@ from .._particle_data import (
 from ._starfile_pytrees import RelionParticleParameters, RelionParticleStack
 
 
-RELION_REQUIRED_OPTICS_KEYS = [
-    "rlnImageSize",
-    "rlnVoltage",
-    "rlnImagePixelSize",
-    "rlnSphericalAberration",
-    "rlnAmplitudeContrast",
-    "rlnOpticsGroup",
+RELION_REQUIRED_OPTICS_ENTRIES = [
+    ("rlnImageSize", "Int64"),
+    ("rlnVoltage", "Float64"),
+    ("rlnImagePixelSize", "Float64"),
+    ("rlnSphericalAberration", "Float64"),
+    ("rlnAmplitudeContrast", "Float64"),
+    ("rlnOpticsGroup", "Int64"),
 ]
-RELION_REQUIRED_PARTICLE_KEYS = [
-    "rlnDefocusU",
-    "rlnDefocusV",
-    "rlnDefocusAngle",
-    "rlnPhaseShift",
-    "rlnOpticsGroup",
+RELION_REQUIRED_PARTICLE_ENTRIES = [
+    ("rlnDefocusU", "Float64"),
+    ("rlnDefocusV", "Float64"),
+    ("rlnDefocusAngle", "Float64"),
+    ("rlnPhaseShift", "Float64"),
+    ("rlnOpticsGroup", "Int64"),
 ]
-RELION_POSE_PARTICLE_KEYS = [
-    "rlnOriginXAngst",
-    "rlnOriginYAngst",
-    "rlnAngleRot",
-    "rlnAngleTilt",
-    "rlnAnglePsi",
+RELION_POSE_PARTICLE_ENTRIES = [
+    ("rlnOriginXAngst", "Float64"),
+    ("rlnOriginYAngst", "Float64"),
+    ("rlnAngleRot", "Float64"),
+    ("rlnAngleTilt", "Float64"),
+    ("rlnAnglePsi", "Float64"),
 ]
 
 
@@ -286,7 +286,14 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
         particle_data = self.starfile_data["particles"]
         if isinstance(index, (int, np.ndarray)):
             index = np.atleast_1d(index)
-
+        # Set new empty columns in the particle data, if the update data includes this
+        new_columns = list(
+            set(particle_data_for_update.columns) - set(particle_data.columns)
+        )
+        for column in new_columns:
+            dtype = pd.api.types.pandas_dtype(particle_data_for_update[column].dtype)
+            particle_data[column] = pd.Series(dtype=dtype)
+        # Finally, set the updated data
         particle_data.loc[
             particle_data.index[index], particle_data_for_update.columns
         ] = particle_data_for_update.values
@@ -732,9 +739,20 @@ def _load_starfile_data(
             )
         else:
             starfile_data = dict(
-                optics=pd.DataFrame(columns=RELION_REQUIRED_OPTICS_KEYS),
+                optics=pd.DataFrame(
+                    data={
+                        column: pd.Series(dtype=dtype)
+                        for column, dtype in RELION_REQUIRED_OPTICS_ENTRIES
+                    }
+                ),
                 particles=pd.DataFrame(
-                    columns=[*RELION_REQUIRED_PARTICLE_KEYS, *RELION_POSE_PARTICLE_KEYS]
+                    data={
+                        column: pd.Series(dtype=dtype)
+                        for column, dtype in [
+                            *RELION_REQUIRED_PARTICLE_ENTRIES,
+                            *RELION_POSE_PARTICLE_ENTRIES,
+                        ]
+                    }
                 ),
             )
 
@@ -1097,22 +1115,22 @@ def _validate_starfile_data(starfile_data: dict[str, pd.DataFrame]):
     if "particles" not in starfile_data.keys():
         raise ValueError("Missing key 'particles' in `starfile.read` output.")
     else:
-        if not set(RELION_REQUIRED_PARTICLE_KEYS).issubset(
+        required_particle_keys, _ = zip(*RELION_POSE_PARTICLE_ENTRIES)
+        if not set(required_particle_keys).issubset(
             set(starfile_data["particles"].keys())
         ):
             raise ValueError(
                 "Missing required keys in starfile 'particles' group. "
-                f"Required keys are {RELION_REQUIRED_PARTICLE_KEYS}."
+                f"Required keys are {required_particle_keys}."
             )
     if "optics" not in starfile_data.keys():
         raise ValueError("Missing key 'optics' in `starfile.read` output.")
     else:
-        if not set(RELION_REQUIRED_OPTICS_KEYS).issubset(
-            set(starfile_data["optics"].keys())
-        ):
+        required_optics_keys, _ = zip(*RELION_REQUIRED_OPTICS_ENTRIES)
+        if not set(required_optics_keys).issubset(set(starfile_data["optics"].keys())):
             raise ValueError(
                 "Missing required keys in starfile 'optics' group. "
-                f"Required keys are {RELION_REQUIRED_OPTICS_KEYS}."
+                f"Required keys are {required_optics_keys}."
             )
 
 
@@ -1168,8 +1186,9 @@ def _parameters_to_optics_data(
             optics_group_dict[k] = arr.ravel()[0, None]
         else:
             optics_group_dict[k] = [v]
+    optics_data = pd.DataFrame.from_dict(optics_group_dict)
 
-    return pd.DataFrame.from_dict(optics_group_dict)
+    return optics_data
 
 
 def _parameters_to_particle_data(
@@ -1243,8 +1262,20 @@ def _parameters_to_particle_data(
         particles_dict["rlnOpticsGroup"] = np.full(
             (n_particles,), optics_group_index, dtype=int
         )
-
-    return pd.DataFrame.from_dict(particles_dict)
+    particle_data = pd.DataFrame.from_dict(particles_dict)
+    # Finally, see if the particle parameters has metadata and if so,
+    # add this
+    if parameters.metadata:
+        metadata = pd.DataFrame.from_dict(parameters.metadata)
+        if n_particles != metadata.index.size:
+            raise ValueError(
+                "Tried to add `RelionParticleParameters.metadata` "
+                "to the STAR file, but the number of particles "
+                "in the `metadata` was inconsistent with the "
+                "number of particles in the `RelionParticleParameters`."
+            )
+        particle_data = pd.concat([particle_data, metadata], axis=1)
+    return particle_data
 
 
 def _make_optics_group_index(optics_data: pd.DataFrame) -> int:
