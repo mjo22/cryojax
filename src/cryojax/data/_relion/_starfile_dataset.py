@@ -536,14 +536,10 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
                 f"`RelionParticleStackDataset` index = {index}, "
                 "but no entry found for 'rlnImageName'."
             )
-        # ... the following line is necessary for the image dataset to work with both the
-        # helical dataset and the regular dataset
-        particle_index = np.asarray(particle_dataframe_at_index.index, dtype=int)
         # ... then, load stack of images
+        shape = parameters.instrument_config.shape
         images = _load_image_stack_from_mrc(
-            particle_index,
-            particle_dataframe_at_index,
-            self.path_to_relion_project,
+            shape, particle_dataframe_at_index, self.path_to_relion_project
         )
         if parameters.pose.offset_x_in_angstroms.ndim == 0:
             images = jnp.squeeze(images)
@@ -600,12 +596,12 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
                 "the `RelionParticleStack` type. Found type "
                 f"{type(value).__name__}."
             )
-        start = len(self.parameter_file)
+        start = len(self.parameter_file.starfile_data["particles"])
         # Append parameters. This automatically sets the 'rlnImageName'
         # column to NaNs
         self.parameter_file.append(parameters)
         # Write images
-        stop = len(self.parameter_file)
+        stop = len(self.parameter_file.starfile_data["particles"])
         index_array = np.arange(start, stop, dtype=int)
         self.write_images(index_array, images, parameters=parameters)
 
@@ -1031,56 +1027,52 @@ def _make_transfer_theory(defocus, astig, angle, sph, ac, ps, env=None):
 
 
 def _load_image_stack_from_mrc(
-    index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"],
-    particle_dataframe: pd.DataFrame,
+    shape: tuple[int, int],
+    particle_dataframe_at_index: pd.DataFrame,
     path_to_relion_project: str | pathlib.Path,
 ) -> Float[Array, "... y_dim x_dim"]:
     # Load particle image stack rlnImageName
-    image_stack_index_and_name = particle_dataframe["rlnImageName"]
-
-    if all([isinstance(elem, str) for elem in image_stack_index_and_name]):
-        # ... split the pandas.Series into a pandas.DataFrame with two columns:
-        # one for the image index and another for the filename
-        image_stack_index_and_name_dataframe = (
-            image_stack_index_and_name.str.split("@", expand=True)
-        ).reset_index()
-        # ... check dtype and shape of images
-        path_to_test_image_stack = pathlib.Path(
-            path_to_relion_project,
-            np.asarray(image_stack_index_and_name_dataframe[1], dtype=object)[0],
+    rln_image_names = particle_dataframe_at_index["rlnImageName"].reset_index(drop=True)
+    if rln_image_names.convert_dtypes().dtype != "string":
+        raise TypeError(
+            "The 'rlnImageName' column was expected to be type string. "
+            f"Instead, found type {rln_image_names.dtype}."
         )
-        with mrcfile.mmap(path_to_test_image_stack, mode="r", permissive=True) as mrc:
+    # Split the pandas.Series into two: one for the image index
+    # and another for the filename
+    split = rln_image_names.str.split("@").str
+    # ... relion convention starts indexing at 1, not 0
+    mrc_index, filenames = split[0], split[1]
+    if filenames.isnull().any() or mrc_index.isnull().any():
+        raise ValueError(
+            "Could not parse filenames from the 'rlnImageName' "
+            "column. Check to make sure these are the correct format, "
+            "for example '00000@path/to/image-00000.mrcs'."
+        )
+    mrc_index = mrc_index.astype(int) - 1
+    # Allocate memory for stack
+    n_images = len(filenames)
+    image_stack = np.empty((n_images, *shape), dtype=float)
+    # Loop over filenames to fill stack
+    unique_filenames = filenames.unique()
+    for filename in unique_filenames:
+        # Get the MRC indices
+        mrc_index_at_filename = mrc_index[filename == filenames]
+        particle_index_at_filename = mrc_index_at_filename.index
+        path_to_filename = pathlib.Path(path_to_relion_project, filename)
+        with mrcfile.mmap(path_to_filename, mode="r", permissive=True) as mrc:
             mrc_data = np.asarray(mrc.data)
-            test_image = mrc_data if mrc_data.ndim == 2 else mrc_data[0]
-            image_dtype, image_shape = test_image.dtype, test_image.shape
-        # ... allocate memory for stack
-        n_images = len(image_stack_index_and_name_dataframe)
-        image_stack = np.empty((n_images, *image_shape), dtype=image_dtype)
-        # ... get unique mrc files
-        unique_mrc_files = image_stack_index_and_name_dataframe[1].unique()
-        # ... load images to image_stack
-        for unique_mrc in unique_mrc_files:
-            # ... get the indices for this particular mrc file
-            indices_in_mrc = image_stack_index_and_name_dataframe[1] == unique_mrc
-            # ... relion convention starts indexing at 1, not 0
-            filtered_df = image_stack_index_and_name_dataframe[indices_in_mrc]
-            particle_index = filtered_df[0].values.astype(int) - 1
-            with mrcfile.mmap(
-                pathlib.Path(path_to_relion_project, unique_mrc),
-                mode="r",
-                permissive=True,
-            ) as mrc:
-                mrc_data = np.asarray(mrc.data)
-                if mrc_data.ndim == 2:
-                    image_stack[filtered_df.index] = mrc_data
-                else:
-                    image_stack[filtered_df.index] = mrc_data[particle_index]
-
-    else:
-        raise IOError(
-            "Error reading image(s) in STAR file for "
-            f"`RelionParticleStackDataset` index = {index}."
-        )
+            mrc_shape = mrc_data.shape if mrc_data.ndim == 2 else mrc_data.shape[1:]
+            if shape != mrc_shape:
+                raise ValueError(
+                    f"The shape of the MRC with filename {filename} "
+                    "was found to not have the same shape loaded from "
+                    "the 'rlnImageSize'. Check your MRC files and also "
+                    "the STAR file optics group formatting."
+                )
+            image_stack[particle_index_at_filename] = (
+                mrc_data if mrc_data.ndim == 2 else mrc_data[mrc_index_at_filename]
+            )
 
     return jnp.asarray(image_stack)
 
@@ -1115,7 +1107,7 @@ def _validate_starfile_data(starfile_data: dict[str, pd.DataFrame]):
     if "particles" not in starfile_data.keys():
         raise ValueError("Missing key 'particles' in `starfile.read` output.")
     else:
-        required_particle_keys, _ = zip(*RELION_POSE_PARTICLE_ENTRIES)
+        required_particle_keys, _ = zip(*RELION_REQUIRED_PARTICLE_ENTRIES)
         if not set(required_particle_keys).issubset(
             set(starfile_data["particles"].keys())
         ):
@@ -1358,7 +1350,7 @@ def _make_image_filename(
         if last_index == -1:
             file_number = 0
         else:
-            last_filename = particle_data["rlnImageName"].iloc[last_index]
+            last_filename = particle_data["rlnImageName"].iloc[last_index].split("@")[1]
             if pd.isna(last_filename):
                 raise IOError(
                     "Tried to assign a number to the MRC file while writing "
@@ -1367,7 +1359,7 @@ def _make_image_filename(
                     "filename was NaN."
                 )
             else:
-                file_number = _parse_filename_for_number(last_filename)
+                file_number = _parse_filename_for_number(last_filename) + 1
     # Unpack settings
     prefix = filename_settings["prefix"]
     output_folder = filename_settings["output_folder"]
@@ -1388,7 +1380,7 @@ def _make_image_filename(
         _format_number_for_filename(int(i), n_characters)
         + "@"
         + relative_path_to_filename
-        for i in index
+        for i in range(index.size)
     ]
     # Finally, the path to the filename
     path_to_filename = pathlib.Path(path_to_relion_project, relative_path_to_filename)
@@ -1396,14 +1388,13 @@ def _make_image_filename(
     return path_to_filename, rln_image_names
 
 
-def _parse_filename_for_number(path_to_filename: pathlib.Path) -> int:
-    filename = path_to_filename.name
+def _parse_filename_for_number(filename: str) -> int:
     match = re.search(r"[^0-9](\d+)\.[^.]+$", filename)
     try:
         file_number = int(match.group(1))  # type: ignore
     except Exception as err:
         raise IOError(
-            f"Could not get the file number from file {str(path_to_filename)} "
+            f"Could not get the file number from file {filename} "
             "Files must be enumerated with the trailing part of the "
             "filename as the file number, like so: '/path/to/file-0000.txt'. "
             f"When extracting the file number and converting it to an integer, "

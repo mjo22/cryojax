@@ -98,13 +98,26 @@ def relion_parameters():
 #
 class TestErrorRaisingForLoading:
     def test_load_with_badparticle_name(self, parameter_file, sample_relion_project_path):
-        with pytest.raises(IOError):
-            metadata = parameter_file[0].metadata
+        with pytest.raises(TypeError):
+            parameters = parameter_file[0]
+            metadata = parameters.metadata
             particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)
             particle_dataframe_at_index["rlnImageName"] = 0.0
 
             _load_image_stack_from_mrc(
-                0,
+                parameters.instrument_config.shape,
+                particle_dataframe_at_index,
+                sample_relion_project_path,
+            )
+
+    def test_load_with_bad_shape(self, parameter_file, sample_relion_project_path):
+        with pytest.raises(ValueError):
+            parameters = parameter_file[0]
+            metadata = parameters.metadata
+            particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)
+
+            _load_image_stack_from_mrc(
+                (1, 1),
                 particle_dataframe_at_index,
                 sample_relion_project_path,
             )
@@ -508,7 +521,7 @@ def test_append_particle_parameters(index, loads_envelope):
         particle_dataframe.index[np.atleast_1d(index)],
         ["rlnMicrographName", "rlnCoordinateX", "rlnCoordinateY"],
     ]
-    assert metadata.convert_dtypes().equals(metadata_extracted)
+    np.testing.assert_equal(metadata.to_numpy(), metadata_extracted.to_numpy())
 
 
 @pytest.mark.parametrize(
@@ -550,9 +563,9 @@ def test_set_particle_parameters(
 
     metadata = pd.DataFrame(
         data={
-            "rlnMicrographName": list("dummy/micrograph.mrc" for _ in range(n_particles)),
-            "rlnCoordinateX": np.atleast_1d(np.full(n_particles, 2, dtype=int)),
-            "rlnCoordinateY": np.atleast_1d(np.full(n_particles, 1, dtype=int)),
+            "rlnMicrographName": list("dummy/micrograph.mrc" for _ in range(index.size)),
+            "rlnCoordinateX": np.atleast_1d(np.full_like(index, 2, dtype=int)),
+            "rlnCoordinateY": np.atleast_1d(np.full_like(index, 1, dtype=int)),
         },
     )
     rng_key = jr.key(0)
@@ -597,7 +610,7 @@ def test_set_particle_parameters(
         particle_dataframe.index[np.atleast_1d(index)],
         ["rlnMicrographName", "rlnCoordinateX", "rlnCoordinateY"],
     ]
-    assert metadata.convert_dtypes().equals(metadata_extracted)
+    np.testing.assert_equal(metadata.to_numpy(), metadata_extracted.to_numpy())
 
 
 def test_file_exists_error():
