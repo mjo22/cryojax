@@ -70,7 +70,7 @@ class ParticleStackInfo(TypedDict):
     images: Float[Array, "... y_dim x_dim"]
 
 
-ParticleParametersLike = dict[str, Any] | ParticleParameterInfo
+ParticleParameterLike = dict[str, Any] | ParticleParameterInfo
 ParticleStackLike = dict[str, Any] | ParticleStackInfo
 
 
@@ -98,7 +98,7 @@ def _default_make_config_fn(
 
 
 class AbstractRelionParticleParameterFile(
-    AbstractParticleParameterFile[ParticleParameterInfo, ParticleParametersLike]
+    AbstractParticleParameterFile[ParticleParameterInfo, ParticleParameterLike]
 ):
     @property
     @override
@@ -289,7 +289,7 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
     def __setitem__(
         self,
         index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " _"],
-        value: ParticleParametersLike,
+        value: ParticleParameterLike,
     ):
         _validate_parameters(value, force_keys=False)
         if self.updates_optics_group:
@@ -321,7 +321,7 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
         self._starfile_data = StarfileData(particles=particle_data, optics=optics_data)
 
     @override
-    def append(self, value: ParticleParametersLike):
+    def append(self, value: ParticleParameterLike):
         """Add an entry or entries to the dataset.
 
         **Arguments:**
@@ -636,7 +636,7 @@ class RelionParticleStackDataset(
         self,
         index_array: Int[np.ndarray, " _"],
         images: Float[NDArrayLike, "... _ _"],
-        parameters: Optional[ParticleParametersLike] = None,
+        parameters: Optional[ParticleParameterLike] = None,
     ):
         # Get relevant metadata
         particle_data = self.parameter_file.starfile_data["particles"]
@@ -1157,7 +1157,7 @@ def _validate_starfile_data(starfile_data: dict[str, pd.DataFrame]):
 #
 def _unpack_particle_stack_dict(
     value: ParticleStackLike,
-) -> tuple[Float[NDArrayLike, "... y_dim x_dim"], ParticleParametersLike | None]:
+) -> tuple[Float[NDArrayLike, "... y_dim x_dim"], ParticleParameterLike | None]:
     if "images" in value:
         images = value["images"]
     else:
@@ -1176,7 +1176,7 @@ def _unpack_particle_stack_dict(
 #
 # STAR file writing. First, functions for writing parameters
 #
-def _validate_parameters(parameters: ParticleParametersLike, force_keys: bool = False):
+def _validate_parameters(parameters: ParticleParameterLike, force_keys: bool = False):
     if force_keys:
         if not {"instrument_config", "transfer_theory", "pose"}.issubset(parameters):
             raise ValueError(
@@ -1210,7 +1210,7 @@ def _validate_parameters(parameters: ParticleParametersLike, force_keys: bool = 
 
 
 def _parameters_to_optics_data(
-    parameters: ParticleParametersLike, optics_group_index: int
+    parameters: ParticleParameterLike, optics_group_index: int
 ) -> pd.DataFrame:
     if {"instrument_config", "transfer_theory"}.issubset(parameters):
         shape = parameters["instrument_config"].shape
@@ -1273,7 +1273,7 @@ def _parameters_to_optics_data(
 
 
 def _parameters_to_particle_data(
-    parameters: ParticleParametersLike,
+    parameters: ParticleParameterLike,
     optics_group_index: Optional[int] = None,
 ) -> pd.DataFrame:
     particles_dict = {}
