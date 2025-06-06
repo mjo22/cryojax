@@ -27,7 +27,6 @@ from .._particle_data import (
     AbstractParticleParameterFile,
     AbstractParticleStackDataset,
 )
-from ._starfile_pytrees import RelionParticleParameters
 
 
 RELION_REQUIRED_OPTICS_ENTRIES = [
@@ -54,13 +53,24 @@ RELION_POSE_PARTICLE_ENTRIES = [
 ]
 
 
+class ParticleParameterInfo(TypedDict):
+    """Parameters for a particle stack from RELION."""
+
+    instrument_config: InstrumentConfig
+    pose: EulerAnglePose
+    transfer_theory: ContrastTransferTheory
+
+    metadata: dict
+
+
 class ParticleStackInfo(TypedDict):
-    """A dictionary that stores images and parameters."""
+    """Particle stack info from RELION."""
 
-    parameters: RelionParticleParameters
-    images: Float[NDArrayLike, "... y_dim x_dim"]
+    parameters: ParticleParameterInfo
+    images: Float[Array, "... y_dim x_dim"]
 
 
+ParticleParametersLike = dict[str, Any] | ParticleParameterInfo
 ParticleStackLike = dict[str, Any] | ParticleStackInfo
 
 
@@ -88,7 +98,7 @@ def _default_make_config_fn(
 
 
 class AbstractRelionParticleParameterFile(
-    AbstractParticleParameterFile[RelionParticleParameters]
+    AbstractParticleParameterFile[ParticleParameterInfo, ParticleParametersLike]
 ):
     @property
     @override
@@ -199,10 +209,10 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
             Stores an empty `RelionParticleParameterFile.starfile_data`
             if `mode = 'w'`.
         - `loads_metadata`:
-            If `True`, the resulting `RelionParticleParameters` object loads
+            If `True`, the resulting `ParticleParameterInfo` dict loads
             the raw metadata from the STAR file.
             If this is set to `True`, extra care must be taken to make sure that
-            `RelionParticleParameters` objects can pass through JIT boundaries
+            these dictionaries can pass through JIT boundaries
             without recompilation.
         - `broadcasts_optics_group`:
             If `True`, select optics group parameters are broadcasted. If
@@ -236,7 +246,7 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " _"]
-    ) -> RelionParticleParameters:
+    ) -> ParticleParameterInfo:
         # Validate index
         n_rows = self.starfile_data["particles"].shape[0]
         _validate_dataset_index(type(self), index, n_rows)
@@ -263,11 +273,11 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
                 columns=particle_data_at_index.index,
                 index=[0],
             )
-        metadata = particle_data_at_index.to_dict() if self.loads_metadata else None
-        return RelionParticleParameters(
-            instrument_config,
-            pose,
-            transfer_theory,
+        metadata = particle_data_at_index.to_dict() if self.loads_metadata else {}
+        return ParticleParameterInfo(
+            instrument_config=instrument_config,
+            pose=pose,
+            transfer_theory=transfer_theory,
             metadata=metadata,
         )
 
@@ -279,8 +289,9 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
     def __setitem__(
         self,
         index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " _"],
-        value: RelionParticleParameters,
+        value: ParticleParametersLike,
     ):
+        _validate_parameters(value, force_keys=False)
         if self.updates_optics_group:
             optics_group_index = _make_optics_group_index(self.starfile_data["optics"])
             particle_data_for_update = _parameters_to_particle_data(
@@ -310,14 +321,15 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
         self._starfile_data = StarfileData(particles=particle_data, optics=optics_data)
 
     @override
-    def append(self, value: RelionParticleParameters):
+    def append(self, value: ParticleParametersLike):
         """Add an entry or entries to the dataset.
 
         **Arguments:**
 
         - `value`:
-            The `RelionParticleParameters` to add to the dataset.
+            A dictionary of parameters to add to the dataset.
         """
+        _validate_parameters(value, force_keys=True)
         optics_group_index = _make_optics_group_index(self.starfile_data["optics"])
         optics_data, optics_data_to_append = (
             self.starfile_data["optics"],
@@ -447,7 +459,9 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
         self._updates_optics_group = value
 
 
-class RelionParticleStackDataset(AbstractParticleStackDataset[ParticleStackLike]):
+class RelionParticleStackDataset(
+    AbstractParticleStackDataset[ParticleStackInfo, ParticleStackLike]
+):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
@@ -538,7 +552,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[ParticleStackLike]
         # ... read parameters
         parameters = self.parameter_file[index]
         # ... and construct dataframe
-        metadata = parameters.metadata
+        metadata = parameters["metadata"]
         particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)  # type: ignore
         if "rlnImageName" not in particle_dataframe_at_index.keys():
             raise IOError(
@@ -547,19 +561,17 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[ParticleStackLike]
                 "but no entry found for 'rlnImageName'."
             )
         # ... then, load stack of images
-        shape = parameters.instrument_config.shape
+        shape = parameters["instrument_config"].shape
         images = _load_image_stack_from_mrc(
             shape, particle_dataframe_at_index, self.path_to_relion_project
         )
-        if parameters.pose.offset_x_in_angstroms.ndim == 0:
+        if parameters["pose"].offset_x_in_angstroms.ndim == 0:
             images = jnp.squeeze(images)
 
         # ... reset boolean
         self.parameter_file.loads_metadata = loads_metadata
         if not loads_metadata:
-            parameters = RelionParticleParameters(
-                parameters.instrument_config, parameters.pose, parameters.transfer_theory
-            )
+            parameters["metadata"] = {}
 
         return ParticleStackInfo(parameters=parameters, images=images)
 
@@ -596,7 +608,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[ParticleStackLike]
         **Arguments:**
 
         - `value`:
-            The `RelionParticleParameters` to add to the dataset.
+
         """
         if not isinstance(value, dict):
             raise TypeError(
@@ -624,7 +636,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[ParticleStackLike]
         self,
         index_array: Int[np.ndarray, " _"],
         images: Float[NDArrayLike, "... _ _"],
-        parameters: Optional[RelionParticleParameters] = None,
+        parameters: Optional[ParticleParametersLike] = None,
     ):
         # Get relevant metadata
         particle_data = self.parameter_file.starfile_data["particles"]
@@ -639,8 +651,8 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[ParticleStackLike]
             )
         else:
             pixel_size, dim = (
-                float(np.atleast_1d(parameters.instrument_config.pixel_size)[0]),
-                parameters.instrument_config.shape[0],
+                float(np.atleast_1d(parameters["instrument_config"].pixel_size)[0]),
+                parameters["instrument_config"].shape[0],
             )
         if not (images.ndim in [2, 3] and images.shape[-2:] == (dim, dim)):
             raise ValueError(
@@ -1141,128 +1153,206 @@ def _validate_starfile_data(starfile_data: dict[str, pd.DataFrame]):
 
 
 #
+# Working with pytrees for I/O
+#
+def _unpack_particle_stack_dict(
+    value: ParticleStackLike,
+) -> tuple[Float[NDArrayLike, "... y_dim x_dim"], ParticleParametersLike | None]:
+    if "images" in value:
+        images = value["images"]
+    else:
+        raise ValueError(
+            "When passing dictionary `foo` as `dataset.append(foo)` or "
+            "`dataset[index] = foo`, `foo` must have key `images`."
+        )
+    if "parameters" in value:
+        parameters = value["parameters"]
+    else:
+        parameters = None
+
+    return images, parameters
+
+
+#
 # STAR file writing. First, functions for writing parameters
 #
-def _parameters_to_optics_data(
-    parameters: RelionParticleParameters, optics_group_index: int
-) -> pd.DataFrame:
-    shape = parameters.instrument_config.shape
-    if shape[0] == shape[1]:
-        dim = shape[0]
-    else:
-        raise ValueError(
-            "Found non-square shape in "
-            "`RelionParticleParameters.instrument_config.shape`. Only "
-            "square shapes are supported."
-        )
-    pixel_size = parameters.instrument_config.pixel_size
-    voltage_in_kilovolts = parameters.instrument_config.voltage_in_kilovolts
-    amplitude_contrast_ratio = parameters.transfer_theory.amplitude_contrast_ratio
-    if isinstance(parameters.transfer_theory.ctf, AberratedAstigmaticCTF):
-        spherical_aberration_in_mm = getattr(
-            parameters.transfer_theory.ctf, "spherical_aberration_in_mm"
-        )
-    else:
-        raise ValueError(
-            "`RelionParticleParameters.transfer_theory.ctf` must be type "
-            "`AberratedAstigmaticCTF`. Got type "
-            f"{type(parameters.transfer_theory.ctf).__name__}."
-        )
-    optics_group_dict = {
-        "rlnOpticsGroup": optics_group_index,
-        "rlnImageSize": dim,
-        "rlnImagePixelSize": pixel_size,
-        "rlnVoltage": voltage_in_kilovolts,
-        "rlnSphericalAberration": spherical_aberration_in_mm,
-        "rlnAmplitudeContrast": amplitude_contrast_ratio,
-    }
-    for k, v in optics_group_dict.items():
-        if isinstance(v, Array | np.ndarray):
-            arr = np.atleast_1d(np.asarray(v))
-            if arr.size > 1:
-                if np.unique(arr).size > 1:
-                    raise ValueError(
-                        "Tried to fill a RELION optics group entry with an array "
-                        "that has multiple unique values. Optics group compatible "
-                        "arrays in `RelionParticleParameters`, such as "
-                        "`RelionParticleParameters.instrument_config.pixel_size`, "
-                        "must be either scalars or arrays all with the same value. "
-                        f"Error occurred when filling '{k}' with array {v}."
-                    )
-            optics_group_dict[k] = arr.ravel()[0, None]
-        else:
-            optics_group_dict[k] = [v]
-    optics_data = pd.DataFrame.from_dict(optics_group_dict)
+def _validate_parameters(parameters: ParticleParametersLike, force_keys: bool = False):
+    if force_keys:
+        if not {"instrument_config", "transfer_theory", "pose"}.issubset(parameters):
+            raise ValueError(
+                "When passing dictionary `foo` as `parameter_file.append(foo)` "
+                "`foo` must have keys 'pose', 'transfer_theory', and 'instrument_config'."
+            )
+    if "instrument_config" in parameters:
+        if not isinstance(parameters["instrument_config"], InstrumentConfig):
+            raise TypeError(
+                "Found that dict key 'instrument_config' was "
+                "not type `cryojax.simulator.InstrumentConfig`. "
+                f"Instead, it was type "
+                f"{type(parameters['instrument_config']).__name__}."
+            )
+    if "transfer_theory" in parameters:
+        if not isinstance(parameters["transfer_theory"], ContrastTransferTheory):
+            raise TypeError(
+                "Found that dict key 'transfer_theory' was "
+                "not type `cryojax.simulator.ContrastTransferTheory`. "
+                f"Instead, it was type "
+                f"{type(parameters['transfer_theory']).__name__}."
+            )
+    if "pose" in parameters:
+        if not isinstance(parameters["pose"], EulerAnglePose):
+            raise TypeError(
+                "Found that dict key 'pose' was "
+                "not type `cryojax.simulator.EulerAnglePose`. "
+                f"Instead, it was type "
+                f"{type(parameters['pose']).__name__}."
+            )
 
-    return optics_data
+
+def _parameters_to_optics_data(
+    parameters: ParticleParametersLike, optics_group_index: int
+) -> pd.DataFrame:
+    if {"instrument_config", "transfer_theory"}.issubset(parameters):
+        shape = parameters["instrument_config"].shape
+        if shape[0] == shape[1]:
+            dim = shape[0]
+        else:
+            raise ValueError(
+                "When adding optics group to STAR file, found "
+                "non-square shape in `instrument_config.shape`. Only "
+                "square shapes are supported."
+            )
+        pixel_size = parameters["instrument_config"].pixel_size
+        voltage_in_kilovolts = parameters["instrument_config"].voltage_in_kilovolts
+        amplitude_contrast_ratio = parameters["transfer_theory"].amplitude_contrast_ratio
+        if isinstance(parameters["transfer_theory"].ctf, AberratedAstigmaticCTF):
+            spherical_aberration_in_mm = getattr(
+                parameters["transfer_theory"].ctf, "spherical_aberration_in_mm"
+            )
+        else:
+            raise ValueError(
+                "When adding optics group or particle to STAR file, "
+                "`transfer_theory.ctf` must be type "
+                "`AberratedAstigmaticCTF`. Instead, got type "
+                f"{type(parameters['transfer_theory'].ctf).__name__}."
+            )
+        optics_group_dict = {
+            "rlnOpticsGroup": optics_group_index,
+            "rlnImageSize": dim,
+            "rlnImagePixelSize": pixel_size,
+            "rlnVoltage": voltage_in_kilovolts,
+            "rlnSphericalAberration": spherical_aberration_in_mm,
+            "rlnAmplitudeContrast": amplitude_contrast_ratio,
+        }
+        for k, v in optics_group_dict.items():
+            if isinstance(v, Array | np.ndarray):
+                arr = np.atleast_1d(np.asarray(v))
+                if arr.size > 1:
+                    if np.unique(arr).size > 1:
+                        raise ValueError(
+                            "Tried to fill a RELION optics group entry with an array "
+                            "that has multiple unique values. Optics group compatible "
+                            "arrays such as `InstrumentConfig.pixel_size` "
+                            "must be either scalars or arrays all with the same value. "
+                            f"Error occurred when filling '{k}' with array {v}."
+                        )
+                optics_group_dict[k] = arr.ravel()[0, None]
+            else:
+                optics_group_dict[k] = [v]
+        optics_data = pd.DataFrame.from_dict(optics_group_dict)
+
+        return optics_data
+    else:
+        raise ValueError(
+            "Tried to add optics group to the STAR file, but "
+            "parameter dictionary did not include 'instrument_config' "
+            "and 'transfer_theory' keys. If you are setting parameters "
+            "`parameter_file[index] = dict(pose=pose)` make sure "
+            "`parameter_file.updates_optics_group = False`."
+        )
 
 
 def _parameters_to_particle_data(
-    parameters: RelionParticleParameters,
+    parameters: ParticleParametersLike,
     optics_group_index: Optional[int] = None,
 ) -> pd.DataFrame:
     particles_dict = {}
+    if "pose" in parameters:
+        # Now, pose parameters
+        pose = parameters["pose"]
+        if not isinstance(pose, EulerAnglePose):
+            raise ValueError(
+                "When adding particle to STAR file, "
+                "`pose` must be type "
+                "`EulerAnglePose`. Instead, got type "
+                f"{type(pose).__name__}."
+            )
+        particles_dict["rlnOriginXAngst"] = -pose.offset_x_in_angstroms
+        particles_dict["rlnOriginYAngst"] = -pose.offset_y_in_angstroms
+        particles_dict["rlnAngleRot"] = -pose.phi_angle
+        particles_dict["rlnAngleTilt"] = -pose.theta_angle
+        particles_dict["rlnAnglePsi"] = -pose.psi_angle
+        # Now, broadcast parameters to same dimension
+        n_particles = pose.offset_x_in_angstroms.size
+        for k, v in particles_dict.items():
+            if v.shape == ():
+                particles_dict[k] = np.full((n_particles,), np.asarray(v))
+            elif v.size == n_particles:
+                particles_dict[k] = np.asarray(v.ravel())
+            else:
+                raise ValueError(
+                    "Found inconsistent number of particles "
+                    "when adding particle to STAR file. "
+                    "When running `parameter_file[index] = foo` "
+                    "or `parameter_file.append(foo)`, make sure `foo` "
+                    "has arrays that are scalars or all have the same "
+                    "number of dimensions."
+                )
+    else:
+        raise ValueError(
+            "Tried to modify parameters in STAR file, but "
+            "parameter dictionary did not include 'pose' "
+            "key. If you are setting parameters "
+            "`parameter_file[index] = foo` make sure "
+            "`foo` is, for example, `foo = dict(pose=EulerAnglePose(...))`."
+        )
     # Fill CTF parameters
-    transfer_theory = parameters.transfer_theory
-    if isinstance(transfer_theory.ctf, AberratedAstigmaticCTF):
-        particles_dict["rlnDefocusU"] = (
-            transfer_theory.ctf.defocus_in_angstroms
-            + transfer_theory.ctf.astigmatism_in_angstroms / 2
-        )
-        particles_dict["rlnDefocusV"] = (
-            transfer_theory.ctf.defocus_in_angstroms
-            - transfer_theory.ctf.astigmatism_in_angstroms / 2
-        )
-        particles_dict["rlnDefocusAngle"] = transfer_theory.ctf.astigmatism_angle
-    else:
-        raise ValueError(
-            "`RelionParticleParameters.transfer_theory.ctf` must be type "
-            "`AberratedAstigmaticCTF`. Got type "
-            f"{type(transfer_theory.ctf).__name__}."
-        )
-
-    if isinstance(transfer_theory.envelope, FourierGaussian):
-        particles_dict["rlnCtfBfactor"] = transfer_theory.envelope.b_factor
-        particles_dict["rlnCtfScalefactor"] = transfer_theory.envelope.amplitude
-    elif isinstance(transfer_theory.envelope, Constant):
-        particles_dict["rlnCtfScalefactor"] = transfer_theory.envelope.value
-    elif transfer_theory.envelope is None:
-        pass
-    else:
-        raise ValueError(
-            "`RelionParticleParameters.transfer_theory.envelope` must "
-            "either be type `cryojax.image.operators.FourierGaussian` "
-            "or `cryojax.image.operators.Constant`. Got "
-            f"{type(transfer_theory.envelope).__name__}."
-        )
-    particles_dict["rlnPhaseShift"] = transfer_theory.phase_shift
-    # Now, pose parameters
-    pose = parameters.pose
-    if not isinstance(pose, EulerAnglePose):
-        raise ValueError(
-            "`RelionParticleParameters.pose` must be type "
-            "`EulerAnglePose`. Got type "
-            f"{type(pose).__name__}."
-        )
-    particles_dict["rlnOriginXAngst"] = -pose.offset_x_in_angstroms
-    particles_dict["rlnOriginYAngst"] = -pose.offset_y_in_angstroms
-    particles_dict["rlnAngleRot"] = -pose.phi_angle
-    particles_dict["rlnAngleTilt"] = -pose.theta_angle
-    particles_dict["rlnAnglePsi"] = -pose.psi_angle
-    # Now, broadcast parameters to same dimension
-    n_particles = pose.offset_x_in_angstroms.size
-    for k, v in particles_dict.items():
-        if v.shape == ():
-            particles_dict[k] = np.full((n_particles,), np.asarray(v))
-        elif v.size == n_particles:
-            particles_dict[k] = np.asarray(v.ravel())
+    if "transfer_theory" in parameters:
+        transfer_theory = parameters["transfer_theory"]
+        if isinstance(transfer_theory.ctf, AberratedAstigmaticCTF):
+            particles_dict["rlnDefocusU"] = (
+                transfer_theory.ctf.defocus_in_angstroms
+                + transfer_theory.ctf.astigmatism_in_angstroms / 2
+            )
+            particles_dict["rlnDefocusV"] = (
+                transfer_theory.ctf.defocus_in_angstroms
+                - transfer_theory.ctf.astigmatism_in_angstroms / 2
+            )
+            particles_dict["rlnDefocusAngle"] = transfer_theory.ctf.astigmatism_angle
         else:
             raise ValueError(
-                "Found inconsistent number of particles "
-                "in `RelionParticleParameters` instance. Arrays "
-                "in this class must either be scalars or "
-                "have the same number of dimensions."
+                "When adding particle to STAR file, "
+                "`transfer_theory.ctf` must be type "
+                "`AberratedAstigmaticCTF`. Instead, got type "
+                f"{type(parameters['transfer_theory'].ctf).__name__}."
             )
+
+        if isinstance(transfer_theory.envelope, FourierGaussian):
+            particles_dict["rlnCtfBfactor"] = transfer_theory.envelope.b_factor
+            particles_dict["rlnCtfScalefactor"] = transfer_theory.envelope.amplitude
+        elif isinstance(transfer_theory.envelope, Constant):
+            particles_dict["rlnCtfScalefactor"] = transfer_theory.envelope.value
+        elif transfer_theory.envelope is None:
+            pass
+        else:
+            raise ValueError(
+                "When adding particle to STAR file, "
+                "`transfer_theory.envelope` must be "
+                "type `cryojax.image.operators.FourierGaussian` "
+                "or `cryojax.image.operators.Constant`, or `None`. Got "
+                f"{type(transfer_theory.envelope).__name__}."
+            )
+        particles_dict["rlnPhaseShift"] = transfer_theory.phase_shift
     # Now, miscellaneous parameters
     if optics_group_index is not None:
         particles_dict["rlnOpticsGroup"] = np.full(
@@ -1271,16 +1361,27 @@ def _parameters_to_particle_data(
     particle_data = pd.DataFrame.from_dict(particles_dict)
     # Finally, see if the particle parameters has metadata and if so,
     # add this
-    if parameters.metadata:
-        metadata = pd.DataFrame.from_dict(parameters.metadata)
-        if n_particles != metadata.index.size:
-            raise ValueError(
-                "Tried to add `RelionParticleParameters.metadata` "
-                "to the STAR file, but the number of particles "
-                "in the `metadata` was inconsistent with the "
-                "number of particles in the `RelionParticleParameters`."
-            )
-        particle_data = pd.concat([particle_data, metadata], axis=1)
+    if "metadata" in parameters:
+        if parameters["metadata"]:
+            try:
+                metadata = pd.DataFrame.from_dict(parameters["metadata"])
+            except Exception as err:
+                raise ValueError(
+                    "When adding custom metadata to STAR file "
+                    "with `parameter_file[index] = foo` or `parameter_file.append(foo)`, "
+                    "caught an error converting "
+                    "the `foo['metadata']` to a pandas DataFrame. "
+                    f"The error message was:\n{err}"
+                )
+            if n_particles != metadata.index.size:
+                raise ValueError(
+                    "When adding custom metadata to STAR file "
+                    "with `parameter_file[index] = foo` or `parameter_file.append(foo)`, "
+                    "found the number of particles "
+                    "in `foo['metadata']` was inconsistent with the "
+                    "number of particles in `foo['pose']`."
+                )
+            particle_data = pd.concat([particle_data, metadata], axis=1)
     return particle_data
 
 
@@ -1325,31 +1426,6 @@ def _get_optics_group_from_particle_data(
 #
 # Now, functions for writing image files
 #
-def _unpack_particle_stack_dict(
-    value: ParticleStackLike,
-) -> tuple[Float[NDArrayLike, "... y_dim x_dim"], RelionParticleParameters | None]:
-    if "images" in value:
-        images = value["images"]
-    else:
-        raise ValueError(
-            "When passing dictionary `foo` as `dataset.append(foo)` or "
-            "`dataset[index] = foo`, `foo` must have key `images`."
-        )
-    if "parameters" in value:
-        if isinstance(value["parameters"], RelionParticleParameters):
-            parameters = value["parameters"]
-        else:
-            raise TypeError(
-                "When passing dictionary `foo` as `dataset.append(foo)` or "
-                "`dataset[index] = foo`, `foo['parameters']` must be type "
-                "`RelionParticleParameters`."
-            )
-    else:
-        parameters = None
-
-    return images, parameters
-
-
 def _dict_to_filename_settings(d: dict[str, Any]) -> ImageFilenameSettings:
     prefix = d["prefix"] if "prefix" in d else ""
     output_folder = d["output_folder"] if "output_folder" in d else ""

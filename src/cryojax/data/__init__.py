@@ -7,8 +7,5 @@ from ._particle_data import (
 from ._relion import (
     AbstractRelionParticleParameterFile as AbstractRelionParticleParameterFile,
     RelionParticleParameterFile as RelionParticleParameterFile,
-    RelionParticleParameters as RelionParticleParameters,
     RelionParticleStackDataset as RelionParticleStackDataset,
-    write_simulated_image_stack_from_starfile as write_simulated_image_stack_from_starfile,  # noqa
-    write_starfile_with_particle_parameters as write_starfile_with_particle_parameters,
 )

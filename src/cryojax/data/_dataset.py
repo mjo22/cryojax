@@ -14,7 +14,7 @@ class AbstractDataset(abc.ABC, Generic[T]):
 
     This follows the
     [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html#torch.utils.data.Dataset)
-    API and can easily be wrapped into a pytorch `Dataset` with the
+    API and can easily be wrapped into a pytorch `Dataset` with something like the
     following pattern:
 
     ```python
@@ -27,8 +27,8 @@ class AbstractDataset(abc.ABC, Generic[T]):
             self.cryojax_dataset = cryojax_dataset
 
         def __getitem___(self, index) -> dict[str, np.ndarray]:
-            particle_stack = self.cryojax_dataset[index]
-            return dict(index=index, image_stack=np.asarray(particle_stack.image_stack))
+            particle_info = self.cryojax_dataset[index]
+            return dict(index=index, images=np.asarray(particle_info["images"]))
 
         def __len__(self) -> int:
             return len(self.cryojax_dataset)

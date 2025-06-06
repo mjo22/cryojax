@@ -9,16 +9,20 @@ from ...internal import NDArrayLike
 from .._dataset import AbstractDataset
 
 
-T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
 
 
-class AbstractParticleParameterFile(AbstractDataset[T], Generic[T]):
+class AbstractParticleParameterFile(
+    AbstractDataset[T1],
+    Generic[T1, T2],
+):
     @abc.abstractmethod
-    def __setitem__(self, index, value: T):
+    def __setitem__(self, index, value: T2):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def append(self, value: T):
+    def append(self, value: T2):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -40,18 +44,18 @@ class AbstractParticleParameterFile(AbstractDataset[T], Generic[T]):
         raise NotImplementedError
 
 
-class AbstractParticleStackDataset(AbstractDataset[T], Generic[T]):
+class AbstractParticleStackDataset(AbstractDataset[T1], Generic[T1, T2]):
     @property
     @abc.abstractmethod
     def parameter_file(self) -> AbstractParticleParameterFile:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __setitem__(self, index, value: T):
+    def __setitem__(self, index, value: T2):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def append(self, value: T):
+    def append(self, value: T2):
         raise NotImplementedError
 
     @abc.abstractmethod
