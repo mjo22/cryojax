@@ -21,7 +21,7 @@ from cryojax.data import (
     RelionParticleParameterFile,
     RelionParticleStackDataset,
 )
-from cryojax.data._relion._particle_data import (
+from cryojax.data._particle_data.relion import (
     _default_make_config_fn,
     _format_number_for_filename,
     _load_image_stack_from_mrc,
