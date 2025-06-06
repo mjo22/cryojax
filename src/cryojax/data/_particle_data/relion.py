@@ -97,7 +97,7 @@ def _default_make_config_fn(
     return InstrumentConfig(shape, pixel_size, voltage_in_kilovolts, **kwargs)
 
 
-class AbstractRelionParticleParameterFile(
+class AbstractParticleStarFile(
     AbstractParticleParameterFile[ParticleParameterInfo, ParticleParameterLike]
 ):
     @property
@@ -171,7 +171,7 @@ class AbstractRelionParticleParameterFile(
         raise NotImplementedError
 
 
-class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
+class RelionParticleParameterFile(AbstractParticleStarFile):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html)
     format.
@@ -468,7 +468,7 @@ class RelionParticleStackDataset(
 
     def __init__(
         self,
-        parameter_file: AbstractRelionParticleParameterFile,
+        parameter_file: AbstractParticleStarFile,
         path_to_relion_project: str | pathlib.Path,
         mode: Literal["r", "w"] = "r",
         overwrite: bool = False,
@@ -718,7 +718,7 @@ class RelionParticleStackDataset(
 
     @property
     @override
-    def parameter_file(self) -> AbstractRelionParticleParameterFile:
+    def parameter_file(self) -> AbstractParticleStarFile:
         return self._parameter_file
 
     @property
