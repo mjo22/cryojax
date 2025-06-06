@@ -54,14 +54,14 @@ RELION_POSE_PARTICLE_ENTRIES = [
 ]
 
 
-class ParticleStackDict(TypedDict):
+class ParticleStackInfo(TypedDict):
     """A dictionary that stores images and parameters."""
 
     parameters: RelionParticleParameters
     images: Float[NDArrayLike, "... y_dim x_dim"]
 
 
-ParticleStackLike = dict[str, Any] | ParticleStackDict
+ParticleStackLike = dict[str, Any] | ParticleStackInfo
 
 
 class StarfileData(TypedDict):
@@ -531,7 +531,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[ParticleStackLike]
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
-    ) -> ParticleStackDict:
+    ) -> ParticleStackInfo:
         # ... make sure particle metadata is being loaded
         loads_metadata = self.parameter_file.loads_metadata
         self.parameter_file.loads_metadata = True
@@ -561,7 +561,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[ParticleStackLike]
                 parameters.instrument_config, parameters.pose, parameters.transfer_theory
             )
 
-        return ParticleStackDict(parameters=parameters, images=images)
+        return ParticleStackInfo(parameters=parameters, images=images)
 
     @override
     def __len__(self) -> int:
