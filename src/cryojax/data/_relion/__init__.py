@@ -5,7 +5,6 @@ from ._starfile_dataset import (
 )
 from ._starfile_pytrees import (
     RelionParticleParameters as RelionParticleParameters,
-    RelionParticleStack as RelionParticleStack,
 )
 from ._starfile_writing import (
     write_simulated_image_stack_from_starfile as write_simulated_image_stack_from_starfile,  # noqa: E501

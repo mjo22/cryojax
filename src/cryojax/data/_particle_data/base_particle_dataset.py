@@ -1,38 +1,15 @@
 import abc
 import pathlib
-from typing import Any, Generic, Literal, Optional, TypeVar
+from typing import Generic, Literal, Optional, TypeVar
 
-import equinox as eqx
 import numpy as np
-from jaxtyping import Array, Float, Inexact, Int
+from jaxtyping import Float, Int, PyTree
 
 from ...internal import NDArrayLike
-from ...simulator import (
-    AbstractPose,
-    AbstractTransferTheory,
-    InstrumentConfig,
-)
 from .._dataset import AbstractDataset
 
 
 T = TypeVar("T")
-
-
-class AbstractParticleParameters(eqx.Module, strict=True):
-    """Parameters for a particle stack."""
-
-    instrument_config: eqx.AbstractVar[InstrumentConfig]
-    pose: eqx.AbstractVar[AbstractPose]
-    transfer_theory: eqx.AbstractVar[AbstractTransferTheory]
-
-
-class AbstractParticleStack(eqx.Module, strict=True):
-    """Images from a particle stack, along with information
-    of their parameters.
-    """
-
-    parameters: eqx.AbstractVar[AbstractParticleParameters]
-    images: eqx.AbstractVar[Inexact[Array, "... y_dim x_dim"]]
 
 
 class AbstractParticleParameterFile(AbstractDataset[T], Generic[T]):
@@ -82,7 +59,7 @@ class AbstractParticleStackDataset(AbstractDataset[T], Generic[T]):
         self,
         index_array: Int[np.ndarray, " _"],
         images: Float[NDArrayLike, "... _ _"],
-        parameters: Optional[Any] = None,
+        parameters: Optional[PyTree] = None,
     ):
         raise NotImplementedError
 

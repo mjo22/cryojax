@@ -20,7 +20,6 @@ import cryojax.simulator as cxs
 from cryojax.data import (
     RelionParticleParameterFile,
     RelionParticleParameters,
-    RelionParticleStack,
     RelionParticleStackDataset,
 )
 from cryojax.data._relion._starfile_dataset import (
@@ -424,19 +423,19 @@ def test_load_starfile_vs_mrcs_shape(sample_starfile_path, sample_relion_project
     dataset = RelionParticleStackDataset(parameter_file, sample_relion_project_path)
 
     particle_stack = dataset[:]
-    instrument_config = particle_stack.parameters.instrument_config
-    assert particle_stack.images.shape == (
+    instrument_config = particle_stack["parameters"].instrument_config
+    assert particle_stack["images"].shape == (
         len(parameter_file),
         *instrument_config.shape,
     )
 
     particle_stack = dataset[0]
-    instrument_config = particle_stack.parameters.instrument_config
-    assert particle_stack.images.shape == instrument_config.shape
+    instrument_config = particle_stack["parameters"].instrument_config
+    assert particle_stack["images"].shape == instrument_config.shape
 
     particle_stack = dataset[0:2]
-    instrument_config = particle_stack.parameters.instrument_config
-    assert particle_stack.images.shape == (2, *instrument_config.shape)
+    instrument_config = particle_stack["parameters"].instrument_config
+    assert particle_stack["images"].shape == (2, *instrument_config.shape)
 
     assert len(dataset) == len(parameter_file)
 
@@ -769,16 +768,16 @@ def test_write_image(
     assert starfile_data["particles"]["rlnImageName"].isna().all()
 
     shape = relion_parameters.instrument_config.shape
-    particle = RelionParticleStack(
+    particle = dict(
         parameters=relion_parameters,
         images=jnp.zeros(shape, dtype=np.float32),
     )
-    bad_shape_particle = RelionParticleStack(
+    bad_shape_particle = dict(
         parameters=relion_parameters,
         images=jnp.zeros((shape[0], shape[1] + 1), dtype=np.float32),
     )
     bad_dim_particle = eqx.tree_at(
-        lambda x: x.images, bad_shape_particle, jnp.zeros(shape[0], dtype=np.float32)
+        lambda x: x["images"], bad_shape_particle, jnp.zeros(shape[0], dtype=np.float32)
     )
 
     with pytest.raises(ValueError):
@@ -953,7 +952,7 @@ def test_write_image(
 
 #     # load the simulated image stack
 #     particle_dataset = RelionParticleStackDataset(parameter_file)
-#     images = particle_dataset[:].images
+#     images = particle_dataset[:]["images"]
 #     np.testing.assert_allclose(
 #         images,
 #         true_images,
@@ -1008,7 +1007,7 @@ def test_write_image(
 #     )
 
 #     particle_dataset = RelionParticleStackDataset(parameter_file)
-#     images = particle_dataset[:].images
+#     images = particle_dataset[:]["images"]
 #     np.testing.assert_allclose(
 #         images,
 #         true_images / np.linalg.norm(true_images, axis=(1, 2), keepdims=True),
@@ -1074,7 +1073,7 @@ def test_write_image(
 #     )
 
 #     particle_dataset = RelionParticleStackDataset(parameter_file)
-#     images = particle_dataset[:].images
+#     images = particle_dataset[:]["images"]
 #     np.testing.assert_allclose(
 #         images,
 #         np.ones_like(images) / np.linalg.norm(np.ones_like(images)),
@@ -1145,7 +1144,7 @@ def test_write_image(
 #     for i in range(n_tests):
 #         indices = np.random.choice(len(parameter_file), size=3, replace=False)
 
-#         images = stack_dataset[indices].images
+#         images = stack_dataset[indices]["images"]
 #         np.testing.assert_allclose(
 #             images,
 #             true_images[indices],

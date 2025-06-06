@@ -1,13 +1,11 @@
 from typing import Optional
 
-import jax.numpy as jnp
-from jaxtyping import Array, Float
+import equinox as eqx
 
 from ...simulator import ContrastTransferTheory, EulerAnglePose, InstrumentConfig
-from .._particle_data import AbstractParticleParameters, AbstractParticleStack
 
 
-class RelionParticleParameters(AbstractParticleParameters):
+class RelionParticleParameters(eqx.Module):
     """Parameters for a particle stack from RELION."""
 
     instrument_config: InstrumentConfig
@@ -45,30 +43,3 @@ class RelionParticleParameters(AbstractParticleParameters):
         self.pose = pose
         # Optionally, store the raw metadata
         self.metadata = metadata or {}
-
-
-class RelionParticleStack(AbstractParticleStack, strict=True):
-    """A basic particle stack"""
-
-    parameters: RelionParticleParameters
-    images: Float[Array, "... y_dim x_dim"]
-
-    def __init__(
-        self,
-        parameters: RelionParticleParameters,
-        images: Float[Array, "... y_dim x_dim"],
-    ):
-        """**Arguments:**
-
-        - `parameters`:
-            The image parameters, represented as
-            an `RelionParticleParameters` object.
-        - `images`:
-            The stack of images. The shape of this array
-            is a leading batch dimension followed by the shape
-            of an image in the stack.
-        """
-        # Set the image parameters
-        self.parameters = parameters
-        # Set the image stack
-        self.images = jnp.asarray(images)

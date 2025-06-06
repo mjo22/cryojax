@@ -27,7 +27,7 @@ from .._particle_data import (
     AbstractParticleParameterFile,
     AbstractParticleStackDataset,
 )
-from ._starfile_pytrees import RelionParticleParameters, RelionParticleStack
+from ._starfile_pytrees import RelionParticleParameters
 
 
 RELION_REQUIRED_OPTICS_ENTRIES = [
@@ -52,6 +52,16 @@ RELION_POSE_PARTICLE_ENTRIES = [
     ("rlnAngleTilt", "Float64"),
     ("rlnAnglePsi", "Float64"),
 ]
+
+
+class ParticleStackDict(TypedDict):
+    """A dictionary that stores images and parameters."""
+
+    parameters: RelionParticleParameters
+    images: Float[NDArrayLike, "... y_dim x_dim"]
+
+
+ParticleStackLike = dict[str, Any] | ParticleStackDict
 
 
 class StarfileData(TypedDict):
@@ -437,7 +447,7 @@ class RelionParticleParameterFile(AbstractRelionParticleParameterFile):
         self._updates_optics_group = value
 
 
-class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStack]):
+class RelionParticleStackDataset(AbstractParticleStackDataset[ParticleStackLike]):
     """A dataset that wraps a RELION particle stack in
     [STAR](https://relion.readthedocs.io/en/latest/Reference/Conventions.html) format.
     """
@@ -521,7 +531,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
     @override
     def __getitem__(
         self, index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " N"]
-    ) -> RelionParticleStack:
+    ) -> ParticleStackDict:
         # ... make sure particle metadata is being loaded
         loads_metadata = self.parameter_file.loads_metadata
         self.parameter_file.loads_metadata = True
@@ -551,7 +561,7 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
                 parameters.instrument_config, parameters.pose, parameters.transfer_theory
             )
 
-        return RelionParticleStack(parameters, images)
+        return ParticleStackDict(parameters=parameters, images=images)
 
     @override
     def __len__(self) -> int:
@@ -559,28 +569,28 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
 
     @override
     def __setitem__(
-        self, index: int | slice | Int[np.ndarray, ""], value: RelionParticleStack
+        self, index: int | slice | Int[np.ndarray, ""], value: ParticleStackLike
     ):
         if isinstance(index, Int[np.ndarray, "_"]):  # type: ignore
             raise ValueError(
-                "When setting `particle_stack_dataset[index] = ...`, "
+                "When setting `dataset[index] = ...`, "
                 "it is not supported to pass `index` as a 1D numpy-array."
             )
-        if isinstance(value, RelionParticleStack):
-            self.parameter_file[index] = value.parameters
-            images, parameters = np.asarray(value.images), value.parameters
-        else:
-            raise ValueError(
-                "Dataset entries must be set with "
-                "the `RelionParticleStack` type. Found type "
-                f"{type(value).__name__}."
+        if not isinstance(value, dict):
+            raise TypeError(
+                "When setting `dataset[index] = foo`, "
+                "foo must be a dictionary with key "
+                "'images' and optionally key 'parameters'."
             )
+        images, parameters = _unpack_particle_stack_dict(value)
+        if parameters is not None:
+            self.parameter_file[index] = parameters
         n_particles = len(self.parameter_file)
         index_array = np.atleast_1d(_index_to_array(index, n_particles))
         self.write_images(index_array, images, parameters=parameters)
 
     @override
-    def append(self, value: RelionParticleStack):
+    def append(self, value: ParticleStackLike):
         """Add an entry or entries to the dataset.
 
         **Arguments:**
@@ -588,13 +598,17 @@ class RelionParticleStackDataset(AbstractParticleStackDataset[RelionParticleStac
         - `value`:
             The `RelionParticleParameters` to add to the dataset.
         """
-        if isinstance(value, RelionParticleStack):
-            images, parameters = np.asarray(value.images), value.parameters
-        else:
+        if not isinstance(value, dict):
+            raise TypeError(
+                "When appending `dataset.append(foo)`, "
+                "`foo` must be a dictionary with keys "
+                "'images' and 'parameters'."
+            )
+        images, parameters = _unpack_particle_stack_dict(value)
+        if parameters is None:
             raise ValueError(
-                "Dataset can only append the "
-                "the `RelionParticleStack` type. Found type "
-                f"{type(value).__name__}."
+                "When appending dictionary `foo` as `dataset.append(foo)`, "
+                "`foo` must have key 'parameters'."
             )
         start = len(self.parameter_file.starfile_data["particles"])
         # Append parameters. This automatically sets the 'rlnImageName'
@@ -1311,6 +1325,31 @@ def _get_optics_group_from_particle_data(
 #
 # Now, functions for writing image files
 #
+def _unpack_particle_stack_dict(
+    value: ParticleStackLike,
+) -> tuple[Float[NDArrayLike, "... y_dim x_dim"], RelionParticleParameters | None]:
+    if "images" in value:
+        images = value["images"]
+    else:
+        raise ValueError(
+            "When passing dictionary `foo` as `dataset.append(foo)` or "
+            "`dataset[index] = foo`, `foo` must have key `images`."
+        )
+    if "parameters" in value:
+        if isinstance(value["parameters"], RelionParticleParameters):
+            parameters = value["parameters"]
+        else:
+            raise TypeError(
+                "When passing dictionary `foo` as `dataset.append(foo)` or "
+                "`dataset[index] = foo`, `foo['parameters']` must be type "
+                "`RelionParticleParameters`."
+            )
+    else:
+        parameters = None
+
+    return images, parameters
+
+
 def _dict_to_filename_settings(d: dict[str, Any]) -> ImageFilenameSettings:
     prefix = d["prefix"] if "prefix" in d else ""
     output_folder = d["output_folder"] if "output_folder" in d else ""

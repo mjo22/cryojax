@@ -3,13 +3,12 @@ from typing import Any, Callable, Optional, TypeVar
 import equinox as eqx
 import jax
 import numpy as np
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Float, Int, PyTree
 
 from ...internal import NDArrayLike
 from ...utils import batched_scan
 from .base_particle_dataset import (
     AbstractParticleParameterFile,
-    AbstractParticleParameters,
     AbstractParticleStackDataset,
 )
 
@@ -22,7 +21,7 @@ T = TypeVar("T")
 def simulate_particle_stack(
     dataset: AbstractParticleStackDataset,
     compute_image_fn: Callable[
-        [AbstractParticleParameters, ConstantT, PerParticleT],
+        [PyTree, ConstantT, PerParticleT],
         Float[Array, "_ _"],
     ],
     constant_args: ConstantT = None,
@@ -44,8 +43,9 @@ def simulate_particle_stack(
         )
         ```
 
-        where `parameters` is a cryojax `AbstractParticleParameters`
-        pytree, `constant_args` is a parameter that does not change
+        where `parameters` is the pytree read from the
+        `AbstractParticleStackDataset.parameter_file`,
+        `constant_args` is a parameter that does not change
         between images, and `per_particle_args` is a pytree whose
         leaves have a batch dimension equal to the number of particles
         to be simulated.
@@ -221,15 +221,15 @@ def simulate_particle_stack(
 
 def _simulate_images(
     index: Int[np.ndarray, " _"],
-    parameter_dataset: AbstractParticleParameterFile,
+    parameter_file: AbstractParticleParameterFile,
     compute_image_stack_fn: Callable[
-        [AbstractParticleParameters, ConstantT, PerParticleT],
+        [PyTree, ConstantT, PerParticleT],
         Float[NDArrayLike, "_ _ _"],
     ],
     constant_args: ConstantT,
     per_particle_args: PerParticleT,
 ) -> tuple[Float[NDArrayLike, "_ _ _"], AbstractParticleParameterFile]:
-    parameters = parameter_dataset[index]
+    parameters = parameter_file[index]
     args = (constant_args, _index_pytree(index, per_particle_args))
     image_stack = compute_image_stack_fn(parameters, *args)
 
@@ -238,13 +238,13 @@ def _simulate_images(
 
 def _configure_simulation_fn(
     compute_image_fn: Callable[
-        [AbstractParticleParameters, ConstantT, PerParticleT],
+        [PyTree, ConstantT, PerParticleT],
         Float[Array, "_ _"],
     ],
     batch_size: int | None,
     images_per_file: int,
 ) -> Callable[
-    [AbstractParticleParameters, ConstantT, PerParticleT],
+    [PyTree, ConstantT, PerParticleT],
     Float[NDArrayLike, "_ _ _"],
 ]:
     if batch_size is None:
