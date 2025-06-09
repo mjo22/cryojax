@@ -183,6 +183,7 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
         mode: Literal["r", "w"] = "r",
         overwrite: bool = False,
         *,
+        selection_filter: Optional[dict[str, Callable]] = None,
         loads_metadata: bool = False,
         broadcasts_optics_group: bool = True,
         loads_envelope: bool = False,
@@ -208,6 +209,13 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
         - `overwrite`:
             Stores an empty `RelionParticleParameterFile.starfile_data`
             if `mode = 'w'`.
+        - `selection_filter`:
+            A dictionary used to include only particular dataset elements.
+            The keys of this dictionary should be any data entry in the STAR
+            file, while the values should be a function that takes in a
+            column and returns a boolean mask for the column. For example,
+            filter by class using
+            `selection_filter["rlnClassNumber"] = lambda x: x == 0`.
         - `loads_metadata`:
             If `True`, the resulting `ParticleParameterInfo` dict loads
             the raw metadata from the STAR file.
@@ -232,10 +240,11 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
         # Private attributes
         self._make_config_fn = make_config_fn
         self._mode = _validate_mode(mode)
-        # Properties without setters
-        # ... read starfile and load path
+        # The STAR file data
         self._path_to_starfile = pathlib.Path(path_to_starfile)
-        self._starfile_data = _load_starfile_data(self._path_to_starfile, mode, overwrite)
+        self._starfile_data = _load_starfile_data(
+            self._path_to_starfile, selection_filter, mode, overwrite
+        )
         # Properties for loading
         self._loads_metadata = loads_metadata
         self._broadcasts_optics_group = broadcasts_optics_group
@@ -268,11 +277,7 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
         )
         # ... convert to dataframe for serialization
         if isinstance(particle_data_at_index, pd.Series):
-            particle_data_at_index = pd.DataFrame(
-                data=particle_data_at_index.values[None, :],
-                columns=particle_data_at_index.index,
-                index=[0],
-            )
+            particle_data_at_index = particle_data_at_index.to_frame().T
         metadata = particle_data_at_index.to_dict() if self.loads_metadata else {}
         return ParticleParameterInfo(
             instrument_config=instrument_config,
@@ -740,12 +745,17 @@ class RelionParticleStackDataset(
 
 
 def _load_starfile_data(
-    path_to_starfile: pathlib.Path, mode: Literal["r", "w"], overwrite: bool
+    path_to_starfile: pathlib.Path,
+    selection_filter: dict[str, Callable] | None,
+    mode: Literal["r", "w"],
+    overwrite: bool,
 ) -> StarfileData:
     if mode == "r":
         if path_to_starfile.exists():
             starfile_data = read_starfile(path_to_starfile)
             _validate_starfile_data(starfile_data)
+            if selection_filter is not None:
+                starfile_data = _select_particles(starfile_data, selection_filter)
         else:
             raise FileNotFoundError(
                 f"Set `mode = '{mode}'`, but STAR file {str(path_to_starfile)} does not "
@@ -760,23 +770,30 @@ def _load_starfile_data(
                 "`overwrite=True`."
             )
         else:
-            starfile_data = dict(
-                optics=pd.DataFrame(
-                    data={
-                        column: pd.Series(dtype=dtype)
-                        for column, dtype in RELION_REQUIRED_OPTICS_ENTRIES
-                    }
-                ),
-                particles=pd.DataFrame(
-                    data={
-                        column: pd.Series(dtype=dtype)
-                        for column, dtype in [
-                            *RELION_REQUIRED_PARTICLE_ENTRIES,
-                            *RELION_POSE_PARTICLE_ENTRIES,
-                        ]
-                    }
-                ),
-            )
+            if selection_filter is None:
+                starfile_data = dict(
+                    optics=pd.DataFrame(
+                        data={
+                            column: pd.Series(dtype=dtype)
+                            for column, dtype in RELION_REQUIRED_OPTICS_ENTRIES
+                        }
+                    ),
+                    particles=pd.DataFrame(
+                        data={
+                            column: pd.Series(dtype=dtype)
+                            for column, dtype in [
+                                *RELION_REQUIRED_PARTICLE_ENTRIES,
+                                *RELION_POSE_PARTICLE_ENTRIES,
+                            ]
+                        }
+                    ),
+                )
+            else:
+                raise ValueError(
+                    "Initialized a `RelionParticleParameterFile` in `mode = 'w'` "
+                    "but also passed a `selection_filter`. Selection is only used "
+                    "in `mode = 'r'`."
+                )
 
     return StarfileData(
         particles=starfile_data["particles"], optics=starfile_data["optics"]
@@ -789,6 +806,55 @@ def _validate_mode(mode: str) -> Literal["r", "w"]:
             f"Passed unsupported `mode = {mode}`. Supported modes are 'r' and 'w'."
         )
     return mode  # type: ignore
+
+
+def _select_particles(
+    starfile_data: dict[str, pd.DataFrame], selection_filter: dict[str, Callable]
+) -> dict[str, pd.DataFrame]:
+    particle_data = starfile_data["particles"]
+    boolean_mask = pd.Series(True, index=particle_data.index)
+    for key in selection_filter:
+        if key in particle_data.columns:
+            fn = selection_filter[key]
+            column = particle_data[key]
+            base_error_message = (
+                f"Error filtering key '{key}' in the `selection_filter`. "
+                f"To filter the STAR file entries, `selection_filter['{key}']`"
+                "must be a function that takes in an array and returns a "
+                "boolean mask."
+            )
+            if isinstance(column, Callable):
+                try:
+                    mask_at_column = fn(column)
+                except Exception as err:
+                    raise ValueError(
+                        f"{base_error_message} "
+                        "When calling the function, caught an error:\n"
+                        f"{err}"
+                    )
+                if not pd.api.types.is_bool_dtype(mask_at_column):
+                    raise ValueError(
+                        f"{base_error_message} "
+                        "Found that the function did not return "
+                        "a boolean dtype."
+                    )
+            else:
+                raise ValueError(base_error_message)
+            # Update mask
+            boolean_mask = mask_at_column & boolean_mask
+        else:
+            raise ValueError(
+                f"Included key '{key}' in the `selection_filter`, "
+                "but this entry could not be found in the STAR file. "
+                "The `selection_filter` must be a dictionary whose "
+                "keys are strings in the STAR file and whose values "
+                "are functions that take in columns and return boolean "
+                "masks."
+            )
+    # Select particles using mask
+    starfile_data["particles"] = particle_data[boolean_mask]
+
+    return starfile_data
 
 
 #
