@@ -1183,7 +1183,12 @@ def _validate_dataset_index(cls, index, n_rows):
         if index.start is not None and index.start > n_rows - 1:
             raise IndexError(index_error_msg(index.start))
     elif isinstance(index, np.ndarray):
-        pass  # ... catch exceptions later
+        if index.size == 0:
+            raise IndexError(
+                "Found that the index passed to the dataset "
+                "was an empty numpy array. Please pass a "
+                "supported index."
+            )
     else:
         raise IndexError(
             f"Indexing with the type {type(index)} is not supported by "
