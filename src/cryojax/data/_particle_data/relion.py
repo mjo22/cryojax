@@ -79,7 +79,7 @@ class StarfileData(TypedDict):
     optics: pd.DataFrame
 
 
-class ImageFilenameSettings(TypedDict):
+class MrcfileSettings(TypedDict):
     prefix: str
     output_folder: str | pathlib.Path
     n_characters: int
@@ -181,7 +181,7 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
         self,
         path_to_starfile: str | pathlib.Path,
         mode: Literal["r", "w"] = "r",
-        overwrite: bool = False,
+        exists_ok: bool = False,
         selection_filter: Optional[dict[str, Callable]] = None,
         *,
         loads_metadata: bool = False,
@@ -203,12 +203,12 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
             - If `mode = 'w'`, the dataset is prepared to write new
             *parameters*. This is done by storing an empty dataset in
             `RelionParticleParameterFile.starfile_data`. If a STAR file
-            already exists at `path_to_starfile`, set `overwrite = True`.
+            already exists at `path_to_starfile`, set `exists_ok = True`.
             - If `mode = 'r'`, the STAR file at `path_to_starfile` is read
             into `RelionParticleParameterFile.starfile_data`.
-        - `overwrite`:
-            Stores an empty `RelionParticleParameterFile.starfile_data`
-            if `mode = 'w'`.
+        - `exists_ok`:
+            If the `path_to_starfile` already exists, if `True` and `mode = 'w'`
+            nonetheless stores an empty `RelionParticleParameterFile.starfile_data`.
         - `selection_filter`:
             A dictionary used to include only particular dataset elements.
             The keys of this dictionary should be any data entry in the STAR
@@ -243,7 +243,7 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
         # The STAR file data
         self._path_to_starfile = pathlib.Path(path_to_starfile)
         self._starfile_data = _load_starfile_data(
-            self._path_to_starfile, selection_filter, mode, overwrite
+            self._path_to_starfile, selection_filter, mode, exists_ok
         )
         # Properties for loading
         self._loads_metadata = loads_metadata
@@ -296,7 +296,12 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
         index: int | slice | Int[np.ndarray, ""] | Int[np.ndarray, " _"],
         value: ParticleParameterLike,
     ):
+        # Make sure index is valid
+        n_rows = self.starfile_data["particles"].shape[0]
+        _validate_dataset_index(type(self), index, n_rows)
+        # ... also, the parameters too
         _validate_parameters(value, force_keys=False)
+        # Grab the current and new optics and particle data
         if self.updates_optics_group:
             optics_group_index = _make_optics_group_index(self.starfile_data["optics"])
             particle_data_for_update = _parameters_to_particle_data(
@@ -310,8 +315,6 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
             particle_data_for_update = _parameters_to_particle_data(value)
             optics_data = self.starfile_data["optics"]
         particle_data = self.starfile_data["particles"]
-        if isinstance(index, (int, np.ndarray)):
-            index = np.atleast_1d(index)
         # Set new empty columns in the particle data, if the update data includes this
         new_columns = list(
             set(particle_data_for_update.columns) - set(particle_data.columns)
@@ -320,6 +323,8 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
             dtype = pd.api.types.pandas_dtype(particle_data_for_update[column].dtype)
             particle_data[column] = pd.Series(dtype=dtype)
         # Finally, set the updated data
+        if isinstance(index, (int, np.ndarray)):
+            index = np.atleast_1d(index)
         particle_data.loc[
             particle_data.index[index], particle_data_for_update.columns
         ] = particle_data_for_update.values
@@ -334,16 +339,20 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
         - `value`:
             A dictionary of parameters to add to the dataset.
         """
+        # Make sure parameters are valid
         _validate_parameters(value, force_keys=True)
+        # Make new optics group
         optics_group_index = _make_optics_group_index(self.starfile_data["optics"])
         optics_data, optics_data_to_append = (
             self.starfile_data["optics"],
             _parameters_to_optics_data(value, optics_group_index),
         )
+        # Make new particle entries
         particle_data, particle_data_to_append = (
             self.starfile_data["particles"],
             _parameters_to_particle_data(value, optics_group_index),
         )
+        # Concatenate and set new entries
         optics_data = (
             pd.concat([optics_data, optics_data_to_append], ignore_index=True)
             if len(optics_data) > 0
@@ -476,8 +485,8 @@ class RelionParticleStackDataset(
         parameter_file: AbstractParticleStarFile,
         path_to_relion_project: str | pathlib.Path,
         mode: Literal["r", "w"] = "r",
-        overwrite: bool = False,
-        filename_settings: dict[str, Any] = {},
+        exists_ok: bool = False,
+        mrcfile_settings: dict[str, Any] = {},
     ):
         """**Arguments:**
 
@@ -495,10 +504,10 @@ class RelionParticleStackDataset(
             are not yet written.
             - If `mode = 'r'`, images are read from the 'rlnImageName'
             stored in the `parameter_file.starfile_data`.
-        - `overwrite`:
+        - `exists_ok`:
             If `True` and `mode = 'w'`, removes the 'rlnImageName' column
             from `parameter_file.starfile_data`.
-        - `filename_settings`:
+        - `mrcfile_settings`:
             A dictionary with the following keys:
             - 'prefix':
                 A `str` which acts as the prefix to the filenames. If this
@@ -514,31 +523,33 @@ class RelionParticleStackDataset(
                 number string. If this is equal to `5`, then the filename
                 for image stack 0 will be called "f-00000.mrcs", for
                 `delimiter = '-'` and `prefix = 'f'`.
-             - 'delimiter': str
+             - 'delimiter':
                 A `str` for the delimiter between the filename prefix
                 and number string. If this is equal to `'-'`, then the
                 filename for image stack 0 will be called "f-00000.mrcs",
                 for `n_characters = 5` and `prefix = 'f'`.
+            - 'overwrite':
+                If `True`, overwrite existing MRC file path if it exists.
         """
         self._parameter_file = parameter_file
         self._mode = _validate_mode(mode)
         # Set properties for reading image files
         self._path_to_relion_project = pathlib.Path(path_to_relion_project)
         # Set properties for writing image files
-        self._filename_settings = _dict_to_filename_settings(filename_settings)
+        self._mrcfile_settings = _dict_to_mrcfile_settings(mrcfile_settings)
         # For `mode = 'w'`, generate empty 'rlnImageName' column
         if mode == "w":
             particle_data, optics_data = (
                 parameter_file.starfile_data["particles"],
                 parameter_file.starfile_data["optics"],
             )
-            if "rlnImageName" in particle_data.columns and not overwrite:
+            if "rlnImageName" in particle_data.columns and not exists_ok:
                 raise IOError(
                     "In `mode = 'w'`, the `RelionParticleStackDataset` "
                     "writes new values for image filenames, i.e. the 'rlnImageName'. "
                     "Found that the STAR file already has a 'rlnImageName' column. "
-                    "If you wish to overwrite existing filenames in the STAR file, set "
-                    "`overwrite=True`."
+                    "If you wish to remove existing filenames in the STAR file, set "
+                    "`exists_ok=True`."
                 )
             else:
                 # Write empty "rlnImageName" column (defaults to NaN values)
@@ -692,7 +703,7 @@ class RelionParticleStackDataset(
             index_array,
             particle_data,
             n_particles,
-            self.filename_settings,
+            self.mrcfile_settings,
             self.path_to_relion_project,
         )
         # Set the STAR file column
@@ -708,8 +719,8 @@ class RelionParticleStackDataset(
                 images,
                 pixel_size,
                 path_to_filename,
-                overwrite=self.filename_settings["overwrite"],
-                compression=self.filename_settings["compression"],
+                overwrite=self.mrcfile_settings["overwrite"],
+                compression=self.mrcfile_settings["compression"],
             )
         except Exception as err:
             raise IOError(
@@ -717,7 +728,7 @@ class RelionParticleStackDataset(
                 "file. Most likely, the filename the writer "
                 f"chose ({str(path_to_filename)}) already "
                 "exists. Try changing the "
-                "`RelionParticleStackDataset.filename_settings`. "
+                "`RelionParticleStackDataset.mrcfile_settings`. "
                 f"The error message was:\n{err}"
             )
 
@@ -736,19 +747,19 @@ class RelionParticleStackDataset(
         return self._path_to_relion_project
 
     @property
-    def filename_settings(self) -> ImageFilenameSettings:
-        return self._filename_settings
+    def mrcfile_settings(self) -> MrcfileSettings:
+        return self._mrcfile_settings
 
-    @filename_settings.setter
-    def filename_settings(self, value: dict[str, Any]):
-        self._filename_settings = _dict_to_filename_settings(value)
+    @mrcfile_settings.setter
+    def mrcfile_settings(self, value: dict[str, Any]):
+        self._mrcfile_settings = _dict_to_mrcfile_settings(value)
 
 
 def _load_starfile_data(
     path_to_starfile: pathlib.Path,
     selection_filter: dict[str, Callable] | None,
     mode: Literal["r", "w"],
-    overwrite: bool,
+    exists_ok: bool,
 ) -> StarfileData:
     if mode == "r":
         if path_to_starfile.exists():
@@ -762,12 +773,12 @@ def _load_starfile_data(
                 "exist. To write a new STAR file, set `mode = 'w'`."
             )
     else:
-        if path_to_starfile.exists() and not overwrite:
+        if path_to_starfile.exists() and not exists_ok:
             raise FileExistsError(
                 f"Set `mode = 'w'`, but STAR file {str(path_to_starfile)} already "
                 "exists. To read an existing STAR file, set `mode = 'r'` or "
                 "to erase an existing STAR file, set `mode = 'w'` and "
-                "`overwrite=True`."
+                "`exists_ok=True`."
             )
         else:
             if selection_filter is None:
@@ -1497,14 +1508,14 @@ def _get_optics_group_from_particle_data(
 #
 # Now, functions for writing image files
 #
-def _dict_to_filename_settings(d: dict[str, Any]) -> ImageFilenameSettings:
+def _dict_to_mrcfile_settings(d: dict[str, Any]) -> MrcfileSettings:
     prefix = d["prefix"] if "prefix" in d else ""
     output_folder = d["output_folder"] if "output_folder" in d else ""
     delimiter = d["delimiter"] if "delimiter" in d else "_"
     n_characters = d["n_characters"] if "n_characters" in d else 6
     overwrite = d["overwrite"] if "overwrite" in d else False
     compression = d["compression"] if "compression" in d else None
-    return ImageFilenameSettings(
+    return MrcfileSettings(
         prefix=prefix,
         output_folder=output_folder,
         delimiter=delimiter,
@@ -1525,7 +1536,7 @@ def _make_image_filename(
     index: Int[np.ndarray, " _"],
     particle_data: pd.DataFrame,
     n_particles: int,
-    filename_settings: ImageFilenameSettings,
+    mrcfile_settings: MrcfileSettings,
     path_to_relion_project: pathlib.Path,
 ) -> tuple[pathlib.Path, list[str]]:
     # Get the file number for this MRC file
@@ -1547,10 +1558,10 @@ def _make_image_filename(
             else:
                 file_number = _parse_filename_for_number(last_filename) + 1
     # Unpack settings
-    prefix = filename_settings["prefix"]
-    output_folder = filename_settings["output_folder"]
-    delimiter = filename_settings["delimiter"]
-    n_characters = filename_settings["n_characters"]
+    prefix = mrcfile_settings["prefix"]
+    output_folder = mrcfile_settings["output_folder"]
+    delimiter = mrcfile_settings["delimiter"]
+    n_characters = mrcfile_settings["n_characters"]
     # Generate filename
     file_number_fmt = _format_number_for_filename(file_number, n_characters=n_characters)
     if prefix == "":
