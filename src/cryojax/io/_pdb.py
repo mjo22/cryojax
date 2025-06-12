@@ -5,7 +5,7 @@ Read atomic information from a PDB file using functions and objects adapted from
 import gzip
 import pathlib
 from io import StringIO
-from typing import Literal, NamedTuple, Optional, overload
+from typing import Literal, Optional, TypedDict, overload
 from urllib.parse import urlparse, uses_netloc, uses_params, uses_relative
 from urllib.request import urlopen
 
@@ -26,7 +26,7 @@ _VALID_URLS.discard("")
 @overload
 def read_atoms_from_pdb(  # type: ignore
     filename_or_url: str | pathlib.Path,
-    center: bool = False,
+    center: bool = True,
     loads_b_factors: Literal[False] = False,
     *,
     select: str = "all",
@@ -38,7 +38,7 @@ def read_atoms_from_pdb(  # type: ignore
 @overload
 def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
-    center: bool = False,
+    center: bool = True,
     loads_b_factors: Literal[True] = True,
     *,
     select: str = "all",
@@ -54,7 +54,7 @@ def read_atoms_from_pdb(
 @overload
 def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
-    center: bool = False,
+    center: bool = True,
     loads_b_factors: bool = False,
     *,
     select: str,
@@ -72,7 +72,7 @@ def read_atoms_from_pdb(
 
 def read_atoms_from_pdb(
     filename_or_url: str | pathlib.Path,
-    center: bool = False,
+    center: bool = True,
     loads_b_factors: bool = False,
     *,
     select: str = "all",
@@ -134,14 +134,14 @@ def read_atoms_from_pdb(
     # ... get indices from filter
     atom_indices = topology.select(select)
     # ... get filtered attributes
-    atom_positions = info.atom_positions[atom_indices, ...]
-    atom_identities = info.atom_identities[atom_indices]
+    atom_positions = info["atom_positions"][atom_indices, ...]
+    atom_identities = info["atom_identities"][atom_indices]
     if center:
-        atom_masses = info.atom_masses[atom_indices]
+        atom_masses = info["atom_masses"][atom_indices]
         atom_positions = _center_atom_coordinates(atom_positions, atom_masses)
 
     if loads_b_factors:
-        b_factors = info.b_factors[atom_indices]
+        b_factors = info["b_factors"][atom_indices]
         return atom_positions, atom_identities, b_factors
     else:
         return atom_positions, atom_identities
@@ -152,7 +152,7 @@ def _center_atom_coordinates(atom_positions, atom_masses):
     return atom_positions - com_position
 
 
-class AtomInfo(NamedTuple):
+class AtomicModelInfo(TypedDict):
     """A struct for the info of individual atoms.
 
     **Attributes:**
@@ -207,7 +207,7 @@ class AtomicModelFile:
         *,
         standardizes_names: bool = True,
         topology: Optional[Topology] = None,
-    ) -> tuple[AtomInfo, Topology]:
+    ) -> tuple[AtomicModelInfo, Topology]:
         """Load properties from the PDB reader.
 
         **Arguments:**
@@ -221,7 +221,7 @@ class AtomicModelFile:
 
         **Returns:**
 
-        A tuple of the `AtomInfo` dataclass and the `mdtraj.Topology`.
+        A tuple of the `AtomicModelInfo` dataclass and the `mdtraj.Topology`.
         """
         atom_info, topology = _load_atom_info(
             self._pdb_structure,
@@ -335,7 +335,7 @@ def _load_atom_info(
     atom_identities = np.array(atom_identities)
     atom_masses = np.array(atom_masses)
 
-    atom_info = AtomInfo(
+    atom_info = AtomicModelInfo(
         atom_positions=atom_positions,
         atom_identities=atom_identities,
         atom_masses=atom_masses,
