@@ -506,7 +506,7 @@ def test_append_particle_parameters(index, loads_envelope):
     parameter_file = RelionParticleParameterFile(
         path_to_starfile=path_to_starfile,
         mode="w",
-        overwrite=True,
+        exists_ok=True,
         loads_envelope=loads_envelope,
         loads_metadata=False,
     )
@@ -630,17 +630,17 @@ def test_file_exists_error():
     parameter_file = RelionParticleParameterFile(
         path_to_starfile=path_to_starfile,
         mode="w",
-        overwrite=True,
+        exists_ok=True,
     )
     parameter_file.append(parameters)
     parameter_file.save(overwrite=True)
 
-    # Test no overwrite
+    # Test no exists_ok
     with pytest.raises(FileExistsError):
         _ = RelionParticleParameterFile(
             path_to_starfile=path_to_starfile,
             mode="w",
-            overwrite=False,
+            exists_ok=False,
         )
     # Clean up
     shutil.rmtree(parameter_file.path_to_output.parent)
@@ -649,7 +649,7 @@ def test_file_exists_error():
 def test_file_not_found_error():
     dummy_path_to_starfile = "path/to/nonexistant/dir/nonexistant_file.star"
 
-    # Test no overwrite
+    # Test no exists_ok
     with pytest.raises(FileNotFoundError):
         _ = RelionParticleParameterFile(
             path_to_starfile=dummy_path_to_starfile,
@@ -695,7 +695,7 @@ def test_set_wrong_parameters_error():
     parameter_file = RelionParticleParameterFile(
         path_to_starfile=path_to_starfile,
         mode="w",
-        overwrite=True,
+        exists_ok=True,
     )
 
     with pytest.raises(ValueError):
@@ -737,7 +737,7 @@ def test_bad_pytree_error():
     parameter_file = RelionParticleParameterFile(
         path_to_starfile=path_to_starfile,
         mode="w",
-        overwrite=True,
+        exists_ok=True,
     )
 
     with pytest.raises(ValueError):
@@ -752,7 +752,7 @@ def test_write_image(
     parameter_file = RelionParticleParameterFile(
         path_to_starfile=sample_starfile_path,
         mode="r",
-        overwrite=True,
+        exists_ok=True,
     )
 
     with pytest.raises(IOError):
@@ -766,7 +766,7 @@ def test_write_image(
         parameter_file,
         path_to_relion_project=sample_relion_project_path,
         mode="w",
-        overwrite=True,
+        exists_ok=True,
     )
     starfile_data = dataset.parameter_file.starfile_data
     assert starfile_data["particles"]["rlnImageName"].isna().all()
@@ -793,7 +793,7 @@ def test_write_image(
     with pytest.raises(IOError):
         dataset[0] = particle
 
-    dataset.filename_settings = dict(prefix="f", overwrite=True)
+    dataset.mrcfile_settings = dict(prefix="f", overwrite=True)
     dataset[0] = particle
 
     starfile_data = dataset.parameter_file.starfile_data
