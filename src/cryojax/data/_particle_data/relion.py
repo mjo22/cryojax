@@ -1,6 +1,7 @@
 """cryoJAX compatibility with [RELION](https://relion.readthedocs.io/en/release-5.0/)."""
 
 import abc
+import os
 import pathlib
 import re
 import warnings
@@ -551,12 +552,23 @@ class RelionParticleStackDataset(
                     "If you wish to remove existing filenames in the STAR file, set "
                     "`exists_ok=True`."
                 )
+
             else:
                 # Write empty "rlnImageName" column (defaults to NaN values)
                 particle_data["rlnImageName"] = pd.Series(dtype=str)
                 parameter_file.starfile_data = dict(
                     optics=optics_data, particles=particle_data
                 )
+
+            if self._path_to_relion_project.exists():
+                assert exists_ok, (
+                    "Set `mode = 'w'` and `exists_ok = False`, but the "
+                    + f"RELION project directory {str(self._path_to_relion_project)} "
+                    + "already exists. To write a new RELION project, "
+                    + "set `exists_ok = True`. Or set a different directory.exists_ok"
+                )
+            else:
+                os.makedirs(self._path_to_relion_project, exist_ok=exists_ok)
 
     @override
     def __getitem__(
@@ -716,7 +728,7 @@ class RelionParticleStackDataset(
         # ... and write the images to disk
         try:
             write_image_stack_to_mrc(
-                images,
+                images.astype(jnp.float32),
                 pixel_size,
                 path_to_filename,
                 overwrite=self.mrcfile_settings["overwrite"],
