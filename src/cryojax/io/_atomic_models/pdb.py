@@ -15,6 +15,7 @@ from urllib.parse import urlparse, uses_netloc, uses_params, uses_relative
 from urllib.request import urlopen
 from xml.etree import ElementTree
 
+import jax
 import mdtraj
 import numpy as np
 from jaxtyping import Float, Int
@@ -33,10 +34,11 @@ def read_atoms_from_pdb(  # type: ignore
     center: bool = True,
     loads_b_factors: Literal[False] = False,
     *,
-    select: str = "all",
+    selection_string: str = "all",
+    model_index: Optional[int] = None,
     standardizes_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
-) -> tuple[Float[np.ndarray, "n_atoms 3"], Int[np.ndarray, " n_atoms"]]: ...
+) -> tuple[Float[np.ndarray, "... n_atoms 3"], Int[np.ndarray, " n_atoms"]]: ...
 
 
 @overload
@@ -45,11 +47,12 @@ def read_atoms_from_pdb(
     center: bool = True,
     loads_b_factors: Literal[True] = True,
     *,
-    select: str = "all",
+    selection_string: str = "all",
+    model_index: Optional[int] = None,
     standardizes_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> tuple[
-    Float[np.ndarray, "n_atoms 3"],
+    Float[np.ndarray, "... n_atoms 3"],
     Int[np.ndarray, " n_atoms"],
     Float[np.ndarray, " n_atoms"],
 ]: ...
@@ -61,13 +64,14 @@ def read_atoms_from_pdb(
     center: bool = True,
     loads_b_factors: bool = False,
     *,
-    select: str,
+    selection_string: str,
+    model_index: Optional[int] = None,
     standardizes_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> (
-    tuple[Float[np.ndarray, "n_atoms 3"], Int[np.ndarray, " n_atoms"]]
+    tuple[Float[np.ndarray, "... n_atoms 3"], Int[np.ndarray, " n_atoms"]]
     | tuple[
-        Float[np.ndarray, "n_atoms 3"],
+        Float[np.ndarray, "... n_atoms 3"],
         Int[np.ndarray, " n_atoms"],
         Float[np.ndarray, " n_atoms"],
     ]
@@ -79,13 +83,14 @@ def read_atoms_from_pdb(
     center: bool = True,
     loads_b_factors: bool = False,
     *,
-    select: str = "all",
+    selection_string: str = "all",
+    model_index: Optional[int] = None,
     standardizes_names: bool = True,
     topology: Optional[mdtraj.Topology] = None,
 ) -> (
-    tuple[Float[np.ndarray, "n_atoms 3"], Int[np.ndarray, " n_atoms"]]
+    tuple[Float[np.ndarray, "... n_atoms 3"], Int[np.ndarray, " n_atoms"]]
     | tuple[
-        Float[np.ndarray, "n_atoms 3"],
+        Float[np.ndarray, "... n_atoms 3"],
         Int[np.ndarray, " n_atoms"],
         Float[np.ndarray, " n_atoms"],
     ]
@@ -103,8 +108,11 @@ def read_atoms_from_pdb(
         with the origin.
     - `loads_b_factors`:
         If `True`, return the B-factors of the atoms.
-    - `select`:
+    - `selection_string`:
         A selection string in `mdtraj`'s format. See `mdtraj` for documentation.
+    - `model_index`:
+        An optional index for grabbing a particular model stored in the PDB. If `None`,
+        grab all models, where `atom_positions` has a leading dimension for the model.
     - `standardizes_names`:
         If `True`, non-standard atom names and residue names are standardized to conform
         with the current PDB format version. If set to `False`, this step is skipped.
@@ -119,60 +127,83 @@ def read_atoms_from_pdb(
     numbers. To be clear,
 
     ```python
-    atom_positons, atom_element_numbers = read_atoms_from_pdb(...)
+    atom_positons, atom_identities = read_atoms_from_pdb(...)
     ```
 
-    !!! warning
+    !!! info
 
-        If your pdb is a trajectory, all frames will be loaded.
-        In particular, the output arrays `atom_positions` and
-        `atom_element_numbers` will contain all atoms from all
-        trajectories.
+        If your PDB has multiple models, `atom_positions` by
+        default with a leading dimension that indexes each model.
+        On the other hand, `atom_identities` (and `b_factors`, if loaded)
+        do not have this leading dimension and are constant across
+        models.
     """
+    # Load all atoms
     with AtomicModelFile(filename_or_url) as pdb_file:
         # Read file
         atom_info, topology = pdb_file.read_atoms(
             standardizes_names=standardizes_names,
             topology=topology,
+            model_index=model_index,
             loads_masses=center,
             loads_b_factors=loads_b_factors,
         )
-    # ... get indices from filter
-    atom_indices = topology.select(select)
-    # ... get filtered attributes
-    atom_positions = atom_info["positions"][atom_indices, ...]
-    atom_identities = atom_info["identities"][atom_indices]
+    # Filter atoms and grab positions and identities
+    selected_indices = topology.select(selection_string)
+    atom_positions = np.squeeze(atom_info["positions"][:, selected_indices])
+    atom_properties = jax.tree.map(
+        lambda arr: arr[selected_indices], atom_info["properties"]
+    )
+    atom_identities = atom_properties["identities"]
+    # Center by mass
     if center:
-        atom_masses = cast(np.ndarray, atom_info["masses"])[atom_indices]
+        atom_masses = cast(np.ndarray, atom_properties["masses"])
         atom_positions = _center_atom_coordinates(atom_positions, atom_masses)
-
+    # Return, optionality with b-factors
     if loads_b_factors:
-        b_factors = cast(np.ndarray, atom_info["b_factors"])[atom_indices]
+        b_factors = cast(np.ndarray, atom_properties["b_factors"])
         return atom_positions, atom_identities, b_factors
     else:
         return atom_positions, atom_identities
 
 
 def _center_atom_coordinates(atom_positions, atom_masses):
-    com_position = atom_positions.astype("float64").T.dot(atom_masses / atom_masses.sum())
+    axes = [0, 2, 1] if atom_positions.ndim == 3 else [1, 0]
+    com_position = np.transpose(atom_positions, axes=axes).dot(
+        atom_masses / atom_masses.sum()
+    )
     return atom_positions - com_position
+
+
+class AtomProperties(TypedDict):
+    """A struct for the info of individual atoms.
+
+    **Attributes:**
+
+    - `identities`: The atomic numbers of all of the atoms.
+    - `masses`: The mass of each atom.
+    - `b_factors`: The B-factors of all of the atoms.
+    """
+
+    identities: Int[np.ndarray, " N"]
+    masses: Optional[Float[np.ndarray, " N"]]
+    b_factors: Optional[Float[np.ndarray, " N"]]
 
 
 class AtomicModelInfo(TypedDict):
     """A struct for the info of individual atoms.
 
-    **Attributes:**
+    **Keys:**
 
-    - `positions`: The cartesian coordinates of all of the atoms in each frame.
-    - `identities`: The atomic numbers of all of the atoms in each frame.
-    - `masses`: The mass of each atom.
-    - `b_factors`: The B-factors of all of the atoms in each frame.
+    - `positions`:
+        The cartesian coordinates of all of the atoms.
+    - `properties`:
+        The static properties of the individual atom, i.e.
+        that do not change between frames.
     """
 
-    positions: np.ndarray
-    identities: np.ndarray
-    masses: Optional[np.ndarray]
-    b_factors: Optional[np.ndarray]
+    positions: Float[np.ndarray, "M N 3"]
+    properties: AtomProperties
 
 
 class AtomicModelFile:
@@ -213,6 +244,7 @@ class AtomicModelFile:
         *,
         standardizes_names: bool = True,
         topology: Optional[Topology] = None,
+        model_index: Optional[int] = None,
         loads_b_factors: bool = True,
         loads_masses: bool = True,
     ) -> tuple[AtomicModelInfo, Topology]:
@@ -234,6 +266,7 @@ class AtomicModelFile:
         atom_info, topology = _load_atom_info(
             self._pdb_structure,
             topology,
+            model_index,
             standardizes_names,
             loads_b_factors,
             loads_masses,
@@ -317,18 +350,49 @@ def _make_topology(
 def _load_atom_info(
     pdb: PdbStructure,
     topology: Optional[Topology],
+    model_index: Optional[int],
     standardizes_names: bool,
     loads_b_factors: bool,
     loads_masses: bool,
 ):
-    temp = dict(positions=[], identities=[], b_factors=[], masses=[])
-    # load all of the positions (from every model)
-    for model in pdb.iter_models(use_all_models=True):
+    # Load atom info
+    if model_index is None:
+        # ... with multiple models
+        n_models = len(pdb.model_numbers())
+        temp = dict(positions=[n_models * []], identities=[], b_factors=[], masses=[])
+        for index, model_index in enumerate(pdb.model_numbers()):  # type: ignore
+            model = pdb.models_by_number[model_index]
+            for chain in model.iter_chains():
+                for residue in chain.iter_residues():
+                    for atom in residue.atoms:
+                        # ... make sure this is read in angstroms?
+                        temp["positions"][index].append(atom.get_position())
+                        if index == 0:
+                            # Assume atom properties don't change between models
+                            temp["identities"].append(atom.element.atomic_number)
+                            if loads_masses:
+                                temp["masses"].append(atom.element.mass)
+                            if loads_b_factors:
+                                temp["b_factors"].append(atom.get_temperature_factor())
+    else:
+        # ... with a model at one index
+        n_models = 1
+        temp = dict(positions=[[]], identities=[], b_factors=[], masses=[])
+        try:
+            model = pdb.models_by_number[model_index]
+        except Exception as err:
+            raise ValueError(
+                "Caught exception indexing atomic model with "
+                f"index {model_index}. Found that the PDB "
+                f"contained model numbers {pdb.model_numbers()} "
+                f"available for indexing. Traceback was:\n{err}"
+            )
         for chain in model.iter_chains():
             for residue in chain.iter_residues():
                 for atom in residue.atoms:
                     # ... make sure this is read in angstroms?
-                    temp["positions"].append(atom.get_position())
+                    temp["positions"][0].append(atom.get_position())
+                    # Assume atom properties don't change between models
                     temp["identities"].append(atom.element.atomic_number)
                     if loads_masses:
                         temp["masses"].append(atom.element.mass)
@@ -337,20 +401,19 @@ def _load_atom_info(
 
     # Load the topology if None is given
     if topology is None:
-        topology = _make_topology(
-            pdb,
-            temp["positions"],
-            standardizes_names,
-        )
+        topology = _make_topology(pdb, temp["positions"][0], standardizes_names)
 
-    # Gather properties and return
-    atom_info = AtomicModelInfo(
-        positions=np.asarray(temp["positions"], dtype=float),
+    # Gather atom info and return
+    properties = AtomProperties(
         identities=np.asarray(temp["identities"], dtype=int),
         b_factors=(
             np.asarray(temp["b_factors"], dtype=float) if loads_b_factors else None
         ),
         masses=(np.asarray(temp["masses"], dtype=float) if loads_masses else None),
+    )
+    atom_info = AtomicModelInfo(
+        positions=np.asarray(temp["positions"], dtype=float),
+        properties=properties,
     )
 
     return atom_info, topology
