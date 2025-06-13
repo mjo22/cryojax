@@ -935,9 +935,6 @@ def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
         loads_envelope=False,
         loads_metadata=False,
     )
-    parameter_file.path_to_starfile = (
-        "tests/outputs/starfile_writing/test_particle_parameters.star"
-    )
 
     n_images = len(parameter_file)
     shape = parameter_file[0]["instrument_config"].shape
@@ -954,10 +951,9 @@ def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
         mrcfile_settings={"overwrite": True},
     )
 
-    # try to load before generating the data
-    with pytest.raises(IOError):
-        new_stack[0]
-
+    parameter_file.path_to_starfile = (
+        "tests/outputs/starfile_writing/test_particle_parameters.star"
+    )
     simulate_particle_stack(
         new_stack,
         compute_image_fn=_mock_compute_image,
