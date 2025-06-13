@@ -208,6 +208,7 @@ def simulate_particle_stack(
             compute_image_fn, batch_size, images_per_file
         )
         index_array = np.arange(n_particles - remainder, n_particles, dtype=int)
+        print(index_array)
         images, parameters = _simulate_images(
             index_array,
             parameter_file,
@@ -215,6 +216,8 @@ def simulate_particle_stack(
             constant_args,
             per_particle_args,
         )
+        print(remainder)
+        print(images.shape)
         dataset.write_images(index_array, images, parameters)
     # Finally, save metadata file
     parameter_file.save(**kwargs)
@@ -233,6 +236,9 @@ def _simulate_images(
     parameters = parameter_file[index]
     args = (constant_args, _index_pytree(index, per_particle_args))
     image_stack = compute_image_stack_fn(parameters, *args)
+
+    print("!!!!")
+    print(image_stack.shape)
 
     return image_stack, parameters
 

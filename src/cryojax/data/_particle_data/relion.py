@@ -846,7 +846,7 @@ def _select_particles(
                 "must be a function that takes in an array and returns a "
                 "boolean mask."
             )
-            if isinstance(column, Callable):
+            if isinstance(selection_filter[key], Callable):
                 try:
                     mask_at_column = fn(column)
                 except Exception as err:
@@ -1176,8 +1176,9 @@ def _load_image_stack_from_mrc(
         particle_index_at_filename = mrc_index_at_filename.index
         path_to_filename = pathlib.Path(path_to_relion_project, filename)
         with mrcfile.mmap(path_to_filename, mode="r", permissive=True) as mrc:
-            mrc_data = np.asarray(mrc.data)
-            mrc_shape = mrc_data.shape if mrc_data.ndim == 2 else mrc_data.shape[1:]
+            mrc_ndim = mrc.data.ndim
+            mrc_shape = mrc.data.shape if mrc_ndim == 2 else mrc.data.shape[1:]
+
             if shape != mrc_shape:
                 raise ValueError(
                     f"The shape of the MRC with filename {filename} "
@@ -1186,7 +1187,7 @@ def _load_image_stack_from_mrc(
                     "the STAR file optics group formatting."
                 )
             image_stack[particle_index_at_filename] = (
-                mrc_data if mrc_data.ndim == 2 else mrc_data[mrc_index_at_filename]
+                mrc.data if mrc_ndim == 2 else mrc.data[mrc_index_at_filename]
             )
 
     return jnp.asarray(image_stack)
@@ -1552,6 +1553,7 @@ def _make_image_filename(
     path_to_relion_project: pathlib.Path,
 ) -> tuple[pathlib.Path, list[str]]:
     # Get the file number for this MRC file
+    print(index)
     if n_particles == 0:
         file_number = 0
     else:
@@ -1569,6 +1571,7 @@ def _make_image_filename(
                 )
             else:
                 file_number = _parse_filename_for_number(last_filename) + 1
+                print(file_number)
     # Unpack settings
     prefix = mrcfile_settings["prefix"]
     output_folder = mrcfile_settings["output_folder"]
@@ -1586,7 +1589,7 @@ def _make_image_filename(
         )
     # Finally, generate the 'rln_image_name' column, which includes the particle index
     rln_image_names = [
-        _format_number_for_filename(int(i), n_characters)
+        _format_number_for_filename(int(i + 1), n_characters)
         + "@"
         + relative_path_to_filename
         for i in range(index.size)
@@ -1598,7 +1601,8 @@ def _make_image_filename(
 
 
 def _parse_filename_for_number(filename: str) -> int:
-    match = re.search(r"[^0-9](\d+)\.[^.]+$", filename)
+    print(filename)
+    match = re.search(r"(\d+)\.[^.]+$", filename)
     try:
         file_number = int(match.group(1))  # type: ignore
     except Exception as err:
