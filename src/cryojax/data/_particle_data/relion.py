@@ -1,6 +1,7 @@
 """cryoJAX compatibility with [RELION](https://relion.readthedocs.io/en/release-5.0/)."""
 
 import abc
+import os
 import pathlib
 import re
 import warnings
@@ -551,12 +552,23 @@ class RelionParticleStackDataset(
                     "If you wish to remove existing filenames in the STAR file, set "
                     "`exists_ok=True`."
                 )
+
             else:
                 # Write empty "rlnImageName" column (defaults to NaN values)
                 particle_data["rlnImageName"] = pd.Series(dtype=str)
                 parameter_file.starfile_data = dict(
                     optics=optics_data, particles=particle_data
                 )
+
+            if self._path_to_relion_project.exists():
+                assert exists_ok, (
+                    "Set `mode = 'w'` and `exists_ok = False`, but the "
+                    + f"RELION project directory {str(self._path_to_relion_project)} "
+                    + "already exists. To write a new RELION project, "
+                    + "set `exists_ok = True`. Or set a different directory.exists_ok"
+                )
+            else:
+                os.makedirs(self._path_to_relion_project, exist_ok=exists_ok)
 
     @override
     def __getitem__(
@@ -716,7 +728,7 @@ class RelionParticleStackDataset(
         # ... and write the images to disk
         try:
             write_image_stack_to_mrc(
-                images,
+                images.astype(jnp.float32),
                 pixel_size,
                 path_to_filename,
                 overwrite=self.mrcfile_settings["overwrite"],
@@ -834,7 +846,7 @@ def _select_particles(
                 "must be a function that takes in an array and returns a "
                 "boolean mask."
             )
-            if isinstance(column, Callable):
+            if isinstance(selection_filter[key], Callable):
                 try:
                     mask_at_column = fn(column)
                 except Exception as err:
@@ -1164,8 +1176,9 @@ def _load_image_stack_from_mrc(
         particle_index_at_filename = mrc_index_at_filename.index
         path_to_filename = pathlib.Path(path_to_relion_project, filename)
         with mrcfile.mmap(path_to_filename, mode="r", permissive=True) as mrc:
-            mrc_data = np.asarray(mrc.data)
-            mrc_shape = mrc_data.shape if mrc_data.ndim == 2 else mrc_data.shape[1:]
+            mrc_ndim = mrc.data.ndim
+            mrc_shape = mrc.data.shape if mrc_ndim == 2 else mrc.data.shape[1:]
+
             if shape != mrc_shape:
                 raise ValueError(
                     f"The shape of the MRC with filename {filename} "
@@ -1174,7 +1187,7 @@ def _load_image_stack_from_mrc(
                     "the STAR file optics group formatting."
                 )
             image_stack[particle_index_at_filename] = (
-                mrc_data if mrc_data.ndim == 2 else mrc_data[mrc_index_at_filename]
+                mrc.data if mrc_ndim == 2 else mrc.data[mrc_index_at_filename]
             )
 
     return jnp.asarray(image_stack)
@@ -1574,7 +1587,7 @@ def _make_image_filename(
         )
     # Finally, generate the 'rln_image_name' column, which includes the particle index
     rln_image_names = [
-        _format_number_for_filename(int(i), n_characters)
+        _format_number_for_filename(int(i + 1), n_characters)
         + "@"
         + relative_path_to_filename
         for i in range(index.size)
@@ -1586,7 +1599,7 @@ def _make_image_filename(
 
 
 def _parse_filename_for_number(filename: str) -> int:
-    match = re.search(r"[^0-9](\d+)\.[^.]+$", filename)
+    match = re.search(r"(\d+)\.[^.]+$", filename)
     try:
         file_number = int(match.group(1))  # type: ignore
     except Exception as err:

@@ -11,6 +11,7 @@ from .base_particle_dataset import (
     AbstractParticleParameterFile,
     AbstractParticleStackDataset,
 )
+from .relion import ParticleParameterInfo
 
 
 PerParticleT = TypeVar("PerParticleT")
@@ -204,7 +205,7 @@ def simulate_particle_stack(
     # ... handle remainder
     if remainder > 0:
         compute_image_stack_fn = _configure_simulation_fn(
-            compute_image_fn, batch_size, images_per_file
+            compute_image_fn, batch_size, remainder
         )
         index_array = np.arange(n_particles - remainder, n_particles, dtype=int)
         images, parameters = _simulate_images(
@@ -228,7 +229,7 @@ def _simulate_images(
     ],
     constant_args: ConstantT,
     per_particle_args: PerParticleT,
-) -> tuple[Float[NDArrayLike, "_ _ _"], AbstractParticleParameterFile]:
+) -> tuple[Float[NDArrayLike, "_ _ _"], ParticleParameterInfo]:
     parameters = parameter_file[index]
     args = (constant_args, _index_pytree(index, per_particle_args))
     image_stack = compute_image_stack_fn(parameters, *args)
@@ -250,7 +251,7 @@ def _configure_simulation_fn(
     if batch_size is None:
 
         def compute_image_stack_fn(parameters, constant_args, per_particle_args):  # type: ignore
-            shape = parameters.instrument_config.shape
+            shape = parameters["instrument_config"].shape
             image_stack = np.empty((images_per_file, *shape))
             for i in range(images_per_file):
                 parameters_at_i = _index_pytree(i, parameters)

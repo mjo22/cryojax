@@ -5,6 +5,7 @@ pytest --cov-report term-missing:skip-covered --cov=src/cryojax/data/_relion tes
 
 import os
 import shutil
+from functools import partial
 from typing import cast
 
 import equinox as eqx
@@ -20,11 +21,9 @@ import cryojax.simulator as cxs
 from cryojax.data import (
     RelionParticleParameterFile,
     RelionParticleStackDataset,
+    simulate_particle_stack,
 )
 from cryojax.data._particle_data.relion import (
-    _default_make_config_fn,
-    _format_number_for_filename,
-    _load_image_stack_from_mrc,
     _validate_starfile_data,
 )
 from cryojax.image import operators as op
@@ -98,29 +97,22 @@ def relion_parameters():
 #
 class TestErrorRaisingForLoading:
     def test_load_with_badparticle_name(self, parameter_file, sample_relion_project_path):
+        parameter_file.starfile_data["particles"].loc[0, "rlnImageName"] = 0.0
+        dataset = RelionParticleStackDataset(
+            path_to_relion_project=sample_relion_project_path,
+            parameter_file=parameter_file,
+        )
         with pytest.raises(TypeError):
-            parameters = parameter_file[0]
-            metadata = parameters["metadata"]
-            particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)
-            particle_dataframe_at_index["rlnImageName"] = 0.0
-
-            _load_image_stack_from_mrc(
-                parameters["instrument_config"].shape,
-                particle_dataframe_at_index,
-                sample_relion_project_path,
-            )
+            dataset[0]
 
     def test_load_with_bad_shape(self, parameter_file, sample_relion_project_path):
+        parameter_file.starfile_data["optics"].loc[0, "rlnImageSize"] = 1
+        dataset = RelionParticleStackDataset(
+            path_to_relion_project=sample_relion_project_path,
+            parameter_file=parameter_file,
+        )
         with pytest.raises(ValueError):
-            parameters = parameter_file[0]
-            metadata = parameters["metadata"]
-            particle_dataframe_at_index = pd.DataFrame.from_dict(metadata)
-
-            _load_image_stack_from_mrc(
-                (1, 1),
-                particle_dataframe_at_index,
-                sample_relion_project_path,
-            )
+            dataset[0]
 
     def test_with_bad_indices(self, parameter_file, sample_relion_project_path):
         dataset = RelionParticleStackDataset(
@@ -175,22 +167,22 @@ class TestErrorRaisingForLoading:
             )
 
 
-def test_default_make_config_fn():
+def test_default_make_config_fn(sample_starfile_path):
     """Test the default make_config_fn function."""
     # Test with a valid input
-    config = _default_make_config_fn(
-        shape=(128, 128),
-        pixel_size=jnp.asarray(1.5),
-        voltage_in_kilovolts=jnp.asarray(300.0),
-        padded_shape=(140, 140),
-        pad_mode="constant",
+
+    parameter_file = RelionParticleParameterFile(
+        path_to_starfile=sample_starfile_path,
+        loads_envelope=True,
+        loads_metadata=True,
     )
+    config = parameter_file[0]["instrument_config"]
 
     ref_config = cxs.InstrumentConfig(
-        shape=(128, 128),
-        pixel_size=1.5,
+        shape=(16, 16),
+        pixel_size=12.0,
         voltage_in_kilovolts=300.0,
-        padded_shape=(140, 140),
+        padded_shape=(16, 16),
         pad_mode="constant",
     )
 
@@ -446,13 +438,6 @@ def test_load_starfile_vs_mrcs_shape(sample_starfile_path, sample_relion_project
 #
 # Tests for starfile writing
 #
-def test_format_filename_for_mrcs():
-    formated_number = _format_number_for_filename(10, n_characters=5)
-
-    assert formated_number == "00010"
-
-    formated_number = _format_number_for_filename(0, n_characters=5)
-    assert formated_number == "00000"
 
 
 @pytest.mark.parametrize(
@@ -754,6 +739,9 @@ def test_write_image(
         mode="r",
         exists_ok=True,
     )
+    parameter_file.path_to_starfile = (
+        "tests/outputs/starfile_writing/test_particle_parameters.star"
+    )
 
     with pytest.raises(IOError):
         dataset = RelionParticleStackDataset(
@@ -809,349 +797,409 @@ def test_write_image(
     assert not os.path.exists(path_to_filename)
 
 
-# def test_write_particle_batched_particle_parameters():
-#     @partial(eqx.filter_vmap, in_axes=(0), out_axes=eqx.if_array(0))
-#     def _make_particle_params(dummy_idx):
-#         instrument_config = cxs.InstrumentConfig(
-#             shape=(4, 4),
-#             pixel_size=1.5,
-#             voltage_in_kilovolts=300.0,
-#         )
+def test_write_particle_batched_particle_parameters():
+    @partial(eqx.filter_vmap, in_axes=(0), out_axes=eqx.if_array(0))
+    def _make_particle_params(dummy_idx):
+        instrument_config = cxs.InstrumentConfig(
+            shape=(4, 4),
+            pixel_size=1.5,
+            voltage_in_kilovolts=300.0,
+        )
 
-#         pose = cxs.EulerAnglePose()
-#         transfer_theory = cxs.ContrastTransferTheory(
-#             ctf=cxs.CTF(), envelope=op.FourierGaussian()
-#         )
-#         return RelionParticleParameters(
-#             instrument_config, pose, transfer_theory, metadata={}
-#         )
+        pose = cxs.EulerAnglePose()
+        transfer_theory = cxs.ContrastTransferTheory(
+            ctf=cxs.CTF(), envelope=op.FourierGaussian()
+        )
+        return {
+            "instrument_config": instrument_config,
+            "pose": pose,
+            "transfer_theory": transfer_theory,
+            "metadata": {},
+        }
 
-#     particle_params = _make_particle_params(jnp.array([0, 0, 0, 0, 0]))
+    particle_params = _make_particle_params(jnp.array([0, 0, 0, 0, 0]))
+    new_parameters_file = RelionParticleParameterFile(
+        path_to_starfile="dummy.star",
+        mode="w",
+        exists_ok=True,
+        updates_optics_group=True,
+        loads_envelope=True,
+    )
 
-#     write_starfile_with_particle_parameters(
-#         particle_parameters=particle_params,
-#         filename="tests/outputs/starfile_writing/test_particle_parameters.star",
-#         mrc_batch_size=2,
-#         overwrite=True,
-#     )
+    new_parameters_file.path_to_starfile = (
+        "tests/outputs/starfile_writing/test_particle_parameters.star"
+    )
 
-#     parameter_file = RelionParticleParameterFile(
-#         path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
-#         path_to_relion_project="tests/outputs/starfile_writing/",
-#         loads_envelope=True,
-#         loads_metadata=False,
-#     )
+    new_parameters_file.append(particle_params)
+    new_parameters_file.save(overwrite=True)
+    # and try to save again
+    with pytest.raises(FileExistsError):
+        new_parameters_file.save(overwrite=False)
 
-#     assert compare_pytrees(parameter_file[:], particle_params)
-#     # Clean up
-#     shutil.rmtree("tests/outputs/starfile_writing/")
+    parameter_file = RelionParticleParameterFile(
+        path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
+        mode="r",
+        loads_envelope=True,
+        loads_metadata=False,
+    )
 
-#     return
+    loaded_params = parameter_file[:]
+    for key in particle_params:
+        assert compare_pytrees(
+            loaded_params[key], particle_params[key]
+        ), f"Mismatch for {key}"
+    # Clean up
+    shutil.rmtree("tests/outputs/starfile_writing/")
 
-
-# def test_write_starfile_different_envs():
-#     def _make_particle_params(envelope):
-#         instrument_config = cxs.InstrumentConfig(
-#             shape=(4, 4),
-#             pixel_size=1.5,
-#             voltage_in_kilovolts=300.0,
-#         )
-
-#         pose = cxs.EulerAnglePose()
-#         transfer_theory = cxs.ContrastTransferTheory(
-#             ctf=cxs.CTF(),
-#             envelope=envelope,
-#         )
-#         return RelionParticleParameters(
-#             instrument_config, pose, transfer_theory, metadata={}
-#         )
-
-#     particle_params = _make_particle_params(op.FourierGaussian())
-#     write_starfile_with_particle_parameters(
-#         particle_parameters=particle_params,
-#         filename="tests/outputs/starfile_writing/test_particle_parameters.star",
-#         mrc_batch_size=None,
-#         overwrite=True,
-#     )
-
-#     particle_params = _make_particle_params(Constant(1.0))
-#     write_starfile_with_particle_parameters(
-#         particle_parameters=particle_params,
-#         filename="tests/outputs/starfile_writing/test_particle_parameters.star",
-#         mrc_batch_size=None,
-#         overwrite=True,
-#     )
-
-#     particle_params = _make_particle_params(None)
-#     write_starfile_with_particle_parameters(
-#         particle_parameters=particle_params,
-#         filename="tests/outputs/starfile_writing/test_particle_parameters.star",
-#         mrc_batch_size=None,
-#         overwrite=True,
-#     )
-
-#     with pytest.raises(NotImplementedError):
-#         particle_params = _make_particle_params(ZeroMode(1.0))
-#         write_starfile_with_particle_parameters(
-#             particle_parameters=particle_params,
-#             filename="tests/outputs/starfile_writing/test_particle_parameters.star",
-#             mrc_batch_size=None,
-#             overwrite=True,
-#         )
-
-#     # Clean up
-#     shutil.rmtree("tests/outputs/starfile_writing/")
-
-#     return
+    return
 
 
-# def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
-#     def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
-#         # Mock the image computation
-#         return per_particle_args
+def test_write_starfile_different_envs():
+    def _make_particle_params(envelope):
+        instrument_config = cxs.InstrumentConfig(
+            shape=(4, 4),
+            pixel_size=1.5,
+            voltage_in_kilovolts=300.0,
+        )
 
-#     """Test writing a simulated image stack from a starfile."""
-#     parameter_file = RelionParticleParameterFile(
-#         path_to_starfile=sample_starfile_path,
-#         path_to_relion_project="tests/outputs/starfile_writing/",
-#         loads_envelope=False,
-#         loads_metadata=False,
-#     )
+        pose = cxs.EulerAnglePose()
+        transfer_theory = cxs.ContrastTransferTheory(
+            ctf=cxs.CTF(),
+            envelope=envelope,
+        )
+        return {
+            "instrument_config": instrument_config,
+            "pose": pose,
+            "transfer_theory": transfer_theory,
+            "metadata": {},
+        }
 
-#     n_images = len(parameter_file)
-#     shape = parameter_file[0]["instrument_config"].shape
-#     true_images = jax.random.normal(
-#         jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
-#     )
-#     # Create a simulated image stack
-#     write_simulated_image_stack_from_starfile(
-#         parameter_file=parameter_file,
-#         compute_image_fn=_mock_compute_image,
-#         constant_args=(1.0, 2.0),
-#         per_particle_args=true_images,
-#         is_jittable=True,
-#         overwrite=True,
-#     )
+    particle_params = _make_particle_params(op.FourierGaussian())
+    new_parameters_file = RelionParticleParameterFile(
+        path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
+        mode="w",
+        exists_ok=True,
+        updates_optics_group=True,
+        loads_envelope=True,
+    )
 
-#     # try to overwrite
-#     write_simulated_image_stack_from_starfile(
-#         parameter_file=parameter_file,
-#         compute_image_fn=_mock_compute_image,
-#         constant_args=(1.0, 2.0),
-#         per_particle_args=true_images,
-#         is_jittable=True,
-#         overwrite=True,
-#     )
+    particle_params = _make_particle_params(op.Constant(1.0))
+    new_parameters_file = RelionParticleParameterFile(
+        path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
+        mode="w",
+        exists_ok=True,
+        updates_optics_group=True,
+        loads_envelope=True,
+    )
+    new_parameters_file.append(particle_params)
+    new_parameters_file.save(overwrite=True)
 
-#     # Now trigger overwrite error
-#     with pytest.raises(FileExistsError):
-#         write_simulated_image_stack_from_starfile(
-#             parameter_file=parameter_file,
-#             compute_image_fn=_mock_compute_image,
-#             constant_args=(1.0, 2.0),
-#             per_particle_args=true_images,
-#             is_jittable=True,
-#             overwrite=False,
-#         )
+    particle_params = _make_particle_params(None)
+    new_parameters_file = RelionParticleParameterFile(
+        path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
+        mode="w",
+        exists_ok=True,
+        updates_optics_group=True,
+        loads_envelope=True,
+    )
+    new_parameters_file.append(particle_params)
+    new_parameters_file.save(overwrite=True)
 
-#     # load the simulated image stack
-#     particle_dataset = RelionParticleStackDataset(parameter_file)
-#     images = particle_dataset[:]["images"]
-#     np.testing.assert_allclose(
-#         images,
-#         true_images,
-#     )
+    with pytest.raises(ValueError):
+        particle_params = _make_particle_params(op.ZeroMode(1.0))
+        new_parameters_file = RelionParticleParameterFile(
+            path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
+            mode="w",
+            exists_ok=True,
+            updates_optics_group=True,
+            loads_envelope=True,
+        )
+        new_parameters_file.append(particle_params)
+        new_parameters_file.save(overwrite=True)
 
-#     # Clean up
-#     shutil.rmtree("tests/outputs/starfile_writing/")
+    # Clean up
+    shutil.rmtree("tests/outputs/starfile_writing/")
 
-#     return
-
-
-# def test_write_simulated_image_stack_from_starfile_nojit(sample_starfile_path):
-#     def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
-#         # Mock the image computation
-#         c1, c2 = constant_args
-#         image = per_particle_args
-#         return image / np.linalg.norm(image)
-
-#     """Test writing a simulated image stack from a starfile."""
-#     parameter_file = RelionParticleParameterFile(
-#         path_to_starfile=sample_starfile_path,
-#         path_to_relion_project="tests/outputs/starfile_writing/",
-#         loads_envelope=False,
-#         loads_metadata=False,
-#     )
-
-#     n_images = len(parameter_file)
-#     shape = parameter_file[0]["instrument_config"].shape
-#     true_images = jax.random.normal(
-#         jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
-#     )
-
-#     # check jit fails
-#     with pytest.raises(RuntimeError):
-#         write_simulated_image_stack_from_starfile(
-#             parameter_file=parameter_file,
-#             compute_image_fn=_mock_compute_image,
-#             constant_args=(1.0, 2.0),
-#             per_particle_args=true_images,
-#             is_jittable=True,
-#             overwrite=True,
-#         )
-
-#     # check that non jit mode works
-#     write_simulated_image_stack_from_starfile(
-#         parameter_file=parameter_file,
-#         compute_image_fn=_mock_compute_image,
-#         constant_args=(1.0, 2.0),
-#         per_particle_args=true_images,
-#         is_jittable=False,
-#         overwrite=True,
-#     )
-
-#     particle_dataset = RelionParticleStackDataset(parameter_file)
-#     images = particle_dataset[:]["images"]
-#     np.testing.assert_allclose(
-#         images,
-#         true_images / np.linalg.norm(true_images, axis=(1, 2), keepdims=True),
-#     )
-
-#     # Clean up
-#     shutil.rmtree("tests/outputs/starfile_writing/")
-
-#     return
+    return
 
 
-# def test_write_single_image(sample_starfile_path):
-#     def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
-#         # Mock the image computation
-#         c1, c2 = constant_args
-#         p1, p2 = per_particle_args
-#         image = jnp.ones(particle_parameters["instrument_config"].shape,
-# dtype=jnp.float32)
-#         return image / np.linalg.norm(image)
+def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
+    def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
+        # Mock the image computation
+        return per_particle_args
 
-#     """Test writing a simulated image stack from a starfile."""
-#     parameter_file = RelionParticleParameterFile(
-#         path_to_starfile=sample_starfile_path,
-#         path_to_relion_project="tests/outputs/starfile_writing/",
-#         loads_envelope=False,
-#         loads_metadata=False,
-#     )
+    """Test writing a simulated image stack from a starfile."""
+    parameter_file = RelionParticleParameterFile(
+        path_to_starfile=sample_starfile_path,
+        mode="r",
+        loads_envelope=False,
+        loads_metadata=False,
+    )
 
-#     write_starfile_with_particle_parameters(
-#         particle_parameters=parameter_file[0],
-#         filename="tests/outputs/starfile_writing/test_particle_parameters.star",
-#         mrc_batch_size=None,
-#         overwrite=True,
-#     )
+    n_images = len(parameter_file)
+    shape = parameter_file[0]["instrument_config"].shape
+    true_images = jax.random.normal(
+        jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
+    )
 
-#     parameter_file = RelionParticleParameterFile(
-#         path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
-#         path_to_relion_project="tests/outputs/starfile_writing/",
-#         loads_envelope=False,
-#         loads_metadata=False,
-#     )
+    # Create a simulated image stack
+    new_stack = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        mode="w",
+        exists_ok=True,
+        mrcfile_settings={"overwrite": True},
+    )
 
-#     n_images = 1
+    parameter_file.path_to_starfile = (
+        "tests/outputs/starfile_writing/test_particle_parameters.star"
+    )
+    simulate_particle_stack(
+        new_stack,
+        compute_image_fn=_mock_compute_image,
+        constant_args=(1.0, 2.0),
+        per_particle_args=true_images,
+        is_jittable=True,
+        overwrite=True,
+    )
 
-#     # check jit fails
-#     with pytest.raises(RuntimeError):
-#         write_simulated_image_stack_from_starfile(
-#             parameter_file=parameter_file,
-#             compute_image_fn=_mock_compute_image,
-#             constant_args=(1.0, 2.0),
-#             per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
-#             is_jittable=True,
-#             overwrite=True,
-#         )
+    # try to overwrite
+    simulate_particle_stack(
+        new_stack,
+        compute_image_fn=_mock_compute_image,
+        constant_args=(1.0, 2.0),
+        per_particle_args=true_images,
+        is_jittable=True,
+        overwrite=True,
+    )
 
-#     # check that non jit mode works
-#     write_simulated_image_stack_from_starfile(
-#         parameter_file=parameter_file,
-#         compute_image_fn=_mock_compute_image,
-#         constant_args=(1.0, 2.0),
-#         per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
-#         is_jittable=False,
-#         overwrite=True,
-#     )
+    # Now trigger overwrite error
+    with pytest.raises(FileExistsError):
+        simulate_particle_stack(
+            new_stack,
+            compute_image_fn=_mock_compute_image,
+            constant_args=(1.0, 2.0),
+            per_particle_args=true_images,
+            is_jittable=True,
+            overwrite=False,
+        )
 
-#     particle_dataset = RelionParticleStackDataset(parameter_file)
-#     images = particle_dataset[:]["images"]
-#     np.testing.assert_allclose(
-#         images,
-#         np.ones_like(images) / np.linalg.norm(np.ones_like(images)),
-#     )
+    # load the simulated image stack
+    particle_dataset = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        mode="r",
+    )
 
-#     # Clean up
-#     shutil.rmtree("tests/outputs/starfile_writing/")
+    images = particle_dataset[:]["images"]
+    np.testing.assert_allclose(
+        images,
+        true_images.astype(jnp.float32),
+    )
 
-#     return
+    # Clean up
+    shutil.rmtree("tests/outputs/starfile_writing/")
+
+    return
 
 
-# def test_load_multiple_mrcs():
-#     @partial(eqx.filter_vmap, in_axes=(0), out_axes=eqx.if_array(0))
-#     def _make_particle_params(dummy_idx):
-#         instrument_config = cxs.InstrumentConfig(
-#             shape=(4, 4),
-#             pixel_size=1.5,
-#             voltage_in_kilovolts=300.0,
-#         )
+def test_write_simulated_image_stack_from_starfile_nojit(sample_starfile_path):
+    def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
+        # Mock the image computation
+        c1, c2 = constant_args
+        image = per_particle_args
+        return image / np.linalg.norm(image)
 
-#         pose = cxs.EulerAnglePose()
-#         transfer_theory = cxs.ContrastTransferTheory(
-#             ctf=cxs.CTF(), envelope=op.FourierGaussian()
-#         )
-#         return RelionParticleParameters(
-#             instrument_config, pose, transfer_theory, metadata={}
-#         )
+    """Test writing a simulated image stack from a starfile."""
+    parameter_file = RelionParticleParameterFile(
+        path_to_starfile=sample_starfile_path,
+        mode="r",
+        loads_envelope=False,
+        loads_metadata=False,
+    )
+    parameter_file.path_to_starfile = (
+        "tests/outputs/starfile_writing/test_particle_parameters.star"
+    )
 
-#     def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
-#         # Mock the image computation
-#         return per_particle_args
+    n_images = len(parameter_file)
+    shape = parameter_file[0]["instrument_config"].shape
+    true_images = jax.random.normal(
+        jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
+    )
 
-#     particle_params = _make_particle_params(jnp.ones(10))
+    # Create a simulated image stack
+    new_stack = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        mode="w",
+        exists_ok=True,
+        mrcfile_settings={"overwrite": True},
+    )
 
-#     write_starfile_with_particle_parameters(
-#         particle_parameters=particle_params,
-#         filename="tests/outputs/starfile_writing/test_particle_parameters.star",
-#         mrc_batch_size=3,
-#         overwrite=True,
-#     )
+    simulate_particle_stack(
+        new_stack,
+        compute_image_fn=_mock_compute_image,
+        constant_args=(1.0, 2.0),
+        per_particle_args=true_images,
+        overwrite=True,
+    )
 
-#     parameter_file = RelionParticleParameterFile(
-#         path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
-#         path_to_relion_project="tests/outputs/starfile_writing/",
-#         loads_envelope=True,
-#         loads_metadata=False,
-#     )
+    particle_dataset = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        mode="r",
+    )
+    images = particle_dataset[:]["images"]
+    np.testing.assert_allclose(
+        images,
+        true_images / np.linalg.norm(true_images, axis=(1, 2), keepdims=True),
+    )
 
-#     n_images = len(parameter_file)
-#     shape = parameter_file[0]["instrument_config"].shape
-#     true_images = jax.random.normal(
-#         jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
-#     )
+    # Clean up
+    shutil.rmtree("tests/outputs/starfile_writing/")
 
-#     # Create a simulated image stack
-#     write_simulated_image_stack_from_starfile(
-#         parameter_file=parameter_file,
-#         compute_image_fn=_mock_compute_image,
-#         constant_args=(1.0, 2.0),
-#         per_particle_args=true_images,
-#         is_jittable=True,
-#         overwrite=True,
-#     )
+    return
 
-#     stack_dataset = RelionParticleStackDataset(parameter_file)
 
-#     n_tests = 10
-#     for i in range(n_tests):
-#         indices = np.random.choice(len(parameter_file), size=3, replace=False)
+def test_write_single_image(sample_starfile_path):
+    def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
+        # Mock the image computation
+        c1, c2 = constant_args
+        p1, p2 = per_particle_args
+        image = jnp.ones(
+            particle_parameters["instrument_config"].shape, dtype=jnp.float32
+        )
+        return image / np.linalg.norm(image)
 
-#         images = stack_dataset[indices]["images"]
-#         np.testing.assert_allclose(
-#             images,
-#             true_images[indices],
-#         )
-#     return
+    selection_filter = {
+        "rlnImageName": lambda x: np.where(x == "0000001@000000.mrcs", True, False)
+    }
+    """Test writing a simulated image stack from a starfile."""
+    parameter_file = RelionParticleParameterFile(
+        path_to_starfile=sample_starfile_path,
+        mode="r",
+        loads_envelope=False,
+        loads_metadata=False,
+        selection_filter=selection_filter,
+    )
+    parameter_file.path_to_starfile = (
+        "tests/outputs/starfile_writing/test_particle_parameters.star"
+    )
+
+    # Create a simulated image stack
+    new_stack = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        mode="w",
+        exists_ok=True,
+        mrcfile_settings={"overwrite": True},
+    )
+
+    n_images = 1
+    simulate_particle_stack(
+        new_stack,
+        compute_image_fn=_mock_compute_image,
+        constant_args=(1.0, 2.0),
+        per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
+        overwrite=True,
+    )
+
+    particle_dataset = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        mode="r",
+    )
+    images = particle_dataset[:]["images"]
+    np.testing.assert_allclose(
+        images,
+        np.ones_like(images) / np.linalg.norm(np.ones_like(images)),
+    )
+
+    # Clean up
+    shutil.rmtree("tests/outputs/starfile_writing/")
+
+    return
+
+
+def test_load_multiple_mrcs():
+    @partial(eqx.filter_vmap, in_axes=(0), out_axes=eqx.if_array(0))
+    def _make_particle_params(dummy_idx):
+        instrument_config = cxs.InstrumentConfig(
+            shape=(4, 4),
+            pixel_size=1.5,
+            voltage_in_kilovolts=300.0,
+        )
+
+        pose = cxs.EulerAnglePose()
+        transfer_theory = cxs.ContrastTransferTheory(
+            ctf=cxs.CTF(), envelope=op.FourierGaussian()
+        )
+        return {
+            "instrument_config": instrument_config,
+            "pose": pose,
+            "transfer_theory": transfer_theory,
+            "metadata": {},
+        }
+
+    def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
+        # Mock the image computation
+        return per_particle_args
+
+    particle_params = _make_particle_params(jnp.ones(10))
+    new_parameters_file = RelionParticleParameterFile(
+        path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
+        mode="w",
+        exists_ok=True,
+        updates_optics_group=True,
+        loads_envelope=True,
+    )
+    new_parameters_file.append(particle_params)
+    new_parameters_file.save(overwrite=True)
+
+    parameter_file = RelionParticleParameterFile(
+        path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
+        mode="r",
+        loads_envelope=True,
+        loads_metadata=False,
+    )
+
+    n_images = len(parameter_file)
+    shape = parameter_file[0]["instrument_config"].shape
+    true_images = jax.random.normal(
+        jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
+    )
+
+    new_stack = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        mode="w",
+        exists_ok=True,
+        mrcfile_settings={"overwrite": True},
+    )
+
+    # Create a simulated image stack
+    simulate_particle_stack(
+        new_stack,
+        compute_image_fn=_mock_compute_image,
+        constant_args=(1.0, 2.0),
+        per_particle_args=true_images,
+        overwrite=True,
+        images_per_file=3,
+    )
+
+    particle_dataset = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        mode="r",
+    )
+
+    n_tests = 10
+    for i in range(n_tests):
+        indices = np.random.choice(len(parameter_file), size=3, replace=False)
+
+        images = particle_dataset[indices]["images"]
+        np.testing.assert_allclose(
+            images,
+            true_images[indices],
+        )
+    return
