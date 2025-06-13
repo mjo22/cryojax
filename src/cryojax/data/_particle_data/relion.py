@@ -1553,7 +1553,6 @@ def _make_image_filename(
     path_to_relion_project: pathlib.Path,
 ) -> tuple[pathlib.Path, list[str]]:
     # Get the file number for this MRC file
-    print(index)
     if n_particles == 0:
         file_number = 0
     else:
@@ -1571,7 +1570,6 @@ def _make_image_filename(
                 )
             else:
                 file_number = _parse_filename_for_number(last_filename) + 1
-                print(file_number)
     # Unpack settings
     prefix = mrcfile_settings["prefix"]
     output_folder = mrcfile_settings["output_folder"]
@@ -1601,7 +1599,6 @@ def _make_image_filename(
 
 
 def _parse_filename_for_number(filename: str) -> int:
-    print(filename)
     match = re.search(r"(\d+)\.[^.]+$", filename)
     try:
         file_number = int(match.group(1))  # type: ignore
