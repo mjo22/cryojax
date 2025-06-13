@@ -6,8 +6,8 @@ import math
 from functools import cached_property
 from typing import Any, Callable, Optional, Union
 
+import equinox as eqx
 import jax.numpy as jnp
-from equinox import Module
 from jaxtyping import Array, Float, Inexact
 
 from ..constants import convert_keV_to_angstroms
@@ -20,15 +20,15 @@ from ..image import (
 from ..internal import error_if_not_positive
 
 
-class InstrumentConfig(Module, strict=True):
+class InstrumentConfig(eqx.Module, strict=True):
     """Configuration and utilities for an electron microscopy image."""
 
-    shape: tuple[int, int]
+    shape: tuple[int, int] = eqx.field(static=True)
     pixel_size: Float[Array, ""]
     voltage_in_kilovolts: Float[Array, ""]
     electrons_per_angstrom_squared: Float[Array, ""]
 
-    padded_shape: tuple[int, int]
+    padded_shape: tuple[int, int] = eqx.field(static=True)
     pad_mode: Union[str, Callable]
 
     def __init__(
