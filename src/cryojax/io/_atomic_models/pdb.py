@@ -2,21 +2,24 @@
 Read atomic information from a PDB file using functions and objects adapted from `mdtraj`.
 """
 
+import bz2
 import gzip
+import io
+import os
 import pathlib
+from copy import copy
 from io import StringIO
-from typing import Literal, Optional, TypedDict, overload
+from typing import Literal, Optional, TypedDict, cast, overload
 from urllib.parse import urlparse, uses_netloc, uses_params, uses_relative
 from urllib.request import urlopen
+from xml.etree import ElementTree
 
 import mdtraj
 import numpy as np
 from jaxtyping import Float, Int
 from mdtraj.core import element as elem
 from mdtraj.core.topology import Topology
-from mdtraj.formats.pdb.pdbfile import PDBTrajectoryFile
 from mdtraj.formats.pdb.pdbstructure import PdbStructure
-from mdtraj.utils import open_maybe_zipped
 
 
 _VALID_URLS = set(uses_relative + uses_netloc + uses_params)
@@ -127,21 +130,23 @@ def read_atoms_from_pdb(
     """
     with AtomicModelFile(filename_or_url) as pdb_file:
         # Read file
-        info, topology = pdb_file.read(
+        atom_info, topology = pdb_file.read_atoms(
             standardizes_names=standardizes_names,
             topology=topology,
+            loads_masses=center,
+            loads_b_factors=loads_b_factors,
         )
     # ... get indices from filter
     atom_indices = topology.select(select)
     # ... get filtered attributes
-    atom_positions = info["atom_positions"][atom_indices, ...]
-    atom_identities = info["atom_identities"][atom_indices]
+    atom_positions = atom_info["positions"][atom_indices, ...]
+    atom_identities = atom_info["identities"][atom_indices]
     if center:
-        atom_masses = info["atom_masses"][atom_indices]
+        atom_masses = cast(np.ndarray, atom_info["masses"])[atom_indices]
         atom_positions = _center_atom_coordinates(atom_positions, atom_masses)
 
     if loads_b_factors:
-        b_factors = info["b_factors"][atom_indices]
+        b_factors = cast(np.ndarray, atom_info["b_factors"])[atom_indices]
         return atom_positions, atom_identities, b_factors
     else:
         return atom_positions, atom_identities
@@ -157,16 +162,16 @@ class AtomicModelInfo(TypedDict):
 
     **Attributes:**
 
-    - `atom_positions`: The cartesian coordinates of all of the atoms in each frame.
-    - `atom_identities`: The atomic numbers of all of the atoms in each frame.
-    - `atom_masses`: The mass of each atom.
+    - `positions`: The cartesian coordinates of all of the atoms in each frame.
+    - `identities`: The atomic numbers of all of the atoms in each frame.
+    - `masses`: The mass of each atom.
     - `b_factors`: The B-factors of all of the atoms in each frame.
     """
 
-    atom_positions: np.ndarray
-    atom_identities: np.ndarray
-    atom_masses: np.ndarray
-    b_factors: np.ndarray
+    positions: np.ndarray
+    identities: np.ndarray
+    masses: Optional[np.ndarray]
+    b_factors: Optional[np.ndarray]
 
 
 class AtomicModelFile:
@@ -194,7 +199,7 @@ class AtomicModelFile:
         else:
             filename_or_url = pathlib.Path(filename_or_url)
             _validate_pdb_file(filename_or_url)
-            self._file = open_maybe_zipped(filename_or_url, "r")
+            self._file = _open_maybe_zipped(filename_or_url, "r")
         # Create the PDB structure via `mdtraj`
         self._pdb_structure = PdbStructure(self._file, load_all_models=True)
 
@@ -202,11 +207,13 @@ class AtomicModelFile:
     def pdb_structure(self) -> PdbStructure:
         return self._pdb_structure
 
-    def read(
+    def read_atoms(
         self,
         *,
         standardizes_names: bool = True,
         topology: Optional[Topology] = None,
+        loads_b_factors: bool = True,
+        loads_masses: bool = True,
     ) -> tuple[AtomicModelInfo, Topology]:
         """Load properties from the PDB reader.
 
@@ -227,6 +234,8 @@ class AtomicModelFile:
             self._pdb_structure,
             topology,
             standardizes_names,
+            loads_b_factors,
+            loads_masses,
         )
 
         return atom_info, topology
@@ -308,38 +317,39 @@ def _load_atom_info(
     pdb: PdbStructure,
     topology: Optional[Topology],
     standardizes_names: bool,
+    loads_b_factors: bool,
+    loads_masses: bool,
 ):
-    atom_positions, b_factors, atom_identities, atom_masses = [], [], [], []
+    temp = dict(positions=[], identities=[], b_factors=[], masses=[])
     # load all of the positions (from every model)
     for model in pdb.iter_models(use_all_models=True):
         for chain in model.iter_chains():
             for residue in chain.iter_residues():
                 for atom in residue.atoms:
                     # ... make sure this is read in angstroms?
-                    atom_positions.append(atom.get_position())
-                    atom_identities.append(atom.element.atomic_number)
-                    atom_masses.append(atom.element.mass)
-                    b_factors.append(atom.get_temperature_factor())
+                    temp["positions"].append(atom.get_position())
+                    temp["identities"].append(atom.element.atomic_number)
+                    if loads_masses:
+                        temp["masses"].append(atom.element.mass)
+                    if loads_b_factors:
+                        temp["b_factors"].append(atom.get_temperature_factor())
 
     # Load the topology if None is given
     if topology is None:
         topology = _make_topology(
             pdb,
-            atom_positions,
+            temp["positions"],
             standardizes_names,
         )
 
     # Gather properties and return
-    atom_positions = np.array(atom_positions)
-    b_factors = np.array(b_factors)
-    atom_identities = np.array(atom_identities)
-    atom_masses = np.array(atom_masses)
-
     atom_info = AtomicModelInfo(
-        atom_positions=atom_positions,
-        atom_identities=atom_identities,
-        atom_masses=atom_masses,
-        b_factors=b_factors,
+        positions=np.asarray(temp["positions"], dtype=float),
+        identities=np.asarray(temp["identities"], dtype=int),
+        b_factors=(
+            np.asarray(temp["b_factors"], dtype=float) if loads_b_factors else None
+        ),
+        masses=(np.asarray(temp["masses"], dtype=float) if loads_masses else None),
     )
 
     return atom_info, topology
@@ -396,11 +406,55 @@ def _guess_element(atom_name, residue_name, residue_length):
 
 
 def _load_name_replacement_tables():
-    PDBTrajectoryFile._loadNameReplacementTables()
-    return (
-        PDBTrajectoryFile._residueNameReplacements,
-        PDBTrajectoryFile._atomNameReplacements,
+    """Load the list of atom and residue name replacements.
+    This method is modified from the `mdtraj` `PDBTrajectoryFile`
+    class.
+    """
+    tree = ElementTree.parse(
+        os.path.join(os.path.dirname(__file__), "pdbNames.xml"),
     )
+    # Residue and atom replacements
+    residue_name_replacements = {}
+    atom_name_replacements = {}
+    # ... containers for residues
+    all_residues, protein_residues, nucleic_acid_residues = {}, {}, {}
+    for residue in tree.getroot().findall("Residue"):
+        name = residue.attrib["name"]
+        if name == "All":
+            _parse_residue(residue, all_residues)
+        elif name == "Protein":
+            _parse_residue(residue, protein_residues)
+        elif name == "Nucleic":
+            _parse_residue(residue, nucleic_acid_residues)
+    for atom in all_residues:
+        protein_residues[atom] = all_residues[atom]
+        nucleic_acid_residues[atom] = all_residues[atom]
+    for residue in tree.getroot().findall("Residue"):
+        name = residue.attrib["name"]
+        for id in residue.attrib:
+            if id == "name" or id.startswith("alt"):
+                residue_name_replacements[residue.attrib[id]] = name
+        if "type" not in residue.attrib:
+            atoms = copy(all_residues)
+        elif residue.attrib["type"] == "Protein":
+            atoms = copy(protein_residues)
+        elif residue.attrib["type"] == "Nucleic":
+            atoms = copy(nucleic_acid_residues)
+        else:
+            atoms = copy(all_residues)
+        _parse_residue(residue, atoms)
+        atom_name_replacements[name] = atoms
+    return residue_name_replacements, atom_name_replacements
+
+
+def _parse_residue(residue, map):
+    """Helper function modified from the `mdtraj` `PDBTrajectoryFile`
+    class.
+    """
+    for atom in residue.findall("Atom"):
+        name = atom.attrib["name"]
+        for id in atom.attrib:
+            map[atom.attrib[id]] = name
 
 
 def _validate_pdb_file(filename):
@@ -420,3 +474,33 @@ def _is_url(url):
         return urlparse(url).scheme in _VALID_URLS
     except (AttributeError, TypeError):
         return False
+
+
+def _open_maybe_zipped(filename, mode, force_overwrite=True):
+    """Open a file in text (not binary) mode, transparently handling
+    .gz or .bz2 compresssion, with utf-8 encoding. This function is
+    modified from `mdtraj.utils.open_maybe_zipped`.
+    """
+    _, extension = os.path.splitext(str(filename).lower())
+    if mode == "r":
+        if extension == ".gz":
+            with gzip.GzipFile(filename, "r") as gz_f:
+                return StringIO(gz_f.read().decode("utf-8"))
+        elif extension == ".bz2":
+            with bz2.BZ2File(filename, "r") as bz2_f:
+                return StringIO(bz2_f.read().decode("utf-8"))
+        else:
+            return open(filename)
+    elif mode == "w":
+        if os.path.exists(filename) and not force_overwrite:
+            raise OSError('"%s" already exists' % filename)
+        if extension == ".gz":
+            binary_fh = gzip.GzipFile(filename, "wb")
+            return io.TextIOWrapper(binary_fh, encoding="utf-8")
+        elif extension == ".bz2":
+            binary_fh = bz2.BZ2File(filename, "wb")
+            return io.TextIOWrapper(binary_fh, encoding="utf-8")
+        else:
+            return open(filename, "w")
+    else:
+        raise Exception(f"Internal error opening file {filename}. Invalid mode {mode}.")
