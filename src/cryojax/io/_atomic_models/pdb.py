@@ -1,5 +1,6 @@
 """
-Read atomic information from a PDB file using functions and objects adapted from `mdtraj`.
+Read atomic information from a PDB file. Functions and objects are
+adapted from `mdtraj`.
 """
 
 import bz2
@@ -356,7 +357,8 @@ def _load_atom_info(
 
 
 def _guess_element(atom_name, residue_name, residue_length):
-    "Try to guess the element name. Based on `mdtraj.PDBTrajectoryFile._guess_element`."
+    """Try to guess the element name.
+    Closely follows `mdtraj.formats.pdb.PDBTrajectoryFile._guess_element`."""
     upper = atom_name.upper()
     if upper.startswith("CL"):
         element = elem.chlorine
@@ -407,8 +409,7 @@ def _guess_element(atom_name, residue_name, residue_length):
 
 def _load_name_replacement_tables():
     """Load the list of atom and residue name replacements.
-    This method is modified from the `mdtraj` `PDBTrajectoryFile`
-    class.
+    Closely follows `mdtraj.formats.pdb.PDBTrajectoryFile._loadNameReplacementTables`.
     """
     tree = ElementTree.parse(
         os.path.join(os.path.dirname(__file__), "pdbNames.xml"),
@@ -448,9 +449,7 @@ def _load_name_replacement_tables():
 
 
 def _parse_residue(residue, map):
-    """Helper function modified from the `mdtraj` `PDBTrajectoryFile`
-    class.
-    """
+    """Closely follows `mdtraj.formats.pdb.PDBTrajectoryFile._parseResidueAtoms`."""
     for atom in residue.findall("Atom"):
         name = atom.attrib["name"]
         for id in atom.attrib:
@@ -467,8 +466,8 @@ def _validate_pdb_file(filename):
 
 def _is_url(url):
     """Check to see if a URL has a valid protocol.
-    from pandas/io.common.py Copyright 2014 Pandas Developers
-    Used under the BSD licence
+    Originally pandas/io.common.py, sourced from `mdtraj`.
+    Copyright 2014 Pandas Developers, used under the BSD licence.
     """
     try:
         return urlparse(url).scheme in _VALID_URLS
@@ -478,8 +477,8 @@ def _is_url(url):
 
 def _open_maybe_zipped(filename, mode, force_overwrite=True):
     """Open a file in text (not binary) mode, transparently handling
-    .gz or .bz2 compresssion, with utf-8 encoding. This function is
-    modified from `mdtraj.utils.open_maybe_zipped`.
+    .gz or .bz2 compresssion, with utf-8 encoding.
+    Closely follows `mdtraj.utils.open_maybe_zipped`.
     """
     _, extension = os.path.splitext(str(filename).lower())
     if mode == "r":
