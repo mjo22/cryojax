@@ -105,6 +105,17 @@ class TestErrorRaisingForLoading:
         with pytest.raises(TypeError):
             dataset[0]
 
+        def test_load_with_badparticle_name2(
+            self, parameter_file, sample_relion_project_path
+        ):
+            parameter_file.starfile_data["particles"].loc[0, "rlnImageName"] = "0000.mrcs"
+            dataset = RelionParticleStackDataset(
+                path_to_relion_project=sample_relion_project_path,
+                parameter_file=parameter_file,
+            )
+            with pytest.raises(TypeError):
+                dataset[0]
+
     def test_load_with_bad_shape(self, parameter_file, sample_relion_project_path):
         parameter_file.starfile_data["optics"].loc[0, "rlnImageSize"] = 1
         dataset = RelionParticleStackDataset(
@@ -1185,6 +1196,7 @@ def test_load_multiple_mrcs():
         per_particle_args=true_images,
         overwrite=True,
         images_per_file=3,
+        batch_size=1,
     )
 
     particle_dataset = RelionParticleStackDataset(
@@ -1202,4 +1214,126 @@ def test_load_multiple_mrcs():
             images,
             true_images[indices],
         )
+
+    shutil.rmtree("tests/outputs/starfile_writing/")
     return
+
+
+def test_raise_errors_parameter_file(sample_starfile_path):
+    from jaxtyping import TypeCheckError
+
+    with pytest.raises((ValueError, TypeCheckError)):
+        parameter_file = RelionParticleParameterFile(
+            path_to_starfile=sample_starfile_path,
+            mode="CRYOEM",
+            loads_envelope=False,
+            loads_metadata=False,
+        )
+    parameter_file = RelionParticleParameterFile(
+        path_to_starfile=sample_starfile_path,
+        mode="r",
+        loads_envelope=False,
+        loads_metadata=False,
+    )
+
+    assert parameter_file.mode == "r"
+
+    # bad keys, bad values
+    with pytest.raises((ValueError, TypeCheckError)):
+        starfile_data = {"cryo": pd.DataFrame({}), "em": pd.DataFrame({})}
+        parameter_file.starfile_data = starfile_data
+
+    # good keys, bad values
+    with pytest.raises((ValueError, TypeCheckError)):
+        starfile_data = {"particles": 0, "optics": 0}
+        parameter_file.starfile_data = starfile_data
+
+    # now set to write mode and try to filter
+    with pytest.raises(ValueError):
+        parameter_file = RelionParticleParameterFile(
+            path_to_starfile=sample_starfile_path,
+            mode="w",
+            exists_ok=True,
+            loads_envelope=False,
+            loads_metadata=False,
+            selection_filter={"rlnAngleRot": lambda x: x < 1000.0},
+        )
+
+
+def test_raise_errors_stack_dataset(sample_starfile_path, sample_relion_project_path):
+    parameter_file = RelionParticleParameterFile(
+        path_to_starfile=sample_starfile_path,
+        mode="r",
+        loads_envelope=False,
+        loads_metadata=False,
+    )
+
+    starfile_data = parameter_file.starfile_data
+    particle_data = starfile_data["particles"]
+    # remove "rlnImageName" column
+    particle_data = particle_data.drop(columns=["rlnImageName"])
+
+    parameter_file.starfile_data = {
+        "particles": particle_data,
+        "optics": starfile_data["optics"],
+    }
+
+    particle_dataset = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project=sample_relion_project_path,
+        mode="r",
+    )
+
+    with pytest.raises(IOError):
+        _ = particle_dataset[:]
+
+    # Now set to write mode
+
+    parameter_file.path_to_starfile = (
+        "tests/outputs/starfile_writing/test_particle_parameters.star"
+    )
+    particle_dataset = RelionParticleStackDataset(
+        parameter_file,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        mode="w",
+        exists_ok=True,
+        mrcfile_settings={"overwrite": False},
+    )
+
+    parameters = parameter_file[0]
+    image_shape = parameters["instrument_config"].shape
+
+    particle_stack = {
+        "parameters": parameters,
+        "images": jnp.zeros(image_shape, dtype=np.float32),
+    }
+
+    with pytest.raises(ValueError):
+        particle_dataset[np.array([0])] = particle_stack
+
+    with pytest.raises(TypeError):
+        particle_dataset[0] = "dummy"
+
+    with pytest.raises(TypeError):
+        particle_dataset.append("dummy")
+
+    with pytest.raises(ValueError):
+        particle_dataset.append({"parameters": None, "images": particle_stack["images"]})
+
+    with pytest.raises(ValueError):
+        particle_dataset.write_images(
+            index_array=np.array([0, 1], dtype=int), images=np.zeros((100, 10, 10))
+        )
+
+    with pytest.raises(ValueError):
+        particle_dataset.write_images(
+            index_array=np.array([0, 1], dtype=int), images=np.zeros((10, *image_shape))
+        )
+
+    # Now actually write
+    particle_dataset.append(images=jnp.zeros((1, *image_shape), dtype=np.float32))
+    # Now try to write again
+    with pytest.raises(IOError):
+        particle_dataset.write_images(particle_stack)
+    # and clean
+    shutil.rmtree("tests/outputs/starfile_writing/")
