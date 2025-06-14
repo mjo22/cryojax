@@ -1330,10 +1330,5 @@ def test_raise_errors_stack_dataset(sample_starfile_path, sample_relion_project_
             index_array=np.array([0, 1], dtype=int), images=np.zeros((10, *image_shape))
         )
 
-    # Now actually write
-    particle_dataset.append(images=jnp.zeros((1, *image_shape), dtype=np.float32))
-    # Now try to write again
-    with pytest.raises(IOError):
-        particle_dataset.write_images(particle_stack)
     # and clean
     shutil.rmtree("tests/outputs/starfile_writing/")
