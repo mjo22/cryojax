@@ -98,7 +98,7 @@ def batched_scan(
         remainder_xs = jax.tree.map(
             lambda x: x[batch_dim - batch_dim % batch_size :, ...], xs
         )
-        carry, remainder_ys = f(init, remainder_xs)
+        carry, remainder_ys = f(carry, remainder_xs)
         ys = jax.tree.map(
             lambda x, y: jax.lax.concatenate([x, y], dimension=0),
             ys,

@@ -3,8 +3,8 @@ Abstraction of rotations represented by matrix lie groups.
 """
 
 from abc import abstractmethod
-from typing import cast, ClassVar
-from typing_extensions import override, Self
+from typing import ClassVar, cast
+from typing_extensions import Self, override
 
 import equinox as eqx
 import jax
@@ -255,7 +255,7 @@ class SO3(AbstractMatrixLieGroup, strict=True):
             wxyz=jnp.concatenate(
                 [
                     real_factor[None],
-                    -imaginary_factor * tangent,
+                    imaginary_factor * tangent,
                 ]
             )
         )
@@ -293,7 +293,7 @@ class SO3(AbstractMatrixLieGroup, strict=True):
             ),
         )
 
-        return -atan_factor * self.wxyz[1:]
+        return atan_factor * self.wxyz[1:]
 
     @override
     def adjoint(self) -> Float[Array, "3 3"]:

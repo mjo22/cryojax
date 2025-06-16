@@ -64,7 +64,9 @@ class HighEnergyScatteringTheory(AbstractWaveScatteringTheory, strict=True):
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
         # Compute the integrated potential in the exit plane
-        potential = self.structural_ensemble.get_potential_in_lab_frame()
+        potential = self.structural_ensemble.get_potential_in_transformed_frame(
+            apply_translation=False
+        )
         fourier_integrated_potential = (
             self.potential_integrator.compute_integrated_potential(
                 potential, instrument_config, outputs_real_space=False

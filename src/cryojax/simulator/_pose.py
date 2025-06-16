@@ -4,7 +4,8 @@ Representations of rigid body rotations and translations of 3D coordinate system
 
 from abc import abstractmethod
 from functools import cached_property
-from typing_extensions import override, Self
+from typing import Optional
+from typing_extensions import Self, override
 
 import equinox as eqx
 import jax
@@ -14,7 +15,7 @@ from equinox import AbstractVar, Module
 from jaxtyping import Array, Complex, Float
 
 from ..image import enforce_self_conjugate_rfftn_components
-from ..rotations import convert_quaternion_to_euler_angles, SO3
+from ..rotations import SO3, convert_quaternion_to_euler_angles
 
 
 class AbstractPose(Module, strict=True):
@@ -25,6 +26,7 @@ class AbstractPose(Module, strict=True):
 
     offset_x_in_angstroms: AbstractVar[Float[Array, ""]]
     offset_y_in_angstroms: AbstractVar[Float[Array, ""]]
+    offset_z_in_angstroms: AbstractVar[Optional[Float[Array, ""]]]
 
     def rotate_coordinates(
         self,
@@ -114,16 +116,25 @@ class AbstractPose(Module, strict=True):
         return jnp.exp(-1.0j * (2 * jnp.pi * jnp.matmul(frequency_grid_in_angstroms, xy)))
 
     @cached_property
-    def offset_in_angstroms(self) -> Float[Array, "2"]:
+    def offset_in_angstroms(self) -> Float[Array, "2"] | Float[Array, "3"]:
         """The in-plane translation vector, where the origin in taken to
         be in the center of the imaging plane.
         """
-        return jnp.asarray(
-            (
-                self.offset_x_in_angstroms,
-                self.offset_y_in_angstroms,
+        if self.offset_z_in_angstroms is None:
+            return jnp.asarray(
+                (
+                    self.offset_x_in_angstroms,
+                    self.offset_y_in_angstroms,
+                )
             )
-        )
+        else:
+            return jnp.asarray(
+                (
+                    self.offset_x_in_angstroms,
+                    self.offset_y_in_angstroms,
+                    self.offset_z_in_angstroms,
+                )
+            )
 
     @cached_property
     @abstractmethod
@@ -143,33 +154,64 @@ class AbstractPose(Module, strict=True):
     def from_rotation_and_translation(
         cls,
         rotation: SO3,
-        offset_in_angstroms: Float[Array, "2"],
+        offset_in_angstroms: Float[Array, "2"] | Float[Array, "3"],
     ) -> Self:
-        """Construct an `AbstractPose` from an `SO3` object and an
-        in-plane translation vector.
+        """Construct an `AbstractPose` from an `SO3` object and a
+        translation vector.
         """
-        return eqx.tree_at(
-            lambda self: (
-                self.offset_x_in_angstroms,
-                self.offset_y_in_angstroms,
-            ),
-            cls.from_rotation(rotation),
-            (
-                offset_in_angstroms[..., 0],
-                offset_in_angstroms[..., 1],
-            ),
-        )
+        if offset_in_angstroms.shape == (2,):
+            return eqx.tree_at(
+                lambda self: (
+                    self.offset_x_in_angstroms,
+                    self.offset_y_in_angstroms,
+                ),
+                cls.from_rotation(rotation),
+                (
+                    offset_in_angstroms[0],
+                    offset_in_angstroms[1],
+                ),
+            )
+        elif offset_in_angstroms.shape == (3,):
+            return eqx.tree_at(
+                lambda self: (
+                    self.offset_x_in_angstroms,
+                    self.offset_y_in_angstroms,
+                    self.offset_z_in_angstroms,
+                ),
+                cls.from_rotation(rotation),
+                (
+                    offset_in_angstroms[0],
+                    offset_in_angstroms[1],
+                    offset_in_angstroms[2],
+                ),
+            )
+        else:
+            raise ValueError(
+                "Array `offset_in_angstroms` given to constructor "
+                f"`{cls.__name__}.from_rotation_and_translation` supports "
+                "shapes `(2,)` and `(3,)`. Got shape "
+                f"`{offset_in_angstroms.shape}`"
+            )
 
 
 class EulerAnglePose(AbstractPose, strict=True):
     r"""An `AbstractPose` represented by Euler angles.
-    Angles are given in degrees, and the sequence of rotations is
-    zyz, with `phi_angle` as the first euler angle, `theta_angle` as
-    the second, and `psi_angle` is the third.
+    Angles are given in degrees, and the sequence of rotations is a
+    zyz *extrinsic* rotation, with `phi_angle` as the first euler angle,
+    `theta_angle` as the second, and `psi_angle` is the third.
+
+    !!! info "Converting to RELION and FREALIGN convention"
+
+        RELION/FREALIGN convention is that the euler angles represent
+        a zyz *intrinsic* rotation that "undoes" the rotation in the image. cryoJAX
+        defines its convention to be a zyz *extrinsic* rotation that generates the
+        pose in the image. In order to convert to the RELION/FREALIGN convention,
+        simply **negate each euler angle**.
     """
 
     offset_x_in_angstroms: Float[Array, ""]
     offset_y_in_angstroms: Float[Array, ""]
+    offset_z_in_angstroms: Optional[Float[Array, ""]]
 
     phi_angle: Float[Array, ""]
     theta_angle: Float[Array, ""]
@@ -182,6 +224,8 @@ class EulerAnglePose(AbstractPose, strict=True):
         phi_angle: float | Float[Array, ""] = 0.0,
         theta_angle: float | Float[Array, ""] = 0.0,
         psi_angle: float | Float[Array, ""] = 0.0,
+        *,
+        offset_z_in_angstroms: Optional[float | Float[Array, ""]] = None,
     ):
         """**Arguments:**
 
@@ -190,12 +234,18 @@ class EulerAnglePose(AbstractPose, strict=True):
         - `phi_angle`: Angle to rotate about first rotation axis, which is the z axis.
         - `theta_angle`: Angle to rotate about second rotation axis, which is the y axis.
         - `psi_angle`: Angle to rotate about third rotation axis, which is the z axis.
+        - `offset_z_in_angstroms`: Out-of-plane translation in z direction.
         """
-        self.offset_x_in_angstroms = jnp.asarray(offset_x_in_angstroms)
-        self.offset_y_in_angstroms = jnp.asarray(offset_y_in_angstroms)
-        self.phi_angle = jnp.asarray(phi_angle)
-        self.theta_angle = jnp.asarray(theta_angle)
-        self.psi_angle = jnp.asarray(psi_angle)
+        self.offset_x_in_angstroms = jnp.asarray(offset_x_in_angstroms, dtype=float)
+        self.offset_y_in_angstroms = jnp.asarray(offset_y_in_angstroms, dtype=float)
+        self.phi_angle = jnp.asarray(phi_angle, dtype=float)
+        self.theta_angle = jnp.asarray(theta_angle, dtype=float)
+        self.psi_angle = jnp.asarray(psi_angle, dtype=float)
+        self.offset_z_in_angstroms = (
+            None
+            if offset_z_in_angstroms is None
+            else jnp.asarray(offset_z_in_angstroms, dtype=float)
+        )
 
     @cached_property
     @override
@@ -218,8 +268,7 @@ class EulerAnglePose(AbstractPose, strict=True):
     @classmethod
     def from_rotation(cls, rotation: SO3) -> Self:
         phi_angle, theta_angle, psi_angle = convert_quaternion_to_euler_angles(
-            rotation.wxyz,
-            convention="zyz",
+            rotation.wxyz, convention="zyz", extrinsic=True
         )
         return cls(phi_angle=phi_angle, theta_angle=theta_angle, psi_angle=psi_angle)
 
@@ -229,6 +278,7 @@ class QuaternionPose(AbstractPose, strict=True):
 
     offset_x_in_angstroms: Float[Array, ""]
     offset_y_in_angstroms: Float[Array, ""]
+    offset_z_in_angstroms: Optional[Float[Array, ""]]
 
     wxyz: Float[Array, "4"]
 
@@ -239,6 +289,8 @@ class QuaternionPose(AbstractPose, strict=True):
         wxyz: (
             tuple[float, float, float, float] | Float[np.ndarray, "4"] | Float[Array, "4"]
         ) = (1.0, 0.0, 0.0, 0.0),
+        *,
+        offset_z_in_angstroms: Optional[float | Float[Array, ""]] = None,
     ):
         """**Arguments:**
 
@@ -246,10 +298,16 @@ class QuaternionPose(AbstractPose, strict=True):
         - `offset_y_in_angstroms`: In-plane translation in y direction.
         - `wxyz`:
             The quaternion, represented as a vector $\\mathbf{q} = (q_w, q_x, q_y, q_z)$.
+        - `offset_z_in_angstroms`: Out-of-plane translation in z direction.
         """
         self.offset_x_in_angstroms = jnp.asarray(offset_x_in_angstroms)
         self.offset_y_in_angstroms = jnp.asarray(offset_y_in_angstroms)
         self.wxyz = jnp.asarray(wxyz)
+        self.offset_z_in_angstroms = (
+            None
+            if offset_z_in_angstroms is None
+            else jnp.asarray(offset_z_in_angstroms, dtype=float)
+        )
 
     @cached_property
     @override
@@ -281,6 +339,7 @@ class AxisAnglePose(AbstractPose, strict=True):
 
     offset_x_in_angstroms: Float[Array, ""]
     offset_y_in_angstroms: Float[Array, ""]
+    offset_z_in_angstroms: Optional[Float[Array, ""]]
 
     euler_vector: Float[Array, "3"]
 
@@ -291,6 +350,8 @@ class AxisAnglePose(AbstractPose, strict=True):
         euler_vector: (
             tuple[float, float, float] | Float[np.ndarray, "3"] | Float[Array, "3"]
         ) = (0.0, 0.0, 0.0),
+        *,
+        offset_z_in_angstroms: Optional[float | Float[Array, ""]] = None,
     ):
         """**Arguments:**
 
@@ -299,10 +360,16 @@ class AxisAnglePose(AbstractPose, strict=True):
         - `euler_vector`:
             The axis-angle parameterization, represented with the euler
             vector $\\boldsymbol{\\omega}$.
+        - `offset_z_in_angstroms`: Out-of-plane translation in z direction.
         """
         self.offset_x_in_angstroms = jnp.asarray(offset_x_in_angstroms)
         self.offset_y_in_angstroms = jnp.asarray(offset_y_in_angstroms)
         self.euler_vector = jnp.asarray(euler_vector)
+        self.offset_z_in_angstroms = (
+            None
+            if offset_z_in_angstroms is None
+            else jnp.asarray(offset_z_in_angstroms, dtype=float)
+        )
 
     @cached_property
     @override

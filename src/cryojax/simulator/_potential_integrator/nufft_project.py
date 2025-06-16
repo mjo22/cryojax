@@ -21,23 +21,23 @@ class NufftProjection(
 ):
     """Integrate points onto the exit plane using non-uniform FFTs."""
 
-    pixel_rescaling_method: Optional[str]
+    pixel_size_rescaling_method: Optional[str]
     eps: float
 
     is_projection_approximation: ClassVar[bool] = True
 
     def __init__(
-        self, *, pixel_rescaling_method: Optional[str] = None, eps: float = 1e-6
+        self, *, pixel_size_rescaling_method: Optional[str] = None, eps: float = 1e-6
     ):
         """**Arguments:**
 
-        - `pixel_rescaling_method`: Method for interpolating the final image to
+        - `pixel_size_rescaling_method`: Method for interpolating the final image to
                                     the `InstrumentConfig` pixel size. See
                                     `cryojax.image.rescale_pixel_size` for documentation.
         - `eps`: See [`jax-finufft`](https://github.com/flatironinstitute/jax-finufft)
                  for documentation.
         """
-        self.pixel_rescaling_method = pixel_rescaling_method
+        self.pixel_size_rescaling_method = pixel_size_rescaling_method
         self.eps = eps
 
     def project_voxel_cloud_with_nufft(
@@ -131,9 +131,9 @@ def _project_with_nufft(weights, coordinate_list, shape, eps=1e-6):
     # Get x and y coordinates
     coordinates_xy = coordinate_list[:, :2]
     # Normalize coordinates betweeen -pi and pi
-    M1, M2 = shape
-    image_size = jnp.asarray((M1, M2), dtype=float)
-    coordinates_periodic = 2 * jnp.pi * coordinates_xy / image_size
+    ny, nx = shape
+    box_xy = jnp.asarray((nx, ny), dtype=float)
+    coordinates_periodic = 2 * jnp.pi * coordinates_xy / box_xy
     # Unpack and compute
     x, y = coordinates_periodic[:, 0], coordinates_periodic[:, 1]
     fourier_projection = nufft1(shape, weights, y, x, eps=eps, iflag=-1)

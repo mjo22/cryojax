@@ -1,7 +1,7 @@
 from .transfer_function import (
     AberratedAstigmaticCTF as AberratedAstigmaticCTF,
     AbstractCTF as AbstractCTF,
-    PerfectCTF as PerfectCTF,
+    NullCTF as NullCTF,
 )
 from .transfer_theory import (
     AbstractTransferTheory as AbstractTransferTheory,

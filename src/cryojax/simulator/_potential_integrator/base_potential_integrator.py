@@ -6,7 +6,7 @@ from abc import abstractmethod
 from typing import Generic, Optional, TypeVar
 
 import jax.numpy as jnp
-from equinox import AbstractClassVar, AbstractVar, error_if, Module
+from equinox import AbstractClassVar, AbstractVar, Module, error_if
 from jaxtyping import Array, Complex, Float
 
 from ...image import maybe_rescale_pixel_size
@@ -51,7 +51,7 @@ class AbstractVoxelPotentialIntegrator(
 ):
     """Base class for a method of integrating a voxel-based potential."""
 
-    pixel_rescaling_method: AbstractVar[Optional[str]]
+    pixel_size_rescaling_method: AbstractVar[Optional[str]]
 
     def _convert_raw_image_to_integrated_potential(
         self,
@@ -63,15 +63,15 @@ class AbstractVoxelPotentialIntegrator(
         """Return the integrated potential in fourier space at the
         `instrument_config.pixel_size` and the `instrument_config.padded_shape.`
         """
-        if self.pixel_rescaling_method is None:
+        if self.pixel_size_rescaling_method is None:
             fourier_integrated_potential = error_if(
                 potential.voxel_size * fourier_integrated_potential_without_postprocess,
                 ~jnp.isclose(potential.voxel_size, instrument_config.pixel_size),
                 f"Tried to use {type(self).__name__} with `{type(potential).__name__}."
                 "voxel_size != InstrumentConfig.pixel_size`. If this is true, then "
-                f"`{type(self).__name__}.pixel_rescaling_method` must not be set to "
-                f"`None`. Try setting `{type(self).__name__}.pixel_rescaling_method = "
-                "'bicubic'`.",
+                f"`{type(self).__name__}.pixel_size_rescaling_method` must not be set to "
+                f"`None`. Try setting `{type(self).__name__}.pixel_size_rescaling_method "
+                "= 'bicubic'`.",
             )
             return fourier_integrated_potential
         else:

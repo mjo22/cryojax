@@ -35,7 +35,7 @@ def get_filter_spec(
     (or the opposite, if `inverse = True`).
     """
     if not inverse:
-        false_pytree = jtu.tree_map(lambda _: False, pytree)
+        false_pytree = jtu.tree_map(lambda _: False, pytree, is_leaf=is_leaf)
         return eqx.tree_at(
             where, false_pytree, replace_fn=lambda _: True, is_leaf=is_leaf
         )

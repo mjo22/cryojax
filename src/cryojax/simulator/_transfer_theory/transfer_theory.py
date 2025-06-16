@@ -66,6 +66,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
         ),
         instrument_config: InstrumentConfig,
         *,
+        defocus_offset: Optional[Float[Array, ""] | float] = None,
         is_projection_approximation: bool = True,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim//2+1}"
@@ -85,6 +86,9 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
             array. If `False`, `object_spectrum_in_exit_plane` is extracted from
             the ewald sphere and is therefore the fourier transform of a complex-valued
             array.
+        - `defocus_offset`:
+            An optional defocus offset to apply to the CTF defocus at
+            runtime.
         """
         frequency_grid = instrument_config.padded_frequency_grid_in_angstroms
         if is_projection_approximation:
@@ -95,6 +99,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
                 phase_shift=self.phase_shift,
                 amplitude_contrast_ratio=self.amplitude_contrast_ratio,
                 outputs_exp=False,
+                defocus_offset=defocus_offset,
             )
             # ... compute the contrast as the CTF multiplied by the exit plane
             # phase shifts
@@ -107,6 +112,7 @@ class ContrastTransferTheory(AbstractTransferTheory, strict=True):
             aberration_phase_shifts = self.ctf.compute_aberration_phase_shifts(
                 frequency_grid,
                 voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
+                defocus_offset=defocus_offset,
             ) - jnp.deg2rad(self.phase_shift)
             contrast_spectrum_at_detector_plane = _compute_contrast_from_ewald_sphere(
                 object_spectrum_at_exit_plane,
@@ -143,6 +149,8 @@ class WaveTransferTheory(AbstractTransferTheory, strict=True):
             "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}",
         ],
         instrument_config: InstrumentConfig,
+        *,
+        defocus_offset: Optional[Float[Array, ""] | float] = None,
     ) -> Complex[
         Array, "{instrument_config.padded_y_dim} {instrument_config.padded_x_dim}"
     ]:
@@ -153,6 +161,7 @@ class WaveTransferTheory(AbstractTransferTheory, strict=True):
             frequency_grid,
             voltage_in_kilovolts=instrument_config.voltage_in_kilovolts,
             outputs_exp=True,
+            defocus_offset=defocus_offset,
         )
         # ... compute the contrast as the CTF multiplied by the exit plane
         # phase shifts
@@ -175,24 +184,49 @@ def _compute_contrast_from_ewald_sphere(
     # negative frequencies
     y_dim, x_dim = instrument_config.padded_y_dim, instrument_config.padded_x_dim
     # ... first handle the grid of frequencies
-    pos_object_yx = object_spectrum_at_exit_plane[:, 1 : x_dim // 2 + x_dim % 2]
+    pos_object_yx = object_spectrum_at_exit_plane[1:, 1 : x_dim // 2 + x_dim % 2]
     neg_object_yx = jnp.flip(
-        object_spectrum_at_exit_plane[:, x_dim // 2 + x_dim % 2 :], axis=-1
+        jnp.flip(object_spectrum_at_exit_plane[1:, x_dim // 2 + x_dim % 2 :], axis=-1),
+        axis=0,
     )
+    if x_dim % 2 == 0:
+        pos_object_yx = jnp.concatenate(
+            (pos_object_yx, neg_object_yx[:, -1, None].conj()), axis=-1
+        )
     contrast_yx = _ewald_propagate_kernel(
-        (pos_object_yx if x_dim % 2 == 1 else jnp.pad(pos_object_yx, ((0, 0), (0, 1)))),
+        pos_object_yx,
         neg_object_yx,
         ac,
-        sin[:, 1:],
-        cos[:, 1:],
+        sin[1:, 1:],
+        cos[1:, 1:],
     )
-    # ... next handle the line of frequencies at x = 0
+    # ... next handle the line of frequencies at y = 0
+    pos_object_0x = object_spectrum_at_exit_plane[0, 1 : x_dim // 2 + x_dim % 2]
+    neg_object_0x = jnp.flip(
+        object_spectrum_at_exit_plane[0, x_dim // 2 + x_dim % 2 :], axis=-1
+    )
+    if x_dim % 2 == 0:
+        pos_object_0x = jnp.concatenate(
+            (pos_object_0x, neg_object_0x[-1, None].conj()), axis=0
+        )
+    contrast_0x = _ewald_propagate_kernel(
+        pos_object_0x,
+        neg_object_0x,
+        ac,
+        sin[0, 1 : x_dim // 2 + 1],
+        cos[0, 1 : x_dim // 2 + 1],
+    )
+    # ... then handle the line of frequencies at x = 0
     pos_object_y0 = object_spectrum_at_exit_plane[1 : y_dim // 2 + y_dim % 2, 0]
     neg_object_y0 = jnp.flip(
         object_spectrum_at_exit_plane[y_dim // 2 + y_dim % 2 :, 0], axis=-1
     )
+    if y_dim % 2 == 0:
+        pos_object_y0 = jnp.concatenate(
+            (pos_object_y0, neg_object_y0[-1, None].conj()), axis=0
+        )
     contrast_y0 = _ewald_propagate_kernel(
-        (pos_object_y0 if y_dim % 2 == 1 else jnp.pad(pos_object_y0, ((0, 1),))),
+        pos_object_y0,
         neg_object_y0,
         ac,
         sin[1 : y_dim // 2 + 1, 0],
@@ -216,18 +250,19 @@ def _compute_contrast_from_ewald_sphere(
         axis=0,
     )
     # ... concatenate the results
-    contrast_spectrum_at_detector_plane = 0.5 * jnp.concatenate(
+    contrast_yx = jnp.concatenate((contrast_0x[None, :], contrast_yx), axis=0)
+    contrast_spectrum_at_detector_plane = jnp.concatenate(
         (contrast_y0[:, None], contrast_yx), axis=1
     )
 
     return contrast_spectrum_at_detector_plane
 
 
-def _ewald_propagate_kernel(neg, pos, ac, sin, cos):
+def _ewald_propagate_kernel(pos, neg, ac, sin, cos):
     w1, w2 = ac, jnp.sqrt(1 - ac**2)
-    return (
-        (w2 * (neg.real + pos.real) + w1 * (neg.imag + pos.imag)) * sin
-        + (w2 * (neg.imag + pos.imag) - w1 * (neg.real + pos.real)) * cos
+    return 0.5 * (
+        (w2 * (pos.real + neg.real) + w1 * (pos.imag + neg.imag)) * sin
+        + (w2 * (pos.imag + neg.imag) - w1 * (pos.real + neg.real)) * cos
         + 1.0j
         * (
             (w2 * (pos.imag - neg.imag) + w1 * (neg.real - pos.real)) * sin

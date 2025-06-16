@@ -54,7 +54,7 @@ src = ["src"]
 combine-as-imports = true
 extra-standard-library = ["typing_extensions"]
 lines-after-imports = 2
-order-by-type = false
+order-by-type = true
 
 [tool.black]
 line-length = 90
