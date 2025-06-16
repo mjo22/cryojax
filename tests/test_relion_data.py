@@ -1332,3 +1332,62 @@ def test_raise_errors_stack_dataset(sample_starfile_path, sample_relion_project_
 
     # and clean
     shutil.rmtree("tests/outputs/starfile_writing/")
+
+
+def test_append_relion_stack_dataset():
+    @partial(eqx.filter_vmap, in_axes=(0), out_axes=eqx.if_array(0))
+    def _make_particle_params(dummy_idx):
+        instrument_config = cxs.InstrumentConfig(
+            shape=(4, 4),
+            pixel_size=1.5,
+            voltage_in_kilovolts=300.0,
+        )
+
+        pose = cxs.EulerAnglePose()
+        transfer_theory = cxs.ContrastTransferTheory(
+            ctf=cxs.CTF(), envelope=op.FourierGaussian()
+        )
+        return {
+            "instrument_config": instrument_config,
+            "pose": pose,
+            "transfer_theory": transfer_theory,
+            "metadata": {},
+        }
+
+    def _mock_compute_image(particle_parameters, constant_args, per_particle_args):
+        # Mock the image computation
+        return per_particle_args
+
+    new_parameters_file = RelionParticleParameterFile(
+        path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
+        mode="w",
+        exists_ok=True,
+        updates_optics_group=True,
+        loads_envelope=True,
+    )
+
+    new_stack = RelionParticleStackDataset(
+        new_parameters_file,
+        path_to_relion_project="tests/outputs/starfile_writing/",
+        mode="w",
+        exists_ok=True,
+        mrcfile_settings={"overwrite": False},
+    )
+
+    n_images = 10
+    particle_params = _make_particle_params(jnp.ones(n_images))
+    shape = particle_params["instrument_config"].shape
+    images = jax.random.normal(
+        jax.random.key(0), shape=(n_images, *shape), dtype=jnp.float32
+    )
+
+    new_stack.append(
+        {
+            "parameters": particle_params,
+            "images": images,
+        }
+    )
+
+    # clean up
+    shutil.rmtree("tests/outputs/starfile_writing/")
+    return
