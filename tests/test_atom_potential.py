@@ -27,7 +27,10 @@ config.update("jax_enable_x64", True)
 @pytest.mark.parametrize("shape", ((64, 64), (63, 63), (63, 64), (64, 63)))
 def test_atom_potential_integrator_shape(sample_pdb_path, shape):
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
-        sample_pdb_path, center=True, select="not element H", loads_b_factors=True
+        sample_pdb_path,
+        center=True,
+        selection_string="not element H",
+        loads_b_factors=True,
     )
     scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
         atom_identities, read_peng_element_scattering_factor_parameter_table()
@@ -62,7 +65,7 @@ def test_downsampled_gmm_potential_agreement(sample_pdb_path):
     atom_positions, atom_identities = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
-        select="not element H",
+        selection_string="not element H",
     )
     scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
         atom_identities, read_peng_element_scattering_factor_parameter_table()
@@ -114,7 +117,7 @@ def test_peng_vs_gmm_agreement(sample_pdb_path):
     atom_positions, atom_identities = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
-        select="not element H",
+        selection_string="not element H",
     )
     scattering_factor_parameters = get_tabulated_scattering_factor_parameters(
         atom_identities, read_peng_element_scattering_factor_parameter_table()
