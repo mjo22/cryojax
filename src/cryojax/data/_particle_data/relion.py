@@ -1,7 +1,6 @@
 """cryoJAX compatibility with [RELION](https://relion.readthedocs.io/en/release-5.0/)."""
 
 import abc
-import os
 import pathlib
 import re
 import warnings
@@ -486,7 +485,6 @@ class RelionParticleStackDataset(
         parameter_file: AbstractParticleStarFile,
         path_to_relion_project: str | pathlib.Path,
         mode: Literal["r", "w"] = "r",
-        exists_ok: bool = False,
         mrcfile_settings: dict[str, Any] = {},
     ):
         """**Arguments:**
@@ -505,9 +503,6 @@ class RelionParticleStackDataset(
             are not yet written.
             - If `mode = 'r'`, images are read from the 'rlnImageName'
             stored in the `parameter_file.starfile_data`.
-        - `exists_ok`:
-            If `True` and `mode = 'w'`, removes the 'rlnImageName' column
-            from `parameter_file.starfile_data`.
         - `mrcfile_settings`:
             A dictionary with the following keys:
             - 'prefix':
@@ -539,36 +534,36 @@ class RelionParticleStackDataset(
         # Set properties for writing image files
         self._mrcfile_settings = _dict_to_mrcfile_settings(mrcfile_settings)
         # For `mode = 'w'`, generate empty 'rlnImageName' column
+        project_exists = self._path_to_relion_project.exists()
         if mode == "w":
             particle_data, optics_data = (
                 parameter_file.starfile_data["particles"],
                 parameter_file.starfile_data["optics"],
             )
-            if "rlnImageName" in particle_data.columns and not exists_ok:
+            # Write empty "rlnImageName" column (defaults to NaN values)
+            particle_data["rlnImageName"] = pd.Series(dtype=str)
+            parameter_file.starfile_data = dict(
+                optics=optics_data, particles=particle_data
+            )
+            if not project_exists:
+                self._path_to_relion_project.mkdir(parents=True, exist_ok=False)
+        else:
+            particle_data = parameter_file.starfile_data["particles"]
+            if "rlnImageName" not in particle_data.columns:
                 raise IOError(
-                    "In `mode = 'w'`, the `RelionParticleStackDataset` "
-                    "writes new values for image filenames, i.e. the 'rlnImageName'. "
-                    "Found that the STAR file already has a 'rlnImageName' column. "
-                    "If you wish to remove existing filenames in the STAR file, set "
-                    "`exists_ok=True`."
+                    "Could not find column 'rlnImageName' in the STAR file. "
+                    "When using `mode = 'r'`, the STAR file must have this "
+                    "column. To write images in a STAR file, "
+                    "set `mode = 'w'`."
                 )
-
-            else:
-                # Write empty "rlnImageName" column (defaults to NaN values)
-                particle_data["rlnImageName"] = pd.Series(dtype=str)
-                parameter_file.starfile_data = dict(
-                    optics=optics_data, particles=particle_data
+            if not project_exists:
+                raise FileNotFoundError(
+                    "`RelionParticleStackDataset` opened in "
+                    "'mode = `r`', but the RELION project directory "
+                    "`path_to_relion_project` does not exist. "
+                    "To write images in a STAR file in a new RELION project, "
+                    "set `mode = 'w'`."
                 )
-
-            if self._path_to_relion_project.exists():
-                assert exists_ok, (
-                    "Set `mode = 'w'` and `exists_ok = False`, but the "
-                    + f"RELION project directory {str(self._path_to_relion_project)} "
-                    + "already exists. To write a new RELION project, "
-                    + "set `exists_ok = True`. Or set a different directory.exists_ok"
-                )
-            else:
-                os.makedirs(self._path_to_relion_project, exist_ok=exists_ok)
 
     @override
     def __getitem__(
@@ -1176,8 +1171,9 @@ def _load_image_stack_from_mrc(
         particle_index_at_filename = mrc_index_at_filename.index
         path_to_filename = pathlib.Path(path_to_relion_project, filename)
         with mrcfile.mmap(path_to_filename, mode="r", permissive=True) as mrc:
-            mrc_ndim = mrc.data.ndim
-            mrc_shape = mrc.data.shape if mrc_ndim == 2 else mrc.data.shape[1:]
+            mrc_data = np.asarray(mrc.data)
+            mrc_ndim = mrc_data.ndim
+            mrc_shape = mrc_data.shape if mrc_ndim == 2 else mrc_data.shape[1:]
 
             if shape != mrc_shape:
                 raise ValueError(
@@ -1187,7 +1183,7 @@ def _load_image_stack_from_mrc(
                     "the STAR file optics group formatting."
                 )
             image_stack[particle_index_at_filename] = (
-                mrc.data if mrc_ndim == 2 else mrc.data[mrc_index_at_filename]
+                mrc_data if mrc_ndim == 2 else mrc_data[mrc_index_at_filename]
             )
 
     return jnp.asarray(image_stack)
