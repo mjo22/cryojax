@@ -533,7 +533,7 @@ class RelionParticleStackDataset(
         """
         self._mode = _validate_mode(mode)
 
-        if self._mode == "w" and parameter_file.mode == "r":
+        if mode == "w" and parameter_file.mode == "r":
             parameter_file = parameter_file.copy()
         else:
             parameter_file = parameter_file
