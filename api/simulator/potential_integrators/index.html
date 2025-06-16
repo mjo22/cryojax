@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
       
       
 
@@ -2058,31 +2058,6 @@ the exit plane.</p>
 
 
 
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h5 id="cryojax.simulator.AbstractVoxelPotentialIntegrator.pixel_rescaling_method" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractVoxelPotentialIntegrator</span><span class="o">.</span><span class="n">pixel_rescaling_method</span><span class="p">:</span> <span class="n">AbstractVar</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#cryojax.simulator.AbstractVoxelPotentialIntegrator.pixel_rescaling_method" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-    </div>
-
-</div>
-
-
-
-
   </div>
 
     </div>
@@ -2129,7 +2104,7 @@ the exit plane.</p>
 
 
 <h5 id="cryojax.simulator.FourierSliceExtraction.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">pixel_rescaling_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">interpolation_order</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">interpolation_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;fill&#39;</span><span class="p">,</span> <span class="n">interpolation_cval</span><span class="p">:</span> <span class="nb">complex</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="o">+</span> <span class="mi">0</span><span class="n">j</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">pixel_size_rescaling_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">out_of_bounds_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;fill&#39;</span><span class="p">,</span> <span class="n">fill_value</span><span class="p">:</span> <span class="nb">complex</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="o">+</span> <span class="mi">0</span><span class="n">j</span><span class="p">)</span></code>
 
 <a href="#cryojax.simulator.FourierSliceExtraction.__init__" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -2138,20 +2113,15 @@ the exit plane.</p>
 
         <p><strong>Arguments:</strong></p>
 <ul>
-<li><code>pixel_rescaling_method</code>:
+<li><code>pixel_size_rescaling_method</code>:
     Method for rescaling the final image to the <code>InstrumentConfig</code>
     pixel size. See <code>cryojax.image.rescale_pixel_size</code> for documentation.</li>
-<li><code>interpolation_order</code>:
-    The interpolation order. This can be <code>0</code> (nearest-neighbor), <code>1</code>
-    (linear), or <code>3</code> (cubic).
-    Note that this argument is ignored when using this object with a
-    <code>FourierVoxelGridInterpolator</code>.</li>
-<li><code>interpolation_mode</code>:
+<li><code>out_of_bounds_mode</code>:
     Specify how to handle out of bounds indexing. See
     <code>cryojax.image.map_coordinates</code> for documentation.</li>
-<li><code>interpolation_cval</code>:
+<li><code>fill_value</code>:
     Value for filling out-of-bounds indices. Used only when
-    <code>interpolation_mode = "fill"</code>.</li>
+    <code>out_of_bounds_mode = "fill"</code>.</li>
 </ul>
 
 
@@ -2168,7 +2138,7 @@ the exit plane.</p>
 
 
 <h5 id="cryojax.simulator.FourierSliceExtraction.extract_fourier_slice_from_spline_coefficients" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="n">extract_fourier_slice_from_spline_coefficients</span><span class="p">(</span><span class="n">spline_coefficients</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim+2 dim+2 dim+2&#39;</span><span class="p">],</span> <span class="n">frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim//2+1&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="o">.</span><span class="n">extract_fourier_slice_from_spline_coefficients</span><span class="p">(</span><span class="n">spline_coefficients</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;coeff_dim coeff_dim coeff_dim&#39;</span><span class="p">],</span> <span class="n">frequency_slice_in_pixels</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;1 dim dim 3&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;dim dim//2+1&#39;</span><span class="p">]</span></code>
 
 <a href="#cryojax.simulator.FourierSliceExtraction.extract_fourier_slice_from_spline_coefficients" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -2291,7 +2261,7 @@ the exit plane.</p>
 
 
 <h5 id="cryojax.simulator.NufftProjection.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">NufftProjection</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">pixel_rescaling_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-06</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">NufftProjection</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">pixel_size_rescaling_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-06</span><span class="p">)</span></code>
 
 <a href="#cryojax.simulator.NufftProjection.__init__" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -2300,7 +2270,7 @@ the exit plane.</p>
 
         <p><strong>Arguments:</strong></p>
 <ul>
-<li><code>pixel_rescaling_method</code>: Method for interpolating the final image to
+<li><code>pixel_size_rescaling_method</code>: Method for interpolating the final image to
                             the <code>InstrumentConfig</code> pixel size. See
                             <code>cryojax.image.rescale_pixel_size</code> for documentation.</li>
 <li><code>eps</code>: See <a href="https://github.com/flatironinstitute/jax-finufft"><code>jax-finufft</code></a>
@@ -2393,7 +2363,7 @@ onto imaging plane using a non-uniform FFT.</p>
 
 
 <h5 id="cryojax.simulator.GaussianMixtureProjection.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureProjection</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">upsampling_factor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">use_error_functions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">n_batches</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">GaussianMixtureProjection</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">upsampling_factor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">use_error_functions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">n_batches</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span></code>
 
 <a href="#cryojax.simulator.GaussianMixtureProjection.__init__" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -2407,6 +2377,10 @@ onto imaging plane using a non-uniform FFT.</p>
     If <code>upsampling_factor</code> is greater than 1, the images will be computed
     at a higher resolution and then downsampled to the original resolution.
     This can be useful for reducing aliasing artifacts in the images.</li>
+<li><code>shape</code>:
+    The shape of the plane on which projections are computed before padding or
+    cropping to the <code>InstrumentConfig.padded_shape</code>. This argument is particularly
+    useful if the <code>InstrumentConfig.padded_shape</code> is much larger than the protein.</li>
 <li><code>use_error_functions</code>:
     If <code>True</code>, use error functions to evaluate the projected potential at
     a pixel to be the average value within the pixel using gaussian
@@ -2480,10 +2454,10 @@ onto imaging plane using a non-uniform FFT.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       

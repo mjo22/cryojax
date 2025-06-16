@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
@@ -26,7 +26,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
       
       
 
@@ -1896,6 +1896,10 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">cryojax.simulator</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cxs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">get_tabulated_scattering_factor_parameters</span><span class="p">,</span>
+    <span class="n">read_peng_element_scattering_factor_parameter_table</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_atoms_from_pdb</span>
 
 
@@ -1905,7 +1909,15 @@
     <span class="n">select</span><span class="o">=</span><span class="s2">&quot;not element H&quot;</span><span class="p">,</span>
     <span class="n">loads_b_factors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="n">atom_potential</span> <span class="o">=</span> <span class="n">cxs</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="p">(</span><span class="n">atom_positions</span><span class="p">,</span> <span class="n">atom_identities</span><span class="p">,</span> <span class="n">b_factors</span><span class="p">)</span>
+<span class="n">scattering_factor_parameters</span> <span class="o">=</span> <span class="n">get_tabulated_scattering_factor_parameters</span><span class="p">(</span>
+    <span class="n">atom_identities</span><span class="p">,</span> <span class="n">read_peng_element_scattering_factor_parameter_table</span><span class="p">()</span>
+<span class="p">)</span>
+<span class="n">atom_potential</span> <span class="o">=</span> <span class="n">cxs</span><span class="o">.</span><span class="n">PengAtomicPotential</span><span class="p">(</span>
+    <span class="n">atom_positions</span><span class="p">,</span>
+    <span class="n">scattering_factor_a</span><span class="o">=</span><span class="n">scattering_factor_parameters</span><span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">],</span>
+    <span class="n">scattering_factor_b</span><span class="o">=</span><span class="n">scattering_factor_parameters</span><span class="p">[</span><span class="s2">&quot;b&quot;</span><span class="p">],</span>
+    <span class="n">b_factors</span><span class="o">=</span><span class="n">b_factors</span><span class="p">,</span>
+<span class="p">)</span>
 </code></pre></div>
 
 </div>
@@ -2169,10 +2181,10 @@ Maxes (Array(1.206126, dtype=float32), Array(1.2034018, dtype=float32), Array(1.
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
         <script src="../../javascripts/mathjax.js"></script>
       

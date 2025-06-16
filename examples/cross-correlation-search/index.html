@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
       
       
 
@@ -1967,7 +1967,7 @@
 <div class="cell border-box-sizing text_cell rendered">
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Now, load a particle stack on which to run the grid search. The particle stack will be loaded from a STAR file with the <code>RelionParticleImageDataset</code> interface. See the <a href="https://mjo22.github.io/cryojax/examples/read-dataset/">Read a particle stack</a> tutorial for more information.</p>
+<p>Now, load a particle stack on which to run the grid search. The particle stack will be loaded from a STAR file with the <code>RelionParticleStackDataset</code> interface. See the <a href="https://mjo22.github.io/cryojax/examples/read-dataset/">Read a particle stack</a> tutorial for more information.</p>
 </div>
 </div>
 </div>
@@ -1976,7 +1976,7 @@
 
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">RelionParticleParameterDataset</span><span class="p">,</span> <span class="n">RelionParticleStackDataset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">RelionParticleParameterFile</span><span class="p">,</span> <span class="n">RelionParticleStackDataset</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">cryojax.image</span><span class="w"> </span><span class="kn">import</span> <span class="n">normalize_image</span><span class="p">,</span> <span class="n">rfftn</span>
 
 
@@ -1991,22 +1991,24 @@
     <span class="n">shape</span><span class="p">,</span> <span class="n">pixel_size</span><span class="p">,</span> <span class="n">voltage_in_kilovolts</span><span class="p">,</span> <span class="n">padded_shape</span><span class="o">=</span><span class="n">potential</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
 <span class="p">)</span>
 
-<span class="n">parameter_dataset</span> <span class="o">=</span> <span class="n">RelionParticleParameterDataset</span><span class="p">(</span>
+<span class="n">parameter_file</span> <span class="o">=</span> <span class="n">RelionParticleParameterFile</span><span class="p">(</span>
     <span class="n">path_to_starfile</span><span class="o">=</span><span class="s2">&quot;./data/ribosome_4ug0_particles.star&quot;</span><span class="p">,</span>
-    <span class="n">path_to_relion_project</span><span class="o">=</span><span class="s2">&quot;./&quot;</span><span class="p">,</span>
     <span class="n">make_config_fn</span><span class="o">=</span><span class="n">make_config_fn</span><span class="p">,</span>
     <span class="n">broadcasts_optics_group</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="n">particle_dataset</span> <span class="o">=</span> <span class="n">RelionParticleStackDataset</span><span class="p">(</span><span class="n">parameter_dataset</span><span class="p">)</span>
+<span class="n">particle_dataset</span> <span class="o">=</span> <span class="n">RelionParticleStackDataset</span><span class="p">(</span>
+    <span class="n">parameter_file</span><span class="p">,</span>
+    <span class="n">path_to_relion_project</span><span class="o">=</span><span class="s2">&quot;./&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="n">particle_stack</span> <span class="o">=</span> <span class="n">particle_dataset</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span>
 <span class="c1"># Create a normalized image stack in fourier space</span>
-<span class="n">fourier_image_stack</span> <span class="o">=</span> <span class="n">rfftn</span><span class="p">(</span><span class="n">normalize_image_stack</span><span class="p">(</span><span class="n">particle_stack</span><span class="o">.</span><span class="n">images</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="n">fourier_image_stack</span> <span class="o">=</span> <span class="n">rfftn</span><span class="p">(</span><span class="n">normalize_image_stack</span><span class="p">(</span><span class="n">particle_stack</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">]),</span> <span class="n">axes</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 <span class="c1"># Plot images</span>
-<span class="n">n_images</span> <span class="o">=</span> <span class="n">particle_stack</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">n_images</span> <span class="o">=</span> <span class="n">particle_stack</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span> <span class="o">*</span> <span class="n">n_images</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">ncols</span><span class="o">=</span><span class="n">n_images</span><span class="p">)</span>
 <span class="p">[</span>
     <span class="n">plot_image</span><span class="p">(</span>
-        <span class="n">particle_stack</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+        <span class="n">particle_stack</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">],</span>
         <span class="n">fig</span><span class="p">,</span>
         <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
         <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Picked particle </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -2073,8 +2075,8 @@
 <div class="highlight"><pre><span></span><code><span class="c1"># ... create the structural ensemble</span>
 <span class="n">structural_ensemble</span> <span class="o">=</span> <span class="n">cxs</span><span class="o">.</span><span class="n">SingleStructureEnsemble</span><span class="p">(</span><span class="n">potential</span><span class="o">=</span><span class="n">potential</span><span class="p">,</span> <span class="n">pose</span><span class="o">=</span><span class="n">pose_grid</span><span class="p">)</span>
 <span class="c1"># ... now the scattering theory</span>
-<span class="n">transfer_theory</span> <span class="o">=</span> <span class="n">particle_stack</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">transfer_theory</span>
-<span class="n">potential_integrator</span> <span class="o">=</span> <span class="n">cxs</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="p">(</span><span class="n">interpolation_order</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">transfer_theory</span> <span class="o">=</span> <span class="n">particle_stack</span><span class="p">[</span><span class="s2">&quot;parameters&quot;</span><span class="p">][</span><span class="s2">&quot;transfer_theory&quot;</span><span class="p">]</span>
+<span class="n">potential_integrator</span> <span class="o">=</span> <span class="n">cxs</span><span class="o">.</span><span class="n">FourierSliceExtraction</span><span class="p">()</span>
 <span class="n">scattering_theory</span> <span class="o">=</span> <span class="n">cxs</span><span class="o">.</span><span class="n">WeakPhaseScatteringTheory</span><span class="p">(</span>
     <span class="n">structural_ensemble</span><span class="p">,</span>
     <span class="n">potential_integrator</span><span class="p">,</span>
@@ -2082,7 +2084,7 @@
 <span class="p">)</span>
 <span class="c1"># ... and finally the imaging pipeline.</span>
 <span class="n">image_model</span> <span class="o">=</span> <span class="n">cxs</span><span class="o">.</span><span class="n">ContrastImageModel</span><span class="p">(</span>
-    <span class="n">particle_stack</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">instrument_config</span><span class="p">,</span> <span class="n">scattering_theory</span>
+    <span class="n">particle_stack</span><span class="p">[</span><span class="s2">&quot;parameters&quot;</span><span class="p">][</span><span class="s2">&quot;instrument_config&quot;</span><span class="p">],</span> <span class="n">scattering_theory</span>
 <span class="p">)</span>
 </code></pre></div>
 
@@ -2325,7 +2327,7 @@ which simply stores the minimum value of the loss function (more specifically, i
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 
-<div class="highlight"><pre><span></span><code><span class="n">n_images</span> <span class="o">=</span> <span class="n">particle_stack</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<div class="highlight"><pre><span></span><code><span class="n">n_images</span> <span class="o">=</span> <span class="n">particle_stack</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span> <span class="o">*</span> <span class="n">n_images</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">ncols</span><span class="o">=</span><span class="n">n_images</span><span class="p">)</span>
 <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;Maximum cross-correlation per pixel&quot;</span><span class="p">)</span>
 <span class="p">[</span>
@@ -2418,7 +2420,7 @@ which simply stores the minimum value of the loss function (more specifically, i
 <div class="input">
 
 <div class="highlight"><pre><span></span><code><span class="c1"># Simulate the solution and compute its corresponding cross-correlation</span>
-<span class="n">n_images</span> <span class="o">=</span> <span class="n">particle_stack</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">n_images</span> <span class="o">=</span> <span class="n">particle_stack</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="n">solution_pipeline_vmap</span><span class="p">,</span> <span class="n">solution_pipeline_novmap</span> <span class="o">=</span> <span class="n">eqx</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span>
     <span class="n">solution_pipeline</span><span class="p">,</span> <span class="n">solution_filter_spec</span>
 <span class="p">)</span>
@@ -2432,7 +2434,7 @@ which simply stores the minimum value of the loss function (more specifically, i
 <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span> <span class="o">*</span> <span class="n">n_images</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">ncols</span><span class="o">=</span><span class="n">n_images</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;Best fit particle vs observed particle&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_images</span><span class="p">):</span>
-    <span class="n">observed</span> <span class="o">=</span> <span class="n">particle_stack</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">observed</span> <span class="o">=</span> <span class="n">particle_stack</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
     <span class="n">simulated</span> <span class="o">=</span> <span class="n">solution_image_stack</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
     <span class="n">cc</span> <span class="o">=</span> <span class="n">solution_cross_correlation</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
     <span class="n">plot_image</span><span class="p">(</span><span class="n">observed</span><span class="p">,</span> <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Picked particle </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -2500,10 +2502,10 @@ which simply stores the minimum value of the loss function (more specifically, i
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
         <script src="../../javascripts/mathjax.js"></script>
       

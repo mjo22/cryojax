@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
       
       
 
@@ -920,9 +920,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#cryojax.simulator.PerfectCTF" class="md-nav__link">
+  <a href="#cryojax.simulator.NullCTF" class="md-nav__link">
     <span class="md-ellipsis">
-      PerfectCTF
+      NullCTF
     </span>
   </a>
   
@@ -2040,7 +2040,7 @@
 
 
 <h5 id="cryojax.simulator.AbstractCTF.compute_aberration_phase_shifts" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractCTF</span><span class="o">.</span><span class="n">compute_aberration_phase_shifts</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractCTF</span><span class="o">.</span><span class="n">compute_aberration_phase_shifts</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">defocus_offset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -2065,16 +2065,32 @@
 
 
 <h5 id="cryojax.simulator.AbstractCTF.__call__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractCTF</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">amplitude_contrast_ratio</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">phase_shift</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">outputs_exp</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
-  </span>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AbstractCTF</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">amplitude_contrast_ratio</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">phase_shift</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">outputs_exp</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">defocus_offset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
 
 <a href="#cryojax.simulator.AbstractCTF.__call__" class="headerlink" title="Permanent link">¤</a></h5>
 
 
     <div class="doc doc-contents ">
+
+        <p>Compute the CTF as a JAX array.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>frequency_grid_in_angstroms</code>:
+    The grid of frequencies in units of inverse angstroms. This can
+    be computed with <a href="https://mjo22.github.io/cryojax/api/coordinates/making_coordinates/#cryojax.coordinates.make_frequency_grid"><code>cryojax.coordinates.make_frequency_grid</code></a></li>
+<li><code>voltage_in_kilovolts</code>:
+    The accelerating voltage of the microscope in kilovolts. This
+    is converted to the wavelength of incident electrons using
+    the function <a href="https://mjo22.github.io/cryojax/api/constants/units/#cryojax.constants.convert_keV_to_angstroms"><code>cryojax.constants.convert_keV_to_angstroms</code></a></li>
+<li><code>amplitude_contrast_ratio</code>:
+    The amplitude contrast ratio. This argument is not used if <code>outputs_exp = True</code>, as
+    the amplitude contrast ratio cannot simply be absorbed into a phase shift.</li>
+<li><code>phase_shift</code>:
+    Additional constant phase shift applied to the frequency-dependent phase shifts.</li>
+<li><code>outputs_exp</code>:
+    If <code>False</code>, return the CTF used in linear image formation theory. If <code>True</code>, return
+    the CTF (or wave transfer function) as a complex exponential.</li>
+</ul>
 
 
     </div>
@@ -2172,7 +2188,7 @@ from CTFFIND to <code>cryojax</code>,</p>
 
 
 <h5 id="cryojax.simulator.AberratedAstigmaticCTF.__call__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AberratedAstigmaticCTF</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">amplitude_contrast_ratio</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">phase_shift</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">outputs_exp</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">AberratedAstigmaticCTF</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">amplitude_contrast_ratio</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">phase_shift</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">outputs_exp</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">defocus_offset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
 
 <a href="#cryojax.simulator.AberratedAstigmaticCTF.__call__" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -2217,11 +2233,11 @@ from CTFFIND to <code>cryojax</code>,</p>
 
 
 
-<h4 id="cryojax.simulator.PerfectCTF" class="doc doc-heading">
-            <code>cryojax.simulator.PerfectCTF</code>
+<h4 id="cryojax.simulator.NullCTF" class="doc doc-heading">
+            <code>cryojax.simulator.NullCTF</code>
 
 
-<a href="#cryojax.simulator.PerfectCTF" class="headerlink" title="Permanent link">¤</a></h4>
+<a href="#cryojax.simulator.NullCTF" class="headerlink" title="Permanent link">¤</a></h4>
 
 
     <div class="doc doc-contents first">
@@ -2250,34 +2266,33 @@ cryo-EM densities.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="cryojax.simulator.PerfectCTF.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PerfectCTF</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span></code>
+<h5 id="cryojax.simulator.NullCTF.__call__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">NullCTF</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">amplitude_contrast_ratio</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">phase_shift</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">outputs_exp</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">defocus_offset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
 
-<a href="#cryojax.simulator.PerfectCTF.__init__" class="headerlink" title="Permanent link">¤</a></h5>
-
-
-    <div class="doc doc-contents ">
-
-
-    </div>
-
-</div>
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h5 id="cryojax.simulator.PerfectCTF.__call__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">PerfectCTF</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">frequency_grid_in_angstroms</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim 2&#39;</span><span class="p">],</span> <span class="n">voltage_in_kilovolts</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">amplitude_contrast_ratio</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">phase_shift</span><span class="p">:</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">outputs_exp</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;y_dim x_dim&#39;</span><span class="p">]</span></code>
-
-<a href="#cryojax.simulator.PerfectCTF.__call__" class="headerlink" title="Permanent link">¤</a></h5>
+<a href="#cryojax.simulator.NullCTF.__call__" class="headerlink" title="Permanent link">¤</a></h5>
 
 
     <div class="doc doc-contents ">
+
+        <p>Compute the CTF as a JAX array.</p>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>frequency_grid_in_angstroms</code>:
+    The grid of frequencies in units of inverse angstroms. This can
+    be computed with <a href="https://mjo22.github.io/cryojax/api/coordinates/making_coordinates/#cryojax.coordinates.make_frequency_grid"><code>cryojax.coordinates.make_frequency_grid</code></a></li>
+<li><code>voltage_in_kilovolts</code>:
+    The accelerating voltage of the microscope in kilovolts. This
+    is converted to the wavelength of incident electrons using
+    the function <a href="https://mjo22.github.io/cryojax/api/constants/units/#cryojax.constants.convert_keV_to_angstroms"><code>cryojax.constants.convert_keV_to_angstroms</code></a></li>
+<li><code>amplitude_contrast_ratio</code>:
+    The amplitude contrast ratio. This argument is not used if <code>outputs_exp = True</code>, as
+    the amplitude contrast ratio cannot simply be absorbed into a phase shift.</li>
+<li><code>phase_shift</code>:
+    Additional constant phase shift applied to the frequency-dependent phase shifts.</li>
+<li><code>outputs_exp</code>:
+    If <code>False</code>, return the CTF used in linear image formation theory. If <code>True</code>, return
+    the CTF (or wave transfer function) as a complex exponential.</li>
+</ul>
 
 
     </div>
@@ -2363,7 +2378,7 @@ image from a 2D projection.</p>
 
 
 <h5 id="cryojax.simulator.ContrastTransferTheory.propagate_object_to_detector_plane" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">ContrastTransferTheory</span><span class="o">.</span><span class="n">propagate_object_to_detector_plane</span><span class="p">(</span><span class="n">object_spectrum_at_exit_plane</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> {instrument_config.padded_x_dim//2+1}&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> </span><span class="si">{instrument_config.padded_x_dim}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">instrument_config</span><span class="p">:</span> <span class="n">InstrumentConfig</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">is_projection_approximation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> {instrument_config.padded_x_dim//2+1}&#39;</span><span class="p">]</span></code>
+            <code class="highlight language-python"><span class="n">cryojax</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">ContrastTransferTheory</span><span class="o">.</span><span class="n">propagate_object_to_detector_plane</span><span class="p">(</span><span class="n">object_spectrum_at_exit_plane</span><span class="p">:</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> {instrument_config.padded_x_dim//2+1}&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> </span><span class="si">{instrument_config.padded_x_dim}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">instrument_config</span><span class="p">:</span> <span class="n">InstrumentConfig</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">defocus_offset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Float</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">is_projection_approximation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Complex</span><span class="p">[</span><span class="n">Array</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{instrument_config.padded_y_dim}</span><span class="s1"> {instrument_config.padded_x_dim//2+1}&#39;</span><span class="p">]</span></code>
 
 <a href="#cryojax.simulator.ContrastTransferTheory.propagate_object_to_detector_plane" class="headerlink" title="Permanent link">¤</a></h5>
 
@@ -2384,6 +2399,9 @@ image from a 2D projection.</p>
     array. If <code>False</code>, <code>object_spectrum_in_exit_plane</code> is extracted from
     the ewald sphere and is therefore the fourier transform of a complex-valued
     array.</li>
+<li><code>defocus_offset</code>:
+    An optional defocus offset to apply to the CTF defocus at
+    runtime.</li>
 </ul>
 
 
@@ -2447,10 +2465,10 @@ image from a 2D projection.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.sections", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       
