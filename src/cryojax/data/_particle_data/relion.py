@@ -531,35 +531,37 @@ class RelionParticleStackDataset(
             - 'overwrite':
                 If `True`, overwrite existing MRC file path if it exists.
         """
+        # Set properties. First, core properties of the dataset, starting
+        # with the `mode``
         self._mode = _validate_mode(mode)
-
-        if mode == "w" and parameter_file.mode == "r":
+        # ... then, the `parameter_file`. If `mode = 'w'` but
+        # the images already exist, we should make a copy in case
+        # those images are being used elsewhere
+        particle_data, optics_data = (
+            parameter_file.starfile_data["particles"],
+            parameter_file.starfile_data["optics"],
+        )
+        images_exist = "rlnImageName" in particle_data.columns
+        if mode == "w" and images_exist:
             parameter_file = parameter_file.copy()
-        else:
-            parameter_file = parameter_file
-
-        # Set properties for reading image files
+        self._parameter_file = parameter_file
+        # ... next, properties common to reading and writing images
         self._path_to_relion_project = pathlib.Path(path_to_relion_project)
-        # Set properties for writing image files
+        # ... last, properties for writing images
         self._mrcfile_settings = _dict_to_mrcfile_settings(mrcfile_settings)
-        # For `mode = 'w'`, generate empty 'rlnImageName' column
-        project_exists = self._path_to_relion_project.exists()
+        # Now, initialize for `mode = 'r'` vs `mode = 'w'`
+        project_exists = self.path_to_relion_project.exists()
         if mode == "w":
-            particle_data, optics_data = (
-                parameter_file.starfile_data["particles"],
-                parameter_file.starfile_data["optics"],
-            )
             # Write empty "rlnImageName" column (defaults to NaN values)
             particle_data["rlnImageName"] = pd.Series(dtype=str)
-            parameter_file.starfile_data = dict(
+            self.parameter_file.starfile_data = dict(
                 optics=optics_data, particles=particle_data
             )
+            # Make the project directory, if it does not yet exist
             if not project_exists:
-                self._path_to_relion_project.mkdir(parents=True, exist_ok=False)
-
+                self.path_to_relion_project.mkdir(parents=True, exist_ok=False)
         else:
-            particle_data = parameter_file.starfile_data["particles"]
-            if "rlnImageName" not in particle_data.columns:
+            if not images_exist:
                 raise IOError(
                     "Could not find column 'rlnImageName' in the STAR file. "
                     "When using `mode = 'r'`, the STAR file must have this "
@@ -574,8 +576,6 @@ class RelionParticleStackDataset(
                     "To write images in a STAR file in a new RELION project, "
                     "set `mode = 'w'`."
                 )
-
-        self._parameter_file = parameter_file
 
     @override
     def __getitem__(
