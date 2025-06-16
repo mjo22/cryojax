@@ -345,7 +345,7 @@ def _make_topology(
                 atom_by_number[atom.serial_number] = new_atom
 
     topology.create_standard_bonds()
-    topology.create_disulfide_bonds(atom_positions[model_index])
+    topology.create_disulfide_bonds(atom_positions[0])
 
     return topology
 
