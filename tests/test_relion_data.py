@@ -754,13 +754,6 @@ def test_write_image(
         "tests/outputs/starfile_writing/test_particle_parameters.star"
     )
 
-    with pytest.raises(IOError):
-        dataset = RelionParticleStackDataset(
-            parameter_file,
-            path_to_relion_project=sample_relion_project_path,
-            mode="w",
-        )
-
     dataset = RelionParticleStackDataset(
         parameter_file,
         path_to_relion_project=sample_relion_project_path,
@@ -945,6 +938,9 @@ def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
         loads_envelope=False,
         loads_metadata=False,
     )
+    parameter_file.path_to_starfile = (
+        "tests/outputs/starfile_writing/test_particle_parameters.star"
+    )
 
     n_images = len(parameter_file)
     shape = parameter_file[0]["instrument_config"].shape
@@ -960,9 +956,6 @@ def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
         mrcfile_settings={"overwrite": True},
     )
 
-    parameter_file.path_to_starfile = (
-        "tests/outputs/starfile_writing/test_particle_parameters.star"
-    )
     simulate_particle_stack(
         new_stack,
         compute_image_fn=_mock_compute_image,
@@ -1109,6 +1102,7 @@ def test_write_single_image(sample_starfile_path):
         constant_args=(1.0, 2.0),
         per_particle_args=(3.0 * jnp.ones(n_images), 4.0 * jnp.ones(n_images)),
         overwrite=True,
+        images_per_file=1,
     )
 
     particle_dataset = RelionParticleStackDataset(
@@ -1194,6 +1188,13 @@ def test_load_multiple_mrcs():
         batch_size=1,
     )
 
+    parameter_file = RelionParticleParameterFile(
+        path_to_starfile="tests/outputs/starfile_writing/test_particle_parameters.star",
+        mode="r",
+        loads_envelope=True,
+        loads_metadata=False,
+    )
+
     particle_dataset = RelionParticleStackDataset(
         parameter_file,
         path_to_relion_project="tests/outputs/starfile_writing/",
@@ -1248,6 +1249,7 @@ def test_raise_errors_parameter_file(sample_starfile_path):
         parameter_file = RelionParticleParameterFile(
             path_to_starfile=sample_starfile_path,
             mode="w",
+            exists_ok=True,
             loads_envelope=False,
             loads_metadata=False,
             selection_filter={"rlnAngleRot": lambda x: x < 1000.0},
@@ -1261,6 +1263,9 @@ def test_raise_errors_stack_dataset(sample_starfile_path, sample_relion_project_
         loads_envelope=False,
         loads_metadata=False,
     )
+    parameter_file.path_to_starfile = (
+        "tests/outputs/starfile_writing/test_particle_parameters.star"
+    )
 
     starfile_data = parameter_file.starfile_data
     particle_data = starfile_data["particles"]
@@ -1272,14 +1277,12 @@ def test_raise_errors_stack_dataset(sample_starfile_path, sample_relion_project_
         "optics": starfile_data["optics"],
     }
 
-    particle_dataset = RelionParticleStackDataset(
-        parameter_file,
-        path_to_relion_project=sample_relion_project_path,
-        mode="r",
-    )
-
     with pytest.raises(IOError):
-        _ = particle_dataset[:]
+        particle_dataset = RelionParticleStackDataset(
+            parameter_file,
+            path_to_relion_project=sample_relion_project_path,
+            mode="r",
+        )
 
     # Now set to write mode
 
