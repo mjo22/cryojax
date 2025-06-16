@@ -551,6 +551,9 @@ class RelionParticleStackDataset(
             )
             if not project_exists:
                 self._path_to_relion_project.mkdir(parents=True, exist_ok=False)
+
+            if self._parameter_file.mode == "r":
+                self._parameter_file.mode = self._parameter_file.copy()
         else:
             particle_data = parameter_file.starfile_data["particles"]
             if "rlnImageName" not in particle_data.columns:
