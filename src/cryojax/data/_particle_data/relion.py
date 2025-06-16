@@ -531,8 +531,13 @@ class RelionParticleStackDataset(
             - 'overwrite':
                 If `True`, overwrite existing MRC file path if it exists.
         """
-        self._parameter_file = parameter_file
         self._mode = _validate_mode(mode)
+
+        if self._mode == "w" and parameter_file.mode == "r":
+            parameter_file = parameter_file.copy()
+        else:
+            parameter_file = parameter_file
+
         # Set properties for reading image files
         self._path_to_relion_project = pathlib.Path(path_to_relion_project)
         # Set properties for writing image files
@@ -552,8 +557,6 @@ class RelionParticleStackDataset(
             if not project_exists:
                 self._path_to_relion_project.mkdir(parents=True, exist_ok=False)
 
-            if self._parameter_file.mode == "r":
-                self._parameter_file.mode = self._parameter_file.copy()
         else:
             particle_data = parameter_file.starfile_data["particles"]
             if "rlnImageName" not in particle_data.columns:
@@ -571,6 +574,8 @@ class RelionParticleStackDataset(
                     "To write images in a STAR file in a new RELION project, "
                     "set `mode = 'w'`."
                 )
+
+        self._parameter_file = parameter_file
 
     @override
     def __getitem__(
