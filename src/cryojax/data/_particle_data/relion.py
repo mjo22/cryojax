@@ -687,15 +687,9 @@ class RelionParticleStackDataset(
         # Prepare to write images
         if images.ndim == 2:
             images = images[None, ...]
-        n_images, image_dim = images.shape[0], images.shape[1]
+        n_images, _ = images.shape[0], images.shape[1]
         n_particles = len(self.parameter_file)
-        if dim != image_dim:
-            raise ValueError(
-                "Found inconsistent image shape and "
-                "'rlnImageSize' entry. The image dimension "
-                f"was {dim}, while the 'rlnImageSize' was "
-                f"{image_dim}."
-            )
+
         # Convert index into 1D ascending numpy array
         n_indices = index_array.size
         if n_images != n_indices:
