@@ -4,8 +4,9 @@ import abc
 import pathlib
 import re
 import warnings
+from copy import deepcopy
 from typing import Any, Callable, Literal, Optional, TypedDict
-from typing_extensions import override
+from typing_extensions import Self, override
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -169,6 +170,9 @@ class AbstractParticleStarFile(
     @abc.abstractmethod
     def updates_optics_group(self, value: bool):
         raise NotImplementedError
+
+    def copy(self) -> Self:
+        return deepcopy(self)
 
 
 class RelionParticleParameterFile(AbstractParticleStarFile):
