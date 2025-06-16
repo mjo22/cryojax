@@ -1,4 +1,7 @@
+import os
+
 import numpy as np
+import pytest
 from jax import config
 from jaxtyping import install_import_hook
 
@@ -7,6 +10,21 @@ with install_import_hook("cryojax", "typeguard.typechecked"):
     from cryojax.io import read_atoms_from_pdb
 
 config.update("jax_enable_x64", True)
+
+
+@pytest.fixture
+def pdb_multiple_structures_path():
+    return os.path.join(os.path.dirname(__file__), "data", "1uao_assembly.pdb")
+
+
+def test_read_single_pdb_test(pdb_multiple_structures_path):
+    atom_positions, _ = read_atoms_from_pdb(
+        pdb_multiple_structures_path,
+        center=True,
+        selection_string="all",
+    )
+    assert atom_positions.ndim == 3
+    assert atom_positions.shape[0] == 10
 
 
 def test_read_single_pdb(sample_pdb_path):

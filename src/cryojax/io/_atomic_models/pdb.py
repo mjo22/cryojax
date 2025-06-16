@@ -150,7 +150,7 @@ def read_atoms_from_pdb(
         )
     # Filter atoms and grab positions and identities
     selected_indices = topology.select(selection_string)
-    atom_positions = np.squeeze(atom_info["positions"][:, selected_indices])
+    atom_positions = atom_info["positions"][:, selected_indices]
     atom_properties = jax.tree.map(
         lambda arr: arr[selected_indices], atom_info["properties"]
     )
@@ -159,7 +159,10 @@ def read_atoms_from_pdb(
     if center:
         atom_masses = cast(np.ndarray, atom_properties["masses"])
         atom_positions = _center_atom_coordinates(atom_positions, atom_masses)
-    # Return, optionality with b-factors
+    # Return, optionality with b-factors and without a leading dimension for the
+    # positions if there is only one structure
+    if atom_positions.shape[0] == 1:
+        atom_positions = np.squeeze(atom_positions, axis=0)
     if loads_b_factors:
         b_factors = cast(np.ndarray, atom_properties["b_factors"])
         return atom_positions, atom_identities, b_factors
@@ -168,11 +171,10 @@ def read_atoms_from_pdb(
 
 
 def _center_atom_coordinates(atom_positions, atom_masses):
-    axes = [0, 2, 1] if atom_positions.ndim == 3 else [1, 0]
-    com_position = np.transpose(atom_positions, axes=axes).dot(
+    com_position = np.transpose(atom_positions, axes=[0, 2, 1]).dot(
         atom_masses / atom_masses.sum()
     )
-    return atom_positions - com_position
+    return atom_positions - com_position[:, None, :]
 
 
 class AtomProperties(TypedDict):
@@ -298,8 +300,9 @@ class AtomicModelFile:
 
 def _make_topology(
     pdb: PdbStructure,
-    atom_positions: np.ndarray | list,
-    standardizes_names: bool = True,
+    atom_positions: list,
+    standardizes_names: bool,
+    model_index: Optional[int],
 ) -> Topology:
     topology = Topology()
     if standardizes_names:
@@ -309,40 +312,40 @@ def _make_topology(
     else:
         residue_name_replacements, atom_name_replacements = {}, {}
     atom_by_number = {}
-    for model in pdb.iter_models(use_all_models=True):
-        for chain in model.iter_chains():
-            c = topology.add_chain(chain.chain_id)
-            for residue in chain.iter_residues():
-                residue_name = residue.get_name()
-                if residue_name in residue_name_replacements and standardizes_names:
-                    residue_name = residue_name_replacements[residue_name]
-                r = topology.add_residue(
-                    residue_name, c, residue.number, residue.segment_id
-                )
-                if residue_name in atom_name_replacements and standardizes_names:
-                    atom_replacements = atom_name_replacements[residue_name]
-                else:
-                    atom_replacements = {}
-                for atom in residue.atoms:
-                    atom_name = atom.get_name()
-                    if atom_name in atom_replacements:
-                        atom_name = atom_replacements[atom_name]
-                    atom_name = atom_name.strip()
-                    element = atom.element
-                    if element is None:
-                        element = _guess_element(atom_name, residue.name, len(residue))
+    if model_index is None:
+        model_index = 0
+    model = pdb.models_by_number[model_index]
+    for chain in model.iter_chains():
+        c = topology.add_chain(chain.chain_id)
+        for residue in chain.iter_residues():
+            residue_name = residue.get_name()
+            if residue_name in residue_name_replacements and standardizes_names:
+                residue_name = residue_name_replacements[residue_name]
+            r = topology.add_residue(residue_name, c, residue.number, residue.segment_id)
+            if residue_name in atom_name_replacements and standardizes_names:
+                atom_replacements = atom_name_replacements[residue_name]
+            else:
+                atom_replacements = {}
+            for atom in residue.atoms:
+                atom_name = atom.get_name()
+                if atom_name in atom_replacements:
+                    atom_name = atom_replacements[atom_name]
+                atom_name = atom_name.strip()
+                element = atom.element
+                if element is None:
+                    element = _guess_element(atom_name, residue.name, len(residue))
 
-                    new_atom = topology.add_atom(
-                        atom_name,
-                        element,
-                        r,
-                        serial=atom.serial_number,
-                        formal_charge=atom.formal_charge,
-                    )
-                    atom_by_number[atom.serial_number] = new_atom
+                new_atom = topology.add_atom(
+                    atom_name,
+                    element,
+                    r,
+                    serial=atom.serial_number,
+                    formal_charge=atom.formal_charge,
+                )
+                atom_by_number[atom.serial_number] = new_atom
 
     topology.create_standard_bonds()
-    topology.create_disulfide_bonds(atom_positions)
+    topology.create_disulfide_bonds(atom_positions[model_index])
 
     return topology
 
@@ -359,7 +362,12 @@ def _load_atom_info(
     if model_index is None:
         # ... with multiple models
         n_models = len(pdb.model_numbers())
-        temp = dict(positions=[n_models * []], identities=[], b_factors=[], masses=[])
+        temp = dict(
+            positions=[*([] for _ in range(n_models))],
+            identities=[],
+            b_factors=[],
+            masses=[],
+        )
         for index, model_index in enumerate(pdb.model_numbers()):  # type: ignore
             model = pdb.models_by_number[model_index]
             for chain in model.iter_chains():
@@ -401,7 +409,7 @@ def _load_atom_info(
 
     # Load the topology if None is given
     if topology is None:
-        topology = _make_topology(pdb, temp["positions"][0], standardizes_names)
+        topology = _make_topology(pdb, temp["positions"], standardizes_names, model_index)
 
     # Gather atom info and return
     properties = AtomProperties(
