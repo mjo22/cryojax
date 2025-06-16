@@ -765,7 +765,6 @@ def test_write_image(
         parameter_file,
         path_to_relion_project=sample_relion_project_path,
         mode="w",
-        exists_ok=True,
     )
     starfile_data = dataset.parameter_file.starfile_data
     assert starfile_data["particles"]["rlnImageName"].isna().all()
@@ -958,7 +957,6 @@ def test_write_simulated_image_stack_from_starfile_jit(sample_starfile_path):
         parameter_file,
         path_to_relion_project="tests/outputs/starfile_writing/",
         mode="w",
-        exists_ok=True,
         mrcfile_settings={"overwrite": True},
     )
 
@@ -1043,7 +1041,6 @@ def test_write_simulated_image_stack_from_starfile_nojit(sample_starfile_path):
         parameter_file,
         path_to_relion_project="tests/outputs/starfile_writing/",
         mode="w",
-        exists_ok=True,
         mrcfile_settings={"overwrite": True},
     )
 
@@ -1102,7 +1099,6 @@ def test_write_single_image(sample_starfile_path):
         parameter_file,
         path_to_relion_project="tests/outputs/starfile_writing/",
         mode="w",
-        exists_ok=True,
         mrcfile_settings={"overwrite": True},
     )
 
@@ -1184,7 +1180,6 @@ def test_load_multiple_mrcs():
         parameter_file,
         path_to_relion_project="tests/outputs/starfile_writing/",
         mode="w",
-        exists_ok=True,
         mrcfile_settings={"overwrite": True},
     )
 
@@ -1253,7 +1248,6 @@ def test_raise_errors_parameter_file(sample_starfile_path):
         parameter_file = RelionParticleParameterFile(
             path_to_starfile=sample_starfile_path,
             mode="w",
-            exists_ok=True,
             loads_envelope=False,
             loads_metadata=False,
             selection_filter={"rlnAngleRot": lambda x: x < 1000.0},
@@ -1296,7 +1290,6 @@ def test_raise_errors_stack_dataset(sample_starfile_path, sample_relion_project_
         parameter_file,
         path_to_relion_project="tests/outputs/starfile_writing/",
         mode="w",
-        exists_ok=True,
         mrcfile_settings={"overwrite": False},
     )
 
@@ -1370,7 +1363,6 @@ def test_append_relion_stack_dataset():
         new_parameters_file,
         path_to_relion_project="tests/outputs/starfile_writing/",
         mode="w",
-        exists_ok=True,
         mrcfile_settings={"overwrite": False},
     )
 
