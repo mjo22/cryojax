@@ -13,7 +13,7 @@ from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ...image import rfftn
 from ...image.operators import AbstractBooleanMask, Constant, FourierOperatorLike
-from ...internal import error_if_not_positive
+from ...internal import NDArrayLike, error_if_not_positive
 from ...simulator import AbstractImageModel
 from ._base_distribution import AbstractDistribution
 
@@ -205,9 +205,9 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
     def __init__(
         self,
         image_model: AbstractImageModel,
-        variance: float | Float[Array, ""] = 1.0,
-        signal_scale_factor: float | Float[Array, ""] = 1.0,
-        signal_offset: float | Float[Array, ""] = 0.0,
+        variance: float | Float[NDArrayLike, ""] = 1.0,
+        signal_scale_factor: float | Float[NDArrayLike, ""] = 1.0,
+        signal_offset: float | Float[NDArrayLike, ""] = 0.0,
         normalizes_signal: bool = False,
     ):
         """**Arguments:**
@@ -228,9 +228,11 @@ class IndependentGaussianPixels(AbstractGaussianDistribution, strict=True):
             within the region where the mask is equal to `1`.
         """  # noqa: E501
         self.image_model = image_model
-        self.variance = error_if_not_positive(variance)
-        self.signal_scale_factor = error_if_not_positive(signal_scale_factor)
-        self.signal_offset = jnp.asarray(signal_offset)
+        self.variance = error_if_not_positive(jnp.asarray(variance, dtype=float))
+        self.signal_scale_factor = error_if_not_positive(
+            jnp.asarray(signal_scale_factor, dtype=float)
+        )
+        self.signal_offset = jnp.asarray(jnp.asarray(signal_offset, dtype=float))
         self.normalizes_signal = normalizes_signal
 
     @override
@@ -358,8 +360,8 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         self,
         image_model: AbstractImageModel,
         variance_function: Optional[FourierOperatorLike] = None,
-        signal_scale_factor: float | Float[Array, ""] = 1.0,
-        signal_offset: float | Float[Array, ""] = 0.0,
+        signal_scale_factor: float | Float[NDArrayLike, ""] = 1.0,
+        signal_offset: float | Float[NDArrayLike, ""] = 0.0,
         normalizes_signal: bool = False,
     ):
         """**Arguments:**
@@ -381,8 +383,10 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
         """  # noqa: E501
         self.image_model = image_model
         self.variance_function = variance_function or Constant(1.0)
-        self.signal_scale_factor = error_if_not_positive(jnp.asarray(signal_scale_factor))
-        self.signal_offset = jnp.asarray(signal_offset)
+        self.signal_scale_factor = error_if_not_positive(
+            jnp.asarray(signal_scale_factor, dtype=float)
+        )
+        self.signal_offset = jnp.asarray(signal_offset, dtype=float)
         self.normalizes_signal = normalizes_signal
 
     def compute_noise(
