@@ -20,12 +20,11 @@ def test_build_lebdev_grid():
     """https://people.sc.fsu.edu/~jburkardt/datasets/sphere_lebedev_rule/lebedev_003.txt"""
     fname = "src/cryojax/data/_pose_quadrature/lebedev_003.txt"
     euler_angles, weights_repeated_for_psis = build_lebdev_grid(fname)
+    assert weights_repeated_for_psis.sum() == 1.0, "Weights should sum to 1"
     assert euler_angles.shape == (len(weights_repeated_for_psis), 3)
 
 
 def test_benchmark(sample_pdb_path):
-    # sample_pdb_path = "docs/examples/data/5w0s.pdb"
-
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path,
         center=True,
@@ -79,7 +78,7 @@ def test_benchmark(sample_pdb_path):
     for lebedev_quadrature_fname in glob(
         "src/cryojax/data/_pose_quadrature/lebedev_00?.txt"
     ):
-        marginalization_euler_angles, lebdev_weights = build_lebdev_grid(
+        marginalization_euler_angles_deg, lebdev_weights = build_lebdev_grid(
             lebedev_quadrature_fname
         )
         distribution = dist.IndependentGaussianPoseMarginalizedOut(
@@ -87,7 +86,7 @@ def test_benchmark(sample_pdb_path):
             signal_scale_factor=1.0,
             variance=1.0,
             normalizes_signal=True,
-            marginalization_euler_angles=marginalization_euler_angles,
+            marginalization_euler_angles_deg=marginalization_euler_angles_deg,
             lebdev_weights=lebdev_weights,
         )
         log_marginal_liklihood = distribution.log_likelihood(

@@ -4,6 +4,9 @@ from typing import Tuple
 
 import jax.numpy as jnp
 import numpy as np
+from jaxtyping import Float
+
+from ...internal import NDArrayLike
 
 
 lebedev_n_psi_lookup = {
@@ -42,8 +45,8 @@ lebedev_n_psi_lookup = {
 }
 
 
-# === Helper: Parse Lebedev File ===
-def parse_lebedev_file(path: str) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+def parse_lebedev_file(path: str) -> Tuple[NDArrayLike, NDArrayLike, NDArrayLike]:
+    """Helper function to parse Lebedev grid files."""
     data = np.loadtxt(path)
     theta = jnp.array(data[:, 0])
     phi = jnp.array(data[:, 1])
@@ -51,8 +54,13 @@ def parse_lebedev_file(path: str) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray
     return theta, phi, weight
 
 
-# === Helper: Build orientation grid (vectorized) ===
-def build_euler_angle_grid(thetas, phis, psis) -> jnp.ndarray:
+def build_euler_angle_grid(
+    thetas: Float[NDArrayLike, "n"],  # noqa: F821
+    phis: Float[NDArrayLike, "n"],  # noqa: F821
+    psis: Float[NDArrayLike, "m"],  # noqa: F821
+) -> Float[NDArrayLike, "n*m 3"]:  # noqa: F821
+    """Build a grid of Euler angles from given theta, phi, and psi angles."""
+
     n = thetas.shape[0]
     n_psi = psis.shape[0]
 
@@ -64,11 +72,15 @@ def build_euler_angle_grid(thetas, phis, psis) -> jnp.ndarray:
     return orientations
 
 
-def build_lebdev_grid(fname):
+def build_lebdev_grid(
+    fname: str,
+) -> Tuple[Float[NDArrayLike, "n*m 3"], Float[NDArrayLike, "n*m"]]:  # noqa: F821
+    """Build a Lebedev grid from a file."""
+
     theta, phi, lebdev_weights = parse_lebedev_file(fname)
     n_psi = lebedev_n_psi_lookup[lebdev_weights.shape[0]]
-    euler_angles = build_euler_angle_grid(
+    euler_angles_deg = build_euler_angle_grid(
         theta, phi, jnp.linspace(-180, 180, n_psi, endpoint=False)
     )
     weights_repeated_for_psis = jnp.repeat(lebdev_weights, n_psi)
-    return euler_angles, weights_repeated_for_psis
+    return euler_angles_deg, weights_repeated_for_psis / weights_repeated_for_psis.sum()
