@@ -13,6 +13,7 @@ import jax.random as jr
 from equinox import AbstractVar, field
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
+from ...data._pose_quadrature.lebdev import build_lebdev_grid
 from ...image import rfftn
 from ...image.operators import AbstractBooleanMask, Constant, FourierOperatorLike
 from ...internal import NDArrayLike, error_if_not_positive
@@ -521,47 +522,7 @@ def update_pose_angles(image_model, new_phi, new_theta, new_psi):
     )
 
 
-def parse_lebedev_file_pd(fname):
-    import pandas as pd
-
-    df = pd.read_csv(
-        fname, delim_whitespace=True, header=None, names=["phi", "psi", "weight"]
-    )
-    thetas = jnp.array(df["phi"].values)
-    phis = jnp.array(df["psi"].values)
-    weights = jnp.array(df["weight"].values)
-    return thetas, phis, weights
-
-
-from typing import Tuple
-
-
-# === Helper: Parse Lebedev File ===
-def parse_lebedev_file(path: str) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    # You likely have a better implementation already
-    import numpy as np
-
-    data = np.loadtxt(path)
-    theta = jnp.array(data[:, 0])
-    phi = jnp.array(data[:, 1])
-    weight = jnp.array(data[:, 2])
-    return theta, phi, weight
-
-
-# === Helper: Build orientation grid (vectorized) ===
-def build_orientation_grid(thetas, phis, psis) -> jnp.ndarray:
-    n = thetas.shape[0]
-    n_psis = psis.shape[0]
-
-    thetas_repeated = jnp.repeat(thetas, n_psis)
-    phis_repeated = jnp.repeat(phis, n_psis)
-    psis_tiled = jnp.tile(psis, n)
-
-    orientations = jnp.stack([thetas_repeated, phis_repeated, psis_tiled], axis=-1)
-    return orientations
-
-
-# === Helper: Compute per-orientation log-likelihood ===
+@eqx.filter_jit
 def render_log_likelihood_fn(
     orientation, image_model, observed, variance, applies_filter, applies_mask
 ):
@@ -662,6 +623,7 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
         *,
         applies_filter: bool = True,
         applies_mask: bool = True,
+        lebedev_quadrature_fname: str = "",
     ) -> Float[Array, ""]:
         """Evaluate the log-likelihood of the gaussian noise model.
 
@@ -685,70 +647,30 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
             `AbstractGaussianDistribution.image_model.filter`
             *to the signal*.
         """
-        thetas, phis, lebdev_weights = parse_lebedev_file_pd(
-            "/mnt/home/gwoollard/repos/cryojax/hackathon/lebedev_003.txt"
+        print(lebedev_quadrature_fname)
+        euler_angles, weights_repeated_for_psis = build_lebdev_grid(
+            lebedev_quadrature_fname
         )
-        n_psis = 3
-        psis = jnp.linspace(-180, 180, n_psis)
+        print(f"Number of poses: {euler_angles.shape[0]}")
 
-        if False:
-            lebdev_weight_list = []
-            log_likelihood_list = []
-            for new_theta, new_phi, lebdev_weight in zip(thetas, phis, lebdev_weights):
-                for new_psi in psis:
-                    lebdev_weight_list.append(lebdev_weight)
-                    new_image_model = update_pose_angles(
-                        self.image_model, new_phi, new_theta, new_psi
-                    )
+        import time
 
-                    variance = self.variance
-                    # Create simulated data
-                    simulated = new_image_model.render(
-                        outputs_real_space=True,
-                        applies_filter=applies_filter,
-                        applies_mask=applies_mask,
-                    )
-                    # Compute residuals
-                    residuals = simulated - observed
-                    # Compute standard normal random variables
-                    squared_standard_normal_per_pixel = jnp.abs(residuals) ** 2 / (
-                        2 * variance
-                    )
-                    # Compute the log-likelihood for each pixel.
-                    log_likelihood_per_pixel = -1.0 * (
-                        squared_standard_normal_per_pixel
-                        + jnp.log(2 * jnp.pi * variance) / 2
-                    )
-                    # Compute log-likelihood, summing over pixels
-                    log_likelihood_list.append(jnp.sum(log_likelihood_per_pixel))
-
-            log_likelihood = jnp.array(log_likelihood_list)
-            likelihood = jax.nn.softmax(log_likelihood)
-            marginal_likelihood = (likelihood * jnp.array(lebdev_weight_list)).sum()
-            log_marginal_likelihood = jnp.log(jnp.sum(marginal_likelihood))
-
-        else:
-            # === Main Likelihood Computation Function ===
-            thetas, phis, lebdev_weights = parse_lebedev_file(
-                "/mnt/home/gwoollard/repos/cryojax/hackathon/lebedev_003.txt"
+        start_time = time.time()
+        log_likelihoods = jax.vmap(
+            lambda euler_angles: render_log_likelihood_fn(
+                euler_angles,
+                self.image_model,
+                observed,
+                self.variance,
+                applies_filter,
+                applies_mask,
             )
+        )(euler_angles)
 
-            orientations = build_orientation_grid(thetas, phis, psis)
-            weights_repeated = jnp.repeat(lebdev_weights, n_psis)
-
-            log_likelihoods = jax.vmap(
-                lambda orientation: render_log_likelihood_fn(
-                    orientation,
-                    self.image_model,
-                    observed,
-                    self.variance,
-                    applies_filter,
-                    applies_mask,
-                )
-            )(orientations)
-
-            likelihoods = jax.nn.softmax(log_likelihoods)
-            marginal_likelihood = jnp.sum(likelihoods * weights_repeated)
-            log_marginal_likelihood = jnp.log(marginal_likelihood)
+        likelihoods = jax.nn.softmax(log_likelihoods)
+        marginal_likelihood = jnp.sum(likelihoods * weights_repeated_for_psis)
+        log_marginal_likelihood = jnp.log(marginal_likelihood)
+        end_time = time.time()
+        print(f"Time taken for vmap: {end_time - start_time} seconds")
 
         return log_marginal_likelihood
