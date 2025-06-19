@@ -30,6 +30,7 @@ dependencies = [
     "typing_extensions>=4.5.0",
     "tqdm",
     "mdtraj",
+    "jax_finufft",
 ]
 
 [build-system]
