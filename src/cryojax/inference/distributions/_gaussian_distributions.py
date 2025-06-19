@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing import Optional
 from typing_extensions import override
 
+import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
 from equinox import AbstractVar, field
@@ -503,5 +504,158 @@ class IndependentGaussianFourierModes(AbstractGaussianDistribution, strict=True)
             )
             / n_pixels
         )
+
+        return log_likelihood
+
+
+def update_pose_angles(image_model, new_phi, new_theta, new_psi):
+    return eqx.tree_at(
+        lambda m: (
+            m.scattering_theory.structural_ensemble.pose.phi_angle,
+            m.scattering_theory.structural_ensemble.pose.theta_angle,
+            m.scattering_theory.structural_ensemble.pose.psi_angle,
+        ),
+        image_model,
+        (new_phi, new_theta, new_psi),
+    )
+
+
+class IndependentGaussianWithPoseMarginalizedOut(
+    AbstractGaussianDistribution, strict=True
+):
+    r"""A gaussian noise model, where each pixel is independently drawn from
+    a zero-mean gaussian of fixed variance (white noise).
+
+    This computes the likelihood in real space, where the variance is a
+    constant value across all pixels.
+    """
+
+    image_model: AbstractImageModel
+    variance: Float[Array, ""]
+    signal_scale_factor: Float[Array, ""]
+    signal_offset: Float[Array, ""]
+
+    normalizes_signal: bool = field(static=True)
+
+    def __init__(
+        self,
+        image_model: AbstractImageModel,
+        variance: float | Float[NDArrayLike, ""] = 1.0,
+        signal_scale_factor: float | Float[NDArrayLike, ""] = 1.0,
+        signal_offset: float | Float[NDArrayLike, ""] = 0.0,
+        normalizes_signal: bool = False,
+    ):
+        """**Arguments:**
+
+        - `image_model`:
+            The image formation model.
+        - `variance`:
+            The variance of each pixel.
+        - `signal_scale_factor`:
+            A scale factor for the underlying signal simulated
+            from `image_model`.
+        - `signal_offset`:
+            An offset for the underlying signal simulated from `image_model`.
+        - `normalizes_signal`:
+            Whether or not the signal is normalized before applying the `signal_scale_factor`
+            and `signal_offset`.
+            If an `AbstractMask` is given to `image_model.mask`, the signal is normalized
+            within the region where the mask is equal to `1`.
+        """  # noqa: E501
+        self.image_model = image_model
+        self.variance = error_if_not_positive(jnp.asarray(variance, dtype=float))
+        self.signal_scale_factor = error_if_not_positive(
+            jnp.asarray(signal_scale_factor, dtype=float)
+        )
+        self.signal_offset = jnp.asarray(jnp.asarray(signal_offset, dtype=float))
+        self.normalizes_signal = normalizes_signal
+
+    @override
+    def compute_noise(
+        self,
+        rng_key: PRNGKeyArray,
+        *,
+        outputs_real_space: bool = True,
+        applies_filter: bool = True,
+        applies_mask: bool = True,
+    ) -> (
+        Float[
+            Array,
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim}",
+        ]
+        | Complex[
+            Array,
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim//2+1}",
+        ]
+    ):
+        raise NotImplementedError
+
+    @override
+    def log_likelihood(
+        self,
+        observed: Float[
+            Array,
+            "{self.image_model.instrument_config.y_dim} "
+            "{self.image_model.instrument_config.x_dim}",
+        ],
+        *,
+        applies_filter: bool = True,
+        applies_mask: bool = True,
+    ) -> Float[Array, ""]:
+        """Evaluate the log-likelihood of the gaussian noise model.
+
+        !!! info
+
+            When computing the likelihood, the observed image is assumed to have already
+            been preprocessed with filters and masks. In other words,
+            if `applies_filter` or `applies_mask` is `True`, filters and masks
+            will *not* be applied to `observed`. The user must do this
+            manually if desired.
+
+        **Arguments:**
+
+        - `observed` : The observed data in real space.
+        - `applies_mask`:
+            If `True`, apply mask stored in
+            `AbstractGaussianDistribution.image_model.mask`
+            *to the signal*.
+        - `applies_filter`:
+            If `True`, apply filter stored in
+            `AbstractGaussianDistribution.image_model.filter`
+            *to the signal*.
+        """
+        from scipy.spatial.transform import Rotation as Rsp
+
+        log_likelihood = jnp.array(0.0)
+        n_marginalization_samples = 7
+        for euler_angles in Rsp.random(n_marginalization_samples).as_euler(
+            "zyz", degrees=True
+        ):
+            new_phi, new_theta, new_psi = jnp.array(euler_angles)
+            new_image_model = update_pose_angles(
+                self.image_model, new_phi, new_theta, new_psi
+            )
+
+            variance = self.variance
+            # Create simulated data
+            simulated = new_image_model.render(
+                outputs_real_space=True,
+                applies_filter=applies_filter,
+                applies_mask=applies_mask,
+            )
+            # Compute residuals
+            residuals = simulated - observed
+            # Compute standard normal random variables
+            squared_standard_normal_per_pixel = jnp.abs(residuals) ** 2 / (2 * variance)
+            # Compute the log-likelihood for each pixel.
+            log_likelihood_per_pixel = -1.0 * (
+                squared_standard_normal_per_pixel + jnp.log(2 * jnp.pi * variance) / 2
+            )
+            # Compute log-likelihood, summing over pixels
+            log_likelihood += jnp.sum(log_likelihood_per_pixel)
+
+        log_likelihood = log_likelihood / n_marginalization_samples
 
         return log_likelihood

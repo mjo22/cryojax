@@ -6,4 +6,5 @@ from ._gaussian_distributions import (
     AbstractGaussianDistribution as AbstractGaussianDistribution,
     IndependentGaussianFourierModes as IndependentGaussianFourierModes,
     IndependentGaussianPixels as IndependentGaussianPixels,
+    IndependentGaussianPoseMarginalizedOut as IndependentGaussianPoseMarginalizedOut,
 )
