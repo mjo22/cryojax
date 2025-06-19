@@ -7,6 +7,7 @@ from typing import Optional
 from typing_extensions import override
 
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 import jax.random as jr
 from equinox import AbstractVar, field
@@ -520,6 +521,18 @@ def update_pose_angles(image_model, new_phi, new_theta, new_psi):
     )
 
 
+def parse_lebedev_file(fname):
+    import pandas as pd
+
+    df = pd.read_csv(
+        fname, delim_whitespace=True, header=None, names=["phi", "psi", "weight"]
+    )
+    theta = jnp.radians(df["phi"].values)
+    phi = jnp.radians(df["psi"].values)
+    weights = df["weight"].values
+    return jnp.array(theta), jnp.array(phi), jnp.array(weights)
+
+
 class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, strict=True):
     r"""A gaussian noise model, where each pixel is independently drawn from
     a zero-mean gaussian of fixed variance (white noise).
@@ -624,36 +637,42 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
             `AbstractGaussianDistribution.image_model.filter`
             *to the signal*.
         """
-        from scipy.spatial.transform import Rotation as Rsp
+        thetas, phis, lebdev_weights = parse_lebedev_file(
+            "/mnt/home/gwoollard/repos/cryojax/hackathon/lebedev_003.txt"
+        )
+        n_psis = 2
+        lebdev_weight_list = []
+        log_likelihood_list = []
+        for new_theta, new_phi, lebdev_weight in zip(thetas, phis, lebdev_weights):
+            for new_psi in jnp.linspace(-180, 180, n_psis):
+                lebdev_weight_list.append(lebdev_weight)
+                new_image_model = update_pose_angles(
+                    self.image_model, new_phi, new_theta, new_psi
+                )
 
-        log_likelihood = jnp.array(0.0)
-        n_marginalization_samples = 7
-        for euler_angles in Rsp.random(n_marginalization_samples).as_euler(
-            "zyz", degrees=True
-        ):
-            new_phi, new_theta, new_psi = jnp.array(euler_angles)
-            new_image_model = update_pose_angles(
-                self.image_model, new_phi, new_theta, new_psi
-            )
+                variance = self.variance
+                # Create simulated data
+                simulated = new_image_model.render(
+                    outputs_real_space=True,
+                    applies_filter=applies_filter,
+                    applies_mask=applies_mask,
+                )
+                # Compute residuals
+                residuals = simulated - observed
+                # Compute standard normal random variables
+                squared_standard_normal_per_pixel = jnp.abs(residuals) ** 2 / (
+                    2 * variance
+                )
+                # Compute the log-likelihood for each pixel.
+                log_likelihood_per_pixel = -1.0 * (
+                    squared_standard_normal_per_pixel + jnp.log(2 * jnp.pi * variance) / 2
+                )
+                # Compute log-likelihood, summing over pixels
+                log_likelihood_list.append(jnp.sum(log_likelihood_per_pixel))
 
-            variance = self.variance
-            # Create simulated data
-            simulated = new_image_model.render(
-                outputs_real_space=True,
-                applies_filter=applies_filter,
-                applies_mask=applies_mask,
-            )
-            # Compute residuals
-            residuals = simulated - observed
-            # Compute standard normal random variables
-            squared_standard_normal_per_pixel = jnp.abs(residuals) ** 2 / (2 * variance)
-            # Compute the log-likelihood for each pixel.
-            log_likelihood_per_pixel = -1.0 * (
-                squared_standard_normal_per_pixel + jnp.log(2 * jnp.pi * variance) / 2
-            )
-            # Compute log-likelihood, summing over pixels
-            log_likelihood += jnp.sum(log_likelihood_per_pixel)
+        log_likelihood = jnp.array(log_likelihood_list)
+        likelihood = jax.nn.softmax(log_likelihood)
+        marginal_likelihood = (likelihood * jnp.array(lebdev_weight_list)).sum()
+        log_marginal_likelihood = jnp.log(jnp.sum(marginal_likelihood))
 
-        log_likelihood = log_likelihood / n_marginalization_samples
-
-        return log_likelihood
+        return log_marginal_likelihood
