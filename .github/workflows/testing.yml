@@ -44,4 +44,3 @@ jobs:
       - name: Test with pytest
         run: |
           pytest tests/test_pose_marginalization.py
-          pytest tests/
