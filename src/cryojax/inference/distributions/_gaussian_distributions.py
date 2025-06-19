@@ -520,9 +520,7 @@ def update_pose_angles(image_model, new_phi, new_theta, new_psi):
     )
 
 
-class IndependentGaussianWithPoseMarginalizedOut(
-    AbstractGaussianDistribution, strict=True
-):
+class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, strict=True):
     r"""A gaussian noise model, where each pixel is independently drawn from
     a zero-mean gaussian of fixed variance (white noise).
 
