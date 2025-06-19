@@ -23,8 +23,8 @@ def test_build_lebdev_grid():
     assert euler_angles.shape == (len(weights_repeated_for_psis), 3)
 
 
-def test_benchmark():
-    sample_pdb_path = "docs/examples/data/5w0s.pdb"
+def test_benchmark(sample_pdb_path):
+    # sample_pdb_path = "docs/examples/data/5w0s.pdb"
 
     atom_positions, atom_identities, b_factors = read_atoms_from_pdb(
         sample_pdb_path,
@@ -76,19 +76,22 @@ def test_benchmark():
     )
     image_model = cxs.ContrastImageModel(instrument_config, scattering_theory)
 
-    distribution = dist.IndependentGaussianPoseMarginalizedOut(
-        image_model,
-        signal_scale_factor=1.0,
-        variance=1.0,
-        normalizes_signal=True,
-    )
-
     for lebedev_quadrature_fname in glob(
         "src/cryojax/data/_pose_quadrature/lebedev_00?.txt"
     ):
+        marginalization_euler_angles, lebdev_weights = build_lebdev_grid(
+            lebedev_quadrature_fname
+        )
+        distribution = dist.IndependentGaussianPoseMarginalizedOut(
+            image_model,
+            signal_scale_factor=1.0,
+            variance=1.0,
+            normalizes_signal=True,
+            marginalization_euler_angles=marginalization_euler_angles,
+            lebdev_weights=lebdev_weights,
+        )
         log_marginal_liklihood = distribution.log_likelihood(
             observed=distribution.compute_signal(),
-            lebedev_quadrature_fname=lebedev_quadrature_fname,
         )
 
         assert log_marginal_liklihood.ndim == 0, "Expected a scalar"

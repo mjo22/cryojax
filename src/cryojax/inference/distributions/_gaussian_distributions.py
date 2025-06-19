@@ -13,7 +13,6 @@ import jax.random as jr
 from equinox import AbstractVar, field
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
-from ...data._pose_quadrature.lebdev import build_lebdev_grid
 from ...image import rfftn
 from ...image.operators import AbstractBooleanMask, Constant, FourierOperatorLike
 from ...internal import NDArrayLike, error_if_not_positive
@@ -546,6 +545,8 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
     r"""A gaussian noise model, where each pixel is independently drawn from
     a zero-mean gaussian of fixed variance (white noise).
 
+    Rotations are marginalized out using Lebedev quadrature.
+
     This computes the likelihood in real space, where the variance is a
     constant value across all pixels.
     """
@@ -554,8 +555,9 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
     variance: Float[Array, ""]
     signal_scale_factor: Float[Array, ""]
     signal_offset: Float[Array, ""]
-
     normalizes_signal: bool = field(static=True)
+    marginalization_euler_angles: Float[NDArrayLike, "n 3"]  # noqa: F821
+    lebdev_weights: Float[NDArrayLike, "n"]  # noqa: F821
 
     def __init__(
         self,
@@ -564,6 +566,8 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
         signal_scale_factor: float | Float[NDArrayLike, ""] = 1.0,
         signal_offset: float | Float[NDArrayLike, ""] = 0.0,
         normalizes_signal: bool = False,
+        marginalization_euler_angles: None | Float[NDArrayLike, "n 3"] = None,  # noqa: F821
+        lebdev_weights: None | Float[NDArrayLike, "n"] = None,  # noqa: F821
     ):
         """**Arguments:**
 
@@ -589,6 +593,8 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
         )
         self.signal_offset = jnp.asarray(jnp.asarray(signal_offset, dtype=float))
         self.normalizes_signal = normalizes_signal
+        self.marginalization_euler_angles = marginalization_euler_angles
+        self.lebdev_weights = lebdev_weights
 
     @override
     def compute_noise(
@@ -623,9 +629,9 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
         *,
         applies_filter: bool = True,
         applies_mask: bool = True,
-        lebedev_quadrature_fname: str = "",
     ) -> Float[Array, ""]:
-        """Evaluate the log-likelihood of the gaussian noise model.
+        """Evaluate the log-likelihood of the gaussian noise model,
+        with pose marginalized out via Lebdev quadrature.
 
         !!! info
 
@@ -647,15 +653,7 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
             `AbstractGaussianDistribution.image_model.filter`
             *to the signal*.
         """
-        print(lebedev_quadrature_fname)
-        euler_angles, weights_repeated_for_psis = build_lebdev_grid(
-            lebedev_quadrature_fname
-        )
-        print(f"Number of poses: {euler_angles.shape[0]}")
 
-        import time
-
-        start_time = time.time()
         log_likelihoods = jax.vmap(
             lambda euler_angles: render_log_likelihood_fn(
                 euler_angles,
@@ -665,12 +663,9 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
                 applies_filter,
                 applies_mask,
             )
-        )(euler_angles)
-
+        )(self.marginalization_euler_angles)
         likelihoods = jax.nn.softmax(log_likelihoods)
-        marginal_likelihood = jnp.sum(likelihoods * weights_repeated_for_psis)
+        marginal_likelihood = jnp.sum(likelihoods * self.lebdev_weights)
         log_marginal_likelihood = jnp.log(marginal_likelihood)
-        end_time = time.time()
-        print(f"Time taken for vmap: {end_time - start_time} seconds")
 
         return log_marginal_likelihood
