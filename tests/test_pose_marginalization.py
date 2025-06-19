@@ -1,7 +1,6 @@
 from glob import glob
 
 import jax.numpy as jnp
-from natsort import natsorted
 
 import cryojax.simulator as cxs
 from cryojax.constants import (
@@ -84,8 +83,8 @@ def test_benchmark():
         normalizes_signal=True,
     )
 
-    for lebedev_quadrature_fname in natsorted(
-        glob("src/cryojax/data/_pose_quadrature/lebedev_00?.txt")
+    for lebedev_quadrature_fname in glob(
+        "src/cryojax/data/_pose_quadrature/lebedev_00?.txt"
     ):
         log_marginal_liklihood = distribution.log_likelihood(
             observed=distribution.compute_signal(),
