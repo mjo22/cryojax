@@ -384,7 +384,7 @@ def _compute_cylindrical_mask_2d_without_length(
     cos_angle = jnp.cos(angle_in_radians)
     sin_angle = jnp.sin(angle_in_radians)
     x, y = coordinate_grid[..., 0], coordinate_grid[..., 1]
-    y_rotated = x * sin_angle + y * cos_angle
+    y_rotated = -x * sin_angle + y * cos_angle
     # ... the mask in 2D is just a rectangle; the cylindrical coordinate is
     # the rotated y coordinate
     cylinder_radial_coordinate_grid = jnp.sqrt(y_rotated**2)
@@ -419,7 +419,7 @@ def _compute_cylindrical_mask_2d_with_length(
     cos_angle = jnp.cos(angle_in_radians)
     sin_angle = jnp.sin(angle_in_radians)
     x, y = coordinate_grid[..., 0], coordinate_grid[..., 1]
-    x_rotated, y_rotated = x * cos_angle - y * sin_angle, x * sin_angle + y * cos_angle
+    x_rotated, y_rotated = x * cos_angle + y * sin_angle, -x * sin_angle + y * cos_angle
     cylinder_r_coordinate_grid = y_rotated
     cylinder_z_coordinate_grid = x_rotated
 
