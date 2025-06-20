@@ -7,7 +7,7 @@ from cryojax.constants import (
     get_tabulated_scattering_factor_parameters,
     read_peng_element_scattering_factor_parameter_table,
 )
-from cryojax.data._pose_quadrature.lebdev import build_lebdev_grid
+from cryojax.data._pose_quadrature.lebedev import build_lebedev_quadrature
 from cryojax.inference import distributions as dist
 from cryojax.io import read_atoms_from_pdb
 from cryojax.simulator import (
@@ -16,10 +16,10 @@ from cryojax.simulator import (
 )
 
 
-def test_build_lebdev_grid():
+def test_build_lebeev_grid():
     """https://people.sc.fsu.edu/~jburkardt/datasets/sphere_lebedev_rule/lebedev_003.txt"""
     fname = "src/cryojax/data/_pose_quadrature/lebedev_003.txt"
-    euler_angles, weights_repeated_for_psis = build_lebdev_grid(fname)
+    euler_angles, weights_repeated_for_psis = build_lebedev_quadrature(fname)
     assert weights_repeated_for_psis.sum() == 1.0, "Weights should sum to 1"
     assert euler_angles.shape == (len(weights_repeated_for_psis), 3)
 
@@ -78,7 +78,7 @@ def test_benchmark(sample_pdb_path):
     for lebedev_quadrature_fname in glob(
         "src/cryojax/data/_pose_quadrature/lebedev_00?.txt"
     ):
-        marginalization_euler_angles_deg, lebdev_weights = build_lebdev_grid(
+        marginalization_euler_angles_deg, lebedev_weights = build_lebedev_quadrature(
             lebedev_quadrature_fname
         )
         distribution = dist.IndependentGaussianPoseMarginalizedOut(
@@ -87,7 +87,7 @@ def test_benchmark(sample_pdb_path):
             variance=1.0,
             normalizes_signal=True,
             marginalization_euler_angles_deg=marginalization_euler_angles_deg,
-            lebdev_weights=lebdev_weights,
+            lebedev_weights=lebedev_weights,
         )
         log_marginal_liklihood = distribution.log_likelihood(
             observed=distribution.compute_signal(),

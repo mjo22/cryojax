@@ -72,7 +72,7 @@ def build_euler_angle_grid(
     return orientations
 
 
-def build_lebdev_grid(
+def build_lebedev_quadrature(
     fname: str,
 ) -> Tuple[Float[NDArrayLike, "n*m 3"], Float[NDArrayLike, "n*m"]]:  # noqa: F821
     """Build a Lebedev grid from a file."""

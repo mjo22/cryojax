@@ -557,13 +557,13 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
     signal_offset: Float[Array, ""]
     normalizes_signal: bool = field(static=True)
     marginalization_euler_angles_deg: Float[NDArrayLike, "n 3"]  # noqa: F821
-    lebdev_weights: Float[NDArrayLike, "n"]  # noqa: F821
+    lebedev_weights: Float[NDArrayLike, "n"]  # noqa: F821
 
     def __init__(
         self,
         image_model: AbstractImageModel,
         marginalization_euler_angles_deg: Float[NDArrayLike, "n 3"],  # noqa: F821
-        lebdev_weights: Float[NDArrayLike, "n"],  # noqa: F821
+        lebedev_weights: Float[NDArrayLike, "n"],  # noqa: F821
         variance: float | Float[NDArrayLike, ""] = 1.0,
         signal_scale_factor: float | Float[NDArrayLike, ""] = 1.0,
         signal_offset: float | Float[NDArrayLike, ""] = 0.0,
@@ -594,7 +594,7 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
         self.signal_offset = jnp.asarray(jnp.asarray(signal_offset, dtype=float))
         self.normalizes_signal = normalizes_signal
         self.marginalization_euler_angles_deg = marginalization_euler_angles_deg
-        self.lebdev_weights = lebdev_weights
+        self.lebedev_weights = lebedev_weights
 
     @override
     def compute_noise(
@@ -665,7 +665,7 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
             )
         )(self.marginalization_euler_angles_deg)
         likelihoods = jax.nn.softmax(log_likelihoods)
-        marginal_likelihood = jnp.sum(likelihoods * self.lebdev_weights)
+        marginal_likelihood = jnp.sum(likelihoods * self.lebedev_weights)
         log_marginal_likelihood = jnp.log(marginal_likelihood)
 
         return log_marginal_likelihood
