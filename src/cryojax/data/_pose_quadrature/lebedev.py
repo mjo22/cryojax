@@ -9,39 +9,39 @@ from jaxtyping import Float
 from ...internal import NDArrayLike
 
 
-lebedev_n_psi_lookup = {
-    6: 2,  # precision 3
-    14: 2,  # precision 5
-    26: 2,  # precision 7
-    38: 2,  # precision 9
-    50: 3,  # precision 11
-    74: 3,  # precision 13
-    86: 4,  # precision 15
-    110: 4,  # precision 17
-    146: 5,  # precision 19
-    170: 6,  # precision 21
-    194: 6,  # precision 23
-    230: 6,  # precision 25
-    266: 7,  # precision 27
-    302: 8,  # precision 29
-    350: 8,  # precision 31
-    434: 9,  # precision 35
-    590: 10,  # precision 41
-    770: 12,  # precision 47
-    974: 14,  # precision 53
-    1202: 15,  # precision 59
-    1454: 16,  # precision 65
-    1730: 18,  # precision 71
-    2030: 20,  # precision 77
-    2354: 22,  # precision 83
-    2702: 24,  # precision 89
-    3074: 26,  # precision 95
-    3470: 28,  # precision 101
-    3890: 30,  # precision 107
-    4334: 32,  # precision 113
-    4802: 34,  # precision 119
-    5294: 36,  # precision 125
-    5810: 38,  # precision 131
+LEBDEV_N_PSI_LOOKUP_TABLE = {
+    6: 4,  # precision 3
+    14: 6,  # precision 5
+    26: 8,  # precision 7
+    38: 10,  # precision 9
+    50: 12,  # precision 11
+    74: 14,  # precision 13
+    86: 16,  # precision 15
+    110: 18,  # precision 17
+    146: 20,  # precision 19
+    170: 22,  # precision 21
+    194: 24,  # precision 23
+    230: 26,  # precision 25
+    266: 28,  # precision 27
+    302: 30,  # precision 29
+    350: 32,  # precision 31
+    434: 36,  # precision 35
+    590: 42,  # precision 41
+    770: 48,  # precision 47
+    974: 54,  # precision 53
+    1202: 60,  # precision 59
+    1454: 66,  # precision 65
+    1730: 72,  # precision 71
+    2030: 78,  # precision 77
+    2354: 84,  # precision 83
+    2702: 90,  # precision 89
+    3074: 96,  # precision 95
+    3470: 102,  # precision 101
+    3890: 108,  # precision 107
+    4334: 114,  # precision 113
+    4802: 120,  # precision 119
+    5294: 126,  # precision 125
+    5810: 132,  # precision 131
 }
 
 
@@ -78,7 +78,7 @@ def build_lebedev_quadrature(
     """Build a Lebedev grid from a file."""
 
     theta, phi, lebdev_weights = parse_lebedev_file(fname)
-    n_psi = lebedev_n_psi_lookup[lebdev_weights.shape[0]]
+    n_psi = LEBDEV_N_PSI_LOOKUP_TABLE[lebdev_weights.shape[0]]
     euler_angles_deg = build_euler_angle_grid(
         theta, phi, jnp.linspace(-180, 180, n_psi, endpoint=False)
     )

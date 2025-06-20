@@ -1,6 +1,7 @@
 from glob import glob
 
 import jax.numpy as jnp
+import numpy as np
 
 import cryojax.simulator as cxs
 from cryojax.constants import (
@@ -20,7 +21,7 @@ def test_build_lebeev_grid():
     """https://people.sc.fsu.edu/~jburkardt/datasets/sphere_lebedev_rule/lebedev_003.txt"""
     fname = "src/cryojax/data/_pose_quadrature/lebedev_003.txt"
     euler_angles, weights_repeated_for_psis = build_lebedev_quadrature(fname)
-    assert weights_repeated_for_psis.sum() == 1.0, "Weights should sum to 1"
+    assert np.isclose(weights_repeated_for_psis.sum(), 1.0), "Weights should sum to 1"
     assert euler_angles.shape == (len(weights_repeated_for_psis), 3)
 
 
@@ -76,8 +77,9 @@ def test_benchmark(sample_pdb_path):
     image_model = cxs.ContrastImageModel(instrument_config, scattering_theory)
 
     for lebedev_quadrature_fname in glob(
-        "src/cryojax/data/_pose_quadrature/lebedev_00?.txt"
+        "src/cryojax/data/_pose_quadrature/lebedev_0??.txt"
     ):
+        # print(f"Testing Lebedev quadrature file: {lebedev_quadrature_fname}")
         marginalization_euler_angles_deg, lebedev_weights = build_lebedev_quadrature(
             lebedev_quadrature_fname
         )

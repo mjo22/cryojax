@@ -654,6 +654,8 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
             *to the signal*.
         """
 
+        # import time
+        # start_time = time.time()
         log_likelihoods = jax.vmap(
             lambda euler_angles: render_log_likelihood_fn(
                 euler_angles,
@@ -667,5 +669,10 @@ class IndependentGaussianPoseMarginalizedOut(AbstractGaussianDistribution, stric
         likelihoods = jax.nn.softmax(log_likelihoods)
         marginal_likelihood = jnp.sum(likelihoods * self.lebedev_weights)
         log_marginal_likelihood = jnp.log(marginal_likelihood)
+        # end_time = time.time()
+        # print(
+        #     f"Marginalized out {self.lebedev_weights.shape[0]} poses in "
+        #     f"{end_time - start_time:.2f} seconds."
+        # )
 
         return log_marginal_likelihood
