@@ -2,6 +2,8 @@
 Masks to apply to images in real space.
 """
 
+import functools
+import operator
 from typing import Optional, overload
 
 import equinox as eqx
@@ -273,6 +275,26 @@ class Rectangular3DCosineMask(AbstractBooleanMask, strict=True):
             jnp.asarray(rolloff_width),
         )
         self.is_not_masked = self.array == 1.0
+
+
+class InverseSincMask(AbstractMask, strict=True):
+    """Apply sinc-correction to an image or volume."""
+
+    array: Float[Array, "y_dim x_dim"] | Float[Array, "z_dim y_dim x_dim"]
+
+    def __init__(
+        self,
+        coordinate_grid_in_pixels: (
+            Float[Array, "y_dim x_dim 2"] | Float[Array, "z_dim y_dim x_dim 3"]
+        ),
+    ):
+        ndim = coordinate_grid_in_pixels.ndim - 1
+        self.array = jax.lax.reciprocal(
+            functools.reduce(
+                operator.mul,
+                [jnp.sinc(coordinate_grid_in_pixels[..., i]) for i in range(ndim)],
+            )
+        )
 
 
 @overload
