@@ -20,7 +20,7 @@ from ...image import (
     fftn,
     pad_to_shape,
 )
-from ...image.operators import AbstractFilter
+from ...image.transformers import AbstractFilter
 from ...internal import error_if_not_positive
 from .._pose import AbstractPose
 from .base_potential import AbstractPotentialRepresentation
