@@ -1,11 +1,11 @@
-from ._filters import (
-    AbstractFilter as AbstractFilter,
-    CustomFilter as CustomFilter,
-    FilterLike as FilterLike,
-    HighpassFilter as HighpassFilter,
-    InverseSincFilter as InverseSincFilter,
-    LowpassFilter as LowpassFilter,
-    WhiteningFilter as WhiteningFilter,
+from ._base_operator import (
+    AbstractImageOperator as AbstractImageOperator,
+    Constant as Constant,
+    CustomOperator as CustomOperator,
+    DiffImageOperator as DiffImageOperator,
+    Empirical as Empirical,
+    ProductImageOperator as ProductImageOperator,
+    SumImageOperator as SumImageOperator,
 )
 from ._fourier_operator import (
     AbstractFourierOperator as AbstractFourierOperator,
@@ -15,29 +15,6 @@ from ._fourier_operator import (
     FourierOperatorLike as FourierOperatorLike,
     Lorenzian as Lorenzian,
     ZeroMode as ZeroMode,
-)
-from ._masks import (
-    AbstractBooleanMask as AbstractBooleanMask,
-    AbstractMask as AbstractMask,
-    CircularCosineMask as CircularCosineMask,
-    CustomMask as CustomMask,
-    Cylindrical2DCosineMask as Cylindrical2DCosineMask,
-    MaskLike as MaskLike,
-    Rectangular2DCosineMask as Rectangular2DCosineMask,
-    Rectangular3DCosineMask as Rectangular3DCosineMask,
-    SphericalCosineMask as SphericalCosineMask,
-    SquareCosineMask as SquareCosineMask,
-)
-from ._operator import (
-    AbstractImageMultiplier as AbstractImageMultiplier,
-    AbstractImageOperator as AbstractImageOperator,
-    Constant as Constant,
-    CustomOperator as CustomOperator,
-    DiffImageOperator as DiffImageOperator,
-    Empirical as Empirical,
-    ProductImageMultiplier as ProductImageMultiplier,
-    ProductImageOperator as ProductImageOperator,
-    SumImageOperator as SumImageOperator,
 )
 from ._real_operator import (
     AbstractRealOperator as AbstractRealOperator,
