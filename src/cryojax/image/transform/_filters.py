@@ -16,10 +16,10 @@ from .._average import interpolate_radial_average_on_grid
 from .._edges import resize_with_crop_or_pad
 from .._fft import irfftn, rfftn
 from .._fourier_statistics import compute_binned_powerspectrum
-from ._base_transformer import AbstractImageTransformer
+from ._base_transform import AbstractImageTransform
 
 
-class AbstractFilter(AbstractImageTransformer, strict=True):
+class AbstractFilter(AbstractImageTransform, strict=True):
     """Base class for computing and applying an image filter."""
 
     @overload
@@ -38,7 +38,7 @@ class AbstractFilter(AbstractImageTransformer, strict=True):
         return image * jax.lax.stop_gradient(self.array)
 
 
-FilterLike = AbstractFilter | AbstractImageTransformer
+FilterLike = AbstractFilter | AbstractImageTransform
 
 
 class CustomFilter(AbstractFilter, strict=True):

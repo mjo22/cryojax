@@ -11,7 +11,7 @@ from equinox import AbstractVar, Module
 from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..image import irfftn, rfftn
-from ..image.transformers import FilterLike, MaskLike
+from ..image.transform import FilterLike, MaskLike
 from ._detector import AbstractDetector
 from ._instrument_config import InstrumentConfig
 from ._scattering_theory import AbstractScatteringTheory

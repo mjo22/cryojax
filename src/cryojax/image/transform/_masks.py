@@ -9,10 +9,10 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Bool, Float
 
-from ._base_transformer import AbstractImageTransformer
+from ._base_transform import AbstractImageTransform
 
 
-class AbstractMask(AbstractImageTransformer, strict=True):
+class AbstractMask(AbstractImageTransform, strict=True):
     """Base class for computing and applying an image mask."""
 
     @overload
@@ -41,7 +41,7 @@ class AbstractBooleanMask(AbstractMask, strict=True):
     ]
 
 
-MaskLike = AbstractMask | AbstractImageTransformer
+MaskLike = AbstractMask | AbstractImageTransform
 
 
 class CustomMask(AbstractMask, strict=True):
