@@ -30,20 +30,21 @@ from .._particle_data import (
 )
 
 
-RELION_REQUIRED_OPTICS_ENTRIES = [
+# RELION column entries
+RELION_CTF_OPTICS_ENTRIES = [
+    ("rlnSphericalAberration", "Float64"),
+    ("rlnAmplitudeContrast", "Float64"),
+]
+RELION_INSTRUMENT_OPTICS_ENTRIES = [
     ("rlnImageSize", "Int64"),
     ("rlnVoltage", "Float64"),
     ("rlnImagePixelSize", "Float64"),
-    ("rlnSphericalAberration", "Float64"),
-    ("rlnAmplitudeContrast", "Float64"),
-    ("rlnOpticsGroup", "Int64"),
 ]
-RELION_REQUIRED_PARTICLE_ENTRIES = [
+RELION_CTF_PARTICLE_ENTRIES = [
     ("rlnDefocusU", "Float64"),
     ("rlnDefocusV", "Float64"),
     ("rlnDefocusAngle", "Float64"),
     ("rlnPhaseShift", "Float64"),
-    ("rlnOpticsGroup", "Int64"),
 ]
 RELION_POSE_PARTICLE_ENTRIES = [
     ("rlnOriginXAngst", "Float64"),
@@ -51,6 +52,22 @@ RELION_POSE_PARTICLE_ENTRIES = [
     ("rlnAngleRot", "Float64"),
     ("rlnAngleTilt", "Float64"),
     ("rlnAnglePsi", "Float64"),
+]
+# Default entries for writing
+RELION_DEFAULT_OPTICS_ENTRIES = [
+    *RELION_INSTRUMENT_OPTICS_ENTRIES,
+    *RELION_CTF_OPTICS_ENTRIES,
+    ("rlnOpticsGroup", "Int64"),
+]
+RELION_DEFAULT_PARTICLE_ENTRIES = [
+    *RELION_CTF_PARTICLE_ENTRIES,
+    *RELION_POSE_PARTICLE_ENTRIES,
+]
+# Required entries for loading
+RELION_REQUIRED_OPTICS_ENTRIES = RELION_DEFAULT_OPTICS_ENTRIES
+RELION_REQUIRED_PARTICLE_ENTRIES = [
+    *RELION_CTF_PARTICLE_ENTRIES,
+    ("rlnOpticsGroup", "Int64"),
 ]
 
 
@@ -222,7 +239,8 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
             `selection_filter["rlnClassNumber"] = lambda x: x == 0`.
         - `loads_metadata`:
             If `True`, the resulting `ParticleParameterInfo` dict loads
-            the raw metadata from the STAR file.
+            the raw metadata from the STAR file that is not otherwise included
+            in the `ParticleParameterInfo`.
             If this is set to `True`, extra care must be taken to make sure that
             these dictionaries can pass through JIT boundaries
             without recompilation.
@@ -279,10 +297,18 @@ class RelionParticleParameterFile(AbstractParticleStarFile):
             self.loads_envelope,
             self._make_config_fn,
         )
-        # ... convert to dataframe for serialization
-        if isinstance(particle_data_at_index, pd.Series):
-            particle_data_at_index = particle_data_at_index.to_frame().T
-        metadata = particle_data_at_index.to_dict() if self.loads_metadata else {}
+        if self.loads_metadata:
+            # ... convert to dataframe for serialization
+            if isinstance(particle_data_at_index, pd.Series):
+                particle_data_at_index = particle_data_at_index.to_frame().T
+            # ... no overlapping keys with loaded pytrees
+            temp = particle_data_at_index.drop(
+                RELION_DEFAULT_PARTICLE_ENTRIES, axis="columns", errors="ignore"
+            )
+            metadata = temp.to_dict()
+        else:
+            metadata = {}
+
         return ParticleParameterInfo(
             instrument_config=instrument_config,
             pose=pose,
@@ -799,16 +825,13 @@ def _load_starfile_data(
                     optics=pd.DataFrame(
                         data={
                             column: pd.Series(dtype=dtype)
-                            for column, dtype in RELION_REQUIRED_OPTICS_ENTRIES
+                            for column, dtype in RELION_DEFAULT_OPTICS_ENTRIES
                         }
                     ),
                     particles=pd.DataFrame(
                         data={
                             column: pd.Series(dtype=dtype)
-                            for column, dtype in [
-                                *RELION_REQUIRED_PARTICLE_ENTRIES,
-                                *RELION_POSE_PARTICLE_ENTRIES,
-                            ]
+                            for column, dtype in RELION_DEFAULT_PARTICLE_ENTRIES
                         }
                     ),
                 )
@@ -1417,12 +1440,18 @@ def _parameters_to_particle_data(
     if "transfer_theory" in parameters:
         transfer_theory = parameters["transfer_theory"]
         if isinstance(transfer_theory.ctf, AberratedAstigmaticCTF):
+            if pose.offset_z_in_angstroms is None:
+                defocus_offset = 0.0
+            else:
+                defocus_offset = pose.offset_z_in_angstroms
             particles_dict["rlnDefocusU"] = (
                 transfer_theory.ctf.defocus_in_angstroms
+                + defocus_offset
                 + transfer_theory.ctf.astigmatism_in_angstroms / 2
             )
             particles_dict["rlnDefocusV"] = (
                 transfer_theory.ctf.defocus_in_angstroms
+                + defocus_offset
                 - transfer_theory.ctf.astigmatism_in_angstroms / 2
             )
             particles_dict["rlnDefocusAngle"] = transfer_theory.ctf.astigmatism_angle
@@ -1478,7 +1507,10 @@ def _parameters_to_particle_data(
                     "in `foo['metadata']` was inconsistent with the "
                     "number of particles in `foo['pose']`."
                 )
-            particle_data = pd.concat([particle_data, metadata], axis=1)
+            # Add metadata to dataframe
+            particle_data = pd.concat(
+                [particle_data, metadata], axis="columns", verify_integrity=True
+            )
     return particle_data
 
 
