@@ -13,7 +13,7 @@ from jaxtyping import Array, Complex, Float, PRNGKeyArray
 
 from ..image import rfftn
 from ..image.operators import Constant, FourierOperatorLike
-from ..image.transformers import AbstractBooleanMask
+from ..image.transforms import AbstractBooleanMask
 from ..internal import NDArrayLike, error_if_not_positive
 from ..simulator import AbstractImageModel
 from ._base_distribution import AbstractDistribution
