@@ -9,6 +9,7 @@ from typing import Any, Callable, Literal, Optional, TypedDict
 from typing_extensions import Self, override
 
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 import mrcfile
 import numpy as np
@@ -62,6 +63,7 @@ RELION_DEFAULT_OPTICS_ENTRIES = [
 RELION_DEFAULT_PARTICLE_ENTRIES = [
     *RELION_CTF_PARTICLE_ENTRIES,
     *RELION_POSE_PARTICLE_ENTRIES,
+    ("rlnOpticsGroup", "Int64"),
 ]
 # Required entries for loading
 RELION_REQUIRED_OPTICS_ENTRIES = RELION_DEFAULT_OPTICS_ENTRIES
@@ -106,12 +108,7 @@ class MrcfileSettings(TypedDict):
     compression: str | None
 
 
-def _default_make_config_fn(
-    shape: tuple[int, int],
-    pixel_size: Float[Array, ""],
-    voltage_in_kilovolts: Float[Array, ""],
-    **kwargs: Any,
-):
+def _default_make_config_fn(shape, pixel_size, voltage_in_kilovolts, **kwargs):
     return InstrumentConfig(shape, pixel_size, voltage_in_kilovolts, **kwargs)
 
 
@@ -915,20 +912,24 @@ def _make_pytrees_from_starfile(
     make_config_fn,
 ) -> tuple[InstrumentConfig, ContrastTransferTheory, EulerAnglePose]:
     defocus_in_angstroms = (
-        jnp.asarray(starfile_dataframe["rlnDefocusU"])
-        + jnp.asarray(starfile_dataframe["rlnDefocusV"])
+        np.asarray(starfile_dataframe["rlnDefocusU"], dtype=float)
+        + np.asarray(starfile_dataframe["rlnDefocusV"], dtype=float)
     ) / 2
-    astigmatism_in_angstroms = jnp.asarray(
-        starfile_dataframe["rlnDefocusU"]
-    ) - jnp.asarray(starfile_dataframe["rlnDefocusV"])
-    astigmatism_angle = jnp.asarray(starfile_dataframe["rlnDefocusAngle"])
-    phase_shift = jnp.asarray(starfile_dataframe["rlnPhaseShift"])
+    astigmatism_in_angstroms = np.asarray(
+        starfile_dataframe["rlnDefocusU"], dtype=float
+    ) - np.asarray(starfile_dataframe["rlnDefocusV"], dtype=float)
+    astigmatism_angle = np.asarray(starfile_dataframe["rlnDefocusAngle"], dtype=float)
+    phase_shift = np.asarray(starfile_dataframe["rlnPhaseShift"], dtype=float)
     # ... optics group data
     image_size = int(optics_group["rlnImageSize"])
-    pixel_size = jnp.asarray(optics_group["rlnImagePixelSize"])
-    voltage_in_kilovolts = jnp.asarray(optics_group["rlnVoltage"])
-    spherical_aberration_in_mm = jnp.asarray(optics_group["rlnSphericalAberration"])
-    amplitude_contrast_ratio = jnp.asarray(optics_group["rlnAmplitudeContrast"])
+    pixel_size = np.asarray(optics_group["rlnImagePixelSize"], dtype=float)
+    voltage_in_kilovolts = np.asarray(optics_group["rlnVoltage"], dtype=float)
+    spherical_aberration_in_mm = np.asarray(
+        optics_group["rlnSphericalAberration"], dtype=float
+    )
+    amplitude_contrast_ratio = np.asarray(
+        optics_group["rlnAmplitudeContrast"], dtype=float
+    )
     # ... create cryojax objects. First, the InstrumentConfig
     image_shape = (image_size, image_size)
     batch_dim = 0 if defocus_in_angstroms.ndim == 0 else defocus_in_angstroms.shape[0]
@@ -944,12 +945,12 @@ def _make_pytrees_from_starfile(
     if loads_envelope:
         b_factor, scale_factor = (
             (
-                jnp.asarray(starfile_dataframe["rlnCtfBfactor"])
+                np.asarray(starfile_dataframe["rlnCtfBfactor"], dtype=float)
                 if "rlnCtfBfactor" in starfile_dataframe.keys()
                 else None
             ),
             (
-                jnp.asarray(starfile_dataframe["rlnCtfScalefactor"])
+                np.asarray(starfile_dataframe["rlnCtfScalefactor"], dtype=float)
                 if "rlnCtfScalefactor" in starfile_dataframe.keys()
                 else None
             ),
@@ -1034,24 +1035,27 @@ def _make_pytrees_from_starfile(
         "psi_angle",
     )
     pose_parameter_values = (
-        -rln_origin_x_angst,
-        -rln_origin_y_angst,
-        -rln_angle_rot,
-        -rln_angle_tilt,
-        -rln_angle_psi,
+        -np.asarray(rln_origin_x_angst, dtype=float),
+        -np.asarray(rln_origin_y_angst, dtype=float),
+        -np.asarray(rln_angle_rot, dtype=float),
+        -np.asarray(rln_angle_tilt, dtype=float),
+        -np.asarray(rln_angle_psi, dtype=float),
     )
     # ... fill the EulerAnglePose will keys that are present. if they are not
     # present, keep the default values in the `pose = EulerAnglePose()`
     # instantiation
     maybe_make_full = lambda param: (
-        np.full((batch_dim,), param)
-        if batch_dim > 0 and np.asarray(param).shape == ()
-        else param
+        np.full((batch_dim,), param) if batch_dim > 0 and param.shape == () else param
     )
     pose = eqx.tree_at(
         lambda p: tuple([getattr(p, name) for name in pose_parameter_names]),
         pose,
-        tuple([jnp.asarray(maybe_make_full(value)) for value in pose_parameter_values]),
+        tuple(
+            [
+                jnp.asarray(maybe_make_full(value), dtype=float)
+                for value in pose_parameter_values
+            ]
+        ),
     )
 
     return instrument_config, transfer_theory, pose
@@ -1418,7 +1422,7 @@ def _parameters_to_particle_data(
             if v.shape == ():
                 particles_dict[k] = np.full((n_particles,), np.asarray(v))
             elif v.size == n_particles:
-                particles_dict[k] = np.asarray(v.ravel())
+                particles_dict[k] = v.ravel()
             else:
                 raise ValueError(
                     "Found inconsistent number of particles "
@@ -1484,6 +1488,10 @@ def _parameters_to_particle_data(
         particles_dict["rlnOpticsGroup"] = np.full(
             (n_particles,), optics_group_index, dtype=int
         )
+    # Make sure parameters are numpy arrays
+    particles_dict = jax.tree.map(
+        lambda x: np.asarray(x) if isinstance(x, Array) else x, particles_dict
+    )
     particle_data = pd.DataFrame.from_dict(particles_dict)
     # Finally, see if the particle parameters has metadata and if so,
     # add this
