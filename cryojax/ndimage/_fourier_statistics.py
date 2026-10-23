@@ -232,21 +232,21 @@ def _compute_fourier_correlation(
     maximum_frequency: float,
     real_shape: tuple[int, ...] | None,
 ) -> tuple[Float[Array, " n_bins"], Float[Array, " n_bins"], Float[Array, ""]]:
-    # Compute FSC/FRC radially averaged 1D profile
-    correlation_map = (
-        (fourier_grid_1 * jnp.conjugate(fourier_grid_2))
-        / jnp.sqrt(jnp.abs(fourier_grid_1) ** 2 * jnp.abs(fourier_grid_2) ** 2)
-    ).real
     # ... bins in units of inverse grid spacings, so that they share units
     # with `radial_frequency_grid`
     frequency_bins = _make_radial_frequency_bins(
         fourier_grid_1.shape, minimum_frequency, maximum_frequency
     )
-    correlation_curve = compute_binned_radial_average(
-        correlation_map,
-        radial_frequency_grid,
-        frequency_bins,
-        weights=_make_binning_weights(fourier_grid_1.shape, real_shape),
+    weights = _make_binning_weights(fourier_grid_1.shape, real_shape)
+    average = lambda x: compute_binned_radial_average(
+        x, radial_frequency_grid, frequency_bins, weights=weights
+    )
+    # Compute FSC/FRC radially averaged 1D profile, normalizing after the shell
+    # sums so that each mode is weighted by its amplitude
+    correlation_curve = average(
+        (fourier_grid_1 * jnp.conjugate(fourier_grid_2)).real
+    ) / jnp.sqrt(
+        average(jnp.abs(fourier_grid_1) ** 2) * average(jnp.abs(fourier_grid_2) ** 2)
     )
     # Find where FSC/FRC drops below the specified threshold
     # TODO: Add van heel criterion.

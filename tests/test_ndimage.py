@@ -330,6 +330,37 @@ def test_frc_fsc_jit(shape):
         )
 
 
+@pytest.mark.parametrize("shape", [(12, 12), (12, 11), (8, 8, 8), (8, 9, 10)])
+def test_frc_fsc_matches_full_grid_definition(shape):
+    # Per shell, sum Re(F1 F2*) / sqrt(sum |F1|^2 sum |F2|^2), as in RELION -- not
+    # the shell mean of each mode's own normalized correlation
+    if len(shape) == 2:
+        correlation_fn = im.compute_fourier_ring_correlation
+    else:
+        correlation_fn = im.compute_fourier_shell_correlation
+    x1 = np.asarray(jr.normal(jr.key(0), shape))
+    x2 = 0.5 * x1 + np.asarray(jr.normal(jr.key(1), shape))
+    curve, bins, _ = correlation_fn(
+        jnp.fft.rfftn(x1),
+        jnp.fft.rfftn(x2),
+        make_radial_frequency_grid(shape),
+        real_shape=shape,
+    )
+    f1, f2 = np.fft.fftn(x1), np.fft.fftn(x2)
+    k = np.meshgrid(*[np.fft.fftfreq(n) for n in shape], indexing="ij")
+    shell = np.digitize(np.sqrt(sum(ki**2 for ki in k)), np.asarray(bins), right=True)
+    shell[(0,) * len(shape)] = -1  # the zero mode is excluded
+    with np.errstate(invalid="ignore"):
+        expected = [
+            np.sum((f1 * f2.conj()).real[shell == i])
+            / np.sqrt(
+                np.sum(np.abs(f1[shell == i]) ** 2) * np.sum(np.abs(f2[shell == i]) ** 2)
+            )
+            for i in range(len(bins))
+        ]
+    np.testing.assert_allclose(curve, expected, rtol=1e-5)
+
+
 @pytest.mark.parametrize(
     "shape, expected",
     [
